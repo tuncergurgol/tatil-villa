@@ -2,13 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { VillaCategory } from "@prisma/client";
+import { RegionLevel } from "@/lib/region-levels";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+
+async function assertMahalleRegion(regionId: string) {
+  const region = await prisma.region.findUnique({
+    where: { id: regionId },
+    select: { level: true, active: true },
+  });
+
+  if (!region || !region.active) {
+    throw new Error("Geçerli bir bölge seçin");
+  }
+
+  if (region.level !== RegionLevel.MAHALLE) {
+    throw new Error("Villa yalnızca mahalle seviyesindeki bir bölgeye atanabilir");
+  }
+}
 
 export async function createVilla(formData: FormData) {
   await requireAdmin();
 
   const regionId = formData.get("regionId") as string;
+  await assertMahalleRegion(regionId);
   const imagesRaw = (formData.get("images") as string) || "";
   const amenitiesRaw = (formData.get("amenities") as string) || "";
 
@@ -43,6 +60,9 @@ export async function createVilla(formData: FormData) {
 
 export async function updateVilla(id: string, formData: FormData) {
   await requireAdmin();
+
+  const regionId = formData.get("regionId") as string;
+  await assertMahalleRegion(regionId);
 
   const imagesRaw = (formData.get("images") as string) || "";
   const amenitiesRaw = (formData.get("amenities") as string) || "";

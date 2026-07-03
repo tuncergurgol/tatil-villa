@@ -1,9 +1,9 @@
 import Link from "next/link";
 import VillaForm from "@/components/admin/VillaForm";
-import { getAllRegions } from "@/lib/queries/regions";
+import { getMahalleRegionsForSelect } from "@/lib/queries/region-tree";
 
 export default async function NewVillaPage() {
-  const regions = await getAllRegions();
+  const regions = await getMahalleRegionsForSelect();
 
   return (
     <div>

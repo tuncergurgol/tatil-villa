@@ -1,7 +1,11 @@
+import type { RegionLevel } from "@/lib/region-levels";
+import { RegionLevel as RegionLevelEnum } from "@/lib/region-levels";
+
 export interface RegionFlat {
   id: string;
   slug: string;
   name: string;
+  level: RegionLevel;
   image: string;
   description: string;
   longDescription: string;
@@ -15,11 +19,29 @@ export interface RegionFlat {
   showInOffer: boolean;
   showOnHome: boolean;
   sortOrder: number;
+  mernisIlceCode: string | null;
   villaCount: number;
 }
 
 export interface RegionTreeNode extends RegionFlat {
   children: RegionTreeNode[];
+}
+
+export function compareRegionSiblings(
+  a: Pick<RegionFlat, "level" | "name" | "sortOrder">,
+  b: Pick<RegionFlat, "level" | "name" | "sortOrder">
+): number {
+  if (
+    a.level === RegionLevelEnum.ILCE ||
+    a.level === RegionLevelEnum.MAHALLE
+  ) {
+    return a.name.localeCompare(b.name, "tr", { sensitivity: "base" });
+  }
+
+  return (
+    a.sortOrder - b.sortOrder ||
+    a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
+  );
 }
 
 export function buildRegionTree(regions: RegionFlat[]): RegionTreeNode[] {
@@ -41,11 +63,7 @@ export function buildRegionTree(regions: RegionFlat[]): RegionTreeNode[] {
   }
 
   const sortNodes = (nodes: RegionTreeNode[]) => {
-    nodes.sort(
-      (a, b) =>
-        a.sortOrder - b.sortOrder ||
-        a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
-    );
+    nodes.sort(compareRegionSiblings);
     nodes.forEach((node) => sortNodes(node.children));
   };
 

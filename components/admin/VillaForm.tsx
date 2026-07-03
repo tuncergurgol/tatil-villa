@@ -1,9 +1,14 @@
 import { VillaCategory } from "@prisma/client";
-import type { Region, Villa } from "@prisma/client";
+import type { Villa } from "@prisma/client";
 import { createVilla, updateVilla } from "@/app/actions/admin/villas";
 
+interface RegionOption {
+  id: string;
+  label: string;
+}
+
 interface VillaFormProps {
-  regions: Region[];
+  regions: RegionOption[];
   villa?: Villa;
 }
 
@@ -37,7 +42,7 @@ export default function VillaForm({ regions, villa }: VillaFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
-          <span className="text-sm font-medium">Bölge</span>
+          <span className="text-sm font-medium">Bölge (Mahalle)</span>
           <select
             name="regionId"
             required
@@ -46,7 +51,7 @@ export default function VillaForm({ regions, villa }: VillaFormProps) {
           >
             {regions.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.name}
+                {r.label}
               </option>
             ))}
           </select>

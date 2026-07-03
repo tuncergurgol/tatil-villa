@@ -9,7 +9,9 @@ import {
   updateRegion,
   type RegionActionState,
 } from "@/app/actions/admin/regions";
+import { RegionLevel, REGION_LEVEL_LABELS, parentLevelFor } from "@/lib/region-levels";
 import type { RegionFlat } from "@/lib/regions-tree";
+import MernisIlcePicker from "@/components/admin/regions/MernisIlcePicker";
 
 interface RegionFormModalProps {
   regions: RegionFlat[];
@@ -127,9 +129,19 @@ export default function RegionFormModal({
   const [showInSearch, setShowInSearch] = useState(region?.showInSearch ?? false);
   const [showInOffer, setShowInOffer] = useState(region?.showInOffer ?? false);
   const [showOnHome, setShowOnHome] = useState(region?.showOnHome ?? false);
+  const [level, setLevel] = useState<RegionLevel>(
+    region?.level ?? RegionLevel.MAHALLE
+  );
+  const [mernisCode, setMernisCode] = useState(region?.mernisIlceCode ?? "");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, startUpload] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (level !== RegionLevel.ILCE) {
+      setMernisCode("");
+    }
+  }, [level]);
 
   useEffect(() => {
     if (state.success) {
@@ -141,6 +153,13 @@ export default function RegionFormModal({
   if (region) {
     excludeIds.add(region.id);
   }
+
+  const requiredParentLevel = parentLevelFor(level);
+  const parentOptions = regions.filter(
+    (r) =>
+      !excludeIds.has(r.id) &&
+      (requiredParentLevel ? r.level === requiredParentLevel : false)
+  );
 
   function handleImageUpload(file: File | undefined) {
     if (!file) return;
@@ -189,24 +208,56 @@ export default function RegionFormModal({
                   <Field label="Adı" name="name" defaultValue={region?.name} />
                   <label className="block">
                     <span className="text-xs font-medium text-gray-500">
+                      Seviye
+                    </span>
+                    <select
+                      name="level"
+                      value={level}
+                      onChange={(e) =>
+                        setLevel(e.target.value as RegionLevel)
+                      }
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                    >
+                      {Object.values(RegionLevel).map((item) => (
+                        <option key={item} value={item}>
+                          {REGION_LEVEL_LABELS[item]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                {level !== RegionLevel.IL && (
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-500">
                       Üst Bölgesi
                     </span>
                     <select
                       name="parentId"
                       defaultValue={region?.parentId ?? defaultParentId ?? ""}
+                      required
                       className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                     >
                       <option value="">— Seçiniz —</option>
-                      {regions
-                        .filter((r) => !excludeIds.has(r.id))
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
+                      {parentOptions.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
                     </select>
                   </label>
-                </div>
+                )}
+
+                {level === RegionLevel.ILCE ? (
+                  <MernisIlcePicker
+                    value={mernisCode}
+                    onChange={setMernisCode}
+                  />
+                ) : (
+                  <p className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-3 text-xs text-gray-500">
+                    MERNİS kodu yalnızca ilçe seviyesinde seçilir.
+                  </p>
+                )}
 
                 <TextareaField
                   label="Açıklama"
@@ -244,17 +295,29 @@ export default function RegionFormModal({
                     name="slug"
                     defaultValue={region?.slug}
                   />
-                  <Field
-                    label="Öncelik"
-                    name="sortOrder"
-                    type="number"
-                    defaultValue={String(region?.sortOrder ?? 0)}
-                  />
+                  {level === RegionLevel.IL && (
+                    <Field
+                      label="Öncelik"
+                      name="sortOrder"
+                      type="number"
+                      defaultValue={String(region?.sortOrder ?? 0)}
+                    />
+                  )}
                 </div>
+                {(level === RegionLevel.ILCE ||
+                  level === RegionLevel.MAHALLE) && (
+                  <>
+                    <input type="hidden" name="sortOrder" value="0" />
+                    <p className="text-xs text-gray-500">
+                      İlçe ve mahalleler üst bölge altında alfabetik olarak
+                      sıralanır.
+                    </p>
+                  </>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <ToggleField
-                    label="Yayın Durumu"
+                    label="Yayında"
                     name="published"
                     checked={published}
                     onChange={setPublished}
@@ -279,12 +342,6 @@ export default function RegionFormModal({
                     className="sm:col-span-3"
                   />
                 </div>
-
-                <input
-                  type="hidden"
-                  name="active"
-                  value={region?.active === false ? "false" : "true"}
-                />
               </div>
 
               <div className="space-y-3">

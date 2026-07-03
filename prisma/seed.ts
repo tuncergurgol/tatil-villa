@@ -1,46 +1,10 @@
-import { PrismaClient, VillaCategory } from "@prisma/client";
+import { PrismaClient, RegionLevel, VillaCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { TURKEY_REGIONS } from "./regions-data";
+import { getRegionContentFields } from "./region-content-data";
+import { syncAlphabeticalSiblingSortOrders } from "../lib/region-sort";
 
 const prisma = new PrismaClient();
-
-const regions = [
-  {
-    slug: "kalkan",
-    name: "Kalkan",
-    image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80",
-  },
-  {
-    slug: "fethiye",
-    name: "Fethiye",
-    image:
-      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80",
-  },
-  {
-    slug: "bodrum",
-    name: "Bodrum",
-    image:
-      "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=600&q=80",
-  },
-  {
-    slug: "cesme",
-    name: "Alaçatı & Çeşme",
-    image:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
-  },
-  {
-    slug: "kayakoy",
-    name: "Kayaköy",
-    image:
-      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600&q=80",
-  },
-  {
-    slug: "selimiye",
-    name: "Selimiye",
-    image:
-      "https://images.unsplash.com/photo-1439066615861-d1af74c740f8?w=600&q=80",
-  },
-];
 
 const campaigns = [
   {
@@ -77,7 +41,7 @@ const villas = [
     slug: "villa-waratah",
     name: "Villa Waratah",
     category: VillaCategory.villa,
-    regionSlug: "kalkan",
+    regionSlug: "kalkan-merkez",
     location: "Kalkan Merkez",
     guests: 3,
     bedrooms: 3,
@@ -102,7 +66,7 @@ const villas = [
     slug: "villa-disney",
     name: "Villa Disney",
     category: VillaCategory.villa,
-    regionSlug: "fethiye",
+    regionSlug: "islamar",
     location: "İslamlar",
     guests: 10,
     bedrooms: 5,
@@ -126,7 +90,7 @@ const villas = [
     slug: "villa-yaprak",
     name: "Villa Yaprak",
     category: VillaCategory.villa,
-    regionSlug: "fethiye",
+    regionSlug: "fethiye-merkeze-yakin",
     location: "Fethiye Merkeze Yakın",
     guests: 4,
     bedrooms: 2,
@@ -149,7 +113,7 @@ const villas = [
     slug: "bungalov-masal",
     name: "Bungalov Masal",
     category: VillaCategory.bungalov,
-    regionSlug: "fethiye",
+    regionSlug: "fethiye-merkeze-yakin",
     location: "Fethiye Merkeze Yakın",
     guests: 2,
     bedrooms: 1,
@@ -195,7 +159,7 @@ const villas = [
     slug: "villa-royal-cesme",
     name: "Villa Royal Çeşme 1",
     category: VillaCategory.villa,
-    regionSlug: "cesme",
+    regionSlug: "alacati",
     location: "Alaçatı",
     guests: 6,
     bedrooms: 3,
@@ -218,7 +182,7 @@ const villas = [
     slug: "villa-cihan",
     name: "Villa Cihan",
     category: VillaCategory.villa,
-    regionSlug: "kalkan",
+    regionSlug: "kalkan-merkez",
     location: "Kalkan Merkez",
     guests: 4,
     bedrooms: 3,
@@ -241,7 +205,7 @@ const villas = [
     slug: "villa-antik-bodrum",
     name: "Villa Antik Bodrum",
     category: VillaCategory.villa,
-    regionSlug: "bodrum",
+    regionSlug: "bitez",
     location: "Bitez",
     guests: 6,
     bedrooms: 3,
@@ -287,7 +251,7 @@ const villas = [
     slug: "villa-story-house",
     name: "Villa Story House",
     category: VillaCategory.villa,
-    regionSlug: "kalkan",
+    regionSlug: "akbel",
     location: "Akbel",
     guests: 2,
     bedrooms: 1,
@@ -331,7 +295,7 @@ const villas = [
     slug: "bungalov-masal-2",
     name: "Bungalov Masal 2",
     category: VillaCategory.bungalov,
-    regionSlug: "fethiye",
+    regionSlug: "fethiye-merkeze-yakin",
     location: "Fethiye Merkeze Yakın",
     guests: 4,
     bedrooms: 2,
@@ -362,9 +326,37 @@ async function main() {
 
   const regionMap = new Map<string, string>();
 
-  for (const region of regions) {
-    const created = await prisma.region.create({ data: region });
+  for (const region of TURKEY_REGIONS) {
+    const { parentSlug, showOnHome, showInSearch, sortOrder, ...data } = region;
+    const contentFields = getRegionContentFields(region.slug);
+
+    const created = await prisma.region.create({
+      data: {
+        ...data,
+        ...contentFields,
+        parentId: parentSlug ? regionMap.get(parentSlug) : undefined,
+        showOnHome: contentFields?.showOnHome ?? showOnHome ?? false,
+        showInSearch: contentFields?.showInSearch ?? showInSearch ?? false,
+        sortOrder: sortOrder ?? 0,
+      },
+    });
     regionMap.set(region.slug, created.id);
+  }
+
+  const ilParents = await prisma.region.findMany({
+    where: { level: RegionLevel.IL },
+    select: { id: true },
+  });
+  for (const il of ilParents) {
+    await syncAlphabeticalSiblingSortOrders(il.id, RegionLevel.ILCE);
+  }
+
+  const ilceParents = await prisma.region.findMany({
+    where: { level: RegionLevel.ILCE },
+    select: { id: true },
+  });
+  for (const ilce of ilceParents) {
+    await syncAlphabeticalSiblingSortOrders(ilce.id, RegionLevel.MAHALLE);
   }
 
   for (const campaign of campaigns) {

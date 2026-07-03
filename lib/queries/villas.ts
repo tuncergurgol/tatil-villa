@@ -1,5 +1,6 @@
 import type { VillaCategory } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getRegionIdsForFilter } from "@/lib/queries/region-tree";
 
 export interface VillaFilters {
   filter?: string;
@@ -63,7 +64,14 @@ export async function getVillas(filters: VillaFilters = {}) {
   if (filters.filter === "popular") where.popular = true;
   if (filters.filter === "deal") where.deal = true;
   if (filters.filter === "recommended") where.recommended = true;
-  if (filters.region) where.region = { slug: filters.region };
+  if (filters.region) {
+    const regionIds = await getRegionIdsForFilter(filters.region);
+    if (regionIds?.length) {
+      where.regionId = { in: regionIds };
+    } else {
+      where.region = { slug: filters.region };
+    }
+  }
 
   const villas = await prisma.villa.findMany({
     where,

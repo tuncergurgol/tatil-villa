@@ -23,10 +23,17 @@ enum UserRole {
   SALES_REP
 }
 
+enum RegionLevel {
+  IL
+  ILCE
+  MAHALLE
+}
+
 model Region {
-  id           String   @id @default(cuid())
-  slug         String   @unique
+  id           String      @id @default(cuid())
+  slug         String      @unique
   name         String
+  level        RegionLevel
   image        String
   description  String  @default("") @db.Text
   longDescription String @default("") @db.Text
@@ -42,6 +49,7 @@ model Region {
   showInOffer  Boolean  @default(false)
   showOnHome   Boolean  @default(false)
   sortOrder    Int      @default(0)
+  mernisIlceCode String?
   villas       Villa[]
 
   createdAt DateTime @default(now())
@@ -49,6 +57,7 @@ model Region {
 
   @@index([parentId])
   @@index([active])
+  @@index([level])
 }
 
 model Villa {

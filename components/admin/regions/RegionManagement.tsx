@@ -20,6 +20,13 @@ import {
   type RegionFlat,
   type RegionTreeNode,
 } from "@/lib/regions-tree";
+import {
+  isRegionActive,
+  levelBadgeClass,
+  REGION_LEVEL_LABELS,
+  RegionLevel,
+} from "@/lib/region-levels";
+import { getMernisIlceLabel } from "@/lib/mernis-ilce";
 
 type StatusFilter = "all" | "active" | "passive";
 
@@ -49,8 +56,8 @@ function filterTree(
       !normalizedQuery || node.name.toLowerCase().includes(normalizedQuery);
     const matchesStatus =
       status === "all" ||
-      (status === "active" && node.active) ||
-      (status === "passive" && !node.active);
+      (status === "active" && isRegionActive(node)) ||
+      (status === "passive" && !isRegionActive(node));
 
     if ((matchesQuery && matchesStatus) || children.length > 0) {
       return { ...node, children };
@@ -67,9 +74,13 @@ function filterTree(
 function RegionTags({ region }: { region: RegionFlat }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5">
-      {region.published && (
+      {region.published ? (
         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
           Yayında
+        </span>
+      ) : (
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+          Pasif
         </span>
       )}
       {region.showInSearch && (
@@ -87,9 +98,12 @@ function RegionTags({ region }: { region: RegionFlat }) {
           Ana sayfa
         </span>
       )}
-      {!region.active && (
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-          Pasif
+      {region.level === RegionLevel.ILCE && region.mernisIlceCode && (
+        <span
+          className="max-w-[260px] truncate rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+          title={getMernisIlceLabel(region.mernisIlceCode) ?? undefined}
+        >
+          {getMernisIlceLabel(region.mernisIlceCode)}
         </span>
       )}
     </div>
@@ -120,7 +134,7 @@ function RegionTreeRow({
     <>
       <div
         className={`flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0 ${
-          !node.active ? "bg-gray-50/80 opacity-80" : "bg-white"
+          !isRegionActive(node) ? "bg-gray-50/80 opacity-80" : "bg-white"
         }`}
         style={{ paddingLeft: `${16 + depth * 24}px` }}
       >
@@ -151,6 +165,11 @@ function RegionTreeRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-gray-900">{node.name}</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${levelBadgeClass(node.level)}`}
+            >
+              {REGION_LEVEL_LABELS[node.level]}
+            </span>
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
               {node.villaCount}
             </span>

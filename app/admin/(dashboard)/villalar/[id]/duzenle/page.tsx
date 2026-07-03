@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import VillaForm from "@/components/admin/VillaForm";
-import { getAllRegions } from "@/lib/queries/regions";
+import { getMahalleRegionsForSelect } from "@/lib/queries/region-tree";
 import { prisma } from "@/lib/db";
 
 interface PageProps {
@@ -12,7 +12,7 @@ export default async function EditVillaPage({ params }: PageProps) {
   const { id } = await params;
   const [villa, regions] = await Promise.all([
     prisma.villa.findUnique({ where: { id } }),
-    getAllRegions(),
+    getMahalleRegionsForSelect(),
   ]);
 
   if (!villa) notFound();

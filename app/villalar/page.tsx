@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import VillaGrid from "@/components/VillaGrid";
-import { getRegionsWithCount } from "@/lib/queries/regions";
+import { getRegionBySlug, getRegionFilterOptions } from "@/lib/queries/regions";
 import { getVillas } from "@/lib/queries/villas";
 
 export const metadata: Metadata = {
@@ -23,7 +23,10 @@ export const dynamic = "force-dynamic";
 
 export default async function VillalarPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const regions = await getRegionsWithCount();
+  const [filterOptions, selectedRegion] = await Promise.all([
+    getRegionFilterOptions(),
+    params.region ? getRegionBySlug(params.region) : null,
+  ]);
 
   const filtered = await getVillas({
     filter: params.filter,
@@ -33,12 +36,8 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     adults: params.adults ? parseInt(params.adults, 10) : undefined,
   });
 
-  const regionName = params.region
-    ? regions.find((r) => r.slug === params.region)?.name
-    : null;
-
-  const title = regionName
-    ? `${regionName} Villaları`
+  const title = selectedRegion
+    ? `${selectedRegion.displayName} Villaları`
     : params.filter === "deal"
       ? "Fırsat Villalar"
       : params.filter === "popular"
@@ -81,7 +80,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
           >
             Önerilen
           </FilterChip>
-          {regions.map((region) => (
+          {filterOptions.map((region) => (
             <FilterChip
               key={region.slug}
               href={`/villalar?region=${region.slug}`}

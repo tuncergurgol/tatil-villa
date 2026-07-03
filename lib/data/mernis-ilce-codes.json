@@ -1,0 +1,6813 @@
+[
+  {
+    "code": "1101",
+    "ilceAdi": "Abana",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Abana — Kastamonu (1101)"
+  },
+  {
+    "code": "1749",
+    "ilceAdi": "Acıgöl",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Acıgöl — Nevşehir (1749)"
+  },
+  {
+    "code": "1102",
+    "ilceAdi": "Acıpayam",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Acıpayam — Denizli (1102)"
+  },
+  {
+    "code": "1750",
+    "ilceAdi": "Adaklı",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Adaklı — Bingöl (1750)"
+  },
+  {
+    "code": "1103",
+    "ilceAdi": "Adalar",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Adalar — İstanbul (1103)"
+  },
+  {
+    "code": "2068",
+    "ilceAdi": "Adapazarı",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Adapazarı — Sakarya (2068)"
+  },
+  {
+    "code": "1105",
+    "ilceAdi": "Adıyaman Merkez",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Adıyaman Merkez — Adıyaman (1105)"
+  },
+  {
+    "code": "1106",
+    "ilceAdi": "Adilcevaz",
+    "ilKodu": 13,
+    "ilAdi": "Bitlis",
+    "label": "Adilcevaz — Bitlis (1106)"
+  },
+  {
+    "code": "1107",
+    "ilceAdi": "Afşin",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Afşin — Kahramanmaraş (1107)"
+  },
+  {
+    "code": "1108",
+    "ilceAdi": "Afyon Merkez",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Afyon Merkez — Afyon (1108)"
+  },
+  {
+    "code": "1860",
+    "ilceAdi": "Ağaçören",
+    "ilKodu": 68,
+    "ilAdi": "Aksaray",
+    "label": "Ağaçören — Aksaray (1860)"
+  },
+  {
+    "code": "1110",
+    "ilceAdi": "Ağın",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Ağın — Elazığ (1110)"
+  },
+  {
+    "code": "1109",
+    "ilceAdi": "Ağlasun",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Ağlasun — Burdur (1109)"
+  },
+  {
+    "code": "1867",
+    "ilceAdi": "Ağlı",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Ağlı — Kastamonu (1867)"
+  },
+  {
+    "code": "1111",
+    "ilceAdi": "Ağrı Merkez",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Ağrı Merkez — Ağrı (1111)"
+  },
+  {
+    "code": "1868",
+    "ilceAdi": "Ahırlı",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Ahırlı — Konya (1868)"
+  },
+  {
+    "code": "1112",
+    "ilceAdi": "Ahlat",
+    "ilKodu": 13,
+    "ilAdi": "Bitlis",
+    "label": "Ahlat — Bitlis (1112)"
+  },
+  {
+    "code": "1751",
+    "ilceAdi": "Ahmetli",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Ahmetli — Manisa (1751)"
+  },
+  {
+    "code": "1113",
+    "ilceAdi": "Akçaabat",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Akçaabat — Trabzon (1113)"
+  },
+  {
+    "code": "1114",
+    "ilceAdi": "Akçadağ",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Akçadağ — Malatya (1114)"
+  },
+  {
+    "code": "1115",
+    "ilceAdi": "Akçakale",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Akçakale — Şanlıurfa (1115)"
+  },
+  {
+    "code": "1869",
+    "ilceAdi": "Akçakent",
+    "ilKodu": 40,
+    "ilAdi": "Kırşehir",
+    "label": "Akçakent — Kırşehir (1869)"
+  },
+  {
+    "code": "1116",
+    "ilceAdi": "Akçakoca",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Akçakoca — Düzce (1116)"
+  },
+  {
+    "code": "1117",
+    "ilceAdi": "Akdağmadeni",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Akdağmadeni — Yozgat (1117)"
+  },
+  {
+    "code": "2064",
+    "ilceAdi": "Akdeniz",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Akdeniz — Mersin (2064)"
+  },
+  {
+    "code": "1118",
+    "ilceAdi": "Akhisar",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Akhisar — Manisa (1118)"
+  },
+  {
+    "code": "1870",
+    "ilceAdi": "Akıncılar",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Akıncılar — Sivas (1870)"
+  },
+  {
+    "code": "1752",
+    "ilceAdi": "Akkışla",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Akkışla — Kayseri (1752)"
+  },
+  {
+    "code": "1871",
+    "ilceAdi": "Akköy",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Akköy — Denizli (1871)"
+  },
+  {
+    "code": "1119",
+    "ilceAdi": "Akkuş",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Akkuş — Ordu (1119)"
+  },
+  {
+    "code": "1753",
+    "ilceAdi": "Akören",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Akören — Konya (1753)"
+  },
+  {
+    "code": "1754",
+    "ilceAdi": "Akpınar",
+    "ilKodu": 40,
+    "ilAdi": "Kırşehir",
+    "label": "Akpınar — Kırşehir (1754)"
+  },
+  {
+    "code": "1120",
+    "ilceAdi": "Aksaray Merkez",
+    "ilKodu": 68,
+    "ilAdi": "Aksaray",
+    "label": "Aksaray Merkez — Aksaray (1120)"
+  },
+  {
+    "code": "1121",
+    "ilceAdi": "Akseki",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Akseki — Antalya (1121)"
+  },
+  {
+    "code": "1755",
+    "ilceAdi": "Aksu",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Aksu — Isparta (1755)"
+  },
+  {
+    "code": "2035",
+    "ilceAdi": "Aksu/antalya",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Aksu/antalya — Antalya (2035)"
+  },
+  {
+    "code": "1122",
+    "ilceAdi": "Akşehir",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Akşehir — Konya (1122)"
+  },
+  {
+    "code": "1756",
+    "ilceAdi": "Akyaka",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Akyaka — Kars (1756)"
+  },
+  {
+    "code": "1123",
+    "ilceAdi": "Akyazı",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Akyazı — Sakarya (1123)"
+  },
+  {
+    "code": "1872",
+    "ilceAdi": "Akyurt",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Akyurt — Ankara (1872)"
+  },
+  {
+    "code": "1124",
+    "ilceAdi": "Alaca",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Alaca — Çorum (1124)"
+  },
+  {
+    "code": "1873",
+    "ilceAdi": "Alacakaya",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Alacakaya — Elazığ (1873)"
+  },
+  {
+    "code": "1125",
+    "ilceAdi": "Alaçam",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Alaçam — Samsun (1125)"
+  },
+  {
+    "code": "1757",
+    "ilceAdi": "Aladağ",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Aladağ — Adana (1757)"
+  },
+  {
+    "code": "1126",
+    "ilceAdi": "Alanya",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Alanya — Antalya (1126)"
+  },
+  {
+    "code": "1758",
+    "ilceAdi": "Alaplı",
+    "ilKodu": 67,
+    "ilAdi": "Zonguldak",
+    "label": "Alaplı — Zonguldak (1758)"
+  },
+  {
+    "code": "1127",
+    "ilceAdi": "Alaşehir",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Alaşehir — Manisa (1127)"
+  },
+  {
+    "code": "1128",
+    "ilceAdi": "Aliağa",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Aliağa — İzmir (1128)"
+  },
+  {
+    "code": "1129",
+    "ilceAdi": "Almus",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Almus — Tokat (1129)"
+  },
+  {
+    "code": "1759",
+    "ilceAdi": "Alpu",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Alpu — Eskişehir (1759)"
+  },
+  {
+    "code": "1130",
+    "ilceAdi": "Altındağ",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Altındağ — Ankara (1130)"
+  },
+  {
+    "code": "1760",
+    "ilceAdi": "Altınekin",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Altınekin — Konya (1760)"
+  },
+  {
+    "code": "2019",
+    "ilceAdi": "Altınova",
+    "ilKodu": 77,
+    "ilAdi": "Yalova",
+    "label": "Altınova — Yalova (2019)"
+  },
+  {
+    "code": "1131",
+    "ilceAdi": "Altınözü",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Altınözü — Hatay (1131)"
+  },
+  {
+    "code": "1132",
+    "ilceAdi": "Altıntaş",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Altıntaş — Kütahya (1132)"
+  },
+  {
+    "code": "1874",
+    "ilceAdi": "Altınyayla",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Altınyayla — Burdur (1874)"
+  },
+  {
+    "code": "1875",
+    "ilceAdi": "Altınyayla",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Altınyayla — Sivas (1875)"
+  },
+  {
+    "code": "1876",
+    "ilceAdi": "Altunhisar",
+    "ilKodu": 51,
+    "ilAdi": "Niğde",
+    "label": "Altunhisar — Niğde (1876)"
+  },
+  {
+    "code": "1133",
+    "ilceAdi": "Alucra",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Alucra — Giresun (1133)"
+  },
+  {
+    "code": "1761",
+    "ilceAdi": "Amasra",
+    "ilKodu": 74,
+    "ilAdi": "Bartın",
+    "label": "Amasra — Bartın (1761)"
+  },
+  {
+    "code": "1134",
+    "ilceAdi": "Amasya Merkez",
+    "ilKodu": 5,
+    "ilAdi": "Amasya",
+    "label": "Amasya Merkez — Amasya (1134)"
+  },
+  {
+    "code": "1135",
+    "ilceAdi": "Anamur",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Anamur — Mersin (1135)"
+  },
+  {
+    "code": "1136",
+    "ilceAdi": "Andırın",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Andırın — Kahramanmaraş (1136)"
+  },
+  {
+    "code": "1137",
+    "ilceAdi": "Ankara",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Ankara — Ankara (1137)"
+  },
+  {
+    "code": "1138",
+    "ilceAdi": "Antalya Merkez",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Antalya Merkez — Antalya (1138)"
+  },
+  {
+    "code": "1139",
+    "ilceAdi": "Araban",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Araban — Gaziantep (1139)"
+  },
+  {
+    "code": "1140",
+    "ilceAdi": "Araç",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Araç — Kastamonu (1140)"
+  },
+  {
+    "code": "1141",
+    "ilceAdi": "Araklı",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Araklı — Trabzon (1141)"
+  },
+  {
+    "code": "1142",
+    "ilceAdi": "Aralık",
+    "ilKodu": 76,
+    "ilAdi": "Iğdır",
+    "label": "Aralık — Iğdır (1142)"
+  },
+  {
+    "code": "1143",
+    "ilceAdi": "Arapgir",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Arapgir — Malatya (1143)"
+  },
+  {
+    "code": "1144",
+    "ilceAdi": "Ardahan Merkez",
+    "ilKodu": 75,
+    "ilAdi": "Ardahan",
+    "label": "Ardahan Merkez — Ardahan (1144)"
+  },
+  {
+    "code": "1145",
+    "ilceAdi": "Ardanuç",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Ardanuç — Artvin (1145)"
+  },
+  {
+    "code": "1146",
+    "ilceAdi": "Ardeşen",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Ardeşen — Rize (1146)"
+  },
+  {
+    "code": "1148",
+    "ilceAdi": "Arguvan",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Arguvan — Malatya (1148)"
+  },
+  {
+    "code": "1147",
+    "ilceAdi": "Arhavi",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Arhavi — Artvin (1147)"
+  },
+  {
+    "code": "1762",
+    "ilceAdi": "Arıcak",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Arıcak — Elazığ (1762)"
+  },
+  {
+    "code": "2069",
+    "ilceAdi": "Arifiye",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Arifiye — Sakarya (2069)"
+  },
+  {
+    "code": "2020",
+    "ilceAdi": "Armutlu",
+    "ilKodu": 77,
+    "ilAdi": "Yalova",
+    "label": "Armutlu — Yalova (2020)"
+  },
+  {
+    "code": "2048",
+    "ilceAdi": "Arnavutköy",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Arnavutköy — İstanbul (2048)"
+  },
+  {
+    "code": "1149",
+    "ilceAdi": "Arpaçay",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Arpaçay — Kars (1149)"
+  },
+  {
+    "code": "1150",
+    "ilceAdi": "Arsin",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Arsin — Trabzon (1150)"
+  },
+  {
+    "code": "1151",
+    "ilceAdi": "Artova",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Artova — Tokat (1151)"
+  },
+  {
+    "code": "1152",
+    "ilceAdi": "Artvin Merkez",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Artvin Merkez — Artvin (1152)"
+  },
+  {
+    "code": "1763",
+    "ilceAdi": "Asarcık",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Asarcık — Samsun (1763)"
+  },
+  {
+    "code": "1764",
+    "ilceAdi": "Aslanapa",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Aslanapa — Kütahya (1764)"
+  },
+  {
+    "code": "1153",
+    "ilceAdi": "Aşkale",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Aşkale — Erzurum (1153)"
+  },
+  {
+    "code": "1154",
+    "ilceAdi": "Atabey",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Atabey — Isparta (1154)"
+  },
+  {
+    "code": "2072",
+    "ilceAdi": "Atakum",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Atakum — Samsun (2072)"
+  },
+  {
+    "code": "2049",
+    "ilceAdi": "Ataşehir",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Ataşehir — İstanbul (2049)"
+  },
+  {
+    "code": "1765",
+    "ilceAdi": "Atkaracalar",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Atkaracalar — Çankırı (1765)"
+  },
+  {
+    "code": "1155",
+    "ilceAdi": "Avanos",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Avanos — Nevşehir (1155)"
+  },
+  {
+    "code": "2003",
+    "ilceAdi": "Avcılar",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Avcılar — İstanbul (2003)"
+  },
+  {
+    "code": "1156",
+    "ilceAdi": "Ayancık",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Ayancık — Sinop (1156)"
+  },
+  {
+    "code": "1157",
+    "ilceAdi": "Ayaş",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Ayaş — Ankara (1157)"
+  },
+  {
+    "code": "1158",
+    "ilceAdi": "Aybastı",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Aybastı — Ordu (1158)"
+  },
+  {
+    "code": "1159",
+    "ilceAdi": "Aydın Merkez",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Aydın Merkez — Aydın (1159)"
+  },
+  {
+    "code": "1766",
+    "ilceAdi": "Aydıncık",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Aydıncık — Mersin (1766)"
+  },
+  {
+    "code": "1877",
+    "ilceAdi": "Aydıncık",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Aydıncık — Yozgat (1877)"
+  },
+  {
+    "code": "1878",
+    "ilceAdi": "Aydınlar",
+    "ilKodu": 56,
+    "ilAdi": "Siirt",
+    "label": "Aydınlar — Siirt (1878)"
+  },
+  {
+    "code": "1767",
+    "ilceAdi": "Aydıntepe",
+    "ilKodu": 69,
+    "ilAdi": "Bayburt",
+    "label": "Aydıntepe — Bayburt (1767)"
+  },
+  {
+    "code": "1768",
+    "ilceAdi": "Ayrancı",
+    "ilKodu": 70,
+    "ilAdi": "Karaman",
+    "label": "Ayrancı — Karaman (1768)"
+  },
+  {
+    "code": "1160",
+    "ilceAdi": "Ayvacık",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Ayvacık — Çanakkale (1160)"
+  },
+  {
+    "code": "1879",
+    "ilceAdi": "Ayvacık",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Ayvacık — Samsun (1879)"
+  },
+  {
+    "code": "1161",
+    "ilceAdi": "Ayvalık",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Ayvalık — Balıkesir (1161)"
+  },
+  {
+    "code": "1162",
+    "ilceAdi": "Azdavay",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Azdavay — Kastamonu (1162)"
+  },
+  {
+    "code": "1769",
+    "ilceAdi": "Babadağ",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Babadağ — Denizli (1769)"
+  },
+  {
+    "code": "1163",
+    "ilceAdi": "Babaeski",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Babaeski — Kırklareli (1163)"
+  },
+  {
+    "code": "1164",
+    "ilceAdi": "Bafra",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Bafra — Samsun (1164)"
+  },
+  {
+    "code": "2004",
+    "ilceAdi": "Bağcılar",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Bağcılar — İstanbul (2004)"
+  },
+  {
+    "code": "2040",
+    "ilceAdi": "Bağlar",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Bağlar — Diyarbakır (2040)"
+  },
+  {
+    "code": "1165",
+    "ilceAdi": "Bahçe",
+    "ilKodu": 80,
+    "ilAdi": "Osmaniye",
+    "label": "Bahçe — Osmaniye (1165)"
+  },
+  {
+    "code": "2005",
+    "ilceAdi": "Bahçelievler",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Bahçelievler — İstanbul (2005)"
+  },
+  {
+    "code": "1770",
+    "ilceAdi": "Bahçesaray",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Bahçesaray — Van (1770)"
+  },
+  {
+    "code": "1880",
+    "ilceAdi": "Bahşili",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Bahşili — Kırıkkale (1880)"
+  },
+  {
+    "code": "1166",
+    "ilceAdi": "Bakırköy",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Bakırköy — İstanbul (1166)"
+  },
+  {
+    "code": "1881",
+    "ilceAdi": "Baklan",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Baklan — Denizli (1881)"
+  },
+  {
+    "code": "1167",
+    "ilceAdi": "Balâ",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Balâ — Ankara (1167)"
+  },
+  {
+    "code": "2006",
+    "ilceAdi": "Balçova",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Balçova — İzmir (2006)"
+  },
+  {
+    "code": "1168",
+    "ilceAdi": "Balıkesir Merkez",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Balıkesir Merkez — Balıkesir (1168)"
+  },
+  {
+    "code": "1882",
+    "ilceAdi": "Balışeyh",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Balışeyh — Kırıkkale (1882)"
+  },
+  {
+    "code": "1169",
+    "ilceAdi": "Balya",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Balya — Balıkesir (1169)"
+  },
+  {
+    "code": "1170",
+    "ilceAdi": "Banaz",
+    "ilKodu": 64,
+    "ilAdi": "Uşak",
+    "label": "Banaz — Uşak (1170)"
+  },
+  {
+    "code": "1171",
+    "ilceAdi": "Bandırma",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Bandırma — Balıkesir (1171)"
+  },
+  {
+    "code": "1172",
+    "ilceAdi": "Bartın Merkez",
+    "ilKodu": 74,
+    "ilAdi": "Bartın",
+    "label": "Bartın Merkez — Bartın (1172)"
+  },
+  {
+    "code": "1173",
+    "ilceAdi": "Baskil",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Baskil — Elazığ (1173)"
+  },
+  {
+    "code": "2050",
+    "ilceAdi": "Başakşehir",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Başakşehir — İstanbul (2050)"
+  },
+  {
+    "code": "1883",
+    "ilceAdi": "Başçiftlik",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Başçiftlik — Tokat (1883)"
+  },
+  {
+    "code": "2058",
+    "ilceAdi": "Başiskele",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Başiskele — Kocaeli (2058)"
+  },
+  {
+    "code": "1175",
+    "ilceAdi": "Başkale",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Başkale — Van (1175)"
+  },
+  {
+    "code": "1771",
+    "ilceAdi": "Başmakçı",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Başmakçı — Afyon (1771)"
+  },
+  {
+    "code": "1884",
+    "ilceAdi": "Başyayla",
+    "ilKodu": 70,
+    "ilAdi": "Karaman",
+    "label": "Başyayla — Karaman (1884)"
+  },
+  {
+    "code": "1174",
+    "ilceAdi": "Batman Merkez",
+    "ilKodu": 72,
+    "ilAdi": "Batman",
+    "label": "Batman Merkez — Batman (1174)"
+  },
+  {
+    "code": "1772",
+    "ilceAdi": "Battalgazi",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Battalgazi — Malatya (1772)"
+  },
+  {
+    "code": "1177",
+    "ilceAdi": "Bayat",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Bayat — Çorum (1177)"
+  },
+  {
+    "code": "1773",
+    "ilceAdi": "Bayat",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Bayat — Afyon (1773)"
+  },
+  {
+    "code": "1176",
+    "ilceAdi": "Bayburt Merkez",
+    "ilKodu": 69,
+    "ilAdi": "Bayburt",
+    "label": "Bayburt Merkez — Bayburt (1176)"
+  },
+  {
+    "code": "1178",
+    "ilceAdi": "Bayındır",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Bayındır — İzmir (1178)"
+  },
+  {
+    "code": "1179",
+    "ilceAdi": "Baykan",
+    "ilKodu": 56,
+    "ilAdi": "Siirt",
+    "label": "Baykan — Siirt (1179)"
+  },
+  {
+    "code": "2056",
+    "ilceAdi": "Bayraklı",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Bayraklı — İzmir (2056)"
+  },
+  {
+    "code": "1180",
+    "ilceAdi": "Bayramiç",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Bayramiç — Çanakkale (1180)"
+  },
+  {
+    "code": "1885",
+    "ilceAdi": "Bayramören",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Bayramören — Çankırı (1885)"
+  },
+  {
+    "code": "1886",
+    "ilceAdi": "Bayrampaşa",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Bayrampaşa — İstanbul (1886)"
+  },
+  {
+    "code": "1774",
+    "ilceAdi": "Bekilli",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Bekilli — Denizli (1774)"
+  },
+  {
+    "code": "1887",
+    "ilceAdi": "Belen",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Belen — Hatay (1887)"
+  },
+  {
+    "code": "1181",
+    "ilceAdi": "Bergama",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Bergama — İzmir (1181)"
+  },
+  {
+    "code": "1182",
+    "ilceAdi": "Besni",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Besni — Adıyaman (1182)"
+  },
+  {
+    "code": "1775",
+    "ilceAdi": "Beşikdüzü",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Beşikdüzü — Trabzon (1775)"
+  },
+  {
+    "code": "1183",
+    "ilceAdi": "Beşiktaş",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Beşiktaş — İstanbul (1183)"
+  },
+  {
+    "code": "1184",
+    "ilceAdi": "Beşiri",
+    "ilKodu": 72,
+    "ilAdi": "Batman",
+    "label": "Beşiri — Batman (1184)"
+  },
+  {
+    "code": "1888",
+    "ilceAdi": "Beyağaç",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Beyağaç — Denizli (1888)"
+  },
+  {
+    "code": "1776",
+    "ilceAdi": "Beydağ",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Beydağ — İzmir (1776)"
+  },
+  {
+    "code": "1185",
+    "ilceAdi": "Beykoz",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Beykoz — İstanbul (1185)"
+  },
+  {
+    "code": "2051",
+    "ilceAdi": "Beylikdüzü",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Beylikdüzü — İstanbul (2051)"
+  },
+  {
+    "code": "1777",
+    "ilceAdi": "Beylikova",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Beylikova — Eskişehir (1777)"
+  },
+  {
+    "code": "1186",
+    "ilceAdi": "Beyoğlu",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Beyoğlu — İstanbul (1186)"
+  },
+  {
+    "code": "1187",
+    "ilceAdi": "Beypazarı",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Beypazarı — Ankara (1187)"
+  },
+  {
+    "code": "1188",
+    "ilceAdi": "Beyşehir",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Beyşehir — Konya (1188)"
+  },
+  {
+    "code": "1189",
+    "ilceAdi": "Beytüşşebap",
+    "ilKodu": 73,
+    "ilAdi": "Şırnak",
+    "label": "Beytüşşebap — Şırnak (1189)"
+  },
+  {
+    "code": "1190",
+    "ilceAdi": "Biga",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Biga — Çanakkale (1190)"
+  },
+  {
+    "code": "1191",
+    "ilceAdi": "Bigadiç",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Bigadiç — Balıkesir (1191)"
+  },
+  {
+    "code": "1192",
+    "ilceAdi": "Bilecik Merkez",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "Bilecik Merkez — Bilecik (1192)"
+  },
+  {
+    "code": "1193",
+    "ilceAdi": "Bingöl Merkez",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Bingöl Merkez — Bingöl (1193)"
+  },
+  {
+    "code": "1194",
+    "ilceAdi": "Birecik",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Birecik — Şanlıurfa (1194)"
+  },
+  {
+    "code": "1195",
+    "ilceAdi": "Bismil",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Bismil — Diyarbakır (1195)"
+  },
+  {
+    "code": "1196",
+    "ilceAdi": "Bitlis Merkez",
+    "ilKodu": 13,
+    "ilAdi": "Bitlis",
+    "label": "Bitlis Merkez — Bitlis (1196)"
+  },
+  {
+    "code": "1197",
+    "ilceAdi": "Bodrum",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Bodrum — Muğla (1197)"
+  },
+  {
+    "code": "1778",
+    "ilceAdi": "Boğazkale",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Boğazkale — Çorum (1778)"
+  },
+  {
+    "code": "1198",
+    "ilceAdi": "Boğazlıyan",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Boğazlıyan — Yozgat (1198)"
+  },
+  {
+    "code": "1199",
+    "ilceAdi": "Bolu Merkez",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Bolu Merkez — Bolu (1199)"
+  },
+  {
+    "code": "1200",
+    "ilceAdi": "Bolvadin",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Bolvadin — Afyon (1200)"
+  },
+  {
+    "code": "1201",
+    "ilceAdi": "Bor",
+    "ilKodu": 51,
+    "ilAdi": "Niğde",
+    "label": "Bor — Niğde (1201)"
+  },
+  {
+    "code": "1202",
+    "ilceAdi": "Borçka",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Borçka — Artvin (1202)"
+  },
+  {
+    "code": "1203",
+    "ilceAdi": "Bornova",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Bornova — İzmir (1203)"
+  },
+  {
+    "code": "1204",
+    "ilceAdi": "Boyabat",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Boyabat — Sinop (1204)"
+  },
+  {
+    "code": "1205",
+    "ilceAdi": "Bozcaada",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Bozcaada — Çanakkale (1205)"
+  },
+  {
+    "code": "1206",
+    "ilceAdi": "Bozdoğan",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Bozdoğan — Aydın (1206)"
+  },
+  {
+    "code": "1207",
+    "ilceAdi": "Bozkır",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Bozkır — Konya (1207)"
+  },
+  {
+    "code": "1208",
+    "ilceAdi": "Bozkurt",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Bozkurt — Kastamonu (1208)"
+  },
+  {
+    "code": "1889",
+    "ilceAdi": "Bozkurt",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Bozkurt — Denizli (1889)"
+  },
+  {
+    "code": "1209",
+    "ilceAdi": "Bozova",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Bozova — Şanlıurfa (1209)"
+  },
+  {
+    "code": "1890",
+    "ilceAdi": "Boztepe",
+    "ilKodu": 40,
+    "ilAdi": "Kırşehir",
+    "label": "Boztepe — Kırşehir (1890)"
+  },
+  {
+    "code": "1210",
+    "ilceAdi": "Bozüyük",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "Bozüyük — Bilecik (1210)"
+  },
+  {
+    "code": "1779",
+    "ilceAdi": "Bozyazı",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Bozyazı — Mersin (1779)"
+  },
+  {
+    "code": "1780",
+    "ilceAdi": "Buca",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Buca — İzmir (1780)"
+  },
+  {
+    "code": "1211",
+    "ilceAdi": "Bucak",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Bucak — Burdur (1211)"
+  },
+  {
+    "code": "1781",
+    "ilceAdi": "Buharkent",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Buharkent — Aydın (1781)"
+  },
+  {
+    "code": "1212",
+    "ilceAdi": "Bulancak",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Bulancak — Giresun (1212)"
+  },
+  {
+    "code": "1213",
+    "ilceAdi": "Bulanık",
+    "ilKodu": 49,
+    "ilAdi": "Muş",
+    "label": "Bulanık — Muş (1213)"
+  },
+  {
+    "code": "1214",
+    "ilceAdi": "Buldan",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Buldan — Denizli (1214)"
+  },
+  {
+    "code": "1215",
+    "ilceAdi": "Burdur Merkez",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Burdur Merkez — Burdur (1215)"
+  },
+  {
+    "code": "1216",
+    "ilceAdi": "Burhaniye",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Burhaniye — Balıkesir (1216)"
+  },
+  {
+    "code": "1217",
+    "ilceAdi": "Bursa Merkez",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Bursa Merkez — Bursa (1217)"
+  },
+  {
+    "code": "1218",
+    "ilceAdi": "Bünyan",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Bünyan — Kayseri (1218)"
+  },
+  {
+    "code": "1782",
+    "ilceAdi": "Büyükçekmece",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Büyükçekmece — İstanbul (1782)"
+  },
+  {
+    "code": "1783",
+    "ilceAdi": "Büyükorhan",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Büyükorhan — Bursa (1783)"
+  },
+  {
+    "code": "2073",
+    "ilceAdi": "Canik",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Canik — Samsun (2073)"
+  },
+  {
+    "code": "1219",
+    "ilceAdi": "Ceyhan",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Ceyhan — Adana (1219)"
+  },
+  {
+    "code": "1220",
+    "ilceAdi": "Ceylanpınar",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Ceylanpınar — Şanlıurfa (1220)"
+  },
+  {
+    "code": "1221",
+    "ilceAdi": "Cide",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Cide — Kastamonu (1221)"
+  },
+  {
+    "code": "1222",
+    "ilceAdi": "Cihanbeyli",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Cihanbeyli — Konya (1222)"
+  },
+  {
+    "code": "1223",
+    "ilceAdi": "Cizre",
+    "ilKodu": 73,
+    "ilAdi": "Şırnak",
+    "label": "Cizre — Şırnak (1223)"
+  },
+  {
+    "code": "1784",
+    "ilceAdi": "Cumayeri",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Cumayeri — Düzce (1784)"
+  },
+  {
+    "code": "1785",
+    "ilceAdi": "Çağlıyancerit",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Çağlıyancerit — Kahramanmaraş (1785)"
+  },
+  {
+    "code": "1224",
+    "ilceAdi": "Çal",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Çal — Denizli (1224)"
+  },
+  {
+    "code": "1786",
+    "ilceAdi": "Çaldıran",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Çaldıran — Van (1786)"
+  },
+  {
+    "code": "1225",
+    "ilceAdi": "Çamardı",
+    "ilKodu": 51,
+    "ilAdi": "Niğde",
+    "label": "Çamardı — Niğde (1225)"
+  },
+  {
+    "code": "1891",
+    "ilceAdi": "Çamaş",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Çamaş — Ordu (1891)"
+  },
+  {
+    "code": "1226",
+    "ilceAdi": "Çameli",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Çameli — Denizli (1226)"
+  },
+  {
+    "code": "1227",
+    "ilceAdi": "Çamlıdere",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Çamlıdere — Ankara (1227)"
+  },
+  {
+    "code": "1228",
+    "ilceAdi": "Çamlıhemşin",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Çamlıhemşin — Rize (1228)"
+  },
+  {
+    "code": "1892",
+    "ilceAdi": "Çamlıyayla",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Çamlıyayla — Mersin (1892)"
+  },
+  {
+    "code": "1893",
+    "ilceAdi": "Çamoluk",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Çamoluk — Giresun (1893)"
+  },
+  {
+    "code": "1229",
+    "ilceAdi": "Çan",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Çan — Çanakkale (1229)"
+  },
+  {
+    "code": "1894",
+    "ilceAdi": "Çanakçı",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Çanakçı — Giresun (1894)"
+  },
+  {
+    "code": "1230",
+    "ilceAdi": "Çanakkale Merkez",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Çanakkale Merkez — Çanakkale (1230)"
+  },
+  {
+    "code": "1895",
+    "ilceAdi": "Çandır",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Çandır — Yozgat (1895)"
+  },
+  {
+    "code": "1231",
+    "ilceAdi": "Çankaya",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Çankaya — Ankara (1231)"
+  },
+  {
+    "code": "1232",
+    "ilceAdi": "Çankırı Merkez",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Çankırı Merkez — Çankırı (1232)"
+  },
+  {
+    "code": "1233",
+    "ilceAdi": "Çardak",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Çardak — Denizli (1233)"
+  },
+  {
+    "code": "1234",
+    "ilceAdi": "Çarşamba",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Çarşamba — Samsun (1234)"
+  },
+  {
+    "code": "1896",
+    "ilceAdi": "Çarşıbaşı",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Çarşıbaşı — Trabzon (1896)"
+  },
+  {
+    "code": "1235",
+    "ilceAdi": "Çat",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Çat — Erzurum (1235)"
+  },
+  {
+    "code": "1236",
+    "ilceAdi": "Çatak",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Çatak — Van (1236)"
+  },
+  {
+    "code": "1237",
+    "ilceAdi": "Çatalca",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Çatalca — İstanbul (1237)"
+  },
+  {
+    "code": "1897",
+    "ilceAdi": "Çatalpınar",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Çatalpınar — Ordu (1897)"
+  },
+  {
+    "code": "1238",
+    "ilceAdi": "Çatalzeytin",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Çatalzeytin — Kastamonu (1238)"
+  },
+  {
+    "code": "1898",
+    "ilceAdi": "Çavdarhisar",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Çavdarhisar — Kütahya (1898)"
+  },
+  {
+    "code": "1899",
+    "ilceAdi": "Çavdır",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Çavdır — Burdur (1899)"
+  },
+  {
+    "code": "1239",
+    "ilceAdi": "Çay",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Çay — Afyon (1239)"
+  },
+  {
+    "code": "1900",
+    "ilceAdi": "Çaybaşı",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Çaybaşı — Ordu (1900)"
+  },
+  {
+    "code": "1240",
+    "ilceAdi": "Çaycuma",
+    "ilKodu": 67,
+    "ilAdi": "Zonguldak",
+    "label": "Çaycuma — Zonguldak (1240)"
+  },
+  {
+    "code": "1241",
+    "ilceAdi": "Çayeli",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Çayeli — Rize (1241)"
+  },
+  {
+    "code": "1242",
+    "ilceAdi": "Çayıralan",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Çayıralan — Yozgat (1242)"
+  },
+  {
+    "code": "1243",
+    "ilceAdi": "Çayırlı",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Çayırlı — Erzincan (1243)"
+  },
+  {
+    "code": "2059",
+    "ilceAdi": "Çayırova",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Çayırova — Kocaeli (2059)"
+  },
+  {
+    "code": "1244",
+    "ilceAdi": "Çaykara",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Çaykara — Trabzon (1244)"
+  },
+  {
+    "code": "1245",
+    "ilceAdi": "Çekerek",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Çekerek — Yozgat (1245)"
+  },
+  {
+    "code": "2052",
+    "ilceAdi": "Çekmeköy",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Çekmeköy — İstanbul (2052)"
+  },
+  {
+    "code": "1901",
+    "ilceAdi": "Çelebi",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Çelebi — Kırıkkale (1901)"
+  },
+  {
+    "code": "1246",
+    "ilceAdi": "Çelikhan",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Çelikhan — Adıyaman (1246)"
+  },
+  {
+    "code": "1902",
+    "ilceAdi": "Çeltik",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Çeltik — Konya (1902)"
+  },
+  {
+    "code": "1903",
+    "ilceAdi": "Çeltikçi",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Çeltikçi — Burdur (1903)"
+  },
+  {
+    "code": "1247",
+    "ilceAdi": "Çemişgezek",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Çemişgezek — Tunceli (1247)"
+  },
+  {
+    "code": "1248",
+    "ilceAdi": "Çerkeş",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Çerkeş — Çankırı (1248)"
+  },
+  {
+    "code": "1250",
+    "ilceAdi": "Çerkezköy",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Çerkezköy — Tekirdağ (1250)"
+  },
+  {
+    "code": "1249",
+    "ilceAdi": "Çermik",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Çermik — Diyarbakır (1249)"
+  },
+  {
+    "code": "1251",
+    "ilceAdi": "Çeşme",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Çeşme — İzmir (1251)"
+  },
+  {
+    "code": "1252",
+    "ilceAdi": "Çıldır",
+    "ilKodu": 75,
+    "ilAdi": "Ardahan",
+    "label": "Çıldır — Ardahan (1252)"
+  },
+  {
+    "code": "1253",
+    "ilceAdi": "Çınar",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Çınar — Diyarbakır (1253)"
+  },
+  {
+    "code": "2021",
+    "ilceAdi": "Çınarcık",
+    "ilKodu": 77,
+    "ilAdi": "Yalova",
+    "label": "Çınarcık — Yalova (2021)"
+  },
+  {
+    "code": "1254",
+    "ilceAdi": "Çiçekdağı",
+    "ilKodu": 40,
+    "ilAdi": "Kırşehir",
+    "label": "Çiçekdağı — Kırşehir (1254)"
+  },
+  {
+    "code": "1255",
+    "ilceAdi": "Çifteler",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Çifteler — Eskişehir (1255)"
+  },
+  {
+    "code": "1904",
+    "ilceAdi": "Çiftlik",
+    "ilKodu": 51,
+    "ilAdi": "Niğde",
+    "label": "Çiftlik — Niğde (1904)"
+  },
+  {
+    "code": "2022",
+    "ilceAdi": "Çiftlikköy",
+    "ilKodu": 77,
+    "ilAdi": "Yalova",
+    "label": "Çiftlikköy — Yalova (2022)"
+  },
+  {
+    "code": "2007",
+    "ilceAdi": "Çiğli",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Çiğli — İzmir (2007)"
+  },
+  {
+    "code": "1905",
+    "ilceAdi": "Çilimli",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Çilimli — Düzce (1905)"
+  },
+  {
+    "code": "1256",
+    "ilceAdi": "Çine",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Çine — Aydın (1256)"
+  },
+  {
+    "code": "1257",
+    "ilceAdi": "Çivril",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Çivril — Denizli (1257)"
+  },
+  {
+    "code": "1906",
+    "ilceAdi": "Çobanlar",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Çobanlar — Afyon (1906)"
+  },
+  {
+    "code": "1258",
+    "ilceAdi": "Çorlu",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Çorlu — Tekirdağ (1258)"
+  },
+  {
+    "code": "1259",
+    "ilceAdi": "Çorum Merkez",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Çorum Merkez — Çorum (1259)"
+  },
+  {
+    "code": "1260",
+    "ilceAdi": "Çubuk",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Çubuk — Ankara (1260)"
+  },
+  {
+    "code": "1261",
+    "ilceAdi": "Çukurca",
+    "ilKodu": 30,
+    "ilAdi": "Hakkari",
+    "label": "Çukurca — Hakkari (1261)"
+  },
+  {
+    "code": "2033",
+    "ilceAdi": "Çukurova",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Çukurova — Adana (2033)"
+  },
+  {
+    "code": "1262",
+    "ilceAdi": "Çumra",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Çumra — Konya (1262)"
+  },
+  {
+    "code": "1263",
+    "ilceAdi": "Çüngüş",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Çüngüş — Diyarbakır (1263)"
+  },
+  {
+    "code": "1264",
+    "ilceAdi": "Daday",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Daday — Kastamonu (1264)"
+  },
+  {
+    "code": "1742",
+    "ilceAdi": "Dalaman",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Dalaman — Muğla (1742)"
+  },
+  {
+    "code": "2008",
+    "ilceAdi": "Damal",
+    "ilKodu": 75,
+    "ilAdi": "Ardahan",
+    "label": "Damal — Ardahan (2008)"
+  },
+  {
+    "code": "1265",
+    "ilceAdi": "Darende",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Darende — Malatya (1265)"
+  },
+  {
+    "code": "1787",
+    "ilceAdi": "Dargeçit",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Dargeçit — Mardin (1787)"
+  },
+  {
+    "code": "2060",
+    "ilceAdi": "Darıca",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Darıca — Kocaeli (2060)"
+  },
+  {
+    "code": "1266",
+    "ilceAdi": "Datça",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Datça — Muğla (1266)"
+  },
+  {
+    "code": "1267",
+    "ilceAdi": "Dazkırı",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Dazkırı — Afyon (1267)"
+  },
+  {
+    "code": "1268",
+    "ilceAdi": "Delice",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Delice — Kırıkkale (1268)"
+  },
+  {
+    "code": "1269",
+    "ilceAdi": "Demirci",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Demirci — Manisa (1269)"
+  },
+  {
+    "code": "1270",
+    "ilceAdi": "Demirköy",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Demirköy — Kırklareli (1270)"
+  },
+  {
+    "code": "1788",
+    "ilceAdi": "Demirözü",
+    "ilKodu": 69,
+    "ilAdi": "Bayburt",
+    "label": "Demirözü — Bayburt (1788)"
+  },
+  {
+    "code": "1271",
+    "ilceAdi": "Denizli Merkez",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Denizli Merkez — Denizli (1271)"
+  },
+  {
+    "code": "1907",
+    "ilceAdi": "Derbent",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Derbent — Konya (1907)"
+  },
+  {
+    "code": "1789",
+    "ilceAdi": "Derebucak",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Derebucak — Konya (1789)"
+  },
+  {
+    "code": "1272",
+    "ilceAdi": "Dereli",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Dereli — Giresun (1272)"
+  },
+  {
+    "code": "1908",
+    "ilceAdi": "Derepazarı",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Derepazarı — Rize (1908)"
+  },
+  {
+    "code": "1273",
+    "ilceAdi": "Derik",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Derik — Mardin (1273)"
+  },
+  {
+    "code": "2030",
+    "ilceAdi": "Derince",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Derince — Kocaeli (2030)"
+  },
+  {
+    "code": "1274",
+    "ilceAdi": "Derinkuyu",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Derinkuyu — Nevşehir (1274)"
+  },
+  {
+    "code": "1909",
+    "ilceAdi": "Dernekpazarı",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Dernekpazarı — Trabzon (1909)"
+  },
+  {
+    "code": "1275",
+    "ilceAdi": "Develi",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Develi — Kayseri (1275)"
+  },
+  {
+    "code": "1276",
+    "ilceAdi": "Devrek",
+    "ilKodu": 67,
+    "ilAdi": "Zonguldak",
+    "label": "Devrek — Zonguldak (1276)"
+  },
+  {
+    "code": "1277",
+    "ilceAdi": "Devrekâni",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Devrekâni — Kastamonu (1277)"
+  },
+  {
+    "code": "1278",
+    "ilceAdi": "Dicle",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Dicle — Diyarbakır (1278)"
+  },
+  {
+    "code": "2000",
+    "ilceAdi": "Didim (yenihisar)",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Didim (yenihisar) — Aydın (2000)"
+  },
+  {
+    "code": "1279",
+    "ilceAdi": "Digor",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Digor — Kars (1279)"
+  },
+  {
+    "code": "1280",
+    "ilceAdi": "Dikili",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Dikili — İzmir (1280)"
+  },
+  {
+    "code": "1910",
+    "ilceAdi": "Dikmen",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Dikmen — Sinop (1910)"
+  },
+  {
+    "code": "2061",
+    "ilceAdi": "Dilovası",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Dilovası — Kocaeli (2061)"
+  },
+  {
+    "code": "1281",
+    "ilceAdi": "Dinar",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Dinar — Afyon (1281)"
+  },
+  {
+    "code": "1282",
+    "ilceAdi": "Divriği",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Divriği — Sivas (1282)"
+  },
+  {
+    "code": "1283",
+    "ilceAdi": "Diyadin",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Diyadin — Ağrı (1283)"
+  },
+  {
+    "code": "1284",
+    "ilceAdi": "Diyarbakır Merkez",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Diyarbakır Merkez — Diyarbakır (1284)"
+  },
+  {
+    "code": "1911",
+    "ilceAdi": "Dodurga",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Dodurga — Çorum (1911)"
+  },
+  {
+    "code": "1285",
+    "ilceAdi": "Doğanhisar",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Doğanhisar — Konya (1285)"
+  },
+  {
+    "code": "1912",
+    "ilceAdi": "Doğankent",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Doğankent — Giresun (1912)"
+  },
+  {
+    "code": "1913",
+    "ilceAdi": "Doğanşar",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Doğanşar — Sivas (1913)"
+  },
+  {
+    "code": "1286",
+    "ilceAdi": "Doğanşehir",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Doğanşehir — Malatya (1286)"
+  },
+  {
+    "code": "1914",
+    "ilceAdi": "Doğanyol",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Doğanyol — Malatya (1914)"
+  },
+  {
+    "code": "1915",
+    "ilceAdi": "Doğanyurt",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Doğanyurt — Kastamonu (1915)"
+  },
+  {
+    "code": "1287",
+    "ilceAdi": "Doğubayazıt",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Doğubayazıt — Ağrı (1287)"
+  },
+  {
+    "code": "1288",
+    "ilceAdi": "Domaniç",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Domaniç — Kütahya (1288)"
+  },
+  {
+    "code": "1916",
+    "ilceAdi": "Dörtdivan",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Dörtdivan — Bolu (1916)"
+  },
+  {
+    "code": "1289",
+    "ilceAdi": "Dörtyol",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Dörtyol — Hatay (1289)"
+  },
+  {
+    "code": "2036",
+    "ilceAdi": "Döşemealtı",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Döşemealtı — Antalya (2036)"
+  },
+  {
+    "code": "1790",
+    "ilceAdi": "Dumlupınar",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Dumlupınar — Kütahya (1790)"
+  },
+  {
+    "code": "1290",
+    "ilceAdi": "Durağan",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Durağan — Sinop (1290)"
+  },
+  {
+    "code": "1291",
+    "ilceAdi": "Dursunbey",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Dursunbey — Balıkesir (1291)"
+  },
+  {
+    "code": "1292",
+    "ilceAdi": "Düzce Merkez",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Düzce Merkez — Düzce (1292)"
+  },
+  {
+    "code": "1743",
+    "ilceAdi": "Düziçi",
+    "ilKodu": 80,
+    "ilAdi": "Osmaniye",
+    "label": "Düziçi — Osmaniye (1743)"
+  },
+  {
+    "code": "1917",
+    "ilceAdi": "Düzköy",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Düzköy — Trabzon (1917)"
+  },
+  {
+    "code": "1293",
+    "ilceAdi": "Eceabat",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Eceabat — Çanakkale (1293)"
+  },
+  {
+    "code": "1295",
+    "ilceAdi": "Edirne Merkez",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Edirne Merkez — Edirne (1295)"
+  },
+  {
+    "code": "1294",
+    "ilceAdi": "Edremit",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Edremit — Balıkesir (1294)"
+  },
+  {
+    "code": "1918",
+    "ilceAdi": "Edremit",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Edremit — Van (1918)"
+  },
+  {
+    "code": "1296",
+    "ilceAdi": "Eflâni",
+    "ilKodu": 78,
+    "ilAdi": "Karabük",
+    "label": "Eflâni — Karabük (1296)"
+  },
+  {
+    "code": "1791",
+    "ilceAdi": "Eğil",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Eğil — Diyarbakır (1791)"
+  },
+  {
+    "code": "1297",
+    "ilceAdi": "Eğirdir",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Eğirdir — Isparta (1297)"
+  },
+  {
+    "code": "1919",
+    "ilceAdi": "Ekinözü",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Ekinözü — Kahramanmaraş (1919)"
+  },
+  {
+    "code": "1298",
+    "ilceAdi": "Elazığ Merkez",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Elazığ Merkez — Elazığ (1298)"
+  },
+  {
+    "code": "2023",
+    "ilceAdi": "Elbeyli",
+    "ilKodu": 79,
+    "ilAdi": "Kilis",
+    "label": "Elbeyli — Kilis (2023)"
+  },
+  {
+    "code": "1299",
+    "ilceAdi": "Elbistan",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Elbistan — Kahramanmaraş (1299)"
+  },
+  {
+    "code": "1300",
+    "ilceAdi": "Eldivan",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Eldivan — Çankırı (1300)"
+  },
+  {
+    "code": "1301",
+    "ilceAdi": "Eleşkirt",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Eleşkirt — Ağrı (1301)"
+  },
+  {
+    "code": "1302",
+    "ilceAdi": "Elmadağ",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Elmadağ — Ankara (1302)"
+  },
+  {
+    "code": "1303",
+    "ilceAdi": "Elmalı",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Elmalı — Antalya (1303)"
+  },
+  {
+    "code": "1304",
+    "ilceAdi": "Emet",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Emet — Kütahya (1304)"
+  },
+  {
+    "code": "1305",
+    "ilceAdi": "Eminönü",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Eminönü — İstanbul (1305)"
+  },
+  {
+    "code": "1306",
+    "ilceAdi": "Emirdağ",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Emirdağ — Afyon (1306)"
+  },
+  {
+    "code": "1920",
+    "ilceAdi": "Emirgazi",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Emirgazi — Konya (1920)"
+  },
+  {
+    "code": "1307",
+    "ilceAdi": "Enez",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Enez — Edirne (1307)"
+  },
+  {
+    "code": "1308",
+    "ilceAdi": "Erbaa",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Erbaa — Tokat (1308)"
+  },
+  {
+    "code": "1309",
+    "ilceAdi": "Erciş",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Erciş — Van (1309)"
+  },
+  {
+    "code": "1310",
+    "ilceAdi": "Erdek",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Erdek — Balıkesir (1310)"
+  },
+  {
+    "code": "1311",
+    "ilceAdi": "Erdemli",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Erdemli — Mersin (1311)"
+  },
+  {
+    "code": "1312",
+    "ilceAdi": "Ereğli",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Ereğli — Konya (1312)"
+  },
+  {
+    "code": "1313",
+    "ilceAdi": "Ereğli",
+    "ilKodu": 67,
+    "ilAdi": "Zonguldak",
+    "label": "Ereğli — Zonguldak (1313)"
+  },
+  {
+    "code": "2070",
+    "ilceAdi": "Erenler",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Erenler — Sakarya (2070)"
+  },
+  {
+    "code": "1314",
+    "ilceAdi": "Erfelek",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Erfelek — Sinop (1314)"
+  },
+  {
+    "code": "1315",
+    "ilceAdi": "Ergani",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Ergani — Diyarbakır (1315)"
+  },
+  {
+    "code": "1316",
+    "ilceAdi": "Ermenek",
+    "ilKodu": 70,
+    "ilAdi": "Karaman",
+    "label": "Ermenek — Karaman (1316)"
+  },
+  {
+    "code": "1317",
+    "ilceAdi": "Eruh",
+    "ilKodu": 56,
+    "ilAdi": "Siirt",
+    "label": "Eruh — Siirt (1317)"
+  },
+  {
+    "code": "1792",
+    "ilceAdi": "Erzin",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Erzin — Hatay (1792)"
+  },
+  {
+    "code": "1318",
+    "ilceAdi": "Erzincan Merkez",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Erzincan Merkez — Erzincan (1318)"
+  },
+  {
+    "code": "1319",
+    "ilceAdi": "Erzurum Merkez",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Erzurum Merkez — Erzurum (1319)"
+  },
+  {
+    "code": "2016",
+    "ilceAdi": "Esenler",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Esenler — İstanbul (2016)"
+  },
+  {
+    "code": "2053",
+    "ilceAdi": "Esenyurt",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Esenyurt — İstanbul (2053)"
+  },
+  {
+    "code": "1921",
+    "ilceAdi": "Eskil",
+    "ilKodu": 68,
+    "ilAdi": "Aksaray",
+    "label": "Eskil — Aksaray (1921)"
+  },
+  {
+    "code": "1321",
+    "ilceAdi": "Eskipazar",
+    "ilKodu": 78,
+    "ilAdi": "Karabük",
+    "label": "Eskipazar — Karabük (1321)"
+  },
+  {
+    "code": "1322",
+    "ilceAdi": "Eskişehir Merkez",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Eskişehir Merkez — Eskişehir (1322)"
+  },
+  {
+    "code": "1320",
+    "ilceAdi": "Espiye",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Espiye — Giresun (1320)"
+  },
+  {
+    "code": "1323",
+    "ilceAdi": "Eşme",
+    "ilKodu": 64,
+    "ilAdi": "Uşak",
+    "label": "Eşme — Uşak (1323)"
+  },
+  {
+    "code": "1922",
+    "ilceAdi": "Etimesgut",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Etimesgut — Ankara (1922)"
+  },
+  {
+    "code": "1923",
+    "ilceAdi": "Evciler",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Evciler — Afyon (1923)"
+  },
+  {
+    "code": "1924",
+    "ilceAdi": "Evren",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Evren — Ankara (1924)"
+  },
+  {
+    "code": "1324",
+    "ilceAdi": "Eynesil",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Eynesil — Giresun (1324)"
+  },
+  {
+    "code": "1325",
+    "ilceAdi": "Eyüp",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Eyüp — İstanbul (1325)"
+  },
+  {
+    "code": "1326",
+    "ilceAdi": "Ezine",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Ezine — Çanakkale (1326)"
+  },
+  {
+    "code": "1327",
+    "ilceAdi": "Fatih",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Fatih — İstanbul (1327)"
+  },
+  {
+    "code": "1328",
+    "ilceAdi": "Fatsa",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Fatsa — Ordu (1328)"
+  },
+  {
+    "code": "1329",
+    "ilceAdi": "Feke",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Feke — Adana (1329)"
+  },
+  {
+    "code": "1330",
+    "ilceAdi": "Felahiye",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Felahiye — Kayseri (1330)"
+  },
+  {
+    "code": "1925",
+    "ilceAdi": "Ferizli",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Ferizli — Sakarya (1925)"
+  },
+  {
+    "code": "1331",
+    "ilceAdi": "Fethiye",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Fethiye — Muğla (1331)"
+  },
+  {
+    "code": "1332",
+    "ilceAdi": "Fındıklı",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Fındıklı — Rize (1332)"
+  },
+  {
+    "code": "1333",
+    "ilceAdi": "Finike",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Finike — Antalya (1333)"
+  },
+  {
+    "code": "1334",
+    "ilceAdi": "Foça",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Foça — İzmir (1334)"
+  },
+  {
+    "code": "1335",
+    "ilceAdi": "Gaziantep Merkez",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Gaziantep Merkez — Gaziantep (1335)"
+  },
+  {
+    "code": "2009",
+    "ilceAdi": "Gaziemir",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Gaziemir — İzmir (2009)"
+  },
+  {
+    "code": "1336",
+    "ilceAdi": "Gaziosmanpaşa",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Gaziosmanpaşa — İstanbul (1336)"
+  },
+  {
+    "code": "1337",
+    "ilceAdi": "Gazipaşa",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Gazipaşa — Antalya (1337)"
+  },
+  {
+    "code": "1338",
+    "ilceAdi": "Gebze",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Gebze — Kocaeli (1338)"
+  },
+  {
+    "code": "1339",
+    "ilceAdi": "Gediz",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Gediz — Kütahya (1339)"
+  },
+  {
+    "code": "1341",
+    "ilceAdi": "Gelendost",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Gelendost — Isparta (1341)"
+  },
+  {
+    "code": "1340",
+    "ilceAdi": "Gelibolu",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Gelibolu — Çanakkale (1340)"
+  },
+  {
+    "code": "1342",
+    "ilceAdi": "Gemerek",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Gemerek — Sivas (1342)"
+  },
+  {
+    "code": "1343",
+    "ilceAdi": "Gemlik",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Gemlik — Bursa (1343)"
+  },
+  {
+    "code": "1344",
+    "ilceAdi": "Genç",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Genç — Bingöl (1344)"
+  },
+  {
+    "code": "1345",
+    "ilceAdi": "Gercüş",
+    "ilKodu": 72,
+    "ilAdi": "Batman",
+    "label": "Gercüş — Batman (1345)"
+  },
+  {
+    "code": "1346",
+    "ilceAdi": "Gerede",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Gerede — Bolu (1346)"
+  },
+  {
+    "code": "1347",
+    "ilceAdi": "Gerger",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Gerger — Adıyaman (1347)"
+  },
+  {
+    "code": "1348",
+    "ilceAdi": "Germencik",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Germencik — Aydın (1348)"
+  },
+  {
+    "code": "1349",
+    "ilceAdi": "Gerze",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Gerze — Sinop (1349)"
+  },
+  {
+    "code": "1350",
+    "ilceAdi": "Gevaş",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Gevaş — Van (1350)"
+  },
+  {
+    "code": "1351",
+    "ilceAdi": "Geyve",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Geyve — Sakarya (1351)"
+  },
+  {
+    "code": "1352",
+    "ilceAdi": "Giresun Merkez",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Giresun Merkez — Giresun (1352)"
+  },
+  {
+    "code": "1408",
+    "ilceAdi": "Gökçeada (imroz)",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Gökçeada (imroz) — Çanakkale (1408)"
+  },
+  {
+    "code": "1926",
+    "ilceAdi": "Gökçebey",
+    "ilKodu": 67,
+    "ilAdi": "Zonguldak",
+    "label": "Gökçebey — Zonguldak (1926)"
+  },
+  {
+    "code": "1353",
+    "ilceAdi": "Göksun",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Göksun — Kahramanmaraş (1353)"
+  },
+  {
+    "code": "1354",
+    "ilceAdi": "Gölbaşı",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Gölbaşı — Adıyaman (1354)"
+  },
+  {
+    "code": "1744",
+    "ilceAdi": "Gölbaşı",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Gölbaşı — Ankara (1744)"
+  },
+  {
+    "code": "1355",
+    "ilceAdi": "Gölcük",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Gölcük — Kocaeli (1355)"
+  },
+  {
+    "code": "1356",
+    "ilceAdi": "Göle",
+    "ilKodu": 75,
+    "ilAdi": "Ardahan",
+    "label": "Göle — Ardahan (1356)"
+  },
+  {
+    "code": "1357",
+    "ilceAdi": "Gölhisar",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Gölhisar — Burdur (1357)"
+  },
+  {
+    "code": "1358",
+    "ilceAdi": "Gölköy",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Gölköy — Ordu (1358)"
+  },
+  {
+    "code": "1793",
+    "ilceAdi": "Gölmarmara",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Gölmarmara — Manisa (1793)"
+  },
+  {
+    "code": "1927",
+    "ilceAdi": "Gölova",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Gölova — Sivas (1927)"
+  },
+  {
+    "code": "1359",
+    "ilceAdi": "Gölpazarı",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "Gölpazarı — Bilecik (1359)"
+  },
+  {
+    "code": "1794",
+    "ilceAdi": "Gölyaka",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Gölyaka — Düzce (1794)"
+  },
+  {
+    "code": "1928",
+    "ilceAdi": "Gömeç",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Gömeç — Balıkesir (1928)"
+  },
+  {
+    "code": "1360",
+    "ilceAdi": "Gönen",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Gönen — Balıkesir (1360)"
+  },
+  {
+    "code": "1929",
+    "ilceAdi": "Gönen",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Gönen — Isparta (1929)"
+  },
+  {
+    "code": "1362",
+    "ilceAdi": "Gördes",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Gördes — Manisa (1362)"
+  },
+  {
+    "code": "1361",
+    "ilceAdi": "Görele",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Görele — Giresun (1361)"
+  },
+  {
+    "code": "1363",
+    "ilceAdi": "Göynücek",
+    "ilKodu": 5,
+    "ilAdi": "Amasya",
+    "label": "Göynücek — Amasya (1363)"
+  },
+  {
+    "code": "1364",
+    "ilceAdi": "Göynük",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Göynük — Bolu (1364)"
+  },
+  {
+    "code": "1930",
+    "ilceAdi": "Güce",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Güce — Giresun (1930)"
+  },
+  {
+    "code": "1931",
+    "ilceAdi": "Güçlükonak",
+    "ilKodu": 73,
+    "ilAdi": "Şırnak",
+    "label": "Güçlükonak — Şırnak (1931)"
+  },
+  {
+    "code": "1365",
+    "ilceAdi": "Güdül",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Güdül — Ankara (1365)"
+  },
+  {
+    "code": "1932",
+    "ilceAdi": "Gülağaç",
+    "ilKodu": 68,
+    "ilAdi": "Aksaray",
+    "label": "Gülağaç — Aksaray (1932)"
+  },
+  {
+    "code": "1366",
+    "ilceAdi": "Gülnar",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Gülnar — Mersin (1366)"
+  },
+  {
+    "code": "1367",
+    "ilceAdi": "Gülşehir",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Gülşehir — Nevşehir (1367)"
+  },
+  {
+    "code": "1795",
+    "ilceAdi": "Gülyalı",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Gülyalı — Ordu (1795)"
+  },
+  {
+    "code": "1368",
+    "ilceAdi": "Gümüşhacıköy",
+    "ilKodu": 5,
+    "ilAdi": "Amasya",
+    "label": "Gümüşhacıköy — Amasya (1368)"
+  },
+  {
+    "code": "1369",
+    "ilceAdi": "Gümüşhane Merkez",
+    "ilKodu": 29,
+    "ilAdi": "Gümüşhane",
+    "label": "Gümüşhane Merkez — Gümüşhane (1369)"
+  },
+  {
+    "code": "2017",
+    "ilceAdi": "Gümüşova",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Gümüşova — Düzce (2017)"
+  },
+  {
+    "code": "1370",
+    "ilceAdi": "Gündoğmuş",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Gündoğmuş — Antalya (1370)"
+  },
+  {
+    "code": "1371",
+    "ilceAdi": "Güney",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Güney — Denizli (1371)"
+  },
+  {
+    "code": "1933",
+    "ilceAdi": "Güneysınır",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Güneysınır — Konya (1933)"
+  },
+  {
+    "code": "1796",
+    "ilceAdi": "Güneysu",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Güneysu — Rize (1796)"
+  },
+  {
+    "code": "2010",
+    "ilceAdi": "Güngören",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Güngören — İstanbul (2010)"
+  },
+  {
+    "code": "1934",
+    "ilceAdi": "Günyüzü",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Günyüzü — Eskişehir (1934)"
+  },
+  {
+    "code": "1797",
+    "ilceAdi": "Gürgentepe",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Gürgentepe — Ordu (1797)"
+  },
+  {
+    "code": "1798",
+    "ilceAdi": "Güroymak",
+    "ilKodu": 13,
+    "ilAdi": "Bitlis",
+    "label": "Güroymak — Bitlis (1798)"
+  },
+  {
+    "code": "1372",
+    "ilceAdi": "Gürpınar",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Gürpınar — Van (1372)"
+  },
+  {
+    "code": "1935",
+    "ilceAdi": "Gürsu",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Gürsu — Bursa (1935)"
+  },
+  {
+    "code": "1373",
+    "ilceAdi": "Gürün",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Gürün — Sivas (1373)"
+  },
+  {
+    "code": "2018",
+    "ilceAdi": "Güzelbahçe",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Güzelbahçe — İzmir (2018)"
+  },
+  {
+    "code": "1861",
+    "ilceAdi": "Güzelyurt",
+    "ilKodu": 68,
+    "ilAdi": "Aksaray",
+    "label": "Güzelyurt — Aksaray (1861)"
+  },
+  {
+    "code": "1374",
+    "ilceAdi": "Hacıbektaş",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Hacıbektaş — Nevşehir (1374)"
+  },
+  {
+    "code": "1936",
+    "ilceAdi": "Hacılar",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Hacılar — Kayseri (1936)"
+  },
+  {
+    "code": "1375",
+    "ilceAdi": "Hadım",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Hadım — Konya (1375)"
+  },
+  {
+    "code": "1376",
+    "ilceAdi": "Hafik",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Hafik — Sivas (1376)"
+  },
+  {
+    "code": "1377",
+    "ilceAdi": "Hakkari Merkez",
+    "ilKodu": 30,
+    "ilAdi": "Hakkari",
+    "label": "Hakkari Merkez — Hakkari (1377)"
+  },
+  {
+    "code": "1378",
+    "ilceAdi": "Halfeti",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Halfeti — Şanlıurfa (1378)"
+  },
+  {
+    "code": "1937",
+    "ilceAdi": "Halkapınar",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Halkapınar — Konya (1937)"
+  },
+  {
+    "code": "1938",
+    "ilceAdi": "Hamamözü",
+    "ilKodu": 5,
+    "ilAdi": "Amasya",
+    "label": "Hamamözü — Amasya (1938)"
+  },
+  {
+    "code": "1379",
+    "ilceAdi": "Hamur",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Hamur — Ağrı (1379)"
+  },
+  {
+    "code": "1939",
+    "ilceAdi": "Han",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Han — Eskişehir (1939)"
+  },
+  {
+    "code": "1380",
+    "ilceAdi": "Hanak",
+    "ilKodu": 75,
+    "ilAdi": "Ardahan",
+    "label": "Hanak — Ardahan (1380)"
+  },
+  {
+    "code": "1381",
+    "ilceAdi": "Hani",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Hani — Diyarbakır (1381)"
+  },
+  {
+    "code": "1940",
+    "ilceAdi": "Hanönü",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Hanönü — Kastamonu (1940)"
+  },
+  {
+    "code": "1799",
+    "ilceAdi": "Harmancık",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Harmancık — Bursa (1799)"
+  },
+  {
+    "code": "1800",
+    "ilceAdi": "Harran",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Harran — Şanlıurfa (1800)"
+  },
+  {
+    "code": "2027",
+    "ilceAdi": "Hasanbeyli",
+    "ilKodu": 80,
+    "ilAdi": "Osmaniye",
+    "label": "Hasanbeyli — Osmaniye (2027)"
+  },
+  {
+    "code": "1941",
+    "ilceAdi": "Hasankeyf",
+    "ilKodu": 72,
+    "ilAdi": "Batman",
+    "label": "Hasankeyf — Batman (1941)"
+  },
+  {
+    "code": "1801",
+    "ilceAdi": "Hasköy",
+    "ilKodu": 49,
+    "ilAdi": "Muş",
+    "label": "Hasköy — Muş (1801)"
+  },
+  {
+    "code": "1382",
+    "ilceAdi": "Hassa",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Hassa — Hatay (1382)"
+  },
+  {
+    "code": "1383",
+    "ilceAdi": "Hatay Merkez",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Hatay Merkez — Hatay (1383)"
+  },
+  {
+    "code": "1384",
+    "ilceAdi": "Havran",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Havran — Balıkesir (1384)"
+  },
+  {
+    "code": "1385",
+    "ilceAdi": "Havsa",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Havsa — Edirne (1385)"
+  },
+  {
+    "code": "1386",
+    "ilceAdi": "Havza",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Havza — Samsun (1386)"
+  },
+  {
+    "code": "1387",
+    "ilceAdi": "Haymana",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Haymana — Ankara (1387)"
+  },
+  {
+    "code": "1388",
+    "ilceAdi": "Hayrabolu",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Hayrabolu — Tekirdağ (1388)"
+  },
+  {
+    "code": "1942",
+    "ilceAdi": "Hayrat",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Hayrat — Trabzon (1942)"
+  },
+  {
+    "code": "1389",
+    "ilceAdi": "Hazro",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Hazro — Diyarbakır (1389)"
+  },
+  {
+    "code": "1390",
+    "ilceAdi": "Hekimhan",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Hekimhan — Malatya (1390)"
+  },
+  {
+    "code": "1943",
+    "ilceAdi": "Hemşin",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Hemşin — Rize (1943)"
+  },
+  {
+    "code": "1391",
+    "ilceAdi": "Hendek",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Hendek — Sakarya (1391)"
+  },
+  {
+    "code": "1392",
+    "ilceAdi": "Hınıs",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Hınıs — Erzurum (1392)"
+  },
+  {
+    "code": "1393",
+    "ilceAdi": "Hilvan",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Hilvan — Şanlıurfa (1393)"
+  },
+  {
+    "code": "1802",
+    "ilceAdi": "Hisarcık",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Hisarcık — Kütahya (1802)"
+  },
+  {
+    "code": "1394",
+    "ilceAdi": "Hizan",
+    "ilKodu": 13,
+    "ilAdi": "Bitlis",
+    "label": "Hizan — Bitlis (1394)"
+  },
+  {
+    "code": "1944",
+    "ilceAdi": "Hocalar",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Hocalar — Afyon (1944)"
+  },
+  {
+    "code": "1803",
+    "ilceAdi": "Honaz",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Honaz — Denizli (1803)"
+  },
+  {
+    "code": "1395",
+    "ilceAdi": "Hopa",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Hopa — Artvin (1395)"
+  },
+  {
+    "code": "1396",
+    "ilceAdi": "Horasan",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Horasan — Erzurum (1396)"
+  },
+  {
+    "code": "1397",
+    "ilceAdi": "Hozat",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Hozat — Tunceli (1397)"
+  },
+  {
+    "code": "1804",
+    "ilceAdi": "Hüyük",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Hüyük — Konya (1804)"
+  },
+  {
+    "code": "1398",
+    "ilceAdi": "Iğdır Merkez",
+    "ilKodu": 76,
+    "ilAdi": "Iğdır",
+    "label": "Iğdır Merkez — Iğdır (1398)"
+  },
+  {
+    "code": "1399",
+    "ilceAdi": "Ilgaz",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Ilgaz — Çankırı (1399)"
+  },
+  {
+    "code": "1400",
+    "ilceAdi": "Ilgın",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Ilgın — Konya (1400)"
+  },
+  {
+    "code": "1945",
+    "ilceAdi": "Ilıca",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Ilıca — Erzurum (1945)"
+  },
+  {
+    "code": "1401",
+    "ilceAdi": "Isparta Merkez",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Isparta Merkez — Isparta (1401)"
+  },
+  {
+    "code": "1946",
+    "ilceAdi": "İbradı",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "İbradı — Antalya (1946)"
+  },
+  {
+    "code": "1402",
+    "ilceAdi": "İçel Merkez",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "İçel Merkez — Mersin (1402)"
+  },
+  {
+    "code": "1403",
+    "ilceAdi": "İdil",
+    "ilKodu": 73,
+    "ilAdi": "Şırnak",
+    "label": "İdil — Şırnak (1403)"
+  },
+  {
+    "code": "1805",
+    "ilceAdi": "İhsangazi",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "İhsangazi — Kastamonu (1805)"
+  },
+  {
+    "code": "1404",
+    "ilceAdi": "İhsaniye",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "İhsaniye — Afyon (1404)"
+  },
+  {
+    "code": "1947",
+    "ilceAdi": "İkizce",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "İkizce — Ordu (1947)"
+  },
+  {
+    "code": "1405",
+    "ilceAdi": "İkizdere",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "İkizdere — Rize (1405)"
+  },
+  {
+    "code": "1406",
+    "ilceAdi": "İliç",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "İliç — Erzincan (1406)"
+  },
+  {
+    "code": "2074",
+    "ilceAdi": "İlkadım",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "İlkadım — Samsun (2074)"
+  },
+  {
+    "code": "1806",
+    "ilceAdi": "İmamoğlu",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "İmamoğlu — Adana (1806)"
+  },
+  {
+    "code": "1407",
+    "ilceAdi": "İmranlı",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "İmranlı — Sivas (1407)"
+  },
+  {
+    "code": "1409",
+    "ilceAdi": "İncesu",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "İncesu — Kayseri (1409)"
+  },
+  {
+    "code": "1807",
+    "ilceAdi": "İncirliova",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "İncirliova — Aydın (1807)"
+  },
+  {
+    "code": "1410",
+    "ilceAdi": "İnebolu",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "İnebolu — Kastamonu (1410)"
+  },
+  {
+    "code": "1411",
+    "ilceAdi": "İnegöl",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "İnegöl — Bursa (1411)"
+  },
+  {
+    "code": "1948",
+    "ilceAdi": "İnhisar",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "İnhisar — Bilecik (1948)"
+  },
+  {
+    "code": "1808",
+    "ilceAdi": "İnönü",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "İnönü — Eskişehir (1808)"
+  },
+  {
+    "code": "1412",
+    "ilceAdi": "İpsala",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "İpsala — Edirne (1412)"
+  },
+  {
+    "code": "1809",
+    "ilceAdi": "İscehisar",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "İscehisar — Afyon (1809)"
+  },
+  {
+    "code": "1413",
+    "ilceAdi": "İskenderun",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "İskenderun — Hatay (1413)"
+  },
+  {
+    "code": "1414",
+    "ilceAdi": "İskilip",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "İskilip — Çorum (1414)"
+  },
+  {
+    "code": "1415",
+    "ilceAdi": "İslahiye",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "İslahiye — Gaziantep (1415)"
+  },
+  {
+    "code": "1416",
+    "ilceAdi": "İspir",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "İspir — Erzurum (1416)"
+  },
+  {
+    "code": "1417",
+    "ilceAdi": "İstanbul Merkez",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "İstanbul Merkez — İstanbul (1417)"
+  },
+  {
+    "code": "1418",
+    "ilceAdi": "İvrindi",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "İvrindi — Balıkesir (1418)"
+  },
+  {
+    "code": "1949",
+    "ilceAdi": "İyidere",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "İyidere — Rize (1949)"
+  },
+  {
+    "code": "1419",
+    "ilceAdi": "İzmir Merkez",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "İzmir Merkez — İzmir (1419)"
+  },
+  {
+    "code": "2062",
+    "ilceAdi": "İzmit",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "İzmit — Kocaeli (2062)"
+  },
+  {
+    "code": "1420",
+    "ilceAdi": "İznik",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "İznik — Bursa (1420)"
+  },
+  {
+    "code": "1950",
+    "ilceAdi": "Kabadüz",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Kabadüz — Ordu (1950)"
+  },
+  {
+    "code": "1951",
+    "ilceAdi": "Kabataş",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Kabataş — Ordu (1951)"
+  },
+  {
+    "code": "1421",
+    "ilceAdi": "Kadıköy",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Kadıköy — İstanbul (1421)"
+  },
+  {
+    "code": "1422",
+    "ilceAdi": "Kadınhanı",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Kadınhanı — Konya (1422)"
+  },
+  {
+    "code": "1952",
+    "ilceAdi": "Kadışehri",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Kadışehri — Yozgat (1952)"
+  },
+  {
+    "code": "1423",
+    "ilceAdi": "Kadirli",
+    "ilKodu": 80,
+    "ilAdi": "Osmaniye",
+    "label": "Kadirli — Osmaniye (1423)"
+  },
+  {
+    "code": "1810",
+    "ilceAdi": "Kağıthane",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Kağıthane — İstanbul (1810)"
+  },
+  {
+    "code": "1424",
+    "ilceAdi": "Kağızman",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Kağızman — Kars (1424)"
+  },
+  {
+    "code": "1515",
+    "ilceAdi": "Kahramanmaraş Merkez",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Kahramanmaraş Merkez — Kahramanmaraş (1515)"
+  },
+  {
+    "code": "1425",
+    "ilceAdi": "Kahta",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Kahta — Adıyaman (1425)"
+  },
+  {
+    "code": "1426",
+    "ilceAdi": "Kale",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Kale — Denizli (1426)"
+  },
+  {
+    "code": "1811",
+    "ilceAdi": "Kale",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Kale — Antalya (1811)"
+  },
+  {
+    "code": "1953",
+    "ilceAdi": "Kale",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Kale — Malatya (1953)"
+  },
+  {
+    "code": "1427",
+    "ilceAdi": "Kalecik",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Kalecik — Ankara (1427)"
+  },
+  {
+    "code": "1428",
+    "ilceAdi": "Kalkandere",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Kalkandere — Rize (1428)"
+  },
+  {
+    "code": "1429",
+    "ilceAdi": "Kaman",
+    "ilKodu": 40,
+    "ilAdi": "Kırşehir",
+    "label": "Kaman — Kırşehir (1429)"
+  },
+  {
+    "code": "1430",
+    "ilceAdi": "Kandıra",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Kandıra — Kocaeli (1430)"
+  },
+  {
+    "code": "1431",
+    "ilceAdi": "Kangal",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Kangal — Sivas (1431)"
+  },
+  {
+    "code": "2057",
+    "ilceAdi": "Karabağlar",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Karabağlar — İzmir (2057)"
+  },
+  {
+    "code": "1432",
+    "ilceAdi": "Karaburun",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Karaburun — İzmir (1432)"
+  },
+  {
+    "code": "1433",
+    "ilceAdi": "Karabük Merkez",
+    "ilKodu": 78,
+    "ilAdi": "Karabük",
+    "label": "Karabük Merkez — Karabük (1433)"
+  },
+  {
+    "code": "1434",
+    "ilceAdi": "Karacabey",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Karacabey — Bursa (1434)"
+  },
+  {
+    "code": "1435",
+    "ilceAdi": "Karacasu",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Karacasu — Aydın (1435)"
+  },
+  {
+    "code": "1812",
+    "ilceAdi": "Karaçoban",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Karaçoban — Erzurum (1812)"
+  },
+  {
+    "code": "1436",
+    "ilceAdi": "Karahallı",
+    "ilKodu": 64,
+    "ilAdi": "Uşak",
+    "label": "Karahallı — Uşak (1436)"
+  },
+  {
+    "code": "1437",
+    "ilceAdi": "Karaisalı",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Karaisalı — Adana (1437)"
+  },
+  {
+    "code": "1954",
+    "ilceAdi": "Karakeçili",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Karakeçili — Kırıkkale (1954)"
+  },
+  {
+    "code": "1438",
+    "ilceAdi": "Karakoçan",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Karakoçan — Elazığ (1438)"
+  },
+  {
+    "code": "2011",
+    "ilceAdi": "Karakoyunlu",
+    "ilKodu": 76,
+    "ilAdi": "Iğdır",
+    "label": "Karakoyunlu — Iğdır (2011)"
+  },
+  {
+    "code": "1439",
+    "ilceAdi": "Karaman Merkez",
+    "ilKodu": 70,
+    "ilAdi": "Karaman",
+    "label": "Karaman Merkez — Karaman (1439)"
+  },
+  {
+    "code": "1813",
+    "ilceAdi": "Karamanlı",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Karamanlı — Burdur (1813)"
+  },
+  {
+    "code": "1440",
+    "ilceAdi": "Karamürsel",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Karamürsel — Kocaeli (1440)"
+  },
+  {
+    "code": "1441",
+    "ilceAdi": "Karapınar",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Karapınar — Konya (1441)"
+  },
+  {
+    "code": "1955",
+    "ilceAdi": "Karapürçek",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Karapürçek — Sakarya (1955)"
+  },
+  {
+    "code": "1442",
+    "ilceAdi": "Karasu",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Karasu — Sakarya (1442)"
+  },
+  {
+    "code": "1443",
+    "ilceAdi": "Karataş",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Karataş — Adana (1443)"
+  },
+  {
+    "code": "1814",
+    "ilceAdi": "Karatay",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Karatay — Konya (1814)"
+  },
+  {
+    "code": "1444",
+    "ilceAdi": "Karayazı",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Karayazı — Erzurum (1444)"
+  },
+  {
+    "code": "1445",
+    "ilceAdi": "Kargı",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Kargı — Çorum (1445)"
+  },
+  {
+    "code": "1956",
+    "ilceAdi": "Karkamış",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Karkamış — Gaziantep (1956)"
+  },
+  {
+    "code": "1446",
+    "ilceAdi": "Karlıova",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Karlıova — Bingöl (1446)"
+  },
+  {
+    "code": "1957",
+    "ilceAdi": "Karpuzlu",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Karpuzlu — Aydın (1957)"
+  },
+  {
+    "code": "1447",
+    "ilceAdi": "Kars Merkez",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Kars Merkez — Kars (1447)"
+  },
+  {
+    "code": "1448",
+    "ilceAdi": "Karşıyaka",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Karşıyaka — İzmir (1448)"
+  },
+  {
+    "code": "1449",
+    "ilceAdi": "Kartal",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Kartal — İstanbul (1449)"
+  },
+  {
+    "code": "2063",
+    "ilceAdi": "Kartepe",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Kartepe — Kocaeli (2063)"
+  },
+  {
+    "code": "1450",
+    "ilceAdi": "Kastamonu Merkez",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Kastamonu Merkez — Kastamonu (1450)"
+  },
+  {
+    "code": "1451",
+    "ilceAdi": "Kaş",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Kaş — Antalya (1451)"
+  },
+  {
+    "code": "1452",
+    "ilceAdi": "Kavak",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Kavak — Samsun (1452)"
+  },
+  {
+    "code": "1958",
+    "ilceAdi": "Kavaklıdere",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Kavaklıdere — Muğla (1958)"
+  },
+  {
+    "code": "2041",
+    "ilceAdi": "Kayapınar",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Kayapınar — Diyarbakır (2041)"
+  },
+  {
+    "code": "1453",
+    "ilceAdi": "Kaynarca",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Kaynarca — Sakarya (1453)"
+  },
+  {
+    "code": "2031",
+    "ilceAdi": "Kaynaşlı",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Kaynaşlı — Düzce (2031)"
+  },
+  {
+    "code": "1454",
+    "ilceAdi": "Kayseri Merkez",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Kayseri Merkez — Kayseri (1454)"
+  },
+  {
+    "code": "1815",
+    "ilceAdi": "Kazan",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Kazan — Ankara (1815)"
+  },
+  {
+    "code": "1862",
+    "ilceAdi": "Kâzımkarabekir",
+    "ilKodu": 70,
+    "ilAdi": "Karaman",
+    "label": "Kâzımkarabekir — Karaman (1862)"
+  },
+  {
+    "code": "1455",
+    "ilceAdi": "Keban",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Keban — Elazığ (1455)"
+  },
+  {
+    "code": "1456",
+    "ilceAdi": "Keçiborlu",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Keçiborlu — Isparta (1456)"
+  },
+  {
+    "code": "1745",
+    "ilceAdi": "Keçiören",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Keçiören — Ankara (1745)"
+  },
+  {
+    "code": "1457",
+    "ilceAdi": "Keles",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Keles — Bursa (1457)"
+  },
+  {
+    "code": "1458",
+    "ilceAdi": "Kelkit",
+    "ilKodu": 29,
+    "ilAdi": "Gümüşhane",
+    "label": "Kelkit — Gümüşhane (1458)"
+  },
+  {
+    "code": "1459",
+    "ilceAdi": "Kemah",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Kemah — Erzincan (1459)"
+  },
+  {
+    "code": "1460",
+    "ilceAdi": "Kemaliye",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Kemaliye — Erzincan (1460)"
+  },
+  {
+    "code": "1461",
+    "ilceAdi": "Kemalpaşa",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Kemalpaşa — İzmir (1461)"
+  },
+  {
+    "code": "1816",
+    "ilceAdi": "Kemer",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Kemer — Burdur (1816)"
+  },
+  {
+    "code": "1959",
+    "ilceAdi": "Kemer",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Kemer — Antalya (1959)"
+  },
+  {
+    "code": "2037",
+    "ilceAdi": "Kepez",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Kepez — Antalya (2037)"
+  },
+  {
+    "code": "1462",
+    "ilceAdi": "Kepsut",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Kepsut — Balıkesir (1462)"
+  },
+  {
+    "code": "1463",
+    "ilceAdi": "Keskin",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Keskin — Kırıkkale (1463)"
+  },
+  {
+    "code": "1960",
+    "ilceAdi": "Kestel",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Kestel — Bursa (1960)"
+  },
+  {
+    "code": "1464",
+    "ilceAdi": "Keşan",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Keşan — Edirne (1464)"
+  },
+  {
+    "code": "1465",
+    "ilceAdi": "Keşap",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Keşap — Giresun (1465)"
+  },
+  {
+    "code": "1466",
+    "ilceAdi": "Kıbrıscık",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Kıbrıscık — Bolu (1466)"
+  },
+  {
+    "code": "1467",
+    "ilceAdi": "Kınık",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Kınık — İzmir (1467)"
+  },
+  {
+    "code": "1468",
+    "ilceAdi": "Kırıkhan",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Kırıkhan — Hatay (1468)"
+  },
+  {
+    "code": "1469",
+    "ilceAdi": "Kırıkkale Merkez",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Kırıkkale Merkez — Kırıkkale (1469)"
+  },
+  {
+    "code": "1470",
+    "ilceAdi": "Kırkağaç",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Kırkağaç — Manisa (1470)"
+  },
+  {
+    "code": "1471",
+    "ilceAdi": "Kırklareli Merkez",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Kırklareli Merkez — Kırklareli (1471)"
+  },
+  {
+    "code": "1472",
+    "ilceAdi": "Kırşehir Merkez",
+    "ilKodu": 40,
+    "ilAdi": "Kırşehir",
+    "label": "Kırşehir Merkez — Kırşehir (1472)"
+  },
+  {
+    "code": "1473",
+    "ilceAdi": "Kızılcahamam",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Kızılcahamam — Ankara (1473)"
+  },
+  {
+    "code": "1817",
+    "ilceAdi": "Kızılırmak",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Kızılırmak — Çankırı (1817)"
+  },
+  {
+    "code": "1961",
+    "ilceAdi": "Kızılören",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Kızılören — Afyon (1961)"
+  },
+  {
+    "code": "1474",
+    "ilceAdi": "Kızıltepe",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Kızıltepe — Mardin (1474)"
+  },
+  {
+    "code": "1475",
+    "ilceAdi": "Kiğı",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Kiğı — Bingöl (1475)"
+  },
+  {
+    "code": "1476",
+    "ilceAdi": "Kilis Merkez",
+    "ilKodu": 79,
+    "ilAdi": "Kilis",
+    "label": "Kilis Merkez — Kilis (1476)"
+  },
+  {
+    "code": "1477",
+    "ilceAdi": "Kiraz",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Kiraz — İzmir (1477)"
+  },
+  {
+    "code": "1818",
+    "ilceAdi": "Kocaali",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Kocaali — Sakarya (1818)"
+  },
+  {
+    "code": "1478",
+    "ilceAdi": "Kocaeli Merkez (izmit)",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Kocaeli Merkez (izmit) — Kocaeli (1478)"
+  },
+  {
+    "code": "1962",
+    "ilceAdi": "Kocaköy",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Kocaköy — Diyarbakır (1962)"
+  },
+  {
+    "code": "1863",
+    "ilceAdi": "Kocasinan",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Kocasinan — Kayseri (1863)"
+  },
+  {
+    "code": "1479",
+    "ilceAdi": "Koçarlı",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Koçarlı — Aydın (1479)"
+  },
+  {
+    "code": "1480",
+    "ilceAdi": "Kofçaz",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Kofçaz — Kırklareli (1480)"
+  },
+  {
+    "code": "1819",
+    "ilceAdi": "Konak",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Konak — İzmir (1819)"
+  },
+  {
+    "code": "1481",
+    "ilceAdi": "Konya Merkez",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Konya Merkez — Konya (1481)"
+  },
+  {
+    "code": "2038",
+    "ilceAdi": "Konyaaltı",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Konyaaltı — Antalya (2038)"
+  },
+  {
+    "code": "1482",
+    "ilceAdi": "Korgan",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Korgan — Ordu (1482)"
+  },
+  {
+    "code": "1963",
+    "ilceAdi": "Korgun",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Korgun — Çankırı (1963)"
+  },
+  {
+    "code": "1964",
+    "ilceAdi": "Korkut",
+    "ilKodu": 49,
+    "ilAdi": "Muş",
+    "label": "Korkut — Muş (1964)"
+  },
+  {
+    "code": "1483",
+    "ilceAdi": "Korkuteli",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Korkuteli — Antalya (1483)"
+  },
+  {
+    "code": "1820",
+    "ilceAdi": "Kovancılar",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Kovancılar — Elazığ (1820)"
+  },
+  {
+    "code": "1484",
+    "ilceAdi": "Koyulhisar",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Koyulhisar — Sivas (1484)"
+  },
+  {
+    "code": "1485",
+    "ilceAdi": "Kozaklı",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Kozaklı — Nevşehir (1485)"
+  },
+  {
+    "code": "1486",
+    "ilceAdi": "Kozan",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Kozan — Adana (1486)"
+  },
+  {
+    "code": "1487",
+    "ilceAdi": "Kozluk",
+    "ilKodu": 72,
+    "ilAdi": "Batman",
+    "label": "Kozluk — Batman (1487)"
+  },
+  {
+    "code": "1965",
+    "ilceAdi": "Köprübaşı",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Köprübaşı — Manisa (1965)"
+  },
+  {
+    "code": "1966",
+    "ilceAdi": "Köprübaşı",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Köprübaşı — Trabzon (1966)"
+  },
+  {
+    "code": "1967",
+    "ilceAdi": "Köprüköy",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Köprüköy — Erzurum (1967)"
+  },
+  {
+    "code": "1821",
+    "ilceAdi": "Körfez",
+    "ilKodu": 41,
+    "ilAdi": "Kocaeli",
+    "label": "Körfez — Kocaeli (1821)"
+  },
+  {
+    "code": "1822",
+    "ilceAdi": "Köse",
+    "ilKodu": 29,
+    "ilAdi": "Gümüşhane",
+    "label": "Köse — Gümüşhane (1822)"
+  },
+  {
+    "code": "1968",
+    "ilceAdi": "Köşk",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Köşk — Aydın (1968)"
+  },
+  {
+    "code": "1488",
+    "ilceAdi": "Köyceğiz",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Köyceğiz — Muğla (1488)"
+  },
+  {
+    "code": "1489",
+    "ilceAdi": "Kula",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Kula — Manisa (1489)"
+  },
+  {
+    "code": "1490",
+    "ilceAdi": "Kulp",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Kulp — Diyarbakır (1490)"
+  },
+  {
+    "code": "1491",
+    "ilceAdi": "Kulu",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Kulu — Konya (1491)"
+  },
+  {
+    "code": "1969",
+    "ilceAdi": "Kuluncak",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Kuluncak — Malatya (1969)"
+  },
+  {
+    "code": "1970",
+    "ilceAdi": "Kumlu",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Kumlu — Hatay (1970)"
+  },
+  {
+    "code": "1492",
+    "ilceAdi": "Kumluca",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Kumluca — Antalya (1492)"
+  },
+  {
+    "code": "1493",
+    "ilceAdi": "Kumru",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Kumru — Ordu (1493)"
+  },
+  {
+    "code": "1494",
+    "ilceAdi": "Kurşunlu",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Kurşunlu — Çankırı (1494)"
+  },
+  {
+    "code": "1495",
+    "ilceAdi": "Kurtalan",
+    "ilKodu": 56,
+    "ilAdi": "Siirt",
+    "label": "Kurtalan — Siirt (1495)"
+  },
+  {
+    "code": "1496",
+    "ilceAdi": "Kurucaşile",
+    "ilKodu": 74,
+    "ilAdi": "Bartın",
+    "label": "Kurucaşile — Bartın (1496)"
+  },
+  {
+    "code": "1497",
+    "ilceAdi": "Kuşadası",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Kuşadası — Aydın (1497)"
+  },
+  {
+    "code": "1498",
+    "ilceAdi": "Kuyucak",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Kuyucak — Aydın (1498)"
+  },
+  {
+    "code": "1823",
+    "ilceAdi": "Küçükçekmece",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Küçükçekmece — İstanbul (1823)"
+  },
+  {
+    "code": "1499",
+    "ilceAdi": "Küre",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Küre — Kastamonu (1499)"
+  },
+  {
+    "code": "1971",
+    "ilceAdi": "Kürtün",
+    "ilKodu": 29,
+    "ilAdi": "Gümüşhane",
+    "label": "Kürtün — Gümüşhane (1971)"
+  },
+  {
+    "code": "1500",
+    "ilceAdi": "Kütahya Merkez",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Kütahya Merkez — Kütahya (1500)"
+  },
+  {
+    "code": "1972",
+    "ilceAdi": "Laçin",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Laçin — Çorum (1972)"
+  },
+  {
+    "code": "1501",
+    "ilceAdi": "Ladik",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Ladik — Samsun (1501)"
+  },
+  {
+    "code": "1502",
+    "ilceAdi": "Lalapaşa",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Lalapaşa — Edirne (1502)"
+  },
+  {
+    "code": "1503",
+    "ilceAdi": "Lapseki",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Lapseki — Çanakkale (1503)"
+  },
+  {
+    "code": "1504",
+    "ilceAdi": "Lice",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Lice — Diyarbakır (1504)"
+  },
+  {
+    "code": "1505",
+    "ilceAdi": "Lüleburgaz",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Lüleburgaz — Kırklareli (1505)"
+  },
+  {
+    "code": "1507",
+    "ilceAdi": "Maçka",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Maçka — Trabzon (1507)"
+  },
+  {
+    "code": "1506",
+    "ilceAdi": "Maden",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Maden — Elazığ (1506)"
+  },
+  {
+    "code": "1508",
+    "ilceAdi": "Mahmudiye",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Mahmudiye — Eskişehir (1508)"
+  },
+  {
+    "code": "1509",
+    "ilceAdi": "Malatya Merkez",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Malatya Merkez — Malatya (1509)"
+  },
+  {
+    "code": "1510",
+    "ilceAdi": "Malazgirt",
+    "ilKodu": 49,
+    "ilAdi": "Muş",
+    "label": "Malazgirt — Muş (1510)"
+  },
+  {
+    "code": "1511",
+    "ilceAdi": "Malkara",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Malkara — Tekirdağ (1511)"
+  },
+  {
+    "code": "2012",
+    "ilceAdi": "Maltepe",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Maltepe — İstanbul (2012)"
+  },
+  {
+    "code": "1746",
+    "ilceAdi": "Mamak",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Mamak — Ankara (1746)"
+  },
+  {
+    "code": "1512",
+    "ilceAdi": "Manavgat",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Manavgat — Antalya (1512)"
+  },
+  {
+    "code": "1513",
+    "ilceAdi": "Manisa Merkez",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Manisa Merkez — Manisa (1513)"
+  },
+  {
+    "code": "1514",
+    "ilceAdi": "Manyas",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Manyas — Balıkesir (1514)"
+  },
+  {
+    "code": "1516",
+    "ilceAdi": "Mardin Merkez",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Mardin Merkez — Mardin (1516)"
+  },
+  {
+    "code": "1824",
+    "ilceAdi": "Marmara",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Marmara — Balıkesir (1824)"
+  },
+  {
+    "code": "1825",
+    "ilceAdi": "Marmaraereğlisi",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Marmaraereğlisi — Tekirdağ (1825)"
+  },
+  {
+    "code": "1517",
+    "ilceAdi": "Marmaris",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Marmaris — Muğla (1517)"
+  },
+  {
+    "code": "1518",
+    "ilceAdi": "Mazgirt",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Mazgirt — Tunceli (1518)"
+  },
+  {
+    "code": "1519",
+    "ilceAdi": "Mazıdağı",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Mazıdağı — Mardin (1519)"
+  },
+  {
+    "code": "1520",
+    "ilceAdi": "Mecitözü",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Mecitözü — Çorum (1520)"
+  },
+  {
+    "code": "1864",
+    "ilceAdi": "Melikgazi",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Melikgazi — Kayseri (1864)"
+  },
+  {
+    "code": "1826",
+    "ilceAdi": "Menderes",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Menderes — İzmir (1826)"
+  },
+  {
+    "code": "1521",
+    "ilceAdi": "Menemen",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Menemen — İzmir (1521)"
+  },
+  {
+    "code": "1522",
+    "ilceAdi": "Mengen",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Mengen — Bolu (1522)"
+  },
+  {
+    "code": "1827",
+    "ilceAdi": "Meram",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Meram — Konya (1827)"
+  },
+  {
+    "code": "1523",
+    "ilceAdi": "Meriç",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Meriç — Edirne (1523)"
+  },
+  {
+    "code": "1524",
+    "ilceAdi": "Merzifon",
+    "ilKodu": 5,
+    "ilAdi": "Amasya",
+    "label": "Merzifon — Amasya (1524)"
+  },
+  {
+    "code": "1525",
+    "ilceAdi": "Mesudiye",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Mesudiye — Ordu (1525)"
+  },
+  {
+    "code": "2065",
+    "ilceAdi": "Mezitli",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Mezitli — Mersin (2065)"
+  },
+  {
+    "code": "1526",
+    "ilceAdi": "Midyat",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Midyat — Mardin (1526)"
+  },
+  {
+    "code": "1973",
+    "ilceAdi": "Mihalgazi",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Mihalgazi — Eskişehir (1973)"
+  },
+  {
+    "code": "1527",
+    "ilceAdi": "Mihalıççık",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Mihalıççık — Eskişehir (1527)"
+  },
+  {
+    "code": "1528",
+    "ilceAdi": "Milas",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Milas — Muğla (1528)"
+  },
+  {
+    "code": "1529",
+    "ilceAdi": "Mucur",
+    "ilKodu": 40,
+    "ilAdi": "Kırşehir",
+    "label": "Mucur — Kırşehir (1529)"
+  },
+  {
+    "code": "1530",
+    "ilceAdi": "Mudanya",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Mudanya — Bursa (1530)"
+  },
+  {
+    "code": "1531",
+    "ilceAdi": "Mudurnu",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Mudurnu — Bolu (1531)"
+  },
+  {
+    "code": "1532",
+    "ilceAdi": "Muğla Merkez",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Muğla Merkez — Muğla (1532)"
+  },
+  {
+    "code": "1533",
+    "ilceAdi": "Muradiye",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Muradiye — Van (1533)"
+  },
+  {
+    "code": "1538",
+    "ilceAdi": "Muratlı",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Muratlı — Tekirdağ (1538)"
+  },
+  {
+    "code": "2039",
+    "ilceAdi": "Muratpaşa",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Muratpaşa — Antalya (2039)"
+  },
+  {
+    "code": "1828",
+    "ilceAdi": "Murgul",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Murgul — Artvin (1828)"
+  },
+  {
+    "code": "2024",
+    "ilceAdi": "Musabeyli",
+    "ilKodu": 79,
+    "ilAdi": "Kilis",
+    "label": "Musabeyli — Kilis (2024)"
+  },
+  {
+    "code": "1535",
+    "ilceAdi": "Mustafa Kemal Paşa",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Mustafa Kemal Paşa — Bursa (1535)"
+  },
+  {
+    "code": "1534",
+    "ilceAdi": "Muş Merkez",
+    "ilKodu": 49,
+    "ilAdi": "Muş",
+    "label": "Muş Merkez — Muş (1534)"
+  },
+  {
+    "code": "1536",
+    "ilceAdi": "Mut",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Mut — Mersin (1536)"
+  },
+  {
+    "code": "1537",
+    "ilceAdi": "Mutki",
+    "ilKodu": 13,
+    "ilAdi": "Bitlis",
+    "label": "Mutki — Bitlis (1537)"
+  },
+  {
+    "code": "1539",
+    "ilceAdi": "Nallıhan",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Nallıhan — Ankara (1539)"
+  },
+  {
+    "code": "2013",
+    "ilceAdi": "Narlıdere",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Narlıdere — İzmir (2013)"
+  },
+  {
+    "code": "1540",
+    "ilceAdi": "Narman",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Narman — Erzurum (1540)"
+  },
+  {
+    "code": "1541",
+    "ilceAdi": "Nazımiye",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Nazımiye — Tunceli (1541)"
+  },
+  {
+    "code": "1542",
+    "ilceAdi": "Nazilli",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Nazilli — Aydın (1542)"
+  },
+  {
+    "code": "1543",
+    "ilceAdi": "Nevşehir Merkez",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Nevşehir Merkez — Nevşehir (1543)"
+  },
+  {
+    "code": "1544",
+    "ilceAdi": "Niğde Merkez",
+    "ilKodu": 51,
+    "ilAdi": "Niğde",
+    "label": "Niğde Merkez — Niğde (1544)"
+  },
+  {
+    "code": "1545",
+    "ilceAdi": "Niksar",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Niksar — Tokat (1545)"
+  },
+  {
+    "code": "1829",
+    "ilceAdi": "Nilüfer",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Nilüfer — Bursa (1829)"
+  },
+  {
+    "code": "1546",
+    "ilceAdi": "Nizip",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Nizip — Gaziantep (1546)"
+  },
+  {
+    "code": "1974",
+    "ilceAdi": "Nurdağı",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Nurdağı — Gaziantep (1974)"
+  },
+  {
+    "code": "1975",
+    "ilceAdi": "Nurhak",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Nurhak — Kahramanmaraş (1975)"
+  },
+  {
+    "code": "1547",
+    "ilceAdi": "Nusaybin",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Nusaybin — Mardin (1547)"
+  },
+  {
+    "code": "2046",
+    "ilceAdi": "Odunpazarı",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Odunpazarı — Eskişehir (2046)"
+  },
+  {
+    "code": "1548",
+    "ilceAdi": "Of",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Of — Trabzon (1548)"
+  },
+  {
+    "code": "1549",
+    "ilceAdi": "Oğuzeli",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Oğuzeli — Gaziantep (1549)"
+  },
+  {
+    "code": "1976",
+    "ilceAdi": "Oğuzlar",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Oğuzlar — Çorum (1976)"
+  },
+  {
+    "code": "1550",
+    "ilceAdi": "Oltu",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Oltu — Erzurum (1550)"
+  },
+  {
+    "code": "1551",
+    "ilceAdi": "Olur",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Olur — Erzurum (1551)"
+  },
+  {
+    "code": "1830",
+    "ilceAdi": "Ondokuzmayıs",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Ondokuzmayıs — Samsun (1830)"
+  },
+  {
+    "code": "1552",
+    "ilceAdi": "Ordu Merkez",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Ordu Merkez — Ordu (1552)"
+  },
+  {
+    "code": "1553",
+    "ilceAdi": "Orhaneli",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Orhaneli — Bursa (1553)"
+  },
+  {
+    "code": "1554",
+    "ilceAdi": "Orhangazi",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Orhangazi — Bursa (1554)"
+  },
+  {
+    "code": "1555",
+    "ilceAdi": "Orta",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Orta — Çankırı (1555)"
+  },
+  {
+    "code": "1831",
+    "ilceAdi": "Ortaca",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Ortaca — Muğla (1831)"
+  },
+  {
+    "code": "1556",
+    "ilceAdi": "Ortaköy",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Ortaköy — Çorum (1556)"
+  },
+  {
+    "code": "1557",
+    "ilceAdi": "Ortaköy",
+    "ilKodu": 68,
+    "ilAdi": "Aksaray",
+    "label": "Ortaköy — Aksaray (1557)"
+  },
+  {
+    "code": "1558",
+    "ilceAdi": "Osmancık",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Osmancık — Çorum (1558)"
+  },
+  {
+    "code": "1559",
+    "ilceAdi": "Osmaneli",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "Osmaneli — Bilecik (1559)"
+  },
+  {
+    "code": "1832",
+    "ilceAdi": "Osmangazi",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Osmangazi — Bursa (1832)"
+  },
+  {
+    "code": "1560",
+    "ilceAdi": "Osmaniye Merkez",
+    "ilKodu": 80,
+    "ilAdi": "Osmaniye",
+    "label": "Osmaniye Merkez — Osmaniye (1560)"
+  },
+  {
+    "code": "1977",
+    "ilceAdi": "Otlukbeli",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Otlukbeli — Erzincan (1977)"
+  },
+  {
+    "code": "1561",
+    "ilceAdi": "Ovacık",
+    "ilKodu": 78,
+    "ilAdi": "Karabük",
+    "label": "Ovacık — Karabük (1561)"
+  },
+  {
+    "code": "1562",
+    "ilceAdi": "Ovacık",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Ovacık — Tunceli (1562)"
+  },
+  {
+    "code": "1563",
+    "ilceAdi": "Ödemiş",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Ödemiş — İzmir (1563)"
+  },
+  {
+    "code": "1564",
+    "ilceAdi": "Ömerli",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Ömerli — Mardin (1564)"
+  },
+  {
+    "code": "1565",
+    "ilceAdi": "Özalp",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Özalp — Van (1565)"
+  },
+  {
+    "code": "1978",
+    "ilceAdi": "Özvatan",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Özvatan — Kayseri (1978)"
+  },
+  {
+    "code": "2044",
+    "ilceAdi": "Palandöken",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Palandöken — Erzurum (2044)"
+  },
+  {
+    "code": "1566",
+    "ilceAdi": "Palu",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Palu — Elazığ (1566)"
+  },
+  {
+    "code": "1833",
+    "ilceAdi": "Pamukova",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Pamukova — Sakarya (1833)"
+  },
+  {
+    "code": "1567",
+    "ilceAdi": "Pasinler",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Pasinler — Erzurum (1567)"
+  },
+  {
+    "code": "1568",
+    "ilceAdi": "Patnos",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Patnos — Ağrı (1568)"
+  },
+  {
+    "code": "1569",
+    "ilceAdi": "Pazar",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Pazar — Rize (1569)"
+  },
+  {
+    "code": "1834",
+    "ilceAdi": "Pazar",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Pazar — Tokat (1834)"
+  },
+  {
+    "code": "1570",
+    "ilceAdi": "Pazarcık",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Pazarcık — Kahramanmaraş (1570)"
+  },
+  {
+    "code": "1979",
+    "ilceAdi": "Pazarlar",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Pazarlar — Kütahya (1979)"
+  },
+  {
+    "code": "1571",
+    "ilceAdi": "Pazaryeri",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "Pazaryeri — Bilecik (1571)"
+  },
+  {
+    "code": "1865",
+    "ilceAdi": "Pazaryolu",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Pazaryolu — Erzurum (1865)"
+  },
+  {
+    "code": "1572",
+    "ilceAdi": "Pehlivanköy",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Pehlivanköy — Kırklareli (1572)"
+  },
+  {
+    "code": "1835",
+    "ilceAdi": "Pendik",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Pendik — İstanbul (1835)"
+  },
+  {
+    "code": "1573",
+    "ilceAdi": "Perşembe",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Perşembe — Ordu (1573)"
+  },
+  {
+    "code": "1574",
+    "ilceAdi": "Pertek",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Pertek — Tunceli (1574)"
+  },
+  {
+    "code": "1575",
+    "ilceAdi": "Pervari",
+    "ilKodu": 56,
+    "ilAdi": "Siirt",
+    "label": "Pervari — Siirt (1575)"
+  },
+  {
+    "code": "1576",
+    "ilceAdi": "Pınarbaşı",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Pınarbaşı — Kayseri (1576)"
+  },
+  {
+    "code": "1836",
+    "ilceAdi": "Pınarbaşı",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Pınarbaşı — Kastamonu (1836)"
+  },
+  {
+    "code": "1577",
+    "ilceAdi": "Pınarhisar",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Pınarhisar — Kırklareli (1577)"
+  },
+  {
+    "code": "1837",
+    "ilceAdi": "Piraziz",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Piraziz — Giresun (1837)"
+  },
+  {
+    "code": "2025",
+    "ilceAdi": "Polateli",
+    "ilKodu": 79,
+    "ilAdi": "Kilis",
+    "label": "Polateli — Kilis (2025)"
+  },
+  {
+    "code": "1578",
+    "ilceAdi": "Polatlı",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Polatlı — Ankara (1578)"
+  },
+  {
+    "code": "1579",
+    "ilceAdi": "Posof",
+    "ilKodu": 75,
+    "ilAdi": "Ardahan",
+    "label": "Posof — Ardahan (1579)"
+  },
+  {
+    "code": "1580",
+    "ilceAdi": "Pozantı",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Pozantı — Adana (1580)"
+  },
+  {
+    "code": "2034",
+    "ilceAdi": "Pursaklar",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Pursaklar — Ankara (2034)"
+  },
+  {
+    "code": "1581",
+    "ilceAdi": "Pülümür",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Pülümür — Tunceli (1581)"
+  },
+  {
+    "code": "1582",
+    "ilceAdi": "Pütürge",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Pütürge — Malatya (1582)"
+  },
+  {
+    "code": "1583",
+    "ilceAdi": "Refahiye",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Refahiye — Erzincan (1583)"
+  },
+  {
+    "code": "1584",
+    "ilceAdi": "Reşadiye",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Reşadiye — Tokat (1584)"
+  },
+  {
+    "code": "1585",
+    "ilceAdi": "Reyhanlı",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Reyhanlı — Hatay (1585)"
+  },
+  {
+    "code": "1586",
+    "ilceAdi": "Rize Merkez",
+    "ilKodu": 53,
+    "ilAdi": "Rize",
+    "label": "Rize Merkez — Rize (1586)"
+  },
+  {
+    "code": "1587",
+    "ilceAdi": "Safranbolu",
+    "ilKodu": 78,
+    "ilAdi": "Karabük",
+    "label": "Safranbolu — Karabük (1587)"
+  },
+  {
+    "code": "1588",
+    "ilceAdi": "Saimbeyli",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Saimbeyli — Adana (1588)"
+  },
+  {
+    "code": "1589",
+    "ilceAdi": "Sakarya Merkez (adapazarı)",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Sakarya Merkez (adapazarı) — Sakarya (1589)"
+  },
+  {
+    "code": "1838",
+    "ilceAdi": "Salıpazarı",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Salıpazarı — Samsun (1838)"
+  },
+  {
+    "code": "1590",
+    "ilceAdi": "Salihli",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Salihli — Manisa (1590)"
+  },
+  {
+    "code": "1591",
+    "ilceAdi": "Samandağ",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Samandağ — Hatay (1591)"
+  },
+  {
+    "code": "1592",
+    "ilceAdi": "Samsat",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Samsat — Adıyaman (1592)"
+  },
+  {
+    "code": "1593",
+    "ilceAdi": "Samsun Merkez",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Samsun Merkez — Samsun (1593)"
+  },
+  {
+    "code": "2054",
+    "ilceAdi": "Sancaktepe",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Sancaktepe — İstanbul (2054)"
+  },
+  {
+    "code": "1594",
+    "ilceAdi": "Sandıklı",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Sandıklı — Afyon (1594)"
+  },
+  {
+    "code": "1595",
+    "ilceAdi": "Sapanca",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Sapanca — Sakarya (1595)"
+  },
+  {
+    "code": "1596",
+    "ilceAdi": "Saray",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Saray — Tekirdağ (1596)"
+  },
+  {
+    "code": "1980",
+    "ilceAdi": "Saray",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Saray — Van (1980)"
+  },
+  {
+    "code": "1981",
+    "ilceAdi": "Saraydüzü",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Saraydüzü — Sinop (1981)"
+  },
+  {
+    "code": "1982",
+    "ilceAdi": "Saraykent",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Saraykent — Yozgat (1982)"
+  },
+  {
+    "code": "1597",
+    "ilceAdi": "Sarayköy",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Sarayköy — Denizli (1597)"
+  },
+  {
+    "code": "1598",
+    "ilceAdi": "Sarayönü",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Sarayönü — Konya (1598)"
+  },
+  {
+    "code": "1599",
+    "ilceAdi": "Sarıcakaya",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Sarıcakaya — Eskişehir (1599)"
+  },
+  {
+    "code": "2032",
+    "ilceAdi": "Sarıçam",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Sarıçam — Adana (2032)"
+  },
+  {
+    "code": "1600",
+    "ilceAdi": "Sarıgöl",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Sarıgöl — Manisa (1600)"
+  },
+  {
+    "code": "1601",
+    "ilceAdi": "Sarıkamış",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Sarıkamış — Kars (1601)"
+  },
+  {
+    "code": "1602",
+    "ilceAdi": "Sarıkaya",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Sarıkaya — Yozgat (1602)"
+  },
+  {
+    "code": "1603",
+    "ilceAdi": "Sarıoğlan",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Sarıoğlan — Kayseri (1603)"
+  },
+  {
+    "code": "1983",
+    "ilceAdi": "Sarıveliler",
+    "ilKodu": 70,
+    "ilAdi": "Karaman",
+    "label": "Sarıveliler — Karaman (1983)"
+  },
+  {
+    "code": "1866",
+    "ilceAdi": "Sarıyahşi",
+    "ilKodu": 68,
+    "ilAdi": "Aksaray",
+    "label": "Sarıyahşi — Aksaray (1866)"
+  },
+  {
+    "code": "1604",
+    "ilceAdi": "Sarıyer",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Sarıyer — İstanbul (1604)"
+  },
+  {
+    "code": "1605",
+    "ilceAdi": "Sarız",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Sarız — Kayseri (1605)"
+  },
+  {
+    "code": "1606",
+    "ilceAdi": "Saruhanlı",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Saruhanlı — Manisa (1606)"
+  },
+  {
+    "code": "1607",
+    "ilceAdi": "Sason",
+    "ilKodu": 72,
+    "ilAdi": "Batman",
+    "label": "Sason — Batman (1607)"
+  },
+  {
+    "code": "1608",
+    "ilceAdi": "Savaştepe",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Savaştepe — Balıkesir (1608)"
+  },
+  {
+    "code": "1609",
+    "ilceAdi": "Savur",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Savur — Mardin (1609)"
+  },
+  {
+    "code": "1610",
+    "ilceAdi": "Seben",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Seben — Bolu (1610)"
+  },
+  {
+    "code": "1611",
+    "ilceAdi": "Seferihisar",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Seferihisar — İzmir (1611)"
+  },
+  {
+    "code": "1612",
+    "ilceAdi": "Selçuk",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Selçuk — İzmir (1612)"
+  },
+  {
+    "code": "1839",
+    "ilceAdi": "Selçuklu",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Selçuklu — Konya (1839)"
+  },
+  {
+    "code": "1613",
+    "ilceAdi": "Selendi",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Selendi — Manisa (1613)"
+  },
+  {
+    "code": "1614",
+    "ilceAdi": "Selim",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Selim — Kars (1614)"
+  },
+  {
+    "code": "1615",
+    "ilceAdi": "Senirkent",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Senirkent — Isparta (1615)"
+  },
+  {
+    "code": "2071",
+    "ilceAdi": "Serdivan",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Serdivan — Sakarya (2071)"
+  },
+  {
+    "code": "1616",
+    "ilceAdi": "Serik",
+    "ilKodu": 7,
+    "ilAdi": "Antalya",
+    "label": "Serik — Antalya (1616)"
+  },
+  {
+    "code": "1840",
+    "ilceAdi": "Serinhisar",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Serinhisar — Denizli (1840)"
+  },
+  {
+    "code": "1984",
+    "ilceAdi": "Seydiler",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Seydiler — Kastamonu (1984)"
+  },
+  {
+    "code": "1617",
+    "ilceAdi": "Seydişehir",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Seydişehir — Konya (1617)"
+  },
+  {
+    "code": "1104",
+    "ilceAdi": "Seyhan",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Seyhan — Adana (1104)"
+  },
+  {
+    "code": "1618",
+    "ilceAdi": "Seyitgazi",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Seyitgazi — Eskişehir (1618)"
+  },
+  {
+    "code": "1619",
+    "ilceAdi": "Sındırgı",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Sındırgı — Balıkesir (1619)"
+  },
+  {
+    "code": "1620",
+    "ilceAdi": "Siirt Merkez",
+    "ilKodu": 56,
+    "ilAdi": "Siirt",
+    "label": "Siirt Merkez — Siirt (1620)"
+  },
+  {
+    "code": "1621",
+    "ilceAdi": "Silifke",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Silifke — Mersin (1621)"
+  },
+  {
+    "code": "1622",
+    "ilceAdi": "Silivri",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Silivri — İstanbul (1622)"
+  },
+  {
+    "code": "1623",
+    "ilceAdi": "Silopi",
+    "ilKodu": 73,
+    "ilAdi": "Şırnak",
+    "label": "Silopi — Şırnak (1623)"
+  },
+  {
+    "code": "1624",
+    "ilceAdi": "Silvan",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Silvan — Diyarbakır (1624)"
+  },
+  {
+    "code": "1625",
+    "ilceAdi": "Simav",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Simav — Kütahya (1625)"
+  },
+  {
+    "code": "1747",
+    "ilceAdi": "Sincan",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Sincan — Ankara (1747)"
+  },
+  {
+    "code": "1626",
+    "ilceAdi": "Sincanlı",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Sincanlı — Afyon (1626)"
+  },
+  {
+    "code": "1985",
+    "ilceAdi": "Sincik",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Sincik — Adıyaman (1985)"
+  },
+  {
+    "code": "1627",
+    "ilceAdi": "Sinop Merkez",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Sinop Merkez — Sinop (1627)"
+  },
+  {
+    "code": "1628",
+    "ilceAdi": "Sivas Merkez",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Sivas Merkez — Sivas (1628)"
+  },
+  {
+    "code": "1629",
+    "ilceAdi": "Sivaslı",
+    "ilKodu": 64,
+    "ilAdi": "Uşak",
+    "label": "Sivaslı — Uşak (1629)"
+  },
+  {
+    "code": "1630",
+    "ilceAdi": "Siverek",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Siverek — Şanlıurfa (1630)"
+  },
+  {
+    "code": "1631",
+    "ilceAdi": "Sivrice",
+    "ilKodu": 23,
+    "ilAdi": "Elazığ",
+    "label": "Sivrice — Elazığ (1631)"
+  },
+  {
+    "code": "1632",
+    "ilceAdi": "Sivrihisar",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Sivrihisar — Eskişehir (1632)"
+  },
+  {
+    "code": "1633",
+    "ilceAdi": "Solhan",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Solhan — Bingöl (1633)"
+  },
+  {
+    "code": "1634",
+    "ilceAdi": "Soma",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Soma — Manisa (1634)"
+  },
+  {
+    "code": "1635",
+    "ilceAdi": "Sorgun",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Sorgun — Yozgat (1635)"
+  },
+  {
+    "code": "1636",
+    "ilceAdi": "Söğüt",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "Söğüt — Bilecik (1636)"
+  },
+  {
+    "code": "1986",
+    "ilceAdi": "Söğütlü",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Söğütlü — Sakarya (1986)"
+  },
+  {
+    "code": "1637",
+    "ilceAdi": "Söke",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Söke — Aydın (1637)"
+  },
+  {
+    "code": "1638",
+    "ilceAdi": "Sulakyurt",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Sulakyurt — Kırıkkale (1638)"
+  },
+  {
+    "code": "2014",
+    "ilceAdi": "Sultanbeyli",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Sultanbeyli — İstanbul (2014)"
+  },
+  {
+    "code": "1639",
+    "ilceAdi": "Sultandağı",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Sultandağı — Afyon (1639)"
+  },
+  {
+    "code": "2055",
+    "ilceAdi": "Sultangazi",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Sultangazi — İstanbul (2055)"
+  },
+  {
+    "code": "1640",
+    "ilceAdi": "Sultanhisar",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Sultanhisar — Aydın (1640)"
+  },
+  {
+    "code": "1641",
+    "ilceAdi": "Suluova",
+    "ilKodu": 5,
+    "ilAdi": "Amasya",
+    "label": "Suluova — Amasya (1641)"
+  },
+  {
+    "code": "1987",
+    "ilceAdi": "Sulusaray",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Sulusaray — Tokat (1987)"
+  },
+  {
+    "code": "2028",
+    "ilceAdi": "Sumbas",
+    "ilKodu": 80,
+    "ilAdi": "Osmaniye",
+    "label": "Sumbas — Osmaniye (2028)"
+  },
+  {
+    "code": "1642",
+    "ilceAdi": "Sungurlu",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Sungurlu — Çorum (1642)"
+  },
+  {
+    "code": "2042",
+    "ilceAdi": "Sur",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Sur — Diyarbakır (2042)"
+  },
+  {
+    "code": "1643",
+    "ilceAdi": "Suruç",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Suruç — Şanlıurfa (1643)"
+  },
+  {
+    "code": "1644",
+    "ilceAdi": "Susurluk",
+    "ilKodu": 10,
+    "ilAdi": "Balıkesir",
+    "label": "Susurluk — Balıkesir (1644)"
+  },
+  {
+    "code": "1645",
+    "ilceAdi": "Susuz",
+    "ilKodu": 36,
+    "ilAdi": "Kars",
+    "label": "Susuz — Kars (1645)"
+  },
+  {
+    "code": "1646",
+    "ilceAdi": "Suşehri",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Suşehri — Sivas (1646)"
+  },
+  {
+    "code": "1988",
+    "ilceAdi": "Süloğlu",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Süloğlu — Edirne (1988)"
+  },
+  {
+    "code": "1647",
+    "ilceAdi": "Sürmene",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Sürmene — Trabzon (1647)"
+  },
+  {
+    "code": "1648",
+    "ilceAdi": "Sütçüler",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Sütçüler — Isparta (1648)"
+  },
+  {
+    "code": "1649",
+    "ilceAdi": "Şabanözü",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Şabanözü — Çankırı (1649)"
+  },
+  {
+    "code": "1841",
+    "ilceAdi": "Şahinbey",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Şahinbey — Gaziantep (1841)"
+  },
+  {
+    "code": "1842",
+    "ilceAdi": "Şalpazarı",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Şalpazarı — Trabzon (1842)"
+  },
+  {
+    "code": "1702",
+    "ilceAdi": "Şanlıurfa Merkez",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Şanlıurfa Merkez — Şanlıurfa (1702)"
+  },
+  {
+    "code": "1843",
+    "ilceAdi": "Şaphane",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Şaphane — Kütahya (1843)"
+  },
+  {
+    "code": "1650",
+    "ilceAdi": "Şarkışla",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Şarkışla — Sivas (1650)"
+  },
+  {
+    "code": "1651",
+    "ilceAdi": "Şarkikaraağaç",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Şarkikaraağaç — Isparta (1651)"
+  },
+  {
+    "code": "1652",
+    "ilceAdi": "Şarköy",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Şarköy — Tekirdağ (1652)"
+  },
+  {
+    "code": "1653",
+    "ilceAdi": "Şavşat",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Şavşat — Artvin (1653)"
+  },
+  {
+    "code": "1654",
+    "ilceAdi": "Şebinkarahisar",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Şebinkarahisar — Giresun (1654)"
+  },
+  {
+    "code": "1655",
+    "ilceAdi": "Şefaatli",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Şefaatli — Yozgat (1655)"
+  },
+  {
+    "code": "1844",
+    "ilceAdi": "Şehitkamil",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Şehitkamil — Gaziantep (1844)"
+  },
+  {
+    "code": "1656",
+    "ilceAdi": "Şemdinli",
+    "ilKodu": 30,
+    "ilAdi": "Hakkari",
+    "label": "Şemdinli — Hakkari (1656)"
+  },
+  {
+    "code": "1657",
+    "ilceAdi": "Şenkaya",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Şenkaya — Erzurum (1657)"
+  },
+  {
+    "code": "1845",
+    "ilceAdi": "Şenpazar",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Şenpazar — Kastamonu (1845)"
+  },
+  {
+    "code": "1658",
+    "ilceAdi": "Şereflikoçhisar",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Şereflikoçhisar — Ankara (1658)"
+  },
+  {
+    "code": "1661",
+    "ilceAdi": "Şırnak Merkez",
+    "ilKodu": 73,
+    "ilAdi": "Şırnak",
+    "label": "Şırnak Merkez — Şırnak (1661)"
+  },
+  {
+    "code": "1659",
+    "ilceAdi": "Şile",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Şile — İstanbul (1659)"
+  },
+  {
+    "code": "1660",
+    "ilceAdi": "Şiran",
+    "ilKodu": 29,
+    "ilAdi": "Gümüşhane",
+    "label": "Şiran — Gümüşhane (1660)"
+  },
+  {
+    "code": "1662",
+    "ilceAdi": "Şirvan",
+    "ilKodu": 56,
+    "ilAdi": "Siirt",
+    "label": "Şirvan — Siirt (1662)"
+  },
+  {
+    "code": "1663",
+    "ilceAdi": "Şişli",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Şişli — İstanbul (1663)"
+  },
+  {
+    "code": "1664",
+    "ilceAdi": "Şuhut",
+    "ilKodu": 3,
+    "ilAdi": "Afyon",
+    "label": "Şuhut — Afyon (1664)"
+  },
+  {
+    "code": "1846",
+    "ilceAdi": "Talas",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Talas — Kayseri (1846)"
+  },
+  {
+    "code": "1847",
+    "ilceAdi": "Taraklı",
+    "ilKodu": 54,
+    "ilAdi": "Sakarya",
+    "label": "Taraklı — Sakarya (1847)"
+  },
+  {
+    "code": "1665",
+    "ilceAdi": "Tarsus",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Tarsus — Mersin (1665)"
+  },
+  {
+    "code": "1848",
+    "ilceAdi": "Taşkent",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Taşkent — Konya (1848)"
+  },
+  {
+    "code": "1666",
+    "ilceAdi": "Taşköprü",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Taşköprü — Kastamonu (1666)"
+  },
+  {
+    "code": "1667",
+    "ilceAdi": "Taşlıçay",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Taşlıçay — Ağrı (1667)"
+  },
+  {
+    "code": "1668",
+    "ilceAdi": "Taşova",
+    "ilKodu": 5,
+    "ilAdi": "Amasya",
+    "label": "Taşova — Amasya (1668)"
+  },
+  {
+    "code": "1669",
+    "ilceAdi": "Tatvan",
+    "ilKodu": 13,
+    "ilAdi": "Bitlis",
+    "label": "Tatvan — Bitlis (1669)"
+  },
+  {
+    "code": "1670",
+    "ilceAdi": "Tavas",
+    "ilKodu": 20,
+    "ilAdi": "Denizli",
+    "label": "Tavas — Denizli (1670)"
+  },
+  {
+    "code": "1671",
+    "ilceAdi": "Tavşanlı",
+    "ilKodu": 43,
+    "ilAdi": "Kütahya",
+    "label": "Tavşanlı — Kütahya (1671)"
+  },
+  {
+    "code": "1672",
+    "ilceAdi": "Tefenni",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Tefenni — Burdur (1672)"
+  },
+  {
+    "code": "1673",
+    "ilceAdi": "Tekirdağ Merkez",
+    "ilKodu": 59,
+    "ilAdi": "Tekirdağ",
+    "label": "Tekirdağ Merkez — Tekirdağ (1673)"
+  },
+  {
+    "code": "1849",
+    "ilceAdi": "Tekkeköy",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Tekkeköy — Samsun (1849)"
+  },
+  {
+    "code": "1674",
+    "ilceAdi": "Tekman",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Tekman — Erzurum (1674)"
+  },
+  {
+    "code": "2047",
+    "ilceAdi": "Tepebaşı",
+    "ilKodu": 26,
+    "ilAdi": "Eskişehir",
+    "label": "Tepebaşı — Eskişehir (2047)"
+  },
+  {
+    "code": "1675",
+    "ilceAdi": "Tercan",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Tercan — Erzincan (1675)"
+  },
+  {
+    "code": "2026",
+    "ilceAdi": "Termal",
+    "ilKodu": 77,
+    "ilAdi": "Yalova",
+    "label": "Termal — Yalova (2026)"
+  },
+  {
+    "code": "1676",
+    "ilceAdi": "Terme",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Terme — Samsun (1676)"
+  },
+  {
+    "code": "1677",
+    "ilceAdi": "Tire",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Tire — İzmir (1677)"
+  },
+  {
+    "code": "1678",
+    "ilceAdi": "Tirebolu",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Tirebolu — Giresun (1678)"
+  },
+  {
+    "code": "1679",
+    "ilceAdi": "Tokat Merkez",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Tokat Merkez — Tokat (1679)"
+  },
+  {
+    "code": "1680",
+    "ilceAdi": "Tomarza",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Tomarza — Kayseri (1680)"
+  },
+  {
+    "code": "1681",
+    "ilceAdi": "Tonya",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Tonya — Trabzon (1681)"
+  },
+  {
+    "code": "2029",
+    "ilceAdi": "Toprakkale",
+    "ilKodu": 80,
+    "ilAdi": "Osmaniye",
+    "label": "Toprakkale — Osmaniye (2029)"
+  },
+  {
+    "code": "1682",
+    "ilceAdi": "Torbalı",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Torbalı — İzmir (1682)"
+  },
+  {
+    "code": "2066",
+    "ilceAdi": "Toroslar",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Toroslar — Mersin (2066)"
+  },
+  {
+    "code": "1683",
+    "ilceAdi": "Tortum",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Tortum — Erzurum (1683)"
+  },
+  {
+    "code": "1684",
+    "ilceAdi": "Torul",
+    "ilKodu": 29,
+    "ilAdi": "Gümüşhane",
+    "label": "Torul — Gümüşhane (1684)"
+  },
+  {
+    "code": "1685",
+    "ilceAdi": "Tosya",
+    "ilKodu": 37,
+    "ilAdi": "Kastamonu",
+    "label": "Tosya — Kastamonu (1685)"
+  },
+  {
+    "code": "1686",
+    "ilceAdi": "Trabzon Merkez",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Trabzon Merkez — Trabzon (1686)"
+  },
+  {
+    "code": "1687",
+    "ilceAdi": "Tufanbeyli",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Tufanbeyli — Adana (1687)"
+  },
+  {
+    "code": "1688",
+    "ilceAdi": "Tunceli Merkez",
+    "ilKodu": 62,
+    "ilAdi": "Tunceli",
+    "label": "Tunceli Merkez — Tunceli (1688)"
+  },
+  {
+    "code": "1689",
+    "ilceAdi": "Turgutlu",
+    "ilKodu": 45,
+    "ilAdi": "Manisa",
+    "label": "Turgutlu — Manisa (1689)"
+  },
+  {
+    "code": "1690",
+    "ilceAdi": "Turhal",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Turhal — Tokat (1690)"
+  },
+  {
+    "code": "1989",
+    "ilceAdi": "Tut",
+    "ilKodu": 2,
+    "ilAdi": "Adıyaman",
+    "label": "Tut — Adıyaman (1989)"
+  },
+  {
+    "code": "1691",
+    "ilceAdi": "Tutak",
+    "ilKodu": 4,
+    "ilAdi": "Ağrı",
+    "label": "Tutak — Ağrı (1691)"
+  },
+  {
+    "code": "2015",
+    "ilceAdi": "Tuzla",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Tuzla — İstanbul (2015)"
+  },
+  {
+    "code": "1692",
+    "ilceAdi": "Tuzluca",
+    "ilKodu": 76,
+    "ilAdi": "Iğdır",
+    "label": "Tuzluca — Iğdır (1692)"
+  },
+  {
+    "code": "1990",
+    "ilceAdi": "Tuzlukçu",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Tuzlukçu — Konya (1990)"
+  },
+  {
+    "code": "1693",
+    "ilceAdi": "Türkeli",
+    "ilKodu": 57,
+    "ilAdi": "Sinop",
+    "label": "Türkeli — Sinop (1693)"
+  },
+  {
+    "code": "1694",
+    "ilceAdi": "Türkoğlu",
+    "ilKodu": 46,
+    "ilAdi": "Kahramanmaraş",
+    "label": "Türkoğlu — Kahramanmaraş (1694)"
+  },
+  {
+    "code": "1850",
+    "ilceAdi": "Uğurludağ",
+    "ilKodu": 19,
+    "ilAdi": "Çorum",
+    "label": "Uğurludağ — Çorum (1850)"
+  },
+  {
+    "code": "1695",
+    "ilceAdi": "Ula",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Ula — Muğla (1695)"
+  },
+  {
+    "code": "1991",
+    "ilceAdi": "Ulaş",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Ulaş — Sivas (1991)"
+  },
+  {
+    "code": "1696",
+    "ilceAdi": "Ulubey",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Ulubey — Ordu (1696)"
+  },
+  {
+    "code": "1697",
+    "ilceAdi": "Ulubey",
+    "ilKodu": 64,
+    "ilAdi": "Uşak",
+    "label": "Ulubey — Uşak (1697)"
+  },
+  {
+    "code": "1699",
+    "ilceAdi": "Uluborlu",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Uluborlu — Isparta (1699)"
+  },
+  {
+    "code": "1698",
+    "ilceAdi": "Uludere",
+    "ilKodu": 73,
+    "ilAdi": "Şırnak",
+    "label": "Uludere — Şırnak (1698)"
+  },
+  {
+    "code": "1700",
+    "ilceAdi": "Ulukışla",
+    "ilKodu": 51,
+    "ilAdi": "Niğde",
+    "label": "Ulukışla — Niğde (1700)"
+  },
+  {
+    "code": "1701",
+    "ilceAdi": "Ulus",
+    "ilKodu": 74,
+    "ilAdi": "Bartın",
+    "label": "Ulus — Bartın (1701)"
+  },
+  {
+    "code": "1703",
+    "ilceAdi": "Urla",
+    "ilKodu": 35,
+    "ilAdi": "İzmir",
+    "label": "Urla — İzmir (1703)"
+  },
+  {
+    "code": "1704",
+    "ilceAdi": "Uşak Merkez",
+    "ilKodu": 64,
+    "ilAdi": "Uşak",
+    "label": "Uşak Merkez — Uşak (1704)"
+  },
+  {
+    "code": "1851",
+    "ilceAdi": "Uzundere",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Uzundere — Erzurum (1851)"
+  },
+  {
+    "code": "1705",
+    "ilceAdi": "Uzunköprü",
+    "ilKodu": 22,
+    "ilAdi": "Edirne",
+    "label": "Uzunköprü — Edirne (1705)"
+  },
+  {
+    "code": "1852",
+    "ilceAdi": "Ümraniye",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Ümraniye — İstanbul (1852)"
+  },
+  {
+    "code": "1706",
+    "ilceAdi": "Ünye",
+    "ilKodu": 52,
+    "ilAdi": "Ordu",
+    "label": "Ünye — Ordu (1706)"
+  },
+  {
+    "code": "1707",
+    "ilceAdi": "Ürgüp",
+    "ilKodu": 50,
+    "ilAdi": "Nevşehir",
+    "label": "Ürgüp — Nevşehir (1707)"
+  },
+  {
+    "code": "1708",
+    "ilceAdi": "Üsküdar",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Üsküdar — İstanbul (1708)"
+  },
+  {
+    "code": "1853",
+    "ilceAdi": "Üzümlü",
+    "ilKodu": 24,
+    "ilAdi": "Erzincan",
+    "label": "Üzümlü — Erzincan (1853)"
+  },
+  {
+    "code": "1709",
+    "ilceAdi": "Vakfıkebir",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Vakfıkebir — Trabzon (1709)"
+  },
+  {
+    "code": "1710",
+    "ilceAdi": "Van Merkez",
+    "ilKodu": 65,
+    "ilAdi": "Van",
+    "label": "Van Merkez — Van (1710)"
+  },
+  {
+    "code": "1711",
+    "ilceAdi": "Varto",
+    "ilKodu": 49,
+    "ilAdi": "Muş",
+    "label": "Varto — Muş (1711)"
+  },
+  {
+    "code": "1712",
+    "ilceAdi": "Vezirköprü",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Vezirköprü — Samsun (1712)"
+  },
+  {
+    "code": "1713",
+    "ilceAdi": "Viranşehir",
+    "ilKodu": 63,
+    "ilAdi": "Şanlıurfa",
+    "label": "Viranşehir — Şanlıurfa (1713)"
+  },
+  {
+    "code": "1714",
+    "ilceAdi": "Vize",
+    "ilKodu": 39,
+    "ilAdi": "Kırklareli",
+    "label": "Vize — Kırklareli (1714)"
+  },
+  {
+    "code": "1854",
+    "ilceAdi": "Yağlıdere",
+    "ilKodu": 28,
+    "ilAdi": "Giresun",
+    "label": "Yağlıdere — Giresun (1854)"
+  },
+  {
+    "code": "1992",
+    "ilceAdi": "Yahşihan",
+    "ilKodu": 71,
+    "ilAdi": "Kırıkkale",
+    "label": "Yahşihan — Kırıkkale (1992)"
+  },
+  {
+    "code": "1715",
+    "ilceAdi": "Yahyalı",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Yahyalı — Kayseri (1715)"
+  },
+  {
+    "code": "1993",
+    "ilceAdi": "Yakakent",
+    "ilKodu": 55,
+    "ilAdi": "Samsun",
+    "label": "Yakakent — Samsun (1993)"
+  },
+  {
+    "code": "2045",
+    "ilceAdi": "Yakutiye",
+    "ilKodu": 25,
+    "ilAdi": "Erzurum",
+    "label": "Yakutiye — Erzurum (2045)"
+  },
+  {
+    "code": "1994",
+    "ilceAdi": "Yalıhüyük",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Yalıhüyük — Konya (1994)"
+  },
+  {
+    "code": "1716",
+    "ilceAdi": "Yalova Merkez",
+    "ilKodu": 77,
+    "ilAdi": "Yalova",
+    "label": "Yalova Merkez — Yalova (1716)"
+  },
+  {
+    "code": "1717",
+    "ilceAdi": "Yalvaç",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Yalvaç — Isparta (1717)"
+  },
+  {
+    "code": "1718",
+    "ilceAdi": "Yapraklı",
+    "ilKodu": 18,
+    "ilAdi": "Çankırı",
+    "label": "Yapraklı — Çankırı (1718)"
+  },
+  {
+    "code": "1719",
+    "ilceAdi": "Yatağan",
+    "ilKodu": 48,
+    "ilAdi": "Muğla",
+    "label": "Yatağan — Muğla (1719)"
+  },
+  {
+    "code": "1720",
+    "ilceAdi": "Yavuzeli",
+    "ilKodu": 27,
+    "ilAdi": "Gaziantep",
+    "label": "Yavuzeli — Gaziantep (1720)"
+  },
+  {
+    "code": "1721",
+    "ilceAdi": "Yayladağı",
+    "ilKodu": 31,
+    "ilAdi": "Hatay",
+    "label": "Yayladağı — Hatay (1721)"
+  },
+  {
+    "code": "1855",
+    "ilceAdi": "Yayladere",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Yayladere — Bingöl (1855)"
+  },
+  {
+    "code": "1995",
+    "ilceAdi": "Yazıhan",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Yazıhan — Malatya (1995)"
+  },
+  {
+    "code": "1996",
+    "ilceAdi": "Yedisu",
+    "ilKodu": 12,
+    "ilAdi": "Bingöl",
+    "label": "Yedisu — Bingöl (1996)"
+  },
+  {
+    "code": "1722",
+    "ilceAdi": "Yenice",
+    "ilKodu": 17,
+    "ilAdi": "Çanakkale",
+    "label": "Yenice — Çanakkale (1722)"
+  },
+  {
+    "code": "1856",
+    "ilceAdi": "Yenice",
+    "ilKodu": 78,
+    "ilAdi": "Karabük",
+    "label": "Yenice — Karabük (1856)"
+  },
+  {
+    "code": "1997",
+    "ilceAdi": "Yeniçağa",
+    "ilKodu": 14,
+    "ilAdi": "Bolu",
+    "label": "Yeniçağa — Bolu (1997)"
+  },
+  {
+    "code": "1998",
+    "ilceAdi": "Yenifakılı",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Yenifakılı — Yozgat (1998)"
+  },
+  {
+    "code": "1723",
+    "ilceAdi": "Yenimahalle",
+    "ilKodu": 6,
+    "ilAdi": "Ankara",
+    "label": "Yenimahalle — Ankara (1723)"
+  },
+  {
+    "code": "1724",
+    "ilceAdi": "Yenipazar",
+    "ilKodu": 9,
+    "ilAdi": "Aydın",
+    "label": "Yenipazar — Aydın (1724)"
+  },
+  {
+    "code": "1857",
+    "ilceAdi": "Yenipazar",
+    "ilKodu": 11,
+    "ilAdi": "Bilecik",
+    "label": "Yenipazar — Bilecik (1857)"
+  },
+  {
+    "code": "2001",
+    "ilceAdi": "Yenişarbademli",
+    "ilKodu": 32,
+    "ilAdi": "Isparta",
+    "label": "Yenişarbademli — Isparta (2001)"
+  },
+  {
+    "code": "1725",
+    "ilceAdi": "Yenişehir",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Yenişehir — Bursa (1725)"
+  },
+  {
+    "code": "2043",
+    "ilceAdi": "Yenişehir/diyarbakır",
+    "ilKodu": 21,
+    "ilAdi": "Diyarbakır",
+    "label": "Yenişehir/diyarbakır — Diyarbakır (2043)"
+  },
+  {
+    "code": "2067",
+    "ilceAdi": "Yenişehir/mersin",
+    "ilKodu": 33,
+    "ilAdi": "Mersin",
+    "label": "Yenişehir/mersin — Mersin (2067)"
+  },
+  {
+    "code": "1726",
+    "ilceAdi": "Yerköy",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Yerköy — Yozgat (1726)"
+  },
+  {
+    "code": "1727",
+    "ilceAdi": "Yeşilhisar",
+    "ilKodu": 38,
+    "ilAdi": "Kayseri",
+    "label": "Yeşilhisar — Kayseri (1727)"
+  },
+  {
+    "code": "2002",
+    "ilceAdi": "Yeşilli",
+    "ilKodu": 47,
+    "ilAdi": "Mardin",
+    "label": "Yeşilli — Mardin (2002)"
+  },
+  {
+    "code": "1728",
+    "ilceAdi": "Yeşilova",
+    "ilKodu": 15,
+    "ilAdi": "Burdur",
+    "label": "Yeşilova — Burdur (1728)"
+  },
+  {
+    "code": "1729",
+    "ilceAdi": "Yeşilyurt",
+    "ilKodu": 44,
+    "ilAdi": "Malatya",
+    "label": "Yeşilyurt — Malatya (1729)"
+  },
+  {
+    "code": "1858",
+    "ilceAdi": "Yeşilyurt",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Yeşilyurt — Tokat (1858)"
+  },
+  {
+    "code": "1730",
+    "ilceAdi": "Yığılca",
+    "ilKodu": 81,
+    "ilAdi": "Düzce",
+    "label": "Yığılca — Düzce (1730)"
+  },
+  {
+    "code": "1859",
+    "ilceAdi": "Yıldırım",
+    "ilKodu": 16,
+    "ilAdi": "Bursa",
+    "label": "Yıldırım — Bursa (1859)"
+  },
+  {
+    "code": "1731",
+    "ilceAdi": "Yıldızeli",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Yıldızeli — Sivas (1731)"
+  },
+  {
+    "code": "1732",
+    "ilceAdi": "Yomra",
+    "ilKodu": 61,
+    "ilAdi": "Trabzon",
+    "label": "Yomra — Trabzon (1732)"
+  },
+  {
+    "code": "1733",
+    "ilceAdi": "Yozgat Merkez",
+    "ilKodu": 66,
+    "ilAdi": "Yozgat",
+    "label": "Yozgat Merkez — Yozgat (1733)"
+  },
+  {
+    "code": "1734",
+    "ilceAdi": "Yumurtalık",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Yumurtalık — Adana (1734)"
+  },
+  {
+    "code": "1735",
+    "ilceAdi": "Yunak",
+    "ilKodu": 42,
+    "ilAdi": "Konya",
+    "label": "Yunak — Konya (1735)"
+  },
+  {
+    "code": "1736",
+    "ilceAdi": "Yusufeli",
+    "ilKodu": 8,
+    "ilAdi": "Artvin",
+    "label": "Yusufeli — Artvin (1736)"
+  },
+  {
+    "code": "1737",
+    "ilceAdi": "Yüksekova",
+    "ilKodu": 30,
+    "ilAdi": "Hakkari",
+    "label": "Yüksekova — Hakkari (1737)"
+  },
+  {
+    "code": "1748",
+    "ilceAdi": "Yüreğir",
+    "ilKodu": 1,
+    "ilAdi": "Adana",
+    "label": "Yüreğir — Adana (1748)"
+  },
+  {
+    "code": "1738",
+    "ilceAdi": "Zara",
+    "ilKodu": 58,
+    "ilAdi": "Sivas",
+    "label": "Zara — Sivas (1738)"
+  },
+  {
+    "code": "1739",
+    "ilceAdi": "Zeytinburnu",
+    "ilKodu": 34,
+    "ilAdi": "İstanbul",
+    "label": "Zeytinburnu — İstanbul (1739)"
+  },
+  {
+    "code": "1740",
+    "ilceAdi": "Zile",
+    "ilKodu": 60,
+    "ilAdi": "Tokat",
+    "label": "Zile — Tokat (1740)"
+  },
+  {
+    "code": "1741",
+    "ilceAdi": "Zonguldak Merkez",
+    "ilKodu": 67,
+    "ilAdi": "Zonguldak",
+    "label": "Zonguldak Merkez — Zonguldak (1741)"
+  }
+]
