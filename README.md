@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tatil Villa — Villa Kiralama Sitesi
 
-## Getting Started
+PostgreSQL + Prisma ile villa kiralama, rezervasyon ve admin paneli.
 
-First, run the development server:
+## Gereksinimler
+
+- Node.js 20+
+- Docker Desktop (yerel PostgreSQL için)
+
+## Kurulum
 
 ```bash
+cd tatil-villa
+npm install
+
+# PostgreSQL başlat
+docker compose up -d
+
+# Veritabanı şeması ve seed
+npx prisma migrate dev --name init
+npm run db:seed
+
+# Geliştirme sunucusu
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Site: http://localhost:3000
+- Admin: http://localhost:3000/admin/login
+  - E-posta: `admin@tatildeyiz.com.tr`
+  - Şifre: `admin123`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Komutlar
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Komut | Açıklama |
+|-------|----------|
+| `npm run db:up` | PostgreSQL container başlat |
+| `npm run db:down` | PostgreSQL container durdur |
+| `npm run db:migrate` | Migration çalıştır |
+| `npm run db:seed` | Örnek veriyi yükle |
+| `npm run db:studio` | Prisma Studio aç |
 
-## Learn More
+## Özellikler
 
-To learn more about Next.js, take a look at the following resources:
+- Villa / bungalov listeleme ve filtreleme
+- Tarih ve misafir bazlı müsaitlik kontrolü
+- Rezervasyon talebi oluşturma
+- Admin paneli: villa, bölge, kampanya CRUD
+- Rezervasyon onaylama / iptal
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Ortam Değişkenleri
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`.env.example` dosyasını `.env` olarak kopyalayın:
 
-## Deploy on Vercel
+```
+DATABASE_URL="postgresql://tatil:tatil_dev@localhost:5432/tatil_villa"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="..."
+ADMIN_EMAIL="admin@tatildeyiz.com.tr"
+ADMIN_PASSWORD="admin123"
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Teknolojiler
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16, React 19, Tailwind CSS 4
+- PostgreSQL 16, Prisma ORM
+- NextAuth.js (admin girişi)
+- Zod (form doğrulama)

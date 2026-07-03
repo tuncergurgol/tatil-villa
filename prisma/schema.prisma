@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VillaCategory {
+  villa
+  bungalov
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum UserRole {
+  ADMIN
+}
+
+model Region {
+  id     String  @id @default(cuid())
+  slug   String  @unique
+  name   String
+  image  String
+  villas Villa[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Villa {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  name           String
+  category       VillaCategory @default(villa)
+  regionId       String
+  region         Region        @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  location       String
+  guests         Int
+  bedrooms       Int
+  bathrooms      Int
+  pricePerNight  Int?
+  image          String
+  images         String[]
+  description    String        @db.Text
+  amenities      String[]
+  featured       Boolean       @default(false)
+  popular        Boolean       @default(false)
+  deal           Boolean       @default(false)
+  recommended    Boolean       @default(false)
+  bookings       Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([regionId])
+  @@index([popular])
+  @@index([deal])
+  @@index([recommended])
+}
+
+model Campaign {
+  id        String  @id @default(cuid())
+  title     String
+  subtitle  String
+  image     String
+  cta       String
+  href      String
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  villaId     String
+  villa       Villa         @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  checkIn     DateTime      @db.Date
+  checkOut    DateTime      @db.Date
+  adults      Int           @default(1)
+  children    Int           @default(0)
+  babies      Int           @default(0)
+  pets        Int           @default(0)
+  guestName   String
+  guestEmail  String
+  guestPhone  String
+  totalPrice  Int?
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([villaId])
+  @@index([status])
+  @@index([checkIn, checkOut])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(ADMIN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
