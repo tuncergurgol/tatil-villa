@@ -1,14 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { VillaCategory } from "@prisma/client";
+import { SalesType, VillaCategory } from "@prisma/client";
 import {
   mergeFacilityCategoryNames,
   resolveFacilityCategoryNamesForAmenities,
 } from "@/lib/amenity-facility-links";
+import { normalizeOwnerPhone } from "@/lib/villa-owner-utils";
+import { syncVillaRooms } from "@/lib/queries/villa-rooms";
 import { RegionLevel } from "@/lib/region-levels";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+
+function parseBool(value: FormDataEntryValue | null) {
+  return value === "true" || value === "on";
+}
+
+function parseIntField(value: FormDataEntryValue | null, fallback = 0) {
+  const parsed = parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
 
 async function assertMahalleRegion(regionId: string) {
   const region = await prisma.region.findUnique({
@@ -127,6 +138,254 @@ export async function updateVilla(id: string, formData: FormData) {
   revalidatePath("/");
   revalidatePath("/villalar");
   revalidatePath("/admin/villalar");
+}
+
+export async function updateVillaGeneral(id: string, formData: FormData) {
+  await requireAdmin();
+
+  const salesType = String(
+    formData.get("salesType") ?? "komisyon"
+  ) as SalesType;
+
+  await prisma.villa.update({
+    where: { id },
+    data: {
+      name: String(formData.get("name") ?? ""),
+      originalName: String(formData.get("originalName") ?? ""),
+      category:
+        (formData.get("category") as VillaCategory) || VillaCategory.villa,
+      guests: parseIntField(formData.get("guests"), 1),
+      extraCapacity: parseIntField(formData.get("extraCapacity"), 0),
+      livingRooms: parseIntField(formData.get("livingRooms"), 0),
+      bathrooms: parseIntField(formData.get("bathrooms"), 1),
+      bedrooms: parseIntField(formData.get("bedrooms"), 1),
+      salesType:
+        salesType === SalesType.garanti
+          ? SalesType.garanti
+          : SalesType.komisyon,
+      active: parseBool(formData.get("active")),
+      showInSearch: parseBool(formData.get("showInSearch")),
+      showInOffer: parseBool(formData.get("showInOffer")),
+      ribbonText1: String(formData.get("ribbonText1") ?? ""),
+      ribbonText2: String(formData.get("ribbonText2") ?? ""),
+      description: String(formData.get("description") ?? ""),
+    },
+  });
+
+  await syncVillaRooms(id);
+
+  revalidatePath("/");
+  revalidatePath("/villalar");
+  revalidatePath("/admin/villalar");
+  revalidatePath(`/admin/villalar/${id}/duzenle`);
+}
+
+export async function updateVillaFeatures(id: string, formData: FormData) {
+  await requireAdmin();
+
+  const amenities = formData
+    .getAll("amenities")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const facilityCategoriesFromForm = formData
+    .getAll("facilityCategories")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const linkedFacilityCategories =
+    await resolveFacilityCategoryNamesForAmenities(amenities);
+  const facilityCategories = mergeFacilityCategoryNames(
+    facilityCategoriesFromForm,
+    linkedFacilityCategories
+  );
+  const priceInclusionIds = formData
+    .getAll("priceInclusionIds")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  await prisma.villa.update({
+    where: { id },
+    data: {
+      amenities,
+      facilityCategories,
+      priceInclusionIds,
+      deal: parseBool(formData.get("deal")),
+      popular: parseBool(formData.get("popular")),
+      recommended: parseBool(formData.get("recommended")),
+      dealSortOrder: parseIntField(formData.get("dealSortOrder"), 99),
+      popularSortOrder: parseIntField(formData.get("popularSortOrder"), 99),
+      recommendedSortOrder: parseIntField(
+        formData.get("recommendedSortOrder"),
+        99
+      ),
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/villalar");
+  revalidatePath("/admin/villalar");
+  revalidatePath(`/admin/villalar/${id}/duzenle`);
+}
+
+export async function updateVillaMetaSeo(id: string, formData: FormData) {
+  await requireAdmin();
+
+  const villa = await prisma.villa.update({
+    where: { id },
+    data: {
+      seoTitle: String(formData.get("seoTitle") ?? "").trim(),
+      seoDescription: String(formData.get("seoDescription") ?? "").trim(),
+      seoKeywords: String(formData.get("seoKeywords") ?? "").trim(),
+    },
+    select: { slug: true },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/villalar");
+  revalidatePath(`/villalar/${villa.slug}`);
+  revalidatePath("/admin/villalar");
+  revalidatePath(`/admin/villalar/${id}/duzenle`);
+}
+
+export type AssignVillaOwnerState = {
+  error?: string;
+  success?: boolean;
+};
+
+export async function assignVillaOwner(
+  villaId: string,
+  ownerId: string
+): Promise<AssignVillaOwnerState> {
+  await requireAdmin();
+
+  const owner = await prisma.villaOwner.findFirst({
+    where: { id: ownerId, active: true },
+    select: { id: true },
+  });
+
+  if (!owner) {
+    return { error: "Seçilen villa sahibi bulunamadı veya pasif" };
+  }
+
+  await prisma.villa.update({
+    where: { id: villaId },
+    data: { ownerId },
+  });
+
+  revalidatePath("/admin/villalar");
+  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+  return { success: true };
+}
+
+export async function updateVillaPersonel(id: string, formData: FormData) {
+  await requireAdmin();
+
+  await prisma.villa.update({
+    where: { id },
+    data: {
+      greeterName: String(formData.get("greeterName") ?? "").trim(),
+      greeterPhone: normalizeOwnerPhone(
+        String(formData.get("greeterPhone") ?? "")
+      ),
+      calendarManagerName: String(
+        formData.get("calendarManagerName") ?? ""
+      ).trim(),
+      calendarManagerPhone: normalizeOwnerPhone(
+        String(formData.get("calendarManagerPhone") ?? "")
+      ),
+    },
+  });
+
+  revalidatePath("/admin/villalar");
+  revalidatePath(`/admin/villalar/${id}/duzenle`);
+}
+
+export async function updateVillaLocation(id: string, formData: FormData) {
+  await requireAdmin();
+
+  const regionId = String(formData.get("regionId") ?? "").trim();
+  await assertMahalleRegion(regionId);
+
+  const latitude = parseFloat(String(formData.get("latitude") ?? "0"));
+  const longitude = parseFloat(String(formData.get("longitude") ?? "0"));
+
+  const distanceEntries: {
+    surroundingLocationId: string;
+    distanceKm: number;
+  }[] = [];
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("distance_")) continue;
+    const surroundingLocationId = key.slice("distance_".length);
+    const distanceKm = parseFloat(String(value));
+    if (
+      !surroundingLocationId ||
+      !Number.isFinite(distanceKm) ||
+      distanceKm < 0
+    ) {
+      continue;
+    }
+    distanceEntries.push({ surroundingLocationId, distanceKm });
+  }
+
+  await prisma.$transaction([
+    prisma.villa.update({
+      where: { id },
+      data: {
+        regionId,
+        location: String(formData.get("location") ?? "").trim(),
+        latitude: Number.isFinite(latitude) ? latitude : 0,
+        longitude: Number.isFinite(longitude) ? longitude : 0,
+        videoUrl: String(formData.get("videoUrl") ?? "").trim(),
+      },
+    }),
+    prisma.villaSurroundingDistance.deleteMany({ where: { villaId: id } }),
+    ...(distanceEntries.length > 0
+      ? [
+          prisma.villaSurroundingDistance.createMany({
+            data: distanceEntries.map((entry) => ({
+              villaId: id,
+              ...entry,
+            })),
+          }),
+        ]
+      : []),
+  ]);
+
+  revalidatePath("/");
+  revalidatePath("/villalar");
+  revalidatePath("/admin/villalar");
+  revalidatePath(`/admin/villalar/${id}/duzenle`);
+}
+
+export async function updateVillaRules(id: string, formData: FormData) {
+  await requireAdmin();
+
+  const customRules = formData
+    .getAll("customRules")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  const prepaymentPaymentTypeId = String(
+    formData.get("prepaymentPaymentTypeId") ?? ""
+  ).trim();
+
+  await prisma.villa.update({
+    where: { id },
+    data: {
+      prepaymentPaymentTypeId: prepaymentPaymentTypeId || null,
+      checkInTime: String(formData.get("checkInTime") ?? "16:00"),
+      checkOutTime: String(formData.get("checkOutTime") ?? "10:00"),
+      allowBaby: parseBool(formData.get("allowBaby")),
+      allowChildren: parseBool(formData.get("allowChildren")),
+      allowEvents: parseBool(formData.get("allowEvents")),
+      allowSmoking: parseBool(formData.get("allowSmoking")),
+      allowPets: parseBool(formData.get("allowPets")),
+      customRules,
+    },
+  });
+
+  revalidatePath("/admin/villalar");
+  revalidatePath(`/admin/villalar/${id}/duzenle`);
 }
 
 export async function deleteVilla(id: string) {

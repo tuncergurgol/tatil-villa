@@ -9,7 +9,27 @@ datasource db {
 
 enum VillaCategory {
   villa
-  bungalov
+  apart
+  suit_daire
+}
+
+enum SalesType {
+  komisyon
+  garanti
+}
+
+enum TourismDocumentType {
+  KONUT_BELGESI
+  TURIZM_ISLETME_BELGESI
+  KISMI_TURIZM_ISLETME_BELGESI
+  TURIZM_YATIRIMI_BELGESI
+  BASIT_KONAKLAMA
+  PLAJ_ISLETMESI
+}
+
+enum PoolMeasureUnit {
+  M
+  CM
 }
 
 enum BookingStatus {
@@ -95,6 +115,19 @@ model VillaOwner {
   @@index([type])
 }
 
+model PrepaymentPaymentTypeOption {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  villas    Villa[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
 model Villa {
   id             String        @id @default(cuid())
   slug           String        @unique
@@ -106,6 +139,7 @@ model Villa {
   owner          VillaOwner?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   location       String
   guests         Int
+  livingRooms    Int           @default(0)
   bedrooms       Int
   bathrooms      Int
   pricePerNight  Int?
@@ -114,10 +148,60 @@ model Villa {
   description    String        @db.Text
   amenities      String[]
   facilityCategories String[] @default([])
+  active         Boolean       @default(true)
+  originalName   String        @default("")
+  extraCapacity  Int           @default(0)
+  salesType      SalesType     @default(komisyon)
+  kbsReportable  Boolean       @default(false)
+  onlinePayment  Boolean       @default(false)
+  b2bSharing     Boolean       @default(false)
+  showInSearch   Boolean       @default(true)
+  showInOffer    Boolean       @default(true)
+  prepaymentPaymentTypeId String?
+  prepaymentPaymentType   PrepaymentPaymentTypeOption? @relation(fields: [prepaymentPaymentTypeId], references: [id], onDelete: SetNull)
+  ribbonText1    String        @default("")
+  ribbonText2    String        @default("")
+  seoTitle       String        @default("")
+  seoDescription String        @default("") @db.Text
+  seoKeywords    String        @default("")
+  documentNo     String        @default("")
+  documentType   TourismDocumentType?
+  documentOwnerName  String    @default("")
+  documentAddress    String    @default("") @db.Text
+  documentRoomCapacity Int?
+  documentBedCapacity  Int?
+  documentImageUrl   String    @default("")
   featured       Boolean       @default(false)
-  popular        Boolean       @default(false)
-  deal           Boolean       @default(false)
-  recommended    Boolean       @default(false)
+  popular        Boolean       @default(true)
+  deal           Boolean       @default(true)
+  recommended    Boolean       @default(true)
+  dealSortOrder      Int       @default(99)
+  popularSortOrder   Int       @default(99)
+  recommendedSortOrder Int     @default(99)
+  priceInclusionIds String[]   @default([])
+  greeterName           String  @default("")
+  greeterPhone          String  @default("")
+  calendarManagerName   String  @default("")
+  calendarManagerPhone  String  @default("")
+  checkInTime           String  @default("16:00")
+  checkOutTime          String  @default("10:00")
+  allowBaby             Boolean @default(false)
+  allowChildren         Boolean @default(false)
+  allowEvents           Boolean @default(false)
+  allowSmoking          Boolean @default(false)
+  allowPets             Boolean @default(false)
+  customRules           String[] @default([])
+  latitude              Float    @default(0)
+  longitude             Float    @default(0)
+  videoUrl              String   @default("")
+  icalExportToken       String   @default(uuid())
+  whatsappGroupId       String   @default("")
+  whatsappGroupDifferentName Boolean @default(false)
+  surroundingDistances  VillaSurroundingDistance[]
+  icalSources           VillaIcalSource[]
+  icalSyncEvents        VillaIcalSyncEvent[]
+  rooms                 VillaRoom[]
+  pools          VillaPool[]
   bookings       Booking[]
 
   createdAt DateTime @default(now())
@@ -125,9 +209,34 @@ model Villa {
 
   @@index([regionId])
   @@index([ownerId])
+  @@index([prepaymentPaymentTypeId])
+  @@index([active])
   @@index([popular])
   @@index([deal])
   @@index([recommended])
+  @@index([dealSortOrder])
+  @@index([popularSortOrder])
+  @@index([recommendedSortOrder])
+}
+
+model VillaPool {
+  id                 String          @id @default(cuid())
+  villaId            String
+  villa              Villa           @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  measureUnit        PoolMeasureUnit @default(M)
+  width              Float?
+  length             Float?
+  depth              Float?
+  poolType           String          @default("")
+  purificationMethod String          @default("")
+  heated             Boolean         @default(false)
+  conservative       Boolean         @default(false)
+  sortOrder          Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([villaId])
+  @@index([sortOrder])
 }
 
 model Campaign {
@@ -165,12 +274,71 @@ model SurroundingLocation {
   category   SurroundingCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   sortOrder  Int                 @default(0)
   active     Boolean             @default(true)
+  villaDistances VillaSurroundingDistance[]
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
   @@index([categoryId])
   @@index([sortOrder])
   @@index([active])
+}
+
+model VillaSurroundingDistance {
+  id                    String              @id @default(cuid())
+  villaId               String
+  villa                 Villa               @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  surroundingLocationId String
+  surroundingLocation   SurroundingLocation @relation(fields: [surroundingLocationId], references: [id], onDelete: Cascade)
+  distanceKm            Float
+
+  @@unique([villaId, surroundingLocationId])
+  @@index([villaId])
+  @@index([surroundingLocationId])
+}
+
+model VillaIcalSource {
+  id         String    @id @default(cuid())
+  villaId    String
+  villa      Villa     @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  name       String
+  url        String
+  lastSyncAt DateTime?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([villaId])
+  @@index([sortOrder])
+}
+
+model VillaIcalSyncEvent {
+  id        String   @id @default(cuid())
+  villaId   String
+  villa     Villa    @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([villaId])
+  @@index([createdAt])
+}
+
+model VillaRoom {
+  id             String   @id @default(cuid())
+  villaId        String
+  villa          Villa    @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  roomType       String   @default("yatak_odasi")
+  name           String
+  singleBeds     Int      @default(0)
+  doubleBeds     Int      @default(0)
+  imageUrl       String   @default("")
+  features       String[] @default([])
+  customFeatures String[] @default([])
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([villaId])
+  @@index([sortOrder])
 }
 
 model AmenityCategory {

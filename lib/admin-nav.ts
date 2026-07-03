@@ -26,6 +26,7 @@ export const tanimlamalarNav: NavLink[] = [
   { label: "Tesis Kategorileri", href: "/admin/tanimlamalar/villa-kategorileri" },
   { label: "Villa Olanakları", href: "/admin/tanimlamalar/villa-olanaklari" },
   { label: "Fiyata Dahil / Değil", href: "/admin/tanimlamalar/fiyata-dahil" },
+  { label: "Ön Ödeme Ödeme Tipleri", href: "/admin/tanimlamalar/on-odeme-odeme-tipleri" },
   { label: "Çevre ve Konum", href: "/admin/tanimlamalar/cevre-konum" },
 ];
 

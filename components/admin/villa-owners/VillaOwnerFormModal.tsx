@@ -17,6 +17,7 @@ interface VillaOwnerFormModalProps {
   owner?: VillaOwnerListItem;
   provinces: TurkeyProvince[];
   onClose: () => void;
+  onCreated?: (ownerId: string) => void;
 }
 
 function Field({
@@ -106,6 +107,7 @@ export default function VillaOwnerFormModal({
   owner,
   provinces,
   onClose,
+  onCreated,
 }: VillaOwnerFormModalProps) {
   const isEdit = Boolean(owner);
   const action = isEdit ? updateVillaOwner : createVillaOwner;
@@ -122,8 +124,11 @@ export default function VillaOwnerFormModal({
   const isTurkey = country.trim() === "Türkiye";
 
   useEffect(() => {
-    if (state.success) onClose();
-  }, [state.success, onClose]);
+    if (state.success) {
+      if (!isEdit && state.id) onCreated?.(state.id);
+      onClose();
+    }
+  }, [isEdit, onClose, onCreated, state.id, state.success]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

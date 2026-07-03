@@ -1,4 +1,4 @@
-export type VillaCategory = "villa" | "bungalov";
+export type VillaCategory = "villa" | "apart" | "suit_daire";
 
 export interface Villa {
   id: string;

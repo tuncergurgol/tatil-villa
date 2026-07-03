@@ -10,6 +10,7 @@ interface VillaFeaturesPickerProps {
   selectedAmenityNames?: string[];
   selectedFacilityCategoryNames?: string[];
   isNewVilla?: boolean;
+  showFacilityCategories?: boolean;
 }
 
 function isLongTextAmenity(name: string) {
@@ -50,6 +51,7 @@ export default function VillaFeaturesPicker({
   selectedAmenityNames = [],
   selectedFacilityCategoryNames = [],
   isNewVilla = false,
+  showFacilityCategories = true,
 }: VillaFeaturesPickerProps) {
   const amenityFacilityMap = useMemo(
     () => buildAmenityFacilityMap(amenityCategories),
@@ -198,6 +200,7 @@ export default function VillaFeaturesPicker({
         ))}
       </div>
 
+      {showFacilityCategories ? (
       <div>
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
           Tesis Kategorileri
@@ -248,6 +251,13 @@ export default function VillaFeaturesPicker({
           })}
         </div>
       </div>
+      ) : (
+        <>
+          {[...selectedFacilityCategories].map((name) => (
+            <input key={name} type="hidden" name="facilityCategories" value={name} />
+          ))}
+        </>
+      )}
     </div>
   );
 }

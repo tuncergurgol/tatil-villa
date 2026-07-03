@@ -25,8 +25,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const villa = await getVillaBySlug(slug);
   if (!villa) return { title: "Villa Bulunamadı" };
   return {
-    title: villa.name,
-    description: villa.description,
+    title: villa.seoTitle || villa.name,
+    description: villa.seoDescription || villa.description.replace(/<[^>]*>/g, " ").trim(),
+    keywords: villa.seoKeywords
+      ? villa.seoKeywords.split(",").map((keyword) => keyword.trim()).filter(Boolean)
+      : undefined,
   };
 }
 

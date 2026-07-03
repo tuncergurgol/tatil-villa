@@ -4,6 +4,7 @@ import { createVilla, updateVilla } from "@/app/actions/admin/villas";
 import VillaFeaturesPicker from "@/components/admin/amenities/VillaFeaturesPicker";
 import type { AmenityCategoryItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
+import { facilityTypeOptions } from "@/lib/facility-type";
 
 interface RegionOption {
   id: string;
@@ -67,14 +68,17 @@ export default function VillaForm({
           </select>
         </label>
         <label className="block">
-          <span className="text-sm font-medium">Kategori</span>
+          <span className="text-sm font-medium">Tesis Tipi</span>
           <select
             name="category"
             defaultValue={villa?.category ?? VillaCategory.villa}
             className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
           >
-            <option value="villa">Villa</option>
-            <option value="bungalov">Bungalov</option>
+            {facilityTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
       </div>

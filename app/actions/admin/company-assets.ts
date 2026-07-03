@@ -12,6 +12,7 @@ const ASSET_TYPES = [
   "tursabLogo",
   "region",
   "facilityCategory",
+  "villaDocument",
 ] as const;
 type AssetType = (typeof ASSET_TYPES)[number];
 
@@ -59,7 +60,9 @@ export async function uploadCompanyAsset(
   const allowedExtensions =
     assetType === "favicon"
       ? [".ico", ".png", ".svg"]
-      : [".png", ".svg", ".jpg", ".jpeg", ".webp"];
+      : assetType === "villaDocument"
+        ? [".png", ".jpg", ".jpeg", ".webp", ".pdf"]
+        : [".png", ".svg", ".jpg", ".jpeg", ".webp"];
 
   if (!allowedExtensions.includes(extension)) {
     return {
@@ -70,7 +73,11 @@ export async function uploadCompanyAsset(
 
   try {
     const subDir =
-      assetType === "facilityCategory" ? "facility-categories" : "company";
+      assetType === "facilityCategory"
+        ? "facility-categories"
+        : assetType === "villaDocument"
+          ? "villa-documents"
+          : "company";
     const uploadDir = path.join(process.cwd(), "public", "uploads", subDir);
     await mkdir(uploadDir, { recursive: true });
 

@@ -33,6 +33,24 @@ const ownerSelect = {
   },
 } as const;
 
+export async function getActiveVillaOwners() {
+  return prisma.villaOwner.findMany({
+    where: { active: true },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      email: true,
+      type: true,
+    },
+    orderBy: { name: "asc" },
+  });
+}
+
+export type ActiveVillaOwnerOption = Awaited<
+  ReturnType<typeof getActiveVillaOwners>
+>[number];
+
 export async function getVillaOwners() {
   return prisma.villaOwner.findMany({
     select: ownerSelect,

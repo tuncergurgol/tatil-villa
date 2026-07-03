@@ -119,7 +119,7 @@ const villas = [
   {
     slug: "bungalov-masal",
     name: "Bungalov Masal",
-    category: VillaCategory.bungalov,
+    category: VillaCategory.apart,
     regionSlug: "fethiye-merkeze-yakin",
     location: "Fethiye Merkeze Yakın",
     guests: 2,
@@ -301,7 +301,7 @@ const villas = [
   {
     slug: "bungalov-masal-2",
     name: "Bungalov Masal 2",
-    category: VillaCategory.bungalov,
+    category: VillaCategory.apart,
     regionSlug: "fethiye-merkeze-yakin",
     location: "Fethiye Merkeze Yakın",
     guests: 4,
@@ -516,6 +516,8 @@ async function main() {
         ...villaData,
         regionId,
         ownerId: ownerIds[index % ownerIds.length],
+        documentNo: index === 0 ? "" : `48-${13760 + index}`,
+        active: true,
       },
     });
   }

@@ -1,0 +1,10 @@
+-- CreateEnum
+CREATE TYPE "TourismDocumentType" AS ENUM ('KONUT_BELGESI', 'TURIZM_ISLETME_BELGESI', 'KISMI_TURIZM_ISLETME_BELGESI', 'TURIZM_YATIRIMI_BELGESI', 'BASIT_KONAKLAMA', 'PLAJ_ISLETMESI');
+
+-- AlterTable
+ALTER TABLE "Villa" ADD COLUMN "documentType" "TourismDocumentType",
+ADD COLUMN "documentOwnerName" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "documentAddress" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "documentRoomCapacity" INTEGER,
+ADD COLUMN "documentBedCapacity" INTEGER,
+ADD COLUMN "documentImageUrl" TEXT NOT NULL DEFAULT '';

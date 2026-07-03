@@ -15,6 +15,7 @@ import {
 export type VillaOwnerActionState = {
   success?: boolean;
   error?: string;
+  id?: string;
 };
 
 const optionalEmail = z
@@ -160,6 +161,7 @@ function validateTurkeyLocation(
 
 function revalidateOwnerPaths() {
   revalidatePath("/admin/tanimlamalar/villa-sahipleri");
+  revalidatePath("/admin/villalar");
 }
 
 export async function createVillaOwner(
@@ -180,11 +182,11 @@ export async function createVillaOwner(
   if (locationError) return { error: locationError };
 
   try {
-    await prisma.villaOwner.create({
+    const created = await prisma.villaOwner.create({
       data: toOwnerData(parsed.data),
     });
     revalidateOwnerPaths();
-    return { success: true };
+    return { success: true, id: created.id };
   } catch {
     return { error: "Villa sahibi kaydedilemedi" };
   }

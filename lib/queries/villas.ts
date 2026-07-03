@@ -31,6 +31,9 @@ function mapVilla(
     popular: boolean;
     deal: boolean;
     recommended: boolean;
+    seoTitle: string;
+    seoDescription: string;
+    seoKeywords: string;
     region: { slug: string; name: string };
   } | null
 ) {
@@ -39,7 +42,7 @@ function mapVilla(
     id: villa.id,
     slug: villa.slug,
     name: villa.name,
-    category: villa.category as "villa" | "bungalov",
+    category: villa.category,
     region: villa.region.slug,
     regionName: villa.region.name,
     location: villa.location,
@@ -55,6 +58,9 @@ function mapVilla(
     popular: villa.popular,
     deal: villa.deal,
     recommended: villa.recommended,
+    seoTitle: villa.seoTitle,
+    seoDescription: villa.seoDescription,
+    seoKeywords: villa.seoKeywords,
   };
 }
 
