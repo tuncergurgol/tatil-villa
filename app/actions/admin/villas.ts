@@ -9,6 +9,7 @@ import {
 import { normalizeOwnerPhone } from "@/lib/villa-owner-utils";
 import { syncVillaRooms } from "@/lib/queries/villa-rooms";
 import { RegionLevel } from "@/lib/region-levels";
+import { DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID } from "@/lib/villa-rules-defaults";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 
@@ -78,7 +79,7 @@ export async function createVilla(formData: FormData) {
       featured: formData.get("featured") === "on",
       popular: formData.get("popular") === "on",
       deal: formData.get("deal") === "on",
-      recommended: formData.get("recommended") === "on",
+      recommended: true,
     },
   });
 
@@ -365,14 +366,14 @@ export async function updateVillaRules(id: string, formData: FormData) {
     .map((value) => String(value).trim())
     .filter(Boolean);
 
-  const prepaymentPaymentTypeId = String(
-    formData.get("prepaymentPaymentTypeId") ?? ""
-  ).trim();
+  const prepaymentPaymentTypeId =
+    String(formData.get("prepaymentPaymentTypeId") ?? "").trim() ||
+    DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID;
 
   await prisma.villa.update({
     where: { id },
     data: {
-      prepaymentPaymentTypeId: prepaymentPaymentTypeId || null,
+      prepaymentPaymentTypeId,
       checkInTime: String(formData.get("checkInTime") ?? "16:00"),
       checkOutTime: String(formData.get("checkOutTime") ?? "10:00"),
       allowBaby: parseBool(formData.get("allowBaby")),

@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import type { Villa } from "@prisma/client";
 import StatusPillToggle from "@/components/admin/villas/StatusPillToggle";
+import {
+  resolveAllowBabyDefault,
+  resolveAllowChildrenDefault,
+  resolvePrepaymentPaymentTypeId,
+} from "@/lib/villa-rules-defaults";
 
 interface PrepaymentPaymentTypeOption {
   id: string;
@@ -39,8 +44,21 @@ export default function VillaRulesTab({
   villa,
   prepaymentPaymentTypes,
 }: VillaRulesTabProps) {
-  const [allowBaby, setAllowBaby] = useState(villa.allowBaby);
-  const [allowChildren, setAllowChildren] = useState(villa.allowChildren);
+  const defaultPrepaymentId = useMemo(
+    () =>
+      resolvePrepaymentPaymentTypeId(
+        villa.prepaymentPaymentTypeId,
+        prepaymentPaymentTypes
+      ),
+    [villa.prepaymentPaymentTypeId, prepaymentPaymentTypes]
+  );
+
+  const [allowBaby, setAllowBaby] = useState(
+    resolveAllowBabyDefault(villa.allowBaby)
+  );
+  const [allowChildren, setAllowChildren] = useState(
+    resolveAllowChildrenDefault(villa.allowChildren)
+  );
   const [allowEvents, setAllowEvents] = useState(villa.allowEvents);
   const [allowSmoking, setAllowSmoking] = useState(villa.allowSmoking);
   const [allowPets, setAllowPets] = useState(villa.allowPets);
@@ -72,10 +90,9 @@ export default function VillaRulesTab({
         </p>
         <select
           name="prepaymentPaymentTypeId"
-          defaultValue={villa.prepaymentPaymentTypeId ?? ""}
+          defaultValue={defaultPrepaymentId}
           className={`${inputClass} max-w-md`}
         >
-          <option value="">Seçiniz</option>
           {prepaymentPaymentTypes.map((option) => (
             <option key={option.id} value={option.id}>
               {option.name}
@@ -108,13 +125,13 @@ export default function VillaRulesTab({
 
         <div className="mt-5 flex flex-wrap gap-2">
           <StatusPillToggle
-            label="Bebeğe İzin Verilir"
+            label="Bebeğe İzin Verilir (0-2 Yaş)"
             name="allowBaby"
             checked={allowBaby}
             onChange={setAllowBaby}
           />
           <StatusPillToggle
-            label="Çocuğa İzin Verilir"
+            label="Çocuğa İzin Verilir (3-12 Yaş)"
             name="allowChildren"
             checked={allowChildren}
             onChange={setAllowChildren}

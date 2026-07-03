@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Villa, VillaOwner, VillaPool } from "@prisma/client";
 import { ExternalLink, Save } from "lucide-react";
 import {
@@ -12,6 +13,7 @@ import {
   updateVillaPersonel,
   updateVillaRules,
 } from "@/app/actions/admin/villas";
+import VillaBedroomReduceModal from "@/components/admin/villas/VillaBedroomReduceModal";
 import VillaRoomsTab from "@/components/admin/villas/VillaRoomsTab";
 import VillaGalleryTab from "@/components/admin/villas/VillaGalleryTab";
 import VillaGeneralTab from "@/components/admin/villas/VillaGeneralTab";
@@ -84,9 +86,25 @@ export default function VillaEditForm({
   prepaymentPaymentTypes,
   regionBreadcrumb,
 }: VillaEditFormProps) {
+  const router = useRouter();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<TabId>("genel");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [bedroomDraft, setBedroomDraft] = useState(villa.bedrooms);
+  const [bedroomReduceConfirm, setBedroomReduceConfirm] = useState<{
+    formData: FormData;
+    newBedroomCount: number;
+  } | null>(null);
+
+  useEffect(() => {
+    setBedroomDraft(villa.bedrooms);
+  }, [villa.bedrooms]);
+
+  function switchTab(tabId: TabId) {
+    setActiveTab(tabId);
+    contentRef.current?.scrollTo({ top: 0 });
+  }
 
   const canSubmit =
     activeTab === "genel" ||
@@ -96,12 +114,13 @@ export default function VillaEditForm({
     activeTab === "kurallar" ||
     activeTab === "konum";
 
-  function handleSubmit(formData: FormData) {
+  function submitForm(formData: FormData) {
     setError(null);
     startTransition(async () => {
       try {
         if (activeTab === "genel") {
           await updateVillaGeneral(villa.id, formData);
+          router.refresh();
         } else if (activeTab === "ozellikler") {
           await updateVillaFeatures(villa.id, formData);
         } else if (activeTab === "meta") {
@@ -113,15 +132,31 @@ export default function VillaEditForm({
         } else if (activeTab === "konum") {
           await updateVillaLocation(villa.id, formData);
         }
+        setBedroomReduceConfirm(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Kayıt başarısız");
       }
     });
   }
 
+  function handleSubmit(formData: FormData) {
+    if (activeTab === "genel") {
+      const newBedrooms = parseInt(String(formData.get("bedrooms") ?? ""), 10);
+      if (Number.isFinite(newBedrooms) && newBedrooms < rooms.length) {
+        setBedroomReduceConfirm({
+          formData,
+          newBedroomCount: newBedrooms,
+        });
+        return;
+      }
+    }
+
+    submitForm(formData);
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="flex h-[calc(100dvh-3rem)] flex-col gap-4">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-gray-400 uppercase">
             Villa Düzenle
@@ -138,8 +173,8 @@ export default function VillaEditForm({
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="shrink-0 border-b border-gray-200 bg-white px-6">
           <div className="flex flex-wrap gap-1">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -147,7 +182,7 @@ export default function VillaEditForm({
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => switchTab(tab.id)}
                   className={`border-b-2 px-4 py-4 text-sm font-medium transition ${
                     isActive
                       ? "border-teal-600 text-teal-700"
@@ -161,8 +196,14 @@ export default function VillaEditForm({
           </div>
         </div>
 
-        <form action={handleSubmit}>
-          <div className="p-6">
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit(new FormData(event.currentTarget));
+          }}
+        >
+          <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-6">
             {error ? (
               <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
@@ -173,6 +214,9 @@ export default function VillaEditForm({
               <VillaGeneralTab
                 villa={villa}
                 regionBreadcrumb={regionBreadcrumb}
+                roomCount={rooms.length}
+                bedroomDraft={bedroomDraft}
+                onBedroomsChange={setBedroomDraft}
               />
             </div>
             <div className={activeTab === "galeri" ? "block" : "hidden"}>
@@ -186,7 +230,7 @@ export default function VillaEditForm({
               <VillaRoomsTab
                 villaId={villa.id}
                 villaName={villa.name}
-                bedroomCount={villa.bedrooms}
+                bedroomCount={bedroomDraft}
                 rooms={rooms}
                 galleryImages={galleryImages}
               />
@@ -229,7 +273,7 @@ export default function VillaEditForm({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
             <Link
               href="/admin/villalar"
               className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
@@ -247,6 +291,19 @@ export default function VillaEditForm({
           </div>
         </form>
       </div>
+
+      <VillaBedroomReduceModal
+        open={bedroomReduceConfirm !== null}
+        currentRoomCount={rooms.length}
+        newBedroomCount={bedroomReduceConfirm?.newBedroomCount ?? 0}
+        isPending={isPending}
+        onCancel={() => setBedroomReduceConfirm(null)}
+        onConfirm={() => {
+          if (bedroomReduceConfirm) {
+            submitForm(bedroomReduceConfirm.formData);
+          }
+        }}
+      />
     </div>
   );
 }

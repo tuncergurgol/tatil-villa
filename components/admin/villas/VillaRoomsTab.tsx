@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BedDouble, Building2, Pencil } from "lucide-react";
 import type { VillaRoom } from "@prisma/client";
+import VillaBedroomMismatchAlert from "@/components/admin/villas/VillaBedroomMismatchAlert";
 import VillaRoomEditModal from "@/components/admin/villas/VillaRoomEditModal";
 import {
   formatBedSummary,
@@ -35,6 +36,11 @@ export default function VillaRoomsTab({
 
   return (
     <div className="space-y-5">
+      <VillaBedroomMismatchAlert
+        bedroomCount={bedroomCount}
+        roomCount={rooms.length}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-gray-600" />

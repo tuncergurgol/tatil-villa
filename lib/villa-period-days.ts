@@ -1,0 +1,42 @@
+import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
+import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
+
+export type VillaPricePeriodDayItem = {
+  id: string;
+  periodId: string;
+  villaId: string;
+  date: Date;
+  availability: VillaPeriodAvailability;
+  nightlyPrice: number;
+  nightlyPriceCurrency: VillaPeriodCurrency;
+  nightlyPriceWithoutCommission: number | null;
+  discountedNightlyPrice: number | null;
+};
+
+export type VillaPeriodDayPricingSnapshot = {
+  availability: VillaPeriodAvailability;
+  nightlyPrice: number;
+  nightlyPriceCurrency: VillaPeriodCurrency;
+  nightlyPriceWithoutCommission: number | null;
+  discountedNightlyPrice: number | null;
+  weeklyPrice: number | null;
+  prepaymentRate: number | null;
+  commissionRate: number | null;
+  minStayNights: number | null;
+  cleaningDayCount: number | null;
+  cleaningFee: number | null;
+  cleaningFeeCurrency: VillaPeriodCurrency;
+  damageDeposit: number | null;
+  damageDepositCurrency: VillaPeriodCurrency;
+  petCleaningFee: number | null;
+  petCleaningFeeCurrency: VillaPeriodCurrency;
+  petDamageDeposit: number | null;
+  petDamageDepositCurrency: VillaPeriodCurrency;
+  underfloorHeatingFee: number | null;
+  underfloorHeatingFeeCurrency: VillaPeriodCurrency;
+  extraBedFee: number | null;
+  extraBedFeeCurrency: VillaPeriodCurrency;
+  discount1Rate: number | null;
+  discount2Rate: number | null;
+  extraDiscountAmount: number | null;
+};

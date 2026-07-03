@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
 import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
 
 interface VillaPriceInclusionPickerProps {
@@ -8,10 +8,14 @@ interface VillaPriceInclusionPickerProps {
   selectedIds: string[];
 }
 
-export default function VillaPriceInclusionPicker({
-  items,
-  selectedIds,
-}: VillaPriceInclusionPickerProps) {
+export interface VillaPriceInclusionPickerHandle {
+  applyDefaults: () => void;
+}
+
+const VillaPriceInclusionPicker = forwardRef<
+  VillaPriceInclusionPickerHandle,
+  VillaPriceInclusionPickerProps
+>(function VillaPriceInclusionPicker({ items, selectedIds }, ref) {
   const defaultIds = useMemo(
     () => items.filter((item) => item.isDefault).map((item) => item.id),
     [items]
@@ -23,6 +27,16 @@ export default function VillaPriceInclusionPicker({
   }, [defaultIds, selectedIds]);
 
   const [selected, setSelected] = useState(initial);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyDefaults: () => {
+        setSelected(new Set(defaultIds));
+      },
+    }),
+    [defaultIds]
+  );
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -67,10 +81,17 @@ export default function VillaPriceInclusionPicker({
               onChange={() => toggle(item.id)}
               className="sr-only"
             />
-            <span className="text-sm text-gray-800">{item.description}</span>
+            <span className="text-sm text-gray-800">
+              {item.isDefault ? (
+                <span className="mr-1 text-sky-500">★</span>
+              ) : null}
+              {item.description}
+            </span>
           </label>
         );
       })}
     </div>
   );
-}
+});
+
+export default VillaPriceInclusionPicker;

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Villa, VillaCategory } from "@prisma/client";
 import { Sparkles } from "lucide-react";
 import VillaAiDescriptionModal from "@/components/admin/villas/VillaAiDescriptionModal";
+import VillaBedroomMismatchAlert from "@/components/admin/villas/VillaBedroomMismatchAlert";
 import RichTextEditor from "@/components/admin/villas/RichTextEditor";
 import StatusPillToggle from "@/components/admin/villas/StatusPillToggle";
 import { facilityTypeOptions } from "@/lib/facility-type";
@@ -12,6 +13,9 @@ import { salesTypeOptions } from "@/lib/sales-type";
 interface VillaGeneralTabProps {
   villa: Villa;
   regionBreadcrumb: string;
+  roomCount: number;
+  bedroomDraft: number;
+  onBedroomsChange: (value: number) => void;
 }
 
 function Field({
@@ -42,6 +46,9 @@ const inputClass =
 export default function VillaGeneralTab({
   villa,
   regionBreadcrumb,
+  roomCount,
+  bedroomDraft,
+  onBedroomsChange,
 }: VillaGeneralTabProps) {
   const [active, setActive] = useState(villa.active);
   const [showInSearch, setShowInSearch] = useState(villa.showInSearch);
@@ -52,6 +59,11 @@ export default function VillaGeneralTab({
 
   return (
     <div className="space-y-8">
+      <VillaBedroomMismatchAlert
+        bedroomCount={bedroomDraft}
+        roomCount={roomCount}
+      />
+
       <section>
         <h2 className="mb-4 text-sm font-semibold text-gray-800">
           Temel Bilgiler
@@ -75,7 +87,7 @@ export default function VillaGeneralTab({
           <Field label="Tesis Tipi">
             <select
               name="category"
-              defaultValue={villa.category}
+              defaultValue={villa.category ?? "villa"}
               className={inputClass}
             >
               {facilityTypeOptions.map((option) => (
@@ -137,7 +149,11 @@ export default function VillaGeneralTab({
                 type="number"
                 min={0}
                 required
-                defaultValue={villa.bedrooms}
+                value={bedroomDraft}
+                onChange={(event) => {
+                  const parsed = parseInt(event.target.value, 10);
+                  onBedroomsChange(Number.isFinite(parsed) ? parsed : 0);
+                }}
                 className={inputClass}
               />
             </Field>

@@ -18,6 +18,18 @@ enum SalesType {
   garanti
 }
 
+enum VillaPeriodAvailability {
+  available
+  closed
+}
+
+enum VillaPeriodCurrency {
+  TL
+  EUR
+  USD
+  GBP
+}
+
 enum TourismDocumentType {
   KONUT_BELGESI
   TURIZM_ISLETME_BELGESI
@@ -157,7 +169,7 @@ model Villa {
   b2bSharing     Boolean       @default(false)
   showInSearch   Boolean       @default(true)
   showInOffer    Boolean       @default(true)
-  prepaymentPaymentTypeId String?
+  prepaymentPaymentTypeId String? @default("prepay_checkin_plus_1_day")
   prepaymentPaymentType   PrepaymentPaymentTypeOption? @relation(fields: [prepaymentPaymentTypeId], references: [id], onDelete: SetNull)
   ribbonText1    String        @default("")
   ribbonText2    String        @default("")
@@ -185,8 +197,8 @@ model Villa {
   calendarManagerPhone  String  @default("")
   checkInTime           String  @default("16:00")
   checkOutTime          String  @default("10:00")
-  allowBaby             Boolean @default(false)
-  allowChildren         Boolean @default(false)
+  allowBaby             Boolean @default(true)
+  allowChildren         Boolean @default(true)
   allowEvents           Boolean @default(false)
   allowSmoking          Boolean @default(false)
   allowPets             Boolean @default(false)
@@ -202,6 +214,8 @@ model Villa {
   icalSyncEvents        VillaIcalSyncEvent[]
   rooms                 VillaRoom[]
   pools          VillaPool[]
+  pricePeriods   VillaPricePeriod[]
+  pricePeriodDays VillaPricePeriodDay[]
   bookings       Booking[]
 
   createdAt DateTime @default(now())
@@ -217,6 +231,86 @@ model Villa {
   @@index([dealSortOrder])
   @@index([popularSortOrder])
   @@index([recommendedSortOrder])
+}
+
+model VillaPricePeriod {
+  id                            String                  @id @default(cuid())
+  villaId                       String
+  villa                         Villa                   @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  startDate                     DateTime                @db.Date
+  endDate                       DateTime                @db.Date
+  availability                  VillaPeriodAvailability @default(available)
+  nightlyPrice                  Int
+  nightlyPriceCurrency          VillaPeriodCurrency     @default(TL)
+  weeklyPrice                   Int?
+  prepaymentRate                Int?
+  commissionRate                Int?
+  nightlyPriceWithoutCommission Int?
+  discountedNightlyPrice        Int?
+  minStayNights                 Int?
+  cleaningDayCount              Int?
+  cleaningFee                   Int?
+  cleaningFeeCurrency           VillaPeriodCurrency     @default(TL)
+  damageDeposit                 Int?
+  damageDepositCurrency         VillaPeriodCurrency     @default(TL)
+  petCleaningFee                Int?
+  petCleaningFeeCurrency        VillaPeriodCurrency     @default(TL)
+  petDamageDeposit              Int?
+  petDamageDepositCurrency      VillaPeriodCurrency     @default(TL)
+  underfloorHeatingFee          Int?
+  underfloorHeatingFeeCurrency  VillaPeriodCurrency     @default(TL)
+  extraBedFee                   Int?
+  extraBedFeeCurrency           VillaPeriodCurrency     @default(TL)
+  discount1Rate                 Int?
+  discount2Rate                 Int?
+  extraDiscountAmount           Int?
+  days                          VillaPricePeriodDay[]
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
+
+  @@index([villaId])
+  @@index([villaId, startDate])
+  @@index([villaId, endDate])
+}
+
+model VillaPricePeriodDay {
+  id                            String                  @id @default(cuid())
+  periodId                      String
+  period                        VillaPricePeriod        @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  villaId                       String
+  villa                         Villa                   @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  date                          DateTime                @db.Date
+  availability                  VillaPeriodAvailability @default(available)
+  nightlyPrice                  Int
+  nightlyPriceCurrency          VillaPeriodCurrency     @default(TL)
+  nightlyPriceWithoutCommission Int?
+  discountedNightlyPrice        Int?
+  weeklyPrice                   Int?
+  prepaymentRate                Int?
+  commissionRate                Int?
+  minStayNights                 Int?
+  cleaningDayCount              Int?
+  cleaningFee                   Int?
+  cleaningFeeCurrency           VillaPeriodCurrency     @default(TL)
+  damageDeposit                 Int?
+  damageDepositCurrency         VillaPeriodCurrency     @default(TL)
+  petCleaningFee                Int?
+  petCleaningFeeCurrency        VillaPeriodCurrency     @default(TL)
+  petDamageDeposit              Int?
+  petDamageDepositCurrency      VillaPeriodCurrency     @default(TL)
+  underfloorHeatingFee          Int?
+  underfloorHeatingFeeCurrency  VillaPeriodCurrency     @default(TL)
+  extraBedFee                   Int?
+  extraBedFeeCurrency           VillaPeriodCurrency     @default(TL)
+  discount1Rate                 Int?
+  discount2Rate                 Int?
+  extraDiscountAmount           Int?
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
+
+  @@unique([villaId, date])
+  @@index([periodId])
+  @@index([villaId, date])
 }
 
 model VillaPool {

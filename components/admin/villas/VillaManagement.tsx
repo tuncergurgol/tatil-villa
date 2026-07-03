@@ -17,6 +17,7 @@ import {
   Plus,
 } from "lucide-react";
 import { deleteVilla } from "@/app/actions/admin/villas";
+import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import VillaDocumentModal from "@/components/admin/villas/VillaDocumentModal";
 import type { AdminVillaListItem } from "@/lib/queries/admin-villas";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
@@ -87,7 +88,7 @@ function VillaRowMenu({
     },
     {
       label: "Hızlı Fiyat",
-      href: `/admin/villalar/${villaId}/duzenle`,
+      href: villaTakvimPath(villaId),
       icon: FileText,
     },
     {
@@ -370,7 +371,7 @@ export default function VillaManagement({
                     </ActionButton>
 
                     <ActionButton
-                      href={`/admin/konaklama/takvim?villa=${villa.id}`}
+                      href={villaTakvimPath(villa.id)}
                       className="border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                     >
                       <Calendar className="h-3.5 w-3.5" />

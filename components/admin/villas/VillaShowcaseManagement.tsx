@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import type { Villa } from "@prisma/client";
 
 interface VillaShowcaseManagementProps {
   villa: Villa;
+}
+
+export interface VillaShowcaseManagementHandle {
+  applyDefaults: () => void;
 }
 
 function ShowcaseRow({
@@ -59,15 +63,22 @@ function ShowcaseRow({
   );
 }
 
-export default function VillaShowcaseManagement({
-  villa,
-}: VillaShowcaseManagementProps) {
-  const useDefaults =
-    !villa.deal && !villa.popular && !villa.recommended;
-  const [deal, setDeal] = useState(useDefaults ? true : villa.deal);
-  const [popular, setPopular] = useState(useDefaults ? true : villa.popular);
-  const [recommended, setRecommended] = useState(
-    useDefaults ? true : villa.recommended
+const VillaShowcaseManagement = forwardRef<
+  VillaShowcaseManagementHandle,
+  VillaShowcaseManagementProps
+>(function VillaShowcaseManagement({ villa }, ref) {
+  const [deal, setDeal] = useState(villa.deal);
+  const [popular, setPopular] = useState(villa.popular);
+  const [recommended, setRecommended] = useState(true);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyDefaults: () => {
+        setRecommended(true);
+      },
+    }),
+    []
   );
 
   return (
@@ -98,4 +109,6 @@ export default function VillaShowcaseManagement({
       />
     </div>
   );
-}
+});
+
+export default VillaShowcaseManagement;

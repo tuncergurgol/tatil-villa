@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
 import type { AmenityCategoryItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
 
@@ -11,6 +11,10 @@ interface VillaFeaturesPickerProps {
   selectedFacilityCategoryNames?: string[];
   isNewVilla?: boolean;
   showFacilityCategories?: boolean;
+}
+
+export interface VillaFeaturesPickerHandle {
+  applyDefaults: () => void;
 }
 
 function isLongTextAmenity(name: string) {
@@ -45,14 +49,20 @@ function resolveLinkedFacilityCategories(
   return linked;
 }
 
-export default function VillaFeaturesPicker({
-  amenityCategories,
-  facilityCategories,
-  selectedAmenityNames = [],
-  selectedFacilityCategoryNames = [],
-  isNewVilla = false,
-  showFacilityCategories = true,
-}: VillaFeaturesPickerProps) {
+const VillaFeaturesPicker = forwardRef<
+  VillaFeaturesPickerHandle,
+  VillaFeaturesPickerProps
+>(function VillaFeaturesPicker(
+  {
+    amenityCategories,
+    facilityCategories,
+    selectedAmenityNames = [],
+    selectedFacilityCategoryNames = [],
+    isNewVilla = false,
+    showFacilityCategories = true,
+  },
+  ref
+) {
   const amenityFacilityMap = useMemo(
     () => buildAmenityFacilityMap(amenityCategories),
     [amenityCategories]
@@ -91,6 +101,20 @@ export default function VillaFeaturesPicker({
   const [selectedAmenities, setSelectedAmenities] = useState(initialAmenities);
   const [selectedFacilityCategories, setSelectedFacilityCategories] = useState(
     initialFacilityCategories
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyDefaults: () => {
+        const defaults = new Set(defaultAmenityNames);
+        setSelectedAmenities(defaults);
+        setSelectedFacilityCategories(
+          resolveLinkedFacilityCategories(defaults, amenityFacilityMap)
+        );
+      },
+    }),
+    [amenityFacilityMap, defaultAmenityNames]
   );
 
   const lockedFacilityCategories = useMemo(
@@ -260,4 +284,6 @@ export default function VillaFeaturesPicker({
       )}
     </div>
   );
-}
+});
+
+export default VillaFeaturesPicker;
