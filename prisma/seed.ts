@@ -2,7 +2,14 @@ import { PrismaClient, RegionLevel, VillaCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { TURKEY_REGIONS } from "./regions-data";
 import { getRegionContentFields } from "./region-content-data";
+import { SURROUNDING_SEED_DATA } from "./surrounding-data";
+import { AMENITY_SEED_DATA } from "./amenity-data";
 import { syncAlphabeticalSiblingSortOrders } from "../lib/region-sort";
+import { syncAllAmenitySortOrders } from "../lib/amenity-sort";
+import { PRICE_INCLUSION_SEED_DATA } from "./price-inclusion-data";
+import { syncAllPriceInclusionSortOrders } from "../lib/price-inclusion-sort";
+import { FACILITY_CATEGORY_SEED_DATA } from "./facility-category-data";
+import { syncAlphabeticalFacilityCategorySortOrders } from "../lib/facility-category-sort";
 
 const prisma = new PrismaClient();
 
@@ -320,6 +327,13 @@ async function main() {
 
   await prisma.booking.deleteMany();
   await prisma.villa.deleteMany();
+  await prisma.villaOwner.deleteMany();
+  await prisma.surroundingLocation.deleteMany();
+  await prisma.surroundingCategory.deleteMany();
+  await prisma.amenity.deleteMany();
+  await prisma.amenityCategory.deleteMany();
+  await prisma.priceInclusionItem.deleteMany();
+  await prisma.facilityCategory.deleteMany();
   await prisma.campaign.deleteMany();
   await prisma.region.deleteMany();
   await prisma.user.deleteMany();
@@ -363,7 +377,136 @@ async function main() {
     await prisma.campaign.create({ data: campaign });
   }
 
-  for (const villa of villas) {
+  for (const [categoryIndex, category] of SURROUNDING_SEED_DATA.entries()) {
+    const createdCategory = await prisma.surroundingCategory.create({
+      data: {
+        name: category.name,
+        slug: category.slug,
+        sortOrder: categoryIndex + 1,
+      },
+    });
+
+    for (const [locationIndex, locationName] of category.locations.entries()) {
+      await prisma.surroundingLocation.create({
+        data: {
+          name: locationName,
+          categoryId: createdCategory.id,
+          sortOrder: locationIndex + 1,
+        },
+      });
+    }
+  }
+
+  for (const [categoryIndex, category] of AMENITY_SEED_DATA.entries()) {
+    const createdCategory = await prisma.amenityCategory.create({
+      data: {
+        name: category.name,
+        slug: category.slug,
+        sortOrder: categoryIndex + 1,
+      },
+    });
+
+    for (const [itemIndex, item] of category.items.entries()) {
+      await prisma.amenity.create({
+        data: {
+          name: item.name,
+          categoryId: createdCategory.id,
+          isDefault: item.isDefault ?? false,
+          sortOrder: itemIndex + 1,
+        },
+      });
+    }
+  }
+
+  await syncAllAmenitySortOrders();
+
+  for (const [index, item] of PRICE_INCLUSION_SEED_DATA.entries()) {
+    await prisma.priceInclusionItem.create({
+      data: {
+        description: item.description,
+        type: item.type,
+        isDefault: item.isDefault ?? false,
+        sortOrder: index + 1,
+      },
+    });
+  }
+
+  await syncAllPriceInclusionSortOrders();
+
+  for (const [index, category] of FACILITY_CATEGORY_SEED_DATA.entries()) {
+    await prisma.facilityCategory.create({
+      data: {
+        name: category.name,
+        slug: category.slug,
+        tag: category.tag ?? "",
+        image: category.image ?? "",
+        description: category.description ?? "",
+        longDescription: category.longDescription ?? "",
+        seoTitle: category.seoTitle ?? "",
+        seoDescription: category.seoDescription ?? "",
+        seoKeywords: category.seoKeywords ?? "",
+        published: category.published ?? false,
+        showInSearch: category.showInSearch ?? false,
+        showInOffer: category.showInOffer ?? false,
+        sortOrder: index + 1,
+      },
+    });
+  }
+
+  await syncAlphabeticalFacilityCategorySortOrders();
+
+  const sampleOwners = [
+    {
+      name: "MEHMET GÜLCÜ",
+      firstName: "MEHMET",
+      lastName: "GÜLCÜ",
+      phone: "+905387948043",
+      email: "mehmet.gulcu@example.com",
+      tcKimlikNo: "12345678901",
+      bankAccountHolder: "MEHMET GÜLCÜ",
+      bankIban: "TR120006400000112345678901",
+      accountingCode: "320.01",
+      country: "Türkiye",
+      mernisIlceCode: "2087",
+      address: "Fethiye / Muğla",
+    },
+    {
+      name: "AYNUR AKTAŞ",
+      firstName: "AYNUR",
+      lastName: "AKTAŞ",
+      phone: "+905076050515",
+      email: "aynur.aktas@example.com",
+      tcKimlikNo: "23456789012",
+      bankAccountHolder: "AYNUR AKTAŞ",
+      bankIban: "TR330006100519786457841326",
+      accountingCode: "320.02",
+      country: "Türkiye",
+      mernisIlceCode: "1121",
+      address: "Kaş / Antalya",
+    },
+    {
+      name: "Hamdi Arda Gürsoy",
+      firstName: "Hamdi Arda",
+      lastName: "Gürsoy",
+      phone: "+905538534986",
+      email: "hamdi.gursoy@example.com",
+      tcKimlikNo: "34567890123",
+      bankAccountHolder: "Hamdi Arda Gürsoy",
+      bankIban: "TR760006200000100012345678",
+      accountingCode: "320.03",
+      country: "Türkiye",
+      mernisIlceCode: "1704",
+      address: "Bodrum / Muğla",
+    },
+  ];
+
+  const ownerIds: string[] = [];
+  for (const owner of sampleOwners) {
+    const created = await prisma.villaOwner.create({ data: owner });
+    ownerIds.push(created.id);
+  }
+
+  for (const [index, villa] of villas.entries()) {
     const { regionSlug, ...villaData } = villa;
     const regionId = regionMap.get(regionSlug);
     if (!regionId) continue;
@@ -372,6 +515,7 @@ async function main() {
       data: {
         ...villaData,
         regionId,
+        ownerId: ownerIds[index % ownerIds.length],
       },
     });
   }

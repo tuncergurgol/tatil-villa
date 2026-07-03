@@ -1,10 +1,22 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import AmenityManagement from "@/components/admin/amenities/AmenityManagement";
+import { getAmenityAdminData } from "@/lib/queries/amenities";
+import { getFacilityCategoriesForPicker } from "@/lib/queries/facility-categories";
 
-export default function VillaOlanaklariPage() {
+export const dynamic = "force-dynamic";
+
+export default async function VillaOlanaklariPage() {
+  const [{ categories, totalAmenities, defaultCount }, facilityCategories] =
+    await Promise.all([
+      getAmenityAdminData(),
+      getFacilityCategoriesForPicker(),
+    ]);
+
   return (
-    <ComingSoon
-      title="Villa Olanakları"
-      description="Villa olanakları tanımlamaları yakında eklenecek."
+    <AmenityManagement
+      categories={categories}
+      facilityCategories={facilityCategories}
+      totalAmenities={totalAmenities}
+      defaultCount={defaultCount}
     />
   );
 }

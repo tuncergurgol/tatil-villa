@@ -1,10 +1,15 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import SurroundingManagement from "@/components/admin/surrounding/SurroundingManagement";
+import { getSurroundingAdminData } from "@/lib/queries/surrounding";
 
-export default function CevreKonumPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CevreKonumPage() {
+  const { categories, totalLocations } = await getSurroundingAdminData();
+
   return (
-    <ComingSoon
-      title="Çevre Konum"
-      description="Çevre konum tanımlamaları yakında eklenecek."
+    <SurroundingManagement
+      categories={categories}
+      totalLocations={totalLocations}
     />
   );
 }

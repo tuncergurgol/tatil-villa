@@ -60,6 +60,41 @@ model Region {
   @@index([level])
 }
 
+enum VillaOwnerType {
+  GERCEK_KISI
+  TUZEL_KISI
+}
+
+model VillaOwner {
+  id                   String         @id @default(cuid())
+  type                 VillaOwnerType @default(GERCEK_KISI)
+  name                 String
+  firstName            String         @default("")
+  lastName             String         @default("")
+  companyTitle         String         @default("")
+  authorizedPersonName String         @default("")
+  phone                String         @default("")
+  email                String         @default("")
+  tcKimlikNo           String         @default("")
+  taxOffice            String         @default("")
+  taxNumber            String         @default("")
+  bankAccountHolder    String         @default("")
+  bankIban             String         @default("")
+  accountingCode       String         @default("")
+  country              String         @default("Türkiye")
+  mernisIlceCode       String?
+  address              String         @default("") @db.Text
+  active               Boolean        @default(true)
+  userId               String?        @unique
+  user                 User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  villas               Villa[]
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  @@index([active])
+  @@index([type])
+}
+
 model Villa {
   id             String        @id @default(cuid())
   slug           String        @unique
@@ -67,6 +102,8 @@ model Villa {
   category       VillaCategory @default(villa)
   regionId       String
   region         Region        @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  ownerId        String?
+  owner          VillaOwner?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   location       String
   guests         Int
   bedrooms       Int
@@ -76,6 +113,7 @@ model Villa {
   images         String[]
   description    String        @db.Text
   amenities      String[]
+  facilityCategories String[] @default([])
   featured       Boolean       @default(false)
   popular        Boolean       @default(false)
   deal           Boolean       @default(false)
@@ -86,6 +124,7 @@ model Villa {
   updatedAt DateTime @updatedAt
 
   @@index([regionId])
+  @@index([ownerId])
   @@index([popular])
   @@index([deal])
   @@index([recommended])
@@ -103,6 +142,115 @@ model Campaign {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model SurroundingCategory {
+  id        String               @id @default(cuid())
+  name      String
+  slug      String               @unique
+  sortOrder Int                  @default(0)
+  active    Boolean              @default(true)
+  locations SurroundingLocation[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([sortOrder])
+  @@index([active])
+}
+
+model SurroundingLocation {
+  id         String              @id @default(cuid())
+  name       String
+  categoryId String
+  category   SurroundingCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  sortOrder  Int                 @default(0)
+  active     Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([categoryId])
+  @@index([sortOrder])
+  @@index([active])
+}
+
+model AmenityCategory {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  sortOrder Int       @default(0)
+  active    Boolean   @default(true)
+  amenities Amenity[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([sortOrder])
+  @@index([active])
+}
+
+model Amenity {
+  id                 String            @id @default(cuid())
+  name               String
+  categoryId         String
+  category           AmenityCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  facilityCategoryId String?
+  facilityCategory   FacilityCategory? @relation(fields: [facilityCategoryId], references: [id], onDelete: SetNull)
+  isDefault          Boolean           @default(false)
+  sortOrder          Int               @default(0)
+  active             Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([categoryId])
+  @@index([facilityCategoryId])
+  @@index([isDefault])
+  @@index([sortOrder])
+  @@index([active])
+}
+
+enum PriceInclusionType {
+  INCLUDED
+  EXCLUDED
+}
+
+model PriceInclusionItem {
+  id          String             @id @default(cuid())
+  description String
+  type        PriceInclusionType @default(INCLUDED)
+  isDefault   Boolean            @default(false)
+  sortOrder   Int                @default(0)
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([type])
+  @@index([isDefault])
+  @@index([sortOrder])
+  @@index([active])
+}
+
+model FacilityCategory {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  tag             String   @default("")
+  image           String   @default("")
+  description     String   @default("") @db.Text
+  longDescription String   @default("") @db.Text
+  seoTitle        String   @default("")
+  seoDescription  String   @default("") @db.Text
+  seoKeywords     String   @default("")
+  published       Boolean  @default(false)
+  showInSearch    Boolean  @default(false)
+  showInOffer     Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  amenities       Amenity[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([published])
+  @@index([showInSearch])
+  @@index([showInOffer])
 }
 
 model Booking {
@@ -136,6 +284,7 @@ model User {
   phone        String   @default("")
   role         UserRole @default(ADMIN)
   active       Boolean  @default(true)
+  villaOwner   VillaOwner?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

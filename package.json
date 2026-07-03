@@ -14,7 +14,12 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "mernis:generate": "tsx prisma/generate-mernis-data.ts",
-    "region:content": "tsx prisma/apply-region-content.ts"
+    "region:content": "tsx prisma/apply-region-content.ts",
+    "surrounding:seed": "tsx prisma/apply-surrounding-seed.ts",
+    "amenity:seed": "tsx prisma/apply-amenity-seed.ts",
+    "amenity:sort": "tsx prisma/sync-amenity-sort.ts",
+    "price-inclusion:seed": "tsx prisma/apply-price-inclusion-seed.ts",
+    "facility-category:seed": "tsx prisma/apply-facility-category-seed.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

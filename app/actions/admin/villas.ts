@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { VillaCategory } from "@prisma/client";
+import {
+  mergeFacilityCategoryNames,
+  resolveFacilityCategoryNamesForAmenities,
+} from "@/lib/amenity-facility-links";
 import { RegionLevel } from "@/lib/region-levels";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
@@ -27,7 +31,20 @@ export async function createVilla(formData: FormData) {
   const regionId = formData.get("regionId") as string;
   await assertMahalleRegion(regionId);
   const imagesRaw = (formData.get("images") as string) || "";
-  const amenitiesRaw = (formData.get("amenities") as string) || "";
+  const amenities = formData
+    .getAll("amenities")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const facilityCategoriesFromForm = formData
+    .getAll("facilityCategories")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const linkedFacilityCategories =
+    await resolveFacilityCategoryNamesForAmenities(amenities);
+  const facilityCategories = mergeFacilityCategoryNames(
+    facilityCategoriesFromForm,
+    linkedFacilityCategories
+  );
 
   await prisma.villa.create({
     data: {
@@ -45,7 +62,8 @@ export async function createVilla(formData: FormData) {
       image: formData.get("image") as string,
       images: imagesRaw.split("\n").map((s) => s.trim()).filter(Boolean),
       description: formData.get("description") as string,
-      amenities: amenitiesRaw.split(",").map((s) => s.trim()).filter(Boolean),
+      amenities,
+      facilityCategories,
       featured: formData.get("featured") === "on",
       popular: formData.get("popular") === "on",
       deal: formData.get("deal") === "on",
@@ -65,7 +83,20 @@ export async function updateVilla(id: string, formData: FormData) {
   await assertMahalleRegion(regionId);
 
   const imagesRaw = (formData.get("images") as string) || "";
-  const amenitiesRaw = (formData.get("amenities") as string) || "";
+  const amenities = formData
+    .getAll("amenities")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const facilityCategoriesFromForm = formData
+    .getAll("facilityCategories")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const linkedFacilityCategories =
+    await resolveFacilityCategoryNamesForAmenities(amenities);
+  const facilityCategories = mergeFacilityCategoryNames(
+    facilityCategoriesFromForm,
+    linkedFacilityCategories
+  );
 
   await prisma.villa.update({
     where: { id },
@@ -84,7 +115,8 @@ export async function updateVilla(id: string, formData: FormData) {
       image: formData.get("image") as string,
       images: imagesRaw.split("\n").map((s) => s.trim()).filter(Boolean),
       description: formData.get("description") as string,
-      amenities: amenitiesRaw.split(",").map((s) => s.trim()).filter(Boolean),
+      amenities,
+      facilityCategories,
       featured: formData.get("featured") === "on",
       popular: formData.get("popular") === "on",
       deal: formData.get("deal") === "on",

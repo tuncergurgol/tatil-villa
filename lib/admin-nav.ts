@@ -23,9 +23,10 @@ export interface NavSection {
 export const tanimlamalarNav: NavLink[] = [
   { label: "Bölgeler", href: "/admin/bolgeler" },
   { label: "Villa Sahipleri", href: "/admin/tanimlamalar/villa-sahipleri" },
-  { label: "Villa Kategorileri", href: "/admin/tanimlamalar/villa-kategorileri" },
+  { label: "Tesis Kategorileri", href: "/admin/tanimlamalar/villa-kategorileri" },
   { label: "Villa Olanakları", href: "/admin/tanimlamalar/villa-olanaklari" },
-  { label: "Çevre Konum", href: "/admin/tanimlamalar/cevre-konum" },
+  { label: "Fiyata Dahil / Değil", href: "/admin/tanimlamalar/fiyata-dahil" },
+  { label: "Çevre ve Konum", href: "/admin/tanimlamalar/cevre-konum" },
 ];
 
 export const adminNavSections: NavSection[] = [

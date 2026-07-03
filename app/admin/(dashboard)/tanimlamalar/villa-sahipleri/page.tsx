@@ -1,10 +1,21 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import VillaOwnerManagement from "@/components/admin/villa-owners/VillaOwnerManagement";
+import { getTurkeyProvinces } from "@/lib/mernis-ilce";
+import { getUnlinkedUsers, getVillaOwners } from "@/lib/queries/villa-owners";
 
-export default function VillaSahipleriPage() {
+export const dynamic = "force-dynamic";
+
+export default async function VillaSahipleriPage() {
+  const [owners, unlinkedUsers] = await Promise.all([
+    getVillaOwners(),
+    getUnlinkedUsers(),
+  ]);
+  const provinces = getTurkeyProvinces();
+
   return (
-    <ComingSoon
-      title="Villa Sahipleri"
-      description="Villa sahipleri tanımlamaları yakında eklenecek."
+    <VillaOwnerManagement
+      owners={owners}
+      unlinkedUsers={unlinkedUsers}
+      provinces={provinces}
     />
   );
 }

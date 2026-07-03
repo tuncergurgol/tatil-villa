@@ -4,7 +4,15 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { requireAdmin } from "@/lib/auth-helpers";
 
-const ASSET_TYPES = ["logo", "favicon", "ogImage", "whiteLogo", "tursabLogo", "region"] as const;
+const ASSET_TYPES = [
+  "logo",
+  "favicon",
+  "ogImage",
+  "whiteLogo",
+  "tursabLogo",
+  "region",
+  "facilityCategory",
+] as const;
 type AssetType = (typeof ASSET_TYPES)[number];
 
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -61,14 +69,16 @@ export async function uploadCompanyAsset(
   }
 
   try {
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "company");
+    const subDir =
+      assetType === "facilityCategory" ? "facility-categories" : "company";
+    const uploadDir = path.join(process.cwd(), "public", "uploads", subDir);
     await mkdir(uploadDir, { recursive: true });
 
     const fileName = `${assetType}-${Date.now()}${extension}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(path.join(uploadDir, fileName), buffer);
 
-    return { success: true, url: `/uploads/company/${fileName}` };
+    return { success: true, url: `/uploads/${subDir}/${fileName}` };
   } catch {
     return { success: false, error: "Dosya yüklenirken bir hata oluştu" };
   }

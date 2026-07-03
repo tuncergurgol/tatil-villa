@@ -1,10 +1,15 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import FacilityCategoryManagement from "@/components/admin/facility-categories/FacilityCategoryManagement";
+import { getFacilityCategoryAdminData } from "@/lib/queries/facility-categories";
 
-export default function VillaKategorileriPage() {
+export const dynamic = "force-dynamic";
+
+export default async function VillaKategorileriPage() {
+  const { categories, totalCount } = await getFacilityCategoryAdminData();
+
   return (
-    <ComingSoon
-      title="Villa Kategorileri"
-      description="Villa kategorileri tanımlamaları yakında eklenecek."
+    <FacilityCategoryManagement
+      categories={categories}
+      totalCount={totalCount}
     />
   );
 }

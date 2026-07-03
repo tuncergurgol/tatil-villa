@@ -60,3 +60,37 @@ export function filterMernisIlceCodes(
 
   return results;
 }
+
+export type TurkeyProvince = {
+  ilKodu: number;
+  ilAdi: string;
+};
+
+let provinceCache: TurkeyProvince[] | null = null;
+
+export function getTurkeyProvinces(): TurkeyProvince[] {
+  if (provinceCache) return provinceCache;
+
+  const map = new Map<number, string>();
+  for (const item of MERNIS_ILCE_CODES) {
+    map.set(item.ilKodu, item.ilAdi);
+  }
+
+  provinceCache = Array.from(map.entries())
+    .map(([ilKodu, ilAdi]) => ({ ilKodu, ilAdi }))
+    .sort((a, b) => a.ilAdi.localeCompare(b.ilAdi, "tr"));
+
+  return provinceCache;
+}
+
+export function getDistrictsByProvince(ilKodu: number): MernisIlceCode[] {
+  return MERNIS_ILCE_CODES.filter((item) => item.ilKodu === ilKodu).sort(
+    (a, b) => a.ilceAdi.localeCompare(b.ilceAdi, "tr")
+  );
+}
+
+export function getProvinceByMernisCode(code: string | null | undefined) {
+  const item = getMernisIlceByCode(code);
+  if (!item) return null;
+  return { ilKodu: item.ilKodu, ilAdi: item.ilAdi };
+}

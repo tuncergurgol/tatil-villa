@@ -1,6 +1,9 @@
 import { VillaCategory } from "@prisma/client";
 import type { Villa } from "@prisma/client";
 import { createVilla, updateVilla } from "@/app/actions/admin/villas";
+import VillaFeaturesPicker from "@/components/admin/amenities/VillaFeaturesPicker";
+import type { AmenityCategoryItem } from "@/lib/queries/amenities";
+import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
 
 interface RegionOption {
   id: string;
@@ -9,10 +12,17 @@ interface RegionOption {
 
 interface VillaFormProps {
   regions: RegionOption[];
+  amenityCategories: AmenityCategoryItem[];
+  facilityCategories: FacilityCategoryOption[];
   villa?: Villa;
 }
 
-export default function VillaForm({ regions, villa }: VillaFormProps) {
+export default function VillaForm({
+  regions,
+  amenityCategories,
+  facilityCategories,
+  villa,
+}: VillaFormProps) {
   const action = villa
     ? updateVilla.bind(null, villa.id)
     : createVilla;
@@ -153,14 +163,18 @@ export default function VillaForm({ regions, villa }: VillaFormProps) {
         />
       </label>
 
-      <label className="block">
-        <span className="text-sm font-medium">Olanaklar (virgülle ayırın)</span>
-        <input
-          name="amenities"
-          defaultValue={villa?.amenities.join(", ")}
-          className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-        />
-      </label>
+      <div className="block">
+        <span className="text-sm font-medium">Olanaklar ve Tesis Kategorileri</span>
+        <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+          <VillaFeaturesPicker
+            amenityCategories={amenityCategories}
+            facilityCategories={facilityCategories}
+            selectedAmenityNames={villa?.amenities}
+            selectedFacilityCategoryNames={villa?.facilityCategories}
+            isNewVilla={!villa}
+          />
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-4">
         <label className="flex items-center gap-2 text-sm">
