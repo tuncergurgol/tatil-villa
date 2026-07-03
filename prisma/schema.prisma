@@ -20,17 +20,35 @@ enum BookingStatus {
 
 enum UserRole {
   ADMIN
+  SALES_REP
 }
 
 model Region {
-  id     String  @id @default(cuid())
-  slug   String  @unique
-  name   String
-  image  String
-  villas Villa[]
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  image        String
+  description  String  @default("") @db.Text
+  longDescription String @default("") @db.Text
+  seoTitle     String  @default("")
+  seoDescription String @default("") @db.Text
+  seoKeywords  String  @default("") @db.Text
+  parentId     String?
+  parent       Region?  @relation("RegionTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Region[] @relation("RegionTree")
+  active       Boolean  @default(true)
+  published    Boolean  @default(true)
+  showInSearch Boolean  @default(false)
+  showInOffer  Boolean  @default(false)
+  showOnHome   Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  villas       Villa[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([active])
 }
 
 model Villa {
@@ -106,8 +124,65 @@ model User {
   email        String   @unique
   passwordHash String
   name         String
+  phone        String   @default("")
   role         UserRole @default(ADMIN)
+  active       Boolean  @default(true)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CompanySettings {
+  id             String  @id @default("default")
+  agencyName     String  @default("")
+  brandName      String  @default("")
+  companyTitle   String  @default("")
+  domain         String  @default("")
+  phone          String  @default("")
+  phone2         String  @default("")
+  officePhone    String  @default("")
+  email          String  @default("")
+  address        String  @default("") @db.Text
+  whatsapp       String  @default("")
+  workingHours   String  @default("")
+  googleMapsEmbed String @default("") @db.Text
+  bankName       String  @default("")
+  iban           String  @default("")
+  accountHolder  String  @default("")
+  primaryColor   String  @default("#0d9488")
+  secondaryColor String  @default("#115e59")
+  logoUrl        String  @default("")
+  faviconUrl     String  @default("")
+  ogImageUrl     String  @default("")
+  whiteLogoUrl   String  @default("")
+  tursabNo       String  @default("")
+  tursabEnvironment String @default("production")
+  tursabWhiteLabelUrl String @default("")
+  tursabVerificationLogoUrl String @default("")
+  taxNumber      String  @default("")
+  taxOffice      String  @default("")
+  mersisNo       String  @default("")
+  tradeRegistryNo String @default("")
+  chamberOfCommerce String @default("")
+  kepAddress     String  @default("")
+  legalText      String  @default("") @db.Text
+  instagram      String  @default("")
+  facebook       String  @default("")
+  twitter        String  @default("")
+  youtube        String  @default("")
+  seoTitle       String  @default("")
+  seoDescription String  @default("") @db.Text
+  googleAnalyticsId String @default("")
+  googleAdsId      String  @default("")
+  microsoftClarityId String @default("")
+  googleTagManagerId String @default("")
+  facebookPixelId  String  @default("")
+  googleSearchConsoleCode String @default("")
+  headScripts      String  @default("") @db.Text
+  bodyScripts      String  @default("") @db.Text
+  customScripts    String  @default("") @db.Text
+  loadingEnabled Boolean @default(false)
+  loadingText    String  @default("")
+
   updatedAt DateTime @updatedAt
 }

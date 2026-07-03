@@ -1,0 +1,6 @@
+-- AlterEnum
+ALTER TYPE "UserRole" ADD VALUE 'SALES_REP';
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "phone" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "User" ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT true;

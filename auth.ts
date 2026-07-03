@@ -20,6 +20,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!user) return null;
 
+        if (!user.active) return null;
+
         const valid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash
@@ -46,11 +48,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.role = (user as { role?: string }).role;
+        token.sub = user.id;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = token.sub!;
         (session.user as { role?: string }).role = token.role as string;
       }
       return session;

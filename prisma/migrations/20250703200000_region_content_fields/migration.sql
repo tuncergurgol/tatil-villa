@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Region" ADD COLUMN "description" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Region" ADD COLUMN "longDescription" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Region" ADD COLUMN "seoTitle" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Region" ADD COLUMN "seoDescription" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Region" ADD COLUMN "seoKeywords" TEXT NOT NULL DEFAULT '';
