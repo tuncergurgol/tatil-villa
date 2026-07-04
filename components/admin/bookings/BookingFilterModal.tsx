@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Filter, X } from "lucide-react";
+import { includesSearchText } from "@/lib/search-text";
 
 export type BookingQuickFilter =
   | "check_in_today"
@@ -187,10 +188,9 @@ export default function BookingFilterModal({
   }, [open, filters]);
 
   const matchedVillas = useMemo(() => {
-    const query = draft.villaSearch.trim().toLocaleLowerCase("tr-TR");
-    if (!query) return villas;
+    if (!draft.villaSearch.trim()) return villas;
     return villas.filter((villa) =>
-      villa.name.toLocaleLowerCase("tr-TR").includes(query)
+      includesSearchText(villa.name, draft.villaSearch)
     );
   }, [draft.villaSearch, villas]);
 

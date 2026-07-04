@@ -8,6 +8,7 @@ import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
+import { includesSearchText } from "@/lib/search-text";
 
 interface VillaTakvimPageProps {
   villas: VillaTakvimSearchItem[];
@@ -20,16 +21,13 @@ interface VillaTakvimPageProps {
 }
 
 function matchesVillaQuery(villa: VillaTakvimSearchItem, query: string) {
-  const normalized = query.trim().toLocaleLowerCase("tr-TR");
-  if (!normalized) return true;
-
   return [
     villa.name,
     villa.originalName,
     villa.documentNo,
     villa.slug,
     villa.id,
-  ].some((value) => value.toLocaleLowerCase("tr-TR").includes(normalized));
+  ].some((value) => includesSearchText(value, query));
 }
 
 export default function VillaTakvimPage({

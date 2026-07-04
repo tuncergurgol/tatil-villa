@@ -8,6 +8,7 @@ import VillaOwnerFormModal from "@/components/admin/villa-owners/VillaOwnerFormM
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import type { ActiveVillaOwnerOption } from "@/lib/queries/villa-owners";
 import type { TurkeyProvince } from "@/lib/mernis-ilce";
+import { includesSearchText } from "@/lib/search-text";
 import { formatOwnerPhoneDisplay } from "@/lib/villa-owner-utils";
 import type { Villa, VillaOwner } from "@prisma/client";
 
@@ -55,15 +56,14 @@ export default function VillaPersonelTab({
   );
 
   const filteredOwners = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-    if (!query) return activeOwners;
+    if (!search.trim()) return activeOwners;
 
-    return activeOwners.filter((owner) => {
-      const haystack = [owner.name, owner.phone, owner.email]
-        .join(" ")
-        .toLocaleLowerCase("tr-TR");
-      return haystack.includes(query);
-    });
+    return activeOwners.filter((owner) =>
+      includesSearchText(
+        [owner.name, owner.phone, owner.email].join(" "),
+        search
+      )
+    );
   }, [activeOwners, search]);
 
   function handleSaveOwner() {

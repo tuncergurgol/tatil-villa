@@ -6,6 +6,7 @@ import { LayoutGrid, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { deleteFacilityCategory } from "@/app/actions/admin/facility-categories";
 import FacilityCategoryFormModal from "@/components/admin/facility-categories/FacilityCategoryFormModal";
 import type { FacilityCategoryItem } from "@/lib/queries/facility-categories";
+import { includesSearchText } from "@/lib/search-text";
 
 type StatusFilter = "all" | "active" | "passive";
 
@@ -39,13 +40,10 @@ export default function FacilityCategoryManagement({
   const [isPending, startTransition] = useTransition();
 
   const filteredCategories = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-
     return categories.filter((category) => {
       const matchesQuery =
-        !query ||
-        category.name.toLocaleLowerCase("tr-TR").includes(query) ||
-        category.tag.toLocaleLowerCase("tr-TR").includes(query);
+        includesSearchText(category.name, search) ||
+        includesSearchText(category.tag, search);
 
       const matchesStatus =
         statusFilter === "all" ||

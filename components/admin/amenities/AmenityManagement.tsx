@@ -19,6 +19,7 @@ import AmenityCategoryFormModal from "@/components/admin/amenities/AmenityCatego
 import AmenityFormModal from "@/components/admin/amenities/AmenityFormModal";
 import type { AmenityCategoryItem, AmenityItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
+import { includesSearchText } from "@/lib/search-text";
 
 interface AmenityManagementProps {
   categories: AmenityCategoryItem[];
@@ -52,21 +53,18 @@ export default function AmenityManagement({
   const [isPending, startTransition] = useTransition();
 
   const filteredCategories = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-
     return categories
       .map((category) => {
-        const amenities = category.amenities.filter((amenity) => {
-          if (!query) return true;
-          return amenity.name.toLocaleLowerCase("tr-TR").includes(query);
-        });
+        const amenities = category.amenities.filter((amenity) =>
+          includesSearchText(amenity.name, search)
+        );
         return { ...category, amenities };
       })
       .filter((category) => {
         if (activeTab !== "all" && category.id !== activeTab) return false;
-        if (!query) return true;
+        if (!search.trim()) return true;
         return (
-          category.name.toLocaleLowerCase("tr-TR").includes(query) ||
+          includesSearchText(category.name, search) ||
           category.amenities.length > 0
         );
       });

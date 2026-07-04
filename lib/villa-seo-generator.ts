@@ -1,4 +1,5 @@
 import type { Villa, VillaCategory } from "@prisma/client";
+import { normalizeSearchText } from "@/lib/search-text";
 import { categoryLabel } from "@/lib/utils";
 
 export interface VillaSeoContext {
@@ -33,7 +34,7 @@ function uniqueKeywords(values: string[]) {
   for (const value of values) {
     const normalized = value.trim();
     if (!normalized) continue;
-    const key = normalized.toLocaleLowerCase("tr-TR");
+    const key = normalizeSearchText(normalized);
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(normalized);

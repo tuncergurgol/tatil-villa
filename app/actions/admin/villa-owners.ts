@@ -266,6 +266,34 @@ export async function authorizeUserAsVillaOwner(
   }
 }
 
+export async function unlinkVillaFromOwner(
+  villaId: string,
+  ownerId: string
+): Promise<VillaOwnerActionState> {
+  await requireAdmin();
+
+  const villa = await prisma.villa.findFirst({
+    where: { id: villaId, ownerId },
+    select: { id: true },
+  });
+
+  if (!villa) {
+    return { error: "Villa bu villa sahibine bağlı değil" };
+  }
+
+  try {
+    await prisma.villa.update({
+      where: { id: villaId },
+      data: { ownerId: null },
+    });
+    revalidateOwnerPaths();
+    revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+    return { success: true };
+  } catch {
+    return { error: "Villa bağlantısı kaldırılamadı" };
+  }
+}
+
 export async function deleteVillaOwner(id: string): Promise<VillaOwnerActionState> {
   await requireAdmin();
 

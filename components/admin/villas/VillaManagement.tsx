@@ -17,6 +17,7 @@ import {
   Plus,
 } from "lucide-react";
 import { deleteVilla } from "@/app/actions/admin/villas";
+import { includesSearchText } from "@/lib/search-text";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import VillaDocumentModal from "@/components/admin/villas/VillaDocumentModal";
 import type { AdminVillaListItem } from "@/lib/queries/admin-villas";
@@ -184,14 +185,11 @@ export default function VillaManagement({
   const [isPending, startTransition] = useTransition();
 
   const filteredVillas = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-
     return villas.filter((villa) => {
       const matchesQuery =
-        !query ||
-        villa.name.toLocaleLowerCase("tr-TR").includes(query) ||
-        villa.regionBreadcrumb.toLocaleLowerCase("tr-TR").includes(query) ||
-        villa.location.toLocaleLowerCase("tr-TR").includes(query);
+        includesSearchText(villa.name, search) ||
+        includesSearchText(villa.regionBreadcrumb, search) ||
+        includesSearchText(villa.location, search);
 
       const matchesRegion =
         regionFilter === "all" || villa.regionIlSlug === regionFilter;

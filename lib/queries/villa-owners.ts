@@ -31,6 +31,17 @@ const ownerSelect = {
   _count: {
     select: { villas: true },
   },
+  villas: {
+    select: {
+      id: true,
+      name: true,
+      originalName: true,
+      documentNo: true,
+      image: true,
+      slug: true,
+    },
+    orderBy: { name: "asc" },
+  },
 } as const;
 
 export async function getActiveVillaOwners() {
