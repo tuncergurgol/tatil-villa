@@ -19,7 +19,7 @@ import {
 import { deleteVilla } from "@/app/actions/admin/villas";
 import { includesSearchText } from "@/lib/search-text";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
-import { villaAdminEditPath } from "@/lib/villa-admin-path";
+import { villaAdminEditPath, villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import VillaDocumentModal from "@/components/admin/villas/VillaDocumentModal";
 import type { AdminVillaListItem } from "@/lib/queries/admin-villas";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
@@ -70,13 +70,11 @@ function ActionButton({
 }
 
 function VillaRowMenu({
-  villaId,
-  villaName,
+  villa,
   onDelete,
   isPending,
 }: {
-  villaId: string;
-  villaName: string;
+  villa: AdminVillaListItem;
   onDelete: (id: string, name: string) => void;
   isPending: boolean;
 }) {
@@ -90,7 +88,7 @@ function VillaRowMenu({
     },
     {
       label: "Hızlı Fiyat",
-      href: villaTakvimPath(villaId),
+      href: villaAdminHizliFiyatPath(villa),
       icon: FileText,
     },
     {
@@ -100,7 +98,7 @@ function VillaRowMenu({
     },
     {
       label: "Sil",
-      onClick: () => onDelete(villaId, villaName),
+      onClick: () => onDelete(villa.id, villa.name),
       icon: Trash2,
       danger: true,
     },
@@ -370,6 +368,14 @@ export default function VillaManagement({
                     </ActionButton>
 
                     <ActionButton
+                      href={villaAdminHizliFiyatPath(villa)}
+                      className="border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Hızlı Fiyat
+                    </ActionButton>
+
+                    <ActionButton
                       href={villaTakvimPath(villa.id)}
                       className="border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                     >
@@ -393,8 +399,7 @@ export default function VillaManagement({
                     </button>
 
                     <VillaRowMenu
-                      villaId={villa.id}
-                      villaName={villa.name}
+                      villa={villa}
                       onDelete={handleDelete}
                       isPending={isPending}
                     />

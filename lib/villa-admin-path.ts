@@ -10,6 +10,13 @@ export function villaAdminEditPath(villa: VillaAdminRoute): string {
   return `/admin/villalar/${villa.id}/duzenle`;
 }
 
+export function villaAdminHizliFiyatPath(villa: VillaAdminRoute): string {
+  if (villa.villaId != null) {
+    return `/admin/villalar/${villa.villaId}/hizlifiyat`;
+  }
+  return `/admin/villalar/${villa.id}/hizlifiyat`;
+}
+
 export function parseVillaRouteParam(routeParam: string) {
   if (/^\d+$/.test(routeParam)) {
     return { kind: "villaId" as const, value: Number(routeParam) };

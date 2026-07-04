@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
+import { revalidateVillaHizliFiyatPage } from "@/lib/villa-admin-path.server";
 import {
   compareDates,
   parseDateKey,
@@ -89,6 +90,7 @@ const periodSchema = z.object({
 function revalidatePeriodPaths(villaId: string) {
   revalidatePath("/admin/konaklama/takvim");
   revalidatePath(villaTakvimPath(villaId));
+  void revalidateVillaHizliFiyatPage(villaId);
 }
 
 async function assertNoOverlap(

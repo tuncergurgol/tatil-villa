@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import {
   parseVillaRouteParam,
   villaAdminEditPath,
+  villaAdminHizliFiyatPath,
 } from "@/lib/villa-admin-path";
 
 export async function findVillaByRouteParam(routeParam: string) {
@@ -29,5 +30,18 @@ export async function revalidateVillaEditPage(internalId: string) {
   revalidatePath(villaAdminEditPath(villa));
   if (villa.villaId != null) {
     revalidatePath(`/admin/villalar/${villa.id}/duzenle`);
+  }
+}
+
+export async function revalidateVillaHizliFiyatPage(internalId: string) {
+  const villa = await prisma.villa.findUnique({
+    where: { id: internalId },
+    select: { id: true, villaId: true },
+  });
+  if (!villa) return;
+
+  revalidatePath(villaAdminHizliFiyatPath(villa));
+  if (villa.villaId != null) {
+    revalidatePath(`/admin/villalar/${villa.id}/hizlifiyat`);
   }
 }
