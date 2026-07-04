@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ConditionalSiteChrome from "@/components/ConditionalSiteChrome";
+import Providers from "@/components/Providers";
 import { siteConfig } from "@/lib/data";
 import "./globals.css";
 
@@ -28,9 +29,11 @@ export default function RootLayout({
   return (
     <html lang="tr" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-white text-gray-900">
-        <ConditionalSiteChrome header={<Header />} footer={<Footer />}>
-          {children}
-        </ConditionalSiteChrome>
+        <Providers>
+          <ConditionalSiteChrome header={<Header />} footer={<Footer />}>
+            {children}
+          </ConditionalSiteChrome>
+        </Providers>
       </body>
     </html>
   );

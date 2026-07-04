@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Villa, VillaOwner, VillaPool } from "@prisma/client";
@@ -162,15 +163,37 @@ export default function VillaEditForm({
             Villa Düzenle
           </p>
           <h1 className="mt-1 text-3xl font-bold text-gray-900">{villa.name}</h1>
+          {villa.villaId != null ? (
+            <p className="mt-2 inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-600">
+              Villa ID
+              <span className="ml-2 font-semibold tabular-nums text-gray-900">
+                {villa.villaId}
+              </span>
+            </p>
+          ) : null}
         </div>
-        <Link
-          href={`/villalar/${villa.slug}`}
-          target="_blank"
-          className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
-        >
-          Mağazada Görüntüle
-          <ExternalLink className="h-4 w-4" />
-        </Link>
+        <div className="flex items-center gap-4">
+          {villa.image ? (
+            <div className="relative h-20 w-28 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm">
+              <Image
+                src={villa.image}
+                alt={`${villa.name} vitrin`}
+                fill
+                className="object-cover"
+                sizes="112px"
+                priority
+              />
+            </div>
+          ) : null}
+          <Link
+            href={`/villalar/${villa.slug}`}
+            target="_blank"
+            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+          >
+            Mağazada Görüntüle
+            <ExternalLink className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">

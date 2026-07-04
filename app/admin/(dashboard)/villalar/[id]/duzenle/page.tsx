@@ -1,6 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import VillaEditForm from "@/components/admin/villas/VillaEditForm";
 import { getVillaEditPageData } from "@/lib/queries/villa-edit";
+import {
+  findVillaByRouteParam,
+  villaAdminEditPath,
+} from "@/lib/villa-admin-path";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +13,17 @@ interface PageProps {
 }
 
 export default async function EditVillaPage({ params }: PageProps) {
-  const { id } = await params;
-  const data = await getVillaEditPageData(id);
+  const { id: routeId } = await params;
+  const routeVilla = await findVillaByRouteParam(routeId);
+
+  if (!routeVilla) notFound();
+
+  const canonicalPath = villaAdminEditPath(routeVilla);
+  if (`/admin/villalar/${routeId}/duzenle` !== canonicalPath) {
+    redirect(canonicalPath);
+  }
+
+  const data = await getVillaEditPageData(routeVilla.id);
 
   if (!data.villa || !data.icalData) notFound();
 

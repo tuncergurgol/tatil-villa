@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { PoolMeasureUnit } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
 
 export type VillaPoolActionState = {
   error?: string;
@@ -16,8 +17,8 @@ function parseFloatField(value: FormDataEntryValue | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function revalidateVillaEdit(villaId: string) {
-  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+async function revalidateVillaEdit(villaId: string) {
+  await revalidateVillaEditPage(villaId);
   revalidatePath("/admin/villalar");
 }
 
@@ -56,7 +57,7 @@ export async function createVillaPool(
     },
   });
 
-  revalidateVillaEdit(villaId);
+  await revalidateVillaEdit(villaId);
   return { success: true };
 }
 
@@ -73,6 +74,6 @@ export async function deleteVillaPool(
   if (!pool) return { error: "Havuz bulunamadı" };
 
   await prisma.villaPool.delete({ where: { id: poolId } });
-  revalidateVillaEdit(villaId);
+  await revalidateVillaEdit(villaId);
   return { success: true };
 }

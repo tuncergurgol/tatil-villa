@@ -20,6 +20,7 @@ import BookingFilterModal, {
 } from "@/components/admin/bookings/BookingFilterModal";
 import { filterBookings } from "@/lib/booking-filters";
 import type { AdminBookingListItem } from "@/lib/booking-display";
+import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import {
   BOOKING_STATUS_META,
   estimatePrepaymentAmount,
@@ -272,7 +273,7 @@ export default function BookingManagement({
                         <td className="px-3 py-2 align-top">
                           <div className="flex items-start gap-1.5">
                             <Link
-                              href={`/admin/villalar/${booking.villa.id}/duzenle`}
+                              href={villaAdminEditPath(booking.villa)}
                               className="font-semibold text-gray-900 hover:text-indigo-600"
                               onClick={(event) => event.stopPropagation()}
                             >

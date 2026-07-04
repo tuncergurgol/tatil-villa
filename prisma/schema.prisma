@@ -148,7 +148,7 @@ model PrepaymentPaymentTypeOption {
 
 model Villa {
   id             String        @id @default(cuid())
-  tatildeyizId   Int?          @unique
+  villaId        Int?          @unique
   slug           String        @unique
   name           String
   category       VillaCategory @default(villa)

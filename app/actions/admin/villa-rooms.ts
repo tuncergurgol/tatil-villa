@@ -4,15 +4,16 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { syncVillaRooms } from "@/lib/queries/villa-rooms";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
 
 export type VillaRoomActionState = {
   error?: string;
   success?: boolean;
 };
 
-function revalidateVillaRooms(villaId: string) {
+async function revalidateVillaRooms(villaId: string) {
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+  await revalidateVillaEditPage(villaId);
 }
 
 export async function updateVillaRoom(
@@ -69,7 +70,7 @@ export async function updateVillaRoom(
       },
     });
 
-    revalidateVillaRooms(villaId);
+    await revalidateVillaRooms(villaId);
     return { success: true };
   } catch {
     return { error: "Oda güncellenemedi" };
@@ -81,6 +82,6 @@ export async function ensureVillaRoomsSynced(
 ): Promise<VillaRoomActionState> {
   await requireAdmin();
   await syncVillaRooms(villaId);
-  revalidateVillaRooms(villaId);
+  await revalidateVillaRooms(villaId);
   return { success: true };
 }

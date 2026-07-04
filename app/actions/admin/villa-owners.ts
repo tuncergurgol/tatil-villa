@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
 import { VillaOwnerType } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -307,7 +308,7 @@ export async function unlinkVillaFromOwner(
       data: { ownerId: null },
     });
     revalidateOwnerPaths();
-    revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+    await revalidateVillaEditPage(villaId);
     return { success: true };
   } catch {
     return { error: "Villa bağlantısı kaldırılamadı" };

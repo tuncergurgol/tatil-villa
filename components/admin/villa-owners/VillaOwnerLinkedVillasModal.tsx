@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Home, X } from "lucide-react";
 import type { VillaOwnerListItem } from "@/lib/queries/villa-owners";
+import { villaAdminEditPath } from "@/lib/villa-admin-path";
 
 interface VillaOwnerLinkedVillasModalProps {
   owner: VillaOwnerListItem;
@@ -13,8 +14,8 @@ export default function VillaOwnerLinkedVillasModal({
   owner,
   onClose,
 }: VillaOwnerLinkedVillasModalProps) {
-  function openVillaEdit(villaId: string) {
-    window.open(`/admin/villalar/${villaId}/duzenle`, "_blank", "noopener,noreferrer");
+  function openVillaEdit(villa: VillaOwnerListItem["villas"][number]) {
+    window.open(villaAdminEditPath(villa), "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -52,7 +53,7 @@ export default function VillaOwnerLinkedVillasModal({
                 {owner.villas.map((villa) => (
                   <tr
                     key={villa.id}
-                    onClick={() => openVillaEdit(villa.id)}
+                    onClick={() => openVillaEdit(villa)}
                     className="cursor-pointer border-b border-gray-100 transition hover:bg-sky-50/60"
                   >
                     <td className="px-5 py-3">

@@ -34,6 +34,7 @@ const ownerSelect = {
   villas: {
     select: {
       id: true,
+      villaId: true,
       name: true,
       originalName: true,
       documentNo: true,

@@ -8,6 +8,7 @@ export async function getAdminBookingListData() {
         villa: {
           select: {
             id: true,
+            villaId: true,
             slug: true,
             name: true,
             originalName: true,

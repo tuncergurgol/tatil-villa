@@ -62,7 +62,7 @@ function parseIntField(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function parseTatildeyizId(value: unknown): number | null {
+function parseVillaId(value: unknown): number | null {
   const parsed = parseInt(cleanText(value), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
@@ -129,7 +129,7 @@ function slugify(value: string): string {
 function resolveSlug(
   rawSlug: string,
   name: string,
-  tatildeyizId: number | null,
+  villaId: number | null,
   rowNumber: number
 ): string {
   const fromExcel = slugify(rawSlug);
@@ -138,7 +138,7 @@ function resolveSlug(
   const fromName = slugify(name);
   if (fromName) return fromName;
 
-  if (tatildeyizId != null) return `villa-${tatildeyizId}`;
+  if (villaId != null) return `villa-${villaId}`;
   return `villa-${rowNumber}`;
 }
 
@@ -179,7 +179,7 @@ function findRegionId(
 }
 
 type VillaExcelData = {
-  tatildeyizId: number | null;
+  villaId: number | null;
   slug: string;
   name: string;
   originalName: string;
@@ -244,7 +244,7 @@ function buildVillaDataFromRow(
   const icalToken = cleanText(row["iCal Feed Token"]);
 
   return {
-    tatildeyizId: parseTatildeyizId(row.ID),
+    villaId: parseVillaId(row.ID),
     slug,
     name,
     originalName: cleanText(row["Orjinal Adı"]),
@@ -294,7 +294,7 @@ function buildVillaDataFromRow(
 
 function toCreateData(data: VillaExcelData) {
   return {
-    tatildeyizId: data.tatildeyizId,
+    villaId: data.villaId,
     slug: data.slug,
     name: data.name,
     originalName: data.originalName,
@@ -345,7 +345,7 @@ function toCreateData(data: VillaExcelData) {
 
 function toUpdateData(data: VillaExcelData, existing: Villa) {
   const update: Record<string, unknown> = {
-    tatildeyizId: data.tatildeyizId,
+    villaId: data.villaId,
     name: data.name,
     originalName: data.originalName,
     category: data.category,
@@ -457,16 +457,16 @@ async function main() {
     select: {
       id: true,
       slug: true,
-      tatildeyizId: true,
+      villaId: true,
       _count: { select: { pools: true } },
     },
   });
 
-  const villaByTatildeyizId = new Map<number, (typeof existingVillas)[number]>();
+  const villaByVillaId = new Map<number, (typeof existingVillas)[number]>();
   const villaBySlug = new Map<string, (typeof existingVillas)[number]>();
   for (const villa of existingVillas) {
-    if (villa.tatildeyizId != null) {
-      villaByTatildeyizId.set(villa.tatildeyizId, villa);
+    if (villa.villaId != null) {
+      villaByVillaId.set(villa.villaId, villa);
     }
     villaBySlug.set(villa.slug, villa);
   }
@@ -475,7 +475,7 @@ async function main() {
 
   console.log(`Excel: ${rows.length} satır (${sheetName})`);
   console.log(`Mevcut: ${beforeVillas} villa`);
-  console.log("Upsert modu: mevcut villalar korunur (tatildeyizId / slug ile eşleştirme)");
+  console.log("Upsert modu: mevcut villalar korunur (villaId / slug ile eşleştirme)");
 
   const errors: ImportError[] = [];
   const stats: ImportStats = {
@@ -492,11 +492,11 @@ async function main() {
     const rowNumber = index + 2;
     const externalId = cleanText(row.ID);
     const name = cleanText(row["Tesis Adı"]);
-    const tatildeyizId = parseTatildeyizId(row.ID);
+    const villaId = parseVillaId(row.ID);
     let slug = resolveSlug(
       cleanText(row.Slug),
       name,
-      tatildeyizId,
+      villaId,
       rowNumber
     );
     const bolge = cleanText(row["Bölge"]);
@@ -504,7 +504,7 @@ async function main() {
     if (!name && !slug) continue;
 
     let existing =
-      (tatildeyizId != null ? villaByTatildeyizId.get(tatildeyizId) : null) ??
+      (villaId != null ? villaByVillaId.get(villaId) : null) ??
       villaBySlug.get(slug) ??
       null;
 
@@ -600,15 +600,15 @@ async function main() {
           villaBySlug.set(updated.slug, {
             ...existing,
             slug: updated.slug,
-            tatildeyizId: updated.tatildeyizId,
+            villaId: updated.villaId,
           });
         }
 
-        if (updated.tatildeyizId != null) {
-          villaByTatildeyizId.set(updated.tatildeyizId, {
+        if (updated.villaId != null) {
+          villaByVillaId.set(updated.villaId, {
             ...existing,
             slug: updated.slug,
-            tatildeyizId: updated.tatildeyizId,
+            villaId: updated.villaId,
           });
         }
 
@@ -628,12 +628,12 @@ async function main() {
         const tracked = {
           id: created.id,
           slug: created.slug,
-          tatildeyizId: created.tatildeyizId,
+          villaId: created.villaId,
           _count: { pools: villaData.poolCount > 0 ? 1 : 0 },
         };
         villaBySlug.set(created.slug, tracked);
-        if (created.tatildeyizId != null) {
-          villaByTatildeyizId.set(created.tatildeyizId, tracked);
+        if (created.villaId != null) {
+          villaByVillaId.set(created.villaId, tracked);
         }
 
         stats.created += 1;

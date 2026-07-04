@@ -19,6 +19,7 @@ import {
 import { deleteVilla } from "@/app/actions/admin/villas";
 import { includesSearchText } from "@/lib/search-text";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
+import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import VillaDocumentModal from "@/components/admin/villas/VillaDocumentModal";
 import type { AdminVillaListItem } from "@/lib/queries/admin-villas";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
@@ -361,7 +362,7 @@ export default function VillaManagement({
 
                   <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     <ActionButton
-                      href={`/admin/villalar/${villa.id}/duzenle`}
+                      href={villaAdminEditPath(villa)}
                       className="border-sky-500 bg-sky-500 text-white hover:bg-sky-600"
                     >
                       <Pencil className="h-3.5 w-3.5" />

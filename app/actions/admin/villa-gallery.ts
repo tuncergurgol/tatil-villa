@@ -11,6 +11,7 @@ import {
   buildSeoGalleryFileName,
   getNextGallerySequence,
 } from "@/lib/villa-gallery-filename";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
@@ -26,9 +27,9 @@ export type VillaGalleryActionState = {
   urls?: string[];
 };
 
-function revalidateVillaGallery(villaId: string, slug?: string) {
+async function revalidateVillaGallery(villaId: string, slug?: string) {
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+  await revalidateVillaEditPage(villaId);
   if (slug) {
     revalidatePath(`/villalar/${slug}`);
   }
@@ -139,7 +140,7 @@ export async function uploadVillaGalleryImages(
 
     const nextImages = [...currentImages, ...uploadedUrls];
     await persistGalleryOrder(villaId, nextImages);
-    revalidateVillaGallery(villaId, villa.slug);
+    await revalidateVillaGallery(villaId, villa.slug);
 
     return { success: true, urls: uploadedUrls };
   } catch {
@@ -163,7 +164,7 @@ export async function updateVillaGalleryOrder(
     }
 
     await persistGalleryOrder(villaId, sanitized);
-    revalidateVillaGallery(villaId, villa.slug);
+    await revalidateVillaGallery(villaId, villa.slug);
     return { success: true };
   } catch {
     return { error: "Galeri sırası kaydedilemedi" };
@@ -191,7 +192,7 @@ export async function setVillaGalleryVitrin(
     ];
 
     await persistGalleryOrder(villaId, reordered);
-    revalidateVillaGallery(villaId, villa.slug);
+    await revalidateVillaGallery(villaId, villa.slug);
     return { success: true };
   } catch {
     return { error: "Vitrin görseli güncellenemedi" };
@@ -216,7 +217,7 @@ export async function deleteVillaGalleryImages(
 
     await Promise.all(imageUrls.map((url) => deleteGalleryFile(url)));
     await persistGalleryOrder(villaId, remaining);
-    revalidateVillaGallery(villaId, villa.slug);
+    await revalidateVillaGallery(villaId, villa.slug);
     return { success: true };
   } catch {
     return { error: "Görseller silinemedi" };
@@ -234,7 +235,7 @@ export async function deleteAllVillaGalleryImages(
 
     await Promise.all(current.map((url) => deleteGalleryFile(url)));
     await persistGalleryOrder(villaId, []);
-    revalidateVillaGallery(villaId, villa.slug);
+    await revalidateVillaGallery(villaId, villa.slug);
     return { success: true };
   } catch {
     return { error: "Galeri temizlenemedi" };

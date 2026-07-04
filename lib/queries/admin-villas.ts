@@ -32,6 +32,7 @@ export async function getAdminVillaListData() {
     prisma.villa.findMany({
       select: {
         id: true,
+        villaId: true,
         slug: true,
         name: true,
         category: true,
@@ -67,6 +68,7 @@ export async function getAdminVillaListData() {
   return {
     villas: villas.map((villa) => ({
       id: villa.id,
+      villaId: villa.villaId,
       slug: villa.slug,
       name: villa.name,
       category: villa.category,

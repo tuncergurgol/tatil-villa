@@ -4,10 +4,11 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
 
-function revalidateVillaIcal(villaId: string) {
+async function revalidateVillaIcal(villaId: string) {
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+  await revalidateVillaEditPage(villaId);
 }
 
 export type VillaIcalActionState = {
@@ -50,7 +51,7 @@ export async function createVillaIcalSource(
       },
     });
 
-    revalidateVillaIcal(villaId);
+    await revalidateVillaIcal(villaId);
     return { success: true };
   } catch {
     return { error: "Kaynak eklenemedi" };
@@ -68,7 +69,7 @@ export async function deleteVillaIcalSource(
       where: { id: sourceId, villaId },
     });
 
-    revalidateVillaIcal(villaId);
+    await revalidateVillaIcal(villaId);
     return { success: true };
   } catch {
     return { error: "Kaynak silinemedi" };
@@ -91,7 +92,7 @@ export async function clearVillaIcalData(
     }),
   ]);
 
-  revalidateVillaIcal(villaId);
+  await revalidateVillaIcal(villaId);
   return { success: true };
 }
 
@@ -115,7 +116,7 @@ export async function rotateVillaIcalExportUrl(
     }),
   ]);
 
-  revalidateVillaIcal(villaId);
+  await revalidateVillaIcal(villaId);
   return { success: true };
 }
 
@@ -141,6 +142,6 @@ export async function matchVillaWhatsappGroup(
     },
   });
 
-  revalidateVillaIcal(villaId);
+  await revalidateVillaIcal(villaId);
   return { success: true };
 }

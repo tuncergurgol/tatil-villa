@@ -84,11 +84,11 @@ export default function VillaGeneralTab({
               className={inputClass}
             />
           </Field>
-          {villa.tatildeyizId != null ? (
-            <Field label="Tatildeyiz Villa ID">
+          {villa.villaId != null ? (
+            <Field label="Villa ID">
               <input
                 readOnly
-                value={String(villa.tatildeyizId)}
+                value={String(villa.villaId)}
                 className={`${inputClass} cursor-default bg-gray-100 text-gray-600`}
               />
             </Field>

@@ -25,6 +25,7 @@ export type AdminBookingListItem = {
   createdAt: Date;
   villa: {
     id: string;
+    villaId: number | null;
     slug: string;
     name: string;
     originalName: string;

@@ -12,6 +12,7 @@ import { RegionLevel } from "@/lib/region-levels";
 import { DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID } from "@/lib/villa-rules-defaults";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
 
 function parseBool(value: FormDataEntryValue | null) {
   return value === "true" || value === "on";
@@ -178,7 +179,7 @@ export async function updateVillaGeneral(id: string, formData: FormData) {
   revalidatePath("/");
   revalidatePath("/villalar");
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${id}/duzenle`);
+  await revalidateVillaEditPage(id);
 }
 
 export async function updateVillaFeatures(id: string, formData: FormData) {
@@ -224,7 +225,7 @@ export async function updateVillaFeatures(id: string, formData: FormData) {
   revalidatePath("/");
   revalidatePath("/villalar");
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${id}/duzenle`);
+  await revalidateVillaEditPage(id);
 }
 
 export async function updateVillaMetaSeo(id: string, formData: FormData) {
@@ -244,7 +245,7 @@ export async function updateVillaMetaSeo(id: string, formData: FormData) {
   revalidatePath("/villalar");
   revalidatePath(`/villalar/${villa.slug}`);
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${id}/duzenle`);
+  await revalidateVillaEditPage(id);
 }
 
 export type AssignVillaOwnerState = {
@@ -273,7 +274,7 @@ export async function assignVillaOwner(
   });
 
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+  await revalidateVillaEditPage(villaId);
   return { success: true };
 }
 
@@ -297,7 +298,7 @@ export async function updateVillaPersonel(id: string, formData: FormData) {
   });
 
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${id}/duzenle`);
+  await revalidateVillaEditPage(id);
 }
 
 export async function updateVillaLocation(id: string, formData: FormData) {
@@ -355,7 +356,7 @@ export async function updateVillaLocation(id: string, formData: FormData) {
   revalidatePath("/");
   revalidatePath("/villalar");
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${id}/duzenle`);
+  await revalidateVillaEditPage(id);
 }
 
 export async function updateVillaRules(id: string, formData: FormData) {
@@ -386,7 +387,7 @@ export async function updateVillaRules(id: string, formData: FormData) {
   });
 
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${id}/duzenle`);
+  await revalidateVillaEditPage(id);
 }
 
 export async function deleteVilla(id: string) {
