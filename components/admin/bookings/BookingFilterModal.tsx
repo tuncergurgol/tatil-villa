@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bus, Filter, X } from "lucide-react";
+import { Filter, X } from "lucide-react";
 
 export type BookingQuickFilter =
   | "check_in_today"
@@ -207,13 +207,6 @@ export default function BookingFilterModal({
     });
   }
 
-  function toggleQuickFilter(value: BookingQuickFilter) {
-    setDraft((prev) => ({
-      ...prev,
-      quickFilter: prev.quickFilter === value ? null : value,
-    }));
-  }
-
   if (!open) return null;
 
   return (
@@ -234,34 +227,26 @@ export default function BookingFilterModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5">
-          <div className="border-b border-gray-100 py-3">
-            <p className="mb-2 text-sm font-semibold text-gray-800">
-              Hızlı Filtreler
-            </p>
-            <p className="mb-2 text-xs text-gray-500">
-              Yalnızca onaylı rezervasyonlar listelenir.
-            </p>
-            <div className="space-y-1">
-              {BOOKING_QUICK_FILTER_OPTIONS.map((option) => {
-                const active = draft.quickFilter === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => toggleQuickFilter(option.value)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
-                      active
-                        ? "bg-indigo-50 font-semibold text-indigo-700"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Bus className="h-3.5 w-3.5 shrink-0" />
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <FilterRow label="Giriş - Çıkış Raporları" compact>
+            <select
+              value={draft.quickFilter ?? ""}
+              onChange={(event) =>
+                updateDraft({
+                  quickFilter: event.target.value
+                    ? (event.target.value as BookingQuickFilter)
+                    : null,
+                })
+              }
+              className={inputClass}
+            >
+              <option value="">Seçiniz...</option>
+              {BOOKING_QUICK_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </FilterRow>
 
           <FilterRow label="Müşteri Adı" compact>
             <input
