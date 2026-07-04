@@ -76,7 +76,7 @@ export default function PrepaymentPaymentTypeManagement({
             Ön Ödeme Ödeme Tipleri
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-gray-500">
-            Rezervasyonda &apos;Tesis Sahibi Ödeme&apos; sekmesinde ödeme
+            Rezervasyonda &apos;Ev Sahibi Ödeme&apos; sekmesinde ödeme
             tarihi önerisi için kullanılır. Kurallar sekmesinden villa bazında
             seçilir.
           </p>

@@ -226,7 +226,7 @@ export default function VillaManagement({
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
               <Building2 className="h-5 w-5" />
             </div>
-            <h1 className="text-lg font-bold text-gray-900">Tesisler</h1>
+            <h1 className="text-lg font-bold text-gray-900">Evler</h1>
           </div>
 
           <button
@@ -409,7 +409,7 @@ export default function VillaManagement({
         </div>
 
         <div className="border-t border-gray-100 px-5 py-3 text-sm text-gray-600">
-          Toplam {filteredVillas.length} / {villas.length} tesis
+          Toplam {filteredVillas.length} / {villas.length} ev
         </div>
       </div>
 

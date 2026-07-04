@@ -227,10 +227,10 @@ const VillaFeaturesPicker = forwardRef<
       {showFacilityCategories ? (
       <div>
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
-          Tesis Kategorileri
+          Ev Kategorileri
         </h3>
         <p className="mb-3 text-xs text-gray-500">
-          Olanak seçildiğinde bağlı tesis kategorisi otomatik işaretlenir.
+          Olanak seçildiğinde bağlı ev kategorisi otomatik işaretlenir.
         </p>
         <div className="flex flex-wrap gap-2">
           {facilityCategories.map((category) => {

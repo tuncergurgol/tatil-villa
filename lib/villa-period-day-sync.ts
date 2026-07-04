@@ -46,6 +46,7 @@ export async function syncVillaPricePeriodDays(
         villaId,
         date,
         ...snapshot,
+        occupancyStatus: snapshot.occupancyStatus ?? "EMPTY",
       })),
     });
   });
@@ -97,6 +98,14 @@ export async function backfillVillaPricePeriodDays(villaId: string) {
         discount1Rate: period.discount1Rate,
         discount2Rate: period.discount2Rate,
         extraDiscountAmount: period.extraDiscountAmount,
+        weekendPrice: period.weekendPrice,
+        weekendDays: period.weekendDays,
+        weekendMinStayNights: period.weekendMinStayNights,
+        childFee02: period.childFee02,
+        childFee02Currency: period.childFee02Currency,
+        childFee03_09: period.childFee03_09,
+        childFee03_09Currency: period.childFee03_09Currency,
+        occupancyStatus: "EMPTY",
       }
     );
   }

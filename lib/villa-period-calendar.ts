@@ -33,6 +33,13 @@ export type VillaPricePeriodItem = {
   discount1Rate: number | null;
   discount2Rate: number | null;
   extraDiscountAmount: number | null;
+  weekendPrice: number | null;
+  weekendDays: number[];
+  weekendMinStayNights: number | null;
+  childFee02: number | null;
+  childFee02Currency: VillaPeriodCurrency;
+  childFee03_09: number | null;
+  childFee03_09Currency: VillaPeriodCurrency;
 };
 
 const WEEKDAY_LABELS = ["Pts", "Sal", "Çar", "Per", "Cum", "Cts", "Paz"] as const;
@@ -105,6 +112,16 @@ export function parseDateKey(value: string): Date {
   return new Date(year, month - 1, day);
 }
 
+/** Prisma @db.Date alanlarına yazarken timezone kaymasını önler. */
+export function dateKeyToDbDate(dateKey: string): Date {
+  return new Date(`${dateKey}T00:00:00.000Z`);
+}
+
+/** Prisma @db.Date alanından okunan tarihi YYYY-MM-DD anahtarına çevirir. */
+export function dbDateToDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 export function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -115,6 +132,19 @@ export function todayDate(): Date {
 
 export function compareDates(a: Date, b: Date): number {
   return startOfDay(a).getTime() - startOfDay(b).getTime();
+}
+
+export function enumerateDateKeys(startKey: string, endKey: string): string[] {
+  const keys: string[] = [];
+  const cursor = startOfDay(parseDateKey(startKey));
+  const end = startOfDay(parseDateKey(endKey));
+
+  while (compareDates(cursor, end) <= 0) {
+    keys.push(toDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return keys;
 }
 
 export function isDateInRange(date: Date, startDate: Date, endDate: Date): boolean {

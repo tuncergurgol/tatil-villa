@@ -56,6 +56,9 @@ const AMOUNT_FIELDS = new Set([
   "underfloorHeatingFee",
   "extraBedFee",
   "extraDiscountAmount",
+  "weekendPrice",
+  "childFee02",
+  "childFee03_09",
 ]);
 
 type PeriodFormState = {
@@ -85,6 +88,13 @@ type PeriodFormState = {
   discount1Rate: string;
   discount2Rate: string;
   extraDiscountAmount: string;
+  weekendPrice: string;
+  weekendDays: string;
+  weekendMinStayNights: string;
+  childFee02: string;
+  childFee02Currency: VillaPeriodCurrency;
+  childFee03_09: string;
+  childFee03_09Currency: VillaPeriodCurrency;
 };
 
 const emptyFormState = (): PeriodFormState => ({
@@ -114,6 +124,13 @@ const emptyFormState = (): PeriodFormState => ({
   discount1Rate: "",
   discount2Rate: "",
   extraDiscountAmount: "",
+  weekendPrice: "",
+  weekendDays: "",
+  weekendMinStayNights: "",
+  childFee02: "",
+  childFee02Currency: "TL",
+  childFee03_09: "",
+  childFee03_09Currency: "TL",
 });
 
 function toInputValue(value: number | null | undefined) {
@@ -150,6 +167,13 @@ function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
     discount1Rate: toInputValue(period.discount1Rate),
     discount2Rate: toInputValue(period.discount2Rate),
     extraDiscountAmount: toInputValue(period.extraDiscountAmount),
+    weekendPrice: toInputValue(period.weekendPrice),
+    weekendDays: period.weekendDays.join(","),
+    weekendMinStayNights: toInputValue(period.weekendMinStayNights),
+    childFee02: toInputValue(period.childFee02),
+    childFee02Currency: period.childFee02Currency,
+    childFee03_09: toInputValue(period.childFee03_09),
+    childFee03_09Currency: period.childFee03_09Currency,
   };
 }
 
@@ -734,6 +758,64 @@ export default function VillaPeriodFormModal({
                   onAmountChange={(value) => updateForm({ extraBedFee: value })}
                   onCurrencyChange={(value) =>
                     updateForm({ extraBedFeeCurrency: value })
+                  }
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className={labelClass}>Hafta Sonu Gecelik Fiyat</span>
+                    <AmountInput
+                      value={form.weekendPrice}
+                      onChange={(value) => updateForm({ weekendPrice: value })}
+                      className="mt-1.5"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={labelClass}>Hafta Sonu Günleri</span>
+                    <input
+                      type="text"
+                      value={form.weekendDays}
+                      onChange={(event) =>
+                        updateForm({ weekendDays: event.target.value })
+                      }
+                      placeholder="5,6 (Cum,Cts)"
+                      className={`mt-1.5 ${inputClass}`}
+                    />
+                    <p className={helpClass}>
+                      0=Pazar, 1=Pazartesi … 6=Cumartesi. Virgülle ayırın.
+                    </p>
+                  </label>
+                </div>
+
+                <label className="block">
+                  <span className={labelClass}>Hafta Sonu Min Konaklama (Gece)</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.weekendMinStayNights}
+                    onChange={(event) =>
+                      updateForm({ weekendMinStayNights: event.target.value })
+                    }
+                    className={`mt-1.5 ${inputClass} ${noSpinClass}`}
+                  />
+                </label>
+
+                <FeeRow
+                  label="0-2 Yaş Çocuk Ücreti"
+                  amount={form.childFee02}
+                  currency={form.childFee02Currency}
+                  onAmountChange={(value) => updateForm({ childFee02: value })}
+                  onCurrencyChange={(value) =>
+                    updateForm({ childFee02Currency: value })
+                  }
+                />
+                <FeeRow
+                  label="3-9 Yaş Çocuk Ücreti"
+                  amount={form.childFee03_09}
+                  currency={form.childFee03_09Currency}
+                  onAmountChange={(value) => updateForm({ childFee03_09: value })}
+                  onCurrencyChange={(value) =>
+                    updateForm({ childFee03_09Currency: value })
                   }
                 />
               </div>

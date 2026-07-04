@@ -21,7 +21,7 @@ const documentSchema = z.object({
     "PLAJ_ISLETMESI",
   ]),
   documentOwnerName: z.string().min(1, "Belge sahibi adı gerekli"),
-  documentAddress: z.string().min(1, "Tesis adresi gerekli"),
+  documentAddress: z.string().min(1, "Ev adresi gerekli"),
   documentRoomCapacity: z.coerce.number().int().min(0),
   documentBedCapacity: z.coerce.number().int().min(0),
   documentImageUrl: z.string(),

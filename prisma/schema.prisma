@@ -30,6 +30,12 @@ enum VillaPeriodCurrency {
   GBP
 }
 
+enum VillaDayOccupancy {
+  EMPTY
+  BOOKED
+  OPTION
+}
+
 enum TourismDocumentType {
   KONUT_BELGESI
   TURIZM_ISLETME_BELGESI
@@ -142,6 +148,7 @@ model PrepaymentPaymentTypeOption {
 
 model Villa {
   id             String        @id @default(cuid())
+  tatildeyizId   Int?          @unique
   slug           String        @unique
   name           String
   category       VillaCategory @default(villa)
@@ -264,6 +271,13 @@ model VillaPricePeriod {
   discount1Rate                 Int?
   discount2Rate                 Int?
   extraDiscountAmount           Int?
+  weekendPrice                  Int?
+  weekendDays                   Int[]                   @default([])
+  weekendMinStayNights          Int?
+  childFee02                    Int?
+  childFee02Currency            VillaPeriodCurrency     @default(TL)
+  childFee03_09                 Int?
+  childFee03_09Currency         VillaPeriodCurrency     @default(TL)
   days                          VillaPricePeriodDay[]
   createdAt                     DateTime                @default(now())
   updatedAt                     DateTime                @updatedAt
@@ -305,12 +319,21 @@ model VillaPricePeriodDay {
   discount1Rate                 Int?
   discount2Rate                 Int?
   extraDiscountAmount           Int?
+  weekendPrice                  Int?
+  weekendDays                   Int[]                   @default([])
+  weekendMinStayNights          Int?
+  childFee02                    Int?
+  childFee02Currency            VillaPeriodCurrency     @default(TL)
+  childFee03_09                 Int?
+  childFee03_09Currency         VillaPeriodCurrency     @default(TL)
+  occupancyStatus               VillaDayOccupancy       @default(EMPTY)
   createdAt                     DateTime                @default(now())
   updatedAt                     DateTime                @updatedAt
 
   @@unique([villaId, date])
   @@index([periodId])
   @@index([villaId, date])
+  @@index([villaId, occupancyStatus])
 }
 
 model VillaPool {

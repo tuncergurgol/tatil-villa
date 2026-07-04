@@ -73,7 +73,7 @@ export default function FacilityCategoryManagement({
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
               <LayoutGrid className="h-5 w-5" />
             </div>
-            <h1 className="text-lg font-bold text-gray-900">Tesis Kategorileri</h1>
+            <h1 className="text-lg font-bold text-gray-900">Ev Kategorileri</h1>
           </div>
 
           <div className="relative min-w-[200px] flex-1">

@@ -28,9 +28,9 @@ export function buildVillaDescriptionPrompt(context: VillaDescriptionContext) {
 
   return `Türkiye'de tatil konaklama sitesi için SEO uyumlu, zengin ve ikna edici bir villa açıklaması yaz.
 
-Tesis adı: ${context.name}
+Ev adı: ${context.name}
 Bölge: ${context.region || context.location}
-Tesis tipi: ${typeLabel}
+Ev tipi: ${typeLabel}
 Kapasite: ${context.guests} kişi
 Odalar: ${roomSummary}
 Olanak sayısı: ${context.amenityCount}
@@ -55,7 +55,7 @@ export function generateVillaDescriptionTemplate(
   const amenityList = context.amenities.slice(0, 8);
 
   const paragraphs = [
-    `<p><strong>${context.name}</strong>, ${region} bölgesinde konforlu bir ${typeLabel.toLowerCase()} konaklama deneyimi sunar. ${context.guests} kişiye kadar misafir ağırlayabilen tesisimiz; ${context.bedrooms} yatak odası ve ${context.bathrooms} banyo ile geniş ve düzenli bir yaşam alanı sağlar.</p>`,
+    `<p><strong>${context.name}</strong>, ${region} bölgesinde konforlu bir ${typeLabel.toLowerCase()} konaklama deneyimi sunar. ${context.guests} kişiye kadar misafir ağırlayabilen evimiz; ${context.bedrooms} yatak odası ve ${context.bathrooms} banyo ile geniş ve düzenli bir yaşam alanı sağlar.</p>`,
     context.livingRooms > 0
       ? `<p>Geniş salon alanı ve ferah iç mekân düzeni sayesinde aileler ve arkadaş grupları için ideal bir tatil ortamı sunulur. Bölgenin doğal güzellikleri ve çevredeki aktivite imkânları konaklamanızı daha keyifli hale getirir.</p>`
       : `<p>Modern iç mekân düzeni ve işlevsel yaşam alanları sayesinde aileler ve arkadaş grupları için ideal bir tatil ortamı sunulur. Bölgenin doğal güzellikleri ve çevredeki aktivite imkânları konaklamanızı daha keyifli hale getirir.</p>`,

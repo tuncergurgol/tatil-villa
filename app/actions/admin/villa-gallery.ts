@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { processGalleryImageToWebp } from "@/lib/process-gallery-image";
 import {
-  buildVillaGalleryFileName,
+  buildSeoGalleryFileName,
   getNextGallerySequence,
 } from "@/lib/villa-gallery-filename";
 
@@ -127,7 +127,7 @@ export async function uploadVillaGalleryImages(
         return { error: "Dosya boyutu 10 MB'dan küçük olmalıdır" };
       }
 
-      const fileName = buildVillaGalleryFileName(siteName, villa.name, sequence);
+      const fileName = buildSeoGalleryFileName(siteName, villa.name, sequence);
       const outputPath = path.join(uploadDir, fileName);
       const sourceBuffer = Buffer.from(await file.arrayBuffer());
       const webpBuffer = await processGalleryImageToWebp(sourceBuffer);

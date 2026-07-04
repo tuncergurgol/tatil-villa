@@ -68,6 +68,22 @@ const periodSchema = z.object({
   discount1Rate: optionalRateSchema,
   discount2Rate: optionalRateSchema,
   extraDiscountAmount: z.coerce.number().int().positive().optional().nullable(),
+  weekendPrice: z.coerce.number().int().positive().optional().nullable(),
+  weekendDays: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return [] as number[];
+      return value
+        .split(",")
+        .map((part) => Number(part.trim()))
+        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6);
+    }),
+  weekendMinStayNights: z.coerce.number().int().positive().optional().nullable(),
+  childFee02: z.coerce.number().int().positive().optional().nullable(),
+  childFee02Currency: z.enum(["TL", "EUR", "USD", "GBP"]),
+  childFee03_09: z.coerce.number().int().positive().optional().nullable(),
+  childFee03_09Currency: z.enum(["TL", "EUR", "USD", "GBP"]),
 });
 
 function revalidatePeriodPaths(villaId: string) {
@@ -147,6 +163,13 @@ function parsePeriodFormData(formData: FormData) {
     discount1Rate: formData.get("discount1Rate"),
     discount2Rate: formData.get("discount2Rate"),
     extraDiscountAmount: formData.get("extraDiscountAmount") || null,
+    weekendPrice: formData.get("weekendPrice") || null,
+    weekendDays: formData.get("weekendDays") || "",
+    weekendMinStayNights: formData.get("weekendMinStayNights") || null,
+    childFee02: formData.get("childFee02") || null,
+    childFee02Currency: parseCurrency(formData.get("childFee02Currency")),
+    childFee03_09: formData.get("childFee03_09") || null,
+    childFee03_09Currency: parseCurrency(formData.get("childFee03_09Currency")),
   });
 }
 
@@ -187,6 +210,13 @@ function buildPeriodData(parsed: z.infer<typeof periodSchema>) {
     discount1Rate: parsed.discount1Rate,
     discount2Rate: parsed.discount2Rate,
     extraDiscountAmount: parsed.extraDiscountAmount,
+    weekendPrice: parsed.weekendPrice,
+    weekendDays: parsed.weekendDays,
+    weekendMinStayNights: parsed.weekendMinStayNights,
+    childFee02: parsed.childFee02,
+    childFee02Currency: parsed.childFee02Currency,
+    childFee03_09: parsed.childFee03_09,
+    childFee03_09Currency: parsed.childFee03_09Currency,
   };
 }
 

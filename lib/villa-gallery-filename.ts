@@ -5,14 +5,23 @@ export function sanitizeGalleryNamePart(value: string) {
     .trim();
 }
 
-export function buildVillaGalleryFileName(
+export function buildSeoGalleryFileName(
   siteName: string,
   villaName: string,
   sequence: number
 ) {
   const site = sanitizeGalleryNamePart(siteName) || "Site";
   const villa = sanitizeGalleryNamePart(villaName) || "Villa";
-  return `${site}, ${villa} - ${sequence}.webp`;
+  return `${site} - ${villa} - ${sequence}.webp`;
+}
+
+/** @deprecated Yeni yüklemeler için buildSeoGalleryFileName kullanın */
+export function buildVillaGalleryFileName(
+  siteName: string,
+  villaName: string,
+  sequence: number
+) {
+  return buildSeoGalleryFileName(siteName, villaName, sequence);
 }
 
 export function extractGallerySequence(url: string) {

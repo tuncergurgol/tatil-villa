@@ -204,7 +204,7 @@ export default function BookingManagement({
               <tr>
                 <th className="w-10 px-3 py-2" />
                 <th className="px-3 py-2">Rezervasyon</th>
-                <th className="px-3 py-2">Tesis</th>
+                <th className="px-3 py-2">Ev</th>
                 <th className="px-3 py-2">Konaklama</th>
                 <th className="px-3 py-2">Misafir</th>
                 <th className="px-3 py-2">Fiyat</th>

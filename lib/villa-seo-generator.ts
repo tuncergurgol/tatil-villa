@@ -85,7 +85,7 @@ export function generateVillaSeoSuggestion(
       ? `Öne çıkan olanaklar: ${amenitySample.join(", ")}.`
       : null,
     facilitySample.length
-      ? `Tesis kategorileri: ${facilitySample.join(", ")}.`
+      ? `Ev kategorileri: ${facilitySample.join(", ")}.`
       : null,
     highlights.length ? `Vitrin: ${highlights.join(", ")}.` : null,
     "Tatildeyiz ile güvenli ve hızlı rezervasyon.",
@@ -117,16 +117,16 @@ export function generateVillaSeoSuggestion(
 export function buildVillaSeoPrompt(villa: VillaSeoContext) {
   const highlights = buildHighlights(villa);
 
-  return `Sen bir Türkçe SEO uzmanısın. Aşağıdaki tatil konaklama tesisi için meta başlık, meta açıklama ve anahtar kelimeler üret.
+  return `Sen bir Türkçe SEO uzmanısın. Aşağıdaki tatil konaklama evi için meta başlık, meta açıklama ve anahtar kelimeler üret.
 
-Tesis adı: ${villa.name}
+Ev adı: ${villa.name}
 Slug: ${villa.slug}
 Kategori: ${categoryLabel(villa.category)}
 Bölge: ${villa.regionBreadcrumb || villa.regionName}
 Konum: ${villa.location}
 Kapasite: ${villa.guests} kişi, ${villa.bedrooms} yatak odası, ${villa.bathrooms} banyo
 Olanaklar: ${villa.amenities.slice(0, 8).join(", ") || "belirtilmedi"}
-Tesis kategorileri: ${villa.facilityCategories.join(", ") || "belirtilmedi"}
+Ev kategorileri: ${villa.facilityCategories.join(", ") || "belirtilmedi"}
 Öne çıkanlar: ${highlights.join(", ") || "belirtilmedi"}
 
 Kurallar:

@@ -348,7 +348,7 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
       </SectionCard>
 
       <SectionCard
-        title="Tesis-Grup Eşleştir"
+        title="Ev-Grup Eşleştir"
         action={
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -408,7 +408,7 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
             disabled={isPending || !data.whatsappModuleConnected}
             className="w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Bu Tesisi Gruba Eşle
+            Bu Evi Gruba Eşle
           </button>
         </div>
       </SectionCard>

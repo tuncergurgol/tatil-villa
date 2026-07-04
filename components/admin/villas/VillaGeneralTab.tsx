@@ -84,7 +84,16 @@ export default function VillaGeneralTab({
               className={inputClass}
             />
           </Field>
-          <Field label="Tesis Tipi">
+          {villa.tatildeyizId != null ? (
+            <Field label="Tatildeyiz Villa ID">
+              <input
+                readOnly
+                value={String(villa.tatildeyizId)}
+                className={`${inputClass} cursor-default bg-gray-100 text-gray-600`}
+              />
+            </Field>
+          ) : null}
+          <Field label="Ev Tipi">
             <select
               name="category"
               defaultValue={villa.category ?? "villa"}

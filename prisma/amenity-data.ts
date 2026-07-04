@@ -172,20 +172,20 @@ export const AMENITY_SEED_DATA: AmenityCategorySeed[] = [
     name: "Yemek Hizmeti",
     items: [
       {
-        name: "Tesisimizde kahvaltı ve yemek hizmeti olmayıp, mutfakta yemek yapabileceğiniz tüm ekipmanlar yer almaktadır.",
+        name: "Evimizde kahvaltı ve yemek hizmeti olmayıp, mutfakta yemek yapabileceğiniz tüm ekipmanlar yer almaktadır.",
         isDefault: true,
       },
       {
-        name: "Tesisimizde kahvaltı ve yemek hizmeti bulunmamaktadır. Yakın restoranlarda indirimli hizmet sunulmaktadır.",
+        name: "Evimizde kahvaltı ve yemek hizmeti bulunmamaktadır. Yakın restoranlarda indirimli hizmet sunulmaktadır.",
       },
       {
-        name: "Tesisimizde 2 kişilik ücretsiz kahvaltı hizmeti sunulmaktadır.",
+        name: "Evimizde 2 kişilik ücretsiz kahvaltı hizmeti sunulmaktadır.",
       },
       {
-        name: "Tesisimizde tek seferlik ücretsiz kahvaltı hizmeti sunulmaktadır.",
+        name: "Evimizde tek seferlik ücretsiz kahvaltı hizmeti sunulmaktadır.",
       },
       {
-        name: "Tesisimizde yarım pansiyon konsepti uygulanmaktadır.",
+        name: "Evimizde yarım pansiyon konsepti uygulanmaktadır.",
       },
     ],
   },

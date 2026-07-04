@@ -10,12 +10,15 @@ import {
 } from "@/lib/villa-period-calendar";
 import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
+import type { VillaDayOccupancy } from "@prisma/client";
 
 export type PeriodCalendarDayDisplay = {
   periodId: string;
   nightlyPrice: number;
+  discountedNightlyPrice?: number | null;
   nightlyPriceCurrency: VillaPeriodCurrency;
   availability: VillaPeriodAvailability;
+  occupancyStatus?: VillaDayOccupancy;
 };
 
 interface PeriodCalendarGridProps {
@@ -55,6 +58,36 @@ const PERIOD_PALETTE = [
     next: "to-rose-400",
   },
 ] as const;
+
+const OCCUPANCY_STYLES = {
+  BOOKED: {
+    cell: "bg-red-700",
+    band: "bg-red-700",
+    label: "Dolu",
+  },
+  OPTION: {
+    cell: "bg-amber-500",
+    band: "bg-amber-500",
+    label: "Opsiyon",
+  },
+  EMPTY: null,
+} as const;
+
+function getDisplayPrice(display: PeriodCalendarDayDisplay): number {
+  return display.discountedNightlyPrice ?? display.nightlyPrice;
+}
+
+function hasDiscount(display: PeriodCalendarDayDisplay): boolean {
+  return (
+    display.discountedNightlyPrice != null &&
+    display.discountedNightlyPrice !== display.nightlyPrice
+  );
+}
+
+function getOccupancyStyle(occupancy?: VillaDayOccupancy) {
+  if (!occupancy || occupancy === "EMPTY") return null;
+  return OCCUPANCY_STYLES[occupancy];
+}
 
 function getPaletteIndex(
   periodId: string,
@@ -171,7 +204,7 @@ export default function PeriodCalendarGrid({
                         }}
                       >
                         {formatPlainPrice(
-                          segment.display.nightlyPrice,
+                          getDisplayPrice(segment.display),
                           segment.display.nightlyPriceCurrency
                         )}
                       </div>
@@ -210,6 +243,8 @@ export default function PeriodCalendarGrid({
                     cell.inCurrentMonth &&
                     week[index - 1]?.inCurrentMonth;
 
+                  const occupancyStyle = getOccupancyStyle(display?.occupancyStatus);
+
                   const isPeriodDay =
                     isActive && display && cell.inCurrentMonth;
                   const isClosed =
@@ -220,9 +255,13 @@ export default function PeriodCalendarGrid({
                     : "bg-white";
 
                   if (isPeriodDay && !isClosed) {
-                    cellClass = isTransition
-                      ? `bg-gradient-to-br ${PERIOD_PALETTE[prevPaletteIndex ?? 0].prev} ${palette.next} text-white`
-                      : `${palette.cell} text-white`;
+                    if (occupancyStyle) {
+                      cellClass = `${occupancyStyle.cell} text-white`;
+                    } else {
+                      cellClass = isTransition
+                        ? `bg-gradient-to-br ${PERIOD_PALETTE[prevPaletteIndex ?? 0].prev} ${palette.next} text-white`
+                        : `${palette.cell} text-white`;
+                    }
                   } else if (isClosed) {
                     cellClass = "bg-slate-400 text-white";
                   }
@@ -252,11 +291,35 @@ export default function PeriodCalendarGrid({
                             Kapalı
                           </div>
                         ) : (
-                          <div className="mt-auto self-end pb-0.5 text-right text-[11px] font-semibold leading-tight text-white">
-                            {formatPlainPrice(
-                              display.nightlyPrice,
-                              display.nightlyPriceCurrency
+                          <div className="mt-auto self-end pb-0.5 text-right leading-tight text-white">
+                            {hasDiscount(display) ? (
+                              <>
+                                <div className="text-[9px] font-medium line-through opacity-75">
+                                  {formatPlainPrice(
+                                    display.nightlyPrice,
+                                    display.nightlyPriceCurrency
+                                  )}
+                                </div>
+                                <div className="text-[11px] font-semibold">
+                                  {formatPlainPrice(
+                                    getDisplayPrice(display),
+                                    display.nightlyPriceCurrency
+                                  )}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-[11px] font-semibold">
+                                {formatPlainPrice(
+                                  getDisplayPrice(display),
+                                  display.nightlyPriceCurrency
+                                )}
+                              </div>
                             )}
+                            {occupancyStyle ? (
+                              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wide opacity-95">
+                                {occupancyStyle.label}
+                              </div>
+                            ) : null}
                           </div>
                         )
                       ) : null}

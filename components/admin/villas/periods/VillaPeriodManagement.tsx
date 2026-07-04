@@ -64,8 +64,10 @@ export default function VillaPeriodManagement({
       map.set(toDateKey(startOfDay(new Date(day.date))), {
         periodId: day.periodId,
         nightlyPrice: day.nightlyPrice,
+        discountedNightlyPrice: day.discountedNightlyPrice,
         nightlyPriceCurrency: day.nightlyPriceCurrency,
         availability: day.availability,
+        occupancyStatus: day.occupancyStatus,
       });
     });
 
@@ -79,8 +81,10 @@ export default function VillaPeriodManagement({
           map.set(dateKey, {
             periodId: period.id,
             nightlyPrice: period.nightlyPrice,
+            discountedNightlyPrice: period.discountedNightlyPrice,
             nightlyPriceCurrency: period.nightlyPriceCurrency,
             availability: period.availability,
+            occupancyStatus: "EMPTY",
           });
           cursor.setDate(cursor.getDate() + 1);
         }
@@ -154,7 +158,7 @@ export default function VillaPeriodManagement({
               <span className="text-gray-700">{originalName}</span>
             </p>
             <p>
-              <span className="font-semibold text-gray-900">Tesis Kodu:</span>{" "}
+              <span className="font-semibold text-gray-900">Ev Kodu:</span>{" "}
               <span className="text-gray-700">{facilityCode}</span>
             </p>
             <p>
@@ -204,6 +208,25 @@ export default function VillaPeriodManagement({
               </h2>
             </div>
 
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm bg-rose-500" />
+                Boş
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm bg-red-700" />
+                Dolu
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm bg-amber-500" />
+                Opsiyon
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm bg-slate-400" />
+                Kapalı
+              </span>
+            </div>
+
             <button
               type="button"
               onClick={() => openCreateModal(true)}
@@ -245,7 +268,7 @@ export default function VillaPeriodManagement({
             href="/admin/villalar"
             className="text-sm font-medium text-gray-500 hover:text-gray-700"
           >
-            ← Tesis listesine dön
+            ← Ev listesine dön
           </Link>
         </div>
       ) : null}

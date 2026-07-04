@@ -4,7 +4,7 @@ export default function UygunlukPage() {
   return (
     <ComingSoon
       title="Uygunluk Ara"
-      description="Tesis müsaitlik arama modülü yakında eklenecek."
+      description="Ev müsaitlik arama modülü yakında eklenecek."
     />
   );
 }

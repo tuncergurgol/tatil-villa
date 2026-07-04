@@ -87,7 +87,7 @@ export default function AmenityManagement({
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-gray-900">Tesis Olanakları</h1>
+              <h1 className="text-lg font-bold text-gray-900">Ev Olanakları</h1>
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
                 {totalAmenities}
               </span>

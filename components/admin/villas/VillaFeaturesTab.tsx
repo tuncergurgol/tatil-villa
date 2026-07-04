@@ -70,7 +70,7 @@ export default function VillaFeaturesTab({
         </button>
       </div>
 
-      <Section title="Tesis Olanakları">
+      <Section title="Ev Olanakları">
         <VillaFeaturesPicker
           ref={featuresPickerRef}
           amenityCategories={amenityCategories}

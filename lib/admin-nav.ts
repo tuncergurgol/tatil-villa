@@ -23,7 +23,7 @@ export interface NavSection {
 export const tanimlamalarNav: NavLink[] = [
   { label: "Bölgeler", href: "/admin/bolgeler" },
   { label: "Villa Sahipleri", href: "/admin/tanimlamalar/villa-sahipleri" },
-  { label: "Tesis Kategorileri", href: "/admin/tanimlamalar/villa-kategorileri" },
+  { label: "Ev Kategorileri", href: "/admin/tanimlamalar/villa-kategorileri" },
   { label: "Villa Olanakları", href: "/admin/tanimlamalar/villa-olanaklari" },
   { label: "Fiyata Dahil / Değil", href: "/admin/tanimlamalar/fiyata-dahil" },
   { label: "Ön Ödeme Ödeme Tipleri", href: "/admin/tanimlamalar/on-odeme-odeme-tipleri" },
@@ -36,7 +36,7 @@ export const adminNavSections: NavSection[] = [
     items: [
       { label: "Uygunluk Ara", href: "/admin/konaklama/uygunluk" },
       { label: "Rezervasyonlar", href: "/admin/rezervasyonlar" },
-      { label: "Tesisler", href: "/admin/villalar" },
+      { label: "Evler", href: "/admin/villalar" },
       { label: "Takvim", href: "/admin/konaklama/takvim" },
       { label: "Tanımlamalar", items: tanimlamalarNav },
       { label: "Ayarlar", href: "/admin/konaklama/ayarlar" },

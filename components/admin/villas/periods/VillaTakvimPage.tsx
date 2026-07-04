@@ -70,7 +70,7 @@ export default function VillaTakvimPage({
               </span>
             </p>
             <p>
-              <span className="font-semibold text-gray-900">Tesis Kodu:</span>{" "}
+              <span className="font-semibold text-gray-900">Ev Kodu:</span>{" "}
               <span className="text-gray-700">
                 {activeVilla?.slug ?? "—"}
               </span>

@@ -18,7 +18,7 @@ export const FACILITY_CATEGORY_SEED_DATA: FacilityCategorySeedItem[] = [
     name: "Sinema Odası Olanlar",
     slug: "sinema-odasi-olanlar",
     description:
-      "Sinema salonu olan tatil tesislerimizde konuklarımıza unutulmaz bir film deneyimi sunuyoruz. Geniş ekranlar ve konforlu oturma düzenleriyle donatılmış sinema salonları keyifli bir tatilin yanı sıra sinema keyfi yaşamanızı sağlar.",
+      "Sinema salonu olan tatil evlerimizde konuklarımıza unutulmaz bir film deneyimi sunuyoruz. Geniş ekranlar ve konforlu oturma düzenleriyle donatılmış sinema salonları keyifli bir tatilin yanı sıra sinema keyfi yaşamanızı sağlar.",
     published: true,
     image:
       "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=400&q=80",

@@ -196,7 +196,7 @@ export default function VillaDocumentModal({
 
               <section>
                 <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">
-                  Tesis & Sahip Bilgileri
+                  Ev & Sahip Bilgileri
                 </h3>
                 <div className="space-y-4">
                   <label className="block">
@@ -214,7 +214,7 @@ export default function VillaDocumentModal({
 
                   <label className="block">
                     <span className="text-sm font-medium text-gray-700">
-                      Tesis Adresi
+                      Ev Adresi
                     </span>
                     <input
                       name="documentAddress"

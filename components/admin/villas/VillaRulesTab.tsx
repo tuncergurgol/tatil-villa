@@ -84,7 +84,7 @@ export default function VillaRulesTab({
     <div className="space-y-6">
       <SectionCard title="Ön Ödeme Farkı Ödeme Tipi">
         <p className="mb-3 text-xs text-gray-500">
-          Rezervasyonda &apos;Tesis Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
+          Rezervasyonda &apos;Ev Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
           Yapılacak Tarih&apos;i otomatik önerir. Tanımlamalar menüsünden yeni
           tipler ekleyebilirsiniz.
         </p>
@@ -101,7 +101,7 @@ export default function VillaRulesTab({
         </select>
       </SectionCard>
 
-      <SectionCard title="Tesis Kuralları">
+      <SectionCard title="Ev Kuralları">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Check-in Saati</span>

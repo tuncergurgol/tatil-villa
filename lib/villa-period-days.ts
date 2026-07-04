@@ -1,5 +1,6 @@
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
 import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
+import type { VillaDayOccupancy } from "@prisma/client";
 
 export type VillaPricePeriodDayItem = {
   id: string;
@@ -11,6 +12,7 @@ export type VillaPricePeriodDayItem = {
   nightlyPriceCurrency: VillaPeriodCurrency;
   nightlyPriceWithoutCommission: number | null;
   discountedNightlyPrice: number | null;
+  occupancyStatus: VillaDayOccupancy;
 };
 
 export type VillaPeriodDayPricingSnapshot = {
@@ -39,4 +41,12 @@ export type VillaPeriodDayPricingSnapshot = {
   discount1Rate: number | null;
   discount2Rate: number | null;
   extraDiscountAmount: number | null;
+  weekendPrice: number | null;
+  weekendDays: number[];
+  weekendMinStayNights: number | null;
+  childFee02: number | null;
+  childFee02Currency: VillaPeriodCurrency;
+  childFee03_09: number | null;
+  childFee03_09Currency: VillaPeriodCurrency;
+  occupancyStatus?: VillaDayOccupancy;
 };

@@ -54,11 +54,11 @@ export default function VillaPeriodSidebar({
     <aside className="flex h-full min-h-0 flex-col rounded-2xl border border-gray-200 bg-gray-50/60">
       <div className="border-b border-gray-200 bg-white px-4 py-4">
         <p className="text-sm text-gray-700">
-          <span className="font-semibold text-gray-900">Tesis Adı :</span>{" "}
+          <span className="font-semibold text-gray-900">Ev Adı :</span>{" "}
           {villaName}
         </p>
         <p className="mt-1 text-sm text-gray-700">
-          <span className="font-semibold text-gray-900">Tesis Kodu :</span>{" "}
+          <span className="font-semibold text-gray-900">Ev Kodu :</span>{" "}
           {facilityCode}
         </p>
         <button
