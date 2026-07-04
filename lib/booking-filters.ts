@@ -3,6 +3,7 @@ import type { AdminBookingListItem } from "@/lib/booking-display";
 import {
   formatBookingDisplayNumber,
   formatBookingShortCode,
+  resolveBookingDisplayStatus,
 } from "@/lib/booking-display";
 
 function normalize(value: string) {
@@ -12,6 +13,49 @@ function normalize(value: string) {
 function matchesContains(haystack: string, needle: string) {
   if (!needle) return true;
   return normalize(haystack).includes(normalize(needle));
+}
+
+function startOfDay(date: Date): Date {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function addDays(date: Date, days: number): Date {
+  const value = new Date(date);
+  value.setDate(value.getDate() + days);
+  return startOfDay(value);
+}
+
+function isSameCalendarDay(a: Date, b: Date): boolean {
+  return startOfDay(a).getTime() === startOfDay(b).getTime();
+}
+
+function matchesQuickFilter(
+  booking: AdminBookingListItem,
+  quickFilter: BookingFilters["quickFilter"]
+): boolean {
+  if (!quickFilter) return true;
+  if (resolveBookingDisplayStatus(booking) !== "confirmed") return false;
+
+  const today = startOfDay(new Date());
+
+  switch (quickFilter) {
+    case "check_in_today":
+      return isSameCalendarDay(booking.checkIn, today);
+    case "check_in_1_day":
+      return isSameCalendarDay(booking.checkIn, addDays(today, 1));
+    case "check_in_2_days":
+      return isSameCalendarDay(booking.checkIn, addDays(today, 2));
+    case "check_out_today":
+      return isSameCalendarDay(booking.checkOut, today);
+    case "check_out_1_day":
+      return isSameCalendarDay(booking.checkOut, addDays(today, 1));
+    case "check_out_2_days":
+      return isSameCalendarDay(booking.checkOut, addDays(today, 2));
+    default:
+      return true;
+  }
 }
 
 function isDateWithinRange(
@@ -35,6 +79,10 @@ export function filterBookings(
   filters: BookingFilters
 ) {
   return bookings.filter((booking) => {
+    if (!matchesQuickFilter(booking, filters.quickFilter)) {
+      return false;
+    }
+
     if (!matchesContains(booking.guestName, filters.customerName)) {
       return false;
     }

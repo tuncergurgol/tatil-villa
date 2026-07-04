@@ -50,7 +50,7 @@ function StatusBadge({ booking }: { booking: AdminBookingListItem }) {
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${meta.className}`}
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.className}`}
     >
       {meta.label}
     </span>
@@ -141,7 +141,7 @@ export default function BookingManagement({
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
@@ -202,15 +202,15 @@ export default function BookingManagement({
           <table className="min-w-[1200px] w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
-                <th className="w-10 px-3 py-4" />
-                <th className="px-4 py-4">Rezervasyon</th>
-                <th className="px-4 py-4">Tesis</th>
-                <th className="px-4 py-4">Konaklama</th>
-                <th className="px-4 py-4">Misafir</th>
-                <th className="px-4 py-4">Fiyat</th>
-                <th className="px-4 py-4">Müşteri</th>
-                <th className="px-4 py-4">Durum</th>
-                <th className="px-4 py-4">İşlemler</th>
+                <th className="w-10 px-3 py-2" />
+                <th className="px-3 py-2">Rezervasyon</th>
+                <th className="px-3 py-2">Tesis</th>
+                <th className="px-3 py-2">Konaklama</th>
+                <th className="px-3 py-2">Misafir</th>
+                <th className="px-3 py-2">Fiyat</th>
+                <th className="px-3 py-2">Müşteri</th>
+                <th className="px-3 py-2">Durum</th>
+                <th className="px-3 py-2">İşlemler</th>
               </tr>
             </thead>
             <tbody>
@@ -233,7 +233,7 @@ export default function BookingManagement({
                           isSelected ? "bg-sky-50/80" : "hover:bg-gray-50/60"
                         }`}
                       >
-                        <td className="px-3 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           <button
                             type="button"
                             onClick={(event) => {
@@ -242,7 +242,7 @@ export default function BookingManagement({
                                 prev === booking.id ? null : booking.id
                               );
                             }}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
                           >
                             {isExpanded ? (
                               <ChevronDown className="h-4 w-4" />
@@ -252,7 +252,7 @@ export default function BookingManagement({
                           </button>
                         </td>
 
-                        <td className="px-4 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           <Link
                             href={`/admin/rezervasyonlar/${booking.id}`}
                             className="font-semibold text-blue-600 hover:underline"
@@ -260,16 +260,16 @@ export default function BookingManagement({
                           >
                             {formatBookingDisplayNumber(booking.id)}
                           </Link>
-                          <div className="mt-1 flex items-center gap-1">
+                          <div className="mt-0.5 flex items-center gap-1">
                             <span className="font-medium text-gray-800">
                               {shortCode}
                             </span>
                             <CopyButton value={shortCode} />
                           </div>
-                          <p className="mt-1 text-xs text-gray-500">{siteDomain}</p>
+                          <p className="mt-0.5 text-xs text-gray-500">{siteDomain}</p>
                         </td>
 
-                        <td className="px-4 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           <div className="flex items-start gap-1.5">
                             <Link
                               href={`/admin/villalar/${booking.villa.id}/duzenle`}
@@ -280,30 +280,30 @@ export default function BookingManagement({
                             </Link>
                             <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
                           </div>
-                          <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">
+                          <p className="mt-0.5 text-xs uppercase tracking-wide text-gray-500">
                             {facilitySubtext}
                           </p>
-                          <p className="mt-0.5 text-xs font-medium text-gray-400">
+                          <p className="text-xs font-medium text-gray-400">
                             {formatFacilityCode(booking.villa)}
                           </p>
                         </td>
 
-                        <td className="px-4 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           <p className="font-semibold text-gray-900">{stay.range}</p>
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="text-xs text-gray-500">
                             {stay.weekdays}
                           </p>
-                          <p className="mt-0.5 text-xs text-gray-500">{stay.nights}</p>
+                          <p className="text-xs text-gray-500">{stay.nights}</p>
                         </td>
 
-                        <td className="px-4 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           <p className="font-semibold text-gray-900">
                             {guests.summary}
                           </p>
-                          <p className="mt-1 text-xs text-gray-500">{guests.pets}</p>
+                          <p className="text-xs text-gray-500">{guests.pets}</p>
                         </td>
 
-                        <td className="px-4 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           {prepayment != null ? (
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-bold text-gray-900">
@@ -317,36 +317,36 @@ export default function BookingManagement({
                             <span className="font-bold text-gray-900">Teklif</span>
                           )}
                           {booking.totalPrice != null ? (
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-0.5 text-xs text-gray-500">
                               Toplam: {formatMoneyPlain(booking.totalPrice)}
                             </p>
                           ) : null}
-                          <p className="mt-0.5 text-xs text-gray-500">
+                          <p className="text-xs text-gray-500">
                             {resolvePaymentMethod(booking.id)}
                           </p>
                         </td>
 
-                        <td className="px-4 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           <p className="font-semibold text-gray-900">
                             {booking.guestName}
                           </p>
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="text-xs text-gray-500">
                             {booking.guestEmail}
                           </p>
-                          <p className="mt-0.5 text-xs text-gray-500">
+                          <p className="text-xs text-gray-500">
                             {booking.guestPhone}
                           </p>
                         </td>
 
-                        <td className="px-4 py-4 align-top">
+                        <td className="px-3 py-2 align-top">
                           <StatusBadge booking={booking} />
                         </td>
 
-                        <td className="px-4 py-4 align-top">
-                          <div className="flex items-center gap-2">
+                        <td className="px-3 py-2 align-top">
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                               onClick={(event) => event.stopPropagation()}
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -360,7 +360,7 @@ export default function BookingManagement({
                       {isExpanded ? (
                         <tr className="border-b border-gray-100 bg-gray-50/70">
                           <td />
-                          <td colSpan={8} className="px-4 py-4">
+                          <td colSpan={8} className="px-3 py-2">
                             <div className="grid gap-4 md:grid-cols-3">
                               <div>
                                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">

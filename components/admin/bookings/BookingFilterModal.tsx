@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Filter, X } from "lucide-react";
+import { Bus, Filter, X } from "lucide-react";
+
+export type BookingQuickFilter =
+  | "check_in_today"
+  | "check_in_1_day"
+  | "check_in_2_days"
+  | "check_out_today"
+  | "check_out_1_day"
+  | "check_out_2_days";
 
 export type BookingFilters = {
+  quickFilter: BookingQuickFilter | null;
   customerName: string;
   email: string;
   phone: string;
@@ -18,7 +27,20 @@ export type BookingFilters = {
   checkOutEnd: string;
 };
 
+export const BOOKING_QUICK_FILTER_OPTIONS: {
+  value: BookingQuickFilter;
+  label: string;
+}[] = [
+  { value: "check_in_today", label: "Bugün Girişli Rezervasyonlar" },
+  { value: "check_in_1_day", label: "Tatile 1 gün kalanlar" },
+  { value: "check_in_2_days", label: "Tatile 2 gün kalanlar" },
+  { value: "check_out_today", label: "Bugün çıkanlar" },
+  { value: "check_out_1_day", label: "Çıkışa 1 gün kalanlar" },
+  { value: "check_out_2_days", label: "Çıkışa 2 gün kalanlar" },
+];
+
 export const emptyBookingFilters = (): BookingFilters => ({
+  quickFilter: null,
   customerName: "",
   email: "",
   phone: "",
@@ -48,62 +70,96 @@ interface BookingFilterModalProps {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100";
+  "w-full rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100";
 
-const labelClass = "mb-1.5 block text-sm font-semibold text-gray-800";
+const labelClass = "text-sm font-semibold text-gray-800";
 
 function FilterRow({
   label,
   children,
+  compact = false,
 }: {
   label: string;
   children: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="grid gap-3 border-b border-gray-100 py-4 sm:grid-cols-[180px_1fr] sm:items-start">
+    <div
+      className={`grid gap-2 border-b border-gray-100 sm:grid-cols-[160px_1fr] sm:items-start ${
+        compact ? "py-2.5" : "py-3"
+      }`}
+    >
       <p className={labelClass}>{label}</p>
       <div>{children}</div>
     </div>
   );
 }
 
-function DateRangeRow({
-  start,
-  end,
-  onStartChange,
-  onEndChange,
+function DateFiltersGrid({
+  draft,
+  updateDraft,
 }: {
-  start: string;
-  end: string;
-  onStartChange: (value: string) => void;
-  onEndChange: (value: string) => void;
+  draft: BookingFilters;
+  updateDraft: (patch: Partial<BookingFilters>) => void;
 }) {
+  const rows = [
+    {
+      label: "Rezervasyon",
+      start: draft.reservationDateStart,
+      end: draft.reservationDateEnd,
+      onStart: (value: string) => updateDraft({ reservationDateStart: value }),
+      onEnd: (value: string) => updateDraft({ reservationDateEnd: value }),
+    },
+    {
+      label: "Giriş",
+      start: draft.checkInStart,
+      end: draft.checkInEnd,
+      onStart: (value: string) => updateDraft({ checkInStart: value }),
+      onEnd: (value: string) => updateDraft({ checkInEnd: value }),
+    },
+    {
+      label: "Çıkış",
+      start: draft.checkOutStart,
+      end: draft.checkOutEnd,
+      onStart: (value: string) => updateDraft({ checkOutStart: value }),
+      onEnd: (value: string) => updateDraft({ checkOutEnd: value }),
+    },
+  ] as const;
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <label className="block">
-        <span className="mb-1 block text-xs text-gray-500">Başlangıç tarihi</span>
-        <input
-          type="date"
-          value={start}
-          onChange={(event) => onStartChange(event.target.value)}
-          className={inputClass}
-        />
-      </label>
-      <label className="block">
-        <span className="mb-1 block text-xs text-gray-500">Bitiş tarihi</span>
-        <input
-          type="date"
-          value={end}
-          onChange={(event) => onEndChange(event.target.value)}
-          className={inputClass}
-        />
-      </label>
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      <div className="grid grid-cols-[100px_1fr_1fr] gap-2 border-b border-gray-100 bg-gray-50/80 px-3 py-2 text-xs font-semibold text-gray-500">
+        <span />
+        <span>Başlangıç</span>
+        <span>Bitiş</span>
+      </div>
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          className="grid grid-cols-[100px_1fr_1fr] items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+        >
+          <span className="text-sm font-medium text-gray-700">{row.label}</span>
+          <input
+            type="date"
+            value={row.start}
+            onChange={(event) => row.onStart(event.target.value)}
+            className={inputClass}
+          />
+          <input
+            type="date"
+            value={row.end}
+            onChange={(event) => row.onEnd(event.target.value)}
+            className={inputClass}
+          />
+        </div>
+      ))}
     </div>
   );
 }
 
 export function countActiveBookingFilters(filters: BookingFilters): number {
   let count = 0;
+  if (filters.quickFilter) count += 1;
   if (filters.customerName.trim()) count += 1;
   if (filters.email.trim()) count += 1;
   if (filters.phone.trim()) count += 1;
@@ -151,27 +207,63 @@ export default function BookingFilterModal({
     });
   }
 
+  function toggleQuickFilter(value: BookingQuickFilter) {
+    setDraft((prev) => ({
+      ...prev,
+      quickFilter: prev.quickFilter === value ? null : value,
+    }));
+  }
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
           <div className="flex items-center gap-2">
-            <Filter className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-bold text-gray-900">Filtreler</h2>
+            <Filter className="h-4 w-4 text-indigo-600" />
+            <h2 className="text-base font-bold text-gray-900">Filtreler</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6">
-          <FilterRow label="Müşteri Adı">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5">
+          <div className="border-b border-gray-100 py-3">
+            <p className="mb-2 text-sm font-semibold text-gray-800">
+              Hızlı Filtreler
+            </p>
+            <p className="mb-2 text-xs text-gray-500">
+              Yalnızca onaylı rezervasyonlar listelenir.
+            </p>
+            <div className="space-y-1">
+              {BOOKING_QUICK_FILTER_OPTIONS.map((option) => {
+                const active = draft.quickFilter === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleQuickFilter(option.value)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                      active
+                        ? "bg-indigo-50 font-semibold text-indigo-700"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Bus className="h-3.5 w-3.5 shrink-0" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <FilterRow label="Müşteri Adı" compact>
             <input
               type="search"
               value={draft.customerName}
@@ -183,7 +275,7 @@ export default function BookingFilterModal({
             />
           </FilterRow>
 
-          <FilterRow label="Mail Adresi">
+          <FilterRow label="Mail Adresi" compact>
             <input
               type="search"
               value={draft.email}
@@ -193,7 +285,7 @@ export default function BookingFilterModal({
             />
           </FilterRow>
 
-          <FilterRow label="Telefon No">
+          <FilterRow label="Telefon No" compact>
             <input
               type="search"
               value={draft.phone}
@@ -203,8 +295,8 @@ export default function BookingFilterModal({
             />
           </FilterRow>
 
-          <FilterRow label="Villa Adı">
-            <div className="space-y-3">
+          <FilterRow label="Villa Adı" compact>
+            <div className="space-y-2">
               <input
                 type="search"
                 value={draft.villaSearch}
@@ -215,14 +307,14 @@ export default function BookingFilterModal({
                 className={inputClass}
               />
               {draft.villaSearch.trim() ? (
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200">
+                <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-200">
                   {matchedVillas.length > 0 ? (
                     matchedVillas.map((villa) => {
                       const checked = draft.selectedVillaIds.includes(villa.id);
                       return (
                         <label
                           key={villa.id}
-                          className={`flex cursor-pointer items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-50 ${
+                          className={`flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0 hover:bg-gray-50 ${
                             checked ? "bg-indigo-50/60" : ""
                           }`}
                         >
@@ -230,26 +322,21 @@ export default function BookingFilterModal({
                             type="checkbox"
                             checked={checked}
                             onChange={() => toggleVilla(villa.id)}
-                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="text-sm font-medium text-gray-800">
+                          <span className="text-sm text-gray-800">
                             {villa.name}
                           </span>
                         </label>
                       );
                     })
                   ) : (
-                    <p className="px-4 py-6 text-center text-sm text-gray-500">
+                    <p className="px-3 py-4 text-center text-sm text-gray-500">
                       Eşleşen villa bulunamadı.
                     </p>
                   )}
                 </div>
-              ) : (
-                <p className="text-xs text-gray-500">
-                  Villa adı yazdığınızda liste açılır; kutucuklardan seçim
-                  yapabilirsiniz.
-                </p>
-              )}
+              ) : null}
               {draft.selectedVillaIds.length > 0 ? (
                 <p className="text-xs font-medium text-indigo-700">
                   {draft.selectedVillaIds.length} villa seçili
@@ -258,7 +345,7 @@ export default function BookingFilterModal({
             </div>
           </FilterRow>
 
-          <FilterRow label="Rezervasyon No">
+          <FilterRow label="Rezervasyon No" compact>
             <input
               type="search"
               value={draft.reservationNo}
@@ -270,53 +357,26 @@ export default function BookingFilterModal({
             />
           </FilterRow>
 
-          <FilterRow label="Rezervasyon Tarihi">
-            <DateRangeRow
-              start={draft.reservationDateStart}
-              end={draft.reservationDateEnd}
-              onStartChange={(value) =>
-                updateDraft({ reservationDateStart: value })
-              }
-              onEndChange={(value) =>
-                updateDraft({ reservationDateEnd: value })
-              }
-            />
-          </FilterRow>
-
-          <FilterRow label="Giriş Tarihi">
-            <DateRangeRow
-              start={draft.checkInStart}
-              end={draft.checkInEnd}
-              onStartChange={(value) => updateDraft({ checkInStart: value })}
-              onEndChange={(value) => updateDraft({ checkInEnd: value })}
-            />
-          </FilterRow>
-
-          <FilterRow label="Çıkış Tarihi">
-            <DateRangeRow
-              start={draft.checkOutStart}
-              end={draft.checkOutEnd}
-              onStartChange={(value) => updateDraft({ checkOutStart: value })}
-              onEndChange={(value) => updateDraft({ checkOutEnd: value })}
-            />
+          <FilterRow label="Tarihler" compact>
+            <DateFiltersGrid draft={draft} updateDraft={updateDraft} />
           </FilterRow>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 px-5 py-3">
           <button
             type="button"
             onClick={() => {
               onClear();
               onClose();
             }}
-            className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             Temizle
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             İptal
           </button>
@@ -326,7 +386,7 @@ export default function BookingFilterModal({
               onApply(draft);
               onClose();
             }}
-            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
           >
             Uygula
           </button>
