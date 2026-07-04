@@ -18,41 +18,62 @@ export type VillaOwnerActionState = {
   id?: string;
 };
 
+const optionalString = z.string().optional().default("");
+
 const optionalEmail = z
   .string()
+  .optional()
+  .default("")
   .refine(
     (value) => !value || z.string().email().safeParse(value).success,
     "Geçerli bir e-posta girin"
   );
 
+const optionalTcKimlikNo = z
+  .string()
+  .optional()
+  .default("")
+  .refine(
+    (value) => !value || /^\d{11}$/.test(value),
+    "TC Kimlik No 11 haneli olmalıdır"
+  );
+
 const commonSchema = z.object({
   type: z.nativeEnum(VillaOwnerType),
-  phone: z.string().min(1, "Telefon numarası gerekli"),
+  phone: optionalString,
   email: optionalEmail,
-  bankAccountHolder: z.string().min(1, "Banka hesap sahibi gerekli"),
-  bankIban: z.string().min(1, "IBAN gerekli"),
-  accountingCode: z.string(),
-  country: z.string().min(1, "Ülke gerekli"),
+  bankAccountHolder: optionalString,
+  bankIban: optionalString,
+  accountingCode: optionalString,
+  country: optionalString,
   mernisIlceCode: z.string().optional(),
-  address: z.string().min(1, "Adres gerekli"),
+  address: optionalString,
   active: z.enum(["true", "false"]).transform((v) => v === "true"),
 });
 
-const gercekKisiSchema = commonSchema.extend({
-  type: z.literal(VillaOwnerType.GERCEK_KISI),
-  firstName: z.string().min(1, "Ad gerekli"),
-  lastName: z.string().min(1, "Soyad gerekli"),
-  tcKimlikNo: z
-    .string()
-    .regex(/^\d{11}$/, "TC Kimlik No 11 haneli olmalıdır"),
-});
+const gercekKisiSchema = commonSchema
+  .extend({
+    type: z.literal(VillaOwnerType.GERCEK_KISI),
+    firstName: optionalString,
+    lastName: optionalString,
+    tcKimlikNo: optionalTcKimlikNo,
+  })
+  .refine(
+    (data) =>
+      buildOwnerDisplayName({
+        type: VillaOwnerType.GERCEK_KISI,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      }).length > 0,
+    { message: "Adı soyadı gerekli", path: ["firstName"] }
+  );
 
 const tuzelKisiSchema = commonSchema.extend({
   type: z.literal(VillaOwnerType.TUZEL_KISI),
-  companyTitle: z.string().min(1, "Ünvan gerekli"),
-  authorizedPersonName: z.string().min(1, "Yetkili adı soyadı gerekli"),
-  taxOffice: z.string().min(1, "Vergi dairesi gerekli"),
-  taxNumber: z.string().min(1, "Vergi no gerekli"),
+  companyTitle: z.string().trim().min(1, "Ünvan gerekli"),
+  authorizedPersonName: optionalString,
+  taxOffice: optionalString,
+  taxNumber: optionalString,
 });
 
 function parseOwnerForm(formData: FormData) {
@@ -94,8 +115,8 @@ function parseOwnerForm(formData: FormData) {
 
 function toOwnerData(parsed: z.infer<typeof gercekKisiSchema> | z.infer<typeof tuzelKisiSchema>) {
   const phone = normalizeOwnerPhone(parsed.phone);
-  const mernisIlceCode =
-    parsed.country === "Türkiye" ? parsed.mernisIlceCode ?? null : null;
+  const country = parsed.country || "Türkiye";
+  const mernisIlceCode = country === "Türkiye" ? parsed.mernisIlceCode ?? null : null;
 
   if (parsed.type === VillaOwnerType.TUZEL_KISI) {
     return {
@@ -114,9 +135,9 @@ function toOwnerData(parsed: z.infer<typeof gercekKisiSchema> | z.infer<typeof t
       taxOffice: parsed.taxOffice,
       taxNumber: parsed.taxNumber,
       bankAccountHolder: parsed.bankAccountHolder,
-      bankIban: parsed.bankIban.toUpperCase(),
+      bankIban: parsed.bankIban?.toUpperCase() ?? "",
       accountingCode: parsed.accountingCode,
-      country: parsed.country,
+      country,
       mernisIlceCode,
       address: parsed.address,
       active: parsed.active,
@@ -140,9 +161,9 @@ function toOwnerData(parsed: z.infer<typeof gercekKisiSchema> | z.infer<typeof t
     taxOffice: "",
     taxNumber: "",
     bankAccountHolder: parsed.bankAccountHolder,
-    bankIban: parsed.bankIban.toUpperCase(),
+    bankIban: parsed.bankIban?.toUpperCase() ?? "",
     accountingCode: parsed.accountingCode,
-    country: parsed.country,
+    country,
     mernisIlceCode,
     address: parsed.address,
     active: parsed.active,
@@ -153,8 +174,7 @@ function validateTurkeyLocation(
   country: string,
   mernisIlceCode?: string
 ): string | null {
-  if (country !== "Türkiye") return null;
-  if (!mernisIlceCode) return "İl ve ilçe seçin";
+  if (country !== "Türkiye" || !mernisIlceCode) return null;
   if (!getMernisIlceByCode(mernisIlceCode)) return "Geçerli bir il ve ilçe seçin";
   return null;
 }

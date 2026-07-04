@@ -77,6 +77,13 @@ export default function VillaOwnerManagement({
   }, [owners, search, statusFilter]);
 
   function handleDeleteOwner(owner: VillaOwnerListItem) {
+    if (owner._count.villas > 0) {
+      setDeleteError(
+        `"${owner.name}" kaydının ${owner._count.villas} bağlı villası var. Silmeden önce villaları başka bir villa sahibine taşıyın.`
+      );
+      return;
+    }
+
     if (
       !window.confirm(
         `"${owner.name}" villa sahibi kaydını silmek istiyor musunuz?`

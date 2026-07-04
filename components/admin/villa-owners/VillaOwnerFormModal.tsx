@@ -94,7 +94,6 @@ function PhoneField({ defaultValue = "" }: { defaultValue?: string }) {
         <input
           name="phone"
           defaultValue={displayValue}
-          required
           placeholder="5xx xxx xx xx"
           className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
         />
@@ -187,14 +186,12 @@ export default function VillaOwnerFormModal({
                 label="Adı"
                 name="firstName"
                 defaultValue={owner?.firstName}
-                required
                 placeholder="Ad"
               />
               <Field
                 label="Soyadı"
                 name="lastName"
                 defaultValue={owner?.lastName}
-                required
                 placeholder="Soyad"
               />
             </div>
@@ -204,14 +201,12 @@ export default function VillaOwnerFormModal({
                 label="Ünvanı"
                 name="companyTitle"
                 defaultValue={owner?.companyTitle}
-                required
                 placeholder="Şirket ünvanı"
               />
               <Field
                 label="Yetkili Adı Soyadı"
                 name="authorizedPersonName"
                 defaultValue={owner?.authorizedPersonName}
-                required
                 placeholder="Yetkili kişi"
               />
             </>
@@ -233,7 +228,6 @@ export default function VillaOwnerFormModal({
               label="TC Kimlik No"
               name="tcKimlikNo"
               defaultValue={owner?.tcKimlikNo}
-              required
               placeholder="11 haneli TC kimlik no"
               maxLength={11}
             />
@@ -243,14 +237,12 @@ export default function VillaOwnerFormModal({
                 label="Vergi Dairesi"
                 name="taxOffice"
                 defaultValue={owner?.taxOffice}
-                required
                 placeholder="Vergi dairesi"
               />
               <Field
                 label="Vergi No"
                 name="taxNumber"
                 defaultValue={owner?.taxNumber}
-                required
                 placeholder="Vergi numarası"
               />
             </div>
@@ -260,14 +252,12 @@ export default function VillaOwnerFormModal({
             label="Banka Hesap Sahibi Adı Soyadı"
             name="bankAccountHolder"
             defaultValue={owner?.bankAccountHolder}
-            required
             placeholder="Hesap sahibi"
           />
           <Field
             label="Banka IBAN"
             name="bankIban"
             defaultValue={owner?.bankIban}
-            required
             placeholder="TR00 0000 0000 0000 0000 0000 00"
           />
           <Field
@@ -283,7 +273,6 @@ export default function VillaOwnerFormModal({
               name="country"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              required
               placeholder="Ülke"
               className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
             />
@@ -302,7 +291,6 @@ export default function VillaOwnerFormModal({
             label="Adres"
             name="address"
             defaultValue={owner?.address}
-            required
             rows={3}
           />
 
