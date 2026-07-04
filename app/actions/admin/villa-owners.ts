@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 import { VillaOwnerType } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";

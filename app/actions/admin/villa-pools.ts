@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { PoolMeasureUnit } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 export type VillaPoolActionState = {
   error?: string;

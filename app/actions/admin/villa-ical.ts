@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 async function revalidateVillaIcal(villaId: string) {
   revalidatePath("/admin/villalar");

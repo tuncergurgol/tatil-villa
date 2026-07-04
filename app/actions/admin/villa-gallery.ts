@@ -11,7 +11,7 @@ import {
   buildSeoGalleryFileName,
   getNextGallerySequence,
 } from "@/lib/villa-gallery-filename";
-import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([

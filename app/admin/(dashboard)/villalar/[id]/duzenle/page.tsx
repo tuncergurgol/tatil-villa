@@ -1,10 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import VillaEditForm from "@/components/admin/villas/VillaEditForm";
 import { getVillaEditPageData } from "@/lib/queries/villa-edit";
-import {
-  findVillaByRouteParam,
-  villaAdminEditPath,
-} from "@/lib/villa-admin-path";
+import { villaAdminEditPath } from "@/lib/villa-admin-path";
+import { findVillaByRouteParam } from "@/lib/villa-admin-path.server";
 
 export const dynamic = "force-dynamic";
 

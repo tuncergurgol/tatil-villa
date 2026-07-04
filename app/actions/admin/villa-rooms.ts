@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { syncVillaRooms } from "@/lib/queries/villa-rooms";
-import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 export type VillaRoomActionState = {
   error?: string;

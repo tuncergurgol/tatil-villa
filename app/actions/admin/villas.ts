@@ -12,7 +12,7 @@ import { RegionLevel } from "@/lib/region-levels";
 import { DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID } from "@/lib/villa-rules-defaults";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { revalidateVillaEditPage } from "@/lib/villa-admin-path";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 function parseBool(value: FormDataEntryValue | null) {
   return value === "true" || value === "on";
