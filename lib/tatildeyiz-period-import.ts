@@ -3,6 +3,7 @@ import {
   calculateDiscountAmounts,
   deriveWeeklyFromNightly,
   deriveWithoutCommissionFromCommissioned,
+  resolveDayDiscountedPrice,
 } from "@/lib/villa-period-pricing";
 import {
   compareDates,
@@ -273,14 +274,19 @@ export function buildDaySnapshotForDate(
 ): VillaPeriodDayPricingSnapshot {
   const weekend = isWeekendDate(period, date);
 
+  const nightlyPrice = weekend ? period.weekendPrice! : period.nightlyPrice;
+
   return {
     availability: period.availability,
-    nightlyPrice: weekend ? period.weekendPrice! : period.nightlyPrice,
+    nightlyPrice,
     nightlyPriceCurrency: period.nightlyPriceCurrency,
     nightlyPriceWithoutCommission: period.nightlyPriceWithoutCommission,
-    discountedNightlyPrice: weekend
-      ? period.weekendPrice!
-      : period.discountedNightlyPrice,
+    discountedNightlyPrice: resolveDayDiscountedPrice(
+      nightlyPrice,
+      period.discount1Rate,
+      period.discount2Rate,
+      period.extraDiscountAmount
+    ),
     weeklyPrice: period.weeklyPrice,
     prepaymentRate: period.prepaymentRate,
     commissionRate: period.commissionRate,

@@ -112,9 +112,7 @@ function CalendarDayCell({
 }: DayCellProps) {
   if (!cell) {
     return (
-      <div
-        className={`${minCellHeight} border-r border-gray-100 bg-gray-50 last:border-r-0`}
-      />
+      <div className={`${minCellHeight} rounded-lg bg-gray-50`} />
     );
   }
 
@@ -195,7 +193,7 @@ function CalendarDayCell({
 
   return (
     <div
-      className={`${minCellHeight} relative flex flex-col border-r border-gray-100 p-2 last:border-r-0 ${
+      className={`${minCellHeight} relative flex flex-col rounded-lg p-2 ${
         isToday ? "ring-2 ring-inset ring-indigo-400" : ""
       } ${isInSelection ? "ring-2 ring-inset ring-blue-500 z-[1]" : ""} ${
         isSelectable ? "cursor-pointer select-none" : ""
@@ -221,22 +219,24 @@ function CalendarDayCell({
           className={`mt-auto self-start pb-0.5 text-left leading-tight ${priceClass}`}
         >
           {hasDiscount(display) ? (
-            <>
-              <div
+            <div
+              className={`flex flex-wrap items-baseline gap-x-1.5 leading-tight ${priceSizeClass}`}
+            >
+              <span
                 className={`font-medium line-through opacity-70 ${strikePriceSizeClass}`}
               >
                 {formatPlainPrice(
                   display.nightlyPrice,
                   display.nightlyPriceCurrency
                 )}
-              </div>
-              <div className={`font-semibold ${priceSizeClass}`}>
+              </span>
+              <span className="font-semibold">
                 {formatPlainPrice(
                   getDisplayPrice(display),
                   display.nightlyPriceCurrency
                 )}
-              </div>
-            </>
+              </span>
+            </div>
           ) : (
             <div className={`font-semibold ${priceSizeClass}`}>
               {formatPlainPrice(
@@ -338,9 +338,9 @@ export default function PeriodCalendarGrid({
         ))}
       </div>
 
-      <div className="divide-y divide-gray-200 bg-white">
+      <div className="flex flex-col gap-1 bg-white p-1">
         {weeks.map((week, weekIndex) => (
-          <div key={`week-${weekIndex}`} className="grid grid-cols-7">
+          <div key={`week-${weekIndex}`} className="grid grid-cols-7 gap-1">
             {week.map((cell) => (
               <CalendarDayCell
                 key={toDateKey(cell.date)}
@@ -354,8 +354,8 @@ export default function PeriodCalendarGrid({
       </div>
 
       {showNextMonthWeekRow ? (
-        <div className="border-t border-gray-200 bg-white">
-          <div className="grid grid-cols-7">
+        <div className="border-t border-gray-200 bg-white p-1 pt-0">
+          <div className="grid grid-cols-7 gap-1">
             {nextMonthWeekRow.map((cell, index) => (
               <CalendarDayCell
                 key={cell ? toDateKey(cell.date) : `next-week-pad-${index}`}

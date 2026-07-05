@@ -17,10 +17,15 @@ import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
 import { normalizeDateRange } from "@/lib/villa-period-selection";
 import {
   getMonthLabel,
+  compareDates,
+  dbDateToDateKey,
+  getDefaultPeriodEndDate,
+  parseDateKey,
   startOfDay,
   toDateKey,
   todayDate,
 } from "@/lib/villa-period-calendar";
+import { offsetDateKey } from "@/lib/villa-period-selection";
 
 interface VillaPeriodManagementProps {
   villa: {
@@ -36,12 +41,30 @@ interface VillaPeriodManagementProps {
   embedded?: boolean;
 }
 
+function toLocalDate(value: Date | string): Date {
+  return parseDateKey(dbDateToDateKey(new Date(value)));
+}
+
 function normalizePeriods(periods: VillaPricePeriodItem[]): VillaPricePeriodItem[] {
   return periods.map((period) => ({
     ...period,
-    startDate: startOfDay(new Date(period.startDate)),
-    endDate: startOfDay(new Date(period.endDate)),
+    startDate: toLocalDate(period.startDate),
+    endDate: toLocalDate(period.endDate),
   }));
+}
+
+function getNextPeriodStartDate(periods: VillaPricePeriodItem[]): string {
+  if (periods.length === 0) return "";
+
+  let latestEnd = toLocalDate(periods[0]!.endDate);
+  for (const period of periods) {
+    const end = toLocalDate(period.endDate);
+    if (compareDates(end, latestEnd) > 0) {
+      latestEnd = end;
+    }
+  }
+
+  return offsetDateKey(toDateKey(latestEnd), 1);
 }
 
 export default function VillaPeriodManagement({
@@ -74,7 +97,7 @@ export default function VillaPeriodManagement({
     const map = new Map<string, PeriodCalendarDayDisplay>();
 
     periodDays.forEach((day) => {
-      map.set(toDateKey(startOfDay(new Date(day.date))), {
+      map.set(dbDateToDateKey(new Date(day.date)), {
         periodId: day.periodId,
         nightlyPrice: day.nightlyPrice,
         discountedNightlyPrice: day.discountedNightlyPrice,
@@ -86,8 +109,8 @@ export default function VillaPeriodManagement({
 
     if (map.size === 0) {
       normalizedPeriods.forEach((period) => {
-        const cursor = startOfDay(new Date(period.startDate));
-        const end = startOfDay(new Date(period.endDate));
+        const cursor = toLocalDate(period.startDate);
+        const end = toLocalDate(period.endDate);
 
         while (cursor <= end) {
           const dateKey = toDateKey(cursor);
@@ -131,8 +154,18 @@ export default function VillaPeriodManagement({
 
   function openCreateModal(continueMode: boolean) {
     setEditingPeriod(null);
-    setModalDateRange(null);
     setContinueAfterSave(continueMode);
+    setModalDateRange(
+      continueMode && normalizedPeriods.length > 0
+        ? (() => {
+            const startDate = getNextPeriodStartDate(normalizedPeriods);
+            return {
+              startDate,
+              endDate: getDefaultPeriodEndDate(startDate),
+            };
+          })()
+        : null
+    );
     setModalOpen(true);
   }
 

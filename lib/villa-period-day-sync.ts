@@ -5,8 +5,10 @@ import {
   parseDateKey,
   startOfDay,
   toDateKey,
+  toDbDate,
 } from "@/lib/villa-period-calendar";
 import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
+import { resolveDayDiscountedPrice } from "@/lib/villa-period-pricing";
 
 function enumerateDates(startDate: Date, endDate: Date): Date[] {
   const dates: Date[] = [];
@@ -29,26 +31,35 @@ export async function syncVillaPricePeriodDays(
   snapshot: VillaPeriodDayPricingSnapshot
 ) {
   const dates = enumerateDates(startDate, endDate);
+  const dbDates = dates.map((date) => toDbDate(date));
   const dateKeys = dates.map((date) => toDateKey(date));
 
   await prisma.$transaction(async (tx) => {
     await tx.villaPricePeriodDay.deleteMany({
       where: {
         villaId,
-        date: { in: dates },
+        date: { in: dbDates },
       },
     });
 
-    if (dates.length === 0) return;
+    if (dbDates.length === 0) return;
 
     await tx.villaPricePeriodDay.createMany({
-      data: dates.map((date) => ({
-        periodId,
-        villaId,
-        date,
-        ...snapshot,
-        occupancyStatus: snapshot.occupancyStatus ?? "EMPTY",
-      })),
+      data: dates.map((date) => {
+        const daySnapshot = buildDaySnapshotForDate(
+          snapshot,
+          date,
+          snapshot.occupancyStatus ?? "EMPTY"
+        );
+
+        return {
+          periodId,
+          villaId,
+          date: toDbDate(date),
+          ...daySnapshot,
+          occupancyStatus: daySnapshot.occupancyStatus ?? "EMPTY",
+        };
+      }),
     });
   });
 
@@ -74,12 +85,17 @@ export function buildDaySnapshotForDate(
 ): VillaPeriodDayPricingSnapshot {
   const weekend = isWeekendDate(snapshot, date);
 
+  const nightlyPrice = weekend ? snapshot.weekendPrice! : snapshot.nightlyPrice;
+
   return {
     ...snapshot,
-    nightlyPrice: weekend ? snapshot.weekendPrice! : snapshot.nightlyPrice,
-    discountedNightlyPrice: weekend
-      ? snapshot.weekendPrice!
-      : snapshot.discountedNightlyPrice,
+    nightlyPrice,
+    discountedNightlyPrice: resolveDayDiscountedPrice(
+      nightlyPrice,
+      snapshot.discount1Rate,
+      snapshot.discount2Rate,
+      snapshot.extraDiscountAmount
+    ),
     occupancyStatus: occupancyStatus ?? snapshot.occupancyStatus ?? "EMPTY",
   };
 }
@@ -114,10 +130,11 @@ export async function reassignPeriodDaysInRange(
   const dates = enumerateDates(startDate, endDate);
 
   for (const date of dates) {
+    const dbDate = toDbDate(date);
     const existing = await tx.villaPricePeriodDay.findFirst({
       where: {
         villaId,
-        date,
+        date: dbDate,
       },
       select: {
         id: true,
@@ -159,6 +176,51 @@ export async function reassignPeriodDaysInRange(
         ...pricingData,
         availability: dayAvailability,
         occupancyStatus: daySnapshot.occupancyStatus ?? "EMPTY",
+      },
+    });
+  }
+}
+
+export async function reassignPeriodDaysDiscountInRange(
+  tx: Prisma.TransactionClient,
+  periodId: string,
+  villaId: string,
+  startDate: Date,
+  endDate: Date,
+  discountUpdate: {
+    discount1Rate: number | null;
+    discount2Rate: number | null;
+    extraDiscountAmount: number | null;
+  }
+) {
+  const dates = enumerateDates(startDate, endDate);
+
+  for (const date of dates) {
+    const dbDate = toDbDate(date);
+    const existing = await tx.villaPricePeriodDay.findFirst({
+      where: {
+        villaId,
+        date: dbDate,
+      },
+    });
+
+    if (!existing) continue;
+
+    const discountedNightlyPrice = resolveDayDiscountedPrice(
+      existing.nightlyPrice,
+      discountUpdate.discount1Rate,
+      discountUpdate.discount2Rate,
+      discountUpdate.extraDiscountAmount
+    );
+
+    await tx.villaPricePeriodDay.update({
+      where: { id: existing.id },
+      data: {
+        periodId,
+        discount1Rate: discountUpdate.discount1Rate,
+        discount2Rate: discountUpdate.discount2Rate,
+        extraDiscountAmount: discountUpdate.extraDiscountAmount,
+        discountedNightlyPrice,
       },
     });
   }

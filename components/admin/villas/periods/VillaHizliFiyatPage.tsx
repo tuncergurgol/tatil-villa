@@ -68,6 +68,19 @@ type PeriodRowState = {
 const cellInputClass =
   "w-full min-w-0 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100";
 
+const dirtyCellInputClass =
+  "w-full min-w-0 rounded-lg border border-violet-300 bg-violet-50/30 px-2 py-1.5 text-sm text-gray-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100";
+
+function rowInputClass(dirty: boolean) {
+  return dirty ? dirtyCellInputClass : cellInputClass;
+}
+
+function dirtyRowClass(dirty: boolean) {
+  return dirty
+    ? "border-l-4 border-l-violet-500 bg-violet-50 ring-1 ring-inset ring-violet-100"
+    : "hover:bg-gray-50/60";
+}
+
 const readOnlyClass =
   "rounded-lg bg-gray-50 px-2 py-1.5 text-sm tabular-nums text-gray-700";
 
@@ -363,7 +376,8 @@ export default function VillaHizliFiyatPage({
 
         <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
           Fiyat girdiğinizde komisyonsuz fiyat otomatik hesaplanır. Tümünü
-          Kaydet ile toplu kayıt yapın.
+          Kaydet ile toplu kayıt yapın. Değiştirdiğiniz satırlar mor işaretle
+          vurgulanır; kaydetmeden sayfadan ayrılmayın.
         </div>
       </div>
 
@@ -451,9 +465,7 @@ export default function VillaHizliFiyatPage({
                   return (
                     <tr
                       key={row.id}
-                      className={`border-t border-gray-100 ${
-                        row.dirty ? "bg-violet-50/40" : "hover:bg-gray-50/60"
-                      }`}
+                      className={`border-t border-gray-100 ${dirtyRowClass(row.dirty)}`}
                     >
                       <td className="px-3 py-2">
                         <input
@@ -463,7 +475,17 @@ export default function VillaHizliFiyatPage({
                           className="rounded border-gray-300"
                         />
                       </td>
-                      <td className="px-2 py-2 text-gray-500">{index + 1}</td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-center gap-1.5">
+                          {row.dirty ? (
+                            <span
+                              className="inline-flex h-2 w-2 shrink-0 rounded-full bg-violet-500"
+                              title="Kaydedilmemiş değişiklik"
+                            />
+                          ) : null}
+                          <span className="text-gray-500">{index + 1}</span>
+                        </div>
+                      </td>
                       <td className="px-2 py-2">
                         <input
                           type="date"
@@ -471,7 +493,7 @@ export default function VillaHizliFiyatPage({
                           onChange={(event) =>
                             updateRow(row.id, { startDate: event.target.value })
                           }
-                          className={cellInputClass}
+                          className={rowInputClass(row.dirty)}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -481,7 +503,7 @@ export default function VillaHizliFiyatPage({
                           onChange={(event) =>
                             updateRow(row.id, { endDate: event.target.value })
                           }
-                          className={cellInputClass}
+                          className={rowInputClass(row.dirty)}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -495,7 +517,7 @@ export default function VillaHizliFiyatPage({
                               prepaymentRate: event.target.value,
                             })
                           }
-                          className={`${cellInputClass} w-16`}
+                          className={`${rowInputClass(row.dirty)} w-16`}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -511,7 +533,7 @@ export default function VillaHizliFiyatPage({
                               true
                             )
                           }
-                          className={`${cellInputClass} w-16`}
+                          className={`${rowInputClass(row.dirty)} w-16`}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -530,7 +552,7 @@ export default function VillaHizliFiyatPage({
                               true
                             )
                           }
-                          className={`${cellInputClass} w-24`}
+                          className={`${rowInputClass(row.dirty)} w-24`}
                         />
                       </td>
                       <td className="px-2 py-2 text-gray-600">
@@ -558,7 +580,7 @@ export default function VillaHizliFiyatPage({
                               minStayNights: event.target.value,
                             })
                           }
-                          className={`${cellInputClass} w-16`}
+                          className={`${rowInputClass(row.dirty)} w-16`}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -571,7 +593,7 @@ export default function VillaHizliFiyatPage({
                               cleaningDayCount: event.target.value,
                             })
                           }
-                          className={`${cellInputClass} w-16`}
+                          className={`${rowInputClass(row.dirty)} w-16`}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -586,7 +608,7 @@ export default function VillaHizliFiyatPage({
                               ),
                             })
                           }
-                          className={`${cellInputClass} w-20`}
+                          className={`${rowInputClass(row.dirty)} w-20`}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -601,7 +623,7 @@ export default function VillaHizliFiyatPage({
                               ),
                             })
                           }
-                          className={`${cellInputClass} w-20`}
+                          className={`${rowInputClass(row.dirty)} w-20`}
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -613,7 +635,7 @@ export default function VillaHizliFiyatPage({
                                 .value as VillaPeriodCurrency,
                             })
                           }
-                          className={cellInputClass}
+                          className={rowInputClass(row.dirty)}
                         >
                           {VILLA_PERIOD_CURRENCIES.map((currency) => (
                             <option key={currency} value={currency}>

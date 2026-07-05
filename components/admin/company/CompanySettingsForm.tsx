@@ -55,6 +55,7 @@ interface CompanySettingsFormProps {
     items: PrepaymentPaymentTypeItem[];
     totalCount: number;
     activeCount: number;
+    passiveCount: number;
   };
 }
 

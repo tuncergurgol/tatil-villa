@@ -150,6 +150,47 @@ export function calculateCommissionAmount(
   return Math.max(0, nightlyPrice - nightlyPriceWithoutCommission);
 }
 
+export function hasActiveDiscount(input: {
+  discount1Rate?: number | null;
+  discount2Rate?: number | null;
+  extraDiscountAmount?: number | null;
+}): boolean {
+  return (
+    toRate(input.discount1Rate) > 0 ||
+    toRate(input.discount2Rate) > 0 ||
+    (toPositiveInt(input.extraDiscountAmount) ?? 0) > 0
+  );
+}
+
+export function resolveDayDiscountedPrice(
+  nightlyPrice: number,
+  discount1Rate?: number | null,
+  discount2Rate?: number | null,
+  extraDiscountAmount?: number | null
+): number {
+  if (nightlyPrice <= 0) return 0;
+  if (
+    !hasActiveDiscount({
+      discount1Rate,
+      discount2Rate,
+      extraDiscountAmount,
+    })
+  ) {
+    return nightlyPrice;
+  }
+
+  const discount = calculateDiscountAmounts(
+    nightlyPrice,
+    toRate(discount1Rate),
+    toRate(discount2Rate),
+    toPositiveInt(extraDiscountAmount) ?? 0
+  );
+
+  return discount.discountedNightlyPrice > 0
+    ? discount.discountedNightlyPrice
+    : nightlyPrice;
+}
+
 export function calculateDiscountAmounts(
   nightlyPrice: number,
   discount1Rate: number,

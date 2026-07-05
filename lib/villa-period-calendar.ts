@@ -118,9 +118,14 @@ export function dateKeyToDbDate(dateKey: string): Date {
   return new Date(`${dateKey}T00:00:00.000Z`);
 }
 
+/** Takvim Date değerini Prisma @db.Date yazımına çevirir. */
+export function toDbDate(date: Date): Date {
+  return dateKeyToDbDate(toDateKey(startOfDay(date)));
+}
+
 /** Prisma @db.Date alanından okunan tarihi YYYY-MM-DD anahtarına çevirir. */
 export function dbDateToDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return toDateKey(startOfDay(date));
 }
 
 export function startOfDay(date: Date): Date {
@@ -133,6 +138,37 @@ export function todayDate(): Date {
 
 export function compareDates(a: Date, b: Date): number {
   return startOfDay(a).getTime() - startOfDay(b).getTime();
+}
+
+export function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const date = startOfDay(parseDateKey(dateKey));
+  date.setDate(date.getDate() + days);
+  return toDateKey(date);
+}
+
+const MONTH_LENGTHS_WITH_MONTH_END = new Set([28, 29, 31]);
+
+/** Periyot ekle: başlangıç + 30 gün; sonuç ayın 1'inde ve ay 28/29/31 günlükse bir önceki ayın son günü. */
+export function getDefaultPeriodEndDate(startDateKey: string): string {
+  if (!startDateKey) return "";
+
+  const plus30 = startOfDay(parseDateKey(addDaysToDateKey(startDateKey, 30)));
+
+  if (plus30.getDate() === 1) {
+    const endYear = plus30.getFullYear();
+    const endMonth = plus30.getMonth();
+    const daysInEndMonth = getDaysInMonth(endYear, endMonth);
+
+    if (MONTH_LENGTHS_WITH_MONTH_END.has(daysInEndMonth)) {
+      return toDateKey(new Date(endYear, endMonth, 0));
+    }
+  }
+
+  return toDateKey(plus30);
 }
 
 export function enumerateDateKeys(startKey: string, endKey: string): string[] {

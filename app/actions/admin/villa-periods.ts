@@ -9,10 +9,8 @@ import { revalidateVillaHizliFiyatPage } from "@/lib/villa-admin-path.server";
 import {
   compareDates,
   dateKeyToDbDate,
+  dbDateToDateKey,
   parseDateKey,
-  periodsOverlap,
-  startOfDay,
-  toDateKey,
 } from "@/lib/villa-period-calendar";
 import {
   buildBookedOccupancyForStay,
@@ -25,7 +23,11 @@ import type { VillaDayOccupancy } from "@prisma/client";
 import {
   syncVillaPricePeriodDays,
 } from "@/lib/villa-period-day-sync";
-import { applyPartialVillaPricePeriodEdit } from "@/lib/villa-period-split";
+import {
+  applyVillaPriceRangeDiscountEdit,
+  applyVillaPriceRangeEdit,
+  applyVillaPriceRangeMergedEdit,
+} from "@/lib/villa-period-split";
 import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
 import {
   parseAvailability,
@@ -48,55 +50,105 @@ const optionalRateSchema = z
     return Math.min(100, Math.round(parsed));
   });
 
+const optionalPositiveIntSchema = z
+  .union([z.string(), z.number(), z.null()])
+  .optional()
+  .transform((value) => {
+    if (value == null || value === "") return null;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.round(parsed);
+  });
+
+const weekendDaysSchema = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((value) => {
+    if (value == null || value === "") return [] as number[];
+    return String(value)
+      .split(",")
+      .map((part) => Number(part.trim()))
+      .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6);
+  });
+
 const periodSchema = z.object({
   startDate: z.string().min(1, "Başlangıç tarihi gerekli"),
   endDate: z.string().min(1, "Bitiş tarihi gerekli"),
   availability: z.enum(["available", "closed"]),
   nightlyPrice: z.coerce.number().int().positive("Gecelik fiyat pozitif olmalı"),
   nightlyPriceCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
-  weeklyPrice: z.coerce.number().int().positive().optional().nullable(),
+  weeklyPrice: optionalPositiveIntSchema,
   prepaymentRate: optionalRateSchema,
   commissionRate: optionalRateSchema,
-  nightlyPriceWithoutCommission: z.coerce
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .nullable(),
-  minStayNights: z.coerce.number().int().positive().optional().nullable(),
-  cleaningDayCount: z.coerce.number().int().positive().optional().nullable(),
-  cleaningFee: z.coerce.number().int().positive().optional().nullable(),
+  nightlyPriceWithoutCommission: optionalPositiveIntSchema,
+  minStayNights: optionalPositiveIntSchema,
+  cleaningDayCount: optionalPositiveIntSchema,
+  cleaningFee: optionalPositiveIntSchema,
   cleaningFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
-  damageDeposit: z.coerce.number().int().positive().optional().nullable(),
+  damageDeposit: optionalPositiveIntSchema,
   damageDepositCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
-  petCleaningFee: z.coerce.number().int().positive().optional().nullable(),
+  petCleaningFee: optionalPositiveIntSchema,
   petCleaningFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
-  petDamageDeposit: z.coerce.number().int().positive().optional().nullable(),
+  petDamageDeposit: optionalPositiveIntSchema,
   petDamageDepositCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
-  underfloorHeatingFee: z.coerce.number().int().positive().optional().nullable(),
+  underfloorHeatingFee: optionalPositiveIntSchema,
   underfloorHeatingFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
-  extraBedFee: z.coerce.number().int().positive().optional().nullable(),
+  extraBedFee: optionalPositiveIntSchema,
   extraBedFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
   discount1Rate: optionalRateSchema,
   discount2Rate: optionalRateSchema,
-  extraDiscountAmount: z.coerce.number().int().positive().optional().nullable(),
-  weekendPrice: z.coerce.number().int().positive().optional().nullable(),
-  weekendDays: z
-    .string()
-    .optional()
-    .transform((value) => {
-      if (!value) return [] as number[];
-      return value
-        .split(",")
-        .map((part) => Number(part.trim()))
-        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6);
-    }),
-  weekendMinStayNights: z.coerce.number().int().positive().optional().nullable(),
-  childFee02: z.coerce.number().int().positive().optional().nullable(),
+  extraDiscountAmount: optionalPositiveIntSchema,
+  weekendPrice: optionalPositiveIntSchema,
+  weekendDays: weekendDaysSchema,
+  weekendMinStayNights: optionalPositiveIntSchema,
+  childFee02: optionalPositiveIntSchema,
   childFee02Currency: z.enum(["TL", "EUR", "USD", "GBP"]),
-  childFee03_09: z.coerce.number().int().positive().optional().nullable(),
+  childFee03_09: optionalPositiveIntSchema,
   childFee03_09Currency: z.enum(["TL", "EUR", "USD", "GBP"]),
 });
+
+const periodPricingFieldsSchema = periodSchema.omit({
+  discount1Rate: true,
+  discount2Rate: true,
+  extraDiscountAmount: true,
+});
+
+const periodDiscountFieldsSchema = z.object({
+  startDate: z.string().min(1, "Başlangıç tarihi gerekli"),
+  endDate: z.string().min(1, "Bitiş tarihi gerekli"),
+  discount1Rate: optionalRateSchema,
+  discount2Rate: optionalRateSchema,
+  extraDiscountAmount: optionalPositiveIntSchema,
+});
+
+const PERIOD_FIELD_LABELS: Record<string, string> = {
+  startDate: "Başlangıç tarihi",
+  endDate: "Bitiş tarihi",
+  nightlyPrice: "Gecelik konaklama bedeli",
+  weeklyPrice: "Haftalık konaklama bedeli",
+  prepaymentRate: "Ön ödeme oranı",
+  commissionRate: "Komisyon oranı",
+  discount1Rate: "İndirim 1 oranı",
+  discount2Rate: "İndirim 2 oranı",
+  weekendDays: "Hafta sonu günleri",
+};
+
+function formatPeriodFormError(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return "Geçersiz form verisi";
+
+  const field = issue.path[0];
+  const label =
+    typeof field === "string"
+      ? (PERIOD_FIELD_LABELS[field] ?? field)
+      : "Form alanı";
+
+  if (issue.message && issue.message !== "Invalid input") {
+    return issue.message;
+  }
+
+  return `${label} geçersiz`;
+}
 
 async function revalidatePeriodPaths(villaId: string) {
   revalidatePath("/admin/konaklama/takvim");
@@ -114,41 +166,30 @@ async function revalidateVillaTakvimPath(villaId: string) {
   }
 }
 
-async function assertNoOverlap(
+async function findOverlappingPeriods(
   villaId: string,
-  startDate: Date,
-  endDate: Date,
-  excludeId?: string
+  rangeStart: Date,
+  rangeEnd: Date
 ) {
-  const existing = await prisma.villaPricePeriod.findMany({
+  return prisma.villaPricePeriod.findMany({
     where: {
       villaId,
-      ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      startDate: { lte: rangeEnd },
+      endDate: { gte: rangeStart },
     },
-    select: { id: true, startDate: true, endDate: true },
+    orderBy: { startDate: "asc" },
   });
-
-  const hasOverlap = existing.some((period) =>
-    periodsOverlap(
-      { startDate, endDate },
-      { startDate: period.startDate, endDate: period.endDate }
-    )
-  );
-
-  if (hasOverlap) {
-    throw new Error("Bu tarih aralığı mevcut bir periyot ile çakışıyor");
-  }
 }
 
 function parsePeriodDates(startRaw: string, endRaw: string) {
-  const startDate = startOfDay(parseDateKey(startRaw));
-  const endDate = startOfDay(parseDateKey(endRaw));
-
-  if (compareDates(startDate, endDate) > 0) {
+  if (compareDates(parseDateKey(startRaw), parseDateKey(endRaw)) > 0) {
     throw new Error("Bitiş tarihi başlangıçtan önce olamaz");
   }
 
-  return { startDate, endDate };
+  return {
+    startDate: dateKeyToDbDate(startRaw),
+    endDate: dateKeyToDbDate(endRaw),
+  };
 }
 
 function parsePeriodFormData(formData: FormData) {
@@ -193,6 +234,58 @@ function parsePeriodFormData(formData: FormData) {
     childFee02Currency: parseCurrency(formData.get("childFee02Currency")),
     childFee03_09: formData.get("childFee03_09") || null,
     childFee03_09Currency: parseCurrency(formData.get("childFee03_09Currency")),
+  });
+}
+
+function parsePeriodPricingFormData(formData: FormData) {
+  return periodPricingFieldsSchema.safeParse({
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+    availability: parseAvailability(formData.get("availability")),
+    nightlyPrice: formData.get("nightlyPrice"),
+    nightlyPriceCurrency: parseCurrency(formData.get("nightlyPriceCurrency")),
+    weeklyPrice: formData.get("weeklyPrice") || null,
+    prepaymentRate: formData.get("prepaymentRate"),
+    commissionRate: formData.get("commissionRate"),
+    nightlyPriceWithoutCommission:
+      formData.get("nightlyPriceWithoutCommission") || null,
+    minStayNights: formData.get("minStayNights") || null,
+    cleaningDayCount: formData.get("cleaningDayCount") || null,
+    cleaningFee: formData.get("cleaningFee") || null,
+    cleaningFeeCurrency: parseCurrency(formData.get("cleaningFeeCurrency")),
+    damageDeposit: formData.get("damageDeposit") || null,
+    damageDepositCurrency: parseCurrency(formData.get("damageDepositCurrency")),
+    petCleaningFee: formData.get("petCleaningFee") || null,
+    petCleaningFeeCurrency: parseCurrency(
+      formData.get("petCleaningFeeCurrency")
+    ),
+    petDamageDeposit: formData.get("petDamageDeposit") || null,
+    petDamageDepositCurrency: parseCurrency(
+      formData.get("petDamageDepositCurrency")
+    ),
+    underfloorHeatingFee: formData.get("underfloorHeatingFee") || null,
+    underfloorHeatingFeeCurrency: parseCurrency(
+      formData.get("underfloorHeatingFeeCurrency")
+    ),
+    extraBedFee: formData.get("extraBedFee") || null,
+    extraBedFeeCurrency: parseCurrency(formData.get("extraBedFeeCurrency")),
+    weekendPrice: formData.get("weekendPrice") || null,
+    weekendDays: formData.get("weekendDays") || "",
+    weekendMinStayNights: formData.get("weekendMinStayNights") || null,
+    childFee02: formData.get("childFee02") || null,
+    childFee02Currency: parseCurrency(formData.get("childFee02Currency")),
+    childFee03_09: formData.get("childFee03_09") || null,
+    childFee03_09Currency: parseCurrency(formData.get("childFee03_09Currency")),
+  });
+}
+
+function parsePeriodDiscountFormData(formData: FormData) {
+  return periodDiscountFieldsSchema.safeParse({
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+    discount1Rate: formData.get("discount1Rate"),
+    discount2Rate: formData.get("discount2Rate"),
+    extraDiscountAmount: formData.get("extraDiscountAmount") || null,
   });
 }
 
@@ -243,6 +336,139 @@ function buildPeriodData(parsed: z.infer<typeof periodSchema>) {
   };
 }
 
+function buildPricingOnlyPeriodData(
+  parsed: z.infer<typeof periodPricingFieldsSchema>,
+  existingDiscounts: {
+    discount1Rate: number | null;
+    discount2Rate: number | null;
+    extraDiscountAmount: number | null;
+  }
+) {
+  const pricing = resolveVillaPeriodPricing({
+    nightlyPrice: parsed.nightlyPrice,
+    nightlyPriceWithoutCommission: parsed.nightlyPriceWithoutCommission,
+    weeklyPrice: parsed.weeklyPrice,
+    commissionRate: parsed.commissionRate,
+    discount1Rate: existingDiscounts.discount1Rate,
+    discount2Rate: existingDiscounts.discount2Rate,
+    extraDiscountAmount: existingDiscounts.extraDiscountAmount,
+  });
+
+  return {
+    availability: parsed.availability,
+    nightlyPrice: pricing.nightlyPrice,
+    nightlyPriceCurrency: parsed.nightlyPriceCurrency,
+    weeklyPrice: pricing.weeklyPrice,
+    prepaymentRate: parsed.prepaymentRate,
+    commissionRate: parsed.commissionRate,
+    nightlyPriceWithoutCommission: pricing.nightlyPriceWithoutCommission,
+    discountedNightlyPrice: pricing.discountedNightlyPrice,
+    minStayNights: parsed.minStayNights,
+    cleaningDayCount: parsed.cleaningDayCount,
+    cleaningFee: parsed.cleaningFee,
+    cleaningFeeCurrency: parsed.cleaningFeeCurrency,
+    damageDeposit: parsed.damageDeposit,
+    damageDepositCurrency: parsed.damageDepositCurrency,
+    petCleaningFee: parsed.petCleaningFee,
+    petCleaningFeeCurrency: parsed.petCleaningFeeCurrency,
+    petDamageDeposit: parsed.petDamageDeposit,
+    petDamageDepositCurrency: parsed.petDamageDepositCurrency,
+    underfloorHeatingFee: parsed.underfloorHeatingFee,
+    underfloorHeatingFeeCurrency: parsed.underfloorHeatingFeeCurrency,
+    extraBedFee: parsed.extraBedFee,
+    extraBedFeeCurrency: parsed.extraBedFeeCurrency,
+    discount1Rate: existingDiscounts.discount1Rate,
+    discount2Rate: existingDiscounts.discount2Rate,
+    extraDiscountAmount: existingDiscounts.extraDiscountAmount,
+    weekendPrice: parsed.weekendPrice,
+    weekendDays: parsed.weekendDays,
+    weekendMinStayNights: parsed.weekendMinStayNights,
+    childFee02: parsed.childFee02,
+    childFee02Currency: parsed.childFee02Currency,
+    childFee03_09: parsed.childFee03_09,
+    childFee03_09Currency: parsed.childFee03_09Currency,
+  };
+}
+
+function buildDiscountOnlyPeriodData(
+  parsed: z.infer<typeof periodDiscountFieldsSchema>,
+  existingPeriod: {
+    nightlyPrice: number;
+    nightlyPriceWithoutCommission: number | null;
+    weeklyPrice: number | null;
+    commissionRate: number | null;
+    availability: "available" | "closed";
+    nightlyPriceCurrency: "TL" | "EUR" | "USD" | "GBP";
+    prepaymentRate: number | null;
+    minStayNights: number | null;
+    cleaningDayCount: number | null;
+    cleaningFee: number | null;
+    cleaningFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
+    damageDeposit: number | null;
+    damageDepositCurrency: "TL" | "EUR" | "USD" | "GBP";
+    petCleaningFee: number | null;
+    petCleaningFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
+    petDamageDeposit: number | null;
+    petDamageDepositCurrency: "TL" | "EUR" | "USD" | "GBP";
+    underfloorHeatingFee: number | null;
+    underfloorHeatingFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
+    extraBedFee: number | null;
+    extraBedFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
+    weekendPrice: number | null;
+    weekendDays: number[];
+    weekendMinStayNights: number | null;
+    childFee02: number | null;
+    childFee02Currency: "TL" | "EUR" | "USD" | "GBP";
+    childFee03_09: number | null;
+    childFee03_09Currency: "TL" | "EUR" | "USD" | "GBP";
+  }
+) {
+  const pricing = resolveVillaPeriodPricing({
+    nightlyPrice: existingPeriod.nightlyPrice,
+    nightlyPriceWithoutCommission: existingPeriod.nightlyPriceWithoutCommission,
+    weeklyPrice: existingPeriod.weeklyPrice,
+    commissionRate: existingPeriod.commissionRate,
+    discount1Rate: parsed.discount1Rate,
+    discount2Rate: parsed.discount2Rate,
+    extraDiscountAmount: parsed.extraDiscountAmount,
+  });
+
+  return {
+    availability: existingPeriod.availability,
+    nightlyPrice: existingPeriod.nightlyPrice,
+    nightlyPriceCurrency: existingPeriod.nightlyPriceCurrency,
+    weeklyPrice: existingPeriod.weeklyPrice,
+    prepaymentRate: existingPeriod.prepaymentRate,
+    commissionRate: existingPeriod.commissionRate,
+    nightlyPriceWithoutCommission: existingPeriod.nightlyPriceWithoutCommission,
+    discountedNightlyPrice: pricing.discountedNightlyPrice,
+    minStayNights: existingPeriod.minStayNights,
+    cleaningDayCount: existingPeriod.cleaningDayCount,
+    cleaningFee: existingPeriod.cleaningFee,
+    cleaningFeeCurrency: existingPeriod.cleaningFeeCurrency,
+    damageDeposit: existingPeriod.damageDeposit,
+    damageDepositCurrency: existingPeriod.damageDepositCurrency,
+    petCleaningFee: existingPeriod.petCleaningFee,
+    petCleaningFeeCurrency: existingPeriod.petCleaningFeeCurrency,
+    petDamageDeposit: existingPeriod.petDamageDeposit,
+    petDamageDepositCurrency: existingPeriod.petDamageDepositCurrency,
+    underfloorHeatingFee: existingPeriod.underfloorHeatingFee,
+    underfloorHeatingFeeCurrency: existingPeriod.underfloorHeatingFeeCurrency,
+    extraBedFee: existingPeriod.extraBedFee,
+    extraBedFeeCurrency: existingPeriod.extraBedFeeCurrency,
+    discount1Rate: parsed.discount1Rate,
+    discount2Rate: parsed.discount2Rate,
+    extraDiscountAmount: parsed.extraDiscountAmount,
+    weekendPrice: existingPeriod.weekendPrice,
+    weekendDays: existingPeriod.weekendDays,
+    weekendMinStayNights: existingPeriod.weekendMinStayNights,
+    childFee02: existingPeriod.childFee02,
+    childFee02Currency: existingPeriod.childFee02Currency,
+    childFee03_09: existingPeriod.childFee03_09,
+    childFee03_09Currency: existingPeriod.childFee03_09Currency,
+  };
+}
+
 export async function createVillaPricePeriod(
   villaId: string,
   formData: FormData
@@ -252,7 +478,7 @@ export async function createVillaPricePeriod(
   const parsed = parsePeriodFormData(formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
+    return { error: formatPeriodFormError(parsed.error) };
   }
 
   try {
@@ -260,26 +486,35 @@ export async function createVillaPricePeriod(
       parsed.data.startDate,
       parsed.data.endDate
     );
-    await assertNoOverlap(villaId, startDate, endDate);
-
     const periodData = buildPeriodData(parsed.data);
+    const overlapping = await findOverlappingPeriods(villaId, startDate, endDate);
 
-    const period = await prisma.villaPricePeriod.create({
-      data: {
+    if (overlapping.length > 0) {
+      await applyVillaPriceRangeMergedEdit(
         villaId,
         startDate,
         endDate,
-        ...periodData,
-      },
-    });
+        periodData as VillaPeriodDayPricingSnapshot,
+        overlapping
+      );
+    } else {
+      const period = await prisma.villaPricePeriod.create({
+        data: {
+          villaId,
+          startDate,
+          endDate,
+          ...periodData,
+        },
+      });
 
-    await syncVillaPricePeriodDays(
-      period.id,
-      villaId,
-      startDate,
-      endDate,
-      periodData as VillaPeriodDayPricingSnapshot
-    );
+      await syncVillaPricePeriodDays(
+        period.id,
+        villaId,
+        startDate,
+        endDate,
+        periodData as VillaPeriodDayPricingSnapshot
+      );
+    }
 
     await revalidatePeriodPaths(villaId);
     return { success: true };
@@ -300,7 +535,7 @@ export async function updateVillaPricePeriod(
   const parsed = parsePeriodFormData(formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
+    return { error: formatPeriodFormError(parsed.error) };
   }
 
   try {
@@ -308,26 +543,40 @@ export async function updateVillaPricePeriod(
       parsed.data.startDate,
       parsed.data.endDate
     );
-    await assertNoOverlap(villaId, startDate, endDate, periodId);
-
     const periodData = buildPeriodData(parsed.data);
+    const overlapping = await findOverlappingPeriods(villaId, startDate, endDate);
 
-    await prisma.villaPricePeriod.update({
-      where: { id: periodId },
-      data: {
+    if (
+      overlapping.length === 1 &&
+      overlapping[0]!.id === periodId
+    ) {
+      await prisma.villaPricePeriod.update({
+        where: { id: periodId },
+        data: {
+          startDate,
+          endDate,
+          ...periodData,
+        },
+      });
+
+      await syncVillaPricePeriodDays(
+        periodId,
+        villaId,
         startDate,
         endDate,
-        ...periodData,
-      },
-    });
-
-    await syncVillaPricePeriodDays(
-      periodId,
-      villaId,
-      startDate,
-      endDate,
-      periodData as VillaPeriodDayPricingSnapshot
-    );
+        periodData as VillaPeriodDayPricingSnapshot
+      );
+    } else if (overlapping.length > 0) {
+      await applyVillaPriceRangeMergedEdit(
+        villaId,
+        startDate,
+        endDate,
+        periodData as VillaPeriodDayPricingSnapshot,
+        overlapping
+      );
+    } else {
+      return { error: "Periyot bulunamadı" };
+    }
 
     await revalidatePeriodPaths(villaId);
     return { success: true };
@@ -340,39 +589,32 @@ export async function updateVillaPricePeriod(
 
 export async function updateVillaPricePeriodDaysPricing(
   villaId: string,
-  periodId: string,
   formData: FormData
 ): Promise<VillaPeriodActionState> {
   await requireAdmin();
 
-  const parsed = parsePeriodFormData(formData);
+  const parsed = parsePeriodPricingFormData(formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
+    return { error: formatPeriodFormError(parsed.error) };
   }
 
   try {
-    const period = await prisma.villaPricePeriod.findFirst({
-      where: { id: periodId, villaId },
-      select: { id: true },
-    });
-
-    if (!period) {
-      return { error: "Periyot bulunamadı" };
-    }
-
     const { startDate, endDate } = parsePeriodDates(
       parsed.data.startDate,
       parsed.data.endDate
     );
-    const periodData = buildPeriodData(parsed.data);
 
-    await applyPartialVillaPricePeriodEdit(
+    await applyVillaPriceRangeEdit(
       villaId,
-      periodId,
       startDate,
       endDate,
-      periodData as VillaPeriodDayPricingSnapshot
+      (period) =>
+        buildPricingOnlyPeriodData(parsed.data, {
+          discount1Rate: period.discount1Rate,
+          discount2Rate: period.discount2Rate,
+          extraDiscountAmount: period.extraDiscountAmount,
+        }) as VillaPeriodDayPricingSnapshot
     );
 
     await revalidatePeriodPaths(villaId);
@@ -383,6 +625,49 @@ export async function updateVillaPricePeriodDaysPricing(
         error instanceof Error
           ? error.message
           : "Periyot günleri güncellenemedi",
+    };
+  }
+}
+
+export async function updateVillaPricePeriodDaysDiscounts(
+  villaId: string,
+  formData: FormData
+): Promise<VillaPeriodActionState> {
+  await requireAdmin();
+
+  const parsed = parsePeriodDiscountFormData(formData);
+
+  if (!parsed.success) {
+    return { error: formatPeriodFormError(parsed.error) };
+  }
+
+  try {
+    const { startDate, endDate } = parsePeriodDates(
+      parsed.data.startDate,
+      parsed.data.endDate
+    );
+
+    await applyVillaPriceRangeDiscountEdit(
+      villaId,
+      startDate,
+      endDate,
+      {
+        discount1Rate: parsed.data.discount1Rate,
+        discount2Rate: parsed.data.discount2Rate,
+        extraDiscountAmount: parsed.data.extraDiscountAmount,
+      },
+      (period) =>
+        buildDiscountOnlyPeriodData(parsed.data, period) as VillaPeriodDayPricingSnapshot
+    );
+
+    await revalidatePeriodPaths(villaId);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "İndirim bilgileri güncellenemedi",
     };
   }
 }
@@ -420,7 +705,7 @@ export async function updateVillaPeriodDaysOccupancy(
     const existingOccupancyByDateKey = new Map<string, VillaDayOccupancy>();
     for (const day of existingDays) {
       existingOccupancyByDateKey.set(
-        toDateKey(startOfDay(day.date)),
+        dbDateToDateKey(day.date),
         day.occupancyStatus
       );
     }

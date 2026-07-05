@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import {
   createVillaPricePeriod,
+  updateVillaPricePeriodDaysDiscounts,
   updateVillaPricePeriodDaysPricing,
   updateVillaPeriodDaysOccupancy,
 } from "@/app/actions/admin/villa-periods";
@@ -68,9 +69,21 @@ const AMOUNT_FIELDS = new Set([
   "childFee03_09",
 ]);
 
+const DISCOUNT_FIELDS = new Set([
+  "discount1Rate",
+  "discount2Rate",
+  "extraDiscountAmount",
+]);
+
+const FORM_META_FIELDS = new Set([
+  "occupancySelection",
+  "actionStartDate",
+  "actionEndDate",
+]);
+
 type PeriodFormState = {
-  startDate: string;
-  endDate: string;
+  actionStartDate: string;
+  actionEndDate: string;
   availability: VillaPeriodAvailability;
   occupancySelection: "" | "EMPTY" | "BOOKED";
   nightlyPrice: string;
@@ -106,8 +119,8 @@ type PeriodFormState = {
 };
 
 const emptyFormState = (): PeriodFormState => ({
-  startDate: "",
-  endDate: "",
+  actionStartDate: "",
+  actionEndDate: "",
   availability: "available",
   occupancySelection: "",
   nightlyPrice: "",
@@ -147,9 +160,12 @@ function toInputValue(value: number | null | undefined) {
 }
 
 function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
+  const startDate = toDateKey(period.startDate);
+  const endDate = toDateKey(period.endDate);
+
   return {
-    startDate: toDateKey(period.startDate),
-    endDate: toDateKey(period.endDate),
+    actionStartDate: startDate,
+    actionEndDate: endDate,
     availability: "available",
     occupancySelection: "",
     nightlyPrice: formatAmountInput(period.nightlyPrice),
@@ -320,17 +336,21 @@ export default function VillaPeriodFormModal({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [availabilityPending, setAvailabilityPending] = useState(false);
+  const [discountPending, setDiscountPending] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     const base = period ? periodToFormState(period) : emptyFormState();
-    const nextForm = prefillDateRange
-      ? {
-          ...base,
-          startDate: prefillDateRange.startDate,
-          endDate: prefillDateRange.endDate,
-        }
-      : base;
+    const actionRange = prefillDateRange ?? {
+      startDate: base.actionStartDate,
+      endDate: base.actionEndDate,
+    };
+
+    const nextForm = {
+      ...base,
+      actionStartDate: actionRange.startDate,
+      actionEndDate: actionRange.endDate,
+    };
 
     setForm(
       period
@@ -365,6 +385,18 @@ export default function VillaPeriodFormModal({
       form.extraDiscountAmount,
     ]
   );
+
+  const totalDiscountAmount = useMemo(() => {
+    const extra = parseNumber(form.extraDiscountAmount) ?? 0;
+    const first = discountPreview.discount1Amount ?? 0;
+    const second = discountPreview.discount2Amount ?? 0;
+    const total = first + second + extra;
+    return total > 0 ? total : null;
+  }, [
+    discountPreview.discount1Amount,
+    discountPreview.discount2Amount,
+    form.extraDiscountAmount,
+  ]);
 
   function updateForm(patch: Partial<PeriodFormState>) {
     setForm((prev) => ({ ...prev, ...patch }));
@@ -442,9 +474,23 @@ export default function VillaPeriodFormModal({
 
   if (!open) return null;
 
-  function appendFormData(target: FormData) {
+  function appendFormFields(
+    target: FormData,
+    options: {
+      includePricing: boolean;
+      includeDiscounts: boolean;
+      startDate: string;
+      endDate: string;
+    }
+  ) {
+    target.set("startDate", options.startDate);
+    target.set("endDate", options.endDate);
+    target.set("availability", "available");
+
     Object.entries(form).forEach(([key, value]) => {
-      if (key === "occupancySelection") return;
+      if (FORM_META_FIELDS.has(key)) return;
+      if (!options.includePricing && !DISCOUNT_FIELDS.has(key)) return;
+      if (!options.includeDiscounts && DISCOUNT_FIELDS.has(key)) return;
       if (value === "") return;
 
       if (AMOUNT_FIELDS.has(key)) {
@@ -455,20 +501,18 @@ export default function VillaPeriodFormModal({
 
       target.set(key, value);
     });
-
-    target.set("availability", "available");
   }
 
   async function handleOccupancyAction(mode: "EMPTY" | "BOOKED") {
-    if (!period || !form.startDate || !form.endDate) return;
+    if (!form.actionStartDate || !form.actionEndDate) return;
 
     setError(null);
     setAvailabilityPending(true);
 
     const result = await updateVillaPeriodDaysOccupancy(
       villaId,
-      form.startDate,
-      form.endDate,
+      form.actionStartDate,
+      form.actionEndDate,
       mode
     );
 
@@ -483,17 +527,21 @@ export default function VillaPeriodFormModal({
     onClose();
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handlePricingSave() {
+    if (!form.actionStartDate || !form.actionEndDate) return;
+
     setError(null);
 
     const formData = new FormData();
-    appendFormData(formData);
+    appendFormFields(formData, {
+      includePricing: true,
+      includeDiscounts: false,
+      startDate: form.actionStartDate,
+      endDate: form.actionEndDate,
+    });
 
     startTransition(async () => {
-      const result = period
-        ? await updateVillaPricePeriodDaysPricing(villaId, period.id, formData)
-        : await createVillaPricePeriod(villaId, formData);
+      const result = await updateVillaPricePeriodDaysPricing(villaId, formData);
 
       if (result.error) {
         setError(result.error);
@@ -501,13 +549,63 @@ export default function VillaPeriodFormModal({
       }
 
       onSaved();
+      onClose();
+    });
+  }
 
-      if (period || !continueAfterSave) {
-        onClose();
+  function handleDiscountSave() {
+    if (!form.actionStartDate || !form.actionEndDate) return;
+
+    setError(null);
+    setDiscountPending(true);
+
+    const formData = new FormData();
+    appendFormFields(formData, {
+      includePricing: false,
+      includeDiscounts: true,
+      startDate: form.actionStartDate,
+      endDate: form.actionEndDate,
+    });
+
+    startTransition(async () => {
+      const result = await updateVillaPricePeriodDaysDiscounts(villaId, formData);
+
+      setDiscountPending(false);
+
+      if (result.error) {
+        setError(result.error);
         return;
       }
 
-      setForm(emptyFormState());
+      onSaved();
+      onClose();
+    });
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (period) return;
+
+    setError(null);
+
+    const formData = new FormData();
+    appendFormFields(formData, {
+      includePricing: true,
+      includeDiscounts: true,
+      startDate: form.actionStartDate,
+      endDate: form.actionEndDate,
+    });
+
+    startTransition(async () => {
+      const result = await createVillaPricePeriod(villaId, formData);
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      onSaved();
+      onClose();
     });
   }
 
@@ -554,9 +652,9 @@ export default function VillaPeriodFormModal({
                     <input
                       type="date"
                       required
-                      value={form.startDate}
+                      value={form.actionStartDate}
                       onChange={(event) =>
-                        updateForm({ startDate: event.target.value })
+                        updateForm({ actionStartDate: event.target.value })
                       }
                       className={`mt-1.5 ${inputClass}`}
                     />
@@ -566,9 +664,9 @@ export default function VillaPeriodFormModal({
                     <input
                       type="date"
                       required
-                      value={form.endDate}
+                      value={form.actionEndDate}
                       onChange={(event) =>
-                        updateForm({ endDate: event.target.value })
+                        updateForm({ actionEndDate: event.target.value })
                       }
                       className={`mt-1.5 ${inputClass}`}
                     />
@@ -609,7 +707,9 @@ export default function VillaPeriodFormModal({
                       <button
                         type="button"
                         disabled={
-                          availabilityPending || !form.startDate || !form.endDate
+                          availabilityPending ||
+                          !form.actionStartDate ||
+                          !form.actionEndDate
                         }
                         onClick={() => handleOccupancyAction("EMPTY")}
                         className="mt-3 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
@@ -622,7 +722,9 @@ export default function VillaPeriodFormModal({
                       <button
                         type="button"
                         disabled={
-                          availabilityPending || !form.startDate || !form.endDate
+                          availabilityPending ||
+                          !form.actionStartDate ||
+                          !form.actionEndDate
                         }
                         onClick={() => handleOccupancyAction("BOOKED")}
                         className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
@@ -908,13 +1010,24 @@ export default function VillaPeriodFormModal({
                     updateForm({ childFee03_09Currency: value })
                   }
                 />
+                {period ? (
+                  <button
+                    type="button"
+                    disabled={isPending || !form.actionStartDate || !form.actionEndDate}
+                    onClick={handlePricingSave}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <Save className="h-4 w-4" />
+                    {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
+                  </button>
+                ) : null}
               </div>
             </section>
 
             {!period ? (
               <VillaPeriodRangePreview
-                startDate={form.startDate}
-                endDate={form.endDate}
+                startDate={form.actionStartDate}
+                endDate={form.actionEndDate}
                 nightlyPrice={form.nightlyPrice}
                 nightlyPriceCurrency={form.nightlyPriceCurrency}
                 availability="available"
@@ -987,27 +1100,63 @@ export default function VillaPeriodFormModal({
                   />
                 </label>
 
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className={labelClass}>Toplam İndirim Tutarı</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formatMoneyAmount(totalDiscountAmount)}
+                      className="mt-1.5 w-full rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={labelClass}>İndirimli Fiyat</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formatMoneyAmount(
+                        discountPreview.discountedNightlyPrice
+                      )}
+                      className="mt-1.5 w-full rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900"
+                    />
+                  </label>
+                </div>
+                <p className={helpClass}>
+                  1. ve 2. indirim tutarları ile extra tutar toplanır; indirimli
+                  fiyat = komisyonlu gecelik fiyat − toplam indirim tutarıdır.
+                  Hafta sonu günlerinde takvimde hafta sonu fiyatı üzerinden
+                  hesaplanır.
+                </p>
+
                 <button
                   type="button"
-                  onClick={() => updateForm({})}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700"
+                  disabled={
+                    discountPending || !form.actionStartDate || !form.actionEndDate
+                  }
+                  onClick={handleDiscountSave}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
-                  İndirim Bilgilerini Güncelle
+                  {discountPending
+                    ? "Güncelleniyor..."
+                    : "İndirim Bilgilerini Güncelle"}
                 </button>
               </div>
             </section>
           </div>
 
-          <div className="border-t border-gray-100 p-5">
-            <button
-              type="submit"
-              disabled={isPending}
-              className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
-            </button>
-          </div>
+          {!period ? (
+            <div className="border-t border-gray-100 p-5">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
+              </button>
+            </div>
+          ) : null}
         </form>
       </div>
     </div>

@@ -24,9 +24,19 @@
     "import:images": "tsx scripts/import-villa-images-from-tatildeyiz.ts --all",
     "import:images:dry": "tsx scripts/import-villa-images-from-tatildeyiz.ts --all --dry-run",
     "import:images:resume": "tsx scripts/import-villa-images-from-tatildeyiz.ts --all --resume",
+    "import:images:1-100": "tsx scripts/import-villa-images-from-tatildeyiz.ts --from-id=1 --to-id=100 --resume --report=scripts/import-villa-images-1-100.json",
+    "import:images:1-100:dry": "tsx scripts/import-villa-images-from-tatildeyiz.ts --from-id=1 --to-id=100 --dry-run --report=scripts/import-villa-images-1-100.json",
+    "import:images:101-200": "tsx scripts/import-villa-images-from-tatildeyiz.ts --from-id=101 --to-id=200 --resume --report=scripts/import-villa-images-101-200.json",
+    "import:images:201-300": "tsx scripts/import-villa-images-from-tatildeyiz.ts --from-id=201 --to-id=300 --resume --report=scripts/import-villa-images-201-300.json",
+    "backfill:period-days": "tsx scripts/backfill-period-days.ts",
+    "backfill:period-days:villa": "tsx scripts/backfill-period-days.ts --db-villa-id=2213",
+    "repair:period-range": "tsx scripts/repair-villa-period-range.ts",
+    "sync:projects": "powershell -ExecutionPolicy Bypass -File scripts/sync-to-projects.ps1",
     "import:periods": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --force",
     "import:periods:dry": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --dry-run",
-    "import:periods:resume": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --force --resume"
+    "import:periods:resume": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --force --resume",
+    "import:regions": "tsx scripts/import-regions-from-tatildeyiz.ts",
+    "import:regions:dry": "tsx scripts/import-regions-from-tatildeyiz.ts --dry-run"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
