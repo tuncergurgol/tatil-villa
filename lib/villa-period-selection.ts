@@ -129,11 +129,14 @@ export function buildBookedOccupancyForStay(
   return result;
 }
 
+function isOccupied(status: VillaDayOccupancy): boolean {
+  return status === "BOOKED" || status === "OPTION";
+}
+
 /**
  * AÇ komutu: seçilen aralığı mevcut komşu doluluklarla birleştirir.
- * - İç günler (başlangıç+1 .. bitiş-1) her zaman EMPTY olur.
- * - Başlangıç günü EMPTY yapılır (önceki konaklama çıkışı korunur).
- * - Son gün: sonraki günde konaklama varsa mevcut doluluk korunur; aksi halde EMPTY.
+ * - Dolu blok ortasında açılırsa: ilk gün ÇIKIŞ (EMPTY), son gün GİRİŞ (BOOKED).
+ * - İç günler EMPTY olur.
  * - Son günden sonraki güne dokunulmaz.
  */
 export function buildEmptyOccupancyForRangeMerged(
@@ -147,19 +150,31 @@ export function buildEmptyOccupancyForRangeMerged(
 
   if (keys.length === 0) return map;
 
+  const prevStart = getOccupancy(
+    existingOccupancyByDateKey,
+    offsetDateKey(keys[0]!, -1)
+  );
+  const lastDayKey = keys[keys.length - 1]!;
+  const nextEnd = getOccupancy(
+    existingOccupancyByDateKey,
+    offsetDateKey(lastDayKey, 1)
+  );
+
   if (keys.length === 1) {
     const onlyKey = keys[0]!;
     const existing = getOccupancy(existingOccupancyByDateKey, onlyKey);
-    const next = getOccupancy(
-      existingOccupancyByDateKey,
-      offsetDateKey(onlyKey, 1)
-    );
+
+    if (isOccupied(prevStart) && isOccupied(nextEnd)) {
+      map.set(onlyKey, "EMPTY");
+      return map;
+    }
 
     if (
-      (existing === "BOOKED" || existing === "OPTION") &&
-      (next === "BOOKED" || next === "OPTION")
+      isOccupied(existing) &&
+      isOccupied(nextEnd) &&
+      !isOccupied(prevStart)
     ) {
-      map.set(onlyKey, existing);
+      map.set(onlyKey, "BOOKED");
       return map;
     }
 
@@ -168,12 +183,17 @@ export function buildEmptyOccupancyForRangeMerged(
   }
 
   const firstDayKey = keys[0]!;
-  const lastDayKey = keys[keys.length - 1]!;
+  const existingStart = getOccupancy(existingOccupancyByDateKey, firstDayKey);
   const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
-  const nextEnd = getOccupancy(
-    existingOccupancyByDateKey,
-    offsetDateKey(lastDayKey, 1)
-  );
+
+  const openingGapInBookedBlock =
+    (isOccupied(prevStart) && isOccupied(nextEnd)) ||
+    (isOccupied(prevStart) &&
+      isOccupied(existingStart) &&
+      isOccupied(existingEnd)) ||
+    (isOccupied(nextEnd) &&
+      isOccupied(existingStart) &&
+      isOccupied(existingEnd));
 
   for (let index = 1; index < keys.length - 1; index++) {
     map.set(keys[index]!, "EMPTY");
@@ -181,11 +201,10 @@ export function buildEmptyOccupancyForRangeMerged(
 
   map.set(firstDayKey, "EMPTY");
 
-  const preserveEndForNextStay =
-    (existingEnd === "BOOKED" || existingEnd === "OPTION") &&
-    (nextEnd === "BOOKED" || nextEnd === "OPTION");
+  const lastStatus: VillaDayOccupancy =
+    openingGapInBookedBlock || isOccupied(nextEnd) ? "BOOKED" : "EMPTY";
 
-  map.set(lastDayKey, preserveEndForNextStay ? existingEnd : "EMPTY");
+  map.set(lastDayKey, lastStatus);
   return map;
 }
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { VillaDayOccupancy } from "@prisma/client";
 import {
   compareDates,
   parseDateKey,
@@ -52,6 +53,82 @@ export async function syncVillaPricePeriodDays(
   });
 
   return dateKeys;
+}
+
+function isWeekendDate(
+  snapshot: VillaPeriodDayPricingSnapshot,
+  date: Date
+): boolean {
+  const day = date.getDay();
+  return (
+    snapshot.weekendPrice != null &&
+    snapshot.weekendDays.length > 0 &&
+    snapshot.weekendDays.includes(day)
+  );
+}
+
+export function buildDaySnapshotForDate(
+  snapshot: VillaPeriodDayPricingSnapshot,
+  date: Date,
+  occupancyStatus?: VillaDayOccupancy
+): VillaPeriodDayPricingSnapshot {
+  const weekend = isWeekendDate(snapshot, date);
+
+  return {
+    ...snapshot,
+    nightlyPrice: weekend ? snapshot.weekendPrice! : snapshot.nightlyPrice,
+    discountedNightlyPrice: weekend
+      ? snapshot.weekendPrice!
+      : snapshot.discountedNightlyPrice,
+    occupancyStatus: occupancyStatus ?? snapshot.occupancyStatus ?? "EMPTY",
+  };
+}
+
+export async function updateVillaPricePeriodDaysInRange(
+  periodId: string,
+  villaId: string,
+  startDate: Date,
+  endDate: Date,
+  snapshot: VillaPeriodDayPricingSnapshot
+) {
+  const dates = enumerateDates(startDate, endDate);
+
+  await prisma.$transaction(async (tx) => {
+    for (const date of dates) {
+      const existing = await tx.villaPricePeriodDay.findFirst({
+        where: {
+          villaId,
+          periodId,
+          date,
+        },
+        select: {
+          id: true,
+          occupancyStatus: true,
+          availability: true,
+        },
+      });
+
+      if (!existing) continue;
+
+      const daySnapshot = buildDaySnapshotForDate(
+        snapshot,
+        date,
+        existing.occupancyStatus
+      );
+
+      const { occupancyStatus: _occupancy, availability: _availability, ...pricingData } =
+        daySnapshot;
+
+      await tx.villaPricePeriodDay.update({
+        where: { id: existing.id },
+        data: {
+          ...pricingData,
+          availability: existing.availability,
+          occupancyStatus: existing.occupancyStatus,
+        },
+      });
+    }
+  });
 }
 
 export async function deleteVillaPricePeriodDays(periodId: string) {

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   createVillaPricePeriod,
-  updateVillaPricePeriod,
+  updateVillaPricePeriodDaysPricing,
   updateVillaPeriodDaysOccupancy,
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodRangePreview from "@/components/admin/villas/periods/VillaPeriodRangePreview";
@@ -480,6 +480,7 @@ export default function VillaPeriodFormModal({
     }
 
     onSaved();
+    onClose();
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -491,7 +492,7 @@ export default function VillaPeriodFormModal({
 
     startTransition(async () => {
       const result = period
-        ? await updateVillaPricePeriod(villaId, period.id, formData)
+        ? await updateVillaPricePeriodDaysPricing(villaId, period.id, formData)
         : await createVillaPricePeriod(villaId, formData);
 
       if (result.error) {
@@ -910,13 +911,15 @@ export default function VillaPeriodFormModal({
               </div>
             </section>
 
-            <VillaPeriodRangePreview
-              startDate={form.startDate}
-              endDate={form.endDate}
-              nightlyPrice={form.nightlyPrice}
-              nightlyPriceCurrency={form.nightlyPriceCurrency}
-              availability="available"
-            />
+            {!period ? (
+              <VillaPeriodRangePreview
+                startDate={form.startDate}
+                endDate={form.endDate}
+                nightlyPrice={form.nightlyPrice}
+                nightlyPriceCurrency={form.nightlyPriceCurrency}
+                availability="available"
+              />
+            ) : null}
 
             <section className="overflow-hidden rounded-xl border border-teal-200">
               <SectionHeader

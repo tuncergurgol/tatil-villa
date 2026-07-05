@@ -24,6 +24,7 @@ import {
 import type { VillaDayOccupancy } from "@prisma/client";
 import {
   syncVillaPricePeriodDays,
+  updateVillaPricePeriodDaysInRange,
 } from "@/lib/villa-period-day-sync";
 import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
 import {
@@ -333,6 +334,55 @@ export async function updateVillaPricePeriod(
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Periyot güncellenemedi",
+    };
+  }
+}
+
+export async function updateVillaPricePeriodDaysPricing(
+  villaId: string,
+  periodId: string,
+  formData: FormData
+): Promise<VillaPeriodActionState> {
+  await requireAdmin();
+
+  const parsed = parsePeriodFormData(formData);
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
+  }
+
+  try {
+    const period = await prisma.villaPricePeriod.findFirst({
+      where: { id: periodId, villaId },
+      select: { id: true },
+    });
+
+    if (!period) {
+      return { error: "Periyot bulunamadı" };
+    }
+
+    const { startDate, endDate } = parsePeriodDates(
+      parsed.data.startDate,
+      parsed.data.endDate
+    );
+    const periodData = buildPeriodData(parsed.data);
+
+    await updateVillaPricePeriodDaysInRange(
+      periodId,
+      villaId,
+      startDate,
+      endDate,
+      periodData as VillaPeriodDayPricingSnapshot
+    );
+
+    await revalidatePeriodPaths(villaId);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Periyot günleri güncellenemedi",
     };
   }
 }
