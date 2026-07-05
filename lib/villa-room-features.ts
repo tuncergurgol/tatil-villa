@@ -18,6 +18,9 @@ export const DEFAULT_ROOM_FEATURES = [
 
 export const ROOM_TYPE_OPTIONS = [
   { value: "yatak_odasi", label: "Yatak Odası" },
+  { value: "salon", label: "Salon" },
+  { value: "mutfak", label: "Mutfak" },
+  { value: "banyo", label: "Banyo" },
 ] as const;
 
 export function formatBedSummary(singleBeds: number, doubleBeds: number) {

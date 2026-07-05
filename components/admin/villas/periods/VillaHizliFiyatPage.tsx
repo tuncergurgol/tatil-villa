@@ -119,18 +119,27 @@ function periodToRow(period: VillaPricePeriodItem): PeriodRowState {
 }
 
 function buildPeriodFormData(row: PeriodRowState): FormData {
+  const commissionRate = Number(row.commissionRate) || 0;
+  const synced = syncPeriodPrices({
+    source: "commissioned",
+    commissioned: parseAmountInput(row.nightlyPrice),
+    commissionRate,
+  });
+
   const formData = new FormData();
   formData.set("startDate", row.startDate);
   formData.set("endDate", row.endDate);
   formData.set("availability", "available");
   formData.set("nightlyPrice", String(parseAmountInput(row.nightlyPrice) ?? 0));
   formData.set("nightlyPriceCurrency", row.nightlyPriceCurrency);
-  formData.set("weeklyPrice", row.weeklyPrice || "");
+  formData.set("weeklyPrice", synced?.weeklyPrice ?? row.weeklyPrice ?? "");
   formData.set("prepaymentRate", row.prepaymentRate || "");
   formData.set("commissionRate", row.commissionRate || "");
   formData.set(
     "nightlyPriceWithoutCommission",
-    row.nightlyPriceWithoutCommission || ""
+    synced?.nightlyPriceWithoutCommission ??
+      row.nightlyPriceWithoutCommission ??
+      ""
   );
   formData.set("minStayNights", row.minStayNights || "");
   formData.set("cleaningDayCount", row.cleaningDayCount || "");
@@ -183,6 +192,19 @@ function formatDiscountLabel(row: PeriodRowState): string {
   if (row.discount2Rate) parts.push(`%${row.discount2Rate}`);
   if (row.extraDiscountAmount) parts.push(row.extraDiscountAmount);
   return parts.length > 0 ? parts.join(" + ") : "—";
+}
+
+/** KOMSZ. ve haftalık fiyatı her zaman güncel FİYAT alanından türetir. */
+function resolveRowDisplayPricing(row: PeriodRowState) {
+  return resolveVillaPeriodPricing({
+    nightlyPrice: parseAmountInput(row.nightlyPrice) ?? 0,
+    nightlyPriceWithoutCommission: null,
+    weeklyPrice: null,
+    commissionRate: Number(row.commissionRate) || 0,
+    discount1Rate: Number(row.discount1Rate) || 0,
+    discount2Rate: Number(row.discount2Rate) || 0,
+    extraDiscountAmount: parseAmountInput(row.extraDiscountAmount) ?? 0,
+  });
 }
 
 export default function VillaHizliFiyatPage({
@@ -449,18 +471,7 @@ export default function VillaHizliFiyatPage({
                 </tr>
               ) : (
                 rows.map((row, index) => {
-                  const pricing = resolveVillaPeriodPricing({
-                    nightlyPrice: parseAmountInput(row.nightlyPrice) ?? 0,
-                    nightlyPriceWithoutCommission: parseAmountInput(
-                      row.nightlyPriceWithoutCommission
-                    ),
-                    weeklyPrice: parseAmountInput(row.weeklyPrice),
-                    commissionRate: Number(row.commissionRate) || 0,
-                    discount1Rate: Number(row.discount1Rate) || 0,
-                    discount2Rate: Number(row.discount2Rate) || 0,
-                    extraDiscountAmount:
-                      parseAmountInput(row.extraDiscountAmount) ?? 0,
-                  });
+                  const pricing = resolveRowDisplayPricing(row);
 
                   return (
                     <tr

@@ -1,10 +1,10 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import AvailabilitySearchPage from "@/components/admin/availability/AvailabilitySearchPage";
+import { getAvailabilitySearchPageData } from "@/lib/queries/availability-search";
 
-export default function UygunlukPage() {
-  return (
-    <ComingSoon
-      title="Uygunluk Ara"
-      description="Ev müsaitlik arama modülü yakında eklenecek."
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function UygunlukPage() {
+  const pageData = await getAvailabilitySearchPageData();
+
+  return <AvailabilitySearchPage pageData={pageData} />;
 }

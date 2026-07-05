@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState, Fragment } from "react";
+import { useMemo, useState, Fragment, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { BookingStatus } from "@prisma/client";
 import {
   ChevronDown,
   ChevronRight,
@@ -18,11 +20,14 @@ import BookingFilterModal, {
   emptyBookingFilters,
   type BookingFilters,
 } from "@/components/admin/bookings/BookingFilterModal";
+import BookingFormModal from "@/components/admin/bookings/BookingFormModal";
+import BookingDetailModal from "@/components/admin/bookings/BookingDetailModal";
+import { changeBookingStatus } from "@/app/actions/admin/bookings";
 import { filterBookings } from "@/lib/booking-filters";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
+import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import {
-  BOOKING_STATUS_META,
   estimatePrepaymentAmount,
   formatBookingDisplayNumber,
   formatBookingShortCode,
@@ -30,7 +35,6 @@ import {
   formatGuestCounts,
   formatMoneyPlain,
   formatStaySummary,
-  resolveBookingDisplayStatus,
   resolvePaymentMethod,
 } from "@/lib/booking-display";
 
@@ -46,8 +50,7 @@ interface BookingManagementProps {
 }
 
 function StatusBadge({ booking }: { booking: AdminBookingListItem }) {
-  const key = resolveBookingDisplayStatus(booking);
-  const meta = BOOKING_STATUS_META[key];
+  const meta = BOOKING_STATUS_META[booking.status];
 
   return (
     <span
@@ -83,14 +86,25 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function RowActionsMenu() {
+function RowActionsMenu({
+  booking,
+  onEdit,
+  onCancel,
+}: {
+  booking: AdminBookingListItem;
+  onEdit: (booking: AdminBookingListItem) => void;
+  onCancel: (booking: AdminBookingListItem) => void;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((prev) => !prev);
+        }}
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
       >
         <MoreVertical className="h-4 w-4" />
@@ -106,14 +120,22 @@ function RowActionsMenu() {
             <button
               type="button"
               className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => setOpen(false)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setOpen(false);
+                onEdit(booking);
+              }}
             >
               Düzenle
             </button>
             <button
               type="button"
               className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-              onClick={() => setOpen(false)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setOpen(false);
+                onCancel(booking);
+              }}
             >
               İptal Et
             </button>
@@ -129,8 +151,15 @@ export default function BookingManagement({
   villas,
   siteDomain,
 }: BookingManagementProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [filters, setFilters] = useState<BookingFilters>(emptyBookingFilters());
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [formModalOpen, setFormModalOpen] = useState(false);
+  const [viewBookingId, setViewBookingId] = useState<string | null>(null);
+  const [editingBooking, setEditingBooking] = useState<AdminBookingListItem | null>(
+    null
+  );
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -140,6 +169,34 @@ export default function BookingManagement({
     () => filterBookings(bookings, filters),
     [bookings, filters]
   );
+
+  function openCreateModal() {
+    setEditingBooking(null);
+    setFormModalOpen(true);
+  }
+
+  function openEditModal(booking: AdminBookingListItem) {
+    setViewBookingId(booking.id);
+  }
+
+  function openViewModal(booking: AdminBookingListItem) {
+    setViewBookingId(booking.id);
+  }
+
+  function handleCancelBooking(booking: AdminBookingListItem) {
+    if (!window.confirm(`${booking.guestName} rezervasyonu iptal edilsin mi?`)) {
+      return;
+    }
+
+    startTransition(async () => {
+      await changeBookingStatus(booking.id, BookingStatus.CANCELLED);
+      router.refresh();
+    });
+  }
+
+  function handleFormSuccess() {
+    router.refresh();
+  }
 
   return (
     <div className="space-y-4">
@@ -174,6 +231,7 @@ export default function BookingManagement({
           </button>
           <button
             type="button"
+            onClick={openCreateModal}
             className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
           >
             <Plus className="h-4 w-4" />
@@ -196,6 +254,23 @@ export default function BookingManagement({
         onClose={() => setFilterModalOpen(false)}
         onApply={setFilters}
         onClear={() => setFilters(emptyBookingFilters())}
+      />
+
+      <BookingDetailModal
+        bookingId={viewBookingId}
+        onClose={() => setViewBookingId(null)}
+        onSaved={handleFormSuccess}
+      />
+
+      <BookingFormModal
+        open={formModalOpen}
+        villas={villas}
+        booking={editingBooking}
+        onClose={() => {
+          setFormModalOpen(false);
+          setEditingBooking(null);
+        }}
+        onSuccess={handleFormSuccess}
       />
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -348,12 +423,19 @@ export default function BookingManagement({
                             <button
                               type="button"
                               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                              onClick={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openViewModal(booking);
+                              }}
                             >
                               <Eye className="h-3.5 w-3.5" />
                               Görüntüle
                             </button>
-                            <RowActionsMenu />
+                            <RowActionsMenu
+                              booking={booking}
+                              onEdit={openEditModal}
+                              onCancel={handleCancelBooking}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -372,7 +454,7 @@ export default function BookingManagement({
                                   {booking.createdAt.toLocaleString("tr-TR")}
                                 </p>
                                 <p className="text-sm text-gray-700">
-                                  Kod: {shortCode}
+                                  Durum: {BOOKING_STATUS_META[booking.status].label}
                                 </p>
                               </div>
                               <div>

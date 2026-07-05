@@ -266,7 +266,7 @@ export function resolveVillaPeriodPricing(
 
 export function formatMoneyAmount(value: number | null | undefined): string {
   if (value == null || value <= 0) return "—";
-  return value.toLocaleString("tr-TR");
+  return value.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
 
 export function parseOptionalInt(raw: FormDataEntryValue | null): number | null {

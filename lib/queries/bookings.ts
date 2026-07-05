@@ -1,5 +1,15 @@
-import { BookingStatus } from "@prisma/client";
+import { BookingStatus, Prisma, StayStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { BOOKING_BLOCKING_STATUSES } from "@/lib/booking-status";
+import { upsertCustomerFromBooking } from "@/lib/customer-from-booking";
+
+async function syncBookingGuestToCustomer(data: {
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+}) {
+  await upsertCustomerFromBooking(data);
+}
 
 export async function isVillaAvailable(
   villaId: string,
@@ -11,7 +21,7 @@ export async function isVillaAvailable(
     where: {
       villaId,
       id: excludeBookingId ? { not: excludeBookingId } : undefined,
-      status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+      status: { in: BOOKING_BLOCKING_STATUSES },
       checkIn: { lt: checkOut },
       checkOut: { gt: checkIn },
     },
@@ -57,14 +67,167 @@ export async function createBooking(data: {
   const totalPrice =
     villa.pricePerNight != null ? nights * villa.pricePerNight : null;
 
-  return prisma.booking.create({
+  const booking = await prisma.booking.create({
     data: {
       ...data,
       totalPrice,
-      status: BookingStatus.PENDING,
+      status: BookingStatus.NEW,
     },
     include: { villa: { include: { region: true } } },
   });
+
+  await syncBookingGuestToCustomer({
+    guestName: data.guestName,
+    guestEmail: data.guestEmail,
+    guestPhone: data.guestPhone,
+  });
+
+  return booking;
+}
+
+export async function createAdminBooking(data: {
+  villaId: string;
+  checkIn: Date;
+  checkOut: Date;
+  adults: number;
+  children: number;
+  babies: number;
+  pets: number;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  totalPrice?: number | null;
+  status: BookingStatus;
+}) {
+  if (data.checkOut <= data.checkIn) {
+    throw new Error("Çıkış tarihi giriş tarihinden sonra olmalıdır.");
+  }
+
+  const villa = await prisma.villa.findUnique({ where: { id: data.villaId } });
+  if (!villa) throw new Error("Villa bulunamadı.");
+
+  const booking = await prisma.booking.create({
+    data: {
+      villaId: data.villaId,
+      checkIn: data.checkIn,
+      checkOut: data.checkOut,
+      adults: data.adults,
+      children: data.children,
+      babies: data.babies,
+      pets: data.pets,
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+      totalPrice: data.totalPrice ?? null,
+      status: data.status,
+    },
+    include: {
+      villa: {
+        select: {
+          id: true,
+          villaId: true,
+          slug: true,
+          name: true,
+          originalName: true,
+          documentNo: true,
+        },
+      },
+    },
+  });
+
+  await syncBookingGuestToCustomer({
+    guestName: data.guestName,
+    guestEmail: data.guestEmail,
+    guestPhone: data.guestPhone,
+  });
+
+  return booking;
+}
+
+export async function updateAdminBooking(
+  id: string,
+  data: {
+    villaId: string;
+    checkIn: Date;
+    checkOut: Date;
+    adults: number;
+    children: number;
+    babies: number;
+    pets: number;
+    guestName: string;
+    guestEmail: string;
+    guestPhone: string;
+    totalPrice?: number | null;
+    status: BookingStatus;
+  }
+) {
+  if (data.checkOut <= data.checkIn) {
+    throw new Error("Çıkış tarihi giriş tarihinden sonra olmalıdır.");
+  }
+
+  const booking = await prisma.booking.update({
+    where: { id },
+    data: {
+      villaId: data.villaId,
+      checkIn: data.checkIn,
+      checkOut: data.checkOut,
+      adults: data.adults,
+      children: data.children,
+      babies: data.babies,
+      pets: data.pets,
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+      totalPrice: data.totalPrice ?? null,
+      status: data.status,
+    },
+  });
+
+  await syncBookingGuestToCustomer({
+    guestName: data.guestName,
+    guestEmail: data.guestEmail,
+    guestPhone: data.guestPhone,
+  });
+
+  return booking;
+}
+
+export async function updateBookingDetail(data: {
+  id: string;
+  status: BookingStatus;
+  stayStatus: StayStatus;
+  adults: number;
+  children: number;
+  babies: number;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  totalPrice: number | null;
+  details: Record<string, unknown>;
+}) {
+  const booking = await prisma.booking.update({
+    where: { id: data.id },
+    data: {
+      status: data.status,
+      stayStatus: data.stayStatus,
+      adults: data.adults,
+      children: data.children,
+      babies: data.babies,
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+      totalPrice: data.totalPrice,
+      details: data.details as Prisma.InputJsonValue,
+    },
+  });
+
+  await syncBookingGuestToCustomer({
+    guestName: data.guestName,
+    guestEmail: data.guestEmail,
+    guestPhone: data.guestPhone,
+  });
+
+  return booking;
 }
 
 export async function getAllBookings() {
@@ -93,5 +256,5 @@ export async function getBookingCount() {
 }
 
 export async function getPendingBookingCount() {
-  return prisma.booking.count({ where: { status: BookingStatus.PENDING } });
+  return prisma.booking.count({ where: { status: BookingStatus.NEW } });
 }

@@ -41,6 +41,10 @@ export const adminNavSections: NavSection[] = [
       { label: "Ayarlar", href: "/admin/konaklama/ayarlar" },
     ],
   },
+  {
+    label: "Müşteri Yönetimi",
+    items: [{ label: "Müşteri Listesi", href: "/admin/musteri-yonetimi" }],
+  },
   { label: "Tur & Aktiviteler", href: "/admin/tur-aktiviteler" },
   { label: "Transfer", href: "/admin/transfer" },
   { label: "Araç Kiralama", href: "/admin/arac-kiralama" },

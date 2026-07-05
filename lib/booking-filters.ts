@@ -3,9 +3,9 @@ import type { AdminBookingListItem } from "@/lib/booking-display";
 import {
   formatBookingDisplayNumber,
   formatBookingShortCode,
-  resolveBookingDisplayStatus,
 } from "@/lib/booking-display";
 import { includesSearchText } from "@/lib/search-text";
+import { BookingStatus } from "@prisma/client";
 
 function startOfDay(date: Date): Date {
   const value = new Date(date);
@@ -28,7 +28,7 @@ function matchesQuickFilter(
   quickFilter: BookingFilters["quickFilter"]
 ): boolean {
   if (!quickFilter) return true;
-  if (resolveBookingDisplayStatus(booking) !== "confirmed") return false;
+  if (booking.status !== BookingStatus.CONFIRMED) return false;
 
   const today = startOfDay(new Date());
 

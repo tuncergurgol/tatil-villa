@@ -10,6 +10,7 @@ import {
   Hourglass,
   Image,
   Landmark,
+  MessageCircle,
   Palette,
   Phone,
   Save,
@@ -26,7 +27,9 @@ import LogoSettingsFields from "@/components/admin/company/LogoSettingsFields";
 import TursabSettingsFields from "@/components/admin/company/TursabSettingsFields";
 import AnalyticsSettingsFields from "@/components/admin/company/AnalyticsSettingsFields";
 import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payment-types/PrepaymentPaymentTypeManagement";
+import CustomerContactChannelManagement from "@/components/admin/customer-contact-channels/CustomerContactChannelManagement";
 import type { PrepaymentPaymentTypeItem } from "@/lib/queries/prepayment-payment-types";
+import type { CustomerContactChannelItem } from "@/lib/queries/customer-contact-channels";
 
 const tabs = [
   { id: "genel", label: "Genel Bilgiler", icon: Building2 },
@@ -44,6 +47,11 @@ const tabs = [
     label: "Ön Ödeme Ödeme Tipleri",
     icon: CreditCard,
   },
+  {
+    id: "musteri-ulasm-kanali",
+    label: "Müşteri Ulaşım Kanalı",
+    icon: MessageCircle,
+  },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -53,6 +61,12 @@ interface CompanySettingsFormProps {
   initialTab?: string;
   prepayment: {
     items: PrepaymentPaymentTypeItem[];
+    totalCount: number;
+    activeCount: number;
+    passiveCount: number;
+  };
+  contactChannels: {
+    items: CustomerContactChannelItem[];
     totalCount: number;
     activeCount: number;
     passiveCount: number;
@@ -137,6 +151,7 @@ export default function CompanySettingsForm({
   settings,
   initialTab,
   prepayment,
+  contactChannels,
 }: CompanySettingsFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>(
@@ -158,11 +173,15 @@ export default function CompanySettingsForm({
     const nextPath =
       tabId === "on-odeme-odeme-tipleri"
         ? "/admin/acente/sirket?tab=on-odeme-odeme-tipleri"
-        : "/admin/acente/sirket";
+        : tabId === "musteri-ulasm-kanali"
+          ? "/admin/acente/sirket?tab=musteri-ulasm-kanali"
+          : "/admin/acente/sirket";
     router.replace(nextPath, { scroll: false });
   }
 
-  const isSettingsTab = activeTab !== "on-odeme-odeme-tipleri";
+  const isSettingsTab =
+    activeTab !== "on-odeme-odeme-tipleri" &&
+    activeTab !== "musteri-ulasm-kanali";
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -383,12 +402,17 @@ export default function CompanySettingsForm({
                 defaultValue={settings.customScripts}
               />
             </form>
-          ) : (
+          ) : activeTab === "on-odeme-odeme-tipleri" ? (
             <PrepaymentPaymentTypeManagement
               items={prepayment.items}
               totalCount={prepayment.totalCount}
               activeCount={prepayment.activeCount}
               passiveCount={prepayment.passiveCount}
+              embedded
+            />
+          ) : (
+            <CustomerContactChannelManagement
+              items={contactChannels.items}
               embedded
             />
           )}

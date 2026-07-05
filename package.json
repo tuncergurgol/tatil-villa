@@ -36,7 +36,14 @@
     "import:periods:dry": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --dry-run",
     "import:periods:resume": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --force --resume",
     "import:regions": "tsx scripts/import-regions-from-tatildeyiz.ts",
-    "import:regions:dry": "tsx scripts/import-regions-from-tatildeyiz.ts --dry-run"
+    "import:regions:dry": "tsx scripts/import-regions-from-tatildeyiz.ts --dry-run",
+    "import:rooms": "tsx scripts/import-villa-rooms-from-tatildeyiz.ts --all",
+    "import:rooms:dry": "tsx scripts/import-villa-rooms-from-tatildeyiz.ts --all --dry-run",
+    "import:bookings": "tsx scripts/import-bookings-from-excel.ts --replace-imported",
+    "import:bookings:dry": "tsx scripts/import-bookings-from-excel.ts --dry-run",
+    "import:bookings:file": "tsx scripts/import-bookings-from-excel.ts",
+    "sync:customers": "tsx scripts/sync-customers-from-bookings.ts",
+    "fix:booking-contacts": "tsx scripts/fix-booking-guest-contacts.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

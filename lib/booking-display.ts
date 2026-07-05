@@ -1,13 +1,8 @@
-import { BookingStatus } from "@prisma/client";
 import { calculateNights } from "@/lib/queries/bookings";
+import { BOOKING_STATUS_META } from "@/lib/booking-status";
+import type { BookingStatus } from "@prisma/client";
 
 const WEEKDAY_SHORT = ["Paz", "Pts", "Sal", "Çar", "Per", "Cum", "Cts"] as const;
-
-export type BookingDisplayStatus =
-  | "cancelled"
-  | "prepayment"
-  | "new"
-  | "confirmed";
 
 export type AdminBookingListItem = {
   id: string;
@@ -33,6 +28,8 @@ export type AdminBookingListItem = {
   };
 };
 
+export { BOOKING_STATUS_META };
+
 export function formatBookingDisplayNumber(id: string): string {
   const digits = id.replace(/\D/g, "");
   const value = Number(digits.slice(-5) || "0") % 90000;
@@ -42,42 +39,6 @@ export function formatBookingDisplayNumber(id: string): string {
 export function formatBookingShortCode(id: string): string {
   return id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
 }
-
-export function resolveBookingDisplayStatus(
-  booking: Pick<AdminBookingListItem, "status" | "createdAt" | "totalPrice">
-): BookingDisplayStatus {
-  if (booking.status === BookingStatus.CANCELLED) return "cancelled";
-  if (booking.status === BookingStatus.CONFIRMED) return "confirmed";
-  if (
-    booking.totalPrice != null &&
-    Date.now() - booking.createdAt.getTime() > 24 * 60 * 60 * 1000
-  ) {
-    return "prepayment";
-  }
-  return "new";
-}
-
-export const BOOKING_STATUS_META: Record<
-  BookingDisplayStatus,
-  { label: string; className: string }
-> = {
-  cancelled: {
-    label: "İptal",
-    className: "bg-red-100 text-red-700",
-  },
-  prepayment: {
-    label: "Ön Ödeme",
-    className: "bg-amber-100 text-amber-800",
-  },
-  new: {
-    label: "Yeni Rezervasyon",
-    className: "bg-violet-100 text-violet-700",
-  },
-  confirmed: {
-    label: "Onaylandı",
-    className: "bg-emerald-100 text-emerald-700",
-  },
-};
 
 export function formatStaySummary(checkIn: Date, checkOut: Date) {
   const nights = calculateNights(checkIn, checkOut);

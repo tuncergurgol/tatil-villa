@@ -1,5 +1,6 @@
 import type { VillaCategory } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { BOOKING_BLOCKING_STATUSES } from "@/lib/booking-status";
 import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { getRegionIdsForFilter } from "@/lib/queries/region-tree";
 
@@ -125,7 +126,7 @@ export async function getRecommendedVillas() {
 async function getAvailableVillaIds(checkIn: Date, checkOut: Date) {
   const conflicting = await prisma.booking.findMany({
     where: {
-      status: { in: ["PENDING", "CONFIRMED"] },
+      status: { in: BOOKING_BLOCKING_STATUSES },
       checkIn: { lt: checkOut },
       checkOut: { gt: checkIn },
     },

@@ -51,9 +51,18 @@ enum PoolMeasureUnit {
 }
 
 enum BookingStatus {
-  PENDING
+  NEW
+  PREPAYMENT
+  CONFIRMATION_SENT
   CONFIRMED
+  COMPENSATION
   CANCELLED
+}
+
+enum StayStatus {
+  BEKLENIYOR
+  YAPILDI
+  YAPILMADI
 }
 
 enum UserRole {
@@ -144,6 +153,35 @@ model PrepaymentPaymentTypeOption {
 
   @@index([active])
   @@index([sortOrder])
+}
+
+model CustomerContactChannel {
+  id        String     @id @default(cuid())
+  name      String
+  sortOrder Int        @default(0)
+  active    Boolean    @default(true)
+  customers Customer[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model Customer {
+  id               String                  @id @default(cuid())
+  fullName         String
+  phone            String                  @default("")
+  email            String                  @default("")
+  contactChannelId String?
+  contactChannel   CustomerContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  active           Boolean                 @default(true)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@index([active])
+  @@index([phone])
+  @@index([fullName])
 }
 
 model Villa {
@@ -539,26 +577,31 @@ model FacilityCategory {
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  villaId     String
-  villa       Villa         @relation(fields: [villaId], references: [id], onDelete: Cascade)
-  checkIn     DateTime      @db.Date
-  checkOut    DateTime      @db.Date
-  adults      Int           @default(1)
-  children    Int           @default(0)
-  babies      Int           @default(0)
-  pets        Int           @default(0)
-  guestName   String
-  guestEmail  String
-  guestPhone  String
-  totalPrice  Int?
-  status      BookingStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  externalCode Int?          @unique
+  villaId      String
+  villa        Villa         @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  checkIn      DateTime      @db.Date
+  checkOut     DateTime      @db.Date
+  adults       Int           @default(1)
+  children     Int           @default(0)
+  babies       Int           @default(0)
+  pets         Int           @default(0)
+  guestName    String
+  guestEmail   String
+  guestPhone   String
+  totalPrice   Int?
+  status       BookingStatus @default(NEW)
+  stayStatus   StayStatus    @default(BEKLENIYOR)
+  details      Json          @default("{}")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([villaId])
   @@index([status])
+  @@index([stayStatus])
   @@index([checkIn, checkOut])
+  @@index([externalCode])
 }
 
 model User {

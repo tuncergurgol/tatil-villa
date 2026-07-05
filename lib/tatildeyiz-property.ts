@@ -70,10 +70,59 @@ export type TatildeyizPropertyBooking = {
   statusId: number;
 };
 
+export type TatildeyizRoomType = {
+  id: number;
+  name: string;
+};
+
+export type TatildeyizRoomAmenity = {
+  id: number;
+  name: string;
+  icon: string | null;
+  isActive: boolean;
+  orderNumber: number | null;
+};
+
+export type TatildeyizPropertyRoomAmenityLink = {
+  id: number;
+  propertyRoomId: number;
+  roomAmenityId: number;
+  roomAmenity: TatildeyizRoomAmenity | null;
+};
+
+export type TatildeyizPropertyRoom = {
+  id: number;
+  propertyId: number;
+  singleBed: number;
+  doubleBed: number;
+  roomTypeId: number;
+  roomName: string | null;
+  roomImage: string | null;
+  roomTypes: TatildeyizRoomType | null;
+  roomAmenities: TatildeyizPropertyRoomAmenityLink[];
+};
+
+export type TatildeyizPropertyDetail = {
+  id: number;
+  bedroomInfo: string | null;
+  bathroomInfo: string | null;
+  kitchenInfo: string | null;
+  poolInfo: string | null;
+  cleaningInfo: string | null;
+  detail: string | null;
+  locationInfo: string | null;
+};
+
 export type TatildeyizProperty = {
   id: number;
   slug: string;
   title: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  beds: number | null;
+  description: string | null;
+  propertyDetail: TatildeyizPropertyDetail | null;
+  PropertyRooms: TatildeyizPropertyRoom[];
   propertyPeriodPrices: TatildeyizPropertyPeriodPrice[];
   propertyDiscounts: TatildeyizPropertyDiscount[];
   bookings: TatildeyizPropertyBooking[];
