@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import type { VillaDayOccupancy } from "@prisma/client";
-import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
 
 export type VillaDayVisualKind =
   | "empty"
@@ -12,14 +11,12 @@ export type VillaDayVisualKind =
   | "option_full"
   | "option_check_out"
   | "option_out_booked_in"
-  | "booked_out_option_in"
-  | "closed";
+  | "booked_out_option_in";
 
 const COLORS = {
   white: "#ffffff",
   red: "#dc2626",
   yellow: "#facc15",
-  closed: "#94a3b8",
 } as const;
 
 function normalizeOccupancy(
@@ -42,11 +39,8 @@ function diagonalMirrorVertical(topLeft: string, bottomRight: string) {
 export function resolveVillaDayVisual(
   current?: VillaDayOccupancy,
   prev?: VillaDayOccupancy,
-  next?: VillaDayOccupancy,
-  availability?: VillaPeriodAvailability
+  next?: VillaDayOccupancy
 ): VillaDayVisualKind {
-  if (availability === "closed") return "closed";
-
   const currentStatus = normalizeOccupancy(current);
   const prevStatus = normalizeOccupancy(prev);
   const nextStatus = normalizeOccupancy(next);
@@ -128,8 +122,6 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
         background: diagonal(COLORS.red, COLORS.yellow),
         useLightText: false,
       };
-    case "closed":
-      return { background: COLORS.closed, useLightText: true };
     default:
       return { background: COLORS.white, useLightText: false };
   }
@@ -168,10 +160,5 @@ export const VILLA_DAY_VISUAL_LEGEND: {
     swatchStyle: {
       background: diagonalMirrorVertical(COLORS.yellow, COLORS.white),
     },
-  },
-  {
-    kind: "closed",
-    label: "Kapalı",
-    swatchStyle: { background: COLORS.closed },
   },
 ];

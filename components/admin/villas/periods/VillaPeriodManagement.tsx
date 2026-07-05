@@ -3,33 +3,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
   type PeriodCalendarSelectionRange,
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
-import { updateVillaPeriodDaysOccupancy } from "@/app/actions/admin/villa-periods";
 import { VILLA_DAY_VISUAL_LEGEND } from "@/lib/villa-period-day-visual";
 import VillaPeriodSidebar from "@/components/admin/villas/periods/VillaPeriodSidebar";
 import { villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
+import { normalizeDateRange } from "@/lib/villa-period-selection";
 import {
-  buildBookedOccupancyForStay,
-  buildEmptyOccupancyForRange,
-  countNightsBetween,
-  normalizeDateRange,
-} from "@/lib/villa-period-selection";
-import {
-  formatPeriodDate,
   getMonthLabel,
-  parseDateKey,
   startOfDay,
   toDateKey,
   todayDate,
 } from "@/lib/villa-period-calendar";
-import type { VillaDayOccupancy } from "@prisma/client";
 
 interface VillaPeriodManagementProps {
   villa: {
@@ -77,10 +68,6 @@ export default function VillaPeriodManagement({
   const [selectedRange, setSelectedRange] =
     useState<PeriodCalendarSelectionRange | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [localOccupancyOverrides, setLocalOccupancyOverrides] = useState<
-    Map<string, VillaDayOccupancy>
-  >(new Map());
-  const [occupancyUpdating, setOccupancyUpdating] = useState(false);
   const selectionCompletedRef = useRef(false);
 
   const dayDisplayByDate = useMemo(() => {
@@ -120,40 +107,10 @@ export default function VillaPeriodManagement({
     return map;
   }, [normalizedPeriods, periodDays]);
 
-  useEffect(() => {
-    setLocalOccupancyOverrides(new Map());
-  }, [periodDays]);
-
-  const mergedDayDisplayByDate = useMemo(() => {
-    if (localOccupancyOverrides.size === 0) return dayDisplayByDate;
-
-    const map = new Map(dayDisplayByDate);
-    localOccupancyOverrides.forEach((occupancyStatus, dateKey) => {
-      const existing = map.get(dateKey);
-      if (existing) {
-        map.set(dateKey, { ...existing, occupancyStatus });
-      }
-    });
-    return map;
-  }, [dayDisplayByDate, localOccupancyOverrides]);
-
   const activeDateKeys = useMemo(
     () => new Set(dayDisplayByDate.keys()),
     [dayDisplayByDate]
   );
-
-  const normalizedSelection = useMemo(() => {
-    if (!selectedRange) return null;
-    return normalizeDateRange(selectedRange.start, selectedRange.end);
-  }, [selectedRange]);
-
-  const selectionNightCount = useMemo(() => {
-    if (!normalizedSelection) return 0;
-    return countNightsBetween(
-      normalizedSelection.start,
-      normalizedSelection.end
-    );
-  }, [normalizedSelection]);
 
   function goToToday() {
     setViewYear(today.getFullYear());
@@ -234,52 +191,11 @@ export default function VillaPeriodManagement({
     }
   }, [selectedRange, dayDisplayByDate, normalizedPeriods]);
 
-  async function handleOccupancyUpdate(mode: "EMPTY" | "BOOKED") {
-    if (!normalizedSelection) return;
-
-    const { start, end } = normalizedSelection;
-    const previousOverrides = new Map(localOccupancyOverrides);
-
-    const occupancyMap =
-      mode === "BOOKED"
-        ? buildBookedOccupancyForStay(start, end)
-        : buildEmptyOccupancyForRange(start, end);
-
-    const nextOverrides = new Map(localOccupancyOverrides);
-    occupancyMap.forEach((occupancyStatus, dateKey) => {
-      nextOverrides.set(dateKey, occupancyStatus);
-    });
-
-    setLocalOccupancyOverrides(nextOverrides);
-    setOccupancyUpdating(true);
-
-    const result = await updateVillaPeriodDaysOccupancy(
-      villa.id,
-      start,
-      end,
-      mode
-    );
-
-    setOccupancyUpdating(false);
-
-    if (result.error) {
-      setLocalOccupancyOverrides(previousOverrides);
-      return;
-    }
-
-    router.refresh();
-  }
-
   const villaIdLabel =
     villa.villaId != null ? String(villa.villaId) : "—";
   const hizliFiyatPath = villaAdminHizliFiyatPath(villa);
   const documentNo = villa.documentNo || "—";
   const originalName = villa.originalName || "—";
-
-  const selectionLabel =
-    normalizedSelection != null
-      ? `${formatPeriodDate(parseDateKey(normalizedSelection.start))} – ${formatPeriodDate(parseDateKey(normalizedSelection.end))}`
-      : "";
 
   return (
     <div className={embedded ? "mt-4 flex min-h-0 flex-1 flex-col" : "flex h-[calc(100dvh-3rem)] flex-col"}>
@@ -371,60 +287,13 @@ export default function VillaPeriodManagement({
           </div>
         </div>
 
-        {normalizedSelection ? (
-          <div className="shrink-0 border-b border-blue-100 bg-blue-50 px-5 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                  Uygunluk Durumu
-                </p>
-                <p className="mt-0.5 text-sm text-blue-900">
-                  {selectionLabel}
-                  {selectionNightCount > 0 ? (
-                    <span className="ml-2 font-semibold">
-                      ({selectionNightCount} gece)
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={occupancyUpdating}
-                  onClick={() => handleOccupancyUpdate("EMPTY")}
-                  className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
-                >
-                  Uygun
-                </button>
-                <button
-                  type="button"
-                  disabled={occupancyUpdating}
-                  onClick={() => handleOccupancyUpdate("BOOKED")}
-                  className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                >
-                  Dolu
-                </button>
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                  aria-label="Seçimi temizle"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
         <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[1fr_320px]">
           <div className="min-h-0 overflow-y-auto border-b border-gray-200 p-4 xl:border-b-0 xl:border-r">
             <PeriodCalendarGrid
               year={viewYear}
               month={viewMonth}
               activeDateKeys={activeDateKeys}
-              dayDisplayByDate={mergedDayDisplayByDate}
+              dayDisplayByDate={dayDisplayByDate}
               today={today}
               selectedRange={selectedRange}
               isDragging={isDragging}

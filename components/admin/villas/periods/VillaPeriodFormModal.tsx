@@ -10,7 +10,7 @@ import {
 import {
   createVillaPricePeriod,
   updateVillaPricePeriod,
-  updateVillaPeriodDaysAvailability,
+  updateVillaPeriodDaysOccupancy,
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodRangePreview from "@/components/admin/villas/periods/VillaPeriodRangePreview";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
@@ -71,7 +71,8 @@ const AMOUNT_FIELDS = new Set([
 type PeriodFormState = {
   startDate: string;
   endDate: string;
-  availability: VillaPeriodAvailability | "";
+  availability: VillaPeriodAvailability;
+  occupancySelection: "" | "EMPTY" | "BOOKED";
   nightlyPrice: string;
   nightlyPriceCurrency: VillaPeriodCurrency;
   weeklyPrice: string;
@@ -108,6 +109,7 @@ const emptyFormState = (): PeriodFormState => ({
   startDate: "",
   endDate: "",
   availability: "available",
+  occupancySelection: "",
   nightlyPrice: "",
   nightlyPriceCurrency: "TL",
   weeklyPrice: "",
@@ -148,7 +150,8 @@ function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
   return {
     startDate: toDateKey(period.startDate),
     endDate: toDateKey(period.endDate),
-    availability: period.availability,
+    availability: "available",
+    occupancySelection: "",
     nightlyPrice: formatAmountInput(period.nightlyPrice),
     nightlyPriceCurrency: period.nightlyPriceCurrency,
     weeklyPrice: toInputValue(period.weeklyPrice),
@@ -331,7 +334,7 @@ export default function VillaPeriodFormModal({
 
     setForm(
       period
-        ? { ...nextForm, availability: "" }
+        ? { ...nextForm, occupancySelection: "" }
         : nextForm
     );
     setError(null);
@@ -441,9 +444,8 @@ export default function VillaPeriodFormModal({
 
   function appendFormData(target: FormData) {
     Object.entries(form).forEach(([key, value]) => {
+      if (key === "occupancySelection") return;
       if (value === "") return;
-
-      if (key === "availability" && period) return;
 
       if (AMOUNT_FIELDS.has(key)) {
         const parsed = parseAmountInput(value);
@@ -454,18 +456,16 @@ export default function VillaPeriodFormModal({
       target.set(key, value);
     });
 
-    if (period) {
-      target.set("availability", period.availability);
-    }
+    target.set("availability", "available");
   }
 
-  async function handleAvailabilityAction(mode: "available" | "closed") {
+  async function handleOccupancyAction(mode: "EMPTY" | "BOOKED") {
     if (!period || !form.startDate || !form.endDate) return;
 
     setError(null);
     setAvailabilityPending(true);
 
-    const result = await updateVillaPeriodDaysAvailability(
+    const result = await updateVillaPeriodDaysOccupancy(
       villaId,
       form.startDate,
       form.endDate,
@@ -574,53 +574,63 @@ export default function VillaPeriodFormModal({
                   </label>
                 </div>
 
-                <div>
-                  <span className={labelClass}>Uygunluk Durumu</span>
-                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-800">
-                    <label className="inline-flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="availability"
-                        value="available"
-                        checked={form.availability === "available"}
-                        onChange={() => updateForm({ availability: "available" })}
-                      />
-                      Uygun
-                    </label>
-                    <label className="inline-flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="availability"
-                        value="closed"
-                        checked={form.availability === "closed"}
-                        onChange={() => updateForm({ availability: "closed" })}
-                      />
-                      Uygun Değil (Kapat)
-                    </label>
+                {period ? (
+                  <div>
+                    <span className={labelClass}>Uygunluk Durumu</span>
+                    <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-800">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="occupancySelection"
+                          value="EMPTY"
+                          checked={form.occupancySelection === "EMPTY"}
+                          onChange={() =>
+                            updateForm({ occupancySelection: "EMPTY" })
+                          }
+                        />
+                        Uygun
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="occupancySelection"
+                          value="BOOKED"
+                          checked={form.occupancySelection === "BOOKED"}
+                          onChange={() =>
+                            updateForm({ occupancySelection: "BOOKED" })
+                          }
+                        />
+                        Dolu
+                      </label>
+                    </div>
+
+                    {form.occupancySelection === "EMPTY" ? (
+                      <button
+                        type="button"
+                        disabled={
+                          availabilityPending || !form.startDate || !form.endDate
+                        }
+                        onClick={() => handleOccupancyAction("EMPTY")}
+                        className="mt-3 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        Aç
+                      </button>
+                    ) : null}
+
+                    {form.occupancySelection === "BOOKED" ? (
+                      <button
+                        type="button"
+                        disabled={
+                          availabilityPending || !form.startDate || !form.endDate
+                        }
+                        onClick={() => handleOccupancyAction("BOOKED")}
+                        className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
+                      >
+                        Kapat
+                      </button>
+                    ) : null}
                   </div>
-
-                  {period && form.availability === "available" ? (
-                    <button
-                      type="button"
-                      disabled={availabilityPending || !form.startDate || !form.endDate}
-                      onClick={() => handleAvailabilityAction("available")}
-                      className="mt-3 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
-                    >
-                      Aç
-                    </button>
-                  ) : null}
-
-                  {period && form.availability === "closed" ? (
-                    <button
-                      type="button"
-                      disabled={availabilityPending || !form.startDate || !form.endDate}
-                      onClick={() => handleAvailabilityAction("closed")}
-                      className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
-                    >
-                      Kapat
-                    </button>
-                  ) : null}
-                </div>
+                ) : null}
               </div>
             </section>
 
@@ -905,7 +915,7 @@ export default function VillaPeriodFormModal({
               endDate={form.endDate}
               nightlyPrice={form.nightlyPrice}
               nightlyPriceCurrency={form.nightlyPriceCurrency}
-              availability={form.availability || "available"}
+              availability="available"
             />
 
             <section className="overflow-hidden rounded-xl border border-teal-200">

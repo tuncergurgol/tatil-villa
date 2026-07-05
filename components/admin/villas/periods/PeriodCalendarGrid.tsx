@@ -124,7 +124,6 @@ function CalendarDayCell({
   const display = dayDisplayByDate.get(dateKey);
   const isToday = today != null && dateKey === toDateKey(today);
   const isPeriodDay = isActive && display != null;
-  const isClosed = isPeriodDay && display.availability === "closed";
   const isCurrentMonthDay = emphasizeCurrentMonth && cell.inCurrentMonth;
 
   const isInSelection =
@@ -151,8 +150,7 @@ function CalendarDayCell({
     ? resolveVillaDayVisual(
         display.occupancyStatus,
         getNeighborOccupancy(dateKey, -1, dayDisplayByDate),
-        getNeighborOccupancy(dateKey, 1, dayDisplayByDate),
-        display.availability
+        getNeighborOccupancy(dateKey, 1, dayDisplayByDate)
       )
     : "empty";
 
@@ -169,14 +167,10 @@ function CalendarDayCell({
   const priceClass = isCurrentMonthDay
     ? visualStyle.useLightText
       ? "text-white"
-      : isClosed
-        ? "text-white"
-        : "text-blue-600"
+      : "text-blue-600"
     : visualStyle.useLightText
       ? "text-white/90"
-      : isClosed
-        ? "text-white/90"
-        : "text-blue-500";
+      : "text-blue-500";
 
   const daySizeClass = isCurrentMonthDay ? "text-lg" : "text-xs";
   const priceSizeClass = isCurrentMonthDay ? "text-base" : "text-[10px]";
@@ -223,45 +217,35 @@ function CalendarDayCell({
       </div>
 
       {isPeriodDay ? (
-        isClosed ? (
-          <div
-            className={`mt-auto self-start pb-0.5 text-left font-bold uppercase tracking-wide ${priceClass} ${
-              isCurrentMonthDay ? "text-xs" : "text-[9px]"
-            }`}
-          >
-            Kapalı
-          </div>
-        ) : (
-          <div
-            className={`mt-auto self-start pb-0.5 text-left leading-tight ${priceClass}`}
-          >
-            {hasDiscount(display) ? (
-              <>
-                <div
-                  className={`font-medium line-through opacity-70 ${strikePriceSizeClass}`}
-                >
-                  {formatPlainPrice(
-                    display.nightlyPrice,
-                    display.nightlyPriceCurrency
-                  )}
-                </div>
-                <div className={`font-semibold ${priceSizeClass}`}>
-                  {formatPlainPrice(
-                    getDisplayPrice(display),
-                    display.nightlyPriceCurrency
-                  )}
-                </div>
-              </>
-            ) : (
+        <div
+          className={`mt-auto self-start pb-0.5 text-left leading-tight ${priceClass}`}
+        >
+          {hasDiscount(display) ? (
+            <>
+              <div
+                className={`font-medium line-through opacity-70 ${strikePriceSizeClass}`}
+              >
+                {formatPlainPrice(
+                  display.nightlyPrice,
+                  display.nightlyPriceCurrency
+                )}
+              </div>
               <div className={`font-semibold ${priceSizeClass}`}>
                 {formatPlainPrice(
                   getDisplayPrice(display),
                   display.nightlyPriceCurrency
                 )}
               </div>
-            )}
-          </div>
-        )
+            </>
+          ) : (
+            <div className={`font-semibold ${priceSizeClass}`}>
+              {formatPlainPrice(
+                getDisplayPrice(display),
+                display.nightlyPriceCurrency
+              )}
+            </div>
+          )}
+        </div>
       ) : null}
     </div>
   );

@@ -257,7 +257,7 @@ export function parseCurrency(
 }
 
 export function parseAvailability(
-  raw: FormDataEntryValue | null
+  _raw: FormDataEntryValue | null
 ): VillaPeriodAvailability {
-  return String(raw) === "closed" ? "closed" : "available";
+  return "available";
 }

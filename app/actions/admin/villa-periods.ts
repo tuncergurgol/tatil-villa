@@ -12,12 +12,14 @@ import {
   parseDateKey,
   periodsOverlap,
   startOfDay,
+  toDateKey,
 } from "@/lib/villa-period-calendar";
 import {
   buildBookedOccupancyForStay,
   buildEmptyOccupancyForRange,
   enumerateDateKeysInRange,
   normalizeDateRange,
+  offsetDateKey,
 } from "@/lib/villa-period-selection";
 import type { VillaDayOccupancy } from "@prisma/client";
 import {
@@ -95,10 +97,10 @@ const periodSchema = z.object({
   childFee03_09Currency: z.enum(["TL", "EUR", "USD", "GBP"]),
 });
 
-function revalidatePeriodPaths(villaId: string) {
+async function revalidatePeriodPaths(villaId: string) {
   revalidatePath("/admin/konaklama/takvim");
-  void revalidateVillaTakvimPath(villaId);
-  void revalidateVillaHizliFiyatPage(villaId);
+  await revalidateVillaTakvimPath(villaId);
+  await revalidateVillaHizliFiyatPage(villaId);
 }
 
 async function revalidateVillaTakvimPath(villaId: string) {
@@ -278,7 +280,7 @@ export async function createVillaPricePeriod(
       periodData as VillaPeriodDayPricingSnapshot
     );
 
-    revalidatePeriodPaths(villaId);
+    await revalidatePeriodPaths(villaId);
     return { success: true };
   } catch (error) {
     return {
@@ -326,7 +328,7 @@ export async function updateVillaPricePeriod(
       periodData as VillaPeriodDayPricingSnapshot
     );
 
-    revalidatePeriodPaths(villaId);
+    await revalidatePeriodPaths(villaId);
     return { success: true };
   } catch (error) {
     return {
@@ -345,13 +347,45 @@ export async function updateVillaPeriodDaysOccupancy(
 
   try {
     const { start, end } = normalizeDateRange(startDateKey, endDateKey);
+    const rangeDateKeys = enumerateDateKeysInRange(start, end);
+    const lookupDateKeys = [
+      ...new Set([
+        ...rangeDateKeys,
+        offsetDateKey(start, -1),
+        offsetDateKey(end, 1),
+      ]),
+    ];
+
+    const existingDays = await prisma.villaPricePeriodDay.findMany({
+      where: {
+        villaId,
+        date: { in: lookupDateKeys.map((dateKey) => dateKeyToDbDate(dateKey)) },
+      },
+      select: {
+        date: true,
+        occupancyStatus: true,
+      },
+    });
+
+    const existingOccupancyByDateKey = new Map<string, VillaDayOccupancy>();
+    for (const day of existingDays) {
+      existingOccupancyByDateKey.set(
+        toDateKey(startOfDay(day.date)),
+        day.occupancyStatus
+      );
+    }
+
     const occupancyByDateKey: Map<string, VillaDayOccupancy> =
       mode === "BOOKED"
-        ? buildBookedOccupancyForStay(start, end)
-        : buildEmptyOccupancyForRange(start, end);
+        ? buildBookedOccupancyForStay(start, end, existingOccupancyByDateKey)
+        : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey);
 
-    await prisma.$transaction(
-      [...occupancyByDateKey.entries()].map(([dateKey, occupancyStatus]) =>
+    const updates = [...occupancyByDateKey.entries()]
+      .filter(([dateKey, occupancyStatus]) => {
+        const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
+        return existing !== occupancyStatus;
+      })
+      .map(([dateKey, occupancyStatus]) =>
         prisma.villaPricePeriodDay.updateMany({
           where: {
             villaId,
@@ -359,49 +393,13 @@ export async function updateVillaPeriodDaysOccupancy(
           },
           data: { occupancyStatus },
         })
-      )
-    );
+      );
 
-    revalidatePeriodPaths(villaId);
-    return { success: true };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Uygunluk durumu güncellenemedi",
-    };
-  }
-}
-
-export async function updateVillaPeriodDaysAvailability(
-  villaId: string,
-  startDateKey: string,
-  endDateKey: string,
-  availability: "available" | "closed"
-): Promise<VillaPeriodActionState> {
-  await requireAdmin();
-
-  try {
-    const dateKeys = enumerateDateKeysInRange(startDateKey, endDateKey);
-
-    if (dateKeys.length === 0) {
-      return { error: "Geçerli bir tarih aralığı seçin" };
+    if (updates.length > 0) {
+      await prisma.$transaction(updates);
     }
 
-    await prisma.$transaction(
-      dateKeys.map((dateKey) =>
-        prisma.villaPricePeriodDay.updateMany({
-          where: {
-            villaId,
-            date: dateKeyToDbDate(dateKey),
-          },
-          data: { availability },
-        })
-      )
-    );
-
-    revalidatePeriodPaths(villaId);
+    await revalidatePeriodPaths(villaId);
     return { success: true };
   } catch (error) {
     return {
@@ -423,7 +421,7 @@ export async function deleteVillaPricePeriod(
     await prisma.villaPricePeriod.delete({
       where: { id: periodId },
     });
-    revalidatePeriodPaths(villaId);
+    await revalidatePeriodPaths(villaId);
     return { success: true };
   } catch {
     return { error: "Periyot silinemedi" };
