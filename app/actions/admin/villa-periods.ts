@@ -24,8 +24,8 @@ import {
 import type { VillaDayOccupancy } from "@prisma/client";
 import {
   syncVillaPricePeriodDays,
-  updateVillaPricePeriodDaysInRange,
 } from "@/lib/villa-period-day-sync";
+import { applyPartialVillaPricePeriodEdit } from "@/lib/villa-period-split";
 import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
 import {
   parseAvailability,
@@ -39,7 +39,7 @@ export type VillaPeriodActionState = {
 };
 
 const optionalRateSchema = z
-  .union([z.string(), z.number()])
+  .union([z.string(), z.number(), z.null()])
   .optional()
   .transform((value) => {
     if (value == null || value === "") return null;
@@ -367,9 +367,9 @@ export async function updateVillaPricePeriodDaysPricing(
     );
     const periodData = buildPeriodData(parsed.data);
 
-    await updateVillaPricePeriodDaysInRange(
-      periodId,
+    await applyPartialVillaPricePeriodEdit(
       villaId,
+      periodId,
       startDate,
       endDate,
       periodData as VillaPeriodDayPricingSnapshot

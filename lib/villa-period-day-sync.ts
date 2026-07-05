@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { VillaDayOccupancy } from "@prisma/client";
+import type { Prisma, VillaDayOccupancy } from "@prisma/client";
 import {
   compareDates,
   parseDateKey,
@@ -91,44 +91,77 @@ export async function updateVillaPricePeriodDaysInRange(
   endDate: Date,
   snapshot: VillaPeriodDayPricingSnapshot
 ) {
+  await prisma.$transaction(async (tx) => {
+    await reassignPeriodDaysInRange(
+      tx,
+      periodId,
+      villaId,
+      startDate,
+      endDate,
+      snapshot
+    );
+  });
+}
+
+export async function reassignPeriodDaysInRange(
+  tx: Prisma.TransactionClient,
+  periodId: string,
+  villaId: string,
+  startDate: Date,
+  endDate: Date,
+  snapshot: VillaPeriodDayPricingSnapshot
+) {
   const dates = enumerateDates(startDate, endDate);
 
-  await prisma.$transaction(async (tx) => {
-    for (const date of dates) {
-      const existing = await tx.villaPricePeriodDay.findFirst({
-        where: {
-          villaId,
-          periodId,
-          date,
-        },
-        select: {
-          id: true,
-          occupancyStatus: true,
-          availability: true,
-        },
-      });
-
-      if (!existing) continue;
-
-      const daySnapshot = buildDaySnapshotForDate(
-        snapshot,
+  for (const date of dates) {
+    const existing = await tx.villaPricePeriodDay.findFirst({
+      where: {
+        villaId,
         date,
-        existing.occupancyStatus
-      );
+      },
+      select: {
+        id: true,
+        occupancyStatus: true,
+        availability: true,
+      },
+    });
 
-      const { occupancyStatus: _occupancy, availability: _availability, ...pricingData } =
-        daySnapshot;
+    const daySnapshot = buildDaySnapshotForDate(
+      snapshot,
+      date,
+      existing?.occupancyStatus
+    );
 
+    const {
+      occupancyStatus: _occupancy,
+      availability: dayAvailability,
+      ...pricingData
+    } = daySnapshot;
+
+    if (existing) {
       await tx.villaPricePeriodDay.update({
         where: { id: existing.id },
         data: {
+          periodId,
           ...pricingData,
           availability: existing.availability,
           occupancyStatus: existing.occupancyStatus,
         },
       });
+      continue;
     }
-  });
+
+    await tx.villaPricePeriodDay.create({
+      data: {
+        periodId,
+        villaId,
+        date,
+        ...pricingData,
+        availability: dayAvailability,
+        occupancyStatus: daySnapshot.occupancyStatus ?? "EMPTY",
+      },
+    });
+  }
 }
 
 export async function deleteVillaPricePeriodDays(periodId: string) {
