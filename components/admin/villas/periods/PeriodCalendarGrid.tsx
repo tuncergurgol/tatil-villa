@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   buildMonthGrid,
   buildNextMonthFirstWeekRow,
@@ -10,6 +10,11 @@ import {
   parseDateKey,
   toDateKey,
 } from "@/lib/villa-period-calendar";
+import {
+  countNightsBetween,
+  isDateKeyInRange,
+  normalizeDateRange,
+} from "@/lib/villa-period-selection";
 import {
   getVillaDayVisualStyle,
   resolveVillaDayVisual,
@@ -27,6 +32,18 @@ export type PeriodCalendarDayDisplay = {
   occupancyStatus?: VillaDayOccupancy;
 };
 
+export type PeriodCalendarSelectionRange = {
+  start: string;
+  end: string;
+};
+
+export function countSelectionNights(
+  startKey: string,
+  endKey: string
+): number {
+  return countNightsBetween(startKey, endKey);
+}
+
 interface PeriodCalendarGridProps {
   year: number;
   month: number;
@@ -37,6 +54,12 @@ interface PeriodCalendarGridProps {
   showMonthHeader?: boolean;
   showAdjacentMonths?: boolean;
   showNextMonthWeekRow?: boolean;
+  selectedRange?: PeriodCalendarSelectionRange | null;
+  isDragging?: boolean;
+  selectableDateKeys?: ReadonlySet<string>;
+  onSelectionStart?: (dateKey: string) => void;
+  onSelectionUpdate?: (dateKey: string) => void;
+  onSelectionComplete?: () => void;
 }
 
 function getDisplayPrice(display: PeriodCalendarDayDisplay): number {
@@ -63,19 +86,29 @@ function getNeighborOccupancy(
 type DayCellProps = {
   cell: { date: Date; inCurrentMonth: boolean } | null;
   activeDateKeys: ReadonlySet<string>;
+  selectableDateKeys: ReadonlySet<string>;
   dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>;
   today?: Date;
   minCellHeight: string;
   emphasizeCurrentMonth: boolean;
+  selectedRange?: PeriodCalendarSelectionRange | null;
+  isDragging?: boolean;
+  onSelectionStart?: (dateKey: string) => void;
+  onSelectionUpdate?: (dateKey: string) => void;
 };
 
 function CalendarDayCell({
   cell,
   activeDateKeys,
+  selectableDateKeys,
   dayDisplayByDate,
   today,
   minCellHeight,
   emphasizeCurrentMonth,
+  selectedRange,
+  isDragging,
+  onSelectionStart,
+  onSelectionUpdate,
 }: DayCellProps) {
   if (!cell) {
     return (
@@ -87,11 +120,32 @@ function CalendarDayCell({
 
   const dateKey = toDateKey(cell.date);
   const isActive = activeDateKeys.has(dateKey);
+  const isSelectable = selectableDateKeys.has(dateKey);
   const display = dayDisplayByDate.get(dateKey);
   const isToday = today != null && dateKey === toDateKey(today);
   const isPeriodDay = isActive && display != null;
   const isClosed = isPeriodDay && display.availability === "closed";
   const isCurrentMonthDay = emphasizeCurrentMonth && cell.inCurrentMonth;
+
+  const isInSelection =
+    selectedRange != null &&
+    isDateKeyInRange(dateKey, selectedRange.start, selectedRange.end);
+
+  const normalizedSelection =
+    selectedRange != null
+      ? normalizeDateRange(selectedRange.start, selectedRange.end)
+      : null;
+
+  const isSelectionEnd =
+    normalizedSelection != null && dateKey === normalizedSelection.end;
+
+  const selectionNightCount =
+    normalizedSelection != null
+      ? countSelectionNights(
+          normalizedSelection.start,
+          normalizedSelection.end
+        )
+      : 0;
 
   const visualKind = isPeriodDay
     ? resolveVillaDayVisual(
@@ -134,21 +188,44 @@ function CalendarDayCell({
       ? "#ffffff"
       : "#f9fafb";
 
+  function handleMouseDown(event: React.MouseEvent) {
+    if (event.button !== 0 || !isSelectable) return;
+    event.preventDefault();
+    onSelectionStart?.(dateKey);
+  }
+
+  function handleMouseEnter() {
+    if (!isDragging || !isSelectable) return;
+    onSelectionUpdate?.(dateKey);
+  }
+
   return (
     <div
       className={`${minCellHeight} relative flex flex-col border-r border-gray-100 p-2 last:border-r-0 ${
         isToday ? "ring-2 ring-inset ring-indigo-400" : ""
+      } ${isInSelection ? "ring-2 ring-inset ring-blue-500 z-[1]" : ""} ${
+        isSelectable ? "cursor-pointer select-none" : ""
       }`}
       style={{ background }}
+      onMouseDown={handleMouseDown}
+      onMouseEnter={handleMouseEnter}
     >
-      <div className={`font-semibold ${daySizeClass} ${dateClass}`}>
-        {cell.date.getDate()}
+      <div className="self-end text-right">
+        <div className={`font-semibold ${daySizeClass} ${dateClass}`}>
+          {cell.date.getDate()}
+        </div>
+
+        {isSelectionEnd && selectionNightCount > 0 ? (
+          <div className="mt-0.5 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+            {selectionNightCount} GECE
+          </div>
+        ) : null}
       </div>
 
       {isPeriodDay ? (
         isClosed ? (
           <div
-            className={`mt-auto self-end pb-0.5 text-right font-bold uppercase tracking-wide ${priceClass} ${
+            className={`mt-auto self-start pb-0.5 text-left font-bold uppercase tracking-wide ${priceClass} ${
               isCurrentMonthDay ? "text-xs" : "text-[9px]"
             }`}
           >
@@ -156,7 +233,7 @@ function CalendarDayCell({
           </div>
         ) : (
           <div
-            className={`mt-auto self-end pb-0.5 text-right leading-tight ${priceClass}`}
+            className={`mt-auto self-start pb-0.5 text-left leading-tight ${priceClass}`}
           >
             {hasDiscount(display) ? (
               <>
@@ -200,7 +277,26 @@ export default function PeriodCalendarGrid({
   showMonthHeader = false,
   showAdjacentMonths = true,
   showNextMonthWeekRow = true,
+  selectedRange = null,
+  isDragging = false,
+  selectableDateKeys,
+  onSelectionStart,
+  onSelectionUpdate,
+  onSelectionComplete,
 }: PeriodCalendarGridProps) {
+  const effectiveSelectableDateKeys = selectableDateKeys ?? activeDateKeys;
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseUp = () => {
+      onSelectionComplete?.();
+    };
+
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
+  }, [isDragging, onSelectionComplete]);
+
   const monthCells = useMemo(
     () => buildMonthGrid(year, month),
     [year, month]
@@ -221,8 +317,24 @@ export default function PeriodCalendarGrid({
 
   const minCellHeight = compact ? "min-h-[72px]" : "min-h-[96px]";
 
+  const sharedCellProps = {
+    activeDateKeys,
+    selectableDateKeys: effectiveSelectableDateKeys,
+    dayDisplayByDate,
+    today,
+    minCellHeight,
+    selectedRange,
+    isDragging,
+    onSelectionStart,
+    onSelectionUpdate,
+  };
+
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div
+      className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${
+        isDragging ? "select-none" : ""
+      }`}
+    >
       {showMonthHeader ? (
         <div className="border-b border-gray-100 bg-white px-3 py-2">
           <p className="text-sm font-semibold text-gray-800">
@@ -249,11 +361,8 @@ export default function PeriodCalendarGrid({
               <CalendarDayCell
                 key={toDateKey(cell.date)}
                 cell={cell}
-                activeDateKeys={activeDateKeys}
-                dayDisplayByDate={dayDisplayByDate}
-                today={today}
-                minCellHeight={minCellHeight}
                 emphasizeCurrentMonth={showAdjacentMonths}
+                {...sharedCellProps}
               />
             ))}
           </div>
@@ -267,11 +376,8 @@ export default function PeriodCalendarGrid({
               <CalendarDayCell
                 key={cell ? toDateKey(cell.date) : `next-week-pad-${index}`}
                 cell={cell}
-                activeDateKeys={activeDateKeys}
-                dayDisplayByDate={dayDisplayByDate}
-                today={today}
-                minCellHeight={minCellHeight}
                 emphasizeCurrentMonth={false}
+                {...sharedCellProps}
               />
             ))}
           </div>

@@ -8,10 +8,18 @@ import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import { revalidateVillaHizliFiyatPage } from "@/lib/villa-admin-path.server";
 import {
   compareDates,
+  dateKeyToDbDate,
   parseDateKey,
   periodsOverlap,
   startOfDay,
 } from "@/lib/villa-period-calendar";
+import {
+  buildBookedOccupancyForStay,
+  buildEmptyOccupancyForRange,
+  enumerateDateKeysInRange,
+  normalizeDateRange,
+} from "@/lib/villa-period-selection";
+import type { VillaDayOccupancy } from "@prisma/client";
 import {
   syncVillaPricePeriodDays,
 } from "@/lib/villa-period-day-sync";
@@ -323,6 +331,84 @@ export async function updateVillaPricePeriod(
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Periyot güncellenemedi",
+    };
+  }
+}
+
+export async function updateVillaPeriodDaysOccupancy(
+  villaId: string,
+  startDateKey: string,
+  endDateKey: string,
+  mode: "EMPTY" | "BOOKED"
+): Promise<VillaPeriodActionState> {
+  await requireAdmin();
+
+  try {
+    const { start, end } = normalizeDateRange(startDateKey, endDateKey);
+    const occupancyByDateKey: Map<string, VillaDayOccupancy> =
+      mode === "BOOKED"
+        ? buildBookedOccupancyForStay(start, end)
+        : buildEmptyOccupancyForRange(start, end);
+
+    await prisma.$transaction(
+      [...occupancyByDateKey.entries()].map(([dateKey, occupancyStatus]) =>
+        prisma.villaPricePeriodDay.updateMany({
+          where: {
+            villaId,
+            date: dateKeyToDbDate(dateKey),
+          },
+          data: { occupancyStatus },
+        })
+      )
+    );
+
+    revalidatePeriodPaths(villaId);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Uygunluk durumu güncellenemedi",
+    };
+  }
+}
+
+export async function updateVillaPeriodDaysAvailability(
+  villaId: string,
+  startDateKey: string,
+  endDateKey: string,
+  availability: "available" | "closed"
+): Promise<VillaPeriodActionState> {
+  await requireAdmin();
+
+  try {
+    const dateKeys = enumerateDateKeysInRange(startDateKey, endDateKey);
+
+    if (dateKeys.length === 0) {
+      return { error: "Geçerli bir tarih aralığı seçin" };
+    }
+
+    await prisma.$transaction(
+      dateKeys.map((dateKey) =>
+        prisma.villaPricePeriodDay.updateMany({
+          where: {
+            villaId,
+            date: dateKeyToDbDate(dateKey),
+          },
+          data: { availability },
+        })
+      )
+    );
+
+    revalidatePeriodPaths(villaId);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Uygunluk durumu güncellenemedi",
     };
   }
 }

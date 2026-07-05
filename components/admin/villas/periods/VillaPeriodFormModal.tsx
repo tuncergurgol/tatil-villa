@@ -10,6 +10,7 @@ import {
 import {
   createVillaPricePeriod,
   updateVillaPricePeriod,
+  updateVillaPeriodDaysAvailability,
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodRangePreview from "@/components/admin/villas/periods/VillaPeriodRangePreview";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
@@ -27,10 +28,16 @@ import {
   type VillaPeriodCurrency,
 } from "@/lib/villa-period-pricing";
 
+export type VillaPeriodFormDateRange = {
+  startDate: string;
+  endDate: string;
+};
+
 interface VillaPeriodFormModalProps {
   open: boolean;
   villaId: string;
   period?: VillaPricePeriodItem | null;
+  prefillDateRange?: VillaPeriodFormDateRange | null;
   continueAfterSave: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -64,7 +71,7 @@ const AMOUNT_FIELDS = new Set([
 type PeriodFormState = {
   startDate: string;
   endDate: string;
-  availability: VillaPeriodAvailability;
+  availability: VillaPeriodAvailability | "";
   nightlyPrice: string;
   nightlyPriceCurrency: VillaPeriodCurrency;
   weeklyPrice: string;
@@ -301,6 +308,7 @@ export default function VillaPeriodFormModal({
   open,
   villaId,
   period,
+  prefillDateRange = null,
   continueAfterSave,
   onClose,
   onSaved,
@@ -308,12 +316,26 @@ export default function VillaPeriodFormModal({
   const [form, setForm] = useState<PeriodFormState>(emptyFormState);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [availabilityPending, setAvailabilityPending] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setForm(period ? periodToFormState(period) : emptyFormState());
+    const base = period ? periodToFormState(period) : emptyFormState();
+    const nextForm = prefillDateRange
+      ? {
+          ...base,
+          startDate: prefillDateRange.startDate,
+          endDate: prefillDateRange.endDate,
+        }
+      : base;
+
+    setForm(
+      period
+        ? { ...nextForm, availability: "" }
+        : nextForm
+    );
     setError(null);
-  }, [open, period]);
+  }, [open, period, prefillDateRange]);
 
   const nightlyPrice = parseNumber(form.nightlyPrice) ?? 0;
   const nightlyWithoutCommission = parseNumber(form.nightlyPriceWithoutCommission);
@@ -421,6 +443,8 @@ export default function VillaPeriodFormModal({
     Object.entries(form).forEach(([key, value]) => {
       if (value === "") return;
 
+      if (key === "availability" && period) return;
+
       if (AMOUNT_FIELDS.has(key)) {
         const parsed = parseAmountInput(value);
         if (parsed != null) target.set(key, String(parsed));
@@ -429,6 +453,33 @@ export default function VillaPeriodFormModal({
 
       target.set(key, value);
     });
+
+    if (period) {
+      target.set("availability", period.availability);
+    }
+  }
+
+  async function handleAvailabilityAction(mode: "available" | "closed") {
+    if (!period || !form.startDate || !form.endDate) return;
+
+    setError(null);
+    setAvailabilityPending(true);
+
+    const result = await updateVillaPeriodDaysAvailability(
+      villaId,
+      form.startDate,
+      form.endDate,
+      mode
+    );
+
+    setAvailabilityPending(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    onSaved();
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -460,8 +511,14 @@ export default function VillaPeriodFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
-      <div className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/40"
+      onClick={onClose}
+    >
+      <div
+        className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <h2 className="text-lg font-bold text-gray-900">
             {period ? "PERİYOD DÜZENLE" : "PERİYOD EKLE"}
@@ -541,6 +598,28 @@ export default function VillaPeriodFormModal({
                       Uygun Değil (Kapat)
                     </label>
                   </div>
+
+                  {period && form.availability === "available" ? (
+                    <button
+                      type="button"
+                      disabled={availabilityPending || !form.startDate || !form.endDate}
+                      onClick={() => handleAvailabilityAction("available")}
+                      className="mt-3 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      Aç
+                    </button>
+                  ) : null}
+
+                  {period && form.availability === "closed" ? (
+                    <button
+                      type="button"
+                      disabled={availabilityPending || !form.startDate || !form.endDate}
+                      onClick={() => handleAvailabilityAction("closed")}
+                      className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
+                    >
+                      Kapat
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -826,7 +905,7 @@ export default function VillaPeriodFormModal({
               endDate={form.endDate}
               nightlyPrice={form.nightlyPrice}
               nightlyPriceCurrency={form.nightlyPriceCurrency}
-              availability={form.availability}
+              availability={form.availability || "available"}
             />
 
             <section className="overflow-hidden rounded-xl border border-teal-200">
