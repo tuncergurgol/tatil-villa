@@ -64,6 +64,7 @@ async function getVillaGalleryContext(villaId: string) {
 }
 
 function normalizeGalleryImages(images: string[], coverImage: string) {
+  // Galeri dizisi kaynak; vitrin her zaman 1. görseldir.
   if (images.length > 0) return images;
   if (coverImage) return [coverImage];
   return [];

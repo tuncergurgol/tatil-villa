@@ -10,6 +10,7 @@ import PeriodCalendarGrid, {
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
 import { VILLA_DAY_VISUAL_LEGEND } from "@/lib/villa-period-day-visual";
 import VillaPeriodSidebar from "@/components/admin/villas/periods/VillaPeriodSidebar";
+import { villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
 import {
@@ -136,6 +137,7 @@ export default function VillaPeriodManagement({
 
   const villaIdLabel =
     villa.villaId != null ? String(villa.villaId) : "—";
+  const hizliFiyatPath = villaAdminHizliFiyatPath(villa);
   const documentNo = villa.documentNo || "—";
   const originalName = villa.originalName || "—";
 
@@ -243,8 +245,7 @@ export default function VillaPeriodManagement({
           <div className="min-h-0 p-4">
             <VillaPeriodSidebar
               villaId={villa.id}
-              villaName={villa.name}
-              villaIdLabel={villaIdLabel}
+              hizliFiyatPath={hizliFiyatPath}
               periods={normalizedPeriods}
               onEdit={openEditModal}
             />

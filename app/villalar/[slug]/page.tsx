@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import BookingForm from "@/components/BookingForm";
+import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { categoryLabel } from "@/lib/utils";
 import { getVillaBySlug } from "@/lib/queries/villas";
 import type { Metadata } from "next";
@@ -39,6 +40,8 @@ export default async function VillaDetailPage({ params }: PageProps) {
 
   if (!villa) notFound();
 
+  const showcaseImage = getVillaShowcaseImage(villa);
+
   return (
     <div className="bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -55,7 +58,7 @@ export default async function VillaDetailPage({ params }: PageProps) {
         <div className="grid gap-2 overflow-hidden rounded-2xl sm:grid-cols-4 sm:grid-rows-2">
           <div className="relative aspect-[16/10] sm:col-span-2 sm:row-span-2 sm:aspect-auto sm:min-h-[400px]">
             <Image
-              src={villa.images[0] ?? villa.image}
+              src={showcaseImage}
               alt={villa.name}
               fill
               className="object-cover"

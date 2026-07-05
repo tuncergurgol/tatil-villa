@@ -1,5 +1,6 @@
 import type { VillaCategory } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { getRegionIdsForFilter } from "@/lib/queries/region-tree";
 
 export interface VillaFilters {
@@ -50,7 +51,7 @@ function mapVilla(
     bedrooms: villa.bedrooms,
     bathrooms: villa.bathrooms,
     pricePerNight: villa.pricePerNight,
-    image: villa.image,
+    image: getVillaShowcaseImage(villa),
     images: villa.images,
     description: villa.description,
     amenities: villa.amenities,

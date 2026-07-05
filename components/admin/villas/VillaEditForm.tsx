@@ -106,6 +106,7 @@ export default function VillaEditForm({
     formData: FormData;
     newBedroomCount: number;
   } | null>(null);
+  const showcaseImage = galleryImages[0] ?? "";
 
   useEffect(() => {
     setBedroomDraft(villa.bedrooms);
@@ -182,10 +183,10 @@ export default function VillaEditForm({
           ) : null}
         </div>
         <div className="flex items-center gap-4">
-          {villa.image ? (
+          {showcaseImage ? (
             <div className="relative h-20 w-28 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm">
               <Image
-                src={villa.image}
+                src={showcaseImage}
                 alt={`${villa.name} vitrin`}
                 fill
                 className="object-cover"

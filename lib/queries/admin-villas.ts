@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { facilityTypeOptions } from "@/lib/facility-type";
+import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { buildRegionTree } from "@/lib/regions-tree";
 import { getRegionTreeFlat } from "@/lib/queries/region-tree";
 
@@ -50,6 +51,7 @@ export async function getAdminVillaListData() {
         originalName: true,
         category: true,
         image: true,
+        images: true,
         active: true,
         documentNo: true,
         documentType: true,
@@ -84,7 +86,7 @@ export async function getAdminVillaListData() {
       name: villa.name,
       originalName: villa.originalName,
       category: villa.category,
-      image: villa.image,
+      image: getVillaShowcaseImage(villa),
       active: villa.active,
       documentNo: villa.documentNo,
       documentType: villa.documentType,

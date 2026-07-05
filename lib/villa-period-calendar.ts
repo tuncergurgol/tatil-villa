@@ -169,6 +169,31 @@ export type CalendarCell = {
   inCurrentMonth: boolean;
 };
 
+export function buildNextMonthFirstWeekRow(
+  year: number,
+  month: number
+): Array<CalendarCell | null> {
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  const row: Array<CalendarCell | null> = Array.from({ length: 7 }, () => null);
+
+  for (let dayNumber = 3; dayNumber <= 9; dayNumber += 1) {
+    const date = new Date(nextYear, nextMonth, dayNumber);
+    const column = (date.getDay() + 6) % 7;
+    row[column] = {
+      date,
+      inCurrentMonth: false,
+    };
+  }
+
+  return row;
+}
+
+export function getAdjacentMonthLabel(year: number, month: number, offset: -1 | 1) {
+  const date = new Date(year, month + offset, 1);
+  return getMonthLabel(date.getFullYear(), date.getMonth());
+}
+
 export function buildMonthGrid(year: number, month: number): CalendarCell[] {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);

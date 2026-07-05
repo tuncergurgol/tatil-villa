@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import {
   buildMonthGrid,
+  buildNextMonthFirstWeekRow,
   formatPlainPrice,
   getMonthLabel,
   getWeekdayLabels,
@@ -34,6 +35,8 @@ interface PeriodCalendarGridProps {
   today?: Date;
   compact?: boolean;
   showMonthHeader?: boolean;
+  showAdjacentMonths?: boolean;
+  showNextMonthWeekRow?: boolean;
 }
 
 function getDisplayPrice(display: PeriodCalendarDayDisplay): number {
@@ -57,6 +60,136 @@ function getNeighborOccupancy(
   return dayDisplayByDate.get(toDateKey(date))?.occupancyStatus;
 }
 
+type DayCellProps = {
+  cell: { date: Date; inCurrentMonth: boolean } | null;
+  activeDateKeys: ReadonlySet<string>;
+  dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>;
+  today?: Date;
+  minCellHeight: string;
+  emphasizeCurrentMonth: boolean;
+};
+
+function CalendarDayCell({
+  cell,
+  activeDateKeys,
+  dayDisplayByDate,
+  today,
+  minCellHeight,
+  emphasizeCurrentMonth,
+}: DayCellProps) {
+  if (!cell) {
+    return (
+      <div
+        className={`${minCellHeight} border-r border-gray-100 bg-gray-50 last:border-r-0`}
+      />
+    );
+  }
+
+  const dateKey = toDateKey(cell.date);
+  const isActive = activeDateKeys.has(dateKey);
+  const display = dayDisplayByDate.get(dateKey);
+  const isToday = today != null && dateKey === toDateKey(today);
+  const isPeriodDay = isActive && display != null;
+  const isClosed = isPeriodDay && display.availability === "closed";
+  const isCurrentMonthDay = emphasizeCurrentMonth && cell.inCurrentMonth;
+
+  const visualKind = isPeriodDay
+    ? resolveVillaDayVisual(
+        display.occupancyStatus,
+        getNeighborOccupancy(dateKey, -1, dayDisplayByDate),
+        getNeighborOccupancy(dateKey, 1, dayDisplayByDate),
+        display.availability
+      )
+    : "empty";
+
+  const visualStyle = getVillaDayVisualStyle(visualKind);
+
+  const dateClass = isCurrentMonthDay
+    ? visualStyle.useLightText
+      ? "text-white"
+      : "text-gray-900"
+    : visualStyle.useLightText
+      ? "text-white/90"
+      : "text-gray-500";
+
+  const priceClass = isCurrentMonthDay
+    ? visualStyle.useLightText
+      ? "text-white"
+      : isClosed
+        ? "text-white"
+        : "text-blue-600"
+    : visualStyle.useLightText
+      ? "text-white/90"
+      : isClosed
+        ? "text-white/90"
+        : "text-blue-500";
+
+  const daySizeClass = isCurrentMonthDay ? "text-lg" : "text-xs";
+  const priceSizeClass = isCurrentMonthDay ? "text-base" : "text-[10px]";
+  const strikePriceSizeClass = isCurrentMonthDay ? "text-xs" : "text-[9px]";
+
+  const background = isPeriodDay
+    ? visualStyle.background
+    : cell.inCurrentMonth
+      ? "#ffffff"
+      : "#f9fafb";
+
+  return (
+    <div
+      className={`${minCellHeight} relative flex flex-col border-r border-gray-100 p-2 last:border-r-0 ${
+        isToday ? "ring-2 ring-inset ring-indigo-400" : ""
+      }`}
+      style={{ background }}
+    >
+      <div className={`font-semibold ${daySizeClass} ${dateClass}`}>
+        {cell.date.getDate()}
+      </div>
+
+      {isPeriodDay ? (
+        isClosed ? (
+          <div
+            className={`mt-auto self-end pb-0.5 text-right font-bold uppercase tracking-wide ${priceClass} ${
+              isCurrentMonthDay ? "text-xs" : "text-[9px]"
+            }`}
+          >
+            Kapalı
+          </div>
+        ) : (
+          <div
+            className={`mt-auto self-end pb-0.5 text-right leading-tight ${priceClass}`}
+          >
+            {hasDiscount(display) ? (
+              <>
+                <div
+                  className={`font-medium line-through opacity-70 ${strikePriceSizeClass}`}
+                >
+                  {formatPlainPrice(
+                    display.nightlyPrice,
+                    display.nightlyPriceCurrency
+                  )}
+                </div>
+                <div className={`font-semibold ${priceSizeClass}`}>
+                  {formatPlainPrice(
+                    getDisplayPrice(display),
+                    display.nightlyPriceCurrency
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={`font-semibold ${priceSizeClass}`}>
+                {formatPlainPrice(
+                  getDisplayPrice(display),
+                  display.nightlyPriceCurrency
+                )}
+              </div>
+            )}
+          </div>
+        )
+      ) : null}
+    </div>
+  );
+}
+
 export default function PeriodCalendarGrid({
   year,
   month,
@@ -65,6 +198,8 @@ export default function PeriodCalendarGrid({
   today,
   compact = false,
   showMonthHeader = false,
+  showAdjacentMonths = true,
+  showNextMonthWeekRow = true,
 }: PeriodCalendarGridProps) {
   const monthCells = useMemo(
     () => buildMonthGrid(year, month),
@@ -78,6 +213,11 @@ export default function PeriodCalendarGrid({
     }
     return rows;
   }, [monthCells]);
+
+  const nextMonthWeekRow = useMemo(
+    () => buildNextMonthFirstWeekRow(year, month),
+    [year, month]
+  );
 
   const minCellHeight = compact ? "min-h-[72px]" : "min-h-[96px]";
 
@@ -105,100 +245,38 @@ export default function PeriodCalendarGrid({
       <div className="divide-y divide-gray-200 bg-white">
         {weeks.map((week, weekIndex) => (
           <div key={`week-${weekIndex}`} className="grid grid-cols-7">
-            {week.map((cell) => {
-              const dateKey = toDateKey(cell.date);
-              const isActive = activeDateKeys.has(dateKey);
-              const display = dayDisplayByDate.get(dateKey);
-              const isToday =
-                today != null && dateKey === toDateKey(today);
-              const isPeriodDay = isActive && display && cell.inCurrentMonth;
-              const isClosed =
-                isPeriodDay && display.availability === "closed";
-
-              const visualKind = isPeriodDay
-                ? resolveVillaDayVisual(
-                    display.occupancyStatus,
-                    getNeighborOccupancy(dateKey, -1, dayDisplayByDate),
-                    getNeighborOccupancy(dateKey, 1, dayDisplayByDate),
-                    display.availability
-                  )
-                : "empty";
-
-              const visualStyle = getVillaDayVisualStyle(
-                cell.inCurrentMonth ? visualKind : "empty"
-              );
-
-              const dateClass = !cell.inCurrentMonth
-                ? "text-gray-300"
-                : visualStyle.useLightText
-                  ? "text-white"
-                  : "text-gray-800";
-
-              const priceClass = !cell.inCurrentMonth
-                ? "text-gray-300"
-                : visualStyle.useLightText
-                  ? "text-white"
-                  : isClosed
-                    ? "text-white"
-                    : "text-blue-600";
-
-              return (
-                <div
-                  key={dateKey}
-                  className={`${minCellHeight} relative flex flex-col border-r border-gray-100 p-2 last:border-r-0 ${
-                    isToday ? "ring-2 ring-inset ring-indigo-400" : ""
-                  }`}
-                  style={{
-                    background: cell.inCurrentMonth
-                      ? visualStyle.background
-                      : "#f9fafb",
-                  }}
-                >
-                  <div className={`text-sm font-semibold ${dateClass}`}>
-                    {cell.date.getDate()}
-                  </div>
-
-                  {isPeriodDay ? (
-                    isClosed ? (
-                      <div className="mt-auto self-end pb-0.5 text-right text-[10px] font-bold uppercase tracking-wide text-white">
-                        Kapalı
-                      </div>
-                    ) : (
-                      <div
-                        className={`mt-auto self-end pb-0.5 text-right leading-tight ${priceClass}`}
-                      >
-                        {hasDiscount(display) ? (
-                          <>
-                            <div className="text-[9px] font-medium line-through opacity-70">
-                              {formatPlainPrice(
-                                display.nightlyPrice,
-                                display.nightlyPriceCurrency
-                              )}
-                            </div>
-                            <div className="text-[11px] font-semibold">
-                              {formatPlainPrice(
-                                getDisplayPrice(display),
-                                display.nightlyPriceCurrency
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-[11px] font-semibold">
-                            {formatPlainPrice(
-                              getDisplayPrice(display),
-                              display.nightlyPriceCurrency
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  ) : null}
-                </div>
-              );
-            })}
+            {week.map((cell) => (
+              <CalendarDayCell
+                key={toDateKey(cell.date)}
+                cell={cell}
+                activeDateKeys={activeDateKeys}
+                dayDisplayByDate={dayDisplayByDate}
+                today={today}
+                minCellHeight={minCellHeight}
+                emphasizeCurrentMonth={showAdjacentMonths}
+              />
+            ))}
           </div>
         ))}
       </div>
+
+      {showNextMonthWeekRow ? (
+        <div className="border-t border-gray-200 bg-white">
+          <div className="grid grid-cols-7">
+            {nextMonthWeekRow.map((cell, index) => (
+              <CalendarDayCell
+                key={cell ? toDateKey(cell.date) : `next-week-pad-${index}`}
+                cell={cell}
+                activeDateKeys={activeDateKeys}
+                dayDisplayByDate={dayDisplayByDate}
+                today={today}
+                minCellHeight={minCellHeight}
+                emphasizeCurrentMonth={false}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

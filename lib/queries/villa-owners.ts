@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 
 const ownerSelect = {
   id: true,
@@ -39,6 +40,7 @@ const ownerSelect = {
       originalName: true,
       documentNo: true,
       image: true,
+      images: true,
       slug: true,
     },
     orderBy: { name: "asc" },
@@ -64,10 +66,18 @@ export type ActiveVillaOwnerOption = Awaited<
 >[number];
 
 export async function getVillaOwners() {
-  return prisma.villaOwner.findMany({
+  const owners = await prisma.villaOwner.findMany({
     select: ownerSelect,
     orderBy: { name: "asc" },
   });
+
+  return owners.map((owner) => ({
+    ...owner,
+    villas: owner.villas.map((villa) => ({
+      ...villa,
+      image: getVillaShowcaseImage(villa),
+    })),
+  }));
 }
 
 export async function getUnlinkedUsers() {
