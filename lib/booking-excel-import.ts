@@ -90,6 +90,14 @@ export const BOOKING_FACILITY_ALIASES: Record<string, string> = {
   "villa mirta": "bungalov mitra",
   "villa leaf": "villa yaprak",
   "villa general": "villa nisan",
+  "villa eylem": "villa optimum",
+  "villa sehir": "villa seyirtepe 1",
+  "bungalov yakova 2": "bungalov lost 2",
+  "bungalov yakova 1": "bungalov lost 1",
+  "villa ilkan": "villa casa lemon garden",
+  "villa olimpia": "villa albatros",
+  "villa gizli bahce": "villa secret haven",
+  "villa white smith": "villa mecanblu",
 };
 
 export function normalizeFacilityName(value: string): string {
