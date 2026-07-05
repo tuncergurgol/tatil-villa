@@ -6,6 +6,7 @@ import {
   resolveGuestContact,
   type ResolvedGuestContact,
 } from "@/lib/booking-guest-contact";
+import { readBookingRowsFromFileAuto } from "@/lib/booking-excel-import";
 import {
   normalizeStoredTurkishPhone,
   normalizeTurkishPhoneDigits,
@@ -159,6 +160,70 @@ export async function syncAllCustomersFromBookings() {
     uniqueGuests: grouped.size,
     created,
     updated,
+    totalCustomers: total,
+  };
+}
+
+export async function syncAllCustomersFromExcel(filePath: string) {
+  const { parsed } = readBookingRowsFromFileAuto(filePath);
+  const rows = parsed.rows;
+
+  const grouped = new Map<
+    string,
+    {
+      fullName: string;
+      phones: string[];
+      emails: string[];
+    }
+  >();
+
+  for (const row of rows) {
+    const contact = resolveGuestContact(row);
+    if (!contact) continue;
+
+    const key = buildGuestDedupKey(contact);
+    const bucket = grouped.get(key) ?? {
+      fullName: contact.fullName,
+      phones: [],
+      emails: [],
+    };
+
+    bucket.fullName = contact.fullName;
+    bucket.phones.push(row.guestPhone ?? "");
+    bucket.emails.push(row.guestEmail ?? "");
+    grouped.set(key, bucket);
+  }
+
+  let created = 0;
+  let updated = 0;
+  let withPhone = 0;
+  let withEmail = 0;
+
+  for (const bucket of grouped.values()) {
+    const guestPhone = pickBestPhone(bucket.phones);
+    const guestEmail = pickBestEmail(bucket.emails);
+    if (guestPhone) withPhone += 1;
+    if (guestEmail) withEmail += 1;
+
+    const result = await upsertCustomerFromBooking({
+      guestName: bucket.fullName,
+      guestPhone,
+      guestEmail,
+    });
+    if (!result) continue;
+    if (result.created) created += 1;
+    else updated += 1;
+  }
+
+  const total = await prisma.customer.count();
+
+  return {
+    rowsProcessed: rows.length,
+    uniqueGuests: grouped.size,
+    created,
+    updated,
+    withPhone,
+    withEmail,
     totalCustomers: total,
   };
 }

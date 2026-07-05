@@ -43,6 +43,7 @@
     "import:bookings:dry": "tsx scripts/import-bookings-from-excel.ts --dry-run",
     "import:bookings:file": "tsx scripts/import-bookings-from-excel.ts",
     "sync:customers": "tsx scripts/sync-customers-from-bookings.ts",
+    "sync:customers:excel": "tsx scripts/sync-customers-from-excel.ts",
     "fix:booking-contacts": "tsx scripts/fix-booking-guest-contacts.ts"
   },
   "prisma": {
