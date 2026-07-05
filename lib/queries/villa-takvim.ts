@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/db";
+import { parseVillaRouteParam } from "@/lib/villa-admin-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
 import { getVillaPeriodPageData } from "@/lib/queries/villa-periods";
 
 export type VillaTakvimSearchItem = {
   id: string;
+  villaId: number | null;
   slug: string;
   name: string;
   originalName: string;
@@ -15,6 +17,7 @@ export async function getVillaTakvimSearchOptions() {
   return prisma.villa.findMany({
     select: {
       id: true,
+      villaId: true,
       slug: true,
       name: true,
       originalName: true,
@@ -24,9 +27,33 @@ export async function getVillaTakvimSearchOptions() {
   });
 }
 
-export async function getVillaTakvimPageData(villaId?: string) {
+async function resolveVillaTakvimInternalId(routeParam: string) {
+  const parsed = parseVillaRouteParam(routeParam);
+
+  if (parsed.kind === "villaId") {
+    const villa = await prisma.villa.findFirst({
+      where: { villaId: parsed.value },
+      select: { id: true },
+    });
+    return villa?.id ?? null;
+  }
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: routeParam },
+    select: { id: true },
+  });
+  return villa?.id ?? null;
+}
+
+export async function getVillaTakvimPageData(routeParam?: string) {
   const villas = await getVillaTakvimSearchOptions();
-  const selected = villaId ? await getVillaPeriodPageData(villaId) : null;
+
+  if (!routeParam) {
+    return { villas, selected: null };
+  }
+
+  const internalId = await resolveVillaTakvimInternalId(routeParam);
+  const selected = internalId ? await getVillaPeriodPageData(internalId) : null;
 
   return {
     villas,

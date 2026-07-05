@@ -14,7 +14,7 @@ import {
 interface VillaPeriodSidebarProps {
   villaId: string;
   villaName: string;
-  facilityCode: string;
+  villaIdLabel: string;
   periods: VillaPricePeriodItem[];
   onEdit: (period: VillaPricePeriodItem) => void;
 }
@@ -22,7 +22,7 @@ interface VillaPeriodSidebarProps {
 export default function VillaPeriodSidebar({
   villaId,
   villaName,
-  facilityCode,
+  villaIdLabel,
   periods,
   onEdit,
 }: VillaPeriodSidebarProps) {
@@ -58,8 +58,8 @@ export default function VillaPeriodSidebar({
           {villaName}
         </p>
         <p className="mt-1 text-sm text-gray-700">
-          <span className="font-semibold text-gray-900">Ev Kodu :</span>{" "}
-          {facilityCode}
+          <span className="font-semibold text-gray-900">VillaID:</span>{" "}
+          {villaIdLabel}
         </p>
         <button
           type="button"

@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CompanySettings } from "@prisma/client";
 import {
   BarChart3,
   Building2,
+  CreditCard,
   Hourglass,
   Image,
   Landmark,
@@ -23,6 +25,8 @@ import ContactSettingsFields from "@/components/admin/company/ContactSettingsFie
 import LogoSettingsFields from "@/components/admin/company/LogoSettingsFields";
 import TursabSettingsFields from "@/components/admin/company/TursabSettingsFields";
 import AnalyticsSettingsFields from "@/components/admin/company/AnalyticsSettingsFields";
+import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payment-types/PrepaymentPaymentTypeManagement";
+import type { PrepaymentPaymentTypeItem } from "@/lib/queries/prepayment-payment-types";
 
 const tabs = [
   { id: "genel", label: "Genel Bilgiler", icon: Building2 },
@@ -35,12 +39,27 @@ const tabs = [
   { id: "seo", label: "SEO", icon: Search },
   { id: "analytics", label: "Analytics & Scriptler", icon: BarChart3 },
   { id: "loading", label: "Loading Screen", icon: Hourglass },
+  {
+    id: "on-odeme-odeme-tipleri",
+    label: "Ön Ödeme Ödeme Tipleri",
+    icon: CreditCard,
+  },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
 
 interface CompanySettingsFormProps {
   settings: CompanySettings;
+  initialTab?: string;
+  prepayment: {
+    items: PrepaymentPaymentTypeItem[];
+    totalCount: number;
+    activeCount: number;
+  };
+}
+
+function isValidTabId(value: string | undefined): value is TabId {
+  return tabs.some((tab) => tab.id === value);
 }
 
 function SettingsField({
@@ -115,15 +134,37 @@ const initialState: CompanySettingsActionState = {};
 
 export default function CompanySettingsForm({
   settings,
+  initialTab,
+  prepayment,
 }: CompanySettingsFormProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("genel");
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<TabId>(
+    isValidTabId(initialTab) ? initialTab : "genel"
+  );
   const [state, formAction, pending] = useActionState(
     saveCompanySettings,
     initialState
   );
 
+  useEffect(() => {
+    if (isValidTabId(initialTab) && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, activeTab]);
+
+  function selectTab(tabId: TabId) {
+    setActiveTab(tabId);
+    const nextPath =
+      tabId === "on-odeme-odeme-tipleri"
+        ? "/admin/acente/sirket?tab=on-odeme-odeme-tipleri"
+        : "/admin/acente/sirket";
+    router.replace(nextPath, { scroll: false });
+  }
+
+  const isSettingsTab = activeTab !== "on-odeme-odeme-tipleri";
+
   return (
-    <form action={formAction} className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl">
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -132,14 +173,17 @@ export default function CompanySettingsForm({
             </div>
             <h1 className="text-xl font-bold text-gray-900">Şirket Ayarları</h1>
           </div>
-          <button
-            type="submit"
-            disabled={pending}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
-          >
-            <Save className="h-4 w-4" />
-            {pending ? "Kaydediliyor..." : "Kaydet"}
-          </button>
+          {isSettingsTab ? (
+            <button
+              type="submit"
+              form="company-settings-form"
+              disabled={pending}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {pending ? "Kaydediliyor..." : "Kaydet"}
+            </button>
+          ) : null}
         </div>
 
         <div className="border-b border-gray-100 px-6 py-4">
@@ -151,7 +195,7 @@ export default function CompanySettingsForm({
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => selectTab(tab.id)}
                   className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
                     isActive
                       ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
@@ -167,16 +211,18 @@ export default function CompanySettingsForm({
         </div>
 
         <div className="p-6">
-          {state.success && (
-            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              Ayarlar başarıyla kaydedildi.
-            </div>
-          )}
-          {state.error && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {state.error}
-            </div>
-          )}
+          {isSettingsTab ? (
+            <form id="company-settings-form" action={formAction}>
+              {state.success && (
+                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Ayarlar başarıyla kaydedildi.
+                </div>
+              )}
+              {state.error && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {state.error}
+                </div>
+              )}
 
           <TabPanel active={activeTab === "genel"}>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -325,10 +371,28 @@ export default function CompanySettingsForm({
               />
             </div>
           </TabPanel>
+              <input
+                type="hidden"
+                name="legalText"
+                defaultValue={settings.legalText}
+              />
+              <input
+                type="hidden"
+                name="customScripts"
+                defaultValue={settings.customScripts}
+              />
+            </form>
+          ) : (
+            <PrepaymentPaymentTypeManagement
+              items={prepayment.items}
+              totalCount={prepayment.totalCount}
+              activeCount={prepayment.activeCount}
+              passiveCount={prepayment.passiveCount}
+              embedded
+            />
+          )}
         </div>
       </div>
-      <input type="hidden" name="legalText" defaultValue={settings.legalText} />
-      <input type="hidden" name="customScripts" defaultValue={settings.customScripts} />
-    </form>
+    </div>
   );
 }

@@ -12,9 +12,9 @@ export function villaAdminEditPath(villa: VillaAdminRoute): string {
 
 export function villaAdminHizliFiyatPath(villa: VillaAdminRoute): string {
   if (villa.villaId != null) {
-    return `/admin/villalar/${villa.villaId}/hizlifiyat`;
+    return `/admin/hizlifiyat/${villa.villaId}`;
   }
-  return `/admin/villalar/${villa.id}/hizlifiyat`;
+  return `/admin/hizlifiyat/${villa.id}`;
 }
 
 export function parseVillaRouteParam(routeParam: string) {

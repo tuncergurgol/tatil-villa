@@ -60,7 +60,7 @@ const MONTH_LABELS = [
 ] as const;
 
 export function formatPeriodPrice(price: number, currency = "TL"): string {
-  return `${formatNightlyAmount(price)} ${currency}`;
+  return `${formatNightlyAmount(Math.round(price))} ${currency}`;
 }
 
 export function formatNightlyAmount(price: number): string {
@@ -68,7 +68,8 @@ export function formatNightlyAmount(price: number): string {
 }
 
 export function formatPlainPrice(price: number, currency = "TL"): string {
-  return `${price} ${currency}`;
+  const rounded = Math.round(price);
+  return `${formatNightlyAmount(rounded)} ${currency}`;
 }
 
 export function getDisplayNightlyPrice(period: VillaPricePeriodItem): number {

@@ -20,7 +20,13 @@
     "amenity:seed": "tsx prisma/apply-amenity-seed.ts",
     "amenity:sort": "tsx prisma/sync-amenity-sort.ts",
     "price-inclusion:seed": "tsx prisma/apply-price-inclusion-seed.ts",
-    "facility-category:seed": "tsx prisma/apply-facility-category-seed.ts"
+    "facility-category:seed": "tsx prisma/apply-facility-category-seed.ts",
+    "import:images": "tsx scripts/import-villa-images-from-tatildeyiz.ts --all",
+    "import:images:dry": "tsx scripts/import-villa-images-from-tatildeyiz.ts --all --dry-run",
+    "import:images:resume": "tsx scripts/import-villa-images-from-tatildeyiz.ts --all --resume",
+    "import:periods": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --force",
+    "import:periods:dry": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --dry-run",
+    "import:periods:resume": "tsx scripts/import-villa-periods-from-tatildeyiz.ts --all --force --resume"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

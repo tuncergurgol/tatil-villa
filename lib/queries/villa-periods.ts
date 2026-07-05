@@ -7,6 +7,7 @@ export async function getVillaPeriodPageData(villaId: string) {
     where: { id: villaId },
     select: {
       id: true,
+      villaId: true,
       slug: true,
       name: true,
       originalName: true,

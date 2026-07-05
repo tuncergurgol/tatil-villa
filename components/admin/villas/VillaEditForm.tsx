@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Villa, VillaOwner, VillaPool } from "@prisma/client";
 import { ExternalLink, Save } from "lucide-react";
 import {
@@ -35,6 +35,10 @@ import type {
 import type { VillaIcalTabData } from "@/lib/queries/villa-ical";
 import type { VillaRoom } from "@prisma/client";
 import type { TurkeyProvince } from "@/lib/mernis-ilce";
+import {
+  buildVillaListPath,
+  parseVillaListFilters,
+} from "@/lib/villa-list-filters";
 
 const tabs = [
   { id: "genel", label: "Genel" },
@@ -88,6 +92,11 @@ export default function VillaEditForm({
   regionBreadcrumb,
 }: VillaEditFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnPath = useMemo(
+    () => buildVillaListPath(parseVillaListFilters(searchParams)),
+    [searchParams]
+  );
   const contentRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<TabId>("genel");
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +130,6 @@ export default function VillaEditForm({
       try {
         if (activeTab === "genel") {
           await updateVillaGeneral(villa.id, formData);
-          router.refresh();
         } else if (activeTab === "ozellikler") {
           await updateVillaFeatures(villa.id, formData);
         } else if (activeTab === "meta") {
@@ -134,6 +142,7 @@ export default function VillaEditForm({
           await updateVillaLocation(villa.id, formData);
         }
         setBedroomReduceConfirm(null);
+        router.push(returnPath);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Kayıt başarısız");
       }
@@ -298,7 +307,7 @@ export default function VillaEditForm({
 
           <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
             <Link
-              href="/admin/villalar"
+              href={returnPath}
               className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
               İptal

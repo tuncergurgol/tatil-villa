@@ -338,7 +338,7 @@ export default function VillaHizliFiyatPage({
               Yeni Periyot
             </button>
             <Link
-              href={villaTakvimPath(villa.id)}
+              href={villaTakvimPath(routeVilla)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             >
               Takvim

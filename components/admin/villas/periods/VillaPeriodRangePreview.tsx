@@ -88,7 +88,6 @@ export default function VillaPeriodRangePreview({
           month={month}
           activeDateKeys={activeDateKeys}
           dayDisplayByDate={dayDisplayByDate}
-          periodColorIndex={new Map([["preview", 0]])}
           compact
           showMonthHeader
         />

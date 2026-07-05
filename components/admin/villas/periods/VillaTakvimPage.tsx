@@ -7,7 +7,7 @@ import VillaPeriodManagement from "@/components/admin/villas/periods/VillaPeriod
 import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
-import { villaTakvimPath } from "@/lib/villa-takvim-path";
+import { villaTakvimPath, isSameVillaTakvimParam } from "@/lib/villa-takvim-path";
 import { includesSearchText } from "@/lib/search-text";
 
 interface VillaTakvimPageProps {
@@ -17,7 +17,7 @@ interface VillaTakvimPageProps {
     periods: VillaPricePeriodItem[];
     periodDays: VillaPricePeriodDayItem[];
   } | null;
-  selectedVillaId?: string;
+  selectedVillaParam?: string;
 }
 
 function matchesVillaQuery(villa: VillaTakvimSearchItem, query: string) {
@@ -25,6 +25,7 @@ function matchesVillaQuery(villa: VillaTakvimSearchItem, query: string) {
     villa.name,
     villa.originalName,
     villa.documentNo,
+    villa.villaId != null ? String(villa.villaId) : "",
     villa.slug,
     villa.id,
   ].some((value) => includesSearchText(value, query));
@@ -33,7 +34,7 @@ function matchesVillaQuery(villa: VillaTakvimSearchItem, query: string) {
 export default function VillaTakvimPage({
   villas,
   selected,
-  selectedVillaId,
+  selectedVillaParam,
 }: VillaTakvimPageProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -46,8 +47,8 @@ export default function VillaTakvimPage({
   const activeVilla = selected?.villa ?? null;
   const periodCount = selected?.periods.length ?? 0;
 
-  function selectVilla(villaId: string) {
-    router.push(villaTakvimPath(villaId));
+  function selectVilla(villa: VillaTakvimSearchItem) {
+    router.push(villaTakvimPath(villa));
   }
 
   return (
@@ -70,9 +71,9 @@ export default function VillaTakvimPage({
               </span>
             </p>
             <p>
-              <span className="font-semibold text-gray-900">Ev Kodu:</span>{" "}
+              <span className="font-semibold text-gray-900">VillaID:</span>{" "}
               <span className="text-gray-700">
-                {activeVilla?.slug ?? "—"}
+                {activeVilla?.villaId != null ? activeVilla.villaId : "—"}
               </span>
             </p>
             <p>
@@ -103,11 +104,11 @@ export default function VillaTakvimPage({
                       key={villa.id}
                       type="button"
                       onClick={() => {
-                        selectVilla(villa.id);
+                        selectVilla(villa);
                         setSearch("");
                       }}
                       className={`block w-full border-b border-gray-100 px-4 py-3 text-left text-sm transition hover:bg-indigo-50 ${
-                        selectedVillaId === villa.id
+                        isSameVillaTakvimParam(villa, selectedVillaParam)
                           ? "bg-indigo-50 font-semibold text-indigo-800"
                           : "text-gray-800"
                       }`}

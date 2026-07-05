@@ -89,8 +89,18 @@ const periodSchema = z.object({
 
 function revalidatePeriodPaths(villaId: string) {
   revalidatePath("/admin/konaklama/takvim");
-  revalidatePath(villaTakvimPath(villaId));
+  void revalidateVillaTakvimPath(villaId);
   void revalidateVillaHizliFiyatPage(villaId);
+}
+
+async function revalidateVillaTakvimPath(villaId: string) {
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { id: true, villaId: true },
+  });
+  if (villa) {
+    revalidatePath(villaTakvimPath(villa));
+  }
 }
 
 async function assertNoOverlap(

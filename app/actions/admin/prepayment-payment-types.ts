@@ -15,6 +15,7 @@ const itemSchema = z.object({
 });
 
 function revalidatePaths() {
+  revalidatePath("/admin/acente/sirket");
   revalidatePath("/admin/tanimlamalar/on-odeme-odeme-tipleri");
   revalidatePath("/admin/villalar");
 }
@@ -94,5 +95,22 @@ export async function deletePrepaymentPaymentType(
     return { success: true };
   } catch {
     return { error: "Kayıt silinemedi" };
+  }
+}
+
+export async function restorePrepaymentPaymentType(
+  id: string
+): Promise<PrepaymentPaymentTypeActionState> {
+  await requireAdmin();
+
+  try {
+    await prisma.prepaymentPaymentTypeOption.update({
+      where: { id },
+      data: { active: true },
+    });
+    revalidatePaths();
+    return { success: true };
+  } catch {
+    return { error: "Kayıt aktifleştirilemedi" };
   }
 }

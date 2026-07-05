@@ -1,4 +1,4 @@
-import { writeFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { PrismaClient } from "@prisma/client";
 import {
@@ -21,7 +21,7 @@ const PILOT_SLUGS = [
 const REPORT_PATH = path.join(
   process.cwd(),
   "scripts",
-  "import-villa-periods-pilot-report.json"
+  "import-villa-periods-report.json"
 );
 
 const prisma = new PrismaClient();
@@ -29,6 +29,7 @@ const prisma = new PrismaClient();
 type VillaResult = {
   slug: string;
   villaId?: string;
+  dbVillaId?: number | null;
   name?: string;
   status: "success" | "skipped" | "error";
   periodCount?: number;
@@ -38,12 +39,68 @@ type VillaResult = {
   error?: string;
 };
 
-function parseArgs() {
+type ImportOptions = {
+  dryRun: boolean;
+  force: boolean;
+  resume: boolean;
+  all: boolean;
+  offset: number;
+  batch: number;
+  slug?: string;
+};
+
+function parseArgs(): ImportOptions {
   const dryRun = process.argv.includes("--dry-run");
   const force = process.argv.includes("--force");
+  const resume = process.argv.includes("--resume");
+  const all = process.argv.includes("--all");
   const slugArg = process.argv.find((arg) => arg.startsWith("--slug="));
-  const slug = slugArg?.split("=")[1]?.trim();
-  return { dryRun, force, slug };
+  const slug = slugArg?.split("=")[1]?.trim() || undefined;
+  const offsetArg = process.argv.find((arg) => arg.startsWith("--offset="));
+  const batchArg = process.argv.find((arg) => arg.startsWith("--batch="));
+
+  const offset = offsetArg
+    ? Math.max(0, parseInt(offsetArg.split("=")[1] ?? "", 10) || 0)
+    : 0;
+
+  const batch = batchArg
+    ? Math.max(0, parseInt(batchArg.split("=")[1] ?? "", 10) || 0)
+    : 0;
+
+  return { dryRun, force, resume, all, offset, batch, slug };
+}
+
+async function loadPreviousReport(): Promise<VillaResult[]> {
+  try {
+    const raw = await readFile(REPORT_PATH, "utf8");
+    const report = JSON.parse(raw) as { results?: VillaResult[] };
+    return report.results ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadResumeSlugs(): Promise<Set<string>> {
+  const previous = await loadPreviousReport();
+  return new Set(
+    previous
+      .filter((item) => item.status === "success" || item.status === "skipped")
+      .map((item) => item.slug)
+  );
+}
+
+async function resolveTargetSlugs(options: ImportOptions): Promise<string[]> {
+  if (options.slug) return [options.slug];
+  if (!options.all) return [...PILOT_SLUGS];
+
+  const villas = await prisma.villa.findMany({
+    select: { slug: true },
+    orderBy: [{ villaId: "asc" }, { name: "asc" }],
+    skip: options.offset,
+    ...(options.batch > 0 ? { take: options.batch } : {}),
+  });
+
+  return villas.map((villa) => villa.slug);
 }
 
 function countOccupancyDays(
@@ -67,16 +124,15 @@ function countOccupancyDays(
   return { dayCount, bookedDays, optionDays };
 }
 
-async function importVillaPeriods(options: {
-  slug: string;
-  dryRun: boolean;
-  force: boolean;
-}): Promise<VillaResult> {
-  const { slug, dryRun, force } = options;
+async function importVillaPeriods(
+  slug: string,
+  options: Pick<ImportOptions, "dryRun" | "force">
+): Promise<VillaResult> {
+  const { dryRun, force } = options;
 
   const villa = await prisma.villa.findUnique({
     where: { slug },
-    select: { id: true, name: true, slug: true },
+    select: { id: true, villaId: true, name: true, slug: true },
   });
 
   if (!villa) {
@@ -91,6 +147,7 @@ async function importVillaPeriods(options: {
     return {
       slug,
       villaId: villa.id,
+      dbVillaId: villa.villaId,
       name: villa.name,
       status: "skipped",
       error: `${existingPeriodCount} periyot zaten var (--force ile yeniden yazılabilir)`,
@@ -109,6 +166,7 @@ async function importVillaPeriods(options: {
     return {
       slug,
       villaId: villa.id,
+      dbVillaId: villa.villaId,
       name: villa.name,
       status: "error",
       error: "Tatildeyiz'den periyot bulunamadı",
@@ -119,6 +177,7 @@ async function importVillaPeriods(options: {
     return {
       slug,
       villaId: villa.id,
+      dbVillaId: villa.villaId,
       name: villa.name,
       status: "success",
       periodCount: periods.length,
@@ -161,6 +220,7 @@ async function importVillaPeriods(options: {
   return {
     slug,
     villaId: villa.id,
+    dbVillaId: villa.villaId,
     name: villa.name,
     status: "success",
     periodCount: periods.length,
@@ -171,56 +231,81 @@ async function importVillaPeriods(options: {
 }
 
 async function main() {
-  const { dryRun, force, slug } = parseArgs();
-  const slugs = slug ? [slug] : [...PILOT_SLUGS];
+  const options = parseArgs();
   const startedAt = new Date().toISOString();
   const results: VillaResult[] = [];
 
+  let slugs = await resolveTargetSlugs(options);
+
+  if (options.resume && !options.force) {
+    const completed = await loadResumeSlugs();
+    const before = slugs.length;
+    slugs = slugs.filter((slug) => !completed.has(slug));
+    console.log(
+      `Resume: ${before - slugs.length} villa atlandı, ${slugs.length} villa kaldı`
+    );
+  }
+
   console.log(
-    `Pilot periyot import başlıyor (${slugs.length} villa, dryRun=${dryRun}, force=${force})`
+    `Tatildeyiz periyot import başlıyor (${slugs.length} villa, dryRun=${options.dryRun}, force=${options.force})`
   );
 
-  for (const itemSlug of slugs) {
+  for (let index = 0; index < slugs.length; index += 1) {
+    const slug = slugs[index];
+    const progress = `[${index + 1}/${slugs.length}]`;
+
     try {
-      const result = await importVillaPeriods({ slug: itemSlug, dryRun, force });
+      const result = await importVillaPeriods(slug, options);
       results.push(result);
       console.log(
-        `[${result.status}] ${itemSlug}` +
+        `${progress} [${result.status}] ${slug}` +
           (result.periodCount != null ? ` → ${result.periodCount} periyot` : "") +
           (result.dayCount != null ? `, ${result.dayCount} gün` : "") +
-          (result.bookedDays != null ? ` (${result.bookedDays} dolu` : "") +
-          (result.optionDays != null ? `, ${result.optionDays} opsiyon)` : "") +
+          (result.bookedDays != null
+            ? ` (${result.bookedDays} dolu, ${result.optionDays ?? 0} opsiyon)`
+            : "") +
           (result.error ? ` (${result.error})` : "")
       );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Bilinmeyen hata";
-      results.push({ slug: itemSlug, status: "error", error: message });
-      console.error(`[error] ${itemSlug}: ${message}`);
+      results.push({ slug, status: "error", error: message });
+      console.error(`${progress} [error] ${slug}: ${message}`);
     }
   }
+
+  const previousResults = options.resume ? await loadPreviousReport() : [];
+  const resultMap = new Map(previousResults.map((item) => [item.slug, item]));
+  for (const result of results) {
+    resultMap.set(result.slug, result);
+  }
+  const mergedResults = Array.from(resultMap.values());
 
   const report = {
     startedAt,
     finishedAt: new Date().toISOString(),
-    dryRun,
-    force,
-    slugs,
+    options,
     summary: {
-      success: results.filter((item) => item.status === "success").length,
-      skipped: results.filter((item) => item.status === "skipped").length,
-      error: results.filter((item) => item.status === "error").length,
-      totalPeriods: results.reduce(
+      success: mergedResults.filter((item) => item.status === "success").length,
+      skipped: mergedResults.filter((item) => item.status === "skipped").length,
+      error: mergedResults.filter((item) => item.status === "error").length,
+      totalPeriods: mergedResults.reduce(
         (sum, item) => sum + (item.periodCount ?? 0),
         0
       ),
-      totalDays: results.reduce((sum, item) => sum + (item.dayCount ?? 0), 0),
+      totalDays: mergedResults.reduce(
+        (sum, item) => sum + (item.dayCount ?? 0),
+        0
+      ),
     },
-    results,
+    results: mergedResults,
   };
 
   await writeFile(REPORT_PATH, JSON.stringify(report, null, 2), "utf8");
   console.log(`Rapor yazıldı: ${REPORT_PATH}`);
+  console.log(
+    `Özet: ${report.summary.success} başarılı, ${report.summary.skipped} atlandı, ${report.summary.error} hata`
+  );
 }
 
 main()

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import VillaEditForm from "@/components/admin/villas/VillaEditForm";
 import { getVillaEditPageData } from "@/lib/queries/villa-edit";
@@ -8,6 +9,14 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+function VillaEditFormFallback() {
+  return (
+    <div className="flex h-[calc(100dvh-3rem)] items-center justify-center rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-500">
+      Yükleniyor...
+    </div>
+  );
 }
 
 export default async function EditVillaPage({ params }: PageProps) {
@@ -26,23 +35,25 @@ export default async function EditVillaPage({ params }: PageProps) {
   if (!data.villa || !data.icalData) notFound();
 
   return (
-    <VillaEditForm
-      villa={data.villa}
-      pools={data.pools}
-      amenityCategories={data.amenityCategories}
-      facilityCategories={data.facilityCategories}
-      priceInclusionItems={data.priceInclusionItems}
-      previewDomain={data.previewDomain}
-      activeOwners={data.activeOwners}
-      provinces={data.provinces}
-      locationRegions={data.locationRegions}
-      surroundingLocations={data.surroundingLocations}
-      distanceByLocationId={data.distanceByLocationId}
-      icalData={data.icalData}
-      galleryImages={data.galleryImages}
-      rooms={data.rooms}
-      prepaymentPaymentTypes={data.prepaymentPaymentTypes}
-      regionBreadcrumb={data.regionBreadcrumb}
-    />
+    <Suspense fallback={<VillaEditFormFallback />}>
+      <VillaEditForm
+        villa={data.villa}
+        pools={data.pools}
+        amenityCategories={data.amenityCategories}
+        facilityCategories={data.facilityCategories}
+        priceInclusionItems={data.priceInclusionItems}
+        previewDomain={data.previewDomain}
+        activeOwners={data.activeOwners}
+        provinces={data.provinces}
+        locationRegions={data.locationRegions}
+        surroundingLocations={data.surroundingLocations}
+        distanceByLocationId={data.distanceByLocationId}
+        icalData={data.icalData}
+        galleryImages={data.galleryImages}
+        rooms={data.rooms}
+        prepaymentPaymentTypes={data.prepaymentPaymentTypes}
+        regionBreadcrumb={data.regionBreadcrumb}
+      />
+    </Suspense>
   );
 }

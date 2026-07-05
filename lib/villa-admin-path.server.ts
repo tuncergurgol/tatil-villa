@@ -42,6 +42,10 @@ export async function revalidateVillaHizliFiyatPage(internalId: string) {
 
   revalidatePath(villaAdminHizliFiyatPath(villa));
   if (villa.villaId != null) {
+    revalidatePath(`/admin/hizlifiyat/${villa.id}`);
+    revalidatePath(`/admin/villalar/${villa.villaId}/hizlifiyat`);
+    revalidatePath(`/admin/villalar/${villa.id}/hizlifiyat`);
+  } else {
     revalidatePath(`/admin/villalar/${villa.id}/hizlifiyat`);
   }
 }

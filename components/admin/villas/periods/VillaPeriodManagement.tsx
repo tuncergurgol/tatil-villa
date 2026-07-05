@@ -8,6 +8,7 @@ import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodF
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
+import { VILLA_DAY_VISUAL_LEGEND } from "@/lib/villa-period-day-visual";
 import VillaPeriodSidebar from "@/components/admin/villas/periods/VillaPeriodSidebar";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
@@ -21,6 +22,7 @@ import {
 interface VillaPeriodManagementProps {
   villa: {
     id: string;
+    villaId: number | null;
     slug: string;
     name: string;
     originalName: string;
@@ -94,14 +96,6 @@ export default function VillaPeriodManagement({
     return map;
   }, [normalizedPeriods, periodDays]);
 
-  const periodColorIndex = useMemo(() => {
-    const map = new Map<string, number>();
-    normalizedPeriods.forEach((period, index) => {
-      map.set(period.id, index);
-    });
-    return map;
-  }, [normalizedPeriods]);
-
   const activeDateKeys = useMemo(
     () => new Set(dayDisplayByDate.keys()),
     [dayDisplayByDate]
@@ -140,7 +134,8 @@ export default function VillaPeriodManagement({
     router.refresh();
   }
 
-  const facilityCode = villa.slug;
+  const villaIdLabel =
+    villa.villaId != null ? String(villa.villaId) : "—";
   const documentNo = villa.documentNo || "—";
   const originalName = villa.originalName || "—";
 
@@ -158,8 +153,8 @@ export default function VillaPeriodManagement({
               <span className="text-gray-700">{originalName}</span>
             </p>
             <p>
-              <span className="font-semibold text-gray-900">Ev Kodu:</span>{" "}
-              <span className="text-gray-700">{facilityCode}</span>
+              <span className="font-semibold text-gray-900">VillaID:</span>{" "}
+              <span className="text-gray-700">{villaIdLabel}</span>
             </p>
             <p>
               <span className="font-semibold text-gray-900">Belge No:</span>{" "}
@@ -209,22 +204,18 @@ export default function VillaPeriodManagement({
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm bg-rose-500" />
-                Boş
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm bg-red-700" />
-                Dolu
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm bg-amber-500" />
-                Opsiyon
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm bg-slate-400" />
-                Kapalı
-              </span>
+              {VILLA_DAY_VISUAL_LEGEND.map((item) => (
+                <span
+                  key={item.kind}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <span
+                    className="h-3 w-3 rounded-sm border border-gray-200"
+                    style={item.swatchStyle}
+                  />
+                  {item.label}
+                </span>
+              ))}
             </div>
 
             <button
@@ -245,7 +236,6 @@ export default function VillaPeriodManagement({
               month={viewMonth}
               activeDateKeys={activeDateKeys}
               dayDisplayByDate={dayDisplayByDate}
-              periodColorIndex={periodColorIndex}
               today={today}
             />
           </div>
@@ -254,7 +244,7 @@ export default function VillaPeriodManagement({
             <VillaPeriodSidebar
               villaId={villa.id}
               villaName={villa.name}
-              facilityCode={facilityCode}
+              villaIdLabel={villaIdLabel}
               periods={normalizedPeriods}
               onEdit={openEditModal}
             />

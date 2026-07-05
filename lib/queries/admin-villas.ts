@@ -1,6 +1,7 @@
-import { RegionLevel, VillaCategory } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { facilityTypeOptions } from "@/lib/facility-type";
+import { buildRegionTree } from "@/lib/regions-tree";
+import { getRegionTreeFlat } from "@/lib/queries/region-tree";
 
 type RegionWithParents = {
   id: string;
@@ -27,14 +28,26 @@ function getRegionIlSlug(region: RegionWithParents) {
   return region.parent?.parent?.slug ?? region.parent?.slug ?? region.slug;
 }
 
+function getRegionPathSlugs(region: RegionWithParents): string[] {
+  const slugs = [region.slug];
+  if (region.parent) {
+    slugs.push(region.parent.slug);
+    if (region.parent.parent) {
+      slugs.push(region.parent.parent.slug);
+    }
+  }
+  return slugs;
+}
+
 export async function getAdminVillaListData() {
-  const [villas, regionOptions] = await Promise.all([
+  const [villas, regionFlat] = await Promise.all([
     prisma.villa.findMany({
       select: {
         id: true,
         villaId: true,
         slug: true,
         name: true,
+        originalName: true,
         category: true,
         image: true,
         active: true,
@@ -58,12 +71,10 @@ export async function getAdminVillaListData() {
       },
       orderBy: { name: "asc" },
     }),
-    prisma.region.findMany({
-      where: { level: RegionLevel.IL, active: true },
-      select: { id: true, slug: true, name: true },
-      orderBy: { name: "asc" },
-    }),
+    getRegionTreeFlat(),
   ]);
+
+  const regionTree = buildRegionTree(regionFlat.filter((region) => region.active));
 
   return {
     villas: villas.map((villa) => ({
@@ -71,6 +82,7 @@ export async function getAdminVillaListData() {
       villaId: villa.villaId,
       slug: villa.slug,
       name: villa.name,
+      originalName: villa.originalName,
       category: villa.category,
       image: villa.image,
       active: villa.active,
@@ -80,9 +92,10 @@ export async function getAdminVillaListData() {
       regionId: villa.region.id,
       regionSlug: villa.region.slug,
       regionIlSlug: getRegionIlSlug(villa.region),
+      regionPathSlugs: getRegionPathSlugs(villa.region),
       regionBreadcrumb: buildRegionBreadcrumb(villa.region),
     })),
-    regionOptions,
+    regionTree,
     typeOptions: [
       { value: "all", label: "Tümü" },
       ...facilityTypeOptions.map((option) => ({

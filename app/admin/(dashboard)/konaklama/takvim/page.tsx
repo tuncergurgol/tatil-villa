@@ -1,21 +1,34 @@
+import { redirect } from "next/navigation";
 import VillaTakvimPage from "@/components/admin/villas/periods/VillaTakvimPage";
 import { getVillaTakvimPageData } from "@/lib/queries/villa-takvim";
+import { villaTakvimRouteParam } from "@/lib/villa-takvim-path";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: Promise<{ villa?: string }>;
+  searchParams: Promise<{ villa?: string; q?: string }>;
 }
 
 export default async function TakvimPage({ searchParams }: PageProps) {
-  const { villa: villaId } = await searchParams;
-  const data = await getVillaTakvimPageData(villaId);
+  const params = await searchParams;
+  const villaParam = params.villa;
+  const data = await getVillaTakvimPageData(villaParam);
+
+  if (villaParam && data.selected?.villa) {
+    const canonical = villaTakvimRouteParam(data.selected.villa);
+    if (villaParam !== canonical) {
+      const next = new URLSearchParams();
+      next.set("villa", canonical);
+      if (params.q) next.set("q", params.q);
+      redirect(`/admin/konaklama/takvim?${next.toString()}`);
+    }
+  }
 
   return (
     <VillaTakvimPage
       villas={data.villas}
       selected={data.selected}
-      selectedVillaId={villaId}
+      selectedVillaParam={villaParam}
     />
   );
 }
