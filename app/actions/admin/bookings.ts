@@ -17,8 +17,21 @@ import {
 } from "@/lib/queries/booking-prepayment";
 import { requireAdmin } from "@/lib/auth-helpers";
 import type { BookingDetails } from "@/lib/booking-form-details";
+import {
+  computeEntrancePayment,
+  computeReservationTotal,
+} from "@/lib/booking-form-details";
 
 const bookingStatusSchema = z.nativeEnum(BookingStatus);
+
+const optionalMoney = z
+  .union([z.string(), z.number(), z.null()])
+  .optional()
+  .transform((value) => {
+    if (value == null || value === "") return null;
+    const parsed = Number(String(value).replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(parsed) ? Math.round(parsed) : null;
+  });
 
 const adminBookingSchema = z.object({
   villaId: z.string().min(1, "Villa seçin"),
@@ -31,14 +44,17 @@ const adminBookingSchema = z.object({
   guestName: z.string().min(2, "Ad soyad gerekli"),
   guestEmail: z.string().min(3, "E-posta gerekli"),
   guestPhone: z.string().min(1, "Telefon gerekli"),
-  totalPrice: z
-    .union([z.string(), z.number(), z.null()])
-    .optional()
-    .transform((value) => {
-      if (value == null || value === "") return null;
-      const parsed = Number(String(value).replace(/\./g, "").replace(",", "."));
-      return Number.isFinite(parsed) ? Math.round(parsed) : null;
-    }),
+  grossPrice: optionalMoney,
+  extraAccommodationFee: optionalMoney,
+  cleaningFee: optionalMoney,
+  petCleaningFee: optionalMoney,
+  poolHeatingPrivateFee: optionalMoney,
+  poolHeatingIndoorFee: optionalMoney,
+  underfloorHeatingFee: optionalMoney,
+  prepaymentAmount: optionalMoney,
+  prepaymentMethod: z.string().optional().default(""),
+  damageDeposit: optionalMoney,
+  totalPrice: optionalMoney,
   status: bookingStatusSchema,
 });
 
@@ -59,9 +75,50 @@ function parseAdminBookingForm(formData: FormData) {
     guestName: formData.get("guestName"),
     guestEmail: formData.get("guestEmail"),
     guestPhone: formData.get("guestPhone"),
+    grossPrice: formData.get("grossPrice"),
+    extraAccommodationFee: formData.get("extraAccommodationFee"),
+    cleaningFee: formData.get("cleaningFee"),
+    petCleaningFee: formData.get("petCleaningFee"),
+    poolHeatingPrivateFee: formData.get("poolHeatingPrivateFee"),
+    poolHeatingIndoorFee: formData.get("poolHeatingIndoorFee"),
+    underfloorHeatingFee: formData.get("underfloorHeatingFee"),
+    prepaymentAmount: formData.get("prepaymentAmount"),
+    prepaymentMethod: formData.get("prepaymentMethod"),
+    damageDeposit: formData.get("damageDeposit"),
     totalPrice: formData.get("totalPrice"),
     status: formData.get("status"),
   });
+}
+
+function buildBookingDetailsFromAdminForm(
+  data: z.infer<typeof adminBookingSchema>
+): BookingDetails {
+  const details: BookingDetails = {
+    grossPrice: data.grossPrice,
+    extraAccommodationFee: data.extraAccommodationFee,
+    cleaningFee: data.cleaningFee,
+    petCleaningFee: data.petCleaningFee,
+    poolHeatingPrivateFee: data.poolHeatingPrivateFee,
+    poolHeatingIndoorFee: data.poolHeatingIndoorFee,
+    underfloorHeatingFee: data.underfloorHeatingFee,
+    prepaymentAmount: data.prepaymentAmount,
+    damageDeposit: data.damageDeposit,
+    importPaymentMethod: data.prepaymentMethod,
+    prepaymentBank: data.prepaymentMethod,
+  };
+  const reservationTotal = computeReservationTotal(details);
+  details.checkInPayment = computeEntrancePayment(
+    reservationTotal,
+    data.prepaymentAmount
+  );
+  return details;
+}
+
+function resolveAdminBookingTotalPrice(
+  data: z.infer<typeof adminBookingSchema>
+): number | null {
+  if (data.totalPrice != null) return data.totalPrice;
+  return computeReservationTotal(buildBookingDetailsFromAdminForm(data));
 }
 
 export async function createAdminBookingAction(
@@ -77,11 +134,30 @@ export async function createAdminBookingAction(
     };
   }
 
-  const { checkIn, checkOut, ...rest } = parsed.data;
+  const {
+    checkIn,
+    checkOut,
+    grossPrice: _grossPrice,
+    extraAccommodationFee: _extraAccommodationFee,
+    cleaningFee: _cleaningFee,
+    petCleaningFee: _petCleaningFee,
+    poolHeatingPrivateFee: _poolHeatingPrivateFee,
+    poolHeatingIndoorFee: _poolHeatingIndoorFee,
+    underfloorHeatingFee: _underfloorHeatingFee,
+    prepaymentAmount: _prepaymentAmount,
+    prepaymentMethod: _prepaymentMethod,
+    damageDeposit: _damageDeposit,
+    totalPrice: _formTotalPrice,
+    ...rest
+  } = parsed.data;
+  const details = buildBookingDetailsFromAdminForm(parsed.data);
+  const totalPrice = resolveAdminBookingTotalPrice(parsed.data);
 
   try {
     await createAdminBooking({
       ...rest,
+      totalPrice,
+      details,
       checkIn: new Date(`${checkIn}T00:00:00.000Z`),
       checkOut: new Date(`${checkOut}T00:00:00.000Z`),
     });
@@ -112,11 +188,30 @@ export async function updateAdminBookingAction(
     };
   }
 
-  const { checkIn, checkOut, ...rest } = parsed.data;
+  const {
+    checkIn,
+    checkOut,
+    grossPrice: _grossPrice,
+    extraAccommodationFee: _extraAccommodationFee,
+    cleaningFee: _cleaningFee,
+    petCleaningFee: _petCleaningFee,
+    poolHeatingPrivateFee: _poolHeatingPrivateFee,
+    poolHeatingIndoorFee: _poolHeatingIndoorFee,
+    underfloorHeatingFee: _underfloorHeatingFee,
+    prepaymentAmount: _prepaymentAmount,
+    prepaymentMethod: _prepaymentMethod,
+    damageDeposit: _damageDeposit,
+    totalPrice: _formTotalPrice,
+    ...rest
+  } = parsed.data;
+  const details = buildBookingDetailsFromAdminForm(parsed.data);
+  const totalPrice = resolveAdminBookingTotalPrice(parsed.data);
 
   try {
     await updateAdminBooking(id, {
       ...rest,
+      totalPrice,
+      details,
       checkIn: new Date(`${checkIn}T00:00:00.000Z`),
       checkOut: new Date(`${checkOut}T00:00:00.000Z`),
     });

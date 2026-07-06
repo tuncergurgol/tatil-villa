@@ -1,4 +1,5 @@
 import type { BookingStatus } from "@prisma/client";
+import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
 import { calculateNights } from "@/lib/queries/bookings";
 import type { StayStatus } from "@/lib/stay-status";
 
@@ -184,6 +185,22 @@ export function sumExtraFees(details: BookingDetails): number {
   );
 }
 
+export function computeReservationTotal(
+  details: BookingDetails
+): number | null {
+  const accommodation = details.grossPrice;
+  if (accommodation == null) return null;
+  return accommodation + sumExtraFees(details);
+}
+
+export function computeEntrancePayment(
+  reservationTotal: number | null,
+  prepayment: number | null | undefined
+): number | null {
+  if (reservationTotal == null) return null;
+  return Math.max(0, reservationTotal - (prepayment ?? 0));
+}
+
 export function computeCheckInPayment(
   balance: number | null,
   details: BookingDetails
@@ -235,8 +252,12 @@ export function defaultDetailsFromBooking(booking: {
     agencyServiceFee: parsed.agencyServiceFee ?? 0,
     prepaymentAmount: parsed.prepaymentAmount ?? null,
     prepaymentRate: parsed.prepaymentRate ?? 20,
-    prepaymentBank: parsed.prepaymentBank ?? parsed.importPaymentMethod ?? "",
-    importPaymentMethod: parsed.importPaymentMethod ?? parsed.prepaymentBank ?? "",
+    prepaymentBank: normalizeCompanyPaymentType(
+      parsed.prepaymentBank ?? parsed.importPaymentMethod ?? ""
+    ),
+    importPaymentMethod: normalizeCompanyPaymentType(
+      parsed.importPaymentMethod ?? parsed.prepaymentBank ?? ""
+    ),
     cleaningFee: parsed.cleaningFee ?? null,
     extraAccommodationFee:
       parsed.extraAccommodationFee ?? parsed.extraServiceFee ?? null,
@@ -303,6 +324,20 @@ export function getNightCount(checkIn: Date, checkOut: Date): number {
   return calculateNights(checkIn, checkOut);
 }
 
+export type BookingPrepaymentRecord = {
+  id: string;
+  paymentChannel: string;
+  bankAccountId: string | null;
+  amount: number;
+  createdAt: Date;
+  bankAccount: {
+    id: string;
+    bankName: string;
+    accountHolder: string;
+    iban: string;
+  } | null;
+};
+
 export type BookingDetailRecord = {
   id: string;
   externalCode: number | null;
@@ -318,8 +353,11 @@ export type BookingDetailRecord = {
   totalPrice: number | null;
   status: BookingStatus;
   stayStatus: StayStatus;
+  optionExpiresAt: Date | null;
+  confirmationSentAt: Date | null;
   details: unknown;
   createdAt: Date;
+  prepayments: BookingPrepaymentRecord[];
   villa: {
     id: string;
     villaId: number | null;

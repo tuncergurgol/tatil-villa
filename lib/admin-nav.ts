@@ -62,6 +62,7 @@ export const adminAgencyNav: NavGroup = {
   label: "Acente Yönetimi",
   items: [
     { label: "Şirket", href: "/admin/acente/sirket" },
+    { label: "Mesaj İçeriği", href: "/admin/acente/mesaj-icerigi" },
     { label: "Kullanıcılar", href: "/admin/acente/kullanicilar" },
     { label: "Site İçeriği", href: "/admin/acente/site-icerigi" },
     { label: "Güvenlik & Log", href: "/admin/acente/guvenlik" },

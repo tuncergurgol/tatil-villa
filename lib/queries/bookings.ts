@@ -98,6 +98,7 @@ export async function createAdminBooking(data: {
   guestPhone: string;
   totalPrice?: number | null;
   status: BookingStatus;
+  details?: Record<string, unknown>;
 }) {
   if (data.checkOut <= data.checkIn) {
     throw new Error("Çıkış tarihi giriş tarihinden sonra olmalıdır.");
@@ -120,6 +121,7 @@ export async function createAdminBooking(data: {
       guestPhone: data.guestPhone,
       totalPrice: data.totalPrice ?? null,
       status: data.status,
+      details: (data.details ?? {}) as Prisma.InputJsonValue,
     },
     include: {
       villa: {
@@ -159,6 +161,7 @@ export async function updateAdminBooking(
     guestPhone: string;
     totalPrice?: number | null;
     status: BookingStatus;
+    details?: Record<string, unknown>;
   }
 ) {
   if (data.checkOut <= data.checkIn) {
@@ -180,6 +183,9 @@ export async function updateAdminBooking(
       guestPhone: data.guestPhone,
       totalPrice: data.totalPrice ?? null,
       status: data.status,
+      ...(data.details !== undefined
+        ? { details: data.details as Prisma.InputJsonValue }
+        : {}),
     },
   });
 

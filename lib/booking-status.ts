@@ -18,11 +18,11 @@ export const BOOKING_STATUS_META: Record<
     className: "bg-violet-100 text-violet-700",
   },
   [BookingStatus.PREPAYMENT]: {
-    label: "Ön Ödeme",
+    label: "ÖDEME BEKLENİYOR",
     className: "bg-amber-100 text-amber-800",
   },
   [BookingStatus.CONFIRMATION_SENT]: {
-    label: "Konfirme Gönderildi",
+    label: "ONAY BEKLENİYOR",
     className: "bg-sky-100 text-sky-800",
   },
   [BookingStatus.CONFIRMED]: {

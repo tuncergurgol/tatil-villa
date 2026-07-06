@@ -168,6 +168,40 @@ model CustomerContactChannel {
   @@index([sortOrder])
 }
 
+model CompanyBankAccount {
+  id            String              @id @default(cuid())
+  paymentType   String              @default("")
+  bankName      String              @default("")
+  accountHolder String              @default("")
+  iban          String              @default("")
+  sortOrder     Int                 @default(0)
+  active        Boolean             @default(true)
+  prepayments   BookingPrepayment[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model AgencyMessageTemplate {
+  id            String   @id @default(cuid())
+  rowNo         Int
+  name          String
+  recipient     String
+  smsBody       String   @default("") @db.Text
+  whatsappBody  String   @default("") @db.Text
+  mailBody      String   @default("") @db.Text
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+  @@index([rowNo])
+}
+
 model Customer {
   id               String                  @id @default(cuid())
   fullName         String
@@ -577,31 +611,49 @@ model FacilityCategory {
 }
 
 model Booking {
-  id           String        @id @default(cuid())
-  externalCode Int?          @unique
-  villaId      String
-  villa        Villa         @relation(fields: [villaId], references: [id], onDelete: Cascade)
-  checkIn      DateTime      @db.Date
-  checkOut     DateTime      @db.Date
-  adults       Int           @default(1)
-  children     Int           @default(0)
-  babies       Int           @default(0)
-  pets         Int           @default(0)
-  guestName    String
-  guestEmail   String
-  guestPhone   String
-  totalPrice   Int?
-  status       BookingStatus @default(NEW)
-  stayStatus   StayStatus    @default(BEKLENIYOR)
-  details      Json          @default("{}")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                 String              @id @default(cuid())
+  externalCode       Int?                @unique
+  villaId            String
+  villa              Villa               @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  checkIn            DateTime            @db.Date
+  checkOut           DateTime            @db.Date
+  adults             Int                 @default(1)
+  children           Int                 @default(0)
+  babies             Int                 @default(0)
+  pets               Int                 @default(0)
+  guestName          String
+  guestEmail         String
+  guestPhone         String
+  totalPrice         Int?
+  status             BookingStatus       @default(NEW)
+  stayStatus         StayStatus          @default(BEKLENIYOR)
+  optionExpiresAt    DateTime?
+  confirmationSentAt DateTime?
+  details            Json                @default("{}")
+  prepayments        BookingPrepayment[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([villaId])
   @@index([status])
   @@index([stayStatus])
   @@index([checkIn, checkOut])
   @@index([externalCode])
+  @@index([optionExpiresAt])
+}
+
+model BookingPrepayment {
+  id             String              @id @default(cuid())
+  bookingId      String
+  booking        Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  paymentChannel String
+  bankAccountId  String?
+  bankAccount    CompanyBankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  amount         Int
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([bookingId])
 }
 
 model User {
@@ -635,6 +687,7 @@ model CompanySettings {
   bankName       String  @default("")
   iban           String  @default("")
   accountHolder  String  @default("")
+  paymentType    String  @default("")
   primaryColor   String  @default("#0d9488")
   secondaryColor String  @default("#115e59")
   logoUrl        String  @default("")
@@ -669,6 +722,22 @@ model CompanySettings {
   customScripts    String  @default("") @db.Text
   loadingEnabled Boolean @default(false)
   loadingText    String  @default("")
+  smtpProvider   String  @default("google")
+  smtpHost       String  @default("smtp.gmail.com")
+  smtpPort       Int     @default(587)
+  smtpSecure     String  @default("starttls")
+  smtpUser       String  @default("")
+  smtpPassword   String  @default("")
+  smtpFromEmail  String  @default("")
+  smtpFromName   String  @default("")
+  smtpEnabled    Boolean @default(true)
+  whatsappApiEnabled          Boolean @default(false)
+  whatsappPhoneNumberId       String  @default("")
+  whatsappAccessToken         String  @default("")
+  whatsappBusinessAccountId   String  @default("")
+  whatsappApiVersion          String  @default("v22.0")
+  whatsappWebhookVerifyToken  String  @default("")
+  whatsappTestPhone           String  @default("")
 
   updatedAt DateTime @updatedAt
 }

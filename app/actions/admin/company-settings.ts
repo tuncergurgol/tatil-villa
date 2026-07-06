@@ -18,9 +18,6 @@ const companySettingsSchema = z.object({
   whatsapp: z.string(),
   workingHours: z.string(),
   googleMapsEmbed: z.string(),
-  bankName: z.string(),
-  iban: z.string(),
-  accountHolder: z.string(),
   primaryColor: z.string(),
   secondaryColor: z.string(),
   logoUrl: z.string(),
@@ -55,6 +52,15 @@ const companySettingsSchema = z.object({
   customScripts: z.string(),
   loadingEnabled: z.coerce.boolean(),
   loadingText: z.string(),
+  smtpProvider: z.string(),
+  smtpHost: z.string(),
+  smtpPort: z.coerce.number().int().min(1).max(65535),
+  smtpSecure: z.string(),
+  smtpUser: z.string(),
+  smtpPassword: z.string(),
+  smtpFromEmail: z.string(),
+  smtpFromName: z.string(),
+  smtpEnabled: z.coerce.boolean(),
 });
 
 export type CompanySettingsActionState = {
@@ -81,9 +87,6 @@ export async function saveCompanySettings(
     whatsapp: formData.get("whatsapp"),
     workingHours: formData.get("workingHours"),
     googleMapsEmbed: formData.get("googleMapsEmbed"),
-    bankName: formData.get("bankName"),
-    iban: formData.get("iban"),
-    accountHolder: formData.get("accountHolder"),
     primaryColor: formData.get("primaryColor"),
     secondaryColor: formData.get("secondaryColor"),
     logoUrl: formData.get("logoUrl"),
@@ -118,6 +121,15 @@ export async function saveCompanySettings(
     customScripts: formData.get("customScripts"),
     loadingEnabled: formData.get("loadingEnabled") === "on",
     loadingText: formData.get("loadingText"),
+    smtpProvider: formData.get("smtpProvider"),
+    smtpHost: formData.get("smtpHost"),
+    smtpPort: formData.get("smtpPort"),
+    smtpSecure: formData.get("smtpSecure"),
+    smtpUser: formData.get("smtpUser"),
+    smtpPassword: formData.get("smtpPassword"),
+    smtpFromEmail: formData.get("smtpFromEmail"),
+    smtpFromName: formData.get("smtpFromName"),
+    smtpEnabled: formData.get("smtpEnabled") === "on",
   });
 
   if (!parsed.success) {

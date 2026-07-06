@@ -10,7 +10,9 @@ import {
   Hourglass,
   Image,
   Landmark,
+  Mail,
   MessageCircle,
+  MessageSquare,
   Palette,
   Phone,
   Save,
@@ -28,12 +30,18 @@ import TursabSettingsFields from "@/components/admin/company/TursabSettingsField
 import AnalyticsSettingsFields from "@/components/admin/company/AnalyticsSettingsFields";
 import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payment-types/PrepaymentPaymentTypeManagement";
 import CustomerContactChannelManagement from "@/components/admin/customer-contact-channels/CustomerContactChannelManagement";
+import CompanyBankAccountManagement from "@/components/admin/company/CompanyBankAccountManagement";
+import MailSettingsFields from "@/components/admin/company/MailSettingsFields";
+import WhatsAppSettingsFields from "@/components/admin/company/WhatsAppSettingsFields";
 import type { PrepaymentPaymentTypeItem } from "@/lib/queries/prepayment-payment-types";
 import type { CustomerContactChannelItem } from "@/lib/queries/customer-contact-channels";
+import type { CompanyBankAccountItem } from "@/lib/queries/company-bank-accounts";
 
 const tabs = [
   { id: "genel", label: "Genel Bilgiler", icon: Building2 },
   { id: "iletisim", label: "İletişim", icon: Phone },
+  { id: "mail-kurulumu", label: "Mail Kurulumu", icon: Mail },
+  { id: "whatsapp-kurulumu", label: "WhatsApp Kurulumu", icon: MessageSquare },
   { id: "banka", label: "Banka / Kasa", icon: Landmark },
   { id: "tema", label: "Görünüm & Tema", icon: Palette },
   { id: "logo", label: "Logo & Görseller", icon: Image },
@@ -71,6 +79,10 @@ interface CompanySettingsFormProps {
     activeCount: number;
     passiveCount: number;
   };
+  bankAccounts: {
+    items: CompanyBankAccountItem[];
+    totalCount: number;
+  };
 }
 
 function isValidTabId(value: string | undefined): value is TabId {
@@ -100,6 +112,40 @@ function SettingsField({
         placeholder={placeholder}
         className="mt-1.5 w-full bg-transparent text-sm font-semibold text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
       />
+    </label>
+  );
+}
+
+function SettingsSelect({
+  label,
+  name,
+  defaultValue,
+  options,
+  placeholder,
+}: {
+  label: string;
+  name: string;
+  defaultValue: string;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) {
+  return (
+    <label className="block rounded-2xl border border-gray-200 bg-gray-50/80 px-5 py-4 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100">
+      <span className="text-xs font-medium text-gray-500">{label}</span>
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="mt-1.5 w-full bg-transparent text-sm font-semibold text-gray-900 outline-none"
+      >
+        {placeholder ? (
+          <option value="">{placeholder}</option>
+        ) : null}
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -152,6 +198,7 @@ export default function CompanySettingsForm({
   initialTab,
   prepayment,
   contactChannels,
+  bankAccounts,
 }: CompanySettingsFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>(
@@ -175,17 +222,24 @@ export default function CompanySettingsForm({
         ? "/admin/acente/sirket?tab=on-odeme-odeme-tipleri"
         : tabId === "musteri-ulasm-kanali"
           ? "/admin/acente/sirket?tab=musteri-ulasm-kanali"
-          : "/admin/acente/sirket";
+          : tabId === "banka"
+            ? "/admin/acente/sirket?tab=banka"
+            : tabId === "mail-kurulumu"
+              ? "/admin/acente/sirket?tab=mail-kurulumu"
+              : tabId === "whatsapp-kurulumu"
+                ? "/admin/acente/sirket?tab=whatsapp-kurulumu"
+                : "/admin/acente/sirket";
     router.replace(nextPath, { scroll: false });
   }
 
   const isSettingsTab =
     activeTab !== "on-odeme-odeme-tipleri" &&
-    activeTab !== "musteri-ulasm-kanali";
+    activeTab !== "musteri-ulasm-kanali" &&
+    activeTab !== "banka";
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex h-[calc(100dvh-3rem)] w-full flex-col overflow-hidden lg:h-[calc(100dvh-4rem)]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
@@ -230,7 +284,7 @@ export default function CompanySettingsForm({
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {isSettingsTab ? (
             <form id="company-settings-form" action={formAction}>
               {state.success && (
@@ -273,27 +327,12 @@ export default function CompanySettingsForm({
             <ContactSettingsFields settings={settings} />
           </TabPanel>
 
-          <TabPanel active={activeTab === "banka"}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SettingsField
-                label="Banka Adı"
-                name="bankName"
-                defaultValue={settings.bankName}
-              />
-              <SettingsField
-                label="Hesap Sahibi"
-                name="accountHolder"
-                defaultValue={settings.accountHolder}
-              />
-              <div className="sm:col-span-2">
-                <SettingsField
-                  label="IBAN"
-                  name="iban"
-                  defaultValue={settings.iban}
-                  placeholder="TR00 0000 0000 0000 0000 0000 00"
-                />
-              </div>
-            </div>
+          <TabPanel active={activeTab === "mail-kurulumu"}>
+            <MailSettingsFields settings={settings} />
+          </TabPanel>
+
+          <TabPanel active={activeTab === "whatsapp-kurulumu"}>
+            <WhatsAppSettingsFields />
           </TabPanel>
 
           <TabPanel active={activeTab === "tema"}>
@@ -408,6 +447,11 @@ export default function CompanySettingsForm({
               totalCount={prepayment.totalCount}
               activeCount={prepayment.activeCount}
               passiveCount={prepayment.passiveCount}
+              embedded
+            />
+          ) : activeTab === "banka" ? (
+            <CompanyBankAccountManagement
+              items={bankAccounts.items}
               embedded
             />
           ) : (

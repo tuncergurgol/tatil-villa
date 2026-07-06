@@ -17,6 +17,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   bankName: "",
   iban: "",
   accountHolder: "",
+  paymentType: "",
   primaryColor: "#0d9488",
   secondaryColor: "#115e59",
   logoUrl: "",
@@ -53,6 +54,22 @@ export const DEFAULT_COMPANY_SETTINGS = {
   customScripts: "",
   loadingEnabled: false,
   loadingText: "Yükleniyor...",
+  smtpProvider: "google",
+  smtpHost: "smtp.gmail.com",
+  smtpPort: 587,
+  smtpSecure: "starttls",
+  smtpUser: "rezervasyon@tatildeyiz.com.tr",
+  smtpPassword: "Rez@1311@",
+  smtpFromEmail: "rezervasyon@tatildeyiz.com.tr",
+  smtpFromName: "tatildeyiz.com.tr",
+  smtpEnabled: true,
+  whatsappApiEnabled: false,
+  whatsappPhoneNumberId: "",
+  whatsappAccessToken: "",
+  whatsappBusinessAccountId: "",
+  whatsappApiVersion: "v22.0",
+  whatsappWebhookVerifyToken: "",
+  whatsappTestPhone: "",
 };
 
 export async function getCompanySettings() {
@@ -70,14 +87,16 @@ export async function getCompanySettings() {
 }
 
 export async function updateCompanySettings(
-  data: Omit<
-    Awaited<ReturnType<typeof getCompanySettings>>,
-    "id" | "updatedAt"
+  data: Partial<
+    Omit<
+      Awaited<ReturnType<typeof getCompanySettings>>,
+      "id" | "updatedAt" | "bankName" | "iban" | "accountHolder" | "paymentType"
+    >
   >
 ) {
   return prisma.companySettings.upsert({
     where: { id: "default" },
-    create: { id: "default", ...data },
+    create: { id: "default", ...DEFAULT_COMPANY_SETTINGS, ...data },
     update: data,
   });
 }

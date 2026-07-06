@@ -5,14 +5,11 @@ import { BookingStatus } from "@prisma/client";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
 import {
-  buildBookingPrepaymentTemplateValues,
+  buildBookingConfirmationTemplateValues,
   renderAgencyMessageTemplate,
-  resolvePrepaymentTemplateRowNo,
 } from "@/lib/agency-message-render";
-import {
-  BOOKING_PREPAYMENT_OPTION_HOURS,
-  type PrepaymentShareChannel,
-} from "@/lib/booking-prepayment-share";
+import { AGENCY_MESSAGE_TEMPLATE_ROW_4 } from "@/lib/agency-message-row-no";
+import type { PrepaymentShareChannel } from "@/lib/booking-prepayment-share";
 import { parseBookingDetails, resolveExternalCode } from "@/lib/booking-form-details";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
@@ -22,25 +19,14 @@ import { buildWaMeUrl } from "@/lib/whatsapp-wa-me";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
-const sendPrepaymentInfoSchema = z.object({
+const sendConfirmationSchema = z.object({
   bookingId: z.string().min(1),
-  prepaymentAmount: z.number().positive("Ön ödeme tutarı zorunludur"),
-  paymentMethod: z.string().min(1, "Ödeme türü zorunludur"),
-  optionHours: z.coerce
-    .number()
-    .refine(
-      (value) =>
-        BOOKING_PREPAYMENT_OPTION_HOURS.includes(
-          value as (typeof BOOKING_PREPAYMENT_OPTION_HOURS)[number]
-        ),
-      "Geçersiz opsiyon süresi"
-    ),
   sendWhatsApp: z.boolean(),
   sendEmail: z.boolean(),
   sendSms: z.boolean(),
 });
 
-export type SendBookingPrepaymentInfoResult =
+export type SendBookingConfirmationResult =
   | { success: true; channels: PrepaymentShareChannel[]; whatsappUrl?: string }
   | { success: false; error: string };
 
@@ -69,10 +55,7 @@ async function resolveBankAccount(paymentMethod: string) {
   return prisma.companyBankAccount.findFirst({
     where: {
       active: true,
-      OR: [
-        { paymentType: normalized },
-        { paymentType: "" },
-      ],
+      OR: [{ paymentType: normalized }, { paymentType: "" }],
     },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
@@ -83,12 +66,12 @@ async function resolveBankAccount(paymentMethod: string) {
   });
 }
 
-export async function sendBookingPrepaymentInfoAction(
-  payload: z.infer<typeof sendPrepaymentInfoSchema>
-): Promise<SendBookingPrepaymentInfoResult> {
+export async function sendBookingConfirmationAction(
+  payload: z.infer<typeof sendConfirmationSchema>
+): Promise<SendBookingConfirmationResult> {
   await requireAdmin();
 
-  const parsed = sendPrepaymentInfoSchema.safeParse(payload);
+  const parsed = sendConfirmationSchema.safeParse(payload);
   if (!parsed.success) {
     return {
       success: false,
@@ -105,20 +88,7 @@ export async function sendBookingPrepaymentInfoAction(
     };
   }
 
-  let templateRowNo: number;
-  try {
-    templateRowNo = resolvePrepaymentTemplateRowNo(data.paymentMethod);
-  } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Geçersiz ödeme türü",
-    };
-  }
-
-  const [booking, template, companySettings, bankAccount] = await Promise.all([
+  const [booking, template, companySettings] = await Promise.all([
     prisma.booking.findUnique({
       where: { id: data.bookingId },
       include: {
@@ -129,19 +99,22 @@ export async function sendBookingPrepaymentInfoAction(
         },
       },
     }),
-    getAgencyMessageTemplateByRowNo(templateRowNo),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_4),
     getCompanySettings(),
-    resolveBankAccount(data.paymentMethod),
   ]);
 
   if (!booking) {
     return { success: false, error: "Rezervasyon bulunamadı" };
   }
 
+  if (booking.confirmationSentAt) {
+    return { success: false, error: "Konfirme daha önce gönderilmiş" };
+  }
+
   if (!template) {
     return {
       success: false,
-      error: `Mesaj şablonu bulunamadı (${templateRowNo})`,
+      error: `Mesaj şablonu bulunamadı (${AGENCY_MESSAGE_TEMPLATE_ROW_4})`,
     };
   }
 
@@ -173,7 +146,14 @@ export async function sendBookingPrepaymentInfoAction(
   }
 
   const details = parseBookingDetails(booking.details);
-  const templateValues = buildBookingPrepaymentTemplateValues({
+  const paymentMethod =
+    details.importPaymentMethod?.trim() ||
+    details.prepaymentBank?.trim() ||
+    "";
+  const prepaymentAmount = details.prepaymentAmount ?? 0;
+  const bankAccount = await resolveBankAccount(paymentMethod);
+
+  const templateValues = buildBookingConfirmationTemplateValues({
     reservationCode,
     guestName: booking.guestName,
     guestPhone: booking.guestPhone,
@@ -183,9 +163,8 @@ export async function sendBookingPrepaymentInfoAction(
     adults: booking.adults,
     children: booking.children,
     details,
-    prepaymentAmount: data.prepaymentAmount,
-    paymentMethod: data.paymentMethod,
-    optionHours: data.optionHours,
+    prepaymentAmount,
+    paymentMethod,
     company: {
       agencyName: companySettings.agencyName,
       brandName: companySettings.brandName,
@@ -197,7 +176,7 @@ export async function sendBookingPrepaymentInfoAction(
   });
 
   const sentChannels: PrepaymentShareChannel[] = [];
-  const mailSubject = `${reservationCode} nolu rezervasyon ön ödeme bilgisi`;
+  const mailSubject = `${reservationCode} nolu rezervasyon konfirmasyonu`;
   let whatsappUrl: string | undefined;
 
   const channelRequests: Array<{
@@ -233,9 +212,7 @@ export async function sendBookingPrepaymentInfoAction(
         return {
           success: false,
           error:
-            error instanceof Error
-              ? error.message
-              : "E-posta gönderilemedi",
+            error instanceof Error ? error.message : "E-posta gönderilemedi",
         };
       }
     } else if (channel === "whatsapp") {
@@ -245,10 +222,10 @@ export async function sendBookingPrepaymentInfoAction(
       }
       whatsappUrl = waResult.url;
     } else {
-      console.info(`[booking-prepayment-share] ${channel}`, {
+      console.info(`[booking-confirmation-send] ${channel}`, {
         bookingId: data.bookingId,
         phone,
-        templateRowNo,
+        templateRowNo: AGENCY_MESSAGE_TEMPLATE_ROW_4,
         message,
       });
     }
@@ -256,15 +233,11 @@ export async function sendBookingPrepaymentInfoAction(
     sentChannels.push(channel);
   }
 
-  const optionExpiresAt = new Date(
-    Date.now() + data.optionHours * 60 * 60 * 1000
-  );
-
   await prisma.booking.update({
     where: { id: data.bookingId },
     data: {
-      status: BookingStatus.PREPAYMENT,
-      optionExpiresAt,
+      status: BookingStatus.CONFIRMATION_SENT,
+      confirmationSentAt: new Date(),
     },
   });
 

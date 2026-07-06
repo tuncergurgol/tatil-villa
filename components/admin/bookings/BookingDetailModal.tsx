@@ -11,12 +11,13 @@ import {
   getBookingPrepaymentRateAction,
   updateBookingDetailAction,
 } from "@/app/actions/admin/bookings";
-import { BOOKING_STATUS_OPTIONS } from "@/lib/booking-status";
+import { BOOKING_STATUS_META, BOOKING_STATUS_OPTIONS } from "@/lib/booking-status";
 import {
   type BookingDetailRecord,
   type BookingDetails,
   type BookingExtraFeeFieldKey,
   type BookingGuestEntry,
+  type BookingPrepaymentRecord,
   BOOKING_EXTRA_FEE_FIELDS,
   TAXPAYER_TYPE_OPTIONS,
   YES_NO_OPTIONS,
@@ -37,6 +38,10 @@ import {
   toDateInputValue,
 } from "@/lib/booking-form-details";
 import {
+  getSortedCompanyPaymentTypeOptions,
+  normalizeCompanyPaymentType,
+} from "@/lib/company-payment-types";
+import {
   FormRow,
   FormSection,
   ReadonlyField,
@@ -45,6 +50,8 @@ import {
   bookingReadonlyClass,
 } from "@/components/admin/bookings/booking-form-ui";
 import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
+import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
+import OptionCountdown from "@/components/admin/bookings/OptionCountdown";
 
 interface BookingDetailModalProps {
   bookingId: string | null;
@@ -56,6 +63,7 @@ const BOOKING_DETAIL_TABS = [
   { id: "rezervasyon", label: "Rezervasyon" },
   { id: "musteri", label: "Müşteri" },
   { id: "fiyat", label: "Fiyat" },
+  { id: "konfirme", label: "Konfirme" },
   { id: "fatura", label: "Fatura" },
   { id: "odemeler", label: "Ödemeler" },
   { id: "notlar", label: "Notlar" },
@@ -201,6 +209,9 @@ export default function BookingDetailModal({
   const prepaymentManuallyEdited = useRef(false);
   const [activeTab, setActiveTab] = useState<BookingDetailTabId>("rezervasyon");
   const [prepaymentShareOpen, setPrepaymentShareOpen] = useState(false);
+  const [optionExpiresAt, setOptionExpiresAt] = useState<Date | null>(null);
+  const [confirmationSentAt, setConfirmationSentAt] = useState<Date | null>(null);
+  const [prepayments, setPrepayments] = useState<BookingPrepaymentRecord[]>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -235,6 +246,9 @@ export default function BookingDetailModal({
         setBooking(record);
         setStatus(record.status);
         setStayStatus(record.stayStatus);
+        setOptionExpiresAt(record.optionExpiresAt);
+        setConfirmationSentAt(record.confirmationSentAt);
+        setPrepayments(record.prepayments ?? []);
         setAdults(record.adults);
         setChildren(record.children);
         setBabies(record.babies);
@@ -465,10 +479,11 @@ export default function BookingDetailModal({
     booking?.id.slice(-5).toUpperCase() ||
     "";
 
-  const paymentChannel =
+  const paymentMethod = normalizeCompanyPaymentType(
     details.importPaymentMethod?.trim() ||
-    details.prepaymentBank?.trim() ||
-    "";
+      details.prepaymentBank?.trim() ||
+      ""
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3">
@@ -488,24 +503,37 @@ export default function BookingDetailModal({
 
         {booking && !loading ? (
           <div className="shrink-0 border-b border-gray-200 bg-white px-5">
-            <div className="flex gap-1 overflow-x-auto pb-px">
-              {BOOKING_DETAIL_TABS.map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`shrink-0 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
-                      isActive
-                        ? "border border-b-0 border-gray-200 bg-white text-violet-700"
-                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex gap-1 overflow-x-auto pb-px">
+                {BOOKING_DETAIL_TABS.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`shrink-0 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
+                        isActive
+                          ? "border border-b-0 border-gray-200 bg-white text-violet-700"
+                          : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Rezervasyon Son Durum
+                </span>
+                <span
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold ${BOOKING_STATUS_META[status].className}`}
+                >
+                  {BOOKING_STATUS_META[status].label}
+                </span>
+                <OptionCountdown expiresAt={optionExpiresAt} />
+              </div>
             </div>
           </div>
         ) : null}
@@ -761,16 +789,30 @@ export default function BookingDetailModal({
                     </div>
                   </div>
                 </FormRow>
-                <FormRow label="Ön Ödeme Yöntemi">
+                <FormRow label="Ödeme Türü">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="min-w-0 flex-1">
-                      <ReadonlyField
-                        value={
-                          details.importPaymentMethod?.trim() ||
-                          details.prepaymentBank?.trim() ||
-                          ""
+                      <select
+                        value={normalizeCompanyPaymentType(
+                          details.importPaymentMethod ?? ""
+                        )}
+                        onChange={(event) =>
+                          patchDetails({
+                            importPaymentMethod: event.target.value,
+                            prepaymentBank: event.target.value,
+                          })
                         }
-                      />
+                        className={bookingInputClass}
+                      >
+                        <option value="">Seçiniz</option>
+                        {getSortedCompanyPaymentTypeOptions().map(
+                          (option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          )
+                        )}
+                      </select>
                     </div>
                     <button
                       type="button"
@@ -820,6 +862,23 @@ export default function BookingDetailModal({
                   />
                 </FormRow>
               </FormSection>
+              </TabPanel>
+
+              <TabPanel active={activeTab === "konfirme"}>
+                <BookingKonfirmeTab
+                  bookingId={booking.id}
+                  expectedPrepaymentAmount={details.prepaymentAmount ?? null}
+                  prepayments={prepayments}
+                  confirmationSentAt={confirmationSentAt}
+                  onPrepaymentSaved={(prepayment) => {
+                    setPrepayments((current) => [...current, prepayment]);
+                    setOptionExpiresAt(null);
+                  }}
+                  onConfirmationSent={() => {
+                    setStatus(BookingStatusEnum.CONFIRMATION_SENT);
+                    setConfirmationSentAt(new Date());
+                  }}
+                />
               </TabPanel>
 
               <TabPanel active={activeTab === "musteri"}>
@@ -1284,13 +1343,13 @@ export default function BookingDetailModal({
         <PrepaymentShareModal
           open={prepaymentShareOpen}
           onClose={() => setPrepaymentShareOpen(false)}
+          onSuccess={({ optionExpiresAt: expiresAt }) => {
+            setStatus(BookingStatusEnum.PREPAYMENT);
+            setOptionExpiresAt(expiresAt);
+          }}
           bookingId={booking.id}
-          reservationCode={reservationCode}
-          guestName={guestName}
-          guestPhone={guestPhone}
-          guestEmail={guestEmail}
           prepaymentAmount={details.prepaymentAmount ?? null}
-          paymentChannel={paymentChannel}
+          paymentMethod={paymentMethod}
         />
       ) : null}
     </div>
