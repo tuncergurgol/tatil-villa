@@ -3,10 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
+  AdminTablePaginationBar,
+  type AdminPageSize,
+} from "@/components/admin/AdminTablePagination";
+import {
   FileText,
   Pencil,
   Plus,
@@ -31,8 +31,6 @@ interface CustomerManagementProps {
   contactChannels: ContactChannelOption[];
 }
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
-
 function formatAdminDate(value: Date | string) {
   return new Date(value).toISOString().slice(0, 10);
 }
@@ -49,98 +47,6 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
-function TablePagination({
-  page,
-  totalPages,
-  onChange,
-}: {
-  page: number;
-  totalPages: number;
-  onChange: (page: number) => void;
-}) {
-  if (totalPages <= 1) return null;
-
-  const pages = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
-    (value) =>
-      value === 1 ||
-      value === totalPages ||
-      Math.abs(value - page) <= 1
-  );
-
-  const items: Array<number | "ellipsis"> = [];
-  for (let index = 0; index < pages.length; index += 1) {
-    const current = pages[index];
-    const previous = pages[index - 1];
-    if (index > 0 && previous != null && current - previous > 1) {
-      items.push("ellipsis");
-    }
-    items.push(current);
-  }
-
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-1">
-      <button
-        type="button"
-        onClick={() => onChange(1)}
-        disabled={page <= 1}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-        aria-label="İlk sayfa"
-      >
-        <ChevronsLeft className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(1, page - 1))}
-        disabled={page <= 1}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-        aria-label="Önceki sayfa"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-
-      {items.map((item, index) =>
-        item === "ellipsis" ? (
-          <span key={`ellipsis-${index}`} className="px-1 text-sm text-gray-400">
-            …
-          </span>
-        ) : (
-          <button
-            key={item}
-            type="button"
-            onClick={() => onChange(item)}
-            className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-semibold transition ${
-              page === item
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            {item}
-          </button>
-        )
-      )}
-
-      <button
-        type="button"
-        onClick={() => onChange(Math.min(totalPages, page + 1))}
-        disabled={page >= totalPages}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-        aria-label="Sonraki sayfa"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange(totalPages)}
-        disabled={page >= totalPages}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-        aria-label="Son sayfa"
-      >
-        <ChevronsRight className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
-
 export default function CustomerManagement({
   customers,
   contactChannels,
@@ -149,7 +55,7 @@ export default function CustomerManagement({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
+  const [pageSize, setPageSize] = useState<AdminPageSize>(10);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItem | null>(
     null
@@ -380,42 +286,14 @@ export default function CustomerManagement({
           )}
         </div>
 
-        <div className="shrink-0 border-t border-gray-100 px-5 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
-            <p>
-              Sayfa {currentPage} - Toplam : {filteredCustomers.length} kayıt;
-              Gösterilen : {visibleCustomers.length} kayıt
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <TablePagination
-                page={currentPage}
-                totalPages={totalPages}
-                onChange={setPage}
-              />
-
-              <label className="flex items-center gap-2">
-                <span className="text-gray-500">Sayfa başına</span>
-                <select
-                  value={pageSize}
-                  onChange={(event) => {
-                    setPageSize(
-                      Number(event.target.value) as (typeof PAGE_SIZE_OPTIONS)[number]
-                    );
-                    setPage(1);
-                  }}
-                  className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
-        </div>
+        <AdminTablePaginationBar
+          page={page}
+          totalItems={filteredCustomers.length}
+          visibleCount={visibleCustomers.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {createOpen ? (

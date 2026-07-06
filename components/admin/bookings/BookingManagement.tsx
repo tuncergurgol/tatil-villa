@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, Fragment, useTransition } from "react";
+import { useMemo, useState, Fragment, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookingStatus } from "@prisma/client";
@@ -22,6 +22,10 @@ import BookingFilterModal, {
 } from "@/components/admin/bookings/BookingFilterModal";
 import BookingFormModal from "@/components/admin/bookings/BookingFormModal";
 import BookingDetailModal from "@/components/admin/bookings/BookingDetailModal";
+import {
+  AdminTablePaginationBar,
+  type AdminPageSize,
+} from "@/components/admin/AdminTablePagination";
 import { changeBookingStatus } from "@/app/actions/admin/bookings";
 import { filterBookings } from "@/lib/booking-filters";
 import type { AdminBookingListItem } from "@/lib/booking-display";
@@ -162,6 +166,8 @@ export default function BookingManagement({
   );
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<AdminPageSize>(10);
 
   const activeFilterCount = countActiveBookingFilters(filters);
 
@@ -169,6 +175,18 @@ export default function BookingManagement({
     () => filterBookings(bookings, filters),
     [bookings, filters]
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+
+  const visibleBookings = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredBookings.slice(start, start + pageSize);
+  }, [currentPage, filteredBookings, pageSize]);
 
   function openCreateModal() {
     setEditingBooking(null);
@@ -290,8 +308,8 @@ export default function BookingManagement({
               </tr>
             </thead>
             <tbody>
-              {filteredBookings.length > 0 ? (
-                filteredBookings.map((booking) => {
+              {visibleBookings.length > 0 ? (
+                visibleBookings.map((booking) => {
                   const stay = formatStaySummary(booking.checkIn, booking.checkOut);
                   const guests = formatGuestCounts(booking);
                   const prepayment = estimatePrepaymentAmount(booking.totalPrice);
@@ -498,6 +516,15 @@ export default function BookingManagement({
             </tbody>
           </table>
         </div>
+
+        <AdminTablePaginationBar
+          page={page}
+          totalItems={filteredBookings.length}
+          visibleCount={visibleBookings.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

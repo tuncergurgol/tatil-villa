@@ -10,7 +10,13 @@ import {
   saveVillaDocument,
   type VillaDocumentActionState,
 } from "@/app/actions/admin/villa-document";
-import { TOURISM_DOCUMENT_TYPES } from "@/lib/villa-document-types";
+import {
+  combineDocumentNo,
+  inferKonutBelgesiType,
+  KONUT_BELGE_NO_PREFIXES,
+  parseDocumentNoParts,
+  TOURISM_DOCUMENT_TYPES,
+} from "@/lib/villa-document-types";
 import type { TourismDocumentType } from "@prisma/client";
 
 interface VillaDocumentModalProps {
@@ -35,6 +41,8 @@ export default function VillaDocumentModal({
   const [roomCapacity, setRoomCapacity] = useState("");
   const [bedCapacity, setBedCapacity] = useState("");
   const [documentNo, setDocumentNo] = useState("");
+  const [documentNoPrefix, setDocumentNoPrefix] = useState("");
+  const [documentNumber, setDocumentNumber] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [clearError, setClearError] = useState<string | null>(null);
   const [isUploading, startUpload] = useTransition();
@@ -59,13 +67,20 @@ export default function VillaDocumentModal({
           setLoadError("Villa bulunamadı");
           return;
         }
-        setDocumentType(data.documentType ?? "");
+        const loadedType = data.documentType ?? "";
+        const loadedDocumentNo = data.documentNo ?? "";
+        const { prefix, number } = parseDocumentNoParts(loadedDocumentNo);
+        const inferredType = inferKonutBelgesiType(loadedDocumentNo);
+
+        setDocumentType(loadedType || inferredType || "");
         setOwnerName(data.documentOwnerName);
         setAddress(data.documentAddress);
         setRoomCapacity(String(data.documentRoomCapacity ?? ""));
         setBedCapacity(String(data.documentBedCapacity ?? ""));
         setDocumentImageUrl(data.documentImageUrl);
-        setDocumentNo(data.documentNo);
+        setDocumentNoPrefix(prefix);
+        setDocumentNumber(number);
+        setDocumentNo(loadedDocumentNo);
       } catch {
         if (!cancelled) setLoadError("Belge bilgileri yüklenemedi");
       } finally {
@@ -78,6 +93,15 @@ export default function VillaDocumentModal({
       cancelled = true;
     };
   }, [villaId]);
+
+  useEffect(() => {
+    const combined = combineDocumentNo(documentNoPrefix, documentNumber);
+    setDocumentNo(combined);
+
+    if (!documentType && inferKonutBelgesiType(combined)) {
+      setDocumentType("KONUT_BELGESI");
+    }
+  }, [documentNoPrefix, documentNumber, documentType]);
 
   useEffect(() => {
     if (state.success) {
@@ -192,6 +216,38 @@ export default function VillaDocumentModal({
                     ))}
                   </select>
                 </label>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Belge No
+                    </span>
+                    <select
+                      value={documentNoPrefix}
+                      onChange={(event) => setDocumentNoPrefix(event.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option value="">Seçiniz</option>
+                      {KONUT_BELGE_NO_PREFIXES.map((prefix) => (
+                        <option key={prefix} value={prefix}>
+                          {prefix}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Belge Numarası
+                    </span>
+                    <input
+                      value={documentNumber}
+                      onChange={(event) => setDocumentNumber(event.target.value)}
+                      placeholder="Örn. 8041"
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </label>
+                </div>
               </section>
 
               <section>

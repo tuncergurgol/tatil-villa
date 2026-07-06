@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { inferKonutBelgesiType } from "@/lib/villa-document-types";
 
 export type VillaDocumentActionState = {
   success?: boolean;
@@ -58,8 +58,12 @@ export async function getVillaDocumentData(villaId: string) {
 
   if (!villa) return null;
 
+  const resolvedDocumentType =
+    villa.documentType ?? inferKonutBelgesiType(villa.documentNo);
+
   return {
     ...villa,
+    documentType: resolvedDocumentType,
     documentOwnerName: villa.documentOwnerName || villa.owner?.name || "",
     documentAddress: villa.documentAddress || villa.location,
     documentRoomCapacity: villa.documentRoomCapacity ?? villa.bedrooms,
@@ -101,11 +105,18 @@ export async function saveVillaDocument(
     existing.documentNo ||
     `48-${Math.floor(10000 + Math.random() * 89999)}`;
 
+  const documentType =
+    parsed.data.documentType || inferKonutBelgesiType(documentNo);
+
+  if (!documentType) {
+    return { error: "Belge türü seçilmelidir" };
+  }
+
   try {
     await prisma.villa.update({
       where: { id: villaId },
       data: {
-        documentType: parsed.data.documentType,
+        documentType,
         documentOwnerName: parsed.data.documentOwnerName.trim(),
         documentAddress: parsed.data.documentAddress.trim(),
         documentRoomCapacity: parsed.data.documentRoomCapacity,
