@@ -1,100 +1,111 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Loader2,
+  Search,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { BookingStatus } from "@prisma/client";
 import {
   createAdminBookingAction,
-  getBookingPeriodFeesAction,
-  getBookingPrepaymentRateAction,
-  updateAdminBookingAction,
+  getAdminBookingWizardQuoteAction,
+  getAdminBookingWizardVillasAction,
   type AdminBookingActionState,
 } from "@/app/actions/admin/bookings";
-import type { AdminBookingListItem } from "@/lib/booking-display";
-import { BOOKING_STATUS_OPTIONS } from "@/lib/booking-status";
-import {
-  BOOKING_EXTRA_FEE_FIELDS,
-  computeEntrancePayment,
-  computePrepaymentAmount,
-  computeReservationTotal,
-  formatFeeInputValue,
-  type BookingDetails,
-} from "@/lib/booking-form-details";
+import StayDateRangePicker from "@/components/admin/availability/StayDateRangePicker";
+import GuestCounterRow from "@/components/admin/bookings/new-booking/GuestCounterRow";
+import NewBookingPriceSummary from "@/components/admin/bookings/new-booking/NewBookingPriceSummary";
+import SelectedVillaCard from "@/components/admin/bookings/new-booking/SelectedVillaCard";
+import { computeEntrancePayment, computeReservationTotal } from "@/lib/booking-form-details";
 import { getSortedCompanyPaymentTypeOptions } from "@/lib/company-payment-types";
-
-interface VillaOption {
-  id: string;
-  name: string;
-}
+import TcKimlikInput from "@/components/shared/TcKimlikInput";
+import type {
+  AdminBookingWizardQuote,
+  AdminBookingWizardVilla,
+} from "@/lib/queries/admin-booking-wizard";
+import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 
 interface BookingFormModalProps {
   open: boolean;
-  villas: VillaOption[];
-  booking?: AdminBookingListItem | null;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-const inputClass =
-  "w-full rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100";
+type WizardStep = 1 | 2 | 3;
+type PaymentMode = "prepayment" | "full";
 
-const readonlyClass =
-  "w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900";
+const STEPS = [
+  {
+    id: 1 as const,
+    title: "Tesis Seçimi",
+    subtitle: "Rezervasyon yapılacak tesisi seçin",
+  },
+  {
+    id: 2 as const,
+    title: "Tarih & Misafir",
+    subtitle: "Konaklama tarihleri ve fiyat",
+  },
+  {
+    id: 3 as const,
+    title: "Müşteri Bilgileri",
+    subtitle: "İletişim bilgileri ve onay",
+  },
+];
+
+const inputClass =
+  "mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100";
 
 const labelClass = "text-sm font-semibold text-gray-800";
 
-const sectionTitleClass =
-  "border-b border-gray-100 pb-2 text-sm font-bold uppercase tracking-wide text-gray-500";
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function parseNumber(value: string): number | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const parsed = Number(trimmed.replace(/\./g, "").replace(",", "."));
-  return Number.isFinite(parsed) ? Math.round(parsed) : null;
-}
-
-function formatMoneyDisplay(value: number | null): string {
-  if (value == null) return "";
-  return value.toLocaleString("tr-TR");
-}
-
 const initialState: AdminBookingActionState = {};
 
-const emptyPricing: BookingDetails = {
-  grossPrice: null,
-  extraAccommodationFee: null,
-  cleaningFee: null,
-  petCleaningFee: null,
-  poolHeatingPrivateFee: null,
-  poolHeatingIndoorFee: null,
-  underfloorHeatingFee: null,
-  prepaymentAmount: null,
-  damageDeposit: null,
-  importPaymentMethod: "",
-};
+function formatMoney(value: number | null | undefined): string {
+  if (value == null) return "—";
+  return `${value.toLocaleString("tr-TR")} TL`;
+}
 
 export default function BookingFormModal({
   open,
-  villas,
-  booking,
   onClose,
   onSuccess,
 }: BookingFormModalProps) {
-  const isEdit = Boolean(booking);
-  const action = isEdit ? updateAdminBookingAction : createAdminBookingAction;
-  const [state, formAction, isPending] = useActionState(action, initialState);
-
-  const [villaId, setVillaId] = useState(booking?.villa.id ?? "");
-  const [checkIn, setCheckIn] = useState(
-    booking ? toDateInputValue(booking.checkIn) : ""
+  const [state, formAction, isPending] = useActionState(
+    createAdminBookingAction,
+    initialState
   );
-  const [pricing, setPricing] = useState<BookingDetails>(emptyPricing);
-  const [prepaymentRate, setPrepaymentRate] = useState(20);
-  const prepaymentManuallyEdited = useRef(false);
+
+  const [step, setStep] = useState<WizardStep>(1);
+  const [villas, setVillas] = useState<AdminBookingWizardVilla[]>([]);
+  const [villasLoading, setVillasLoading] = useState(false);
+  const [villaSearch, setVillaSearch] = useState("");
+  const [selectedVilla, setSelectedVilla] =
+    useState<AdminBookingWizardVilla | null>(null);
+
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [babies, setBabies] = useState(0);
+  const [pets, setPets] = useState(0);
+  const [includeUnderfloorHeating, setIncludeUnderfloorHeating] = useState(false);
+  const [quoteData, setQuoteData] = useState<AdminBookingWizardQuote | null>(
+    null
+  );
+  const [quoteLoading, setQuoteLoading] = useState(false);
+
+  const [guestFirstName, setGuestFirstName] = useState("");
+  const [guestLastName, setGuestLastName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestTc, setGuestTc] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("prepayment");
+  const [customerNote, setCustomerNote] = useState("");
 
   useEffect(() => {
     if (state.success) {
@@ -105,371 +116,597 @@ export default function BookingFormModal({
 
   useEffect(() => {
     if (!open) return;
-    setVillaId(booking?.villa.id ?? "");
-    setCheckIn(booking ? toDateInputValue(booking.checkIn) : "");
-    setPricing({
-      ...emptyPricing,
-      grossPrice: booking?.totalPrice ?? null,
-    });
-    prepaymentManuallyEdited.current = false;
-  }, [open, booking]);
+
+    setStep(1);
+    setVillaSearch("");
+    setSelectedVilla(null);
+    setCheckIn("");
+    setCheckOut("");
+    setAdults(1);
+    setChildren(0);
+    setBabies(0);
+    setPets(0);
+    setIncludeUnderfloorHeating(false);
+    setQuoteData(null);
+    setGuestFirstName("");
+    setGuestLastName("");
+    setGuestEmail("");
+    setGuestPhone("");
+    setGuestTc("");
+    setPaymentMethod("bank_transfer");
+    setPaymentMode("prepayment");
+    setCustomerNote("");
+
+    setVillasLoading(true);
+    getAdminBookingWizardVillasAction()
+      .then(setVillas)
+      .catch(() => setVillas([]))
+      .finally(() => setVillasLoading(false));
+  }, [open]);
 
   useEffect(() => {
-    if (!villaId || !checkIn) return;
+    if (!selectedVilla?.id || !checkIn || !checkOut) {
+      setQuoteData(null);
+      return;
+    }
 
     let cancelled = false;
-    Promise.all([
-      getBookingPrepaymentRateAction(villaId, checkIn),
-      getBookingPeriodFeesAction(villaId, checkIn),
-    ])
-      .then(([rate, fees]) => {
-        if (cancelled) return;
-        setPrepaymentRate(rate);
-        setPricing((current) => ({
-          ...current,
-          extraAccommodationFee:
-            current.extraAccommodationFee ?? fees.extraAccommodationFee,
-          cleaningFee: current.cleaningFee ?? fees.cleaningFee,
-          petCleaningFee: current.petCleaningFee ?? fees.petCleaningFee,
-          poolHeatingPrivateFee:
-            current.poolHeatingPrivateFee ?? fees.poolHeatingPrivateFee,
-          poolHeatingIndoorFee:
-            current.poolHeatingIndoorFee ?? fees.poolHeatingIndoorFee,
-          underfloorHeatingFee:
-            current.underfloorHeatingFee ?? fees.underfloorHeatingFee,
-        }));
+    setQuoteLoading(true);
+    getAdminBookingWizardQuoteAction(selectedVilla.id, checkIn, checkOut)
+      .then((data) => {
+        if (!cancelled) setQuoteData(data);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setQuoteData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setQuoteLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [villaId, checkIn]);
+  }, [selectedVilla?.id, checkIn, checkOut]);
 
-  const reservationTotal = useMemo(
-    () => computeReservationTotal(pricing),
-    [pricing]
-  );
+  const filteredVillas = useMemo(() => {
+    const query = villaSearch.trim().toLocaleLowerCase("tr");
+    if (!query) return villas;
+    return villas.filter((villa) => {
+      const haystack = `${villa.name} ${villa.location} ${villa.regionName}`
+        .toLocaleLowerCase("tr");
+      return haystack.includes(query);
+    });
+  }, [villaSearch, villas]);
 
-  const entrancePayment = useMemo(
-    () => computeEntrancePayment(reservationTotal, pricing.prepaymentAmount),
-    [reservationTotal, pricing.prepaymentAmount]
-  );
+  const pricingDetails = useMemo(() => {
+    const quote = quoteData?.quote;
+    const fees = quoteData?.fees;
+    const grossPrice = quote?.valid ? quote.accommodationTotal : null;
+    const cleaningFee = quote?.valid ? quote.cleaningFee : null;
+    const underfloorHeatingFee = fees?.underfloorHeatingFee ?? null;
+    const petCleaningFee = pets > 0 ? fees?.petCleaningFee ?? null : null;
 
-  useEffect(() => {
-    if (prepaymentManuallyEdited.current) return;
-    const suggested = computePrepaymentAmount(
-      pricing.grossPrice ?? null,
-      prepaymentRate
+    const details = {
+      grossPrice,
+      cleaningFee,
+      underfloorHeatingFee: includeUnderfloorHeating
+        ? underfloorHeatingFee
+        : null,
+      petCleaningFee,
+      damageDeposit: quoteData?.damageDeposit ?? null,
+    };
+
+    const reservationTotal = computeReservationTotal(details);
+    const prepaymentRate = quote?.prepaymentRate ?? 20;
+    const prepaymentAmount =
+      paymentMode === "full"
+        ? reservationTotal
+        : reservationTotal != null
+          ? Math.round((reservationTotal * prepaymentRate) / 100)
+          : null;
+    const entrancePayment = computeEntrancePayment(
+      reservationTotal,
+      prepaymentAmount
     );
-    setPricing((current) => ({
-      ...current,
-      prepaymentAmount: suggested,
+
+    return {
+      ...details,
+      reservationTotal,
       prepaymentRate,
-    }));
-  }, [pricing.grossPrice, prepaymentRate]);
-
-  function patchPricing(patch: Partial<BookingDetails>) {
-    setPricing((current) => ({ ...current, ...patch }));
-  }
-
-  if (!open) return null;
+      prepaymentAmount,
+      entrancePayment,
+      nights: quote?.nights ?? 0,
+      quoteValid: quote?.valid ?? false,
+    };
+  }, [
+    quoteData,
+    includeUnderfloorHeating,
+    pets,
+    paymentMode,
+  ]);
 
   const paymentTypeOptions = getSortedCompanyPaymentTypeOptions();
 
+  if (!open) return null;
+
+  const guestName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
+  const phoneValue = guestPhone.trim().startsWith("+")
+    ? guestPhone.trim()
+    : `+90${guestPhone.replace(/\D/g, "").replace(/^0/, "")}`;
+
+  const canContinueStep1 = Boolean(selectedVilla);
+  const canContinueStep2 =
+    Boolean(selectedVilla) &&
+    Boolean(checkIn) &&
+    Boolean(checkOut) &&
+    pricingDetails.quoteValid &&
+    adults >= 1;
+  const canSubmitStep3 =
+    guestFirstName.trim().length > 0 &&
+    guestLastName.trim().length > 0 &&
+    guestEmail.trim().length > 0 &&
+    guestPhone.trim().length > 0 &&
+    paymentMethod.trim().length > 0 &&
+    isTcKimlikAcceptable(guestTc, false);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            {isEdit ? "Rezervasyonu Düzenle" : "Yeni Rezervasyon"}
-          </h2>
+      <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-bold text-gray-900">Yeni Rezervasyon</h2>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form action={formAction} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          {booking ? <input type="hidden" name="id" value={booking.id} /> : null}
-          <input type="hidden" name="totalPrice" value={reservationTotal ?? ""} />
-
-          <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <p className={sectionTitleClass}>Rezervasyon Bilgileri</p>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Durum</label>
-                <select
-                  name="status"
-                  defaultValue={booking?.status ?? BookingStatus.NEW}
-                  className={`${inputClass} mt-1`}
-                >
-                  {BOOKING_STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Villa</label>
-                <select
-                  name="villaId"
-                  value={villaId}
-                  onChange={(event) => setVillaId(event.target.value)}
-                  required
-                  className={`${inputClass} mt-1`}
-                >
-                  <option value="">Villa seçin...</option>
-                  {villas.map((villa) => (
-                    <option key={villa.id} value={villa.id}>
-                      {villa.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Misafir Adı Soyadı</label>
-                <input
-                  name="guestName"
-                  defaultValue={booking?.guestName ?? ""}
-                  required
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>E-posta</label>
-                <input
-                  name="guestEmail"
-                  type="email"
-                  defaultValue={booking?.guestEmail ?? ""}
-                  required
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Telefon</label>
-                <input
-                  name="guestPhone"
-                  defaultValue={booking?.guestPhone ?? ""}
-                  required
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Giriş Tarihi</label>
-                <input
-                  name="checkIn"
-                  type="date"
-                  value={checkIn}
-                  onChange={(event) => setCheckIn(event.target.value)}
-                  required
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Çıkış Tarihi</label>
-                <input
-                  name="checkOut"
-                  type="date"
-                  defaultValue={booking ? toDateInputValue(booking.checkOut) : ""}
-                  required
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Yetişkin</label>
-                <input
-                  name="adults"
-                  type="number"
-                  min={1}
-                  defaultValue={booking?.adults ?? 2}
-                  required
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Çocuk</label>
-                <input
-                  name="children"
-                  type="number"
-                  min={0}
-                  defaultValue={booking?.children ?? 0}
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Bebek</label>
-                <input
-                  name="babies"
-                  type="number"
-                  min={0}
-                  defaultValue={booking?.babies ?? 0}
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Evcil Hayvan</label>
-                <input
-                  name="pets"
-                  type="number"
-                  min={0}
-                  defaultValue={booking?.pets ?? 0}
-                  className={`${inputClass} mt-1`}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <p className={sectionTitleClass}>Fiyat Bilgileri</p>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Konaklama Bedeli</label>
-                <input
-                  name="grossPrice"
-                  value={formatFeeInputValue(pricing.grossPrice)}
-                  onChange={(event) =>
-                    patchPricing({ grossPrice: parseNumber(event.target.value) })
-                  }
-                  className={`${inputClass} mt-1`}
-                  placeholder="0"
-                />
-              </div>
-
-              {BOOKING_EXTRA_FEE_FIELDS.map(({ key, label }) => (
-                <div key={key} className="sm:col-span-2">
-                  <label className={labelClass}>{label}</label>
-                  <input
-                    name={key}
-                    value={formatFeeInputValue(pricing[key])}
-                    onChange={(event) =>
-                      patchPricing({
-                        [key]: parseNumber(event.target.value),
-                      })
-                    }
-                    className={`${inputClass} mt-1`}
-                    placeholder="0"
-                  />
-                </div>
-              ))}
-
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Rezervasyon Toplamı</label>
-                <div className={`${readonlyClass} mt-1`}>
-                  {formatMoneyDisplay(reservationTotal)}
-                  {reservationTotal != null ? " TL" : ""}
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>Gerçekleşen Ön Ödeme</label>
-                <div className="mt-1 flex gap-2">
-                  <input
-                    name="prepaymentAmount"
-                    value={formatFeeInputValue(pricing.prepaymentAmount)}
-                    onChange={(event) => {
-                      prepaymentManuallyEdited.current = true;
-                      patchPricing({
-                        prepaymentAmount: parseNumber(event.target.value),
-                      });
-                    }}
-                    className={inputClass}
-                    placeholder="0"
-                  />
-                  <div className="flex w-16 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-600">
-                    %{prepaymentRate}
+        <div className="border-b border-gray-100 px-6 py-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            {STEPS.map((item, index) => {
+              const completed = step > item.id;
+              const active = step === item.id;
+              return (
+                <div key={item.id} className="flex items-start gap-3">
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                      completed
+                        ? "bg-emerald-500 text-white"
+                        : active
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {completed ? <Check className="h-4 w-4" /> : item.id}
                   </div>
+                  <div className="min-w-0">
+                    <p
+                      className={`text-sm font-bold ${
+                        active ? "text-blue-700" : "text-gray-800"
+                      }`}
+                    >
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-gray-500">{item.subtitle}</p>
+                  </div>
+                  {index < STEPS.length - 1 ? (
+                    <div className="hidden flex-1 self-center md:block">
+                      <div className="h-px bg-gray-200" />
+                    </div>
+                  ) : null}
                 </div>
-              </div>
+              );
+            })}
+          </div>
+        </div>
 
-              <div>
-                <label className={labelClass}>Ödeme Türü</label>
-                <select
-                  name="prepaymentMethod"
-                  value={pricing.importPaymentMethod ?? ""}
-                  onChange={(event) =>
-                    patchPricing({
-                      importPaymentMethod: event.target.value,
-                      prepaymentBank: event.target.value,
-                    })
-                  }
-                  className={`${inputClass} mt-1`}
-                >
-                  <option value="">Seçiniz</option>
-                  {paymentTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Girişte Ödenecek Tutar</label>
-                <div className={`${readonlyClass} mt-1`}>
-                  {formatMoneyDisplay(entrancePayment)}
-                  {entrancePayment != null ? " TL" : ""}
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Hasar Depozitosu</label>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          {step === 1 ? (
+            <div className="mx-auto max-w-3xl space-y-4">
+              <h3 className="text-base font-bold text-gray-900">Tesis Seçimi</h3>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
-                  name="damageDeposit"
-                  value={formatFeeInputValue(pricing.damageDeposit)}
-                  onChange={(event) =>
-                    patchPricing({
-                      damageDeposit: parseNumber(event.target.value),
-                    })
-                  }
-                  className={`${inputClass} mt-1`}
-                  placeholder="0"
+                  value={villaSearch}
+                  onChange={(event) => setVillaSearch(event.target.value)}
+                  placeholder="Tesis adı veya bölge ara..."
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50/80 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
                 />
               </div>
-            </div>
-          </div>
 
-          {state.error ? (
-            <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {state.error}
-            </p>
+              {villasLoading ? (
+                <div className="flex items-center justify-center gap-2 py-16 text-gray-500">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Tesisler yükleniyor...
+                </div>
+              ) : filteredVillas.length > 0 ? (
+                <div className="space-y-2">
+                  {filteredVillas.map((villa) => (
+                    <div
+                      key={villa.id}
+                      className={
+                        selectedVilla?.id === villa.id
+                          ? "rounded-xl ring-2 ring-blue-500"
+                          : ""
+                      }
+                    >
+                      <SelectedVillaCard
+                        villa={villa}
+                        selectable
+                        onSelect={() => setSelectedVilla(villa)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-dashed border-gray-200 px-4 py-10 text-center text-sm text-gray-500">
+                  Uygun tesis bulunamadı.
+                </p>
+              )}
+            </div>
           ) : null}
 
-          <div className="mt-6 flex justify-end gap-2 border-t border-gray-100 pt-4">
+          {step === 2 ? (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="space-y-5">
+                {selectedVilla ? (
+                  <SelectedVillaCard
+                    villa={selectedVilla}
+                    onChange={() => setStep(1)}
+                  />
+                ) : null}
+
+                <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                  <h3 className="text-base font-bold text-gray-900">
+                    Tarih & Misafir
+                  </h3>
+
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className={labelClass}>Giriş – Çıkış Tarihi</p>
+                      <StayDateRangePicker
+                        checkIn={checkIn}
+                        checkOut={checkOut}
+                        onChange={(nextCheckIn, nextCheckOut) => {
+                          setCheckIn(nextCheckIn);
+                          setCheckOut(nextCheckOut);
+                        }}
+                      />
+                    </div>
+
+                    <GuestCounterRow
+                      label="Yetişkin"
+                      hint="13 yaş ve üzeri"
+                      value={adults}
+                      min={1}
+                      onChange={setAdults}
+                    />
+                    <GuestCounterRow
+                      label="Çocuk"
+                      hint="2-12 yaş"
+                      value={children}
+                      onChange={setChildren}
+                    />
+                    <GuestCounterRow
+                      label="Bebek"
+                      hint="0-2 yaş"
+                      value={babies}
+                      onChange={setBabies}
+                    />
+                    <GuestCounterRow
+                      label="Evcil Hayvan"
+                      hint="Pet temizlik bedeli uygulanır"
+                      value={pets}
+                      onChange={setPets}
+                    />
+                  </div>
+
+                  {quoteLoading ? (
+                    <p className="mt-4 text-sm text-gray-500">Fiyat hesaplanıyor...</p>
+                  ) : null}
+                  {!quoteLoading && checkIn && checkOut && !pricingDetails.quoteValid ? (
+                    <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      Seçilen tarihler için fiyat bulunamadı veya minimum konaklama
+                      şartı sağlanmıyor.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <NewBookingPriceSummary
+                checkIn={checkIn}
+                checkOut={checkOut}
+                adults={adults}
+                children={children}
+                babies={babies}
+                accommodationTotal={pricingDetails.grossPrice}
+                cleaningFee={pricingDetails.cleaningFee}
+                underfloorHeatingFee={quoteData?.fees.underfloorHeatingFee ?? null}
+                includeUnderfloorHeating={includeUnderfloorHeating}
+                onToggleUnderfloorHeating={setIncludeUnderfloorHeating}
+                reservationTotal={pricingDetails.reservationTotal}
+                prepaymentAmount={pricingDetails.prepaymentAmount}
+                prepaymentRate={pricingDetails.prepaymentRate}
+                entrancePayment={pricingDetails.entrancePayment}
+                damageDeposit={pricingDetails.damageDeposit}
+              />
+            </div>
+          ) : null}
+
+          {step === 3 ? (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="space-y-5">
+                {selectedVilla ? (
+                  <SelectedVillaCard
+                    villa={selectedVilla}
+                    onChange={() => setStep(1)}
+                  />
+                ) : null}
+
+                <form
+                  id="new-booking-form"
+                  action={formAction}
+                  className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5"
+                >
+                  <h3 className="text-base font-bold text-gray-900">
+                    Müşteri Bilgileri
+                  </h3>
+
+                  <input type="hidden" name="status" value={BookingStatus.NEW} />
+                  <input type="hidden" name="villaId" value={selectedVilla?.id ?? ""} />
+                  <input type="hidden" name="checkIn" value={checkIn} />
+                  <input type="hidden" name="checkOut" value={checkOut} />
+                  <input type="hidden" name="adults" value={adults} />
+                  <input type="hidden" name="children" value={children} />
+                  <input type="hidden" name="babies" value={babies} />
+                  <input type="hidden" name="pets" value={pets} />
+                  <input type="hidden" name="guestName" value={guestName} />
+                  <input type="hidden" name="guestEmail" value={guestEmail} />
+                  <input type="hidden" name="guestPhone" value={phoneValue} />
+                  <input type="hidden" name="grossPrice" value={pricingDetails.grossPrice ?? ""} />
+                  <input type="hidden" name="cleaningFee" value={pricingDetails.cleaningFee ?? ""} />
+                  <input
+                    type="hidden"
+                    name="underfloorHeatingFee"
+                    value={pricingDetails.underfloorHeatingFee ?? ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="petCleaningFee"
+                    value={pricingDetails.petCleaningFee ?? ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="prepaymentAmount"
+                    value={pricingDetails.prepaymentAmount ?? ""}
+                  />
+                  <input type="hidden" name="prepaymentMethod" value={paymentMethod} />
+                  <input
+                    type="hidden"
+                    name="damageDeposit"
+                    value={pricingDetails.damageDeposit ?? ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="totalPrice"
+                    value={pricingDetails.reservationTotal ?? ""}
+                  />
+                  <input type="hidden" name="customerNote" value={customerNote} />
+                  <input type="hidden" name="guestTc" value={guestTc} />
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label>
+                      <span className={labelClass}>Ad *</span>
+                      <input
+                        value={guestFirstName}
+                        onChange={(event) => setGuestFirstName(event.target.value)}
+                        className={inputClass}
+                        required
+                      />
+                    </label>
+                    <label>
+                      <span className={labelClass}>Soyad *</span>
+                      <input
+                        value={guestLastName}
+                        onChange={(event) => setGuestLastName(event.target.value)}
+                        className={inputClass}
+                        required
+                      />
+                    </label>
+                    <label className="sm:col-span-2">
+                      <span className={labelClass}>E-posta *</span>
+                      <input
+                        type="email"
+                        value={guestEmail}
+                        onChange={(event) => setGuestEmail(event.target.value)}
+                        className={inputClass}
+                        required
+                      />
+                    </label>
+                    <label>
+                      <span className={labelClass}>Telefon *</span>
+                      <div className="mt-1 flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50/80 focus-within:border-blue-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100">
+                        <span className="flex items-center px-3 text-sm text-gray-500">
+                          +90
+                        </span>
+                        <input
+                          value={guestPhone}
+                          onChange={(event) => setGuestPhone(event.target.value)}
+                          className="w-full bg-transparent px-1 py-3 text-sm outline-none"
+                          placeholder="5xx xxx xx xx"
+                          required
+                        />
+                      </div>
+                    </label>
+                    <label>
+                      <span className={labelClass}>T.C. Kimlik No (opsiyonel)</span>
+                      <TcKimlikInput
+                        value={guestTc}
+                        onChange={setGuestTc}
+                        focusPalette="blue"
+                        className="mt-1 font-normal"
+                        showError
+                      />
+                    </label>
+                  </div>
+
+                  <label>
+                    <span className={labelClass}>Ödeme Yöntemi</span>
+                    <select
+                      value={paymentMethod}
+                      onChange={(event) => setPaymentMethod(event.target.value)}
+                      className={inputClass}
+                    >
+                      {paymentTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div>
+                    <p className={labelClass}>Ödeme Tipi</p>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("prepayment")}
+                        className={`rounded-2xl border px-4 py-4 text-left transition ${
+                          paymentMode === "prepayment"
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 bg-white hover:bg-gray-50"
+                        }`}
+                      >
+                        <p className="text-sm font-bold text-gray-900">Ön Ödeme</p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {formatMoney(pricingDetails.prepaymentAmount)}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("full")}
+                        className={`rounded-2xl border px-4 py-4 text-left transition ${
+                          paymentMode === "full"
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 bg-white hover:bg-gray-50"
+                        }`}
+                      >
+                        <p className="text-sm font-bold text-gray-900">Tam Ödeme</p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {formatMoney(pricingDetails.reservationTotal)}
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  <label>
+                    <span className={labelClass}>Müşteri Notu</span>
+                    <textarea
+                      value={customerNote}
+                      onChange={(event) => setCustomerNote(event.target.value)}
+                      rows={3}
+                      className={inputClass}
+                      placeholder="Opsiyonel talep veya not"
+                    />
+                  </label>
+
+                  {state.error ? (
+                    <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {state.error}
+                    </p>
+                  ) : null}
+                </form>
+              </div>
+
+              <NewBookingPriceSummary
+                title="Rezervasyon Özeti"
+                villaName={selectedVilla?.name}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                adults={adults}
+                children={children}
+                babies={babies}
+                accommodationTotal={pricingDetails.grossPrice}
+                cleaningFee={pricingDetails.cleaningFee}
+                underfloorHeatingFee={quoteData?.fees.underfloorHeatingFee ?? null}
+                includeUnderfloorHeating={includeUnderfloorHeating}
+                reservationTotal={pricingDetails.reservationTotal}
+                prepaymentAmount={pricingDetails.prepaymentAmount}
+                prepaymentRate={pricingDetails.prepaymentRate}
+                entrancePayment={pricingDetails.entrancePayment}
+                damageDeposit={pricingDetails.damageDeposit}
+                compact
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
+          {step === 1 ? (
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
+              <ArrowLeft className="h-4 w-4" />
               İptal
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setStep((current) => (current - 1) as WizardStep)}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </button>
+          )}
+
+          {step === 1 ? (
+            <button
+              type="button"
+              disabled={!canContinueStep1}
+              onClick={() => setStep(2)}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Devam
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          ) : null}
+
+          {step === 2 ? (
+            <button
+              type="button"
+              disabled={!canContinueStep2}
+              onClick={() => setStep(3)}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Müşteri Bilgileri
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          ) : null}
+
+          {step === 3 ? (
             <button
               type="submit"
-              disabled={isPending}
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+              form="new-booking-form"
+              disabled={!canSubmitStep3 || isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              {isPending ? "Kaydediliyor..." : isEdit ? "Güncelle" : "Kaydet"}
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Rezervasyonu Oluştur
             </button>
-          </div>
-        </form>
+          ) : null}
+        </div>
       </div>
     </div>
   );

@@ -9,9 +9,11 @@ import {
   type VillaOwnerActionState,
 } from "@/app/actions/admin/villa-owners";
 import IlIlceSelect from "@/components/admin/villa-owners/IlIlceSelect";
+import TcKimlikInput from "@/components/shared/TcKimlikInput";
 import type { VillaOwnerListItem } from "@/lib/queries/villa-owners";
 import type { TurkeyProvince } from "@/lib/mernis-ilce";
 import { VILLA_OWNER_TYPE_LABELS } from "@/lib/villa-owner-utils";
+import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 
 interface VillaOwnerFormModalProps {
   owner?: VillaOwnerListItem;
@@ -115,12 +117,15 @@ export default function VillaOwnerFormModal({
   );
   const [country, setCountry] = useState(owner?.country || "Türkiye");
   const [active, setActive] = useState(owner?.active ?? true);
+  const [tcKimlikNo, setTcKimlikNo] = useState(owner?.tcKimlikNo ?? "");
   const [state, formAction, pending] = useActionState<
     VillaOwnerActionState,
     FormData
   >(action, {});
 
   const isTurkey = country.trim() === "Türkiye";
+  const tcRequired = ownerType === VillaOwnerType.GERCEK_KISI;
+  const tcAcceptable = isTcKimlikAcceptable(tcKimlikNo, tcRequired);
 
   useEffect(() => {
     if (state.success) {
@@ -145,7 +150,13 @@ export default function VillaOwnerFormModal({
           </button>
         </div>
 
-        <form action={formAction} className="space-y-5 p-6">
+        <form
+          action={formAction}
+          className="space-y-5 p-6"
+          onSubmit={(event) => {
+            if (!tcAcceptable) event.preventDefault();
+          }}
+        >
           {owner && <input type="hidden" name="id" value={owner.id} />}
           <input type="hidden" name="type" value={ownerType} />
 
@@ -224,12 +235,13 @@ export default function VillaOwnerFormModal({
           </div>
 
           {ownerType === VillaOwnerType.GERCEK_KISI ? (
-            <Field
+            <TcKimlikInput
               label="TC Kimlik No"
               name="tcKimlikNo"
-              defaultValue={owner?.tcKimlikNo}
+              value={tcKimlikNo}
+              onChange={setTcKimlikNo}
+              required
               placeholder="11 haneli TC kimlik no"
-              maxLength={11}
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -324,7 +336,7 @@ export default function VillaOwnerFormModal({
             </button>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || !tcAcceptable}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
               {pending ? "Kaydediliyor..." : "Kaydet"}

@@ -70,6 +70,7 @@ export type BookingDetails = {
   salesRepCommissionEarned?: number | null;
   agencyNote?: string;
   customerNote?: string;
+  siteInfo?: string;
   importPaymentMethod?: string;
   adultGuests?: BookingGuestEntry[];
   childGuests?: BookingGuestEntry[];
@@ -152,12 +153,20 @@ export function computeDiscountAmount(
 }
 
 export function computePrepaymentAmount(
-  netPrice: number | null | undefined,
-  rate: number | null | undefined
+  grossPrice: number | null | undefined,
+  ownerDiscountAmount: number | null | undefined,
+  prepaymentRate: number | null | undefined,
+  agencyDiscountAmount: number | null | undefined
 ): number | null {
-  if (netPrice == null || !Number.isFinite(netPrice)) return null;
-  const clampedRate = clampDiscountRate(rate);
-  return Math.round((netPrice * clampedRate) / 100);
+  if (grossPrice == null || !Number.isFinite(grossPrice)) return null;
+
+  const ownerDiscount = ownerDiscountAmount ?? 0;
+  const agencyDiscount = agencyDiscountAmount ?? 0;
+  const rate = clampDiscountRate(prepaymentRate);
+  const baseAfterOwnerDiscount = Math.max(0, grossPrice - ownerDiscount);
+  const retainedAmount = Math.round((baseAfterOwnerDiscount * rate) / 100);
+
+  return Math.max(0, Math.round(grossPrice - retainedAmount - agencyDiscount));
 }
 
 export function computeNetPrice(details: BookingDetails): number | null {
@@ -309,6 +318,7 @@ export function defaultDetailsFromBooking(booking: {
     salesRepCommissionEarned: parsed.salesRepCommissionEarned ?? 0,
     agencyNote: parsed.agencyNote ?? "",
     customerNote: parsed.customerNote ?? "",
+    siteInfo: parsed.siteInfo?.trim() || "TATİL VİLLACISI",
     adultGuests: buildGuestRows(
       booking.adults,
       parsed.adultGuests?.length

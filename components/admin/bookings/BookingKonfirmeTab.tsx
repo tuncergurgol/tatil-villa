@@ -92,6 +92,15 @@ export default function BookingKonfirmeTab({
 
   const paymentTypeOptions = getSortedCompanyPaymentTypeOptions();
 
+  const bankTransferAccounts = useMemo(
+    () =>
+      bankAccounts.filter(
+        (account) =>
+          normalizeCompanyPaymentType(account.paymentType) === "bank_transfer"
+      ),
+    [bankAccounts]
+  );
+
   const savedTotal = useMemo(
     () => prepayments.reduce((sum, item) => sum + item.amount, 0),
     [prepayments]
@@ -217,7 +226,7 @@ export default function BookingKonfirmeTab({
                 key={item.id}
                 className="rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-3"
               >
-                <div className="grid gap-2 text-sm sm:grid-cols-3">
+                <div className="grid gap-2 text-sm sm:grid-cols-4">
                   <div>
                     <p className="text-xs font-semibold uppercase text-gray-500">
                       Ödeme Kanalı
@@ -242,6 +251,14 @@ export default function BookingKonfirmeTab({
                     </p>
                     <p className="font-medium text-gray-900">
                       {formatMoneyPlain(item.amount)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-500">
+                      Kayıt Tarihi
+                    </p>
+                    <p className="font-medium text-gray-900">
+                      {new Date(item.createdAt).toLocaleString("tr-TR")}
                     </p>
                   </div>
                 </div>
@@ -298,7 +315,7 @@ export default function BookingKonfirmeTab({
                     className={bookingInputClass}
                   >
                     <option value="">Banka / Kasa hesabı seçin</option>
-                    {bankAccounts.map((account) => (
+                    {bankTransferAccounts.map((account) => (
                       <option key={account.id} value={account.id}>
                         {formatBankAccountLabel(account)}
                       </option>

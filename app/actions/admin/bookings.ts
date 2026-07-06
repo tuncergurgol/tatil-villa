@@ -15,12 +15,23 @@ import {
   resolveBookingPeriodFees,
   resolveBookingPrepaymentRate,
 } from "@/lib/queries/booking-prepayment";
+import {
+  getAdminBookingWizardVillas,
+  resolveAdminBookingWizardQuote,
+} from "@/lib/queries/admin-booking-wizard";
 import { requireAdmin } from "@/lib/auth-helpers";
-import type { BookingDetails } from "@/lib/booking-form-details";
+import { getCustomerContactChannelsForPicker } from "@/lib/queries/customer-contact-channels";
 import {
   computeEntrancePayment,
   computeReservationTotal,
+  type BookingDetails,
+  type BookingGuestEntry,
 } from "@/lib/booking-form-details";
+import {
+  isValidTcKimlik,
+  normalizeTcKimlik,
+  validateOptionalTcKimlikFields,
+} from "@/lib/tc-kimlik";
 
 const bookingStatusSchema = z.nativeEnum(BookingStatus);
 
@@ -53,6 +64,16 @@ const adminBookingSchema = z.object({
   underfloorHeatingFee: optionalMoney,
   prepaymentAmount: optionalMoney,
   prepaymentMethod: z.string().optional().default(""),
+  customerNote: z.string().optional().default(""),
+  guestTc: z
+    .string()
+    .optional()
+    .default("")
+    .transform((value) => normalizeTcKimlik(value))
+    .refine(
+      (value) => !value || isValidTcKimlik(value),
+      "Geçersiz T.C. Kimlik No"
+    ),
   damageDeposit: optionalMoney,
   totalPrice: optionalMoney,
   status: bookingStatusSchema,
@@ -84,6 +105,8 @@ function parseAdminBookingForm(formData: FormData) {
     underfloorHeatingFee: formData.get("underfloorHeatingFee"),
     prepaymentAmount: formData.get("prepaymentAmount"),
     prepaymentMethod: formData.get("prepaymentMethod"),
+    customerNote: formData.get("customerNote"),
+    guestTc: formData.get("guestTc"),
     damageDeposit: formData.get("damageDeposit"),
     totalPrice: formData.get("totalPrice"),
     status: formData.get("status"),
@@ -105,6 +128,9 @@ function buildBookingDetailsFromAdminForm(
     damageDeposit: data.damageDeposit,
     importPaymentMethod: data.prepaymentMethod,
     prepaymentBank: data.prepaymentMethod,
+    customerNote: data.customerNote,
+    guestTc: data.guestTc || undefined,
+    siteInfo: "TATİL VİLLACISI",
   };
   const reservationTotal = computeReservationTotal(details);
   details.checkInPayment = computeEntrancePayment(
@@ -119,6 +145,35 @@ function resolveAdminBookingTotalPrice(
 ): number | null {
   if (data.totalPrice != null) return data.totalPrice;
   return computeReservationTotal(buildBookingDetailsFromAdminForm(data));
+}
+
+function collectBookingDetailsTcFields(
+  details: BookingDetails
+): Array<{ value: string | null | undefined; label: string }> {
+  const fields: Array<{ value: string | null | undefined; label: string }> = [
+    { value: details.guestTc, label: "Müşteri T.C." },
+  ];
+
+  const guestGroups: Array<{ title: string; rows?: BookingGuestEntry[] }> = [
+    { title: "Yetişkin", rows: details.adultGuests },
+    { title: "Çocuk", rows: details.childGuests },
+    { title: "Bebek", rows: details.babyGuests },
+  ];
+
+  for (const group of guestGroups) {
+    for (const [index, guest] of (group.rows ?? []).entries()) {
+      fields.push({
+        value: guest.nationalId,
+        label: `${group.title} misafir ${index + 1}`,
+      });
+    }
+  }
+
+  return fields;
+}
+
+function validateBookingDetailsTc(details: BookingDetails): string | null {
+  return validateOptionalTcKimlikFields(collectBookingDetailsTcFields(details));
 }
 
 export async function createAdminBookingAction(
@@ -304,6 +359,12 @@ export async function updateBookingDetailAction(
     };
   }
 
+  const details = parsed.data.details as BookingDetails;
+  const tcError = validateBookingDetailsTc(details);
+  if (tcError) {
+    return { error: tcError };
+  }
+
   try {
     await updateBookingDetail({
       id: parsed.data.id,
@@ -318,7 +379,7 @@ export async function updateBookingDetailAction(
       guestEmail: parsed.data.guestEmail,
       guestPhone: parsed.data.guestPhone,
       totalPrice: parsed.data.totalPrice,
-      details: parsed.data.details as BookingDetails,
+      details,
     });
     revalidatePath("/admin/rezervasyonlar");
     revalidatePath("/admin/musteri-yonetimi");
@@ -329,4 +390,35 @@ export async function updateBookingDetailAction(
         error instanceof Error ? error.message : "Rezervasyon güncellenemedi",
     };
   }
+}
+
+const DEFAULT_SITE_INFO = "TATİL VİLLACISI";
+
+export async function getSiteInfoOptionsAction(): Promise<string[]> {
+  await requireAdmin();
+
+  const channels = await getCustomerContactChannelsForPicker();
+  const names = channels.map((channel) => channel.name.trim()).filter(Boolean);
+  const unique = new Set(names);
+
+  unique.add(DEFAULT_SITE_INFO);
+
+  return Array.from(unique).sort((a, b) =>
+    a.localeCompare(b, "tr", { sensitivity: "base" })
+  );
+}
+
+export async function getAdminBookingWizardVillasAction() {
+  await requireAdmin();
+  return getAdminBookingWizardVillas();
+}
+
+export async function getAdminBookingWizardQuoteAction(
+  villaId: string,
+  checkIn: string,
+  checkOut: string
+) {
+  await requireAdmin();
+  if (!villaId || !checkIn || !checkOut) return null;
+  return resolveAdminBookingWizardQuote(villaId, checkIn, checkOut);
 }

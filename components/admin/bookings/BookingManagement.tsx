@@ -282,8 +282,6 @@ export default function BookingManagement({
 
       <BookingFormModal
         open={formModalOpen}
-        villas={villas}
-        booking={editingBooking}
         onClose={() => {
           setFormModalOpen(false);
           setEditingBooking(null);

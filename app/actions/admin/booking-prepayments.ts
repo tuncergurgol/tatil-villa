@@ -52,7 +52,11 @@ export async function createBookingPrepaymentAction(
 
   if (data.bankAccountId) {
     const bankAccount = await prisma.companyBankAccount.findFirst({
-      where: { id: data.bankAccountId, active: true },
+      where: {
+        id: data.bankAccountId,
+        active: true,
+        paymentType: "bank_transfer",
+      },
       select: { id: true },
     });
     if (!bankAccount) {
@@ -140,7 +144,10 @@ export async function getBookingBankAccountsAction() {
   await requireAdmin();
 
   return prisma.companyBankAccount.findMany({
-    where: { active: true },
+    where: {
+      active: true,
+      paymentType: "bank_transfer",
+    },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,

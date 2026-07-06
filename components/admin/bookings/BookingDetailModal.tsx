@@ -9,9 +9,10 @@ import {
   getBookingDetailAction,
   getBookingPeriodFeesAction,
   getBookingPrepaymentRateAction,
+  getSiteInfoOptionsAction,
   updateBookingDetailAction,
 } from "@/app/actions/admin/bookings";
-import { BOOKING_STATUS_META, BOOKING_STATUS_OPTIONS } from "@/lib/booking-status";
+import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import {
   type BookingDetailRecord,
   type BookingDetails,
@@ -52,6 +53,11 @@ import {
 import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
 import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
 import OptionCountdown from "@/components/admin/bookings/OptionCountdown";
+import TcKimlikInput from "@/components/shared/TcKimlikInput";
+import {
+  isTcKimlikAcceptable,
+  validateOptionalTcKimlikFields,
+} from "@/lib/tc-kimlik";
 
 interface BookingDetailModalProps {
   bookingId: string | null;
@@ -153,17 +159,15 @@ function GuestTable({
                 />
               </td>
               <td className="px-2 py-1.5">
-                <input
+                <TcKimlikInput
                   value={row.nationalId}
-                  onChange={(event) => {
+                  onChange={(nationalId) => {
                     const next = [...rows];
-                    next[index] = {
-                      ...next[index],
-                      nationalId: event.target.value,
-                    };
+                    next[index] = { ...next[index], nationalId };
                     onChange(next);
                   }}
-                  className={bookingInputClass}
+                  variant="booking"
+                  showError={false}
                 />
               </td>
               <td className="px-2 py-1.5">
@@ -212,7 +216,16 @@ export default function BookingDetailModal({
   const [optionExpiresAt, setOptionExpiresAt] = useState<Date | null>(null);
   const [confirmationSentAt, setConfirmationSentAt] = useState<Date | null>(null);
   const [prepayments, setPrepayments] = useState<BookingPrepaymentRecord[]>([]);
+  const [siteInfoOptions, setSiteInfoOptions] = useState<string[]>([
+    "TATİL VİLLACISI",
+  ]);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    getSiteInfoOptionsAction()
+      .then(setSiteInfoOptions)
+      .catch(() => setSiteInfoOptions(["TATİL VİLLACISI"]));
+  }, []);
 
   useEffect(() => {
     if (!bookingId) {
@@ -329,7 +342,12 @@ export default function BookingDetailModal({
   );
 
   useEffect(() => {
-    const suggested = computePrepaymentAmount(netPrice, periodPrepaymentRate);
+    const suggested = computePrepaymentAmount(
+      details.grossPrice,
+      details.ownerDiscountAmount,
+      periodPrepaymentRate,
+      details.agencyDiscountAmount
+    );
     setDetails((current) => {
       if (prepaymentManuallyEdited.current) {
         if (current.prepaymentRate === periodPrepaymentRate) return current;
@@ -341,7 +359,12 @@ export default function BookingDetailModal({
         prepaymentAmount: suggested,
       };
     });
-  }, [periodPrepaymentRate, netPrice]);
+  }, [
+    periodPrepaymentRate,
+    details.grossPrice,
+    details.ownerDiscountAmount,
+    details.agencyDiscountAmount,
+  ]);
 
   useEffect(() => {
     setDetails((current) => {
@@ -361,6 +384,31 @@ export default function BookingDetailModal({
     if (!checkIn || !checkOut) return 0;
     return getNightCount(new Date(`${checkIn}T00:00:00.000Z`), new Date(`${checkOut}T00:00:00.000Z`));
   }, [checkIn, checkOut]);
+
+  const siteOptions = useMemo(() => {
+    const options = new Set(siteInfoOptions);
+    const current = details.siteInfo?.trim();
+    if (current) options.add(current);
+    return Array.from(options).sort((a, b) =>
+      a.localeCompare(b, "tr", { sensitivity: "base" })
+    );
+  }, [siteInfoOptions, details.siteInfo]);
+
+  const tcFieldsAcceptable = useMemo(() => {
+    const guestFields = [
+      ...(details.adultGuests ?? []),
+      ...(details.childGuests ?? []),
+      ...(details.babyGuests ?? []),
+    ].map((guest, index) => ({
+      value: guest.nationalId,
+      label: `Misafir ${index + 1}`,
+    }));
+
+    return (
+      isTcKimlikAcceptable(details.guestTc ?? "", false) &&
+      validateOptionalTcKimlikFields(guestFields) === null
+    );
+  }, [details]);
 
   function patchDetails(patch: Partial<BookingDetails>) {
     setDetails((current) => ({ ...current, ...patch }));
@@ -438,6 +486,11 @@ export default function BookingDetailModal({
 
   function handleSave() {
     if (!booking) return;
+
+    if (!tcFieldsAcceptable) {
+      setError("Lütfen geçersiz T.C. Kimlik No alanlarını düzeltin.");
+      return;
+    }
 
     startTransition(async () => {
       const result = await updateBookingDetailAction({
@@ -567,17 +620,17 @@ export default function BookingDetailModal({
                 <FormRow label="Rezervasyon Tarihi">
                   <ReadonlyField value={formatBookingDate(booking.createdAt)} />
                 </FormRow>
-                <FormRow label="Rezervasyon Son Durum">
+                <FormRow label="Site Bilgisi">
                   <select
-                    value={status}
+                    value={details.siteInfo ?? "TATİL VİLLACISI"}
                     onChange={(event) =>
-                      setStatus(event.target.value as BookingStatus)
+                      patchDetails({ siteInfo: event.target.value })
                     }
                     className={bookingInputClass}
                   >
-                    {BOOKING_STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                    {siteOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
                       </option>
                     ))}
                   </select>
@@ -891,12 +944,10 @@ export default function BookingDetailModal({
                   />
                 </FormRow>
                 <FormRow label="Müşteri T.C.">
-                  <input
+                  <TcKimlikInput
                     value={details.guestTc ?? ""}
-                    onChange={(event) =>
-                      patchDetails({ guestTc: event.target.value })
-                    }
-                    className={bookingInputClass}
+                    onChange={(guestTc) => patchDetails({ guestTc })}
+                    variant="booking"
                   />
                 </FormRow>
                 <FormRow label="Müşteri Telefon">
@@ -1331,7 +1382,7 @@ export default function BookingDetailModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={isPending || loading || !booking}
+            disabled={isPending || loading || !booking || !tcFieldsAcceptable}
             className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
           >
             {isPending ? "Kaydediliyor..." : "Kaydet"}

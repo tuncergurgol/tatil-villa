@@ -12,6 +12,7 @@ import {
   normalizeOwnerPhone,
   splitOwnerName,
 } from "@/lib/villa-owner-utils";
+import { isValidTcKimlik, normalizeTcKimlik } from "@/lib/tc-kimlik";
 
 export type VillaOwnerActionState = {
   success?: boolean;
@@ -34,9 +35,10 @@ const optionalTcKimlikNo = z
   .string()
   .optional()
   .default("")
+  .transform((value) => normalizeTcKimlik(value))
   .refine(
-    (value) => !value || /^\d{11}$/.test(value),
-    "TC Kimlik No 11 haneli olmalıdır"
+    (value) => !value || isValidTcKimlik(value),
+    "Geçersiz T.C. Kimlik No"
   );
 
 const commonSchema = z.object({
@@ -67,7 +69,11 @@ const gercekKisiSchema = commonSchema
         lastName: data.lastName,
       }).length > 0,
     { message: "Adı soyadı gerekli", path: ["firstName"] }
-  );
+  )
+  .refine((data) => Boolean(data.tcKimlikNo), {
+    message: "TC Kimlik No gerekli",
+    path: ["tcKimlikNo"],
+  });
 
 const tuzelKisiSchema = commonSchema.extend({
   type: z.literal(VillaOwnerType.TUZEL_KISI),
