@@ -1,37 +1,50 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { Baby, Loader2, User, Users, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Baby, Loader2, Share2, User, Users, X } from "lucide-react";
 import type { BookingStatus } from "@prisma/client";
 import { BookingStatus as BookingStatusEnum } from "@prisma/client";
 import { StayStatus, STAY_STATUS_OPTIONS } from "@/lib/stay-status";
 import {
   getBookingDetailAction,
+  getBookingPeriodFeesAction,
+  getBookingPrepaymentRateAction,
   updateBookingDetailAction,
 } from "@/app/actions/admin/bookings";
 import { BOOKING_STATUS_OPTIONS } from "@/lib/booking-status";
 import {
   type BookingDetailRecord,
   type BookingDetails,
+  type BookingExtraFeeFieldKey,
   type BookingGuestEntry,
+  BOOKING_EXTRA_FEE_FIELDS,
   TAXPAYER_TYPE_OPTIONS,
   YES_NO_OPTIONS,
   buildGuestRows,
+  clampDiscountRate,
   computeBalance,
+  computeCheckInPayment,
   computeCommissionAmount,
+  computeDiscountAmount,
   computeNetPrice,
+  computePrepaymentAmount,
   defaultDetailsFromBooking,
+  parseBookingDetails,
   formatBookingDate,
+  formatFeeInputValue,
   getNightCount,
   resolveExternalCode,
+  toDateInputValue,
 } from "@/lib/booking-form-details";
 import {
   FormRow,
   FormSection,
   ReadonlyField,
+  DiscountPercentAmountField,
   bookingInputClass,
   bookingReadonlyClass,
 } from "@/components/admin/bookings/booking-form-ui";
+import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
 
 interface BookingDetailModalProps {
   bookingId: string | null;
@@ -41,8 +54,8 @@ interface BookingDetailModalProps {
 
 const BOOKING_DETAIL_TABS = [
   { id: "rezervasyon", label: "Rezervasyon" },
-  { id: "fiyat", label: "Fiyat" },
   { id: "musteri", label: "Müşteri" },
+  { id: "fiyat", label: "Fiyat" },
   { id: "fatura", label: "Fatura" },
   { id: "odemeler", label: "Ödemeler" },
   { id: "notlar", label: "Notlar" },
@@ -68,6 +81,28 @@ function parseNumber(value: string): number | null {
   if (!value.trim()) return null;
   const parsed = Number(value.replace(/\./g, "").replace(",", "."));
   return Number.isFinite(parsed) ? Math.round(parsed) : null;
+}
+
+function isFeeEmpty(value: number | null | undefined): boolean {
+  return value == null || value === 0;
+}
+
+function mergePeriodFeesIntoDetails(
+  current: BookingDetails,
+  periodFees: Record<BookingExtraFeeFieldKey, number | null>
+): Partial<BookingDetails> {
+  const patch: Partial<BookingDetails> = {};
+
+  for (const { key } of BOOKING_EXTRA_FEE_FIELDS) {
+    if (isFeeEmpty(current[key])) {
+      const periodValue = periodFees[key];
+      if (periodValue != null && periodValue !== 0) {
+        patch[key] = periodValue;
+      }
+    }
+  }
+
+  return patch;
 }
 
 function GuestTable({
@@ -155,27 +190,42 @@ export default function BookingDetailModal({
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [babies, setBabies] = useState(0);
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [isEntryEditing, setIsEntryEditing] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [details, setDetails] = useState<BookingDetails>({});
+  const [periodPrepaymentRate, setPeriodPrepaymentRate] = useState(20);
+  const prepaymentManuallyEdited = useRef(false);
   const [activeTab, setActiveTab] = useState<BookingDetailTabId>("rezervasyon");
+  const [prepaymentShareOpen, setPrepaymentShareOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!bookingId) {
       setBooking(null);
       setActiveTab("rezervasyon");
+      setLoading(false);
       return;
     }
 
-    let cancelled = false;
+    let active = true;
     setLoading(true);
     setError(null);
 
+    const timeoutId = window.setTimeout(() => {
+      if (!active) return;
+      setLoading(false);
+      setError(
+        "Rezervasyon yüklenemedi. Sunucu yanıt vermiyor; sayfayı yenileyip tekrar deneyin."
+      );
+    }, 30000);
+
     getBookingDetailAction(bookingId)
       .then((record) => {
-        if (cancelled) return;
+        if (!active) return;
         if (!record) {
           setError("Rezervasyon bulunamadı");
           setBooking(null);
@@ -188,36 +238,172 @@ export default function BookingDetailModal({
         setAdults(record.adults);
         setChildren(record.children);
         setBabies(record.babies);
+        setCheckIn(toDateInputValue(record.checkIn));
+        setCheckOut(toDateInputValue(record.checkOut));
+        setIsEntryEditing(false);
         setGuestName(record.guestName);
         setGuestEmail(record.guestEmail);
         setGuestPhone(record.guestPhone);
+        const parsed = parseBookingDetails(record.details);
+        prepaymentManuallyEdited.current = parsed.prepaymentAmount != null;
         setDetails(defaultDetailsFromBooking(record));
         setActiveTab("rezervasyon");
       })
       .catch(() => {
-        if (!cancelled) setError("Rezervasyon yüklenemedi");
+        if (!active) return;
+        setError("Rezervasyon yüklenemedi");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!active) return;
+        window.clearTimeout(timeoutId);
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (!booking?.villa.id || !checkIn) return;
+
+    let cancelled = false;
+    getBookingPrepaymentRateAction(booking.villa.id, checkIn)
+      .then((rate) => {
+        if (!cancelled) {
+          setPeriodPrepaymentRate(rate);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPeriodPrepaymentRate(20);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [bookingId]);
+  }, [booking?.villa.id, checkIn]);
+
+  useEffect(() => {
+    if (!booking?.villa.id || !checkIn) return;
+
+    let cancelled = false;
+    getBookingPeriodFeesAction(booking.villa.id, checkIn)
+      .then((periodFees) => {
+        if (!cancelled) {
+          setDetails((current) => ({
+            ...current,
+            ...mergePeriodFeesIntoDetails(current, periodFees),
+          }));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [booking?.villa.id, checkIn]);
 
   const netPrice = useMemo(() => computeNetPrice(details), [details]);
   const balance = useMemo(
     () => computeBalance(netPrice, details.prepaymentAmount),
     [netPrice, details.prepaymentAmount]
   );
-  const commissionAmount = useMemo(
-    () => computeCommissionAmount(netPrice, details.commissionRate),
-    [netPrice, details.commissionRate]
+  const checkInPayment = useMemo(
+    () => computeCheckInPayment(balance, details),
+    [balance, details]
   );
+
+  useEffect(() => {
+    const suggested = computePrepaymentAmount(netPrice, periodPrepaymentRate);
+    setDetails((current) => {
+      if (prepaymentManuallyEdited.current) {
+        if (current.prepaymentRate === periodPrepaymentRate) return current;
+        return { ...current, prepaymentRate: periodPrepaymentRate };
+      }
+      return {
+        ...current,
+        prepaymentRate: periodPrepaymentRate,
+        prepaymentAmount: suggested,
+      };
+    });
+  }, [periodPrepaymentRate, netPrice]);
+
+  useEffect(() => {
+    setDetails((current) => {
+      if (current.checkInPayment === checkInPayment) return current;
+      return { ...current, checkInPayment };
+    });
+  }, [checkInPayment]);
+
+  useEffect(() => {
+    setDetails((current) => {
+      const computed = computeCommissionAmount(netPrice, current.commissionRate);
+      if (computed === current.commissionAmount) return current;
+      return { ...current, commissionAmount: computed };
+    });
+  }, [netPrice]);
+  const nightCount = useMemo(() => {
+    if (!checkIn || !checkOut) return 0;
+    return getNightCount(new Date(`${checkIn}T00:00:00.000Z`), new Date(`${checkOut}T00:00:00.000Z`));
+  }, [checkIn, checkOut]);
 
   function patchDetails(patch: Partial<BookingDetails>) {
     setDetails((current) => ({ ...current, ...patch }));
+  }
+
+  function handleGrossPriceChange(value: number | null) {
+    setDetails((current) => {
+      const grossPrice = value;
+      const ownerDiscountRate = clampDiscountRate(current.ownerDiscountRate);
+      const agencyDiscountRate = clampDiscountRate(current.agencyDiscountRate);
+      return {
+        ...current,
+        grossPrice,
+        ownerDiscountAmount: computeDiscountAmount(grossPrice, ownerDiscountRate),
+        agencyDiscountAmount: computeDiscountAmount(
+          grossPrice,
+          agencyDiscountRate
+        ),
+      };
+    });
+  }
+
+  function handleOwnerDiscountRateChange(rate: number) {
+    const ownerDiscountRate = clampDiscountRate(rate);
+    const ownerDiscountAmount = computeDiscountAmount(
+      details.grossPrice,
+      ownerDiscountRate
+    );
+    patchDetails({
+      ownerDiscountRate,
+      ownerDiscountAmount,
+      discountRate: ownerDiscountRate,
+      discountAmount: ownerDiscountAmount,
+    });
+  }
+
+  function handleAgencyDiscountRateChange(rate: number) {
+    const agencyDiscountRate = clampDiscountRate(rate);
+    patchDetails({
+      agencyDiscountRate,
+      agencyDiscountAmount: computeDiscountAmount(
+        details.grossPrice,
+        agencyDiscountRate
+      ),
+    });
+  }
+
+  function handleCommissionRateChange(rate: number) {
+    const commissionRate = clampDiscountRate(rate);
+    setDetails((current) => {
+      const currentNet = computeNetPrice(current);
+      return {
+        ...current,
+        commissionRate,
+        commissionAmount: computeCommissionAmount(currentNet, commissionRate),
+      };
+    });
   }
 
   function handleGuestCountsChange(
@@ -244,6 +430,8 @@ export default function BookingDetailModal({
         id: booking.id,
         status,
         stayStatus,
+        checkIn,
+        checkOut,
         adults,
         children,
         babies,
@@ -253,7 +441,10 @@ export default function BookingDetailModal({
         totalPrice: netPrice,
         details: {
           ...details,
-          commissionAmount,
+          prepaymentRate: periodPrepaymentRate,
+          prepaymentAmount: details.prepaymentAmount,
+          checkInPayment,
+          commissionAmount: details.commissionAmount,
         },
       });
 
@@ -274,9 +465,14 @@ export default function BookingDetailModal({
     booking?.id.slice(-5).toUpperCase() ||
     "";
 
+  const paymentChannel =
+    details.importPaymentMethod?.trim() ||
+    details.prepaymentBank?.trim() ||
+    "";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3">
-      <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <h2 className="text-lg font-bold text-gray-900">
             {reservationCode} Nolu Rezervasyon Düzenleme Formu
@@ -290,6 +486,30 @@ export default function BookingDetailModal({
           </button>
         </div>
 
+        {booking && !loading ? (
+          <div className="shrink-0 border-b border-gray-200 bg-white px-5">
+            <div className="flex gap-1 overflow-x-auto pb-px">
+              {BOOKING_DETAIL_TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`shrink-0 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
+                      isActive
+                        ? "border border-b-0 border-gray-200 bg-white text-violet-700"
+                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-20 text-gray-500">
@@ -297,31 +517,20 @@ export default function BookingDetailModal({
               Yükleniyor...
             </div>
           ) : error && !booking ? (
-            <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </p>
+            <div className="space-y-3 py-10 text-center">
+              <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Sayfayı Yenile
+              </button>
+            </div>
           ) : booking ? (
-            <div>
-              <div className="mb-4 flex gap-1 overflow-x-auto border-b border-gray-200 pb-px">
-                {BOOKING_DETAIL_TABS.map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`shrink-0 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
-                        isActive
-                          ? "border border-b-0 border-gray-200 bg-white text-violet-700"
-                          : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-
+            <>
               <TabPanel active={activeTab === "rezervasyon"}>
               <FormSection title="Tatil Bilgileri">
                 <FormRow label="Rezervasyon Kodu">
@@ -367,15 +576,35 @@ export default function BookingDetailModal({
                   <ReadonlyField value={booking.villa.name} />
                 </FormRow>
                 <FormRow label="Konaklama Giriş Tarihi">
-                  <ReadonlyField value={formatBookingDate(booking.checkIn)} />
+                  {isEntryEditing ? (
+                    <input
+                      type="date"
+                      value={checkIn}
+                      onChange={(event) => setCheckIn(event.target.value)}
+                      className={bookingInputClass}
+                    />
+                  ) : (
+                    <ReadonlyField
+                      value={formatBookingDate(new Date(`${checkIn}T00:00:00.000Z`))}
+                    />
+                  )}
                 </FormRow>
                 <FormRow label="Konaklama Çıkış Tarihi">
-                  <ReadonlyField value={formatBookingDate(booking.checkOut)} />
+                  {isEntryEditing ? (
+                    <input
+                      type="date"
+                      value={checkOut}
+                      onChange={(event) => setCheckOut(event.target.value)}
+                      className={bookingInputClass}
+                    />
+                  ) : (
+                    <ReadonlyField
+                      value={formatBookingDate(new Date(`${checkOut}T00:00:00.000Z`))}
+                    />
+                  )}
                 </FormRow>
                 <FormRow label="Gece Sayısı">
-                  <ReadonlyField
-                    value={String(getNightCount(booking.checkIn, booking.checkOut))}
-                  />
+                  <ReadonlyField value={String(nightCount)} />
                 </FormRow>
                 <FormRow label="Kişi Sayısı">
                   <div className="flex flex-wrap items-center gap-3">
@@ -383,6 +612,7 @@ export default function BookingDetailModal({
                       <Users className="h-4 w-4 text-gray-500" />
                       <select
                         value={adults}
+                        disabled={!isEntryEditing}
                         onChange={(event) =>
                           handleGuestCountsChange(
                             Number(event.target.value),
@@ -390,7 +620,7 @@ export default function BookingDetailModal({
                             babies
                           )
                         }
-                        className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm"
+                        className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                       >
                         {Array.from({ length: 20 }, (_, index) => index + 1).map(
                           (value) => (
@@ -405,6 +635,7 @@ export default function BookingDetailModal({
                       <User className="h-4 w-4 text-gray-500" />
                       <select
                         value={children}
+                        disabled={!isEntryEditing}
                         onChange={(event) =>
                           handleGuestCountsChange(
                             adults,
@@ -412,7 +643,7 @@ export default function BookingDetailModal({
                             babies
                           )
                         }
-                        className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm"
+                        className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                       >
                         {Array.from({ length: 11 }, (_, index) => index).map(
                           (value) => (
@@ -427,6 +658,7 @@ export default function BookingDetailModal({
                       <Baby className="h-4 w-4 text-gray-500" />
                       <select
                         value={babies}
+                        disabled={!isEntryEditing}
                         onChange={(event) =>
                           handleGuestCountsChange(
                             adults,
@@ -434,7 +666,7 @@ export default function BookingDetailModal({
                             Number(event.target.value)
                           )
                         }
-                        className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm"
+                        className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                       >
                         {Array.from({ length: 6 }, (_, index) => index).map(
                           (value) => (
@@ -447,40 +679,51 @@ export default function BookingDetailModal({
                     </label>
                   </div>
                 </FormRow>
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsEntryEditing(true)}
+                    disabled={isEntryEditing}
+                    className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-violet-700 hover:bg-violet-100 disabled:cursor-default disabled:opacity-60"
+                  >
+                    Değişiklik Yap
+                  </button>
+                </div>
               </FormSection>
               </TabPanel>
 
               <TabPanel active={activeTab === "fiyat"}>
               <FormSection title="Fiyat Bilgileri">
-                <FormRow label="Konaklama Bedeli (Brüt)">
+                <FormRow label="Konaklama Bedeli Komisyonlu">
                   <input
                     value={details.grossPrice ?? ""}
                     onChange={(event) =>
-                      patchDetails({ grossPrice: parseNumber(event.target.value) })
+                      handleGrossPriceChange(parseNumber(event.target.value))
                     }
                     className={bookingInputClass}
                   />
                 </FormRow>
-                <FormRow label="İndirim Oranı (%)">
-                  <input
-                    value={details.discountRate ?? 0}
-                    onChange={(event) =>
+                <FormRow label="Villa Sahibi İndirimi (% - Tutar)">
+                  <DiscountPercentAmountField
+                    rate={details.ownerDiscountRate ?? 0}
+                    amount={details.ownerDiscountAmount ?? 0}
+                    onRateChange={handleOwnerDiscountRateChange}
+                    onAmountChange={(amount) =>
                       patchDetails({
-                        discountRate: parseNumber(event.target.value) ?? 0,
+                        ownerDiscountAmount: amount ?? 0,
+                        discountAmount: amount ?? 0,
                       })
                     }
-                    className={bookingInputClass}
                   />
                 </FormRow>
-                <FormRow label="İndirim Tutarı">
-                  <input
-                    value={details.discountAmount ?? 0}
-                    onChange={(event) =>
-                      patchDetails({
-                        discountAmount: parseNumber(event.target.value) ?? 0,
-                      })
+                <FormRow label="Acente İndirimi (% - Tutar)">
+                  <DiscountPercentAmountField
+                    rate={details.agencyDiscountRate ?? 0}
+                    amount={details.agencyDiscountAmount ?? 0}
+                    onRateChange={handleAgencyDiscountRateChange}
+                    onAmountChange={(amount) =>
+                      patchDetails({ agencyDiscountAmount: amount ?? 0 })
                     }
-                    className={bookingInputClass}
                   />
                 </FormRow>
                 <FormRow label="Acente Hizmet Bedeli">
@@ -494,122 +737,86 @@ export default function BookingDetailModal({
                     className={bookingInputClass}
                   />
                 </FormRow>
-                <FormRow label="Konaklama Bedeli (Net)">
+                <FormRow label="Konaklama Tutarı Komisyonsuz">
                   <ReadonlyField value={netPrice != null ? String(netPrice) : ""} />
                 </FormRow>
                 <FormRow label="Ön Ödeme Tutarı">
                   <div className="flex gap-2">
                     <input
-                      value={details.prepaymentAmount ?? ""}
-                      onChange={(event) =>
+                      value={
+                        details.prepaymentAmount != null
+                          ? String(details.prepaymentAmount)
+                          : ""
+                      }
+                      onChange={(event) => {
+                        prepaymentManuallyEdited.current = true;
                         patchDetails({
                           prepaymentAmount: parseNumber(event.target.value),
-                        })
-                      }
+                        });
+                      }}
                       className={bookingInputClass}
                     />
-                    <div className="flex w-24 items-center justify-center rounded-md bg-gray-100 text-sm text-gray-600">
-                      %{details.prepaymentRate ?? 20}
+                    <div className="flex w-24 shrink-0 items-center justify-center rounded-md bg-gray-100 text-sm text-gray-600">
+                      %{periodPrepaymentRate}
                     </div>
                   </div>
                 </FormRow>
-                <FormRow label="Ön Ödeme Kasa / Banka Adı">
-                  <input
-                    value={details.prepaymentBank ?? ""}
-                    onChange={(event) =>
-                      patchDetails({ prepaymentBank: event.target.value })
-                    }
-                    className={bookingInputClass}
-                  />
+                <FormRow label="Ön Ödeme Yöntemi">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <ReadonlyField
+                        value={
+                          details.importPaymentMethod?.trim() ||
+                          details.prepaymentBank?.trim() ||
+                          ""
+                        }
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPrepaymentShareOpen(true)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                      Ön Ödeme Bilgisi Paylaş
+                    </button>
+                  </div>
                 </FormRow>
                 <FormRow label="Konaklama Bakiyesi">
                   <ReadonlyField value={balance != null ? String(balance) : ""} />
                 </FormRow>
-                <FormRow label="Temizlik Bedeli">
-                  <input
-                    value={details.cleaningFee ?? 0}
-                    onChange={(event) =>
-                      patchDetails({
-                        cleaningFee: parseNumber(event.target.value) ?? 0,
-                      })
-                    }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
-                <FormRow label="Isıtma Bedeli">
-                  <input
-                    value={details.heatingFee ?? 0}
-                    onChange={(event) =>
-                      patchDetails({
-                        heatingFee: parseNumber(event.target.value) ?? 0,
-                      })
-                    }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
-                <FormRow label="Hasar Depozitosu">
-                  <input
-                    value={details.damageDeposit ?? 0}
-                    onChange={(event) =>
-                      patchDetails({
-                        damageDeposit: parseNumber(event.target.value) ?? 0,
-                      })
-                    }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
-                <FormRow label="Ek Hizmet Bedeli">
-                  <input
-                    value={details.extraServiceFee ?? 0}
-                    onChange={(event) =>
-                      patchDetails({
-                        extraServiceFee: parseNumber(event.target.value) ?? 0,
-                      })
-                    }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
+                {BOOKING_EXTRA_FEE_FIELDS.map(({ key, label }) => (
+                  <FormRow key={key} label={label}>
+                    <input
+                      value={formatFeeInputValue(details[key])}
+                      onChange={(event) =>
+                        patchDetails({
+                          [key]: parseNumber(event.target.value),
+                        })
+                      }
+                      className={bookingInputClass}
+                    />
+                  </FormRow>
+                ))}
                 <FormRow label="Girişte Alınacak Ödeme">
-                  <input
-                    value={details.checkInPayment ?? ""}
-                    onChange={(event) =>
-                      patchDetails({
-                        checkInPayment: parseNumber(event.target.value),
-                      })
-                    }
-                    className={bookingInputClass}
+                  <ReadonlyField
+                    value={checkInPayment != null ? String(checkInPayment) : ""}
                   />
                 </FormRow>
               </FormSection>
 
               <FormSection title="Villa ve Komisyon Bilgileri">
-                <FormRow label="Villa ID">
-                  <ReadonlyField
-                    value={booking.villa.villaId ? String(booking.villa.villaId) : ""}
-                  />
-                </FormRow>
                 <FormRow label="Satış Türü">
                   <ReadonlyField value={booking.villa.salesType} />
                 </FormRow>
-                <FormRow label="KBS Bildirilecek">
-                  <ReadonlyField
-                    value={booking.villa.kbsReportable ? "Evet" : "Hayır"}
-                  />
-                </FormRow>
-                <FormRow label="Komisyon Oranı">
-                  <input
-                    value={details.commissionRate ?? 0}
-                    onChange={(event) =>
-                      patchDetails({
-                        commissionRate: parseNumber(event.target.value) ?? 0,
-                      })
+                <FormRow label="Komisyon Oranı (% - Tutar)">
+                  <DiscountPercentAmountField
+                    rate={details.commissionRate ?? 0}
+                    amount={details.commissionAmount ?? 0}
+                    onRateChange={handleCommissionRateChange}
+                    onAmountChange={(amount) =>
+                      patchDetails({ commissionAmount: amount ?? 0 })
                     }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
-                <FormRow label="Komisyon Tutarı">
-                  <ReadonlyField
-                    value={commissionAmount != null ? String(commissionAmount) : ""}
                   />
                 </FormRow>
               </FormSection>
@@ -633,15 +840,6 @@ export default function BookingDetailModal({
                     className={bookingInputClass}
                   />
                 </FormRow>
-                <FormRow label="Müşteri Muhasebe Kodu">
-                  <input
-                    value={details.guestAccountingCode ?? ""}
-                    onChange={(event) =>
-                      patchDetails({ guestAccountingCode: event.target.value })
-                    }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
                 <FormRow label="Müşteri Telefon">
                   <input
                     value={guestPhone}
@@ -656,13 +854,43 @@ export default function BookingDetailModal({
                     className={bookingInputClass}
                   />
                 </FormRow>
-                <FormRow label="Müşteri Adres">
+              </FormSection>
+
+              <FormSection title="Müşteri Adresi">
+                <FormRow label="Adres">
                   <textarea
                     value={details.guestAddress ?? ""}
                     onChange={(event) =>
                       patchDetails({ guestAddress: event.target.value })
                     }
                     rows={3}
+                    className={bookingInputClass}
+                  />
+                </FormRow>
+                <FormRow label="İlçe">
+                  <input
+                    value={details.guestDistrict ?? ""}
+                    onChange={(event) =>
+                      patchDetails({ guestDistrict: event.target.value })
+                    }
+                    className={bookingInputClass}
+                  />
+                </FormRow>
+                <FormRow label="İl">
+                  <input
+                    value={details.guestCity ?? ""}
+                    onChange={(event) =>
+                      patchDetails({ guestCity: event.target.value })
+                    }
+                    className={bookingInputClass}
+                  />
+                </FormRow>
+                <FormRow label="Ülke">
+                  <input
+                    value={details.guestCountry ?? "Türkiye"}
+                    onChange={(event) =>
+                      patchDetails({ guestCountry: event.target.value })
+                    }
                     className={bookingInputClass}
                   />
                 </FormRow>
@@ -1029,7 +1257,7 @@ export default function BookingDetailModal({
                   {error}
                 </p>
               ) : null}
-            </div>
+            </>
           ) : null}
         </div>
 
@@ -1051,6 +1279,20 @@ export default function BookingDetailModal({
           </button>
         </div>
       </div>
+
+      {booking ? (
+        <PrepaymentShareModal
+          open={prepaymentShareOpen}
+          onClose={() => setPrepaymentShareOpen(false)}
+          bookingId={booking.id}
+          reservationCode={reservationCode}
+          guestName={guestName}
+          guestPhone={guestPhone}
+          guestEmail={guestEmail}
+          prepaymentAmount={details.prepaymentAmount ?? null}
+          paymentChannel={paymentChannel}
+        />
+      ) : null}
     </div>
   );
 }

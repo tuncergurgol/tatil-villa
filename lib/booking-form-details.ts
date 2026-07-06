@@ -12,11 +12,20 @@ export type BookingDetails = {
   grossPrice?: number | null;
   discountRate?: number | null;
   discountAmount?: number | null;
+  ownerDiscountRate?: number | null;
+  ownerDiscountAmount?: number | null;
+  agencyDiscountRate?: number | null;
+  agencyDiscountAmount?: number | null;
   agencyServiceFee?: number | null;
   prepaymentAmount?: number | null;
   prepaymentRate?: number | null;
   prepaymentBank?: string;
   cleaningFee?: number | null;
+  extraAccommodationFee?: number | null;
+  petCleaningFee?: number | null;
+  poolHeatingPrivateFee?: number | null;
+  poolHeatingIndoorFee?: number | null;
+  underfloorHeatingFee?: number | null;
   heatingFee?: number | null;
   damageDeposit?: number | null;
   extraServiceFee?: number | null;
@@ -26,6 +35,9 @@ export type BookingDetails = {
   guestTc?: string;
   guestAccountingCode?: string;
   guestAddress?: string;
+  guestDistrict?: string;
+  guestCity?: string;
+  guestCountry?: string;
   wantsTaxpayerInfo?: string;
   taxpayerType?: string;
   eInvoiceUser?: string;
@@ -75,6 +87,23 @@ export const TAXPAYER_TYPE_OPTIONS = [
   { value: "sirket", label: "Şirket" },
 ];
 
+export const BOOKING_EXTRA_FEE_FIELDS = [
+  { key: "extraAccommodationFee", label: "Ek Konaklama Bedeli" },
+  { key: "cleaningFee", label: "Temizlik Bedeli" },
+  { key: "petCleaningFee", label: "Evcil Hayvan Temizlik Bedeli" },
+  { key: "poolHeatingPrivateFee", label: "Havuz Isıtma (Özel)" },
+  { key: "poolHeatingIndoorFee", label: "Havuz Isıtma (Kapalı)" },
+  { key: "underfloorHeatingFee", label: "Yerden Isıtma" },
+] as const;
+
+export type BookingExtraFeeFieldKey =
+  (typeof BOOKING_EXTRA_FEE_FIELDS)[number]["key"];
+
+export function formatFeeInputValue(value: number | null | undefined): string {
+  if (value == null || value === 0) return "";
+  return String(value);
+}
+
 export function emptyGuestEntry(): BookingGuestEntry {
   return { name: "", nationalId: "", plate: "" };
 }
@@ -107,12 +136,37 @@ export function toDateInputValue(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+export function clampDiscountRate(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, value));
+}
+
+export function computeDiscountAmount(
+  basePrice: number | null | undefined,
+  rate: number | null | undefined
+): number {
+  if (basePrice == null || !Number.isFinite(basePrice)) return 0;
+  const clampedRate = clampDiscountRate(rate);
+  return Math.round((basePrice * clampedRate) / 100);
+}
+
+export function computePrepaymentAmount(
+  netPrice: number | null | undefined,
+  rate: number | null | undefined
+): number | null {
+  if (netPrice == null || !Number.isFinite(netPrice)) return null;
+  const clampedRate = clampDiscountRate(rate);
+  return Math.round((netPrice * clampedRate) / 100);
+}
+
 export function computeNetPrice(details: BookingDetails): number | null {
   const gross = details.grossPrice;
   if (gross == null) return null;
-  const discount = details.discountAmount ?? 0;
+  const ownerDiscount =
+    details.ownerDiscountAmount ?? details.discountAmount ?? 0;
+  const agencyDiscount = details.agencyDiscountAmount ?? 0;
   const agencyFee = details.agencyServiceFee ?? 0;
-  return Math.max(0, gross - discount + agencyFee);
+  return Math.max(0, gross - ownerDiscount - agencyDiscount + agencyFee);
 }
 
 export function computeBalance(
@@ -121,6 +175,21 @@ export function computeBalance(
 ): number | null {
   if (netPrice == null) return null;
   return Math.max(0, netPrice - (prepayment ?? 0));
+}
+
+export function sumExtraFees(details: BookingDetails): number {
+  return BOOKING_EXTRA_FEE_FIELDS.reduce(
+    (sum, { key }) => sum + (details[key] ?? 0),
+    0
+  );
+}
+
+export function computeCheckInPayment(
+  balance: number | null,
+  details: BookingDetails
+): number | null {
+  if (balance == null) return null;
+  return balance + sumExtraFees(details);
 }
 
 export function computeCommissionAmount(
@@ -155,22 +224,39 @@ export function defaultDetailsFromBooking(booking: {
 
   return {
     grossPrice: gross,
-    discountRate: parsed.discountRate ?? 0,
-    discountAmount: parsed.discountAmount ?? 0,
+    discountRate: parsed.discountRate ?? parsed.ownerDiscountRate ?? 0,
+    discountAmount: parsed.discountAmount ?? parsed.ownerDiscountAmount ?? 0,
+    ownerDiscountRate:
+      parsed.ownerDiscountRate ?? parsed.discountRate ?? 0,
+    ownerDiscountAmount:
+      parsed.ownerDiscountAmount ?? parsed.discountAmount ?? 0,
+    agencyDiscountRate: parsed.agencyDiscountRate ?? 0,
+    agencyDiscountAmount: parsed.agencyDiscountAmount ?? 0,
     agencyServiceFee: parsed.agencyServiceFee ?? 0,
     prepaymentAmount: parsed.prepaymentAmount ?? null,
     prepaymentRate: parsed.prepaymentRate ?? 20,
-    prepaymentBank: parsed.prepaymentBank ?? "",
-    cleaningFee: parsed.cleaningFee ?? 0,
-    heatingFee: parsed.heatingFee ?? 0,
-    damageDeposit: parsed.damageDeposit ?? 0,
-    extraServiceFee: parsed.extraServiceFee ?? 0,
+    prepaymentBank: parsed.prepaymentBank ?? parsed.importPaymentMethod ?? "",
+    importPaymentMethod: parsed.importPaymentMethod ?? parsed.prepaymentBank ?? "",
+    cleaningFee: parsed.cleaningFee ?? null,
+    extraAccommodationFee:
+      parsed.extraAccommodationFee ?? parsed.extraServiceFee ?? null,
+    petCleaningFee: parsed.petCleaningFee ?? null,
+    poolHeatingPrivateFee: parsed.poolHeatingPrivateFee ?? null,
+    poolHeatingIndoorFee: parsed.poolHeatingIndoorFee ?? null,
+    underfloorHeatingFee:
+      parsed.underfloorHeatingFee ?? parsed.heatingFee ?? null,
+    heatingFee: parsed.heatingFee ?? null,
+    damageDeposit: parsed.damageDeposit ?? null,
+    extraServiceFee: parsed.extraServiceFee ?? null,
     checkInPayment: parsed.checkInPayment ?? null,
     commissionRate: parsed.commissionRate ?? 20,
     commissionAmount: parsed.commissionAmount ?? null,
     guestTc: parsed.guestTc ?? "",
     guestAccountingCode: parsed.guestAccountingCode ?? "",
     guestAddress: parsed.guestAddress ?? "",
+    guestDistrict: parsed.guestDistrict ?? "",
+    guestCity: parsed.guestCity ?? "",
+    guestCountry: parsed.guestCountry ?? "Türkiye",
     wantsTaxpayerInfo: parsed.wantsTaxpayerInfo ?? "hayir",
     taxpayerType: parsed.taxpayerType ?? "sahis",
     eInvoiceUser: parsed.eInvoiceUser ?? "hayir",

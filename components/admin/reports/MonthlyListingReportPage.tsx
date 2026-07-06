@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { BarChart3, Download, Search } from "lucide-react";
-import * as XLSX from "xlsx";
 import {
   getMonthLabel,
   getReportYearOptions,
@@ -48,7 +47,8 @@ function rowToCells(row: MonthlyListingReportRow) {
   ];
 }
 
-function downloadExcel(rows: MonthlyListingReportRow[], fileName: string) {
+async function downloadExcel(rows: MonthlyListingReportRow[], fileName: string) {
+  const XLSX = await import("xlsx");
   const sheetRows = [
     [...TABLE_HEADERS],
     ...rows.map((row) => rowToCells(row)),
@@ -93,7 +93,7 @@ export default function MonthlyListingReportPage({
     }
 
     const monthLabel = getMonthLabel(report.month).toLocaleLowerCase("tr-TR");
-    downloadExcel(
+    void downloadExcel(
       report.rows,
       `aylik-ilan-raporu-${report.year}-${monthLabel}.xlsx`
     );

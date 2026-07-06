@@ -11,6 +11,10 @@ import {
   updateBookingStatus,
 } from "@/lib/queries/bookings";
 import { getAdminBookingDetail } from "@/lib/queries/admin-booking-detail";
+import {
+  resolveBookingPeriodFees,
+  resolveBookingPrepaymentRate,
+} from "@/lib/queries/booking-prepayment";
 import { requireAdmin } from "@/lib/auth-helpers";
 import type { BookingDetails } from "@/lib/booking-form-details";
 
@@ -143,6 +147,8 @@ const bookingDetailSchema = z.object({
   id: z.string().min(1),
   status: bookingStatusSchema,
   stayStatus: stayStatusSchema,
+  checkIn: z.string().min(1, "Giriş tarihi gerekli"),
+  checkOut: z.string().min(1, "Çıkış tarihi gerekli"),
   adults: z.coerce.number().min(1),
   children: z.coerce.number().min(0),
   babies: z.coerce.number().min(0),
@@ -156,6 +162,39 @@ const bookingDetailSchema = z.object({
 export async function getBookingDetailAction(id: string) {
   await requireAdmin();
   return getAdminBookingDetail(id);
+}
+
+export async function getBookingPrepaymentRateAction(
+  villaId: string,
+  checkIn: string
+) {
+  await requireAdmin();
+  if (!villaId || !checkIn) return 20;
+  return resolveBookingPrepaymentRate(
+    villaId,
+    new Date(`${checkIn}T00:00:00.000Z`)
+  );
+}
+
+export async function getBookingPeriodFeesAction(
+  villaId: string,
+  checkIn: string
+) {
+  await requireAdmin();
+  if (!villaId || !checkIn) {
+    return {
+      extraAccommodationFee: null,
+      cleaningFee: null,
+      petCleaningFee: null,
+      poolHeatingPrivateFee: null,
+      poolHeatingIndoorFee: null,
+      underfloorHeatingFee: null,
+    };
+  }
+  return resolveBookingPeriodFees(
+    villaId,
+    new Date(`${checkIn}T00:00:00.000Z`)
+  );
 }
 
 export async function updateBookingDetailAction(
@@ -175,6 +214,8 @@ export async function updateBookingDetailAction(
       id: parsed.data.id,
       status: parsed.data.status,
       stayStatus: parsed.data.stayStatus,
+      checkIn: new Date(`${parsed.data.checkIn}T00:00:00.000Z`),
+      checkOut: new Date(`${parsed.data.checkOut}T00:00:00.000Z`),
       adults: parsed.data.adults,
       children: parsed.data.children,
       babies: parsed.data.babies,

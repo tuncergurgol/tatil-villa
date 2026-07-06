@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { inferKonutBelgesiType } from "@/lib/villa-document-types";
+import { verifyKonutBelgeOnline } from "@/lib/konut-belge-check";
 
 export type VillaDocumentActionState = {
   success?: boolean;
@@ -27,6 +29,30 @@ const documentSchema = z.object({
   documentImageUrl: z.string(),
   documentNo: z.string().optional(),
 });
+
+function parseDocumentFormData(formData: FormData) {
+  return {
+    documentType: String(formData.get("documentType") ?? "").trim(),
+    documentOwnerName: String(formData.get("documentOwnerName") ?? "").trim(),
+    documentAddress: String(formData.get("documentAddress") ?? "").trim(),
+    documentRoomCapacity: String(formData.get("documentRoomCapacity") ?? "").trim(),
+    documentBedCapacity: String(formData.get("documentBedCapacity") ?? "").trim(),
+    documentImageUrl: String(formData.get("documentImageUrl") ?? "").trim(),
+    documentNo: String(formData.get("documentNo") ?? "").trim(),
+  };
+}
+
+function isEmptyDocumentForm(input: ReturnType<typeof parseDocumentFormData>) {
+  return (
+    !input.documentType &&
+    !input.documentNo &&
+    !input.documentOwnerName &&
+    !input.documentAddress &&
+    !input.documentImageUrl &&
+    !input.documentRoomCapacity &&
+    !input.documentBedCapacity
+  );
+}
 
 function revalidateVillaDocumentPaths() {
   revalidatePath("/admin/villalar");
@@ -80,14 +106,37 @@ export async function saveVillaDocument(
   const villaId = formData.get("villaId") as string;
   if (!villaId) return { error: "Villa bulunamadı" };
 
+  const raw = parseDocumentFormData(formData);
+
+  if (isEmptyDocumentForm(raw)) {
+    try {
+      await prisma.villa.update({
+        where: { id: villaId },
+        data: {
+          documentType: null,
+          documentOwnerName: "",
+          documentAddress: "",
+          documentRoomCapacity: null,
+          documentBedCapacity: null,
+          documentImageUrl: "",
+          documentNo: "",
+        },
+      });
+      revalidateVillaDocumentPaths();
+      return { success: true, documentNo: "" };
+    } catch {
+      return { error: "Belge kaydedilemedi" };
+    }
+  }
+
   const parsed = documentSchema.safeParse({
-    documentType: formData.get("documentType"),
-    documentOwnerName: formData.get("documentOwnerName"),
-    documentAddress: formData.get("documentAddress"),
-    documentRoomCapacity: formData.get("documentRoomCapacity"),
-    documentBedCapacity: formData.get("documentBedCapacity"),
-    documentImageUrl: formData.get("documentImageUrl") ?? "",
-    documentNo: formData.get("documentNo") ?? undefined,
+    documentType: raw.documentType || undefined,
+    documentOwnerName: raw.documentOwnerName,
+    documentAddress: raw.documentAddress,
+    documentRoomCapacity: raw.documentRoomCapacity || "0",
+    documentBedCapacity: raw.documentBedCapacity || "0",
+    documentImageUrl: raw.documentImageUrl,
+    documentNo: raw.documentNo || undefined,
   });
 
   if (!parsed.success) {
@@ -103,7 +152,9 @@ export async function saveVillaDocument(
   const documentNo =
     parsed.data.documentNo?.trim() ||
     existing.documentNo ||
-    `48-${Math.floor(10000 + Math.random() * 89999)}`;
+    (parsed.data.documentType
+      ? `48-${Math.floor(10000 + Math.random() * 89999)}`
+      : "");
 
   const documentType =
     parsed.data.documentType || inferKonutBelgesiType(documentNo);
@@ -130,6 +181,11 @@ export async function saveVillaDocument(
   } catch {
     return { error: "Belge kaydedilemedi" };
   }
+}
+
+export async function verifyVillaKonutBelge(documentNo: string) {
+  await requireAdmin();
+  return verifyKonutBelgeOnline(documentNo);
 }
 
 export async function clearVillaDocument(

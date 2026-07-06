@@ -142,44 +142,58 @@ export async function updateVilla(id: string, formData: FormData) {
   revalidatePath("/admin/villalar");
 }
 
-export async function updateVillaGeneral(id: string, formData: FormData) {
-  await requireAdmin();
+export async function updateVillaGeneral(
+  id: string,
+  formData: FormData
+): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    await requireAdmin();
 
-  const salesType = String(
-    formData.get("salesType") ?? "komisyon"
-  ) as SalesType;
+    const salesType = String(
+      formData.get("salesType") ?? "komisyon"
+    ) as SalesType;
 
-  await prisma.villa.update({
-    where: { id },
-    data: {
-      name: String(formData.get("name") ?? ""),
-      originalName: String(formData.get("originalName") ?? ""),
-      category:
-        (formData.get("category") as VillaCategory) || VillaCategory.villa,
-      guests: parseIntField(formData.get("guests"), 1),
-      extraCapacity: parseIntField(formData.get("extraCapacity"), 0),
-      livingRooms: parseIntField(formData.get("livingRooms"), 0),
-      bathrooms: parseIntField(formData.get("bathrooms"), 1),
-      bedrooms: parseIntField(formData.get("bedrooms"), 1),
-      salesType:
-        salesType === SalesType.garanti
-          ? SalesType.garanti
-          : SalesType.komisyon,
-      active: parseBool(formData.get("active")),
-      showInSearch: parseBool(formData.get("showInSearch")),
-      showInOffer: parseBool(formData.get("showInOffer")),
-      ribbonText1: String(formData.get("ribbonText1") ?? ""),
-      ribbonText2: String(formData.get("ribbonText2") ?? ""),
-      description: String(formData.get("description") ?? ""),
-    },
-  });
+    const updated = await prisma.villa.update({
+      where: { id },
+      data: {
+        name: String(formData.get("name") ?? ""),
+        originalName: String(formData.get("originalName") ?? ""),
+        category:
+          (formData.get("category") as VillaCategory) || VillaCategory.villa,
+        guests: parseIntField(formData.get("guests"), 1),
+        extraCapacity: parseIntField(formData.get("extraCapacity"), 0),
+        livingRooms: parseIntField(formData.get("livingRooms"), 0),
+        bathrooms: parseIntField(formData.get("bathrooms"), 1),
+        bedrooms: parseIntField(formData.get("bedrooms"), 1),
+        salesType:
+          salesType === SalesType.garanti
+            ? SalesType.garanti
+            : SalesType.komisyon,
+        active: parseBool(formData.get("active")),
+        showInSearch: parseBool(formData.get("showInSearch")),
+        showInOffer: parseBool(formData.get("showInOffer")),
+        ribbonText1: String(formData.get("ribbonText1") ?? ""),
+        ribbonText2: String(formData.get("ribbonText2") ?? ""),
+        description: String(formData.get("description") ?? ""),
+      },
+      select: { slug: true },
+    });
 
-  await syncVillaRooms(id);
+    await syncVillaRooms(id);
 
-  revalidatePath("/");
-  revalidatePath("/villalar");
-  revalidatePath("/admin/villalar");
-  await revalidateVillaEditPage(id);
+    revalidatePath("/admin/villalar");
+    await revalidateVillaEditPage(id);
+    if (updated.slug) {
+      revalidatePath(`/villalar/${updated.slug}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Kayıt başarısız",
+    };
+  }
 }
 
 export async function updateVillaFeatures(id: string, formData: FormData) {

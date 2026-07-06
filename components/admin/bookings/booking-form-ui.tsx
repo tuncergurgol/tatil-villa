@@ -47,3 +47,51 @@ export function FormRow({
 export function ReadonlyField({ value }: { value: string }) {
   return <div className={bookingReadonlyClass}>{value || "—"}</div>;
 }
+
+export function DiscountPercentAmountField({
+  rate,
+  amount,
+  onRateChange,
+  onAmountChange,
+}: {
+  rate: number;
+  amount: number | null | undefined;
+  onRateChange: (rate: number) => void;
+  onAmountChange: (amount: number | null) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <div className="flex w-36 items-center gap-1 rounded-md border border-gray-200 bg-white px-3">
+        <span className="text-sm font-medium text-gray-500">%</span>
+        <input
+          type="number"
+          min={0}
+          max={100}
+          step={0.01}
+          value={rate > 0 ? rate : ""}
+          placeholder="0,00"
+          onChange={(event) => {
+            const next = event.target.value.trim();
+            onRateChange(next === "" ? 0 : Number(next));
+          }}
+          className="w-full border-0 py-2 text-sm text-gray-900 outline-none"
+        />
+      </div>
+      <input
+        value={amount ?? ""}
+        onChange={(event) => {
+          const normalized = event.target.value
+            .replace(/\./g, "")
+            .replace(",", ".");
+          if (!normalized.trim()) {
+            onAmountChange(null);
+            return;
+          }
+          const parsed = Number(normalized);
+          onAmountChange(Number.isFinite(parsed) ? Math.round(parsed) : null);
+        }}
+        className={`${bookingInputClass} min-w-[140px] flex-1`}
+      />
+    </div>
+  );
+}

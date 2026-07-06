@@ -196,6 +196,8 @@ export async function updateBookingDetail(data: {
   id: string;
   status: BookingStatus;
   stayStatus: StayStatus;
+  checkIn: Date;
+  checkOut: Date;
   adults: number;
   children: number;
   babies: number;
@@ -210,6 +212,8 @@ export async function updateBookingDetail(data: {
     data: {
       status: data.status,
       stayStatus: data.stayStatus,
+      checkIn: data.checkIn,
+      checkOut: data.checkOut,
       adults: data.adults,
       children: data.children,
       babies: data.babies,

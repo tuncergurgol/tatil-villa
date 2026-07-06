@@ -73,6 +73,14 @@ interface VillaEditFormProps {
   regionBreadcrumb: string;
 }
 
+function formatSubmitError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "Kayıt başarısız";
+  if (message === "Failed to fetch") {
+    return "Sunucuya bağlanılamadı. Derleme bitene kadar bekleyip tekrar deneyin.";
+  }
+  return message;
+}
+
 export default function VillaEditForm({
   villa,
   pools,
@@ -130,7 +138,11 @@ export default function VillaEditForm({
     startTransition(async () => {
       try {
         if (activeTab === "genel") {
-          await updateVillaGeneral(villa.id, formData);
+          const result = await updateVillaGeneral(villa.id, formData);
+          if (!result.success) {
+            setError(result.error);
+            return;
+          }
         } else if (activeTab === "ozellikler") {
           await updateVillaFeatures(villa.id, formData);
         } else if (activeTab === "meta") {
@@ -145,19 +157,33 @@ export default function VillaEditForm({
         setBedroomReduceConfirm(null);
         router.push(returnPath);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Kayıt başarısız");
+        setError(formatSubmitError(err));
       }
     });
   }
 
   function handleSubmit(formData: FormData) {
     if (activeTab === "genel") {
+      const name = String(formData.get("name") ?? "").trim();
+      if (!name) {
+        setError("Villa adı zorunludur");
+        return;
+      }
+
       const newBedrooms = parseInt(String(formData.get("bedrooms") ?? ""), 10);
       if (Number.isFinite(newBedrooms) && newBedrooms < rooms.length) {
         setBedroomReduceConfirm({
           formData,
           newBedroomCount: newBedrooms,
         });
+        return;
+      }
+    }
+
+    if (activeTab === "konum") {
+      const regionId = String(formData.get("regionId") ?? "").trim();
+      if (!regionId) {
+        setError("Mahalle / mevki seçimi zorunludur");
         return;
       }
     }
@@ -231,6 +257,7 @@ export default function VillaEditForm({
 
         <form
           className="flex min-h-0 flex-1 flex-col"
+          noValidate
           onSubmit={(event) => {
             event.preventDefault();
             handleSubmit(new FormData(event.currentTarget));
@@ -243,7 +270,7 @@ export default function VillaEditForm({
               </div>
             ) : null}
 
-            <div className={activeTab === "genel" ? "block" : "hidden"}>
+            {activeTab === "genel" ? (
               <VillaGeneralTab
                 villa={villa}
                 regionBreadcrumb={regionBreadcrumb}
@@ -251,15 +278,15 @@ export default function VillaEditForm({
                 bedroomDraft={bedroomDraft}
                 onBedroomsChange={setBedroomDraft}
               />
-            </div>
-            <div className={activeTab === "galeri" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "galeri" ? (
               <VillaGalleryTab
                 villaId={villa.id}
                 villaName={villa.name}
                 initialImages={galleryImages}
               />
-            </div>
-            <div className={activeTab === "odalar" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "odalar" ? (
               <VillaRoomsTab
                 villaId={villa.id}
                 villaName={villa.name}
@@ -267,8 +294,8 @@ export default function VillaEditForm({
                 rooms={rooms}
                 galleryImages={galleryImages}
               />
-            </div>
-            <div className={activeTab === "ozellikler" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "ozellikler" ? (
               <VillaFeaturesTab
                 villa={villa}
                 pools={pools}
@@ -276,34 +303,34 @@ export default function VillaEditForm({
                 facilityCategories={facilityCategories}
                 priceInclusionItems={priceInclusionItems}
               />
-            </div>
-            <div className={activeTab === "konum" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "konum" ? (
               <VillaLocationTab
                 villa={villa}
                 regions={locationRegions}
                 surroundingLocations={surroundingLocations}
                 distanceByLocationId={distanceByLocationId}
               />
-            </div>
-            <div className={activeTab === "kurallar" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "kurallar" ? (
               <VillaRulesTab
                 villa={villa}
                 prepaymentPaymentTypes={prepaymentPaymentTypes}
               />
-            </div>
-            <div className={activeTab === "personel" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "personel" ? (
               <VillaPersonelTab
                 villa={villa}
                 activeOwners={activeOwners}
                 provinces={provinces}
               />
-            </div>
-            <div className={activeTab === "ical" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "ical" ? (
               <VillaIcalTab villaId={villa.id} data={icalData} />
-            </div>
-            <div className={activeTab === "meta" ? "block" : "hidden"}>
+            ) : null}
+            {activeTab === "meta" ? (
               <VillaMetaSeoTab villa={villa} previewDomain={previewDomain} />
-            </div>
+            ) : null}
           </div>
 
           <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
