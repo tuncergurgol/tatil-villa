@@ -54,6 +54,9 @@ import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareMod
 import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
 import OptionCountdown from "@/components/admin/bookings/OptionCountdown";
 import TcKimlikInput from "@/components/shared/TcKimlikInput";
+import TurkishPhoneField, {
+  normalizeTurkishPhoneFieldValue,
+} from "@/components/admin/ui/TurkishPhoneField";
 import {
   isTcKimlikAcceptable,
   validateOptionalTcKimlikFields,
@@ -504,7 +507,7 @@ export default function BookingDetailModal({
         babies,
         guestName,
         guestEmail,
-        guestPhone,
+        guestPhone: normalizeTurkishPhoneFieldValue(guestPhone),
         totalPrice: netPrice,
         details: {
           ...details,
@@ -951,10 +954,12 @@ export default function BookingDetailModal({
                   />
                 </FormRow>
                 <FormRow label="Müşteri Telefon">
-                  <input
+                  <TurkishPhoneField
                     value={guestPhone}
-                    onChange={(event) => setGuestPhone(event.target.value)}
-                    className={bookingInputClass}
+                    onChange={setGuestPhone}
+                    focusPalette="indigo"
+                    hideLabel
+                    compact
                   />
                 </FormRow>
                 <FormRow label="Müşteri Mail">

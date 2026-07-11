@@ -213,6 +213,7 @@ async function importVillaPeriods(
           ...snapshot,
           occupancyStatus: snapshot.occupancyStatus ?? "EMPTY",
         })),
+        skipDuplicates: true,
       });
     }
   });

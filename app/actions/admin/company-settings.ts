@@ -20,6 +20,8 @@ const companySettingsSchema = z.object({
   googleMapsEmbed: z.string(),
   primaryColor: z.string(),
   secondaryColor: z.string(),
+  accentColor: z.string(),
+  surfaceColor: z.string(),
   logoUrl: z.string(),
   faviconUrl: z.string(),
   ogImageUrl: z.string(),
@@ -89,6 +91,8 @@ export async function saveCompanySettings(
     googleMapsEmbed: formData.get("googleMapsEmbed"),
     primaryColor: formData.get("primaryColor"),
     secondaryColor: formData.get("secondaryColor"),
+    accentColor: formData.get("accentColor"),
+    surfaceColor: formData.get("surfaceColor"),
     logoUrl: formData.get("logoUrl"),
     faviconUrl: formData.get("faviconUrl"),
     ogImageUrl: formData.get("ogImageUrl"),
@@ -139,6 +143,7 @@ export async function saveCompanySettings(
   try {
     await updateCompanySettings(parsed.data);
     revalidatePath("/admin/acente/sirket");
+    revalidatePath("/", "layout");
     revalidatePath("/");
     return { success: true };
   } catch {

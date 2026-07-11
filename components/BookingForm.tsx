@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { submitBooking, type BookingActionState } from "@/app/actions/booking";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import { siteConfig } from "@/lib/data";
 import { formatPrice } from "@/lib/utils";
 import { Phone } from "lucide-react";
@@ -24,19 +25,20 @@ export default function BookingForm({
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
 
   return (
-    <div className="sticky top-24 rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+    <div className="sticky top-36 rounded-xl border border-slate-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.08)] sm:p-6">
+      <h3 className="text-lg font-bold text-slate-900">Rezervasyon</h3>
       {pricePerNight ? (
-        <div>
-          <p className="text-sm text-gray-500">Gecelik fiyat</p>
-          <p className="text-3xl font-bold text-teal-700">
+        <div className="mt-2">
+          <p className="text-sm text-slate-500">Gecelik fiyat</p>
+          <p className="text-2xl font-bold text-teal-700 sm:text-3xl">
             {formatPrice(pricePerNight)}
           </p>
         </div>
       ) : (
-        <p className="text-xl font-bold text-amber-600">Teklif Alınız</p>
+        <p className="mt-2 text-lg font-bold text-amber-600">Teklif Alınız</p>
       )}
 
-      <form action={formAction} className="mt-6 space-y-4">
+      <form action={formAction} className="mt-5 space-y-3.5">
         <input type="hidden" name="villaId" value={villaId} />
 
         {state.error && (
@@ -121,39 +123,31 @@ export default function BookingForm({
           />
         </label>
 
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Telefon</span>
-          <input
-            type="tel"
-            name="guestPhone"
-            required
-            placeholder="05XX XXX XX XX"
-            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
-          />
-        </label>
+        <TurkishPhoneField
+          name="guestPhone"
+          label="Telefon"
+          required
+          focusPalette="teal"
+        />
 
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-xl bg-teal-600 py-3 text-sm font-bold text-white transition hover:bg-teal-700 disabled:opacity-60"
+          className="w-full rounded-lg bg-teal-700 py-3.5 text-sm font-bold text-white transition hover:bg-teal-800 disabled:opacity-60"
         >
-          {pending
-            ? "Gönderiliyor..."
-            : pricePerNight
-              ? "Rezervasyon Yap"
-              : "Teklif İste"}
+          {pending ? "Gönderiliyor..." : "Ücretsiz Rezervasyon Talebi"}
         </button>
       </form>
 
       <a
         href={`tel:${siteConfig.phone.replace(/\s/g, "")}`}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-teal-200 py-3 text-sm font-semibold text-teal-700 transition hover:bg-teal-50"
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
       >
-        <Phone className="h-4 w-4" />
+        <Phone className="h-4 w-4 text-teal-700" />
         {siteConfig.phone}
       </a>
 
-      <p className="mt-4 text-center text-xs text-gray-500">
+      <p className="mt-4 text-center text-xs text-slate-500">
         {villaName} · TÜRSAB No: {siteConfig.tursabNo}
       </p>
     </div>

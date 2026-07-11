@@ -1,3 +1,7 @@
+export function getTurkishPhoneLocalPart(phone: string): string {
+  return phone.trim().replace(/^\+90\s?/, "").replace(/\s/g, "");
+}
+
 export function normalizeTurkishPhoneDigits(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (digits.length === 0) return "";

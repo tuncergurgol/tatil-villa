@@ -7,6 +7,7 @@ import {
   BarChart3,
   Building2,
   CreditCard,
+  Globe,
   Hourglass,
   Image,
   Landmark,
@@ -31,11 +32,14 @@ import AnalyticsSettingsFields from "@/components/admin/company/AnalyticsSetting
 import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payment-types/PrepaymentPaymentTypeManagement";
 import CustomerContactChannelManagement from "@/components/admin/customer-contact-channels/CustomerContactChannelManagement";
 import CompanyBankAccountManagement from "@/components/admin/company/CompanyBankAccountManagement";
+import AgencySiteManagement from "@/components/admin/company/AgencySiteManagement";
 import MailSettingsFields from "@/components/admin/company/MailSettingsFields";
 import WhatsAppSettingsFields from "@/components/admin/company/WhatsAppSettingsFields";
+import ThemeColorPalette from "@/components/admin/company/ThemeColorPalette";
 import type { PrepaymentPaymentTypeItem } from "@/lib/queries/prepayment-payment-types";
 import type { CustomerContactChannelItem } from "@/lib/queries/customer-contact-channels";
 import type { CompanyBankAccountItem } from "@/lib/queries/company-bank-accounts";
+import type { AgencySiteItem } from "@/lib/queries/agency-sites";
 
 const tabs = [
   { id: "genel", label: "Genel Bilgiler", icon: Building2 },
@@ -60,6 +64,11 @@ const tabs = [
     label: "Müşteri Ulaşım Kanalı",
     icon: MessageCircle,
   },
+  {
+    id: "acentenin-siteleri",
+    label: "Acentenin Siteleri",
+    icon: Globe,
+  },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -82,6 +91,12 @@ interface CompanySettingsFormProps {
   bankAccounts: {
     items: CompanyBankAccountItem[];
     totalCount: number;
+  };
+  agencySites: {
+    items: AgencySiteItem[];
+    totalCount: number;
+    activeCount: number;
+    passiveCount: number;
   };
 }
 
@@ -199,6 +214,7 @@ export default function CompanySettingsForm({
   prepayment,
   contactChannels,
   bankAccounts,
+  agencySites,
 }: CompanySettingsFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>(
@@ -220,8 +236,10 @@ export default function CompanySettingsForm({
     const nextPath =
       tabId === "on-odeme-odeme-tipleri"
         ? "/admin/acente/sirket?tab=on-odeme-odeme-tipleri"
-        : tabId === "musteri-ulasm-kanali"
+          : tabId === "musteri-ulasm-kanali"
           ? "/admin/acente/sirket?tab=musteri-ulasm-kanali"
+          : tabId === "acentenin-siteleri"
+            ? "/admin/acente/sirket?tab=acentenin-siteleri"
           : tabId === "banka"
             ? "/admin/acente/sirket?tab=banka"
             : tabId === "mail-kurulumu"
@@ -235,6 +253,7 @@ export default function CompanySettingsForm({
   const isSettingsTab =
     activeTab !== "on-odeme-odeme-tipleri" &&
     activeTab !== "musteri-ulasm-kanali" &&
+    activeTab !== "acentenin-siteleri" &&
     activeTab !== "banka";
 
   return (
@@ -336,20 +355,14 @@ export default function CompanySettingsForm({
           </TabPanel>
 
           <TabPanel active={activeTab === "tema"}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SettingsField
-                label="Ana Renk"
-                name="primaryColor"
-                type="color"
-                defaultValue={settings.primaryColor}
-              />
-              <SettingsField
-                label="İkincil Renk"
-                name="secondaryColor"
-                type="color"
-                defaultValue={settings.secondaryColor}
-              />
-            </div>
+            <ThemeColorPalette
+              initialColors={{
+                primaryColor: settings.primaryColor,
+                secondaryColor: settings.secondaryColor,
+                accentColor: settings.accentColor,
+                surfaceColor: settings.surfaceColor,
+              }}
+            />
           </TabPanel>
 
           <TabPanel active={activeTab === "logo"}>
@@ -452,6 +465,14 @@ export default function CompanySettingsForm({
           ) : activeTab === "banka" ? (
             <CompanyBankAccountManagement
               items={bankAccounts.items}
+              embedded
+            />
+          ) : activeTab === "acentenin-siteleri" ? (
+            <AgencySiteManagement
+              items={agencySites.items}
+              totalCount={agencySites.totalCount}
+              activeCount={agencySites.activeCount}
+              passiveCount={agencySites.passiveCount}
               embedded
             />
           ) : (

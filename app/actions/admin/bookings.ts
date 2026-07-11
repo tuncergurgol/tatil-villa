@@ -20,7 +20,7 @@ import {
   resolveAdminBookingWizardQuote,
 } from "@/lib/queries/admin-booking-wizard";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { getCustomerContactChannelsForPicker } from "@/lib/queries/customer-contact-channels";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
   computeEntrancePayment,
   computeReservationTotal,
@@ -32,6 +32,7 @@ import {
   normalizeTcKimlik,
   validateOptionalTcKimlikFields,
 } from "@/lib/tc-kimlik";
+import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
 
 const bookingStatusSchema = z.nativeEnum(BookingStatus);
 
@@ -54,8 +55,17 @@ const adminBookingSchema = z.object({
   pets: z.coerce.number().min(0).default(0),
   guestName: z.string().min(2, "Ad soyad gerekli"),
   guestEmail: z.string().min(3, "E-posta gerekli"),
-  guestPhone: z.string().min(1, "Telefon gerekli"),
+  guestPhone: z
+    .string()
+    .min(1, "Telefon gerekli")
+    .transform((value) => normalizeStoredTurkishPhone(value))
+    .refine((value) => value.length >= 12, "Geçerli telefon girin"),
   grossPrice: optionalMoney,
+  ownerDiscountRate: z.coerce.number().min(0).max(100).optional().default(0),
+  ownerDiscountAmount: optionalMoney,
+  agencyDiscountRate: z.coerce.number().min(0).max(100).optional().default(0),
+  agencyDiscountAmount: optionalMoney,
+  prepaymentRate: z.coerce.number().min(0).max(100).optional().default(20),
   extraAccommodationFee: optionalMoney,
   cleaningFee: optionalMoney,
   petCleaningFee: optionalMoney,
@@ -97,6 +107,11 @@ function parseAdminBookingForm(formData: FormData) {
     guestEmail: formData.get("guestEmail"),
     guestPhone: formData.get("guestPhone"),
     grossPrice: formData.get("grossPrice"),
+    ownerDiscountRate: formData.get("ownerDiscountRate") ?? 0,
+    ownerDiscountAmount: formData.get("ownerDiscountAmount"),
+    agencyDiscountRate: formData.get("agencyDiscountRate") ?? 0,
+    agencyDiscountAmount: formData.get("agencyDiscountAmount"),
+    prepaymentRate: formData.get("prepaymentRate") ?? 20,
     extraAccommodationFee: formData.get("extraAccommodationFee"),
     cleaningFee: formData.get("cleaningFee"),
     petCleaningFee: formData.get("petCleaningFee"),
@@ -118,6 +133,13 @@ function buildBookingDetailsFromAdminForm(
 ): BookingDetails {
   const details: BookingDetails = {
     grossPrice: data.grossPrice,
+    ownerDiscountRate: data.ownerDiscountRate,
+    ownerDiscountAmount: data.ownerDiscountAmount ?? 0,
+    discountRate: data.ownerDiscountRate,
+    discountAmount: data.ownerDiscountAmount ?? 0,
+    agencyDiscountRate: data.agencyDiscountRate,
+    agencyDiscountAmount: data.agencyDiscountAmount ?? 0,
+    prepaymentRate: data.prepaymentRate,
     extraAccommodationFee: data.extraAccommodationFee,
     cleaningFee: data.cleaningFee,
     petCleaningFee: data.petCleaningFee,
@@ -304,7 +326,10 @@ const bookingDetailSchema = z.object({
   babies: z.coerce.number().min(0),
   guestName: z.string().min(2),
   guestEmail: z.string().min(3),
-  guestPhone: z.string().min(1),
+  guestPhone: z
+    .string()
+    .min(1)
+    .transform((value) => normalizeStoredTurkishPhone(value)),
   totalPrice: z.number().nullable(),
   details: z.record(z.string(), z.unknown()),
 });
@@ -397,8 +422,8 @@ const DEFAULT_SITE_INFO = "TATİL VİLLACISI";
 export async function getSiteInfoOptionsAction(): Promise<string[]> {
   await requireAdmin();
 
-  const channels = await getCustomerContactChannelsForPicker();
-  const names = channels.map((channel) => channel.name.trim()).filter(Boolean);
+  const sites = await getAgencySitesForPicker();
+  const names = sites.map((site) => site.name.trim()).filter(Boolean);
   const unique = new Set(names);
 
   unique.add(DEFAULT_SITE_INFO);

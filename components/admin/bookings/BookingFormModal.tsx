@@ -21,9 +21,20 @@ import StayDateRangePicker from "@/components/admin/availability/StayDateRangePi
 import GuestCounterRow from "@/components/admin/bookings/new-booking/GuestCounterRow";
 import NewBookingPriceSummary from "@/components/admin/bookings/new-booking/NewBookingPriceSummary";
 import SelectedVillaCard from "@/components/admin/bookings/new-booking/SelectedVillaCard";
-import { computeEntrancePayment, computeReservationTotal } from "@/lib/booking-form-details";
+import { DiscountPercentAmountField } from "@/components/admin/bookings/booking-form-ui";
+import {
+  clampDiscountRate,
+  computeDiscountAmount,
+  computeEntrancePayment,
+  computeNetPrice,
+  computePrepaymentAmount,
+  computeReservationTotal,
+} from "@/lib/booking-form-details";
 import { getSortedCompanyPaymentTypeOptions } from "@/lib/company-payment-types";
 import TcKimlikInput from "@/components/shared/TcKimlikInput";
+import TurkishPhoneField, {
+  normalizeTurkishPhoneFieldValue,
+} from "@/components/admin/ui/TurkishPhoneField";
 import type {
   AdminBookingWizardQuote,
   AdminBookingWizardVilla,
@@ -93,6 +104,10 @@ export default function BookingFormModal({
   const [babies, setBabies] = useState(0);
   const [pets, setPets] = useState(0);
   const [includeUnderfloorHeating, setIncludeUnderfloorHeating] = useState(false);
+  const [ownerDiscountRate, setOwnerDiscountRate] = useState(0);
+  const [ownerDiscountAmount, setOwnerDiscountAmount] = useState(0);
+  const [agencyDiscountRate, setAgencyDiscountRate] = useState(0);
+  const [agencyDiscountAmount, setAgencyDiscountAmount] = useState(0);
   const [quoteData, setQuoteData] = useState<AdminBookingWizardQuote | null>(
     null
   );
@@ -127,6 +142,10 @@ export default function BookingFormModal({
     setBabies(0);
     setPets(0);
     setIncludeUnderfloorHeating(false);
+    setOwnerDiscountRate(0);
+    setOwnerDiscountAmount(0);
+    setAgencyDiscountRate(0);
+    setAgencyDiscountAmount(0);
     setQuoteData(null);
     setGuestFirstName("");
     setGuestLastName("");
@@ -188,6 +207,10 @@ export default function BookingFormModal({
 
     const details = {
       grossPrice,
+      ownerDiscountRate,
+      ownerDiscountAmount,
+      agencyDiscountRate,
+      agencyDiscountAmount,
       cleaningFee,
       underfloorHeatingFee: includeUnderfloorHeating
         ? underfloorHeatingFee
@@ -198,20 +221,26 @@ export default function BookingFormModal({
 
     const reservationTotal = computeReservationTotal(details);
     const prepaymentRate = quote?.prepaymentRate ?? 20;
+    const formulaPrepayment = computePrepaymentAmount(
+      grossPrice,
+      ownerDiscountAmount,
+      prepaymentRate,
+      agencyDiscountAmount
+    );
     const prepaymentAmount =
       paymentMode === "full"
         ? reservationTotal
-        : reservationTotal != null
-          ? Math.round((reservationTotal * prepaymentRate) / 100)
-          : null;
+        : formulaPrepayment;
     const entrancePayment = computeEntrancePayment(
       reservationTotal,
       prepaymentAmount
     );
+    const netPrice = computeNetPrice(details);
 
     return {
       ...details,
       reservationTotal,
+      netPrice,
       prepaymentRate,
       prepaymentAmount,
       entrancePayment,
@@ -223,6 +252,10 @@ export default function BookingFormModal({
     includeUnderfloorHeating,
     pets,
     paymentMode,
+    ownerDiscountRate,
+    ownerDiscountAmount,
+    agencyDiscountRate,
+    agencyDiscountAmount,
   ]);
 
   const paymentTypeOptions = getSortedCompanyPaymentTypeOptions();
@@ -230,9 +263,7 @@ export default function BookingFormModal({
   if (!open) return null;
 
   const guestName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
-  const phoneValue = guestPhone.trim().startsWith("+")
-    ? guestPhone.trim()
-    : `+90${guestPhone.replace(/\D/g, "").replace(/^0/, "")}`;
+  const phoneValue = normalizeTurkishPhoneFieldValue(guestPhone);
 
   const canContinueStep1 = Boolean(selectedVilla);
   const canContinueStep2 =
@@ -248,6 +279,24 @@ export default function BookingFormModal({
     guestPhone.trim().length > 0 &&
     paymentMethod.trim().length > 0 &&
     isTcKimlikAcceptable(guestTc, false);
+
+  function handleOwnerDiscountRateChange(rate: number) {
+    const nextRate = clampDiscountRate(rate);
+    const grossPrice = pricingDetails.grossPrice;
+    setOwnerDiscountRate(nextRate);
+    setOwnerDiscountAmount(
+      grossPrice != null ? computeDiscountAmount(grossPrice, nextRate) : 0
+    );
+  }
+
+  function handleAgencyDiscountRateChange(rate: number) {
+    const nextRate = clampDiscountRate(rate);
+    const grossPrice = pricingDetails.grossPrice;
+    setAgencyDiscountRate(nextRate);
+    setAgencyDiscountAmount(
+      grossPrice != null ? computeDiscountAmount(grossPrice, nextRate) : 0
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -415,6 +464,42 @@ export default function BookingFormModal({
                       şartı sağlanmıyor.
                     </p>
                   ) : null}
+
+                  {pricingDetails.quoteValid ? (
+                    <div className="mt-5 space-y-4 border-t border-gray-100 pt-5">
+                      <h4 className="text-sm font-bold text-gray-900">
+                        İndirimler
+                      </h4>
+                      <div className="space-y-3">
+                        <div>
+                          <p className={labelClass}>Villa Sahibi İndirimi (% - Tutar)</p>
+                          <div className="mt-1">
+                            <DiscountPercentAmountField
+                              rate={ownerDiscountRate}
+                              amount={ownerDiscountAmount}
+                              onRateChange={handleOwnerDiscountRateChange}
+                              onAmountChange={(amount) =>
+                                setOwnerDiscountAmount(amount ?? 0)
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <p className={labelClass}>Acente İndirimi (% - Tutar)</p>
+                          <div className="mt-1">
+                            <DiscountPercentAmountField
+                              rate={agencyDiscountRate}
+                              amount={agencyDiscountAmount}
+                              onRateChange={handleAgencyDiscountRateChange}
+                              onAmountChange={(amount) =>
+                                setAgencyDiscountAmount(amount ?? 0)
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -469,6 +554,31 @@ export default function BookingFormModal({
                   <input type="hidden" name="guestEmail" value={guestEmail} />
                   <input type="hidden" name="guestPhone" value={phoneValue} />
                   <input type="hidden" name="grossPrice" value={pricingDetails.grossPrice ?? ""} />
+                  <input
+                    type="hidden"
+                    name="ownerDiscountRate"
+                    value={ownerDiscountRate}
+                  />
+                  <input
+                    type="hidden"
+                    name="ownerDiscountAmount"
+                    value={ownerDiscountAmount}
+                  />
+                  <input
+                    type="hidden"
+                    name="agencyDiscountRate"
+                    value={agencyDiscountRate}
+                  />
+                  <input
+                    type="hidden"
+                    name="agencyDiscountAmount"
+                    value={agencyDiscountAmount}
+                  />
+                  <input
+                    type="hidden"
+                    name="prepaymentRate"
+                    value={pricingDetails.prepaymentRate}
+                  />
                   <input type="hidden" name="cleaningFee" value={pricingDetails.cleaningFee ?? ""} />
                   <input
                     type="hidden"
@@ -494,7 +604,7 @@ export default function BookingFormModal({
                   <input
                     type="hidden"
                     name="totalPrice"
-                    value={pricingDetails.reservationTotal ?? ""}
+                    value={pricingDetails.netPrice ?? pricingDetails.grossPrice ?? ""}
                   />
                   <input type="hidden" name="customerNote" value={customerNote} />
                   <input type="hidden" name="guestTc" value={guestTc} />
@@ -528,21 +638,13 @@ export default function BookingFormModal({
                         required
                       />
                     </label>
-                    <label>
-                      <span className={labelClass}>Telefon *</span>
-                      <div className="mt-1 flex overflow-hidden rounded-xl border border-gray-200 bg-gray-50/80 focus-within:border-blue-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100">
-                        <span className="flex items-center px-3 text-sm text-gray-500">
-                          +90
-                        </span>
-                        <input
-                          value={guestPhone}
-                          onChange={(event) => setGuestPhone(event.target.value)}
-                          className="w-full bg-transparent px-1 py-3 text-sm outline-none"
-                          placeholder="5xx xxx xx xx"
-                          required
-                        />
-                      </div>
-                    </label>
+                    <TurkishPhoneField
+                      label="Telefon *"
+                      value={guestPhone}
+                      onChange={setGuestPhone}
+                      focusPalette="blue"
+                      required
+                    />
                     <label>
                       <span className={labelClass}>T.C. Kimlik No (opsiyonel)</span>
                       <TcKimlikInput

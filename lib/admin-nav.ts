@@ -11,7 +11,7 @@ export interface NavItem {
 
 export interface NavGroup {
   label: string;
-  items: NavLink[];
+  items: NavItem[];
 }
 
 export interface NavSection {
@@ -62,9 +62,12 @@ export const adminAgencyNav: NavGroup = {
   label: "Acente Yönetimi",
   items: [
     { label: "Şirket", href: "/admin/acente/sirket" },
+    { label: "Takvim Import", href: "/admin/acente/takvim-import" },
+    { label: "Evolution WhatsApp", href: "/admin/acente/evolution-whatsapp" },
     { label: "Mesaj İçeriği", href: "/admin/acente/mesaj-icerigi" },
     { label: "Kullanıcılar", href: "/admin/acente/kullanicilar" },
-    { label: "Site İçeriği", href: "/admin/acente/site-icerigi" },
+    { label: "İçerik Yönetimi", href: "/admin/icerik" },
     { label: "Güvenlik & Log", href: "/admin/acente/guvenlik" },
   ],
 };
+

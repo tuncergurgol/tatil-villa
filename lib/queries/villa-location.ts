@@ -114,3 +114,16 @@ export function buildRegionSelectionLabel(
 
   return parts.join(" > ");
 }
+
+/** Public kart/detay için: İl - İlçe - Mahalle */
+export function formatVillaRegionLabel(region: {
+  name: string;
+  parent?: {
+    name: string;
+    parent?: { name: string } | null;
+  } | null;
+}): string {
+  return [region.parent?.parent?.name, region.parent?.name, region.name]
+    .filter(Boolean)
+    .join(" - ");
+}

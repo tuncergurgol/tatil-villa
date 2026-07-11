@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createBooking } from "@/lib/queries/bookings";
+import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
 
 const bookingSchema = z.object({
   villaId: z.string().min(1),
@@ -14,7 +15,11 @@ const bookingSchema = z.object({
   pets: z.coerce.number().min(0).default(0),
   guestName: z.string().min(2, "Ad soyad gerekli"),
   guestEmail: z.string().email("Geçerli e-posta girin"),
-  guestPhone: z.string().min(10, "Geçerli telefon girin"),
+  guestPhone: z
+    .string()
+    .min(1, "Geçerli telefon girin")
+    .transform((value) => normalizeStoredTurkishPhone(value))
+    .refine((value) => value.length >= 12, "Geçerli telefon girin"),
 });
 
 export type BookingActionState = {

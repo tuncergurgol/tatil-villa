@@ -21,6 +21,7 @@ import {
 } from "@/lib/villa-period-calendar";
 import { countNightsBetween } from "@/lib/villa-period-selection";
 import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 
 const NIGHT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 10, 14, 21, 28] as const;
 
@@ -201,30 +202,20 @@ export default function AvailabilitySearchPage({
         {panelOpen ? (
           <div className="space-y-3 p-3">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <label className="block">
-                <span className={labelClass}>
-                  Telefon No <span className="text-red-500">*</span>
-                </span>
-                <div className="mt-1 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 transition focus-within:border-violet-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-violet-100">
-                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-gray-700">
-                    <span aria-hidden>🇹🇷</span>
-                    <span>+90</span>
-                  </span>
-                  <input
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    onBlur={(event) => handlePhoneLookup(event.target.value)}
-                    placeholder="5xx xxx xx xx"
-                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
-                  />
-                  {isLookingUpPhone ? (
+              <TurkishPhoneField
+                label="Telefon No *"
+                value={phone}
+                onChange={setPhone}
+                onBlur={handlePhoneLookup}
+                focusPalette="violet"
+                compact
+                error={fieldErrors.phone}
+                suffix={
+                  isLookingUpPhone ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />
-                  ) : null}
-                </div>
-                {fieldErrors.phone ? (
-                  <p className="mt-0.5 text-[11px] text-red-600">{fieldErrors.phone}</p>
-                ) : null}
-              </label>
+                  ) : null
+                }
+              />
 
               <label className="block">
                 <span className={labelClass}>

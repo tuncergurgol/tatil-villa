@@ -76,6 +76,18 @@ enum RegionLevel {
   MAHALLE
 }
 
+enum PeriodImportStatus {
+  SUCCESS
+  ERROR
+}
+
+enum WhatsappCalendarMessageStatus {
+  APPLIED
+  IGNORED
+  FAILED
+  DUPLICATE
+}
+
 model Region {
   id           String      @id @default(cuid())
   slug         String      @unique
@@ -163,6 +175,19 @@ model CustomerContactChannel {
   customers Customer[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model AgencySite {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([active])
   @@index([sortOrder])
@@ -296,6 +321,9 @@ model Villa {
   pricePeriods   VillaPricePeriod[]
   pricePeriodDays VillaPricePeriodDay[]
   bookings       Booking[]
+  periodImportLog VillaPeriodImportLog?
+  whatsappCalendarMessages WhatsappCalendarMessage[]
+  guestReviews           GuestReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -310,6 +338,62 @@ model Villa {
   @@index([dealSortOrder])
   @@index([popularSortOrder])
   @@index([recommendedSortOrder])
+  @@index([whatsappGroupId])
+}
+
+model VillaPeriodImportLog {
+  id             String             @id @default(cuid())
+  villaId        String             @unique
+  villa          Villa              @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  sourceSlug     String
+  status         PeriodImportStatus
+  message        String             @default("")
+  periodCount    Int                @default(0)
+  dayCount       Int                @default(0)
+  bookedDays     Int                @default(0)
+  optionDays     Int                @default(0)
+  retryCount     Int                @default(0)
+  attemptedAt    DateTime?
+  succeededAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([status])
+  @@index([attemptedAt])
+}
+
+model WhatsappCalendarGroup {
+  id         String   @id @default(cuid())
+  externalId String   @unique
+  name       String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([active])
+}
+
+model WhatsappCalendarMessage {
+  id              String                        @id @default(cuid())
+  externalId      String?                       @unique
+  groupExternalId String
+  villaId         String?
+  villa           Villa?                        @relation(fields: [villaId], references: [id], onDelete: SetNull)
+  senderName      String                        @default("")
+  senderPhone     String                        @default("")
+  body            String                        @db.Text
+  intent          String                        @default("")
+  startDate       DateTime?                     @db.Date
+  endDate         DateTime?                     @db.Date
+  status          WhatsappCalendarMessageStatus
+  resultMessage   String                        @default("") @db.Text
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+
+  @@index([groupExternalId])
+  @@index([villaId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model VillaPricePeriod {
@@ -492,12 +576,31 @@ model VillaIcalSource {
   name       String
   url        String
   lastSyncAt DateTime?
+  lastSyncStatus String @default("")
+  lastSyncMessage String @default("") @db.Text
   sortOrder  Int       @default(0)
+  importedBlocks VillaIcalImportedBlock[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
   @@index([villaId])
   @@index([sortOrder])
+}
+
+model VillaIcalImportedBlock {
+  id          String          @id @default(cuid())
+  sourceId    String
+  source      VillaIcalSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  villaId     String
+  externalUid String
+  startDate   DateTime        @db.Date
+  endDate     DateTime        @db.Date
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([sourceId, externalUid])
+  @@index([villaId])
+  @@index([sourceId])
 }
 
 model VillaIcalSyncEvent {
@@ -552,6 +655,7 @@ model Amenity {
   facilityCategoryId String?
   facilityCategory   FacilityCategory? @relation(fields: [facilityCategoryId], references: [id], onDelete: SetNull)
   isDefault          Boolean           @default(false)
+  showInSearch       Boolean           @default(false)
   sortOrder          Int               @default(0)
   active             Boolean           @default(true)
   createdAt          DateTime          @default(now())
@@ -560,6 +664,7 @@ model Amenity {
   @@index([categoryId])
   @@index([facilityCategoryId])
   @@index([isDefault])
+  @@index([showInSearch])
   @@index([sortOrder])
   @@index([active])
 }
@@ -690,6 +795,8 @@ model CompanySettings {
   paymentType    String  @default("")
   primaryColor   String  @default("#0d9488")
   secondaryColor String  @default("#115e59")
+  accentColor    String  @default("#14b8a6")
+  surfaceColor   String  @default("#f0fdfa")
   logoUrl        String  @default("")
   faviconUrl     String  @default("")
   ogImageUrl     String  @default("")
@@ -738,6 +845,145 @@ model CompanySettings {
   whatsappApiVersion          String  @default("v22.0")
   whatsappWebhookVerifyToken  String  @default("")
   whatsappTestPhone           String  @default("")
+  whatsappCalendarEnabled     Boolean @default(false)
+  whatsappCalendarWebhookSecret String @default("")
+  wahaBaseUrl                 String  @default("http://localhost:3001")
+  wahaApiKey                  String  @default("")
+  wahaSessionName             String  @default("default")
+  evolutionBaseUrl            String  @default("http://localhost:8080")
+  evolutionApiKey             String  @default("")
+  evolutionInstanceName       String  @default("tatil-villa")
 
   updatedAt DateTime @updatedAt
+}
+
+enum CmsPageType {
+  CORPORATE
+  LEGAL
+  LANDING
+}
+
+model CmsPage {
+  id             String      @id @default(cuid())
+  slug           String      @unique
+  title          String
+  content        String      @default("") @db.Text
+  excerpt        String      @default("") @db.Text
+  pageType       CmsPageType @default(CORPORATE)
+  seoTitle       String      @default("")
+  seoDescription String      @default("") @db.Text
+  seoKeywords    String      @default("")
+  published      Boolean     @default(false)
+  showInFooter   Boolean     @default(true)
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([published])
+  @@index([pageType])
+  @@index([sortOrder])
+}
+
+model FaqItem {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String   @db.Text
+  category  String   @default("genel")
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, category])
+  @@index([sortOrder])
+}
+
+model BlogCategory {
+  id             String     @id @default(cuid())
+  name           String
+  slug           String     @unique
+  description    String     @default("") @db.Text
+  seoTitle       String     @default("")
+  seoDescription String     @default("") @db.Text
+  sortOrder      Int        @default(0)
+  active         Boolean    @default(true)
+  posts          BlogPost[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+model BlogPost {
+  id             String        @id @default(cuid())
+  categoryId     String?
+  category       BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  slug           String        @unique
+  title          String
+  excerpt        String        @default("") @db.Text
+  content        String        @default("") @db.Text
+  coverImage     String        @default("")
+  authorName     String        @default("Tatildeyiz")
+  seoTitle       String        @default("")
+  seoDescription String        @default("") @db.Text
+  seoKeywords    String        @default("")
+  published      Boolean       @default(false)
+  publishedAt    DateTime?
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([published, publishedAt])
+  @@index([categoryId])
+}
+
+model GuestReview {
+  id         String   @id @default(cuid())
+  guestName  String
+  guestCity  String   @default("")
+  rating     Int
+  title      String   @default("")
+  comment    String   @db.Text
+  villaId    String?
+  villa      Villa?   @relation(fields: [villaId], references: [id], onDelete: SetNull)
+  stayMonth  String   @default("")
+  source     String   @default("manual")
+  approved   Boolean  @default(false)
+  featured   Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([approved, featured])
+  @@index([villaId])
+  @@index([rating])
+}
+
+model SiteMenu {
+  id        String         @id @default(cuid())
+  key       String         @unique
+  label     String
+  items     SiteMenuItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model SiteMenuItem {
+  id         String         @id @default(cuid())
+  menuId     String
+  menu       SiteMenu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  label      String
+  href       String
+  sortOrder  Int            @default(0)
+  active     Boolean        @default(true)
+  openInNewTab Boolean      @default(false)
+  parentId   String?
+  parent     SiteMenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children   SiteMenuItem[] @relation("MenuTree")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([menuId, sortOrder])
+  @@index([parentId])
 }

@@ -1,0 +1,246 @@
+"use server";
+
+import { randomBytes } from "crypto";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth-helpers";
+import {
+  mapIntentToOccupancyMode,
+  parseWhatsappCalendarMessage,
+} from "@/lib/whatsapp-calendar-parser";
+import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import {
+  fetchEvolutionWhatsappGroups,
+  setEvolutionWebhook,
+  type EvolutionWhatsappGroup,
+} from "@/lib/evolution-client";
+import { resolveSiteOrigin } from "@/lib/villa-ical-url";
+
+export type WhatsappCalendarActionState = {
+  success?: boolean;
+  error?: string;
+  message?: string;
+};
+
+export type ListEvolutionGroupsResult = {
+  success?: boolean;
+  error?: string;
+  groups?: EvolutionWhatsappGroup[];
+};
+
+function revalidateWhatsappCalendarPaths() {
+  revalidatePath("/admin/acente/evolution-whatsapp");
+  revalidatePath("/admin/villalar");
+}
+
+const groupSchema = z.object({
+  name: z.string().min(1, "Grup adı gerekli"),
+  externalId: z.string().min(3, "Grup ID gerekli"),
+});
+
+export async function saveWhatsappCalendarSettings(
+  _prev: WhatsappCalendarActionState,
+  formData: FormData
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const enabled = formData.get("whatsappCalendarEnabled") === "on";
+  const webhookSecret = String(formData.get("whatsappCalendarWebhookSecret") ?? "").trim();
+
+  await prisma.companySettings.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      whatsappCalendarEnabled: enabled,
+      whatsappCalendarWebhookSecret: webhookSecret,
+    },
+    update: {
+      whatsappCalendarEnabled: enabled,
+      whatsappCalendarWebhookSecret: webhookSecret,
+    },
+  });
+
+  const settings = await getCompanySettings();
+  const baseUrl =
+    settings.evolutionBaseUrl?.trim() ||
+    process.env.EVOLUTION_BASE_URL?.trim() ||
+    "";
+  const apiKey =
+    settings.evolutionApiKey?.trim() ||
+    process.env.EVOLUTION_API_KEY?.trim() ||
+    "";
+  const instanceName =
+    settings.evolutionInstanceName?.trim() ||
+    process.env.EVOLUTION_INSTANCE_NAME?.trim() ||
+    "tatil-villa";
+
+  if (baseUrl && apiKey && webhookSecret) {
+    const siteOrigin = resolveSiteOrigin({
+      companyDomain: settings.domain,
+    });
+    const webhookUrl = `${siteOrigin}/api/webhooks/whatsapp-calendar`;
+    try {
+      await setEvolutionWebhook(
+        baseUrl,
+        apiKey,
+        instanceName,
+        webhookUrl,
+        webhookSecret
+      );
+    } catch {
+      // Evolution erişilemiyorsa ayar yine de kaydedilir.
+    }
+  }
+
+  revalidateWhatsappCalendarPaths();
+  return { success: true, message: "Ayarlar kaydedildi" };
+}
+
+export async function generateWhatsappCalendarWebhookSecretAction(): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const secret = randomBytes(24).toString("hex");
+  await prisma.companySettings.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      whatsappCalendarWebhookSecret: secret,
+    },
+    update: {
+      whatsappCalendarWebhookSecret: secret,
+    },
+  });
+
+  revalidateWhatsappCalendarPaths();
+  return { success: true, message: secret };
+}
+
+export async function listEvolutionWhatsappGroupsAction(): Promise<ListEvolutionGroupsResult> {
+  await requireAdmin();
+
+  const settings = await getCompanySettings();
+  const baseUrl =
+    settings.evolutionBaseUrl?.trim() ||
+    process.env.EVOLUTION_BASE_URL?.trim() ||
+    "http://localhost:8080";
+  const apiKey =
+    settings.evolutionApiKey?.trim() ||
+    process.env.EVOLUTION_API_KEY?.trim() ||
+    "";
+  const instanceName =
+    settings.evolutionInstanceName?.trim() ||
+    process.env.EVOLUTION_INSTANCE_NAME?.trim() ||
+    "tatil-villa";
+
+  if (!apiKey) {
+    return {
+      error:
+        "Önce Evolution API anahtarını kaydedin ve WhatsApp bağlantısını tamamlayın",
+    };
+  }
+
+  try {
+    const groups = await fetchEvolutionWhatsappGroups(
+      baseUrl,
+      apiKey,
+      instanceName
+    );
+    return { success: true, groups };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "WhatsApp grupları yüklenemedi. Bağlantı durumunu kontrol edin.",
+    };
+  }
+}
+
+export async function createWhatsappCalendarGroup(
+  _prev: WhatsappCalendarActionState,
+  formData: FormData
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const parsed = groupSchema.safeParse({
+    name: formData.get("name"),
+    externalId: formData.get("externalId"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form" };
+  }
+
+  const externalId = normalizeWhatsappGroupId(parsed.data.externalId);
+
+  try {
+    await prisma.whatsappCalendarGroup.create({
+      data: {
+        name: parsed.data.name.trim(),
+        externalId,
+      },
+    });
+    revalidateWhatsappCalendarPaths();
+    return { success: true };
+  } catch {
+    return { error: "Grup kaydı oluşturulamadı (ID benzersiz olmalı)" };
+  }
+}
+
+export async function deleteWhatsappCalendarGroup(
+  id: string
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  try {
+    await prisma.whatsappCalendarGroup.delete({ where: { id } });
+    revalidateWhatsappCalendarPaths();
+    return { success: true };
+  } catch {
+    return { error: "Grup silinemedi" };
+  }
+}
+
+export async function testWhatsappCalendarParserAction(
+  sampleText: string
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const parsed = parseWhatsappCalendarMessage(sampleText);
+  if (!parsed) {
+    return { error: "Mesajdan takvim komutu çıkarılamadı" };
+  }
+
+  return {
+    success: true,
+    message: `${parsed.summary} (${mapIntentToOccupancyMode(parsed.intent)})`,
+  };
+}
+
+export async function applyWhatsappCalendarParserTestAction(
+  villaId: string,
+  sampleText: string
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const parsed = parseWhatsappCalendarMessage(sampleText);
+  if (!parsed) {
+    return { error: "Mesajdan takvim komutu çıkarılamadı" };
+  }
+
+  const mode = mapIntentToOccupancyMode(parsed.intent);
+  const result = await applyVillaPeriodDaysOccupancy(
+    villaId,
+    parsed.startDateKey,
+    parsed.endDateKey,
+    mode
+  );
+
+  revalidateWhatsappCalendarPaths();
+  return {
+    success: true,
+    message: `${parsed.summary} uygulandı (${result.updatedDays} gün güncellendi)`,
+  };
+}

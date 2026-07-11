@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Bath, BedDouble, MapPin, Users } from "lucide-react";
+import VillaPriceRange from "@/components/VillaPriceRange";
 import type { Villa } from "@/lib/types";
-import { categoryLabel, formatPrice } from "@/lib/utils";
+import { categoryLabel } from "@/lib/utils";
 
 interface VillaCardProps {
   villa: Villa;
@@ -52,16 +53,11 @@ export default function VillaCard({ villa }: VillaCardProps) {
         </div>
 
         <div className="mt-auto border-t border-gray-100 pt-3">
-          {villa.pricePerNight ? (
-            <p className="text-sm">
-              <span className="text-lg font-bold text-teal-700">
-                {formatPrice(villa.pricePerNight)}
-              </span>
-              <span className="text-gray-500"> / gece</span>
-            </p>
-          ) : (
-            <p className="text-sm font-semibold text-amber-600">Teklif Alınız</p>
-          )}
+          <VillaPriceRange
+            minNightlyPrice={villa.minNightlyPrice}
+            maxNightlyPrice={villa.maxNightlyPrice}
+            pricePerNight={villa.pricePerNight}
+          />
         </div>
       </div>
     </Link>

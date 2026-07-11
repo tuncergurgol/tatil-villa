@@ -19,6 +19,7 @@ export async function createCampaign(formData: FormData) {
   });
   revalidatePath("/");
   revalidatePath("/admin/kampanyalar");
+  revalidatePath("/admin/icerik");
 }
 
 export async function updateCampaign(id: string, formData: FormData) {
@@ -37,11 +38,13 @@ export async function updateCampaign(id: string, formData: FormData) {
   });
   revalidatePath("/");
   revalidatePath("/admin/kampanyalar");
+  revalidatePath("/admin/icerik");
 }
 
 export async function deleteCampaign(id: string) {
   await requireAdmin();
   await prisma.campaign.delete({ where: { id } });
   revalidatePath("/admin/kampanyalar");
+  revalidatePath("/admin/icerik");
   revalidatePath("/");
 }

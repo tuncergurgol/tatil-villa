@@ -12,6 +12,8 @@ import {
   USER_ROLE_DESCRIPTIONS,
   USER_ROLE_LABELS,
 } from "@/lib/queries/users";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
+import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
 
 type AdminUser = Pick<
   User,
@@ -52,28 +54,6 @@ function Field({
   );
 }
 
-function PhoneField({ defaultValue = "" }: { defaultValue?: string }) {
-  const displayValue = defaultValue.replace(/^\+90\s?/, "");
-
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-gray-500">Telefon No</span>
-      <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100">
-        <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-700">
-          <span aria-hidden>🇹🇷</span>
-          <span>+90</span>
-        </span>
-        <input
-          name="phone"
-          defaultValue={displayValue}
-          placeholder="5xx xxx xx xx"
-          className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
-        />
-      </div>
-    </label>
-  );
-}
-
 function UserFormFields({
   user,
   isEdit = false,
@@ -105,7 +85,12 @@ function UserFormFields({
         required={!isEdit}
         placeholder={isEdit ? "Boş bırakılırsa değişmez" : "En az 6 karakter"}
       />
-      <PhoneField defaultValue={user?.phone ?? ""} />
+      <TurkishPhoneField
+        name="phone"
+        label="Telefon No"
+        defaultValue={user?.phone ?? ""}
+        focusPalette="indigo"
+      />
       <label className="block">
         <span className="text-xs font-medium text-gray-500">Kullanıcı Rolü</span>
         <select
@@ -300,7 +285,7 @@ export default function UserManagement({ users }: UserManagementProps) {
                   </td>
                   <td className="px-6 py-4 text-gray-600">{user.email}</td>
                   <td className="px-6 py-4 text-gray-600">
-                    {user.phone || "—"}
+                    {formatStoredTurkishPhoneDisplay(user.phone)}
                   </td>
                   <td className="px-6 py-4">
                     <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">

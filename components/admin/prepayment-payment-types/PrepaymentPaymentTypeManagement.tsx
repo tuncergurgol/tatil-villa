@@ -37,11 +37,15 @@ export default function PrepaymentPaymentTypeManagement({
   const [isPending, startTransition] = useTransition();
 
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      if (statusFilter === "all") return true;
-      if (statusFilter === "active") return item.active;
-      return !item.active;
-    });
+    return items
+      .filter((item) => {
+        if (statusFilter === "all") return true;
+        if (statusFilter === "active") return item.active;
+        return !item.active;
+      })
+      .sort((a, b) =>
+        a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
+      );
   }, [items, statusFilter]);
 
   function handleCreate(formData: FormData) {

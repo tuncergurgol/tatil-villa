@@ -19,6 +19,16 @@ const COLORS = {
   yellow: "#facc15",
 } as const;
 
+/** Public villa detay takvimi — soft tonlar */
+const SOFT_COLORS = {
+  white: "#ffffff",
+  booked: "#fecdd3", // rose-200
+  bookedDeep: "#fda4af", // rose-300
+  option: "#fde68a", // amber-200
+  optionDeep: "#fcd34d", // amber-300
+  available: "#ecfdf5", // emerald-50
+} as const;
+
 function normalizeOccupancy(
   value?: VillaDayOccupancy
 ): "EMPTY" | "BOOKED" | "OPTION" {
@@ -127,6 +137,94 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
   }
 }
 
+/** Public detay sayfası takvimi — soft renk + giriş/çıkış diyagonalleri */
+export function getPublicVillaDayVisualStyle(kind: VillaDayVisualKind): {
+  background: string;
+  useLightText: boolean;
+  showPrice: boolean;
+  statusLabel: string | null;
+} {
+  switch (kind) {
+    case "empty":
+      return {
+        background: SOFT_COLORS.available,
+        useLightText: false,
+        showPrice: true,
+        statusLabel: null,
+      };
+    case "check_in":
+      return {
+        background: diagonalMirrorVertical(SOFT_COLORS.white, SOFT_COLORS.bookedDeep),
+        useLightText: false,
+        showPrice: true,
+        statusLabel: "Giriş",
+      };
+    case "full":
+      return {
+        background: SOFT_COLORS.booked,
+        useLightText: false,
+        showPrice: false,
+        statusLabel: "Dolu",
+      };
+    case "check_out":
+      return {
+        background: diagonalMirrorVertical(SOFT_COLORS.bookedDeep, SOFT_COLORS.white),
+        useLightText: false,
+        showPrice: true,
+        statusLabel: "Çıkış",
+      };
+    case "turnover_booked":
+      return {
+        background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.booked),
+        useLightText: false,
+        showPrice: false,
+        statusLabel: "Giriş+Çıkış",
+      };
+    case "option_check_in":
+      return {
+        background: diagonal(SOFT_COLORS.white, SOFT_COLORS.optionDeep),
+        useLightText: false,
+        showPrice: true,
+        statusLabel: "Ops. Giriş",
+      };
+    case "option_full":
+      return {
+        background: SOFT_COLORS.option,
+        useLightText: false,
+        showPrice: false,
+        statusLabel: "Opsiyon",
+      };
+    case "option_check_out":
+      return {
+        background: diagonalMirrorVertical(SOFT_COLORS.optionDeep, SOFT_COLORS.white),
+        useLightText: false,
+        showPrice: true,
+        statusLabel: "Ops. Çıkış",
+      };
+    case "option_out_booked_in":
+      return {
+        background: diagonal(SOFT_COLORS.optionDeep, SOFT_COLORS.bookedDeep),
+        useLightText: false,
+        showPrice: false,
+        statusLabel: "Giriş+Çıkış",
+      };
+    case "booked_out_option_in":
+      return {
+        background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.optionDeep),
+        useLightText: false,
+        showPrice: false,
+        statusLabel: "Giriş+Çıkış",
+      };
+    default:
+      return {
+        background: SOFT_COLORS.white,
+        useLightText: false,
+        showPrice: true,
+        statusLabel: null,
+      };
+  }
+}
+
 export const VILLA_DAY_VISUAL_LEGEND: {
   kind: VillaDayVisualKind;
   label: string;
@@ -159,6 +257,39 @@ export const VILLA_DAY_VISUAL_LEGEND: {
     label: "Opsiyon Çıkış",
     swatchStyle: {
       background: diagonalMirrorVertical(COLORS.yellow, COLORS.white),
+    },
+  },
+];
+
+export const PUBLIC_VILLA_DAY_VISUAL_LEGEND: {
+  label: string;
+  swatchStyle: CSSProperties;
+}[] = [
+  {
+    label: "Dolu",
+    swatchStyle: { background: SOFT_COLORS.booked },
+  },
+  {
+    label: "Opsiyon",
+    swatchStyle: { background: SOFT_COLORS.option },
+  },
+  {
+    label: "Giriş / Çıkış",
+    swatchStyle: {
+      background: diagonalMirrorVertical(SOFT_COLORS.white, SOFT_COLORS.bookedDeep),
+    },
+  },
+  {
+    label: "Giriş + Çıkış",
+    swatchStyle: {
+      background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.optionDeep),
+    },
+  },
+  {
+    label: "Müsait",
+    swatchStyle: {
+      background: SOFT_COLORS.available,
+      border: "1px solid #a7f3d0",
     },
   },
 ];

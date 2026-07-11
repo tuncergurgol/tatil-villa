@@ -5,15 +5,22 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
+import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
+import {
+  syncVillaIcalSource,
+  syncVillaIcalSourcesForVilla,
+} from "@/lib/villa-ical-import-service";
 
 async function revalidateVillaIcal(villaId: string) {
   revalidatePath("/admin/villalar");
+  revalidatePath("/admin/acente/evolution-whatsapp");
   await revalidateVillaEditPage(villaId);
 }
 
 export type VillaIcalActionState = {
   error?: string;
   success?: boolean;
+  message?: string;
 };
 
 export async function createVillaIcalSource(
@@ -35,7 +42,7 @@ export async function createVillaIcalSource(
   });
 
   try {
-    await prisma.villaIcalSource.create({
+    const created = await prisma.villaIcalSource.create({
       data: {
         villaId,
         name,
@@ -43,6 +50,8 @@ export async function createVillaIcalSource(
         sortOrder: (maxOrder._max.sortOrder ?? 0) + 1,
       },
     });
+
+    await syncVillaIcalSource(created.id);
 
     await prisma.villaIcalSyncEvent.create({
       data: {
@@ -126,22 +135,86 @@ export async function matchVillaWhatsappGroup(
 ): Promise<VillaIcalActionState> {
   await requireAdmin();
 
-  const whatsappGroupId = String(formData.get("whatsappGroupId") ?? "").trim();
+  const whatsappGroupId = normalizeWhatsappGroupId(
+    String(formData.get("whatsappGroupId") ?? "").trim()
+  );
   const whatsappGroupDifferentName =
     formData.get("whatsappGroupDifferentName") === "on";
+  const whatsappGroupName = String(formData.get("whatsappGroupName") ?? "").trim();
 
   if (!whatsappGroupId) {
-    return { error: "Lütfen bir WhatsApp grubu seçin" };
+    return { error: "Lütfen bir WhatsApp grubu seçin veya grup ID girin" };
   }
 
-  await prisma.villa.update({
-    where: { id: villaId },
-    data: {
-      whatsappGroupId,
-      whatsappGroupDifferentName,
-    },
+  await prisma.$transaction(async (tx) => {
+    if (whatsappGroupName) {
+      await tx.whatsappCalendarGroup.upsert({
+        where: { externalId: whatsappGroupId },
+        create: {
+          externalId: whatsappGroupId,
+          name: whatsappGroupName,
+        },
+        update: {
+          name: whatsappGroupName,
+        },
+      });
+    }
+
+    await tx.villa.update({
+      where: { id: villaId },
+      data: {
+        whatsappGroupId,
+        whatsappGroupDifferentName,
+      },
+    });
   });
 
   await revalidateVillaIcal(villaId);
   return { success: true };
+}
+
+export async function syncSingleVillaIcalSourceAction(
+  villaId: string,
+  sourceId: string
+): Promise<VillaIcalActionState> {
+  await requireAdmin();
+
+  const source = await prisma.villaIcalSource.findFirst({
+    where: { id: sourceId, villaId },
+    select: { id: true },
+  });
+
+  if (!source) {
+    return { error: "Kaynak bulunamadı" };
+  }
+
+  const result = await syncVillaIcalSource(source.id);
+  await revalidateVillaIcal(villaId);
+
+  if (!result.ok) {
+    return { error: result.message };
+  }
+
+  return { success: true, message: result.message };
+}
+
+export async function syncVillaIcalSourcesAction(
+  villaId: string
+): Promise<VillaIcalActionState> {
+  await requireAdmin();
+
+  const results = await syncVillaIcalSourcesForVilla(villaId);
+  await revalidateVillaIcal(villaId);
+
+  const failed = results.filter((item) => !item.ok);
+  if (failed.length > 0) {
+    return {
+      error: `${failed.length} kaynak senkronlanamadı: ${failed[0]?.message ?? ""}`,
+    };
+  }
+
+  return {
+    success: true,
+    message: `${results.length} kaynak senkronlandı`,
+  };
 }

@@ -113,7 +113,7 @@ export function computeStayQuote(
 
   const total = accommodationTotal + cleaningFee;
   const prepaymentAmount = valid
-    ? Math.round((total * prepaymentRate) / 100)
+    ? Math.round((accommodationTotal * prepaymentRate) / 100)
     : 0;
   const checkInPayment = valid ? Math.max(0, total - prepaymentAmount) : 0;
 

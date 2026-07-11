@@ -23,7 +23,10 @@ function buildRegionBreadcrumb(region: {
     .join(", ");
 }
 
-export async function getVillaEditPageData(villaId: string) {
+export async function getVillaEditPageData(
+  villaId: string,
+  requestOrigin?: { host?: string | null; protocol?: string | null }
+) {
   const [
     villa,
     pools,
@@ -64,7 +67,7 @@ export async function getVillaEditPageData(villaId: string) {
     getCompanySettings(),
     getActiveVillaOwners(),
     getVillaLocationFormData(villaId),
-    getVillaIcalTabData(villaId),
+    getVillaIcalTabData(villaId, requestOrigin),
     getVillaRoomsForTab(villaId),
     getPrepaymentPaymentTypesForPicker(),
   ]);

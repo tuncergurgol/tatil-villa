@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
 import VillaEditForm from "@/components/admin/villas/VillaEditForm";
 import { getVillaEditPageData } from "@/lib/queries/villa-edit";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
@@ -30,7 +31,10 @@ export default async function EditVillaPage({ params }: PageProps) {
     redirect(canonicalPath);
   }
 
-  const data = await getVillaEditPageData(routeVilla.id);
+  const data = await getVillaEditPageData(routeVilla.id, {
+    host: (await headers()).get("host"),
+    protocol: (await headers()).get("x-forwarded-proto"),
+  });
 
   if (!data.villa || !data.icalData) notFound();
 

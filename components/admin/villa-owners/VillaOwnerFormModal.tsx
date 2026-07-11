@@ -9,6 +9,7 @@ import {
   type VillaOwnerActionState,
 } from "@/app/actions/admin/villa-owners";
 import IlIlceSelect from "@/components/admin/villa-owners/IlIlceSelect";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import TcKimlikInput from "@/components/shared/TcKimlikInput";
 import type { VillaOwnerListItem } from "@/lib/queries/villa-owners";
 import type { TurkeyProvince } from "@/lib/mernis-ilce";
@@ -78,28 +79,6 @@ function TextareaField({
         rows={rows}
         className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
       />
-    </label>
-  );
-}
-
-function PhoneField({ defaultValue = "" }: { defaultValue?: string }) {
-  const displayValue = defaultValue.replace(/^\+90\s?/, "");
-
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-gray-500">Telefon No</span>
-      <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100">
-        <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-700">
-          <span aria-hidden>🇹🇷</span>
-          <span>+90</span>
-        </span>
-        <input
-          name="phone"
-          defaultValue={displayValue}
-          placeholder="5xx xxx xx xx"
-          className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
-        />
-      </div>
     </label>
   );
 }
@@ -224,7 +203,12 @@ export default function VillaOwnerFormModal({
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <PhoneField defaultValue={owner?.phone} />
+            <TurkishPhoneField
+              name="phone"
+              label="Telefon No"
+              defaultValue={owner?.phone}
+              focusPalette="indigo"
+            />
             <Field
               label="E-posta Adresi"
               name="email"

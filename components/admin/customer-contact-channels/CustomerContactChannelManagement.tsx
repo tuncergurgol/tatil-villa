@@ -27,7 +27,12 @@ export default function CustomerContactChannelManagement({
   const [isPending, startTransition] = useTransition();
 
   const activeItems = useMemo(
-    () => items.filter((item) => item.active),
+    () =>
+      items
+        .filter((item) => item.active)
+        .sort((a, b) =>
+          a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
+        ),
     [items]
   );
 

@@ -20,7 +20,9 @@ export const DEFAULT_COMPANY_SETTINGS = {
   paymentType: "",
   primaryColor: "#0d9488",
   secondaryColor: "#115e59",
-  logoUrl: "",
+  accentColor: "#14b8a6",
+  surfaceColor: "#f0fdfa",
+  logoUrl: "/uploads/company/logo-1783080885848.svg",
   faviconUrl: "",
   ogImageUrl: "",
   whiteLogoUrl: "",
@@ -70,6 +72,14 @@ export const DEFAULT_COMPANY_SETTINGS = {
   whatsappApiVersion: "v22.0",
   whatsappWebhookVerifyToken: "",
   whatsappTestPhone: "",
+  whatsappCalendarEnabled: false,
+  whatsappCalendarWebhookSecret: "",
+  wahaBaseUrl: "http://localhost:3001",
+  wahaApiKey: "",
+  wahaSessionName: "default",
+  evolutionBaseUrl: "http://localhost:8080",
+  evolutionApiKey: "",
+  evolutionInstanceName: "tatil-villa",
 };
 
 export async function getCompanySettings() {

@@ -1,55 +1,131 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, Phone, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import HeaderVillaSearch from "@/components/HeaderVillaSearch";
 import { siteConfig } from "@/lib/data";
+import {
+  formatStoredTurkishPhoneDisplay,
+  normalizeStoredTurkishPhone,
+} from "@/lib/phone-utils";
+import { normalizePhoneToE164, toWhatsAppRecipient } from "@/lib/phone";
 
-const navLinks = [
+const defaultNavLinks = [
   { href: "/villalar", label: "Villalar" },
   { href: "/villalar?filter=deal", label: "Fırsatlar" },
   { href: "/#bolgeler", label: "Bölgeler" },
   { href: "/#kampanyalar", label: "Kampanyalar" },
 ];
 
-export default function Header() {
+type NavLink = { href: string; label: string };
+
+function whatsappHref(phone: string) {
+  const normalized =
+    normalizeStoredTurkishPhone(phone) ||
+    normalizePhoneToE164(phone) ||
+    phone;
+  const recipient = toWhatsAppRecipient(normalizePhoneToE164(normalized));
+  return recipient ? `https://wa.me/${recipient}` : "#";
+}
+
+function displayPhoneLabel(phone: string) {
+  const formatted = formatStoredTurkishPhoneDisplay(phone);
+  return formatted === "-" ? phone : formatted;
+}
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
+const DEFAULT_LOGO = "/uploads/company/logo-1783080885848.svg";
+
+export default function Header({
+  navLinks = defaultNavLinks,
+  phone = siteConfig.phone,
+  brandName = siteConfig.name,
+  logoUrl,
+  agencyName = siteConfig.agency,
+  tursabNo = siteConfig.tursabNo,
+}: {
+  navLinks?: NavLink[];
+  phone?: string;
+  brandName?: string;
+  logoUrl?: string;
+  whiteLogoUrl?: string;
+  agencyName?: string;
+  tursabNo?: string;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const rawPhone = phone.trim() || siteConfig.phone;
+  const displayPhone = displayPhoneLabel(rawPhone);
+  const waHref = whatsappHref(rawPhone);
+  const logoSrc = logoUrl?.trim() || DEFAULT_LOGO;
+  const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-teal-950/95 text-white backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex flex-col leading-tight">
-          <span className="text-xl font-bold tracking-tight sm:text-2xl">
-            {siteConfig.name}
+    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white text-gray-900 shadow-sm">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-3.5 lg:px-8">
+        <Link href="/" className="flex min-w-0 shrink-0 flex-col gap-0.5 leading-tight">
+          {logoSrc ? (
+            <Image
+              src={logoSrc}
+              alt={brandName}
+              width={504}
+              height={130}
+              style={{ width: "auto", height: "4.95rem" }}
+              className="max-w-[396px] object-contain object-left sm:max-w-[504px] sm:[height:5.85rem]"
+              priority
+            />
+          ) : (
+            <span className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+              {brandName}
+            </span>
+          )}
+          <span className="max-w-[240px] text-[10px] leading-snug text-gray-500 sm:max-w-none sm:text-[11px]">
+            {agencyLine}
           </span>
-          <span className="text-xs text-teal-200/80">{siteConfig.tagline}</span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-6 xl:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-teal-50/90 transition hover:text-white"
+              className="text-[15px] font-normal text-gray-800 transition hover:text-sky-600"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex lg:max-w-lg xl:max-w-md">
+          <HeaderVillaSearch className="w-full max-w-[340px]" />
           <a
-            href={`tel:${siteConfig.phone.replace(/\s/g, "")}`}
-            className="flex items-center gap-2 rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold transition hover:bg-teal-500"
+            href={waHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex shrink-0 items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#20BD5A]"
+            aria-label={`WhatsApp ile yazın: ${displayPhone}`}
           >
-            <Phone className="h-4 w-4" />
-            {siteConfig.phone}
+            <WhatsAppIcon className="h-4 w-4 text-white" />
+            {displayPhone}
           </a>
         </div>
 
         <button
           type="button"
-          className="rounded-lg p-2 md:hidden"
+          className="rounded-xl p-2 text-gray-700 hover:bg-gray-100 md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Menü"
         >
@@ -58,24 +134,28 @@ export default function Header() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-white/10 px-4 py-4 md:hidden">
-          <nav className="flex flex-col gap-3">
+        <div className="border-t border-gray-100 px-4 py-4 md:hidden">
+          <HeaderVillaSearch className="mb-3 w-full" />
+          <nav className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-white/10"
+                className="rounded-xl px-3 py-2.5 text-[15px] font-normal text-gray-800 hover:bg-gray-50"
                 onClick={() => setMobileOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
             <a
-              href={`tel:${siteConfig.phone.replace(/\s/g, "")}`}
-              className="mt-2 flex items-center gap-2 rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold"
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-center gap-2 rounded-xl bg-[#25D366] px-3 py-2.5 text-sm font-semibold text-white"
+              aria-label={`WhatsApp ile yazın: ${displayPhone}`}
             >
-              <Phone className="h-4 w-4" />
-              {siteConfig.phone}
+              <WhatsAppIcon className="h-4 w-4 text-white" />
+              {displayPhone}
             </a>
           </nav>
         </div>

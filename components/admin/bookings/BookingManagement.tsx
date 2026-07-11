@@ -31,6 +31,7 @@ import { filterBookings } from "@/lib/booking-filters";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
+import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
 import {
   estimatePrepaymentAmount,
   formatBookingDisplayNumber,
@@ -426,7 +427,7 @@ export default function BookingManagement({
                             {booking.guestEmail}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {booking.guestPhone}
+                            {formatStoredTurkishPhoneDisplay(booking.guestPhone)}
                           </p>
                         </td>
 

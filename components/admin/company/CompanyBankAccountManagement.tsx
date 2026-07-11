@@ -129,11 +129,14 @@ export default function CompanyBankAccountManagement({
   const activeItems = useMemo(
     () =>
       [...items].sort((a, b) =>
-        getCompanyPaymentTypeLabel(a.paymentType).localeCompare(
-          getCompanyPaymentTypeLabel(b.paymentType),
-          "tr",
-          { sensitivity: "base" }
-        )
+        getCompanyPaymentTypeLabel(a.paymentType) ===
+        getCompanyPaymentTypeLabel(b.paymentType)
+          ? a.bankName.localeCompare(b.bankName, "tr", { sensitivity: "base" })
+          : getCompanyPaymentTypeLabel(a.paymentType).localeCompare(
+              getCompanyPaymentTypeLabel(b.paymentType),
+              "tr",
+              { sensitivity: "base" }
+            )
       ),
     [items]
   );

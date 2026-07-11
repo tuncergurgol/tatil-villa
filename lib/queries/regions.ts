@@ -112,6 +112,7 @@ export async function getRegionsWithCount() {
     getAllRegionNodes(),
     prisma.villa.groupBy({
       by: ["regionId"],
+      where: { active: true },
       _count: { _all: true },
     }),
   ]);
@@ -120,28 +121,30 @@ export async function getRegionsWithCount() {
     villaGroups.map((row) => [row.regionId, row._count._all])
   );
 
-  return ilceRegions.map((region) => {
-    const descendantIds = collectDescendantIds(region.id, nodes);
-    const villaCount = descendantIds.reduce(
-      (sum, id) => sum + (villaCountByRegion.get(id) ?? 0),
-      0
-    );
+  return ilceRegions
+    .map((region) => {
+      const descendantIds = collectDescendantIds(region.id, nodes);
+      const villaCount = descendantIds.reduce(
+        (sum, id) => sum + (villaCountByRegion.get(id) ?? 0),
+        0
+      );
 
-    return {
-      id: region.id,
-      slug: region.slug,
-      name: region.name,
-      image: region.image,
-      villaCount,
-    };
-  });
+      return {
+        id: region.id,
+        slug: region.slug,
+        name: region.name,
+        image: region.image,
+        villaCount,
+      };
+    })
+    .sort((a, b) => b.villaCount - a.villaCount || a.name.localeCompare(b.name, "tr"));
 }
 
 export async function getRegionBySlug(slug: string) {
   const region = await prisma.region.findUnique({
     where: { slug },
     include: {
-      _count: { select: { villas: true } },
+      _count: { select: { villas: { where: { active: true } } } },
       parent: { include: { parent: true } },
     },
   });
@@ -196,11 +199,114 @@ export async function getRegionFilterOptions() {
   }));
 }
 
+export async function getHeroSearchRegions() {
+  const regions = await prisma.region.findMany({
+    where: {
+      active: true,
+      published: true,
+      level: RegionLevel.ILCE,
+    },
+    select: { slug: true, name: true, sortOrder: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+
+  return regions.map((region) => ({
+    slug: region.slug,
+    name: region.name,
+    label: `${region.name} Kiralık Villa`,
+  }));
+}
+
 export async function getAllRegions() {
   return prisma.region.findMany({
     where: { active: true, level: RegionLevel.MAHALLE },
     orderBy: { name: "asc" },
   });
+}
+
+/** Footer: görünür İl/İlçe (aktif villa > 0) + SEO için gizli linkler */
+export async function getFooterRegionLinks() {
+  const [candidates, mahalles, nodes, villaGroups] = await Promise.all([
+    prisma.region.findMany({
+      where: {
+        active: true,
+        published: true,
+        level: { in: [RegionLevel.IL, RegionLevel.ILCE] },
+        OR: [{ showOnHome: true }, { showInSearch: true }],
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        level: true,
+      },
+    }),
+    prisma.region.findMany({
+      where: {
+        active: true,
+        published: true,
+        level: RegionLevel.MAHALLE,
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    getAllRegionNodes(),
+    prisma.villa.groupBy({
+      by: ["regionId"],
+      where: { active: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const villaCountByRegion = new Map(
+    villaGroups.map((row) => [row.regionId, row._count._all])
+  );
+
+  const withCounts = candidates.map((region) => {
+    const descendantIds = collectDescendantIds(region.id, nodes);
+    const villaCount = descendantIds.reduce(
+      (sum, id) => sum + (villaCountByRegion.get(id) ?? 0),
+      0
+    );
+    return { ...region, villaCount };
+  });
+
+  const popular = withCounts
+    .filter((region) => region.villaCount > 0)
+    .sort(
+      (a, b) =>
+        b.villaCount - a.villaCount ||
+        a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
+    )
+    .map((region) => ({
+      slug: region.slug,
+      name: region.name,
+      label: `${region.name} Kiralık Villalar`,
+      level: region.level,
+    }));
+
+  const zeroCountHidden = withCounts
+    .filter((region) => region.villaCount === 0)
+    .map((region) => ({
+      slug: region.slug,
+      name: region.name,
+      label: `${region.name} Kiralık Villalar`,
+    }));
+
+  const mahalleLinks = mahalles.map((region) => ({
+    slug: region.slug,
+    name: region.name,
+    label: `${region.name} Kiralık Villalar`,
+  }));
+
+  return {
+    popular,
+    mahalles: [...zeroCountHidden, ...mahalleLinks],
+  };
 }
 
 export type { RegionTreeNode, RegionFlat };

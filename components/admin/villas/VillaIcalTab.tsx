@@ -3,13 +3,15 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Plus, RefreshCw, Trash2 } from "lucide-react";
 import {
   clearVillaIcalData,
   createVillaIcalSource,
   deleteVillaIcalSource,
   matchVillaWhatsappGroup,
   rotateVillaIcalExportUrl,
+  syncSingleVillaIcalSourceAction,
+  syncVillaIcalSourcesAction,
 } from "@/app/actions/admin/villa-ical";
 import type { VillaIcalTabData } from "@/lib/queries/villa-ical";
 
@@ -50,6 +52,7 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
   const [exportUrl, setExportUrl] = useState(data.exportUrl);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [whatsappGroupId, setWhatsappGroupId] = useState(data.whatsappGroupId);
@@ -165,6 +168,34 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
     handleMatchGroup(formData);
   }
 
+  function handleSyncAllSources() {
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const result = await syncVillaIcalSourcesAction(villaId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice(result.message ?? "Senkron tamamlandı");
+      refresh();
+    });
+  }
+
+  function handleSyncSource(sourceId: string) {
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const result = await syncSingleVillaIcalSourceAction(villaId, sourceId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice(result.message ?? "Kaynak senkronlandı");
+      refresh();
+    });
+  }
+
   return (
     <div className="space-y-6">
       {error ? (
@@ -172,11 +203,27 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
           {error}
         </div>
       ) : null}
+      {notice ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {notice}
+        </div>
+      ) : null}
 
       <SectionCard
         title="Gelen iCal Kaynakları"
         action={
           <div className="flex flex-wrap items-center gap-3">
+            {data.sources.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleSyncAllSources}
+                disabled={isPending}
+                className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-700 transition hover:bg-teal-100 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
+                Tümünü Senkronla
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setShowAddSource((value) => !value)}
@@ -198,7 +245,11 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
       >
         <p className="mb-4 text-sm text-gray-500">
           Airbnb, Booking, VRBO gibi platformlardan gelen takvim bağlantılarını
-          buradan yönetin.
+          buradan yönetin. Senkron, kaynaklardaki dolu günleri villaya uygular;
+          kaynaktan kalkan rezervasyonlar otomatik açılır. Otomatik senkron için
+          sunucuda <code className="rounded bg-gray-100 px-1">npm run sync:ical</code> veya{" "}
+          <code className="rounded bg-gray-100 px-1">/api/cron/ical-sync</code> cron
+          görevi kullanılabilir.
         </p>
 
         {showAddSource ? (
@@ -260,10 +311,28 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
                     <p className="mt-1 text-xs text-gray-400">
                       Son senkron:{" "}
                       {new Date(source.lastSyncAt).toLocaleString("tr-TR")}
+                      {source.lastSyncStatus ? ` (${source.lastSyncStatus})` : ""}
                     </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-amber-600">
+                      Henüz senkronlanmadı
+                    </p>
+                  )}
+                  {source.lastSyncMessage ? (
+                    <p className="mt-1 text-xs text-gray-500">{source.lastSyncMessage}</p>
                   ) : null}
                 </div>
-                <button
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSyncSource(source.id)}
+                    disabled={isPending}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Senkronla
+                  </button>
+                  <button
                   type="button"
                   onClick={() => handleDeleteSource(source.id)}
                   disabled={isPending}
@@ -272,6 +341,7 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
                   <Trash2 className="h-3.5 w-3.5" />
                   Sil
                 </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -363,12 +433,12 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
       >
         {!data.whatsappModuleConnected ? (
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            WhatsApp iCal modülüne bağlı değilsiniz. Bağlantı için{" "}
+            WhatsApp takvim otomasyonu kapalı. Etkinleştirmek için{" "}
             <Link
-              href="/admin/bildirimler/whatsapp"
+              href="/admin/acente/evolution-whatsapp"
               className="font-semibold underline"
             >
-              Bildirimler → WhatsApp
+              Acente Yönetimi → Evolution WhatsApp
             </Link>{" "}
             sayfasını ziyaret edin.
           </div>
@@ -380,16 +450,25 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
             <select
               value={whatsappGroupId}
               onChange={(event) => setWhatsappGroupId(event.target.value)}
-              disabled={!data.whatsappModuleConnected}
-              className={`mt-1.5 ${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+              className={`mt-1.5 ${inputClass}`}
             >
-              <option value="">Uygun grup yok</option>
+              <option value="">Grup seçin veya aşağıya ID girin</option>
               {data.whatsappGroups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.name}
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Grup ID (manuel)</span>
+            <input
+              value={whatsappGroupId}
+              onChange={(event) => setWhatsappGroupId(event.target.value)}
+              placeholder="120363123456789012@g.us"
+              className={`mt-1.5 ${inputClass}`}
+            />
           </label>
 
           <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -405,7 +484,7 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
           <button
             type="button"
             onClick={submitMatchGroup}
-            disabled={isPending || !data.whatsappModuleConnected}
+            disabled={isPending || !whatsappGroupId.trim()}
             className="w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Bu Evi Gruba Eşle

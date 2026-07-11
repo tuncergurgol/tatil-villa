@@ -9,17 +9,9 @@ import { revalidateVillaHizliFiyatPage } from "@/lib/villa-admin-path.server";
 import {
   compareDates,
   dateKeyToDbDate,
-  dbDateToDateKey,
   parseDateKey,
 } from "@/lib/villa-period-calendar";
-import {
-  buildBookedOccupancyForStay,
-  buildEmptyOccupancyForRange,
-  enumerateDateKeysInRange,
-  normalizeDateRange,
-  offsetDateKey,
-} from "@/lib/villa-period-selection";
-import type { VillaDayOccupancy } from "@prisma/client";
+import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import {
   syncVillaPricePeriodDays,
 } from "@/lib/villa-period-day-sync";
@@ -681,59 +673,7 @@ export async function updateVillaPeriodDaysOccupancy(
   await requireAdmin();
 
   try {
-    const { start, end } = normalizeDateRange(startDateKey, endDateKey);
-    const rangeDateKeys = enumerateDateKeysInRange(start, end);
-    const lookupDateKeys = [
-      ...new Set([
-        ...rangeDateKeys,
-        offsetDateKey(start, -1),
-        offsetDateKey(end, 1),
-      ]),
-    ];
-
-    const existingDays = await prisma.villaPricePeriodDay.findMany({
-      where: {
-        villaId,
-        date: { in: lookupDateKeys.map((dateKey) => dateKeyToDbDate(dateKey)) },
-      },
-      select: {
-        date: true,
-        occupancyStatus: true,
-      },
-    });
-
-    const existingOccupancyByDateKey = new Map<string, VillaDayOccupancy>();
-    for (const day of existingDays) {
-      existingOccupancyByDateKey.set(
-        dbDateToDateKey(day.date),
-        day.occupancyStatus
-      );
-    }
-
-    const occupancyByDateKey: Map<string, VillaDayOccupancy> =
-      mode === "BOOKED"
-        ? buildBookedOccupancyForStay(start, end, existingOccupancyByDateKey)
-        : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey);
-
-    const updates = [...occupancyByDateKey.entries()]
-      .filter(([dateKey, occupancyStatus]) => {
-        const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
-        return existing !== occupancyStatus;
-      })
-      .map(([dateKey, occupancyStatus]) =>
-        prisma.villaPricePeriodDay.updateMany({
-          where: {
-            villaId,
-            date: dateKeyToDbDate(dateKey),
-          },
-          data: { occupancyStatus },
-        })
-      );
-
-    if (updates.length > 0) {
-      await prisma.$transaction(updates);
-    }
-
+    await applyVillaPeriodDaysOccupancy(villaId, startDateKey, endDateKey, mode);
     await revalidatePeriodPaths(villaId);
     return { success: true };
   } catch (error) {

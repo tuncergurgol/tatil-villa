@@ -113,6 +113,54 @@ export type TatildeyizPropertyDetail = {
   locationInfo: string | null;
 };
 
+export type TatildeyizLocationCategory = {
+  id: number;
+  name: string;
+  order?: number | null;
+};
+
+export type TatildeyizLocationType = {
+  id: number;
+  name: string;
+  locationCategoryId: number;
+  locationCategory: TatildeyizLocationCategory | null;
+};
+
+export type TatildeyizPropertyLocation = {
+  id: number;
+  distance: string | null;
+  locationTypeId: number;
+  propertyId: number;
+  locationType: TatildeyizLocationType | null;
+};
+
+export type TatildeyizPropertyAddress = {
+  id: number;
+  address: string | null;
+  neighborhoodId: number | null;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  Neighborhood?: {
+    id: number;
+    title: string;
+    districtId: number;
+    District?: {
+      id: number;
+      title: string;
+      townId: number;
+      Town?: {
+        id: number;
+        title: string;
+        cityId: number;
+        City?: {
+          id: number;
+          title: string;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+};
+
 export type TatildeyizProperty = {
   id: number;
   slug: string;
@@ -126,6 +174,9 @@ export type TatildeyizProperty = {
   propertyPeriodPrices: TatildeyizPropertyPeriodPrice[];
   propertyDiscounts: TatildeyizPropertyDiscount[];
   bookings: TatildeyizPropertyBooking[];
+  locations?: TatildeyizPropertyLocation[];
+  address?: TatildeyizPropertyAddress | null;
+  addressId?: number | null;
 };
 
 export function getTatildeyizPropertyPageUrl(slug: string) {

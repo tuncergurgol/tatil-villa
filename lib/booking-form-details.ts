@@ -164,9 +164,9 @@ export function computePrepaymentAmount(
   const agencyDiscount = agencyDiscountAmount ?? 0;
   const rate = clampDiscountRate(prepaymentRate);
   const baseAfterOwnerDiscount = Math.max(0, grossPrice - ownerDiscount);
-  const retainedAmount = Math.round((baseAfterOwnerDiscount * rate) / 100);
+  const prepaymentBase = Math.round((baseAfterOwnerDiscount * rate) / 100);
 
-  return Math.max(0, Math.round(grossPrice - retainedAmount - agencyDiscount));
+  return Math.max(0, prepaymentBase - agencyDiscount);
 }
 
 export function computeNetPrice(details: BookingDetails): number | null {

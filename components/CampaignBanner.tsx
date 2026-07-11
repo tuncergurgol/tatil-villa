@@ -38,17 +38,16 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
               sizes="(max-width: 1280px) 100vw, 1280px"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-950/80 via-teal-900/50 to-transparent" />
             <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-12 lg:px-16">
-              <h3 className="max-w-md text-2xl font-bold text-white sm:text-3xl lg:text-4xl">
+              <h3 className="max-w-md text-2xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:text-3xl lg:text-4xl">
                 {campaign.title}
               </h3>
-              <p className="mt-2 max-w-sm text-sm text-teal-100 sm:text-base">
+              <p className="mt-2 max-w-sm text-sm text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)] sm:text-base">
                 {campaign.subtitle}
               </p>
               <Link
                 href={campaign.href}
-                className="mt-6 inline-flex w-fit rounded-full bg-white px-6 py-2.5 text-sm font-bold text-teal-800 transition hover:bg-teal-50"
+                className="mt-6 inline-flex w-fit rounded-full bg-white px-6 py-2.5 text-sm font-bold text-teal-800 shadow-md transition hover:bg-teal-50"
               >
                 {campaign.cta}
               </Link>
