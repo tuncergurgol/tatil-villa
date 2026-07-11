@@ -3,12 +3,15 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { VillaDayOccupancy } from "@prisma/client";
-import { offsetDateKey } from "@/lib/villa-period-selection";
+import { isNightBlocked, rangeHasBlockedNight } from "@/lib/booking-calendar-selection";
 import {
   getPublicVillaDayVisualStyle,
   PUBLIC_VILLA_DAY_VISUAL_LEGEND,
   resolveVillaDayVisual,
 } from "@/lib/villa-period-day-visual";
+import { compareDates, parseDateKey, todayDate } from "@/lib/villa-period-calendar";
+import { isDateKeyInRange, offsetDateKey } from "@/lib/villa-period-selection";
+import { useVillaStaySelection } from "@/components/villa-detail/VillaStaySelectionContext";
 
 type CalendarDay = {
   date: string;
@@ -43,11 +46,6 @@ function monthKey(year: number, month: number) {
 
 function formatDayPrice(price: number) {
   return price.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
-}
-
-function toOccupancy(value?: string | null): VillaDayOccupancy {
-  if (value === "BOOKED" || value === "OPTION") return value;
-  return "EMPTY";
 }
 
 function buildMonthCells(
@@ -89,6 +87,18 @@ function MonthGrid({
   dayMap: Map<string, CalendarDay>;
   occupancyMap: Map<string, VillaDayOccupancy>;
 }) {
+  const {
+    pendingStart,
+    hoverDate,
+    previewStart,
+    previewEnd,
+    previewNights,
+    previewRangeBlocked,
+    selectDay,
+    setHoverDate,
+  } = useVillaStaySelection();
+
+  const today = useMemo(() => todayDate(), []);
   const cells = useMemo(
     () => buildMonthCells(year, month, dayMap),
     [year, month, dayMap]
@@ -114,20 +124,84 @@ function MonthGrid({
             );
           }
 
-          const current = occupancyMap.get(cell.dateKey) ?? "EMPTY";
-          const prev = occupancyMap.get(offsetDateKey(cell.dateKey, -1));
-          const next = occupancyMap.get(offsetDateKey(cell.dateKey, 1));
+          const dateKey = cell.dateKey;
+          const isPast = compareDates(parseDateKey(dateKey), today) < 0;
+          const current = occupancyMap.get(dateKey) ?? "EMPTY";
+          const prev = occupancyMap.get(offsetDateKey(dateKey, -1));
+          const next = occupancyMap.get(offsetDateKey(dateKey, 1));
           const kind = resolveVillaDayVisual(current, prev, next);
           const visual = getPublicVillaDayVisualStyle(kind);
           const price = cell.data?.price;
           const hasDayData = Boolean(cell.data);
+          const nightBlocked = isNightBlocked(occupancyMap, dateKey);
+
+          const inRange =
+            previewStart &&
+            previewEnd &&
+            isDateKeyInRange(dateKey, previewStart, previewEnd);
+          const isStart = dateKey === previewStart;
+          const isEnd = dateKey === previewEnd && previewStart !== previewEnd;
+
+          let canClick = !isPast;
+          if (canClick && !pendingStart) {
+            canClick = !nightBlocked;
+          } else if (canClick && pendingStart) {
+            if (
+              compareDates(parseDateKey(dateKey), parseDateKey(pendingStart)) <=
+              0
+            ) {
+              canClick = !nightBlocked;
+            } else {
+              canClick = !rangeHasBlockedNight(
+                pendingStart,
+                dateKey,
+                occupancyMap
+              );
+            }
+          }
+
+          const showNightHint =
+            Boolean(pendingStart) &&
+            hoverDate === dateKey &&
+            previewStart &&
+            previewEnd &&
+            previewStart !== previewEnd &&
+            previewNights > 0 &&
+            !previewRangeBlocked &&
+            (dateKey === previewStart || dateKey === previewEnd);
 
           return (
-            <div
-              key={cell.dateKey}
-              className="relative min-h-[52px] overflow-hidden rounded-md border border-slate-100/80 p-1 text-left sm:min-h-[58px]"
+            <button
+              key={dateKey}
+              type="button"
+              disabled={!canClick}
+              onMouseEnter={() => {
+                if (pendingStart) setHoverDate(dateKey);
+              }}
+              onMouseLeave={() => {
+                if (pendingStart) setHoverDate(pendingStart);
+              }}
+              onClick={() => selectDay(dateKey)}
+              className={`relative min-h-[52px] overflow-visible rounded-md border p-1 text-left sm:min-h-[58px] ${
+                isPast
+                  ? "cursor-not-allowed border-slate-100 opacity-50"
+                  : canClick
+                    ? "cursor-pointer border-slate-100/80 hover:brightness-[0.98]"
+                    : "cursor-not-allowed border-slate-100/80 opacity-80"
+              } ${
+                isStart || isEnd
+                  ? "z-[1] ring-2 ring-sky-500"
+                  : inRange && !previewRangeBlocked
+                    ? "ring-1 ring-sky-300"
+                    : ""
+              } ${
+                inRange && previewRangeBlocked && !isStart
+                  ? "ring-1 ring-red-300"
+                  : ""
+              }`}
               style={{
-                background: hasDayData || kind !== "empty" ? visual.background : "#f8fafc",
+                background:
+                  hasDayData || kind !== "empty" ? visual.background : "#f8fafc",
               }}
             >
               <p className="text-[11px] font-semibold text-slate-800 sm:text-xs">
@@ -144,7 +218,12 @@ function MonthGrid({
                   {visual.statusLabel}
                 </p>
               ) : null}
-            </div>
+              {showNightHint ? (
+                <span className="pointer-events-none absolute -bottom-5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
+                  {previewNights} Gece
+                </span>
+              ) : null}
+            </button>
           );
         })}
       </div>
@@ -155,17 +234,11 @@ function MonthGrid({
 export default function VillaAvailabilityCalendar({
   days,
 }: VillaAvailabilityCalendarProps) {
+  const { occupancyMap } = useVillaStaySelection();
+
   const dayMap = useMemo(() => {
     const map = new Map<string, CalendarDay>();
     for (const day of days) map.set(day.date, day);
-    return map;
-  }, [days]);
-
-  const occupancyMap = useMemo(() => {
-    const map = new Map<string, VillaDayOccupancy>();
-    for (const day of days) {
-      map.set(day.date, toOccupancy(day.occupancyStatus));
-    }
     return map;
   }, [days]);
 

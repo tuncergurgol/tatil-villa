@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
+import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
   getSimilarVillas,
   getVillaDetailBySlug,
@@ -35,14 +36,20 @@ export async function generateMetadata({
 
 export default async function VillaDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const [villa, faqs] = await Promise.all([
+  const [villa, faqs, company] = await Promise.all([
     getVillaDetailBySlug(slug),
     getActiveFaqsForPublic(),
+    getCompanySettings(),
   ]);
 
   if (!villa) notFound();
 
-  const similarVillas = await getSimilarVillas(villa.id, villa.regionId, 8);
+  const similarVillas = await getSimilarVillas(
+    villa.id,
+    villa.regionId,
+    villa.guests,
+    10
+  );
 
   const detailFaqs = faqs
     .filter((faq) => {
@@ -59,6 +66,7 @@ export default async function VillaDetailPage({ params }: PageProps) {
     <VillaDetailView
       villa={villa}
       similarVillas={similarVillas}
+      companyPhone={company.phone || company.whatsapp || ""}
       faqs={(detailFaqs.length > 0 ? detailFaqs : faqs.slice(0, 8)).map(
         (faq) => ({
           id: faq.id,

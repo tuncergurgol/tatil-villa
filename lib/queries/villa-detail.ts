@@ -3,6 +3,7 @@ import { getVillaGalleryImages } from "@/lib/villa-gallery";
 import { getRoomTypeLabel, formatBedSummary } from "@/lib/villa-room-features";
 import { formatVillaRegionLabel } from "@/lib/queries/villa-location";
 import { getVillaPeriodPriceRanges } from "@/lib/queries/villas";
+import { RegionLevel } from "@/lib/region-levels";
 
 function startOfTodayUtc() {
   const now = new Date();
@@ -77,6 +78,8 @@ export async function getVillaDetailBySlug(slug: string) {
           cleaningFee: true,
           cleaningFeeCurrency: true,
           cleaningDayCount: true,
+          damageDeposit: true,
+          damageDepositCurrency: true,
         },
       },
     },
@@ -120,9 +123,16 @@ export async function getVillaDetailBySlug(slug: string) {
         select: {
           date: true,
           occupancyStatus: true,
+          availability: true,
           nightlyPrice: true,
+          nightlyPriceWithoutCommission: true,
           discountedNightlyPrice: true,
           nightlyPriceCurrency: true,
+          minStayNights: true,
+          prepaymentRate: true,
+          cleaningFee: true,
+          cleaningFeeCurrency: true,
+          cleaningDayCount: true,
         },
       }),
     ]);
@@ -189,6 +199,25 @@ export async function getVillaDetailBySlug(slug: string) {
     Number.isFinite(villa.longitude) &&
     !(villa.latitude === 0 && villa.longitude === 0);
 
+  const periods = villa.pricePeriods.map((period) => ({
+    id: period.id,
+    startDate: period.startDate.toISOString(),
+    endDate: period.endDate.toISOString(),
+    nightlyPrice: period.discountedNightlyPrice ?? period.nightlyPrice,
+    currency: period.nightlyPriceCurrency,
+    minStayNights: period.minStayNights,
+    cleaningFee: period.cleaningFee,
+    cleaningFeeCurrency: period.cleaningFeeCurrency,
+    cleaningDayCount: period.cleaningDayCount,
+    damageDeposit: period.damageDeposit,
+    damageDepositCurrency: period.damageDepositCurrency,
+  }));
+
+  const currentDamageDeposit = resolveCurrentDamageDeposit(
+    villa.pricePeriods,
+    fromDate
+  );
+
   return {
     id: villa.id,
     slug: villa.slug,
@@ -199,6 +228,7 @@ export async function getVillaDetailBySlug(slug: string) {
     regionLabel: regionParts.join(" - ") || villa.location,
     regionSlug: villa.region.slug,
     guests: villa.guests,
+    extraCapacity: villa.extraCapacity,
     bedrooms: villa.bedrooms,
     bathrooms: villa.bathrooms,
     livingRooms: villa.livingRooms,
@@ -270,23 +300,69 @@ export async function getVillaDetailBySlug(slug: string) {
     averageRating: reviewAgg._avg.rating
       ? Math.round(reviewAgg._avg.rating * 10) / 10
       : null,
-    periods: villa.pricePeriods.map((period) => ({
-      id: period.id,
-      startDate: period.startDate.toISOString(),
-      endDate: period.endDate.toISOString(),
-      nightlyPrice: period.discountedNightlyPrice ?? period.nightlyPrice,
-      currency: period.nightlyPriceCurrency,
-      minStayNights: period.minStayNights,
-      cleaningFee: period.cleaningFee,
-      cleaningFeeCurrency: period.cleaningFeeCurrency,
-      cleaningDayCount: period.cleaningDayCount,
-    })),
+    periods,
+    currentDamageDeposit,
     calendarDays: calendarDays.map((day) => ({
       date: day.date.toISOString().slice(0, 10),
       occupancyStatus: day.occupancyStatus,
+      availability: day.availability,
+      nightlyPrice: day.nightlyPrice,
+      nightlyPriceWithoutCommission: day.nightlyPriceWithoutCommission,
+      discountedNightlyPrice: day.discountedNightlyPrice,
       price: day.discountedNightlyPrice ?? day.nightlyPrice,
       currency: day.nightlyPriceCurrency,
+      nightlyPriceCurrency: day.nightlyPriceCurrency,
+      minStayNights: day.minStayNights,
+      prepaymentRate: day.prepaymentRate,
+      cleaningFee: day.cleaningFee,
+      cleaningFeeCurrency: day.cleaningFeeCurrency,
+      cleaningDayCount: day.cleaningDayCount,
     })),
+  };
+}
+
+function resolveCurrentDamageDeposit(
+  periods: {
+    startDate: Date;
+    endDate: Date;
+    damageDeposit: number | null;
+    damageDepositCurrency: string;
+  }[],
+  today: Date
+) {
+  const withDeposit = periods.filter(
+    (period) => period.damageDeposit != null && period.damageDeposit > 0
+  );
+  if (withDeposit.length === 0) return null;
+
+  const current = withDeposit.find(
+    (period) => period.startDate <= today && today <= period.endDate
+  );
+  if (current) {
+    return {
+      amount: current.damageDeposit as number,
+      currency: current.damageDepositCurrency,
+    };
+  }
+
+  const upcoming = withDeposit
+    .filter((period) => period.startDate > today)
+    .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0];
+  if (upcoming) {
+    return {
+      amount: upcoming.damageDeposit as number,
+      currency: upcoming.damageDepositCurrency,
+    };
+  }
+
+  const past = withDeposit
+    .filter((period) => period.endDate < today)
+    .sort((a, b) => b.endDate.getTime() - a.endDate.getTime())[0];
+  if (!past) return null;
+
+  return {
+    amount: past.damageDeposit as number,
+    currency: past.damageDepositCurrency,
   };
 }
 
@@ -318,64 +394,208 @@ export type SimilarVillaCard = {
   recommended: boolean;
 };
 
-export async function getSimilarVillas(
-  villaId: string,
-  regionId: string,
-  limit = 8
-): Promise<SimilarVillaCard[]> {
-  const region = await prisma.region.findUnique({
-    where: { id: regionId },
-    select: { id: true, parentId: true },
-  });
-
-  const regionIds = [regionId];
-  if (region?.parentId) regionIds.push(region.parentId);
-
-  const rows = await prisma.villa.findMany({
-    where: {
-      active: true,
-      id: { not: villaId },
-      regionId: { in: regionIds },
-    },
-    orderBy: [{ popular: "desc" }, { updatedAt: "desc" }],
-    take: limit,
+const SIMILAR_VILLA_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  category: true,
+  location: true,
+  guests: true,
+  bedrooms: true,
+  bathrooms: true,
+  pricePerNight: true,
+  image: true,
+  images: true,
+  description: true,
+  amenities: true,
+  featured: true,
+  popular: true,
+  deal: true,
+  recommended: true,
+  regionId: true,
+  region: {
     select: {
-      id: true,
       slug: true,
       name: true,
-      category: true,
-      location: true,
-      guests: true,
-      bedrooms: true,
-      bathrooms: true,
-      pricePerNight: true,
-      image: true,
-      images: true,
-      description: true,
-      amenities: true,
-      featured: true,
-      popular: true,
-      deal: true,
-      recommended: true,
-      regionId: true,
-      region: {
+      parent: {
         select: {
-          slug: true,
           name: true,
-          parent: {
-            select: {
-              name: true,
-              parent: { select: { name: true } },
-            },
-          },
+          parent: { select: { name: true } },
+        },
+      },
+    },
+  },
+} as const;
+
+async function buildRegionChildrenMap() {
+  const regions = await prisma.region.findMany({
+    where: { active: true },
+    select: { id: true, parentId: true },
+  });
+  const childrenByParent = new Map<string, string[]>();
+  for (const region of regions) {
+    if (!region.parentId) continue;
+    const list = childrenByParent.get(region.parentId) ?? [];
+    list.push(region.id);
+    childrenByParent.set(region.parentId, list);
+  }
+  return childrenByParent;
+}
+
+function collectDescendantRegionIdsFromMap(
+  rootId: string,
+  childrenByParent: Map<string, string[]>
+): string[] {
+  const ids: string[] = [];
+  const stack = [rootId];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    ids.push(current);
+    const children = childrenByParent.get(current) ?? [];
+    stack.push(...children);
+  }
+  return ids;
+}
+
+async function resolveSimilarRegionTiers(regionId: string): Promise<string[][]> {
+  const region = await prisma.region.findUnique({
+    where: { id: regionId },
+    select: {
+      id: true,
+      level: true,
+      parentId: true,
+      parent: {
+        select: {
+          id: true,
+          level: true,
+          parentId: true,
+          parent: { select: { id: true, level: true } },
         },
       },
     },
   });
 
-  const priceRanges = await getVillaPeriodPriceRanges(rows.map((r) => r.id));
+  if (!region) return [[regionId]];
 
-  return rows.map((row) => {
+  const childrenByParent = await buildRegionChildrenMap();
+  const treeOf = (id: string) =>
+    collectDescendantRegionIdsFromMap(id, childrenByParent);
+
+  if (region.level === RegionLevel.MAHALLE) {
+    const mahalleId = region.id;
+    const ilceId = region.parentId;
+    const ilId =
+      region.parent?.level === RegionLevel.ILCE
+        ? region.parent.parentId
+        : region.parent?.level === RegionLevel.IL
+          ? region.parent.id
+          : null;
+
+    const ilceTree = ilceId ? treeOf(ilceId) : [mahalleId];
+    const ilTree = ilId ? treeOf(ilId) : ilceTree;
+
+    return [
+      [mahalleId],
+      Array.from(new Set(ilceTree)),
+      Array.from(new Set(ilTree)),
+    ];
+  }
+
+  if (region.level === RegionLevel.ILCE) {
+    const ilceTree = treeOf(region.id);
+    const ilId = region.parentId;
+    const ilTree = ilId ? treeOf(ilId) : ilceTree;
+
+    return [
+      Array.from(new Set(ilceTree)),
+      Array.from(new Set(ilTree)),
+      Array.from(new Set(ilTree)),
+    ];
+  }
+
+  const ilTree = treeOf(region.id);
+  return [ilTree, ilTree, ilTree];
+}
+
+function guestCapacityTargets(guests: number) {
+  const base = Math.max(1, guests);
+  return [base, base + 1, base + 2];
+}
+
+export async function getSimilarVillas(
+  villaId: string,
+  regionId: string,
+  guests: number,
+  limit = 10
+): Promise<SimilarVillaCard[]> {
+  const tiers = await resolveSimilarRegionTiers(regionId);
+  const guestTargets = guestCapacityTargets(guests);
+  const rowsDraft: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    category: VillaDetail["category"];
+    location: string;
+    guests: number;
+    bedrooms: number;
+    bathrooms: number;
+    pricePerNight: number | null;
+    image: string;
+    images: string[];
+    description: string;
+    amenities: string[];
+    featured: boolean;
+    popular: boolean;
+    deal: boolean;
+    recommended: boolean;
+    region: {
+      slug: string;
+      name: string;
+      parent: {
+        name: string;
+        parent: { name: string } | null;
+      } | null;
+    };
+  }> = [];
+  const seen = new Set<string>([villaId]);
+
+  for (const regionIds of tiers) {
+    if (rowsDraft.length >= limit) break;
+
+    const remaining = limit - rowsDraft.length;
+    const rows = await prisma.villa.findMany({
+      where: {
+        active: true,
+        id: { notIn: Array.from(seen) },
+        regionId: { in: regionIds },
+        guests: { in: guestTargets },
+      },
+      orderBy: [{ popular: "desc" }, { updatedAt: "desc" }],
+      take: Math.max(remaining * 3, remaining),
+      select: SIMILAR_VILLA_SELECT,
+    });
+
+    const ranked = [...rows].sort((a, b) => {
+      const guestDiff =
+        guestTargets.indexOf(a.guests) - guestTargets.indexOf(b.guests);
+      if (guestDiff !== 0) return guestDiff;
+      if (a.popular !== b.popular) return Number(b.popular) - Number(a.popular);
+      return 0;
+    });
+
+    for (const row of ranked) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      rowsDraft.push(row);
+      if (rowsDraft.length >= limit) break;
+    }
+  }
+
+  const priceRanges = await getVillaPeriodPriceRanges(
+    rowsDraft.map((row) => row.id)
+  );
+
+  return rowsDraft.map((row) => {
     const regionLabel = formatVillaRegionLabel(row.region);
     const range = priceRanges.get(row.id);
     return {

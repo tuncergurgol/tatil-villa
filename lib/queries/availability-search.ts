@@ -129,6 +129,7 @@ function mapPeriodDayToQuoteInput(
     prepaymentRate: number | null;
     cleaningFee: number | null;
     cleaningFeeCurrency: StayQuoteDayInput["cleaningFeeCurrency"];
+    cleaningDayCount?: number | null;
     periodId: string;
   }
 ): StayQuoteDayInput {
@@ -144,6 +145,7 @@ function mapPeriodDayToQuoteInput(
     prepaymentRate: day.prepaymentRate,
     cleaningFee: day.cleaningFee,
     cleaningFeeCurrency: day.cleaningFeeCurrency,
+    cleaningDayCount: day.cleaningDayCount ?? null,
   };
 }
 
@@ -427,6 +429,7 @@ export async function searchAvailability(
         prepaymentRate: true,
         cleaningFee: true,
         cleaningFeeCurrency: true,
+        cleaningDayCount: true,
       },
     }),
     prisma.booking.findMany({

@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createBooking } from "@/lib/queries/bookings";
-import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
 
 const bookingSchema = z.object({
   villaId: z.string().min(1),
@@ -12,14 +11,7 @@ const bookingSchema = z.object({
   adults: z.coerce.number().min(1, "En az 1 yetişkin gerekli"),
   children: z.coerce.number().min(0).default(0),
   babies: z.coerce.number().min(0).default(0),
-  pets: z.coerce.number().min(0).default(0),
-  guestName: z.string().min(2, "Ad soyad gerekli"),
-  guestEmail: z.string().email("Geçerli e-posta girin"),
-  guestPhone: z
-    .string()
-    .min(1, "Geçerli telefon girin")
-    .transform((value) => normalizeStoredTurkishPhone(value))
-    .refine((value) => value.length >= 12, "Geçerli telefon girin"),
+  pets: z.coerce.number().min(0).max(3).default(0),
 });
 
 export type BookingActionState = {
@@ -40,9 +32,6 @@ export async function submitBooking(
     children: formData.get("children") ?? 0,
     babies: formData.get("babies") ?? 0,
     pets: formData.get("pets") ?? 0,
-    guestName: formData.get("guestName"),
-    guestEmail: formData.get("guestEmail"),
-    guestPhone: formData.get("guestPhone"),
   });
 
   if (!parsed.success) {
@@ -56,6 +45,9 @@ export async function submitBooking(
       ...rest,
       checkIn: new Date(checkIn),
       checkOut: new Date(checkOut),
+      guestName: "Ön rezervasyon talebi",
+      guestEmail: "onrezervasyon@tatildeyiz.local",
+      guestPhone: "",
     });
     redirect(`/rezervasyon/basarili?id=${booking.id}`);
   } catch (e) {

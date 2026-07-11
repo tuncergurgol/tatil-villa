@@ -61,6 +61,45 @@ export async function createVillaPool(
   return { success: true };
 }
 
+export async function updateVillaPool(
+  formData: FormData
+): Promise<VillaPoolActionState> {
+  await requireAdmin();
+
+  const poolId = String(formData.get("poolId") ?? "");
+  const villaId = String(formData.get("villaId") ?? "");
+  if (!poolId || !villaId) return { error: "Havuz bulunamadı" };
+
+  const pool = await prisma.villaPool.findFirst({
+    where: { id: poolId, villaId },
+    select: { id: true },
+  });
+  if (!pool) return { error: "Havuz bulunamadı" };
+
+  const measureUnit = String(
+    formData.get("measureUnit") ?? "M"
+  ) as PoolMeasureUnit;
+  const heated = formData.get("heated") === "true";
+  const conservative = formData.get("conservative") === "true";
+
+  await prisma.villaPool.update({
+    where: { id: poolId },
+    data: {
+      measureUnit,
+      width: parseFloatField(formData.get("width")),
+      length: parseFloatField(formData.get("length")),
+      depth: parseFloatField(formData.get("depth")),
+      poolType: String(formData.get("poolType") ?? ""),
+      purificationMethod: String(formData.get("purificationMethod") ?? ""),
+      heated,
+      conservative,
+    },
+  });
+
+  await revalidateVillaEdit(villaId);
+  return { success: true };
+}
+
 export async function deleteVillaPool(
   poolId: string,
   villaId: string

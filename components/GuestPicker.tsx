@@ -13,6 +13,10 @@ const GUEST_LIMITS = {
 interface GuestPickerProps {
   counts: GuestCounts;
   onChange: (counts: GuestCounts) => void;
+  showPets?: boolean;
+  maxGuests?: number;
+  onConfirm?: () => void;
+  confirmLabel?: string;
 }
 
 function CounterRow({
@@ -63,7 +67,22 @@ function CounterRow({
   );
 }
 
-export default function GuestPicker({ counts, onChange }: GuestPickerProps) {
+export default function GuestPicker({
+  counts,
+  onChange,
+  showPets = true,
+  maxGuests,
+  onConfirm,
+  confirmLabel = "Tamam",
+}: GuestPickerProps) {
+  /** Yetişkin + çocuk kapasitesi; bebek ve evcil hayvan dahil değil */
+  const capacityTotal = maxGuests ?? GUEST_LIMITS.adults.max;
+  const adultMax = Math.max(
+    GUEST_LIMITS.adults.min,
+    capacityTotal - counts.children
+  );
+  const childMax = Math.max(0, capacityTotal - counts.adults);
+
   const update = (
     key: keyof GuestCounts,
     delta: number,
@@ -77,41 +96,78 @@ export default function GuestPicker({ counts, onChange }: GuestPickerProps) {
   };
 
   return (
-    <div className="divide-y divide-gray-100 px-4 py-1">
-      <CounterRow
-        label="Yetişkinler"
-        value={counts.adults}
-        min={GUEST_LIMITS.adults.min}
-        max={GUEST_LIMITS.adults.max}
-        onDecrement={() => update("adults", -1, GUEST_LIMITS.adults)}
-        onIncrement={() => update("adults", 1, GUEST_LIMITS.adults)}
-      />
-      <CounterRow
-        label="Çocuklar"
-        sublabel="3 - 12 yaş"
-        value={counts.children}
-        min={GUEST_LIMITS.children.min}
-        max={GUEST_LIMITS.children.max}
-        onDecrement={() => update("children", -1, GUEST_LIMITS.children)}
-        onIncrement={() => update("children", 1, GUEST_LIMITS.children)}
-      />
-      <CounterRow
-        label="Bebekler"
-        sublabel="0 - 2 yaş"
-        value={counts.babies}
-        min={GUEST_LIMITS.babies.min}
-        max={GUEST_LIMITS.babies.max}
-        onDecrement={() => update("babies", -1, GUEST_LIMITS.babies)}
-        onIncrement={() => update("babies", 1, GUEST_LIMITS.babies)}
-      />
-      <CounterRow
-        label="Evcil Hayvanlar"
-        value={counts.pets}
-        min={GUEST_LIMITS.pets.min}
-        max={GUEST_LIMITS.pets.max}
-        onDecrement={() => update("pets", -1, GUEST_LIMITS.pets)}
-        onIncrement={() => update("pets", 1, GUEST_LIMITS.pets)}
-      />
+    <div>
+      <div className="divide-y divide-gray-100 px-4 py-1">
+        <CounterRow
+          label="Yetişkinler"
+          value={counts.adults}
+          min={GUEST_LIMITS.adults.min}
+          max={adultMax}
+          onDecrement={() =>
+            update("adults", -1, {
+              min: GUEST_LIMITS.adults.min,
+              max: adultMax,
+            })
+          }
+          onIncrement={() =>
+            update("adults", 1, {
+              min: GUEST_LIMITS.adults.min,
+              max: adultMax,
+            })
+          }
+        />
+        <CounterRow
+          label="Çocuklar"
+          sublabel="3 - 12 yaş"
+          value={counts.children}
+          min={GUEST_LIMITS.children.min}
+          max={childMax}
+          onDecrement={() =>
+            update("children", -1, {
+              min: GUEST_LIMITS.children.min,
+              max: childMax,
+            })
+          }
+          onIncrement={() =>
+            update("children", 1, {
+              min: GUEST_LIMITS.children.min,
+              max: childMax,
+            })
+          }
+        />
+        <CounterRow
+          label="Bebekler"
+          sublabel="0 - 2 yaş · kapasiteye dahil değil"
+          value={counts.babies}
+          min={GUEST_LIMITS.babies.min}
+          max={GUEST_LIMITS.babies.max}
+          onDecrement={() => update("babies", -1, GUEST_LIMITS.babies)}
+          onIncrement={() => update("babies", 1, GUEST_LIMITS.babies)}
+        />
+        {showPets ? (
+          <CounterRow
+            label="Evcil Hayvanlar"
+            sublabel="Kapasiteye dahil değil"
+            value={counts.pets}
+            min={GUEST_LIMITS.pets.min}
+            max={GUEST_LIMITS.pets.max}
+            onDecrement={() => update("pets", -1, GUEST_LIMITS.pets)}
+            onIncrement={() => update("pets", 1, GUEST_LIMITS.pets)}
+          />
+        ) : null}
+      </div>
+
+      {onConfirm ? (
+        <div className="flex justify-end border-t border-gray-100 px-4 py-2.5">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

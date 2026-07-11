@@ -242,7 +242,7 @@ export default function VillaEditForm({
                   key={tab.id}
                   type="button"
                   onClick={() => switchTab(tab.id)}
-                  className={`border-b-2 px-4 py-4 text-sm font-medium transition ${
+                  className={`cursor-pointer border-b-2 px-4 py-4 text-sm font-medium transition ${
                     isActive
                       ? "border-teal-600 text-teal-700"
                       : "border-transparent text-gray-500 hover:border-gray-200 hover:text-gray-700"
@@ -336,14 +336,14 @@ export default function VillaEditForm({
           <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
             <Link
               href={returnPath}
-              className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="cursor-pointer rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
               İptal
             </Link>
             <button
               type="submit"
               disabled={isPending || !canSubmit}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
               {isPending ? "Kaydediliyor..." : "Güncelle"}

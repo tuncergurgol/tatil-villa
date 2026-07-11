@@ -50,8 +50,9 @@ export async function createBooking(data: {
   if (!villa) throw new Error("Villa bulunamadı.");
 
   const totalGuests = data.adults + data.children;
-  if (totalGuests > villa.guests) {
-    throw new Error(`Bu villa en fazla ${villa.guests} kişi alabilir.`);
+  const maxCapacity = villa.guests + villa.extraCapacity;
+  if (totalGuests > maxCapacity) {
+    throw new Error(`Bu villa en fazla ${maxCapacity} kişi alabilir.`);
   }
 
   if (data.checkOut <= data.checkIn) {
@@ -76,11 +77,18 @@ export async function createBooking(data: {
     include: { villa: { include: { region: true } } },
   });
 
-  await syncBookingGuestToCustomer({
-    guestName: data.guestName,
-    guestEmail: data.guestEmail,
-    guestPhone: data.guestPhone,
-  });
+  const hasRealContact =
+    Boolean(data.guestPhone?.trim()) ||
+    (Boolean(data.guestEmail?.trim()) &&
+      !data.guestEmail.trim().toLowerCase().endsWith("@tatildeyiz.local"));
+
+  if (hasRealContact) {
+    await syncBookingGuestToCustomer({
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+    });
+  }
 
   return booking;
 }

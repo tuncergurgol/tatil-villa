@@ -63,7 +63,7 @@ export default function VillaFeaturesTab({
         <button
           type="button"
           onClick={applyDefaults}
-          className="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 transition hover:bg-violet-100"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 transition hover:bg-violet-100"
         >
           <Sparkles className="h-4 w-4" />
           DEFAULT
@@ -81,9 +81,9 @@ export default function VillaFeaturesTab({
         />
       </Section>
 
-      <Section title="Havuz Yönetimi">
+      <section className="rounded-2xl border border-gray-200 bg-white p-5">
         <VillaPoolManager villaId={villa.id} pools={pools} />
-      </Section>
+      </section>
 
       <Section title="Fiyata Dahil Olan / Olmayan">
         <VillaPriceInclusionPicker

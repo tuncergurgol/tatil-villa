@@ -14,6 +14,12 @@ export type StayQuoteDayInput = {
   prepaymentRate: number | null;
   cleaningFee: number | null;
   cleaningFeeCurrency: VillaPeriodCurrency;
+  cleaningDayCount: number | null;
+};
+
+export type StayQuoteNightLine = {
+  dateKey: string;
+  price: number;
 };
 
 export type StayQuote = {
@@ -27,8 +33,11 @@ export type StayQuote = {
   prepaymentAmount: number;
   checkInPayment: number;
   minStayNights: number | null;
+  cleaningDayCount: number | null;
+  nightLines: StayQuoteNightLine[];
   valid: boolean;
   missingNightKeys: string[];
+  invalidReason: string | null;
 };
 
 export function getStayNightKeys(checkIn: string, checkOut: string): string[] {
@@ -46,6 +55,34 @@ function getCommissionForNight(day: StayQuoteDayInput): number {
   return Math.max(0, day.nightlyPrice - day.nightlyPriceWithoutCommission);
 }
 
+/**
+ * Temizlik bedeli: giriş günü (ilk gece) periyodundan alınır.
+ * cleaningDayCount > 0 ise yalnızca nights < cleaningDayCount iken uygulanır.
+ * cleaningDayCount yoksa ve fee > 0 ise uygulanır.
+ */
+export function resolveCleaningFeeForStay(options: {
+  nights: number;
+  cleaningFee: number | null | undefined;
+  cleaningDayCount: number | null | undefined;
+}): number {
+  const fee = options.cleaningFee;
+  if (fee == null || fee <= 0) return 0;
+
+  const threshold = options.cleaningDayCount;
+  if (threshold != null && threshold > 0) {
+    return options.nights < threshold ? fee : 0;
+  }
+
+  return fee;
+}
+
+/**
+ * Rezervasyon hesaplama formu — tüm sistemde ortak kurallar.
+ *
+ * - Konaklama: her gecenin (discountedNightlyPrice ?? nightlyPrice) toplamı
+ * - Min. konaklama, temizlik bedeli, temizlik gün eşiği, ön ödeme oranı:
+ *   seçilen ilk tarihin (giriş gecesi) periyot bilgileri
+ */
 export function computeStayQuote(
   checkIn: string,
   checkOut: string,
@@ -54,63 +91,78 @@ export function computeStayQuote(
   const nightKeys = getStayNightKeys(checkIn, checkOut);
   const nights = nightKeys.length;
 
+  const empty = (
+    overrides: Partial<StayQuote> & { invalidReason: string | null }
+  ): StayQuote => ({
+    nights,
+    accommodationTotal: 0,
+    commissionTotal: 0,
+    cleaningFee: 0,
+    total: 0,
+    currency: "TL",
+    prepaymentRate: 20,
+    prepaymentAmount: 0,
+    checkInPayment: 0,
+    minStayNights: null,
+    cleaningDayCount: null,
+    nightLines: [],
+    valid: false,
+    missingNightKeys: [],
+    ...overrides,
+  });
+
   if (nights === 0) {
-    return {
+    return empty({
       nights: 0,
-      accommodationTotal: 0,
-      commissionTotal: 0,
-      cleaningFee: 0,
-      total: 0,
-      currency: "TL",
-      prepaymentRate: 20,
-      prepaymentAmount: 0,
-      checkInPayment: 0,
-      minStayNights: null,
-      valid: false,
-      missingNightKeys: [],
-    };
+      invalidReason: "Geçerli bir konaklama aralığı seçin.",
+    });
   }
 
   const missingNightKeys: string[] = [];
+  const nightLines: StayQuoteNightLine[] = [];
   let accommodationTotal = 0;
   let commissionTotal = 0;
-  let maxMinStay: number | null = null;
-  let currency: VillaPeriodCurrency = "TL";
-  let prepaymentRate = 20;
-  let cleaningFee = 0;
 
-  nightKeys.forEach((dateKey, index) => {
+  for (const dateKey of nightKeys) {
     const day = daysByDateKey.get(dateKey);
     if (!day) {
       missingNightKeys.push(dateKey);
-      return;
+      continue;
     }
-
-    if (index === 0) {
-      currency = day.nightlyPriceCurrency;
-      if (day.prepaymentRate != null && day.prepaymentRate > 0) {
-        prepaymentRate = day.prepaymentRate;
-      }
-      if (day.cleaningFee != null && day.cleaningFee > 0) {
-        cleaningFee = day.cleaningFee;
-      }
-    }
-
-    accommodationTotal += getDisplayNightlyPrice(day);
+    const price = getDisplayNightlyPrice(day);
+    nightLines.push({ dateKey, price });
+    accommodationTotal += price;
     commissionTotal += getCommissionForNight(day);
+  }
 
-    if (day.minStayNights != null && day.minStayNights > 0) {
-      maxMinStay =
-        maxMinStay == null
-          ? day.minStayNights
-          : Math.max(maxMinStay, day.minStayNights);
-    }
+  const firstDay = daysByDateKey.get(nightKeys[0]) ?? null;
+  const currency = firstDay?.nightlyPriceCurrency ?? "TL";
+  const prepaymentRate =
+    firstDay?.prepaymentRate != null && firstDay.prepaymentRate > 0
+      ? firstDay.prepaymentRate
+      : 20;
+  const minStayNights =
+    firstDay?.minStayNights != null && firstDay.minStayNights > 0
+      ? firstDay.minStayNights
+      : null;
+  const cleaningDayCount =
+    firstDay?.cleaningDayCount != null && firstDay.cleaningDayCount > 0
+      ? firstDay.cleaningDayCount
+      : null;
+  const cleaningFee = resolveCleaningFeeForStay({
+    nights,
+    cleaningFee: firstDay?.cleaningFee,
+    cleaningDayCount: firstDay?.cleaningDayCount,
   });
 
-  const valid =
-    missingNightKeys.length === 0 &&
-    (maxMinStay == null || nights >= maxMinStay);
+  let invalidReason: string | null = null;
+  if (missingNightKeys.length > 0) {
+    invalidReason = "Seçilen tarihler için fiyat bilgisi eksik.";
+  } else if (minStayNights != null && nights < minStayNights) {
+    invalidReason = `Minimum konaklama ${minStayNights} gecedir.`;
+  }
 
+  const valid = invalidReason == null;
   const total = accommodationTotal + cleaningFee;
   const prepaymentAmount = valid
     ? Math.round((accommodationTotal * prepaymentRate) / 100)
@@ -127,8 +179,64 @@ export function computeStayQuote(
     prepaymentRate,
     prepaymentAmount,
     checkInPayment,
-    minStayNights: maxMinStay,
+    minStayNights,
+    cleaningDayCount,
+    nightLines,
     valid,
     missingNightKeys,
+    invalidReason,
   };
+}
+
+export function buildStayQuoteDayMap(
+  days: Array<{
+    date: string;
+    occupancyStatus?: string | null;
+    nightlyPrice?: number;
+    nightlyPriceWithoutCommission?: number | null;
+    discountedNightlyPrice?: number | null;
+    nightlyPriceCurrency?: VillaPeriodCurrency | string;
+    availability?: VillaPeriodAvailability | string;
+    minStayNights?: number | null;
+    prepaymentRate?: number | null;
+    cleaningFee?: number | null;
+    cleaningFeeCurrency?: VillaPeriodCurrency | string;
+    cleaningDayCount?: number | null;
+    price?: number;
+    currency?: string;
+  }>
+): Map<string, StayQuoteDayInput> {
+  const map = new Map<string, StayQuoteDayInput>();
+
+  for (const day of days) {
+    const occupancy =
+      day.occupancyStatus === "BOOKED" || day.occupancyStatus === "OPTION"
+        ? day.occupancyStatus
+        : "EMPTY";
+    const currency = (day.nightlyPriceCurrency ??
+      day.currency ??
+      "TL") as VillaPeriodCurrency;
+    const availability = (day.availability === "closed"
+      ? "closed"
+      : "available") as VillaPeriodAvailability;
+    const nightlyPrice = day.nightlyPrice ?? day.price ?? 0;
+
+    map.set(day.date, {
+      dateKey: day.date,
+      nightlyPrice,
+      nightlyPriceWithoutCommission: day.nightlyPriceWithoutCommission ?? null,
+      discountedNightlyPrice: day.discountedNightlyPrice ?? null,
+      nightlyPriceCurrency: currency,
+      availability,
+      occupancyStatus: occupancy,
+      minStayNights: day.minStayNights ?? null,
+      prepaymentRate: day.prepaymentRate ?? null,
+      cleaningFee: day.cleaningFee ?? null,
+      cleaningFeeCurrency: (day.cleaningFeeCurrency ??
+        currency) as VillaPeriodCurrency,
+      cleaningDayCount: day.cleaningDayCount ?? null,
+    });
+  }
+
+  return map;
 }

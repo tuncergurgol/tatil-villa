@@ -7,13 +7,24 @@ import { categoryLabel } from "@/lib/utils";
 
 interface VillaCardProps {
   villa: Villa;
+  /** fluid: grid hücresine sığar (benzer villalar) */
+  layout?: "fixed" | "fluid";
 }
 
-export default function VillaCard({ villa }: VillaCardProps) {
+export default function VillaCard({
+  villa,
+  layout = "fixed",
+}: VillaCardProps) {
+  const isFluid = layout === "fluid";
+
   return (
     <Link
       href={`/villalar/${villa.slug}`}
-      className="group flex w-[280px] shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:w-[300px]"
+      className={`group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
+        isFluid
+          ? "h-full w-full min-w-0"
+          : "w-[280px] shrink-0 sm:w-[300px]"
+      }`}
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image
@@ -21,7 +32,7 @@ export default function VillaCard({ villa }: VillaCardProps) {
           alt={villa.name}
           fill
           className="object-cover transition duration-500 group-hover:scale-105"
-          sizes="300px"
+          sizes={isFluid ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" : "300px"}
         />
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-teal-800">
           {categoryLabel(villa.category)}
@@ -29,12 +40,12 @@ export default function VillaCard({ villa }: VillaCardProps) {
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="text-base font-bold text-gray-900 group-hover:text-teal-700">
+        <h3 className="line-clamp-2 text-base font-bold text-gray-900 group-hover:text-teal-700">
           {villa.name}
         </h3>
-        <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+        <p className="mt-1 flex items-center gap-1 truncate text-sm text-gray-500">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          {villa.location}
+          <span className="truncate">{villa.location}</span>
         </p>
 
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600">

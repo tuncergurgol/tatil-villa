@@ -11,17 +11,20 @@ import {
   Star,
   Users,
   Waves,
-  X,
 } from "lucide-react";
 import BookingForm from "@/components/BookingForm";
-import VillaCard from "@/components/VillaCard";
 import PeriodPricesTrigger from "@/components/villa-detail/PeriodPricesTrigger";
+import SimilarVillasCarousel from "@/components/villa-detail/SimilarVillasCarousel";
 import TourismPermitBadge from "@/components/villa-detail/TourismPermitBadge";
+import TravelAdventureSection from "@/components/villa-detail/TravelAdventureSection";
+import VillaAmenitiesSection from "@/components/villa-detail/VillaAmenitiesSection";
 import VillaAvailabilityCalendar from "@/components/villa-detail/VillaAvailabilityCalendar";
 import VillaDetailGallery from "@/components/villa-detail/VillaDetailGallery";
 import VillaDetailSectionNav, {
   type VillaDetailNavItem,
 } from "@/components/villa-detail/VillaDetailSectionNav";
+import VillaKnowBeforeSection from "@/components/villa-detail/VillaKnowBeforeSection";
+import { VillaStaySelectionProvider } from "@/components/villa-detail/VillaStaySelectionContext";
 import type {
   SimilarVillaCard,
   VillaDetail,
@@ -37,6 +40,7 @@ type VillaDetailViewProps = {
   villa: VillaDetail;
   faqs: FaqItem[];
   similarVillas?: SimilarVillaCard[];
+  companyPhone?: string;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -59,15 +63,11 @@ function DetailSection({
   return (
     <section
       id={id}
-      className={`scroll-mt-36 border-b border-slate-200 py-8 last:border-b-0 ${className}`}
+      className={`scroll-mt-[12.5rem] border-b border-slate-200 py-8 last:border-b-0 ${className}`}
     >
       {children}
     </section>
   );
-}
-
-function ruleLabel(allowed: boolean, yes: string, no: string) {
-  return allowed ? yes : no;
 }
 
 function RatingStars({ rating }: { rating: number }) {
@@ -86,18 +86,36 @@ function RatingStars({ rating }: { rating: number }) {
   );
 }
 
+function isFeaturedAmenityCategory(category: string) {
+  return (
+    category.localeCompare("Öne Çıkanlar", "tr", { sensitivity: "base" }) === 0
+  );
+}
+
 export default function VillaDetailView({
   villa,
   faqs,
   similarVillas = [],
+  companyPhone,
 }: VillaDetailViewProps) {
+  const featuredAmenityItems =
+    villa.amenityGroups.find((group) =>
+      isFeaturedAmenityCategory(group.category)
+    )?.items ?? [];
+  const amenityGroups = villa.amenityGroups.filter(
+    (group) => !isFeaturedAmenityCategory(group.category)
+  );
+  const highlightedFeatures = Array.from(
+    new Set([...villa.facilityCategories, ...featuredAmenityItems])
+  );
+
   const navItems: VillaDetailNavItem[] = [
     { id: "genel-bakis", label: "Genel Bakış" },
     villa.rooms.length > 0
       ? { id: "oda-kapasite", label: "Oda & Kapasite" }
       : null,
     villa.reviewCount > 0 ? { id: "yorumlar", label: "Yorumlar" } : null,
-    villa.amenities.length > 0
+    amenityGroups.length > 0
       ? { id: "olanaklar", label: "Olanaklar" }
       : null,
     villa.distances.length > 0 || villa.hasCoords
@@ -106,6 +124,7 @@ export default function VillaDetailView({
     villa.calendarDays.length > 0 || villa.periods.length > 0
       ? { id: "musaitlik", label: "Müsaitlik" }
       : null,
+    { id: "bilmeniz-gerekenler", label: "Bilmeniz Gerekenler" },
     faqs.length > 0 ? { id: "sss", label: "SSS" } : null,
   ].filter(Boolean) as VillaDetailNavItem[];
 
@@ -115,15 +134,12 @@ export default function VillaDetailView({
 
   const hasHeatedPool = villa.pools.some((pool) => pool.heated);
   const hasConservativePool = villa.pools.some((pool) => pool.conservative);
-  const purificationMethods = Array.from(
-    new Set(
-      villa.pools
-        .map((pool) => pool.purificationMethod?.trim())
-        .filter((value): value is string => Boolean(value))
-    )
-  );
 
   return (
+    <VillaStaySelectionProvider
+      calendarDays={villa.calendarDays}
+      allowPets={villa.allowPets}
+    >
     <div className="bg-white">
       <div className="border-b border-slate-100 bg-slate-50">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 px-4 py-2.5 text-sm text-slate-500 sm:px-6 lg:px-8">
@@ -204,56 +220,30 @@ export default function VillaDetailView({
                 ) : null}
               </div>
 
-              {(hasHeatedPool ||
-                hasConservativePool ||
-                purificationMethods.length > 0) && (
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {hasHeatedPool ? (
-                    <PoolFeatureChip
-                      icon={Flame}
-                      label="Isıtmalı Havuz"
-                    />
-                  ) : null}
-                  {hasConservativePool ? (
-                    <PoolFeatureChip
-                      icon={Shield}
-                      label="Muhafazakar (Korunaklı) Havuz"
-                    />
-                  ) : null}
-                  {purificationMethods.map((method) => (
-                    <PoolFeatureChip
-                      key={method}
-                      icon={Droplets}
-                      label={`Dezenfekte: ${method}`}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {villa.facilityCategories.length > 0 ? (
-                <div className="mt-10">
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Öne Çıkan Özellikler
-                  </h3>
-                  <ul className="mt-4 grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
-                    {villa.facilityCategories.map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-center gap-2.5 text-[15px] text-slate-700"
-                      >
-                        <Check className="h-4 w-4 shrink-0 text-sky-600" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
               <div className="mt-10">
                 <SectionTitle>Villa Detayı</SectionTitle>
                 <div className="prose prose-slate mt-5 max-w-none whitespace-pre-line text-[15px] leading-relaxed text-slate-600">
                   {villa.description}
                 </div>
+
+                {highlightedFeatures.length > 0 ? (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Öne Çıkan Özellikler
+                    </h3>
+                    <ul className="mt-4 grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+                      {highlightedFeatures.map((item) => (
+                        <li
+                          key={item}
+                          className="flex items-center gap-2.5 text-[15px] text-slate-700"
+                        >
+                          <Check className="h-4 w-4 shrink-0 text-sky-600" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
 
               {villa.pools.length > 0 ? (
@@ -262,15 +252,13 @@ export default function VillaDetailView({
                   <ul className="mt-5 space-y-4">
                     {villa.pools.map((pool, index) => {
                       const unit = pool.measureUnit === "CM" ? "cm" : "m";
-                      const sizeLabel =
-                        pool.width != null && pool.length != null
-                          ? `${pool.width} × ${pool.length} ${unit}`
-                          : null;
-                      const depthLabel =
-                        pool.depth != null
-                          ? `${pool.depth} ${unit}`
-                          : null;
                       const purification = pool.purificationMethod?.trim();
+                      const hasDimensions =
+                        pool.width != null ||
+                        pool.length != null ||
+                        pool.depth != null;
+                      const hasFeatureChips =
+                        pool.heated || pool.conservative || Boolean(purification);
 
                       return (
                         <li
@@ -287,44 +275,53 @@ export default function VillaDetailView({
                                     : "Havuz")}
                               </p>
 
-                              <dl className="mt-3 grid gap-2.5 sm:grid-cols-2">
-                                {sizeLabel ? (
-                                  <PoolInfoRow
-                                    label="Ölçüler"
-                                    value={sizeLabel}
-                                  />
-                                ) : null}
-                                {depthLabel ? (
-                                  <PoolInfoRow
-                                    label="Derinlik"
-                                    value={depthLabel}
-                                  />
-                                ) : null}
-                                {pool.heated ? (
-                                  <PoolInfoRow
-                                    label="Isıtmalı Havuz"
-                                    value="Evet"
-                                  />
-                                ) : null}
-                                {pool.conservative ? (
-                                  <PoolInfoRow
-                                    label="Muhafazakar (Korunaklı) Havuz"
-                                    value="Evet"
-                                  />
-                                ) : null}
-                                {purification ? (
-                                  <PoolInfoRow
-                                    label="Havuz Dezenfekte Sistemi"
-                                    value={purification}
-                                  />
-                                ) : null}
-                              </dl>
+                              {hasDimensions ? (
+                                <dl className="mt-3 grid gap-2.5 sm:grid-cols-3">
+                                  {pool.width != null ? (
+                                    <PoolInfoRow
+                                      label="En"
+                                      value={`${pool.width} ${unit}`}
+                                    />
+                                  ) : null}
+                                  {pool.length != null ? (
+                                    <PoolInfoRow
+                                      label="Boy"
+                                      value={`${pool.length} ${unit}`}
+                                    />
+                                  ) : null}
+                                  {pool.depth != null ? (
+                                    <PoolInfoRow
+                                      label="Derinlik"
+                                      value={`${pool.depth} ${unit}`}
+                                    />
+                                  ) : null}
+                                </dl>
+                              ) : null}
 
-                              {!sizeLabel &&
-                              !depthLabel &&
-                              !pool.heated &&
-                              !pool.conservative &&
-                              !purification ? (
+                              {hasFeatureChips ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {pool.heated ? (
+                                    <PoolFeatureChip
+                                      icon={Flame}
+                                      label="Isıtmalı Havuz"
+                                    />
+                                  ) : null}
+                                  {pool.conservative ? (
+                                    <PoolFeatureChip
+                                      icon={Shield}
+                                      label="Muhafazakar (Korunaklı) Havuz"
+                                    />
+                                  ) : null}
+                                  {purification ? (
+                                    <PoolFeatureChip
+                                      icon={Droplets}
+                                      label={`Dezenfekte: ${purification}`}
+                                    />
+                                  ) : null}
+                                </div>
+                              ) : null}
+
+                              {!hasDimensions && !hasFeatureChips ? (
                                 <p className="mt-2 text-sm text-slate-500">
                                   Detaylı havuz ölçü bilgisi eklenmemiş.
                                 </p>
@@ -337,14 +334,6 @@ export default function VillaDetailView({
                   </ul>
                 </div>
               ) : null}
-            </DetailSection>
-
-            <DetailSection id="rezervasyon-bilgileri">
-              <SectionTitle>Rezervasyon Bilgileri</SectionTitle>
-              <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                <InfoRow label="Giriş saati" value={villa.checkInTime} />
-                <InfoRow label="Çıkış saati" value={villa.checkOutTime} />
-              </dl>
             </DetailSection>
 
             {villa.rooms.length > 0 ? (
@@ -396,133 +385,9 @@ export default function VillaDetailView({
               </DetailSection>
             ) : null}
 
-            {villa.amenities.length > 0 ? (
+            {amenityGroups.length > 0 ? (
               <DetailSection id="olanaklar">
-                <SectionTitle>Villa Olanakları</SectionTitle>
-                <div className="mt-5 space-y-6">
-                  {villa.amenityGroups.map((group) => (
-                    <div key={group.category}>
-                      <h3 className="text-sm font-semibold text-slate-800">
-                        {group.category}
-                      </h3>
-                      <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                        {group.items.map((item) => (
-                          <li
-                            key={item}
-                            className="flex items-start gap-2 text-sm text-slate-700"
-                          >
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </DetailSection>
-            ) : null}
-
-            <DetailSection id="tesis-kurallari">
-              <SectionTitle>Tesis Kuralları</SectionTitle>
-              <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                <RuleItem
-                  label="Çocuklar"
-                  value={ruleLabel(
-                    villa.allowChildren,
-                    "Çocuk kabul edilir",
-                    "Çocuk kabul edilmez"
-                  )}
-                />
-                <RuleItem
-                  label="Bebek"
-                  value={ruleLabel(
-                    villa.allowBaby,
-                    "Bebek kabul edilir",
-                    "Bebek kabul edilmez"
-                  )}
-                />
-                <RuleItem
-                  label="Etkinlikler"
-                  value={ruleLabel(
-                    villa.allowEvents,
-                    "Etkinlik yapılabilir",
-                    "Etkinlik yapılamaz"
-                  )}
-                />
-                <RuleItem
-                  label="Evcil Hayvanlar"
-                  value={ruleLabel(
-                    villa.allowPets,
-                    "Evcil hayvan kabul edilir",
-                    "Evcil hayvan kabul edilmez"
-                  )}
-                />
-                <RuleItem
-                  label="Sigara"
-                  value={ruleLabel(
-                    villa.allowSmoking,
-                    "Sigara içilebilir",
-                    "Sigara içilemez"
-                  )}
-                />
-              </ul>
-              {villa.customRules.length > 0 ? (
-                <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                  {villa.customRules.map((rule) => (
-                    <li
-                      key={rule}
-                      className="flex items-start gap-2 text-sm text-slate-700"
-                    >
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                      {rule}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </DetailSection>
-
-            {villa.priceIncluded.length > 0 ||
-            villa.priceExcluded.length > 0 ? (
-              <DetailSection id="fiyat-dahil">
-                <SectionTitle>Fiyata Dahil / Değil</SectionTitle>
-                <div className="mt-5 grid gap-6 sm:grid-cols-2">
-                  {villa.priceIncluded.length > 0 ? (
-                    <div>
-                      <h3 className="text-sm font-semibold text-emerald-800">
-                        Fiyata Dahil
-                      </h3>
-                      <ul className="mt-2 space-y-2">
-                        {villa.priceIncluded.map((item) => (
-                          <li
-                            key={item.id}
-                            className="flex items-start gap-2 text-sm text-slate-700"
-                          >
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                            {item.description}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {villa.priceExcluded.length > 0 ? (
-                    <div>
-                      <h3 className="text-sm font-semibold text-rose-800">
-                        Fiyata Dahil Değil
-                      </h3>
-                      <ul className="mt-2 space-y-2">
-                        {villa.priceExcluded.map((item) => (
-                          <li
-                            key={item.id}
-                            className="flex items-start gap-2 text-sm text-slate-700"
-                          >
-                            <X className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                            {item.description}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
+                <VillaAmenitiesSection groups={amenityGroups} />
               </DetailSection>
             ) : null}
 
@@ -576,6 +441,7 @@ export default function VillaDetailView({
                   <div>
                     <SectionTitle>Müsaitlik Takvimi</SectionTitle>
                     <p className="mt-2 text-sm text-slate-600">
+                      Tarihlere tıklayarak giriş ve çıkış seçebilirsiniz.
                       Müsait günlerde gecelik fiyatlar görünür.
                     </p>
                   </div>
@@ -594,14 +460,25 @@ export default function VillaDetailView({
               </DetailSection>
             ) : null}
 
+            <DetailSection id="bilmeniz-gerekenler">
+              <VillaKnowBeforeSection
+                checkInTime={villa.checkInTime}
+                checkOutTime={villa.checkOutTime}
+                allowBaby={villa.allowBaby}
+                allowChildren={villa.allowChildren}
+                allowPets={villa.allowPets}
+                allowSmoking={villa.allowSmoking}
+                allowEvents={villa.allowEvents}
+                customRules={villa.customRules}
+                priceIncluded={villa.priceIncluded}
+                priceExcluded={villa.priceExcluded}
+                damageDeposit={villa.currentDamageDeposit}
+              />
+            </DetailSection>
+
             {similarVillas.length > 0 ? (
               <DetailSection id="benzer-villalar">
-                <SectionTitle>Benzer Villalar</SectionTitle>
-                <div className="mt-5 -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                  {similarVillas.map((item) => (
-                    <VillaCard key={item.id} villa={item} />
-                  ))}
-                </div>
+                <SimilarVillasCarousel villas={similarVillas} />
               </DetailSection>
             ) : null}
 
@@ -675,14 +552,20 @@ export default function VillaDetailView({
           <aside className="lg:pt-1">
             <BookingForm
               villaId={villa.id}
-              villaName={villa.name}
-              maxGuests={villa.guests}
+              maxGuests={villa.guests + villa.extraCapacity}
               pricePerNight={villa.pricePerNight}
+              companyPhone={companyPhone}
+              calendarDays={villa.calendarDays}
             />
           </aside>
         </div>
+
+        <div id="seyahat-macerasi" className="mt-12 scroll-mt-36">
+          <TravelAdventureSection />
+        </div>
       </div>
     </div>
+    </VillaStaySelectionProvider>
   );
 }
 
@@ -729,25 +612,5 @@ function PoolInfoRow({ label, value }: { label: string; value: string }) {
       </dt>
       <dd className="mt-0.5 text-sm font-semibold text-slate-800">{value}</dd>
     </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-slate-50 px-4 py-3">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-0.5 font-semibold text-slate-900">{value}</dd>
-    </div>
-  );
-}
-
-function RuleItem({ label, value }: { label: string; value: string }) {
-  return (
-    <li className="rounded-xl border border-slate-100 px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
-    </li>
   );
 }
