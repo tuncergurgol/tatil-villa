@@ -14,20 +14,15 @@ export type CorporateNavItem = {
   icon: LucideIcon;
 };
 
-/** Kurumsal sayfalar arası hızlı geçiş menüsü */
-export const CORPORATE_SIDEBAR_NAV: CorporateNavItem[] = [
-  { slug: "hakkimizda", label: "Hakkımızda", icon: Building2 },
-  { slug: "iletisim", label: "İletişim", icon: Mail },
-  { slug: "banka-bilgilerimiz", label: "Banka Hesap Bilgilerimiz", icon: Landmark },
-  {
-    slug: "online-rezervasyon-sozlesmesi",
-    label: "Online Rezervasyon Sözleşmesi",
-    icon: FileText,
-  },
-  {
-    slug: "iptal-ve-iade-kosullari",
-    label: "İptal İade Koşulları",
-    icon: RotateCcw,
-  },
-  { slug: "gizlilik-politikasi", label: "Gizlilik Politikası", icon: Shield },
-];
+const CORPORATE_MENU_ICONS: Record<string, LucideIcon> = {
+  hakkimizda: Building2,
+  iletisim: Mail,
+  "banka-bilgilerimiz": Landmark,
+  "online-rezervasyon-sozlesmesi": FileText,
+  "iptal-ve-iade-kosullari": RotateCcw,
+  "gizlilik-politikasi": Shield,
+};
+
+export function getCorporateMenuIcon(slug: string): LucideIcon {
+  return CORPORATE_MENU_ICONS[slug] ?? FileText;
+}

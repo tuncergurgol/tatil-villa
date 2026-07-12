@@ -100,6 +100,7 @@ const pageSchema = z.object({
   seoKeywords: z.string().optional(),
   published: z.boolean().optional(),
   showInFooter: z.boolean().optional(),
+  showInMenu: z.boolean().optional(),
   sortOrder: z.coerce.number().int().optional(),
 });
 
@@ -120,6 +121,7 @@ export async function saveCmsPageAction(
     seoKeywords: formData.get("seoKeywords") ?? "",
     published: formData.get("published") === "on",
     showInFooter: formData.get("showInFooter") === "on",
+    showInMenu: formData.get("showInMenu") === "on",
     sortOrder: formData.get("sortOrder") ?? 0,
   });
 
@@ -501,4 +503,17 @@ export async function deleteCmsContentTabAction(
     console.error("deleteCmsContentTabAction", error);
     return { error: "Sekme silinemedi" };
   }
+}
+
+export async function getCmsPageForEditAction(id: string) {
+  await requireAdmin();
+  return prisma.cmsPage.findUnique({ where: { id } });
+}
+
+export async function getBlogPostForEditAction(id: string) {
+  await requireAdmin();
+  return prisma.blogPost.findUnique({
+    where: { id },
+    include: { category: true },
+  });
 }

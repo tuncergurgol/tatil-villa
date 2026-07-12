@@ -368,7 +368,7 @@ export default function PreReservationModal({
                 />
                 <span>
                   <Link
-                    href="/kurumsal/kisisel-verilerin-islenmesine-iliskin-aydinlatma-metni"
+                    href="/kurumsal/gizlilik-politikasi"
                     target="_blank"
                     className="underline underline-offset-2"
                   >
@@ -407,7 +407,7 @@ export default function PreReservationModal({
                   {brandName} tarafından haber ve kampanyalardan haberdar
                   edilmek istiyorum.{" "}
                   <Link
-                    href="/kurumsal/kisisel-verilerin-islenmesine-iliskin-aydinlatma-metni"
+                    href="/kurumsal/gizlilik-politikasi"
                     target="_blank"
                     className="underline underline-offset-2"
                   >

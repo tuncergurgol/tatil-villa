@@ -18,8 +18,18 @@ export default async function ContentHubPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
+  const contentTabs = await getCmsContentTabsForAdmin();
+  const sortedTabs = [...contentTabs].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "tr")
+  );
+  const activeKey =
+    tab && sortedTabs.some((item) => item.key === tab)
+      ? tab
+      : (sortedTabs[0]?.key ?? "sss");
+  const activeModule =
+    sortedTabs.find((item) => item.key === activeKey)?.moduleKey ?? activeKey;
+
   const [
-    contentTabs,
     faqs,
     blogCategories,
     blogPosts,
@@ -28,19 +38,20 @@ export default async function ContentHubPage({
     menus,
     campaigns,
   ] = await Promise.all([
-    getCmsContentTabsForAdmin(),
-    getAllFaqsForAdmin(),
-    getAllBlogCategoriesForAdmin(),
-    getAllBlogPostsForAdmin(),
-    getAllReviewsForAdmin(),
-    getAllCmsPagesForAdmin(),
-    getAllSiteMenusForAdmin(),
-    getAllCampaigns(),
+    activeModule === "sss" ? getAllFaqsForAdmin() : Promise.resolve([]),
+    activeModule === "blog"
+      ? getAllBlogCategoriesForAdmin()
+      : Promise.resolve([]),
+    activeModule === "blog" ? getAllBlogPostsForAdmin() : Promise.resolve([]),
+    activeModule === "yorumlar" ? getAllReviewsForAdmin() : Promise.resolve([]),
+    activeModule === "kurumsal" ? getAllCmsPagesForAdmin() : Promise.resolve([]),
+    activeModule === "menuler" ? getAllSiteMenusForAdmin() : Promise.resolve([]),
+    activeModule === "kampanyalar" ? getAllCampaigns() : Promise.resolve([]),
   ]);
 
   return (
     <ContentManagement
-      initialTab={tab}
+      initialTab={activeKey}
       contentTabs={contentTabs}
       faqs={faqs}
       blogCategories={blogCategories}

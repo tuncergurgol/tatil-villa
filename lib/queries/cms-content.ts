@@ -1,5 +1,41 @@
 import { prisma } from "@/lib/db";
 
+const blogListSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  excerpt: true,
+  coverImage: true,
+  authorName: true,
+  categoryId: true,
+  seoTitle: true,
+  seoDescription: true,
+  seoKeywords: true,
+  published: true,
+  publishedAt: true,
+  sortOrder: true,
+  createdAt: true,
+  updatedAt: true,
+  category: { select: { id: true, name: true, slug: true } },
+} as const;
+
+const cmsPageListSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  excerpt: true,
+  pageType: true,
+  seoTitle: true,
+  seoDescription: true,
+  seoKeywords: true,
+  published: true,
+  showInFooter: true,
+  showInMenu: true,
+  sortOrder: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 export async function getPublishedCmsPage(slug: string) {
   return prisma.cmsPage.findFirst({
     where: { slug, published: true },
@@ -9,16 +45,32 @@ export async function getPublishedCmsPage(slug: string) {
 export async function getAllCmsPagesForAdmin() {
   return prisma.cmsPage.findMany({
     orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+    select: cmsPageListSelect,
   });
 }
 
-export async function getActiveFaqsForPublic(category?: string) {
+export async function getCmsPageByIdForAdmin(id: string) {
+  return prisma.cmsPage.findUnique({ where: { id } });
+}
+
+export async function getActiveFaqsForPublic(options?: {
+  category?: string;
+  limit?: number;
+}) {
   return prisma.faqItem.findMany({
     where: {
       active: true,
-      ...(category ? { category } : {}),
+      ...(options?.category ? { category: options.category } : {}),
     },
     orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+    ...(options?.limit ? { take: options.limit } : {}),
+    select: {
+      id: true,
+      question: true,
+      answer: true,
+      category: true,
+      sortOrder: true,
+    },
   });
 }
 
@@ -61,7 +113,7 @@ export async function getPublishedBlogPosts(options?: {
     },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     take: options?.limit,
-    include: { category: true },
+    select: blogListSelect,
   });
 }
 
@@ -82,6 +134,13 @@ export async function getAllBlogCategoriesForAdmin() {
 export async function getAllBlogPostsForAdmin() {
   return prisma.blogPost.findMany({
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    select: blogListSelect,
+  });
+}
+
+export async function getBlogPostByIdForAdmin(id: string) {
+  return prisma.blogPost.findUnique({
+    where: { id },
     include: { category: true },
   });
 }
@@ -111,6 +170,14 @@ export async function getFooterCorporatePages() {
     where: { published: true, showInFooter: true },
     orderBy: { sortOrder: "asc" },
     select: { slug: true, title: true },
+  });
+}
+
+export async function getCorporateMenuPages() {
+  return prisma.cmsPage.findMany({
+    where: { published: true, showInMenu: true },
+    orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+    select: { slug: true, title: true, sortOrder: true },
   });
 }
 

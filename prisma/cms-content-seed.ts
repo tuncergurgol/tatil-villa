@@ -153,6 +153,15 @@ export async function seedCmsContent() {
   }
 
   for (const page of corporatePageSeeds) {
+    const showInMenu = [
+      "hakkimizda",
+      "iletisim",
+      "banka-bilgilerimiz",
+      "online-rezervasyon-sozlesmesi",
+      "iptal-ve-iade-kosullari",
+      "gizlilik-politikasi",
+    ].includes(page.slug);
+
     await prisma.cmsPage.upsert({
       where: { slug: page.slug },
       create: {
@@ -163,12 +172,14 @@ export async function seedCmsContent() {
         seoDescription: `${page.title} hakkında detaylı bilgi.`,
         published: true,
         showInFooter: true,
+        showInMenu,
       },
       update: {
         title: page.title,
         pageType: page.pageType,
         sortOrder: page.sortOrder,
         showInFooter: true,
+        showInMenu,
       },
     });
   }

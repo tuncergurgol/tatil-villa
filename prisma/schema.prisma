@@ -919,6 +919,7 @@ model CmsPage {
   seoKeywords    String      @default("")
   published      Boolean     @default(false)
   showInFooter   Boolean     @default(true)
+  showInMenu     Boolean     @default(false)
   sortOrder      Int         @default(0)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -926,6 +927,7 @@ model CmsPage {
   @@index([published])
   @@index([pageType])
   @@index([sortOrder])
+  @@index([showInMenu])
 }
 
 model FaqItem {

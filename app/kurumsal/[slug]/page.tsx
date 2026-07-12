@@ -1,9 +1,14 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import ContactPageView from "@/components/corporate/ContactPageView";
 import CorporateHtmlContent from "@/components/CorporateHtmlContent";
 import CorporatePageSidebar from "@/components/CorporatePageSidebar";
 import { injectCmsCopyButtons } from "@/lib/cms-copy-buttons";
-import { getPublishedCmsPage } from "@/lib/queries/cms-content";
+import {
+  getCorporateMenuPages,
+  getPublishedCmsPage,
+} from "@/lib/queries/cms-content";
+import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -24,16 +29,51 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CorporatePage({ params }: Props) {
   const { slug } = await params;
-  const page = await getPublishedCmsPage(slug);
+  const [page, menuItems] = await Promise.all([
+    getPublishedCmsPage(slug),
+    getCorporateMenuPages(),
+  ]);
   if (!page) notFound();
 
-  const contentHtml = injectCmsCopyButtons(page.content);
+  if (slug === "iletisim") {
+    const company = await getCompanySettings();
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+        <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
+          <aside className="lg:sticky lg:top-28 lg:self-start">
+            <CorporatePageSidebar currentSlug={slug} items={menuItems} />
+          </aside>
+          <ContactPageView
+            company={{
+              brandName: company.brandName,
+              address: company.address,
+              email: company.email,
+              phone: company.phone,
+              phone2: company.phone2,
+              whatsapp: company.whatsapp,
+              workingHours: company.workingHours,
+              googleMapsEmbed: company.googleMapsEmbed,
+              instagram: company.instagram,
+              facebook: company.facebook,
+              twitter: company.twitter,
+              youtube: company.youtube,
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const contentHtml =
+    slug === "banka-bilgilerimiz"
+      ? injectCmsCopyButtons(page.content)
+      : page.content;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
       <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
         <aside className="lg:sticky lg:top-28 lg:self-start">
-          <CorporatePageSidebar currentSlug={slug} />
+          <CorporatePageSidebar currentSlug={slug} items={menuItems} />
         </aside>
 
         <section className="min-w-0 rounded-3xl border border-slate-200/80 bg-white px-5 py-7 shadow-sm sm:px-8 sm:py-9">

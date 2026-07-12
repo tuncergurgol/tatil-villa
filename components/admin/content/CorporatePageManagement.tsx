@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Pencil, Plus, Save, X } from "lucide-react";
-import { saveCmsPageAction } from "@/app/actions/admin/cms-content";
+import { saveCmsPageAction, getCmsPageForEditAction } from "@/app/actions/admin/cms-content";
 import RichTextEditor from "@/components/admin/villas/RichTextEditor";
 import {
   CmsField,
@@ -16,7 +16,7 @@ type PageRow = {
   id: string;
   slug: string;
   title: string;
-  content: string;
+  content?: string;
   excerpt: string;
   pageType: "CORPORATE" | "LEGAL" | "LANDING";
   seoTitle: string;
@@ -24,12 +24,15 @@ type PageRow = {
   seoKeywords: string;
   published: boolean;
   showInFooter: boolean;
+  showInMenu: boolean;
   sortOrder: number;
 };
 
+type EditorPage = PageRow & { content: string };
+
 type EditorState =
   | { mode: "create" }
-  | { mode: "edit"; page: PageRow };
+  | { mode: "edit"; page: EditorPage };
 
 const pageTypeLabel: Record<PageRow["pageType"], string> = {
   CORPORATE: "Kurumsal",
@@ -48,6 +51,7 @@ const emptyDefaults = {
   seoKeywords: "",
   published: false,
   showInFooter: true,
+  showInMenu: false,
   sortOrder: 0,
 };
 
@@ -79,6 +83,24 @@ export default function CorporatePageManagement({ pages }: { pages: PageRow[] })
   function closeEditor() {
     setEditor(null);
     setError(null);
+  }
+
+  function openEdit(page: PageRow) {
+    setError(null);
+    startTransition(async () => {
+      const full = await getCmsPageForEditAction(page.id);
+      if (!full) {
+        setError("Sayfa bulunamadı");
+        return;
+      }
+      setEditor({
+        mode: "edit",
+        page: {
+          ...full,
+          pageType: full.pageType as PageRow["pageType"],
+        },
+      });
+    });
   }
 
   function handleSave(formData: FormData) {
@@ -159,7 +181,8 @@ export default function CorporatePageManagement({ pages }: { pages: PageRow[] })
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
-                      onClick={() => setEditor({ mode: "edit", page })}
+                      onClick={() => openEdit(page)}
+                      disabled={isPending}
                       className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -287,6 +310,15 @@ export default function CorporatePageManagement({ pages }: { pages: PageRow[] })
                           />
                           Footer&apos;da göster
                         </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            name="showInMenu"
+                            defaultChecked={values.showInMenu}
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                          />
+                          Menüde göster
+                        </label>
                       </div>
                     </CmsFormSection>
 
@@ -294,7 +326,7 @@ export default function CorporatePageManagement({ pages }: { pages: PageRow[] })
                       <RichTextEditor
                         key={`corp-content-${editor?.mode === "edit" ? editor.page.id : "new"}`}
                         name="content"
-                        defaultValue={values.content}
+                        defaultValue={values.content ?? ""}
                       />
                     </CmsFormSection>
 

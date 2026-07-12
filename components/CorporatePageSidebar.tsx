@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { CORPORATE_SIDEBAR_NAV } from "@/lib/corporate-nav";
+import { getCorporateMenuIcon } from "@/lib/corporate-nav";
+
+export type CorporateSidebarItem = {
+  slug: string;
+  title: string;
+};
 
 type CorporatePageSidebarProps = {
   currentSlug: string;
+  items: CorporateSidebarItem[];
 };
 
 export default function CorporatePageSidebar({
   currentSlug,
+  items,
 }: CorporatePageSidebarProps) {
+  if (items.length === 0) return null;
+
   return (
     <nav aria-label="Kurumsal sayfalar" className="space-y-2">
       <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700/80">
@@ -17,9 +26,9 @@ export default function CorporatePageSidebar({
       </p>
 
       <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-        {CORPORATE_SIDEBAR_NAV.map((item) => {
+        {items.map((item) => {
           const active = item.slug === currentSlug;
-          const Icon = item.icon;
+          const Icon = getCorporateMenuIcon(item.slug);
 
           return (
             <li key={item.slug} className="shrink-0 lg:shrink">
@@ -41,7 +50,7 @@ export default function CorporatePageSidebar({
                   <Icon className="h-4 w-4" strokeWidth={2.2} />
                 </span>
                 <span className="min-w-0 leading-snug whitespace-nowrap lg:whitespace-normal">
-                  {item.label}
+                  {item.title}
                 </span>
               </Link>
             </li>

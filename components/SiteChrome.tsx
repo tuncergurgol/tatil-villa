@@ -43,7 +43,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     getFooterCorporatePages(),
     getCompanySettings(),
     getFooterRegionLinks(),
-    getActiveFaqsForPublic(),
+    getActiveFaqsForPublic({ limit: 18 }),
     getApprovedReviewsForPublic(6),
     getPublishedBlogPosts({ limit: 6 }),
   ]);

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import {
   deleteBlogPostAction,
+  getBlogPostForEditAction,
   saveBlogCategoryAction,
   saveBlogPostAction,
 } from "@/app/actions/admin/cms-content";
@@ -29,7 +30,7 @@ type Post = {
   title: string;
   slug: string;
   excerpt: string;
-  content: string;
+  content?: string;
   coverImage: string;
   authorName: string;
   categoryId: string | null;
@@ -41,9 +42,11 @@ type Post = {
   sortOrder: number;
 };
 
+type EditorPost = Post & { content: string };
+
 type EditorState =
   | { mode: "create" }
-  | { mode: "edit"; post: Post };
+  | { mode: "edit"; post: EditorPost };
 
 function toDatetimeLocalValue(value: Date | string | null | undefined) {
   if (!value) return "";
@@ -107,6 +110,24 @@ export default function BlogManagement({
   function closeEditor() {
     setEditor(null);
     setError(null);
+  }
+
+  function openEdit(post: Post) {
+    setError(null);
+    startTransition(async () => {
+      const full = await getBlogPostForEditAction(post.id);
+      if (!full) {
+        setError("Yazı bulunamadı");
+        return;
+      }
+      setEditor({
+        mode: "edit",
+        post: {
+          ...full,
+          content: full.content,
+        },
+      });
+    });
   }
 
   function handleSave(formData: FormData) {
@@ -232,7 +253,8 @@ export default function BlogManagement({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            onClick={() => setEditor({ mode: "edit", post })}
+                            onClick={() => openEdit(post)}
+                            disabled={isPending}
                             className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -369,7 +391,7 @@ export default function BlogManagement({
                       <RichTextEditor
                         key={`blog-content-${editor?.mode === "edit" ? editor.post.id : "new"}`}
                         name="content"
-                        defaultValue={values.content}
+                        defaultValue={values.content ?? ""}
                       />
                     </CmsFormSection>
 
