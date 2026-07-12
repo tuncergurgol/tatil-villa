@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import CorporateHtmlContent from "@/components/CorporateHtmlContent";
 import CorporatePageSidebar from "@/components/CorporatePageSidebar";
+import { injectCmsCopyButtons } from "@/lib/cms-copy-buttons";
 import { getPublishedCmsPage } from "@/lib/queries/cms-content";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,8 @@ export default async function CorporatePage({ params }: Props) {
   const page = await getPublishedCmsPage(slug);
   if (!page) notFound();
 
+  const contentHtml = injectCmsCopyButtons(page.content);
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
       <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
@@ -41,10 +45,7 @@ export default async function CorporatePage({ params }: Props) {
               {page.excerpt}
             </p>
           ) : null}
-          <article
-            className="prose prose-teal mt-8 max-w-none prose-headings:scroll-mt-28"
-            dangerouslySetInnerHTML={{ __html: page.content }}
-          />
+          <CorporateHtmlContent html={contentHtml} />
         </section>
       </div>
     </div>

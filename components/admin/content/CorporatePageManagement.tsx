@@ -292,6 +292,7 @@ export default function CorporatePageManagement({ pages }: { pages: PageRow[] })
 
                     <CmsFormSection title="İçerik">
                       <RichTextEditor
+                        key={`corp-content-${editor?.mode === "edit" ? editor.page.id : "new"}`}
                         name="content"
                         defaultValue={values.content}
                       />

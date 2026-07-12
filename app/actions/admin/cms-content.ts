@@ -481,3 +481,24 @@ export async function saveCmsContentTabAction(
     return { error: "Sekme kaydedilemedi" };
   }
 }
+
+export async function deleteCmsContentTabAction(
+  id: string
+): Promise<CmsActionState> {
+  await requireAdmin();
+
+  try {
+    const existing = await prisma.cmsContentTab.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) return { error: "Sekme bulunamadı" };
+
+    await prisma.cmsContentTab.delete({ where: { id } });
+    revalidateCmsPaths();
+    return { success: true, message: "Sekme silindi" };
+  } catch (error) {
+    console.error("deleteCmsContentTabAction", error);
+    return { error: "Sekme silinemedi" };
+  }
+}

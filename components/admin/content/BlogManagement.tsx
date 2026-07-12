@@ -367,6 +367,7 @@ export default function BlogManagement({
 
                     <CmsFormSection title="İçerik">
                       <RichTextEditor
+                        key={`blog-content-${editor?.mode === "edit" ? editor.post.id : "new"}`}
                         name="content"
                         defaultValue={values.content}
                       />

@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, X } from "lucide-react";
-import { saveCmsContentTabAction } from "@/app/actions/admin/cms-content";
+import { Pencil, Trash2, X } from "lucide-react";
+import {
+  deleteCmsContentTabAction,
+  saveCmsContentTabAction,
+} from "@/app/actions/admin/cms-content";
 import {
   CmsField,
   cmsInputClass,
@@ -111,6 +114,26 @@ export default function ContentTabDefinitionModal({
     });
   }
 
+  function handleDelete() {
+    if (!tab || mode !== "edit") return;
+    if (
+      !confirm(`"${tab.name}" sekmesi silinsin mi? Bu işlem geri alınamaz.`)
+    ) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteCmsContentTabAction(tab.id);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onSaved();
+      onClose();
+    });
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-[210] flex items-center justify-center p-4">
       <button
@@ -208,25 +231,42 @@ export default function ContentTabDefinitionModal({
             </button>
           </div>
 
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="cursor-pointer rounded-full bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-600"
-            >
-              İptal
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="cursor-pointer rounded-full bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isPending
-                ? "Kaydediliyor..."
-                : mode === "edit"
-                  ? "Güncelle"
-                  : "Ekle"}
-            </button>
+          <div
+            className={`flex gap-2 pt-1 ${
+              mode === "edit" ? "items-center justify-between" : "justify-end"
+            }`}
+          >
+            {mode === "edit" ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isPending}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Sil
+              </button>
+            ) : null}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="cursor-pointer rounded-full bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-600"
+              >
+                İptal
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="cursor-pointer rounded-full bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isPending
+                  ? "Kaydediliyor..."
+                  : mode === "edit"
+                    ? "Güncelle"
+                    : "Ekle"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
