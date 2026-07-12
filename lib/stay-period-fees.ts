@@ -280,6 +280,149 @@ export function computeStayExtrasTotal(options: {
   return total;
 }
 
+type PoolHeatingFeeBucket =
+  | "poolHeatingPrivateFee"
+  | "poolHeatingIndoorFee"
+  | "poolHeatingKidsFee";
+
+/** Havuz adından admin form alanına eşleme (Özel / Kapalı / Çocuk). */
+export function resolvePoolHeatingFeeFieldKey(
+  poolName: string
+): PoolHeatingFeeBucket {
+  const name = poolName.toLocaleLowerCase("tr");
+  if (
+    name.includes("çocuk") ||
+    name.includes("cocuk") ||
+    name.includes("kids") ||
+    name.includes("child")
+  ) {
+    return "poolHeatingKidsFee";
+  }
+  if (
+    name.includes("kapalı") ||
+    name.includes("kapali") ||
+    name.includes("indoor") ||
+    name.includes("iç") ||
+    name.includes("ic ")
+  ) {
+    return "poolHeatingIndoorFee";
+  }
+  return "poolHeatingPrivateFee";
+}
+
+export function resolveSelectedPoolHeatingFees(options: {
+  heatedPools: HeatedPoolOption[];
+  poolHeatingSelections: PoolHeatingSelections;
+  checkIn: string;
+  checkOut: string;
+}): Record<PoolHeatingFeeBucket, number | null> {
+  const totals: Record<PoolHeatingFeeBucket, number> = {
+    poolHeatingPrivateFee: 0,
+    poolHeatingIndoorFee: 0,
+    poolHeatingKidsFee: 0,
+  };
+
+  for (const pool of options.heatedPools) {
+    if (!options.poolHeatingSelections[pool.id]) continue;
+    const amount = resolvePoolHeatingStayAmount({
+      periods: pool.periods,
+      checkIn: options.checkIn,
+      checkOut: options.checkOut,
+    }).total;
+    if (amount <= 0) continue;
+    totals[resolvePoolHeatingFeeFieldKey(pool.name)] += amount;
+  }
+
+  return {
+    poolHeatingPrivateFee:
+      totals.poolHeatingPrivateFee > 0 ? totals.poolHeatingPrivateFee : null,
+    poolHeatingIndoorFee:
+      totals.poolHeatingIndoorFee > 0 ? totals.poolHeatingIndoorFee : null,
+    poolHeatingKidsFee:
+      totals.poolHeatingKidsFee > 0 ? totals.poolHeatingKidsFee : null,
+  };
+}
+
+/**
+ * Talep ekranı kalemlerini admin rezervasyon formu alanlarına çevirir.
+ * Konaklama (grossPrice) ayrı tutulur; cleaningFee quote’tan gelir.
+ */
+export function buildStayBookingFeeDetails(options: {
+  fees: StayPeriodFees;
+  selections: StayFeeSelections;
+  pets: number;
+  nights: number;
+  adults: number;
+  children: number;
+  baseCapacity: number;
+  cleaningFee?: number | null;
+  heatedPools?: HeatedPoolOption[];
+  poolHeatingSelections?: PoolHeatingSelections;
+  checkIn?: string | null;
+  checkOut?: string | null;
+}): Record<BookingExtraFeeFieldKey, number | null> {
+  const {
+    fees,
+    selections,
+    pets,
+    nights,
+    adults,
+    children,
+    baseCapacity,
+    cleaningFee,
+    heatedPools = [],
+    poolHeatingSelections = {},
+    checkIn,
+    checkOut,
+  } = options;
+
+  const amountOrNull = (key: StayOptionalFeeKey, selected: boolean) => {
+    if (!selected) return null;
+    const amount = resolveOptionalFeeAmount(key, fees[key], nights);
+    return amount > 0 ? amount : null;
+  };
+
+  const extraBed = resolveExtraBedFeeAmount({
+    overCapacityGuests: resolveOverCapacityGuests(
+      adults,
+      children,
+      baseCapacity
+    ),
+    nights,
+    unitFee: fees.extraBedFee,
+  });
+
+  const poolFees =
+    checkIn && checkOut
+      ? resolveSelectedPoolHeatingFees({
+          heatedPools,
+          poolHeatingSelections,
+          checkIn,
+          checkOut,
+        })
+      : {
+          poolHeatingPrivateFee: null,
+          poolHeatingIndoorFee: null,
+          poolHeatingKidsFee: null,
+        };
+
+  const cleaning = positiveFee(cleaningFee ?? fees.cleaningFee);
+
+  return {
+    extraAccommodationFee: extraBed > 0 ? extraBed : null,
+    cleaningFee: cleaning > 0 ? cleaning : null,
+    petCleaningFee: pets > 0 ? fees.petCleaningFee : null,
+    poolHeatingPrivateFee: poolFees.poolHeatingPrivateFee,
+    poolHeatingIndoorFee: poolFees.poolHeatingIndoorFee,
+    poolHeatingKidsFee: poolFees.poolHeatingKidsFee,
+    underfloorHeatingFee: amountOrNull(
+      "underfloorHeatingFee",
+      Boolean(selections.underfloorHeatingFee)
+    ),
+  };
+}
+
+/** @deprecated buildStayBookingFeeDetails kullanın */
 export function toBookingExtraFeeRecord(
   fees: StayPeriodFees,
   selections: StayFeeSelections,

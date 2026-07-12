@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/phone-utils";
 import {
   emptyStayPeriodFees,
+  buildStayBookingFeeDetails,
   type HeatedPoolOption,
   type PoolHeatingSelections,
   type StayFeeSelections,
@@ -428,6 +429,27 @@ export default function BookingForm({
   function handleModalSubmit(payload: PreReservationSubmitPayload) {
     if (!checkIn || !checkOut || !quote?.valid) return;
 
+    const feeDetails = buildStayBookingFeeDetails({
+      fees: periodFees,
+      selections: feeSelections,
+      pets: allowPets ? guests.pets : 0,
+      nights: quote.nights,
+      adults: guests.adults,
+      children: guests.children,
+      baseCapacity,
+      cleaningFee: quote.cleaningFee,
+      heatedPools,
+      poolHeatingSelections,
+      checkIn,
+      checkOut,
+    });
+
+    const totals = pricingTotals ?? {
+      grandTotal: quote.total,
+      prepaymentAmount: quote.prepaymentAmount,
+      checkInPayment: Math.max(0, quote.total - quote.prepaymentAmount),
+    };
+
     const formData = new FormData();
     formData.set("villaId", villaId);
     formData.set("checkIn", checkIn);
@@ -442,13 +464,26 @@ export default function BookingForm({
     formData.set("paymentMethod", payload.paymentMethod);
     formData.set("paymentAmount", payload.paymentAmount);
     formData.set("acceptMarketing", payload.acceptMarketing ? "true" : "false");
-    formData.set("totalPrice", String(pricingTotals?.grandTotal ?? quote.total));
-    formData.set(
-      "prepaymentAmount",
-      String(pricingTotals?.prepaymentAmount ?? quote.prepaymentAmount)
-    );
+    formData.set("totalPrice", String(totals.grandTotal));
+    formData.set("prepaymentAmount", String(totals.prepaymentAmount));
     formData.set("prepaymentRate", String(quote.prepaymentRate));
-    formAction(formData);
+    formData.set("grossPrice", String(quote.accommodationTotal));
+    formData.set(
+      "checkInPayment",
+      String(totals.checkInPayment)
+    );
+    formData.set(
+      "priceDetails",
+      JSON.stringify({
+        ...feeDetails,
+        damageDeposit: periodFees.damageDeposit,
+        petDamageDeposit:
+          allowPets && guests.pets > 0 ? periodFees.petDamageDeposit : null,
+      })
+    );
+    startTransition(() => {
+      formAction(formData);
+    });
   }
 
   return (

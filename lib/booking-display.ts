@@ -6,6 +6,7 @@ const WEEKDAY_SHORT = ["Paz", "Pts", "Sal", "Çar", "Per", "Cum", "Cts"] as cons
 
 export type AdminBookingListItem = {
   id: string;
+  externalCode: number | null;
   checkIn: Date;
   checkOut: Date;
   adults: number;
@@ -30,14 +31,28 @@ export type AdminBookingListItem = {
 
 export { BOOKING_STATUS_META };
 
-export function formatBookingDisplayNumber(id: string): string {
-  const digits = id.replace(/\D/g, "");
-  const value = Number(digits.slice(-5) || "0") % 90000;
-  return `#${String(30000 + value).padStart(5, "0")}`;
+/** Rezervasyon No — yalnızca externalCode (eski sahte #/KOD üretimi yok). */
+export function formatBookingReservationNo(
+  booking: Pick<AdminBookingListItem, "externalCode"> | number | null | undefined
+): string {
+  const code =
+    typeof booking === "number" || booking == null || typeof booking === "undefined"
+      ? booking
+      : booking.externalCode;
+  return code != null ? String(code) : "—";
 }
 
-export function formatBookingShortCode(id: string): string {
-  return id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
+/** @deprecated Rezervasyon KOD kaldırıldı; formatBookingReservationNo kullanın. */
+export function formatBookingDisplayNumber(
+  booking: Pick<AdminBookingListItem, "externalCode" | "id"> | string
+): string {
+  if (typeof booking === "string") return "—";
+  return formatBookingReservationNo(booking);
+}
+
+/** @deprecated Rezervasyon KOD pasif. */
+export function formatBookingShortCode(_id: string): string {
+  return "";
 }
 
 export function formatStaySummary(checkIn: Date, checkOut: Date) {

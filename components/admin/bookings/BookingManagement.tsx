@@ -34,8 +34,7 @@ import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
 import {
   estimatePrepaymentAmount,
-  formatBookingDisplayNumber,
-  formatBookingShortCode,
+  formatBookingReservationNo,
   formatFacilityCode,
   formatGuestCounts,
   formatMoneyPlain,
@@ -296,7 +295,7 @@ export default function BookingManagement({
             <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="w-10 px-3 py-2" />
-                <th className="px-3 py-2">Rezervasyon</th>
+                <th className="px-3 py-2">Rezervasyon No</th>
                 <th className="px-3 py-2">Ev</th>
                 <th className="px-3 py-2">Konaklama</th>
                 <th className="px-3 py-2">Misafir</th>
@@ -312,7 +311,7 @@ export default function BookingManagement({
                   const stay = formatStaySummary(booking.checkIn, booking.checkOut);
                   const guests = formatGuestCounts(booking);
                   const prepayment = estimatePrepaymentAmount(booking.totalPrice);
-                  const shortCode = formatBookingShortCode(booking.id);
+                  const reservationNo = formatBookingReservationNo(booking);
                   const isExpanded = expandedId === booking.id;
                   const isSelected = selectedId === booking.id;
                   const facilitySubtext =
@@ -346,18 +345,17 @@ export default function BookingManagement({
                         </td>
 
                         <td className="px-3 py-2 align-top">
-                          <Link
-                            href={`/admin/rezervasyonlar/${booking.id}`}
-                            className="font-semibold text-blue-600 hover:underline"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            {formatBookingDisplayNumber(booking.id)}
-                          </Link>
-                          <div className="mt-0.5 flex items-center gap-1">
-                            <span className="font-medium text-gray-800">
-                              {shortCode}
-                            </span>
-                            <CopyButton value={shortCode} />
+                          <div className="flex items-center gap-1">
+                            <Link
+                              href={`/admin/rezervasyonlar/${booking.id}`}
+                              className="font-semibold text-blue-600 hover:underline"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {reservationNo}
+                            </Link>
+                            {booking.externalCode != null ? (
+                              <CopyButton value={String(booking.externalCode)} />
+                            ) : null}
                           </div>
                           <p className="mt-0.5 text-xs text-gray-500">{siteDomain}</p>
                         </td>

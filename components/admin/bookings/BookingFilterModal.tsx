@@ -337,7 +337,7 @@ export default function BookingFilterModal({
               onChange={(event) =>
                 updateDraft({ reservationNo: event.target.value })
               }
-              placeholder="Rezervasyon no veya kod ara..."
+              placeholder="Rezervasyon no ara..."
               className={inputClass}
             />
           </FilterRow>

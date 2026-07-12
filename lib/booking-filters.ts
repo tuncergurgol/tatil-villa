@@ -1,9 +1,6 @@
 import type { BookingFilters } from "@/components/admin/bookings/BookingFilterModal";
 import type { AdminBookingListItem } from "@/lib/booking-display";
-import {
-  formatBookingDisplayNumber,
-  formatBookingShortCode,
-} from "@/lib/booking-display";
+import { formatBookingReservationNo } from "@/lib/booking-display";
 import { includesSearchText } from "@/lib/search-text";
 import { BookingStatus } from "@prisma/client";
 
@@ -108,8 +105,8 @@ export function filterBookings(
       !includesSearchText(
         [
           booking.id,
-          formatBookingDisplayNumber(booking.id),
-          formatBookingShortCode(booking.id),
+          formatBookingReservationNo(booking),
+          booking.externalCode != null ? String(booking.externalCode) : "",
         ].join(" "),
         filters.reservationNo
       )

@@ -24,6 +24,9 @@ import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
   computeEntrancePayment,
   computeReservationTotal,
+  DEFAULT_BOOKING_AGENCY_NAME,
+  DEFAULT_BOOKING_SITE_INFO,
+  dedupeSiteInfoNames,
   type BookingDetails,
   type BookingGuestEntry,
 } from "@/lib/booking-form-details";
@@ -155,7 +158,8 @@ function buildBookingDetailsFromAdminForm(
     prepaymentBank: data.prepaymentMethod,
     customerNote: data.customerNote,
     guestTc: data.guestTc || undefined,
-    siteInfo: "TATİL VİLLACISI",
+    siteInfo: DEFAULT_BOOKING_SITE_INFO,
+    agencyName: DEFAULT_BOOKING_AGENCY_NAME,
   };
   const reservationTotal = computeReservationTotal(details);
   details.checkInPayment = computeEntrancePayment(
@@ -329,6 +333,7 @@ const bookingDetailSchema = z.object({
   adults: z.coerce.number().min(1),
   children: z.coerce.number().min(0),
   babies: z.coerce.number().min(0),
+  pets: z.coerce.number().min(0).max(3).default(0),
   guestName: z.string().min(2),
   guestEmail: z.string().min(3),
   guestPhone: z
@@ -406,6 +411,7 @@ export async function updateBookingDetailAction(
       adults: parsed.data.adults,
       children: parsed.data.children,
       babies: parsed.data.babies,
+      pets: parsed.data.pets,
       guestName: parsed.data.guestName,
       guestEmail: parsed.data.guestEmail,
       guestPhone: parsed.data.guestPhone,
@@ -423,20 +429,16 @@ export async function updateBookingDetailAction(
   }
 }
 
-const DEFAULT_SITE_INFO = "TATİL VİLLACISI";
+const DEFAULT_SITE_INFO = DEFAULT_BOOKING_SITE_INFO;
 
 export async function getSiteInfoOptionsAction(): Promise<string[]> {
   await requireAdmin();
 
   const sites = await getAgencySitesForPicker();
   const names = sites.map((site) => site.name.trim()).filter(Boolean);
-  const unique = new Set(names);
+  names.push(DEFAULT_SITE_INFO);
 
-  unique.add(DEFAULT_SITE_INFO);
-
-  return Array.from(unique).sort((a, b) =>
-    a.localeCompare(b, "tr", { sensitivity: "base" })
-  );
+  return dedupeSiteInfoNames(names);
 }
 
 export async function getAdminBookingWizardVillasAction() {

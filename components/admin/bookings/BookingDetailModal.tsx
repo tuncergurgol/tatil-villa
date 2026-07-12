@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Baby, Loader2, Share2, User, Users, X } from "lucide-react";
+import { Baby, Loader2, PawPrint, Share2, User, Users, X } from "lucide-react";
 import type { BookingStatus } from "@prisma/client";
 import { BookingStatus as BookingStatusEnum } from "@prisma/client";
 import { StayStatus, STAY_STATUS_OPTIONS } from "@/lib/stay-status";
@@ -20,6 +20,7 @@ import {
   type BookingGuestEntry,
   type BookingPrepaymentRecord,
   BOOKING_EXTRA_FEE_FIELDS,
+  DEFAULT_BOOKING_SITE_INFO,
   TAXPAYER_TYPE_OPTIONS,
   YES_NO_OPTIONS,
   buildGuestRows,
@@ -31,10 +32,12 @@ import {
   computeNetPrice,
   computePrepaymentAmount,
   defaultDetailsFromBooking,
+  dedupeSiteInfoNames,
   parseBookingDetails,
   formatBookingDate,
   formatFeeInputValue,
   getNightCount,
+  normalizeBookingSiteInfo,
   resolveExternalCode,
   toDateInputValue,
 } from "@/lib/booking-form-details";
@@ -108,6 +111,14 @@ function mergePeriodFeesIntoDetails(
   current: BookingDetails,
   periodFees: Record<BookingExtraFeeFieldKey, number | null>
 ): Partial<BookingDetails> {
+  // Talep ekranından gelen kalemler period birim ücretleriyle ezilmesin
+  if (
+    current.feesFromQuote === true ||
+    current.source === "public_pre_reservation"
+  ) {
+    return {};
+  }
+
   const patch: Partial<BookingDetails> = {};
 
   for (const { key } of BOOKING_EXTRA_FEE_FIELDS) {
@@ -205,6 +216,7 @@ export default function BookingDetailModal({
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [babies, setBabies] = useState(0);
+  const [pets, setPets] = useState(0);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [isEntryEditing, setIsEntryEditing] = useState(false);
@@ -220,14 +232,14 @@ export default function BookingDetailModal({
   const [confirmationSentAt, setConfirmationSentAt] = useState<Date | null>(null);
   const [prepayments, setPrepayments] = useState<BookingPrepaymentRecord[]>([]);
   const [siteInfoOptions, setSiteInfoOptions] = useState<string[]>([
-    "TATİL VİLLACISI",
+    DEFAULT_BOOKING_SITE_INFO,
   ]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     getSiteInfoOptionsAction()
       .then(setSiteInfoOptions)
-      .catch(() => setSiteInfoOptions(["TATİL VİLLACISI"]));
+      .catch(() => setSiteInfoOptions([DEFAULT_BOOKING_SITE_INFO]));
   }, []);
 
   useEffect(() => {
@@ -268,6 +280,7 @@ export default function BookingDetailModal({
         setAdults(record.adults);
         setChildren(record.children);
         setBabies(record.babies);
+        setPets(record.pets);
         setCheckIn(toDateInputValue(record.checkIn));
         setCheckOut(toDateInputValue(record.checkOut));
         setIsEntryEditing(false);
@@ -389,12 +402,8 @@ export default function BookingDetailModal({
   }, [checkIn, checkOut]);
 
   const siteOptions = useMemo(() => {
-    const options = new Set(siteInfoOptions);
-    const current = details.siteInfo?.trim();
-    if (current) options.add(current);
-    return Array.from(options).sort((a, b) =>
-      a.localeCompare(b, "tr", { sensitivity: "base" })
-    );
+    const current = normalizeBookingSiteInfo(details.siteInfo);
+    return dedupeSiteInfoNames([...siteInfoOptions, current]);
   }, [siteInfoOptions, details.siteInfo]);
 
   const tcFieldsAcceptable = useMemo(() => {
@@ -474,11 +483,13 @@ export default function BookingDetailModal({
   function handleGuestCountsChange(
     nextAdults: number,
     nextChildren: number,
-    nextBabies: number
+    nextBabies: number,
+    nextPets: number
   ) {
     setAdults(nextAdults);
     setChildren(nextChildren);
     setBabies(nextBabies);
+    setPets(nextPets);
     setDetails((current) => ({
       ...current,
       adultGuests: buildGuestRows(nextAdults, current.adultGuests),
@@ -505,6 +516,7 @@ export default function BookingDetailModal({
         adults,
         children,
         babies,
+        pets,
         guestName,
         guestEmail,
         guestPhone: normalizeTurkishPhoneFieldValue(guestPhone),
@@ -530,10 +542,11 @@ export default function BookingDetailModal({
 
   if (!bookingId) return null;
 
-  const reservationCode =
-    resolveExternalCode(booking?.externalCode, booking?.guestEmail ?? "") ||
-    booking?.id.slice(-5).toUpperCase() ||
-    "";
+  const reservationNo =
+    booking?.externalCode != null
+      ? String(booking.externalCode)
+      : resolveExternalCode(booking?.externalCode, booking?.guestEmail ?? "") ||
+        "—";
 
   const paymentMethod = normalizeCompanyPaymentType(
     details.importPaymentMethod?.trim() ||
@@ -546,7 +559,7 @@ export default function BookingDetailModal({
       <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <h2 className="text-lg font-bold text-gray-900">
-            {reservationCode} Nolu Rezervasyon Düzenleme Formu
+            {reservationNo} Nolu Rezervasyon Düzenleme Formu
           </h2>
           <button
             type="button"
@@ -617,17 +630,19 @@ export default function BookingDetailModal({
             <>
               <TabPanel active={activeTab === "rezervasyon"}>
               <FormSection title="Tatil Bilgileri">
-                <FormRow label="Rezervasyon Kodu">
-                  <ReadonlyField value={reservationCode} />
+                <FormRow label="Rezervasyon No">
+                  <ReadonlyField value={reservationNo} />
                 </FormRow>
                 <FormRow label="Rezervasyon Tarihi">
                   <ReadonlyField value={formatBookingDate(booking.createdAt)} />
                 </FormRow>
                 <FormRow label="Site Bilgisi">
                   <select
-                    value={details.siteInfo ?? "TATİL VİLLACISI"}
+                    value={normalizeBookingSiteInfo(details.siteInfo)}
                     onChange={(event) =>
-                      patchDetails({ siteInfo: event.target.value })
+                      patchDetails({
+                        siteInfo: normalizeBookingSiteInfo(event.target.value),
+                      })
                     }
                     className={bookingInputClass}
                   >
@@ -692,7 +707,7 @@ export default function BookingDetailModal({
                 </FormRow>
                 <FormRow label="Kişi Sayısı">
                   <div className="flex flex-wrap items-center gap-3">
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2" title="Yetişkin">
                       <Users className="h-4 w-4 text-gray-500" />
                       <select
                         value={adults}
@@ -701,7 +716,8 @@ export default function BookingDetailModal({
                           handleGuestCountsChange(
                             Number(event.target.value),
                             children,
-                            babies
+                            babies,
+                            pets
                           )
                         }
                         className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
@@ -715,7 +731,7 @@ export default function BookingDetailModal({
                         )}
                       </select>
                     </label>
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2" title="Çocuk">
                       <User className="h-4 w-4 text-gray-500" />
                       <select
                         value={children}
@@ -724,7 +740,8 @@ export default function BookingDetailModal({
                           handleGuestCountsChange(
                             adults,
                             Number(event.target.value),
-                            babies
+                            babies,
+                            pets
                           )
                         }
                         className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
@@ -738,7 +755,7 @@ export default function BookingDetailModal({
                         )}
                       </select>
                     </label>
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2" title="Bebek">
                       <Baby className="h-4 w-4 text-gray-500" />
                       <select
                         value={babies}
@@ -747,12 +764,37 @@ export default function BookingDetailModal({
                           handleGuestCountsChange(
                             adults,
                             children,
-                            Number(event.target.value)
+                            Number(event.target.value),
+                            pets
                           )
                         }
                         className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                       >
                         {Array.from({ length: 6 }, (_, index) => index).map(
+                          (value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2" title="Evcil hayvan">
+                      <PawPrint className="h-4 w-4 text-gray-500" />
+                      <select
+                        value={pets}
+                        disabled={!isEntryEditing}
+                        onChange={(event) =>
+                          handleGuestCountsChange(
+                            adults,
+                            children,
+                            babies,
+                            Number(event.target.value)
+                          )
+                        }
+                        className="w-20 rounded-md border border-gray-200 px-2 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+                      >
+                        {Array.from({ length: 4 }, (_, index) => index).map(
                           (value) => (
                             <option key={value} value={value}>
                               {value}

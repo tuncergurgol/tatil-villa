@@ -21,6 +21,11 @@ export default async function BookingSuccessPage({ searchParams }: PageProps) {
     (booking.checkOut.getTime() - booking.checkIn.getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  const guestParts = [`${booking.adults} yetişkin`];
+  if (booking.children > 0) guestParts.push(`${booking.children} çocuk`);
+  if (booking.babies > 0) guestParts.push(`${booking.babies} bebek`);
+  if (booking.pets > 0) guestParts.push(`${booking.pets} evcil hayvan`);
+
   return (
     <div className="bg-gray-50 py-16">
       <div className="mx-auto max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">
@@ -33,7 +38,11 @@ export default async function BookingSuccessPage({ searchParams }: PageProps) {
         </p>
 
         <div className="mt-8 rounded-xl bg-gray-50 p-5 text-left text-sm">
-          <p>
+          <p className="mt-2">
+            <span className="font-medium text-gray-700">Rezervasyon No:</span>{" "}
+            {booking.externalCode ?? "—"}
+          </p>
+          <p className="mt-2">
             <span className="font-medium text-gray-700">Villa:</span>{" "}
             {booking.villa.name}
           </p>
@@ -44,8 +53,7 @@ export default async function BookingSuccessPage({ searchParams }: PageProps) {
           </p>
           <p className="mt-2">
             <span className="font-medium text-gray-700">Misafir:</span>{" "}
-            {booking.guestName} ({booking.adults} yetişkin
-            {booking.children > 0 ? `, ${booking.children} çocuk` : ""})
+            {booking.guestName} ({guestParts.join(", ")})
           </p>
           {booking.totalPrice != null && (
             <p className="mt-2">

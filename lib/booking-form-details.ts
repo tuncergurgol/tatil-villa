@@ -1,5 +1,8 @@
 import type { BookingStatus } from "@prisma/client";
-import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
+import {
+  mapPublicPaymentMethodToCompanyType,
+  normalizeCompanyPaymentType,
+} from "@/lib/company-payment-types";
 import { calculateNights } from "@/lib/queries/bookings";
 import type { StayStatus } from "@/lib/stay-status";
 
@@ -30,8 +33,12 @@ export type BookingDetails = {
   underfloorHeatingFee?: number | null;
   heatingFee?: number | null;
   damageDeposit?: number | null;
+  petDamageDeposit?: number | null;
   extraServiceFee?: number | null;
   checkInPayment?: number | null;
+  /** Public talep ekranından gelen kalemler admin’de period birim ücretiyle ezilmesin */
+  feesFromQuote?: boolean;
+  source?: string;
   commissionRate?: number | null;
   commissionAmount?: number | null;
   guestTc?: string;
@@ -73,12 +80,74 @@ export type BookingDetails = {
   customerNote?: string;
   siteInfo?: string;
   importPaymentMethod?: string;
+  /** Public talep: card | transfer */
+  paymentMethod?: string;
+  paymentAmount?: string;
   adultGuests?: BookingGuestEntry[];
   childGuests?: BookingGuestEntry[];
   babyGuests?: BookingGuestEntry[];
 };
 
 export { STAY_STATUS_OPTIONS } from "@/lib/stay-status";
+
+/** Tek site — alt acente yapısı kapalı */
+export const DEFAULT_BOOKING_SITE_INFO = "Tatildeyiz";
+export const DEFAULT_BOOKING_AGENCY_NAME = "TATİLDEYİZ";
+
+/** Site adı listesini Türkçe büyük/küçük harf duyarsız tekilleştirir. */
+export function dedupeSiteInfoNames(names: string[]): string[] {
+  const byKey = new Map<string, string>();
+
+  for (const raw of names) {
+    const name = raw.trim();
+    if (!name) continue;
+    const key = name.toLocaleLowerCase("tr");
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, name);
+      continue;
+    }
+    // Tercih: kanonik varsayılan ("Tatildeyiz")
+    if (
+      name.localeCompare(DEFAULT_BOOKING_SITE_INFO, "tr", {
+        sensitivity: "base",
+      }) === 0 &&
+      name === DEFAULT_BOOKING_SITE_INFO
+    ) {
+      byKey.set(key, name);
+      continue;
+    }
+    // Aksi halde TÜMÜ BÜYÜK olanı karışık yazıma tercih etme
+    const existingAllCaps =
+      existing === existing.toLocaleUpperCase("tr") &&
+      existing !== existing.toLocaleLowerCase("tr");
+    const nextAllCaps =
+      name === name.toLocaleUpperCase("tr") &&
+      name !== name.toLocaleLowerCase("tr");
+    if (existingAllCaps && !nextAllCaps) {
+      byKey.set(key, name);
+    }
+  }
+
+  return Array.from(byKey.values()).sort((a, b) =>
+    a.localeCompare(b, "tr", { sensitivity: "base" })
+  );
+}
+
+export function normalizeBookingSiteInfo(
+  value: string | null | undefined
+): string {
+  const trimmed = value?.trim() || "";
+  if (!trimmed) return DEFAULT_BOOKING_SITE_INFO;
+  if (
+    trimmed.localeCompare(DEFAULT_BOOKING_SITE_INFO, "tr", {
+      sensitivity: "base",
+    }) === 0
+  ) {
+    return DEFAULT_BOOKING_SITE_INFO;
+  }
+  return trimmed;
+}
 
 export const YES_NO_OPTIONS = [
   { value: "hayir", label: "Hayır" },
@@ -248,7 +317,17 @@ export function defaultDetailsFromBooking(booking: {
   details: unknown;
 }): BookingDetails {
   const parsed = parseBookingDetails(booking.details);
-  const gross = parsed.grossPrice ?? booking.totalPrice ?? null;
+  const fromQuoteFees = parsed.feesFromQuote === true;
+  // grossPrice yoksa: talep kalemleri kaydedilmişse totalPrice’ı konaklama sanma.
+  // Eski public kayıtlarda grossPrice yok → totalPrice fallback (yanlış olabilir).
+  const gross = fromQuoteFees
+    ? (parsed.grossPrice ?? null)
+    : (parsed.grossPrice ?? booking.totalPrice ?? null);
+
+  const paymentFromRequest =
+    normalizeCompanyPaymentType(
+      parsed.importPaymentMethod ?? parsed.prepaymentBank ?? ""
+    ) || mapPublicPaymentMethodToCompanyType(parsed.paymentMethod);
 
   return {
     grossPrice: gross,
@@ -263,12 +342,10 @@ export function defaultDetailsFromBooking(booking: {
     agencyServiceFee: parsed.agencyServiceFee ?? 0,
     prepaymentAmount: parsed.prepaymentAmount ?? null,
     prepaymentRate: parsed.prepaymentRate ?? 20,
-    prepaymentBank: normalizeCompanyPaymentType(
-      parsed.prepaymentBank ?? parsed.importPaymentMethod ?? ""
-    ),
-    importPaymentMethod: normalizeCompanyPaymentType(
-      parsed.importPaymentMethod ?? parsed.prepaymentBank ?? ""
-    ),
+    prepaymentBank: paymentFromRequest,
+    importPaymentMethod: paymentFromRequest,
+    paymentMethod: parsed.paymentMethod,
+    paymentAmount: parsed.paymentAmount,
     cleaningFee: parsed.cleaningFee ?? null,
     extraAccommodationFee:
       parsed.extraAccommodationFee ?? parsed.extraServiceFee ?? null,
@@ -280,8 +357,11 @@ export function defaultDetailsFromBooking(booking: {
       parsed.underfloorHeatingFee ?? parsed.heatingFee ?? null,
     heatingFee: parsed.heatingFee ?? null,
     damageDeposit: parsed.damageDeposit ?? null,
+    petDamageDeposit: parsed.petDamageDeposit ?? null,
     extraServiceFee: parsed.extraServiceFee ?? null,
     checkInPayment: parsed.checkInPayment ?? null,
+    feesFromQuote: parsed.feesFromQuote ?? false,
+    source: parsed.source,
     commissionRate: parsed.commissionRate ?? 20,
     commissionAmount: parsed.commissionAmount ?? null,
     guestTc: parsed.guestTc ?? "",
@@ -304,7 +384,7 @@ export function defaultDetailsFromBooking(booking: {
     invoiceNo: parsed.invoiceNo ?? "",
     invoiceAmount: parsed.invoiceAmount ?? null,
     issuedInvoiceAmount: parsed.issuedInvoiceAmount ?? null,
-    agencyName: parsed.agencyName ?? "Tatil Villacısı",
+    agencyName: parsed.agencyName ?? DEFAULT_BOOKING_AGENCY_NAME,
     agencyCommissionRate: parsed.agencyCommissionRate ?? 0,
     agencyCommissionEarned: parsed.agencyCommissionEarned ?? 0,
     agencyExpectedAmount: parsed.agencyExpectedAmount ?? 0,
@@ -321,7 +401,7 @@ export function defaultDetailsFromBooking(booking: {
     salesRepCommissionEarned: parsed.salesRepCommissionEarned ?? 0,
     agencyNote: parsed.agencyNote ?? "",
     customerNote: parsed.customerNote ?? "",
-    siteInfo: parsed.siteInfo?.trim() || "TATİL VİLLACISI",
+    siteInfo: normalizeBookingSiteInfo(parsed.siteInfo),
     adultGuests: buildGuestRows(
       booking.adults,
       parsed.adultGuests?.length

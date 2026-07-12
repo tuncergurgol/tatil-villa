@@ -132,7 +132,7 @@ export default function PreReservationModal({
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !pending) onClose();
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -141,7 +141,7 @@ export default function PreReservationModal({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open, onClose, pending]);
 
   if (!open || !mounted) return null;
 
@@ -204,7 +204,8 @@ export default function PreReservationModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-20 rounded-md bg-[#0b1b3a] p-2 text-white transition hover:bg-[#152a52]"
+          disabled={pending}
+          className="absolute right-3 top-3 z-20 rounded-md bg-[#0b1b3a] p-2 text-white transition hover:bg-[#152a52] disabled:opacity-50"
           aria-label="Kapat"
         >
           <X className="h-4 w-4" />
@@ -429,7 +430,7 @@ export default function PreReservationModal({
             <button
               type="submit"
               disabled={pending}
-              className="mt-auto w-full rounded-xl bg-[#5b6b8c] py-4 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#4a5a7a] disabled:opacity-60"
+              className="mt-auto w-full rounded-xl bg-sky-600 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-wait disabled:opacity-70"
             >
               {pending ? "Gönderiliyor..." : "Gönder"}
             </button>

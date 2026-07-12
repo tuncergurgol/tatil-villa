@@ -1,6 +1,7 @@
 import { BookingStatus, Prisma, StayStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { BOOKING_BLOCKING_STATUSES } from "@/lib/booking-status";
+import { withAllocatedBookingNumber } from "@/lib/booking-number";
 import { upsertCustomerFromBooking } from "@/lib/customer-from-booking";
 import {
   dateKeyToDbDate,
@@ -135,26 +136,29 @@ export async function createBooking(data: {
     data.totalPrice ??
     (villa.pricePerNight != null ? nights * villa.pricePerNight : null);
 
-  const booking = await prisma.booking.create({
-    data: {
-      villaId: data.villaId,
-      checkIn: checkInDate,
-      checkOut: checkOutDate,
-      adults: data.adults,
-      children: data.children,
-      babies: data.babies,
-      pets: data.pets,
-      guestName: data.guestName,
-      guestEmail: data.guestEmail,
-      guestPhone: data.guestPhone,
-      totalPrice,
-      status: BookingStatus.NEW,
-      ...(data.details
-        ? { details: data.details as Prisma.InputJsonValue }
-        : {}),
-    },
-    include: { villa: { include: { region: true } } },
-  });
+  const booking = await withAllocatedBookingNumber((externalCode, tx) =>
+    tx.booking.create({
+      data: {
+        villaId: data.villaId,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+        adults: data.adults,
+        children: data.children,
+        babies: data.babies,
+        pets: data.pets,
+        guestName: data.guestName,
+        guestEmail: data.guestEmail,
+        guestPhone: data.guestPhone,
+        totalPrice,
+        status: BookingStatus.NEW,
+        externalCode,
+        ...(data.details
+          ? { details: data.details as Prisma.InputJsonValue }
+          : {}),
+      },
+      include: { villa: { include: { region: true } } },
+    })
+  );
 
   const hasRealContact =
     Boolean(data.guestPhone?.trim()) ||
@@ -194,35 +198,38 @@ export async function createAdminBooking(data: {
   const villa = await prisma.villa.findUnique({ where: { id: data.villaId } });
   if (!villa) throw new Error("Villa bulunamadı.");
 
-  const booking = await prisma.booking.create({
-    data: {
-      villaId: data.villaId,
-      checkIn: data.checkIn,
-      checkOut: data.checkOut,
-      adults: data.adults,
-      children: data.children,
-      babies: data.babies,
-      pets: data.pets,
-      guestName: data.guestName,
-      guestEmail: data.guestEmail,
-      guestPhone: data.guestPhone,
-      totalPrice: data.totalPrice ?? null,
-      status: data.status,
-      details: (data.details ?? {}) as Prisma.InputJsonValue,
-    },
-    include: {
-      villa: {
-        select: {
-          id: true,
-          villaId: true,
-          slug: true,
-          name: true,
-          originalName: true,
-          documentNo: true,
+  const booking = await withAllocatedBookingNumber((externalCode, tx) =>
+    tx.booking.create({
+      data: {
+        villaId: data.villaId,
+        checkIn: data.checkIn,
+        checkOut: data.checkOut,
+        adults: data.adults,
+        children: data.children,
+        babies: data.babies,
+        pets: data.pets,
+        guestName: data.guestName,
+        guestEmail: data.guestEmail,
+        guestPhone: data.guestPhone,
+        totalPrice: data.totalPrice ?? null,
+        status: data.status,
+        externalCode,
+        details: (data.details ?? {}) as Prisma.InputJsonValue,
+      },
+      include: {
+        villa: {
+          select: {
+            id: true,
+            villaId: true,
+            slug: true,
+            name: true,
+            originalName: true,
+            documentNo: true,
+          },
         },
       },
-    },
-  });
+    })
+  );
 
   await syncBookingGuestToCustomer({
     guestName: data.guestName,
@@ -294,6 +301,7 @@ export async function updateBookingDetail(data: {
   adults: number;
   children: number;
   babies: number;
+  pets: number;
   guestName: string;
   guestEmail: string;
   guestPhone: string;
@@ -310,6 +318,7 @@ export async function updateBookingDetail(data: {
       adults: data.adults,
       children: data.children,
       babies: data.babies,
+      pets: data.pets,
       guestName: data.guestName,
       guestEmail: data.guestEmail,
       guestPhone: data.guestPhone,

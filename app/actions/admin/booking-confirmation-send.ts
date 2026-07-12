@@ -121,8 +121,7 @@ export async function sendBookingConfirmationAction(
   const phone = booking.guestPhone.trim();
   const email = booking.guestEmail.trim();
   const reservationCode =
-    resolveExternalCode(booking.externalCode, booking.guestEmail) ||
-    booking.id.slice(-5).toUpperCase();
+    resolveExternalCode(booking.externalCode, booking.guestEmail) || "—";
 
   if (data.sendWhatsApp && !phone) {
     return {

@@ -34,7 +34,20 @@ const LEGACY_PAYMENT_TYPE_MAP: Record<string, CompanyPaymentTypeValue> = {
   "Banka Havalesi": "bank_transfer",
   "Kredi Kartı": "credit_card",
   Kredikartı: "credit_card",
+  transfer: "bank_transfer",
+  card: "credit_card",
+  havale: "bank_transfer",
+  eft: "bank_transfer",
 };
+
+/** Public talep (card/transfer) → şirket ödeme türü */
+export function mapPublicPaymentMethodToCompanyType(
+  value: string | null | undefined
+): CompanyPaymentTypeValue | "" {
+  if (!value?.trim()) return "";
+  const normalized = normalizeCompanyPaymentType(value);
+  return isValidCompanyPaymentType(normalized) ? normalized : "";
+}
 
 export function normalizeCompanyPaymentType(value: string): string {
   const trimmed = value.trim();
