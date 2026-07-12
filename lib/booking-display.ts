@@ -119,7 +119,16 @@ export function resolvePaymentMethod(id: string): string {
 }
 
 export function formatMoneyPlain(amount: number): string {
-  return `${amount.toLocaleString("tr-TR")} TL`;
+  const value = Math.round(Number(amount));
+  if (!Number.isFinite(value)) return "—";
+  return `${value.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL`;
+}
+
+/** Input alanları için kuruşsuz, binlik ayraçlı tutar (döviz cinsi yok). */
+export function formatMoneyInputValue(amount: number): string {
+  const value = Math.round(Number(amount));
+  if (!Number.isFinite(value)) return "";
+  return value.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
 
 export function formatFacilityCode(villa: AdminBookingListItem["villa"]): string {

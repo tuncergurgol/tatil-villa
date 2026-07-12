@@ -158,3 +158,121 @@ export async function getBookingBankAccountsAction() {
     },
   });
 }
+
+const updatePrepaymentSchema = z.object({
+  id: z.string().min(1),
+  bookingId: z.string().min(1),
+  paymentChannel: z.string().min(1, "Ödeme kanalı zorunludur"),
+  bankAccountId: z.string().optional().nullable(),
+  amount: z.number().positive("Ön ödeme tutarı zorunludur"),
+});
+
+export async function updateBookingPrepaymentAction(
+  payload: z.infer<typeof updatePrepaymentSchema>
+): Promise<BookingPrepaymentActionResult> {
+  await requireAdmin();
+
+  const parsed = updatePrepaymentSchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi",
+    };
+  }
+
+  const data = parsed.data;
+  const normalizedChannel = normalizeCompanyPaymentType(data.paymentChannel);
+
+  if (normalizedChannel === "bank_transfer" && !data.bankAccountId?.trim()) {
+    return {
+      success: false,
+      error: "Banka ödemeleri için ödeme yeri seçilmelidir",
+    };
+  }
+
+  const existing = await prisma.bookingPrepayment.findFirst({
+    where: { id: data.id, bookingId: data.bookingId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return { success: false, error: "Ön ödeme kaydı bulunamadı" };
+  }
+
+  if (data.bankAccountId) {
+    const bankAccount = await prisma.companyBankAccount.findFirst({
+      where: {
+        id: data.bankAccountId,
+        active: true,
+        paymentType: "bank_transfer",
+      },
+      select: { id: true },
+    });
+    if (!bankAccount) {
+      return { success: false, error: "Banka hesabı bulunamadı" };
+    }
+  }
+
+  const prepayment = await prisma.bookingPrepayment.update({
+    where: { id: data.id },
+    data: {
+      paymentChannel: normalizedChannel || data.paymentChannel,
+      bankAccountId:
+        normalizedChannel === "bank_transfer"
+          ? data.bankAccountId ?? null
+          : null,
+      amount: Math.round(data.amount),
+    },
+    include: {
+      bankAccount: {
+        select: {
+          id: true,
+          bankName: true,
+          accountHolder: true,
+          iban: true,
+        },
+      },
+    },
+  });
+
+  revalidatePath("/admin/rezervasyonlar");
+
+  return {
+    success: true,
+    prepayment: {
+      id: prepayment.id,
+      paymentChannel: prepayment.paymentChannel,
+      bankAccountId: prepayment.bankAccountId,
+      amount: prepayment.amount,
+      createdAt: prepayment.createdAt,
+      bankAccount: prepayment.bankAccount,
+    },
+  };
+}
+
+export async function deleteBookingPrepaymentAction(payload: {
+  id: string;
+  bookingId: string;
+}): Promise<{ success: true } | { success: false; error: string }> {
+  await requireAdmin();
+
+  const id = payload.id?.trim();
+  const bookingId = payload.bookingId?.trim();
+  if (!id || !bookingId) {
+    return { success: false, error: "Geçersiz ön ödeme kaydı" };
+  }
+
+  const existing = await prisma.bookingPrepayment.findFirst({
+    where: { id, bookingId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return { success: false, error: "Ön ödeme kaydı bulunamadı" };
+  }
+
+  await prisma.bookingPrepayment.delete({ where: { id } });
+  revalidatePath("/admin/rezervasyonlar");
+
+  return { success: true };
+}

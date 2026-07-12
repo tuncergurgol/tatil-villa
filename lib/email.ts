@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import type { Attachment } from "nodemailer/lib/mailer";
 import type { CompanySettings } from "@prisma/client";
 
 export type MailTransportConfig = Pick<
@@ -57,6 +58,7 @@ export async function sendCompanyMail(
     text?: string;
     html?: string;
     bcc?: string;
+    attachments?: Attachment[];
   }
 ) {
   if (!settings.smtpEnabled) {
@@ -78,5 +80,8 @@ export async function sendCompanyMail(
     subject: message.subject,
     text: message.text,
     html: message.html,
+    ...(message.attachments?.length
+      ? { attachments: message.attachments }
+      : {}),
   });
 }

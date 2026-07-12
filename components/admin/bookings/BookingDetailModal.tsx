@@ -1015,13 +1015,36 @@ export default function BookingDetailModal({
                   expectedPrepaymentAmount={details.prepaymentAmount ?? null}
                   prepayments={prepayments}
                   confirmationSentAt={confirmationSentAt}
+                  confirmationSends={details.confirmationSends ?? []}
                   onPrepaymentSaved={(prepayment) => {
                     setPrepayments((current) => [...current, prepayment]);
                     setOptionExpiresAt(null);
                   }}
-                  onConfirmationSent={() => {
+                  onPrepaymentUpdated={(prepayment) => {
+                    setPrepayments((current) =>
+                      current.map((item) =>
+                        item.id === prepayment.id ? prepayment : item
+                      )
+                    );
+                  }}
+                  onPrepaymentDeleted={(prepaymentId) => {
+                    setPrepayments((current) =>
+                      current.filter((item) => item.id !== prepaymentId)
+                    );
+                  }}
+                  onConfirmationSent={({
+                    confirmationSentAt: sentAt,
+                    confirmationSends,
+                  }) => {
                     setStatus(BookingStatusEnum.CONFIRMATION_SENT);
-                    setConfirmationSentAt(new Date());
+                    setConfirmationSentAt(sentAt);
+                    setDetails((current) => ({
+                      ...current,
+                      confirmationSends,
+                    }));
+                  }}
+                  onStatusChanged={(nextStatus) => {
+                    setStatus(nextStatus);
                   }}
                 />
               </TabPanel>

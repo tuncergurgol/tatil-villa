@@ -29,9 +29,11 @@ import {
   DEFAULT_BOOKING_AGENCY_NAME,
   DEFAULT_BOOKING_SITE_INFO,
   dedupeSiteInfoNames,
+  parseBookingDetails,
   type BookingDetails,
   type BookingGuestEntry,
 } from "@/lib/booking-form-details";
+import { prisma } from "@/lib/db";
 import {
   isValidTcKimlik,
   normalizeTcKimlik,
@@ -320,6 +322,32 @@ export async function changeBookingStatus(id: string, status: BookingStatus) {
   revalidatePath("/admin/rezervasyonlar");
 }
 
+export async function changeBookingStatusAction(
+  id: string,
+  status: BookingStatus
+): Promise<{ success: true; status: BookingStatus } | { success: false; error: string }> {
+  await requireAdmin();
+
+  const parsed = bookingStatusSchema.safeParse(status);
+  if (!parsed.success) {
+    return { success: false, error: "Geçersiz rezervasyon durumu" };
+  }
+
+  try {
+    await updateBookingStatus(id, parsed.data);
+    revalidatePath("/admin/rezervasyonlar");
+    return { success: true, status: parsed.data };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Rezervasyon durumu güncellenemedi",
+    };
+  }
+}
+
 /** Opsiyon süresi dolmuş ÖDEME BEKLENİYOR kayıtlarını İPTAL yapar */
 export async function expirePrepaymentOptionsAction(bookingId?: string) {
   await requireAdmin();
@@ -422,6 +450,17 @@ export async function updateBookingDetailAction(
   }
 
   try {
+    const existing = await prisma.booking.findUnique({
+      where: { id: parsed.data.id },
+      select: { details: true },
+    });
+    const existingDetails = parseBookingDetails(existing?.details);
+    const mergedDetails: BookingDetails = {
+      ...details,
+      confirmationSends:
+        details.confirmationSends ?? existingDetails.confirmationSends,
+    };
+
     await updateBookingDetail({
       id: parsed.data.id,
       status: parsed.data.status,
@@ -436,7 +475,7 @@ export async function updateBookingDetailAction(
       guestEmail: parsed.data.guestEmail,
       guestPhone: parsed.data.guestPhone,
       totalPrice: parsed.data.totalPrice,
-      details,
+      details: mergedDetails,
     });
     revalidatePath("/admin/rezervasyonlar");
     revalidatePath("/admin/musteri-yonetimi");

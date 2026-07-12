@@ -41,6 +41,19 @@ export function renderAgencyMessageTemplate(
   });
 }
 
+/**
+ * Mail/şablon metninden tutarı 0 TL olan satırları çıkarır
+ * (ör. "Evcil Hayvan Temizlik Bedeli : 0 TL").
+ */
+export function stripZeroAmountLines(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => !/:\s*0(?:[.,]0+)?\s*TL\s*$/i.test(line.trim()))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
 export function normalizeAgencyPlaceholderKey(key: string): string {
   return key.trim().replace(/\s+/g, "").toLocaleUpperCase("tr-TR");
 }

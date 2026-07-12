@@ -86,6 +86,18 @@ export type BookingDetails = {
   adultGuests?: BookingGuestEntry[];
   childGuests?: BookingGuestEntry[];
   babyGuests?: BookingGuestEntry[];
+  /** Konfirme gönderim geçmişi (Sistem WhatsApp / e-posta / SMS) */
+  confirmationSends?: BookingConfirmationSendRecord[];
+};
+
+export type BookingConfirmationSendChannel = "whatsapp" | "email" | "sms";
+
+export type BookingConfirmationSendRecord = {
+  id: string;
+  sentAt: string;
+  channels: BookingConfirmationSendChannel[];
+  status: "sent" | "failed";
+  error?: string;
 };
 
 export { STAY_STATUS_OPTIONS } from "@/lib/stay-status";
@@ -185,7 +197,54 @@ export function parseBookingDetails(value: unknown): BookingDetails {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
-  return value as BookingDetails;
+  const parsed = value as BookingDetails;
+  return {
+    ...parsed,
+    confirmationSends: normalizeConfirmationSends(parsed.confirmationSends),
+  };
+}
+
+const CONFIRMATION_SEND_CHANNELS = new Set<BookingConfirmationSendChannel>([
+  "whatsapp",
+  "email",
+  "sms",
+]);
+
+export function normalizeConfirmationSends(
+  value: unknown
+): BookingConfirmationSendRecord[] {
+  if (!Array.isArray(value)) return [];
+
+  const items: BookingConfirmationSendRecord[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const item = raw as Record<string, unknown>;
+    const id = typeof item.id === "string" ? item.id : "";
+    const sentAt = typeof item.sentAt === "string" ? item.sentAt : "";
+    if (!id || !sentAt) continue;
+
+    const channels = Array.isArray(item.channels)
+      ? item.channels.filter(
+          (channel): channel is BookingConfirmationSendChannel =>
+            typeof channel === "string" &&
+            CONFIRMATION_SEND_CHANNELS.has(
+              channel as BookingConfirmationSendChannel
+            )
+        )
+      : [];
+
+    items.push({
+      id,
+      sentAt,
+      channels,
+      status: item.status === "failed" ? "failed" : "sent",
+      ...(typeof item.error === "string" && item.error
+        ? { error: item.error }
+        : {}),
+    });
+  }
+
+  return items;
 }
 
 export function resolveExternalCode(
@@ -448,6 +507,7 @@ export function defaultDetailsFromBooking(booking: {
     agencyNote: parsed.agencyNote ?? "",
     customerNote: parsed.customerNote ?? "",
     siteInfo: normalizeBookingSiteInfo(parsed.siteInfo),
+    confirmationSends: normalizeConfirmationSends(parsed.confirmationSends),
     adultGuests: buildGuestRows(
       booking.adults,
       parsed.adultGuests?.length

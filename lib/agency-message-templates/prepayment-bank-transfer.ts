@@ -16,7 +16,6 @@ Hasar: ##HASAR## TL
 
 Şirket Ünvanı: ##SIRKETUNVAN##
 IBAN: ##IBAN##
-
 Ödenecek Tutar: ##ODENECEKTUTAR## TL
 Açıklama: ##MUSTERIADI## ##REZKOD## nolu rezervasyon ödemesi
 

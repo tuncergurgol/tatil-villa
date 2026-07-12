@@ -18,9 +18,17 @@ import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
 import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
-import { buildWaMeUrl } from "@/lib/whatsapp-wa-me";
+import { toHtmlFromText, collapseBankTransferIbanBlankLine } from "@/lib/email-html";
+import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
+import { sendEvolutionTextMessage } from "@/lib/evolution-client";
+import {
+  isValidTurkishMobileE164,
+  normalizePhoneToE164,
+  toWhatsAppRecipient,
+} from "@/lib/phone";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
 
 const sendPrepaymentInfoSchema = z.object({
   bookingId: z.string().min(1),
@@ -41,7 +49,7 @@ const sendPrepaymentInfoSchema = z.object({
 });
 
 export type SendBookingPrepaymentInfoResult =
-  | { success: true; channels: PrepaymentShareChannel[]; whatsappUrl?: string }
+  | { success: true; channels: PrepaymentShareChannel[] }
   | { success: false; error: string };
 
 function pickChannelBody(
@@ -150,11 +158,20 @@ export async function sendBookingPrepaymentInfoAction(
   const reservationCode =
     resolveExternalCode(booking.externalCode, booking.guestEmail) || "—";
 
-  if (data.sendWhatsApp && !phone) {
-    return {
-      success: false,
-      error: "WhatsApp gönderimi için müşteri telefonu gerekli",
-    };
+  if (data.sendWhatsApp) {
+    if (!phone) {
+      return {
+        success: false,
+        error: "WhatsApp gönderimi için müşteri telefonu gerekli",
+      };
+    }
+    const e164 = normalizePhoneToE164(phone);
+    if (!e164 || !isValidTurkishMobileE164(e164)) {
+      return {
+        success: false,
+        error: "Geçersiz telefon numarası. Türkiye cep numarası girin",
+      };
+    }
   }
 
   if (data.sendSms && !phone) {
@@ -197,7 +214,15 @@ export async function sendBookingPrepaymentInfoAction(
 
   const sentChannels: PrepaymentShareChannel[] = [];
   const mailSubject = `${reservationCode} nolu rezervasyon ön ödeme bilgisi`;
-  let whatsappUrl: string | undefined;
+  const isBankTransfer =
+    normalizeCompanyPaymentType(data.paymentMethod) === "bank_transfer";
+  const emailLogo =
+    data.sendEmail && isBankTransfer
+      ? await prepareCompanyLogoForEmail(
+          companySettings.logoUrl,
+          companySettings.domain
+        )
+      : null;
 
   const channelRequests: Array<{
     channel: PrepaymentShareChannel;
@@ -219,7 +244,15 @@ export async function sendBookingPrepaymentInfoAction(
       };
     }
 
-    const message = renderAgencyMessageTemplate(bodyTemplate, templateValues);
+    const message = (() => {
+      const rendered = renderAgencyMessageTemplate(
+        bodyTemplate,
+        templateValues
+      );
+      return isBankTransfer
+        ? collapseBankTransferIbanBlankLine(rendered)
+        : rendered;
+    })();
 
     if (channel === "email") {
       try {
@@ -227,6 +260,15 @@ export async function sendBookingPrepaymentInfoAction(
           to: email,
           subject: mailSubject,
           text: message,
+          ...(isBankTransfer && emailLogo
+            ? {
+                html: toHtmlFromText(message, {
+                  logoUrl: emailLogo.src,
+                  emphasizeBankTransferFields: true,
+                }),
+                attachments: emailLogo.attachments,
+              }
+            : {}),
         });
       } catch (error) {
         return {
@@ -238,11 +280,32 @@ export async function sendBookingPrepaymentInfoAction(
         };
       }
     } else if (channel === "whatsapp") {
-      const waResult = buildWaMeUrl(phone, message);
-      if (!waResult.ok) {
-        return { success: false, error: waResult.error };
+      const evolution = await getEvolutionWhatsappAdminData();
+      if (!evolution.evolutionApiKey || !evolution.evolutionBaseUrl) {
+        return {
+          success: false,
+          error:
+            "Sistem WhatsApp (Evolution) ayarları eksik. Acente → Evolution WhatsApp sayfasından yapılandırın.",
+        };
       }
-      whatsappUrl = waResult.url;
+
+      try {
+        await sendEvolutionTextMessage(
+          evolution.evolutionBaseUrl,
+          evolution.evolutionApiKey,
+          evolution.evolutionInstanceName,
+          toWhatsAppRecipient(normalizePhoneToE164(phone)),
+          message
+        );
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "WhatsApp mesajı gönderilemedi",
+        };
+      }
     } else {
       console.info(`[booking-prepayment-share] ${channel}`, {
         bookingId: data.bookingId,
@@ -269,5 +332,5 @@ export async function sendBookingPrepaymentInfoAction(
 
   revalidatePath("/admin/rezervasyonlar");
 
-  return { success: true, channels: sentChannels, whatsappUrl };
+  return { success: true, channels: sentChannels };
 }

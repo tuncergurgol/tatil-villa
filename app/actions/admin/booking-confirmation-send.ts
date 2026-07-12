@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { BookingStatus } from "@prisma/client";
+import { BookingStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
 import {
@@ -10,14 +10,25 @@ import {
 } from "@/lib/agency-message-render";
 import { AGENCY_MESSAGE_TEMPLATE_ROW_4 } from "@/lib/agency-message-row-no";
 import type { PrepaymentShareChannel } from "@/lib/booking-prepayment-share";
-import { parseBookingDetails, resolveExternalCode } from "@/lib/booking-form-details";
+import {
+  normalizeConfirmationSends,
+  parseBookingDetails,
+  resolveExternalCode,
+  type BookingConfirmationSendRecord,
+} from "@/lib/booking-form-details";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
 import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
-import { buildWaMeUrl } from "@/lib/whatsapp-wa-me";
+import { sendEvolutionTextMessage } from "@/lib/evolution-client";
+import {
+  isValidTurkishMobileE164,
+  normalizePhoneToE164,
+  toWhatsAppRecipient,
+} from "@/lib/phone";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
 
 const sendConfirmationSchema = z.object({
   bookingId: z.string().min(1),
@@ -27,7 +38,13 @@ const sendConfirmationSchema = z.object({
 });
 
 export type SendBookingConfirmationResult =
-  | { success: true; channels: PrepaymentShareChannel[]; whatsappUrl?: string }
+  | {
+      success: true;
+      channels: PrepaymentShareChannel[];
+      confirmationSentAt: string;
+      confirmationSend: BookingConfirmationSendRecord;
+      confirmationSends: BookingConfirmationSendRecord[];
+    }
   | { success: false; error: string };
 
 function pickChannelBody(
@@ -97,6 +114,13 @@ export async function sendBookingConfirmationAction(
             name: true,
           },
         },
+        prepayments: {
+          select: {
+            amount: true,
+            paymentChannel: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
       },
     }),
     getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_4),
@@ -107,8 +131,11 @@ export async function sendBookingConfirmationAction(
     return { success: false, error: "Rezervasyon bulunamadı" };
   }
 
-  if (booking.confirmationSentAt) {
-    return { success: false, error: "Konfirme daha önce gönderilmiş" };
+  if (booking.prepayments.length === 0) {
+    return {
+      success: false,
+      error: "Konfirme göndermek için en az bir ön ödeme kaydı gerekli",
+    };
   }
 
   if (!template) {
@@ -123,11 +150,20 @@ export async function sendBookingConfirmationAction(
   const reservationCode =
     resolveExternalCode(booking.externalCode, booking.guestEmail) || "—";
 
-  if (data.sendWhatsApp && !phone) {
-    return {
-      success: false,
-      error: "WhatsApp gönderimi için müşteri telefonu gerekli",
-    };
+  if (data.sendWhatsApp) {
+    if (!phone) {
+      return {
+        success: false,
+        error: "WhatsApp gönderimi için müşteri telefonu gerekli",
+      };
+    }
+    const e164 = normalizePhoneToE164(phone);
+    if (!e164 || !isValidTurkishMobileE164(e164)) {
+      return {
+        success: false,
+        error: "Geçersiz telefon numarası. Türkiye cep numarası girin",
+      };
+    }
   }
 
   if (data.sendSms && !phone) {
@@ -146,10 +182,14 @@ export async function sendBookingConfirmationAction(
 
   const details = parseBookingDetails(booking.details);
   const paymentMethod =
+    booking.prepayments[0]?.paymentChannel?.trim() ||
     details.importPaymentMethod?.trim() ||
     details.prepaymentBank?.trim() ||
     "";
-  const prepaymentAmount = details.prepaymentAmount ?? 0;
+  const prepaymentAmount = booking.prepayments.reduce(
+    (sum, item) => sum + item.amount,
+    0
+  );
   const bankAccount = await resolveBankAccount(paymentMethod);
 
   const templateValues = buildBookingConfirmationTemplateValues({
@@ -176,7 +216,6 @@ export async function sendBookingConfirmationAction(
 
   const sentChannels: PrepaymentShareChannel[] = [];
   const mailSubject = `${reservationCode} nolu rezervasyon konfirmasyonu`;
-  let whatsappUrl: string | undefined;
 
   const channelRequests: Array<{
     channel: PrepaymentShareChannel;
@@ -215,11 +254,32 @@ export async function sendBookingConfirmationAction(
         };
       }
     } else if (channel === "whatsapp") {
-      const waResult = buildWaMeUrl(phone, message);
-      if (!waResult.ok) {
-        return { success: false, error: waResult.error };
+      const evolution = await getEvolutionWhatsappAdminData();
+      if (!evolution.evolutionApiKey || !evolution.evolutionBaseUrl) {
+        return {
+          success: false,
+          error:
+            "Sistem WhatsApp (Evolution) ayarları eksik. Acente → Evolution WhatsApp sayfasından yapılandırın.",
+        };
       }
-      whatsappUrl = waResult.url;
+
+      try {
+        await sendEvolutionTextMessage(
+          evolution.evolutionBaseUrl,
+          evolution.evolutionApiKey,
+          evolution.evolutionInstanceName,
+          toWhatsAppRecipient(normalizePhoneToE164(phone)),
+          message
+        );
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "WhatsApp mesajı gönderilemedi",
+        };
+      }
     } else {
       console.info(`[booking-confirmation-send] ${channel}`, {
         bookingId: data.bookingId,
@@ -232,15 +292,36 @@ export async function sendBookingConfirmationAction(
     sentChannels.push(channel);
   }
 
+  const sentAt = new Date();
+  const confirmationSend: BookingConfirmationSendRecord = {
+    id: crypto.randomUUID(),
+    sentAt: sentAt.toISOString(),
+    channels: sentChannels,
+    status: "sent",
+  };
+
+  const existingSends = normalizeConfirmationSends(details.confirmationSends);
+  const confirmationSends = [...existingSends, confirmationSend];
+
   await prisma.booking.update({
     where: { id: data.bookingId },
     data: {
       status: BookingStatus.CONFIRMATION_SENT,
-      confirmationSentAt: new Date(),
+      confirmationSentAt: sentAt,
+      details: {
+        ...details,
+        confirmationSends,
+      } as Prisma.InputJsonValue,
     },
   });
 
   revalidatePath("/admin/rezervasyonlar");
 
-  return { success: true, channels: sentChannels, whatsappUrl };
+  return {
+    success: true,
+    channels: sentChannels,
+    confirmationSentAt: sentAt.toISOString(),
+    confirmationSend,
+    confirmationSends,
+  };
 }

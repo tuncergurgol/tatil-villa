@@ -1,7 +1,7 @@
 import {
   buildNewReservationRequestTemplateValues,
   renderAgencyMessageTemplate,
-  resolveCompanyLogoUrl,
+  stripZeroAmountLines,
 } from "@/lib/agency-message-render";
 import {
   AGENCY_MESSAGE_TEMPLATE_ROW_1,
@@ -9,6 +9,8 @@ import {
 } from "@/lib/agency-message-row-no";
 import { parseBookingDetails } from "@/lib/booking-form-details";
 import { sendCompanyMail } from "@/lib/email";
+import { toHtmlFromText } from "@/lib/email-html";
+import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
 import { sendEvolutionTextMessage } from "@/lib/evolution-client";
 import {
   isValidTurkishMobileE164,
@@ -58,38 +60,6 @@ function pickChannelBody(
     return template.whatsappBody || template.smsBody || template.mailBody;
   }
   return template.mailBody || template.whatsappBody || template.smsBody;
-}
-
-function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function toHtmlFromText(text: string, logoUrl?: string) {
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const bodyHtml = lines
-    .map((line) => {
-      const trimmed = line.trim();
-      const escaped = escapeHtml(line);
-      if (
-        /^Adres\s*:/i.test(trimmed) ||
-        /^Telefon\s*:/i.test(trimmed)
-      ) {
-        return `<div style="text-align:center;margin:4px 0;">${escaped}</div>`;
-      }
-      if (!trimmed) return "<br/>";
-      return `${escaped}<br/>`;
-    })
-    .join("");
-
-  const logo =
-    logoUrl?.trim()
-      ? `<p style="text-align:center;margin:0 0 16px;"><img src="${escapeHtml(logoUrl.trim())}" alt="Logo" style="max-width:180px;height:auto;" /></p>`
-      : "";
-
-  return `${logo}<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#111;">${bodyHtml}</div>`;
 }
 
 async function sendGuestWhatsApp(phone: string, message: string) {
@@ -177,6 +147,11 @@ export async function notifyNewReservationRequest(
       },
     });
 
+    const emailLogo = await prepareCompanyLogoForEmail(
+      company.logoUrl,
+      company.domain
+    );
+
     if (guestTemplate) {
       const mailBody = pickChannelBody(guestTemplate, "email").trim();
       const waBody = pickChannelBody(guestTemplate, "whatsapp").trim();
@@ -184,15 +159,15 @@ export async function notifyNewReservationRequest(
 
       if (mailBody && booking.guestEmail.trim()) {
         try {
-          const message = renderAgencyMessageTemplate(mailBody, values);
-          const logoUrl =
-            values.SITELOGOURL ||
-            resolveCompanyLogoUrl(company.logoUrl, company.domain);
+          const message = stripZeroAmountLines(
+            renderAgencyMessageTemplate(mailBody, values)
+          );
           await sendCompanyMail(company, {
             to: booking.guestEmail.trim(),
             subject: `${reservationCode} nolu rezervasyon talebiniz alındı`,
             text: message.replace(/^\s*\n+/, ""),
-            html: toHtmlFromText(message, logoUrl),
+            html: toHtmlFromText(message, emailLogo.src),
+            attachments: emailLogo.attachments,
           });
         } catch (error) {
           console.error("[new-reservation-notify] misafir mail hatası", error);
@@ -226,12 +201,15 @@ export async function notifyNewReservationRequest(
       const mailBody = pickChannelBody(adminTemplate, "email").trim();
       if (mailBody) {
         try {
-          const message = renderAgencyMessageTemplate(mailBody, values);
+          const message = stripZeroAmountLines(
+            renderAgencyMessageTemplate(mailBody, values)
+          );
           await sendCompanyMail(company, {
             to: ADMIN_NOTIFY_EMAIL,
             subject: `Yeni rezervasyon talebi #${reservationCode} — ${booking.villa.name}`,
             text: message,
-            html: toHtmlFromText(message),
+            html: toHtmlFromText(message, emailLogo.src),
+            attachments: emailLogo.attachments,
           });
         } catch (error) {
           console.error("[new-reservation-notify] yönetim mail hatası", error);
