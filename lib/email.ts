@@ -13,6 +13,10 @@ export type MailTransportConfig = Pick<
   | "smtpEnabled"
 >;
 
+/** rezervasyon@ adresinden giden maillerin gizli kopyası */
+const RESERVATION_MAIL_BCC = "info@tatildeyiz.com.tr";
+const RESERVATION_FROM_EMAIL = "rezervasyon@tatildeyiz.com.tr";
+
 export function createMailTransport(settings: MailTransportConfig) {
   const secure = settings.smtpSecure === "ssl";
 
@@ -30,6 +34,21 @@ export function createMailTransport(settings: MailTransportConfig) {
   });
 }
 
+function normalizeEmail(value: string): string {
+  return value.trim().toLocaleLowerCase("tr-TR");
+}
+
+function resolveReservationBcc(fromEmail: string, to: string): string | undefined {
+  if (normalizeEmail(fromEmail) !== RESERVATION_FROM_EMAIL) {
+    return undefined;
+  }
+  // Alıcı zaten info ise BCC ekleme
+  if (normalizeEmail(to) === normalizeEmail(RESERVATION_MAIL_BCC)) {
+    return undefined;
+  }
+  return RESERVATION_MAIL_BCC;
+}
+
 export async function sendCompanyMail(
   settings: MailTransportConfig,
   message: {
@@ -37,6 +56,7 @@ export async function sendCompanyMail(
     subject: string;
     text?: string;
     html?: string;
+    bcc?: string;
   }
 ) {
   if (!settings.smtpEnabled) {
@@ -47,10 +67,14 @@ export async function sendCompanyMail(
   const fromName = settings.smtpFromName.trim();
   const fromEmail = settings.smtpFromEmail.trim() || settings.smtpUser.trim();
   const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+  const bcc =
+    message.bcc?.trim() ||
+    resolveReservationBcc(fromEmail, message.to);
 
   return transport.sendMail({
     from,
     to: message.to,
+    ...(bcc ? { bcc } : {}),
     subject: message.subject,
     text: message.text,
     html: message.html,

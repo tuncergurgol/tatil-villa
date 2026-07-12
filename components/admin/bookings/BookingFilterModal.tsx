@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Filter, X } from "lucide-react";
+import type { BookingStatus } from "@prisma/client";
+import { BOOKING_STATUS_OPTIONS } from "@/lib/booking-status";
 import { includesSearchText } from "@/lib/search-text";
 
 export type BookingQuickFilter =
@@ -13,6 +15,7 @@ export type BookingQuickFilter =
   | "check_out_2_days";
 
 export type BookingFilters = {
+  status: BookingStatus | null;
   quickFilter: BookingQuickFilter | null;
   customerName: string;
   email: string;
@@ -41,6 +44,7 @@ export const BOOKING_QUICK_FILTER_OPTIONS: {
 ];
 
 export const emptyBookingFilters = (): BookingFilters => ({
+  status: null,
   quickFilter: null,
   customerName: "",
   email: "",
@@ -160,6 +164,7 @@ function DateFiltersGrid({
 
 export function countActiveBookingFilters(filters: BookingFilters): number {
   let count = 0;
+  if (filters.status) count += 1;
   if (filters.quickFilter) count += 1;
   if (filters.customerName.trim()) count += 1;
   if (filters.email.trim()) count += 1;
@@ -227,6 +232,27 @@ export default function BookingFilterModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5">
+          <FilterRow label="Rezervasyon Durumu" compact>
+            <select
+              value={draft.status ?? ""}
+              onChange={(event) =>
+                updateDraft({
+                  status: event.target.value
+                    ? (event.target.value as BookingStatus)
+                    : null,
+                })
+              }
+              className={inputClass}
+            >
+              <option value="">Seçiniz...</option>
+              {BOOKING_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </FilterRow>
+
           <FilterRow label="Giriş - Çıkış Raporları" compact>
             <select
               value={draft.quickFilter ?? ""}

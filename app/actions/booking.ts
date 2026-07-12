@@ -11,6 +11,7 @@ import {
   DEFAULT_BOOKING_SITE_INFO,
 } from "@/lib/booking-form-details";
 import { mapPublicPaymentMethodToCompanyType } from "@/lib/company-payment-types";
+import { notifyNewReservationRequest } from "@/lib/public-booking-notifications";
 
 const optionalMoney = z.coerce.number().optional().nullable();
 
@@ -184,6 +185,8 @@ export async function submitBooking(
       error: e instanceof Error ? e.message : "Rezervasyon oluşturulamadı",
     };
   }
+
+  await notifyNewReservationRequest(booking);
 
   redirect(`/rezervasyon/basarili?id=${booking.id}`);
 }

@@ -357,6 +357,37 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
   });
 }
 
+/** ÖDEME BEKLENİYOR + opsiyon süresi dolmuş → İPTAL */
+export async function cancelExpiredPrepaymentBookings(now = new Date()) {
+  const result = await prisma.booking.updateMany({
+    where: {
+      status: BookingStatus.PREPAYMENT,
+      optionExpiresAt: { lte: now },
+    },
+    data: {
+      status: BookingStatus.CANCELLED,
+    },
+  });
+  return result.count;
+}
+
+export async function cancelExpiredPrepaymentBookingById(
+  id: string,
+  now = new Date()
+) {
+  const result = await prisma.booking.updateMany({
+    where: {
+      id,
+      status: BookingStatus.PREPAYMENT,
+      optionExpiresAt: { lte: now },
+    },
+    data: {
+      status: BookingStatus.CANCELLED,
+    },
+  });
+  return result.count > 0;
+}
+
 export async function getBookingCount() {
   return prisma.booking.count();
 }

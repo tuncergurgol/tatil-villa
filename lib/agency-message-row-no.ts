@@ -14,6 +14,8 @@ export function getAgencyMessageRowSortKey(rowNo: number): number {
   return rowNo;
 }
 
+export const AGENCY_MESSAGE_TEMPLATE_ROW_1 = 11;
+export const AGENCY_MESSAGE_TEMPLATE_ROW_2 = 21;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1_6 = 16;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1_7 = 17;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_3_1 = 31;

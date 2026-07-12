@@ -68,6 +68,10 @@ export function filterBookings(
   filters: BookingFilters
 ) {
   return bookings.filter((booking) => {
+    if (filters.status && booking.status !== filters.status) {
+      return false;
+    }
+
     if (!matchesQuickFilter(booking, filters.quickFilter)) {
       return false;
     }

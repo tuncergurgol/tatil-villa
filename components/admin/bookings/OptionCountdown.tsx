@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock } from "lucide-react";
 
 function formatCountdown(ms: number): string {
@@ -22,15 +22,21 @@ function formatCountdown(ms: number): string {
 interface OptionCountdownProps {
   expiresAt: Date | string | null;
   className?: string;
+  /** Süre ilk kez dolduğunda bir kez çağrılır */
+  onExpired?: () => void;
 }
 
 export default function OptionCountdown({
   expiresAt,
   className = "",
+  onExpired,
 }: OptionCountdownProps) {
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const expiredNotifiedRef = useRef(false);
 
   useEffect(() => {
+    expiredNotifiedRef.current = false;
+
     if (!expiresAt) {
       setRemainingMs(null);
       return;
@@ -46,6 +52,13 @@ export default function OptionCountdown({
     const intervalId = window.setInterval(tick, 1000);
     return () => window.clearInterval(intervalId);
   }, [expiresAt]);
+
+  useEffect(() => {
+    if (remainingMs == null || remainingMs > 0) return;
+    if (expiredNotifiedRef.current || !onExpired) return;
+    expiredNotifiedRef.current = true;
+    onExpired();
+  }, [remainingMs, onExpired]);
 
   if (!expiresAt || remainingMs == null) return null;
 

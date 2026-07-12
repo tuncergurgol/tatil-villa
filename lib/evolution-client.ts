@@ -385,3 +385,26 @@ export async function fetchEvolutionWhatsappGroups(
     .filter((item): item is EvolutionWhatsappGroup => Boolean(item))
     .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 }
+
+/** Evolution API ile bireysel WhatsApp metin mesajı */
+export async function sendEvolutionTextMessage(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string,
+  number: string,
+  text: string
+) {
+  const digits = number.replace(/\D/g, "");
+  return evolutionRequest(
+    baseUrl,
+    apiKey,
+    `/message/sendText/${encodeURIComponent(instanceName)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        number: digits,
+        text,
+      }),
+    }
+  );
+}

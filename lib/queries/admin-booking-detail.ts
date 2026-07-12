@@ -3,10 +3,13 @@ import type {
   BookingDetailRecord,
   BookingPrepaymentRecord,
 } from "@/lib/booking-form-details";
+import { cancelExpiredPrepaymentBookingById } from "@/lib/queries/bookings";
 
 export async function getAdminBookingDetail(
   id: string
 ): Promise<BookingDetailRecord | null> {
+  await cancelExpiredPrepaymentBookingById(id);
+
   const booking = await prisma.booking.findUnique({
     where: { id },
     include: {

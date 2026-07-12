@@ -19,6 +19,11 @@ export type AdminBookingListItem = {
   totalPrice: number | null;
   status: BookingStatus;
   createdAt: Date;
+  optionExpiresAt: Date | null;
+  /** details.prepaymentAmount — talep/formdan gelen gerçek ön ödeme */
+  prepaymentAmount: number | null;
+  /** details.importPaymentMethod / paymentMethod */
+  paymentMethod: string | null;
   villa: {
     id: string;
     villaId: number | null;
@@ -82,11 +87,32 @@ export function formatGuestCounts(booking: Pick<
   };
 }
 
+/** @deprecated Gerçek tutar için booking.prepaymentAmount kullanın */
 export function estimatePrepaymentAmount(totalPrice: number | null): number | null {
   if (totalPrice == null || totalPrice <= 0) return null;
   return Math.round(totalPrice * 0.184);
 }
 
+export function resolveBookingPrepaymentAmount(
+  booking: Pick<AdminBookingListItem, "prepaymentAmount" | "totalPrice">
+): number | null {
+  if (booking.prepaymentAmount != null && booking.prepaymentAmount > 0) {
+    return booking.prepaymentAmount;
+  }
+  return null;
+}
+
+export function resolvePaymentMethodLabel(
+  paymentMethod: string | null | undefined
+): string {
+  if (!paymentMethod?.trim()) return "—";
+  const value = paymentMethod.trim();
+  if (value === "bank_transfer" || value === "transfer") return "Havale / EFT";
+  if (value === "credit_card" || value === "card") return "Kredi Kartı";
+  return value;
+}
+
+/** @deprecated resolvePaymentMethodLabel kullanın */
 export function resolvePaymentMethod(id: string): string {
   const hash = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return hash % 2 === 0 ? "Havale / EFT" : "Kredi Kartı";

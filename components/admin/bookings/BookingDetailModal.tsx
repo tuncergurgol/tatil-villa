@@ -11,6 +11,7 @@ import {
   getBookingPrepaymentRateAction,
   getSiteInfoOptionsAction,
   updateBookingDetailAction,
+  expirePrepaymentOptionsAction,
 } from "@/app/actions/admin/bookings";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import {
@@ -226,6 +227,7 @@ export default function BookingDetailModal({
   const [details, setDetails] = useState<BookingDetails>({});
   const [periodPrepaymentRate, setPeriodPrepaymentRate] = useState(20);
   const prepaymentManuallyEdited = useRef(false);
+  const talepPrepaymentAmountRef = useRef<number | null>(null);
   const [activeTab, setActiveTab] = useState<BookingDetailTabId>("rezervasyon");
   const [prepaymentShareOpen, setPrepaymentShareOpen] = useState(false);
   const [optionExpiresAt, setOptionExpiresAt] = useState<Date | null>(null);
@@ -288,7 +290,12 @@ export default function BookingDetailModal({
         setGuestEmail(record.guestEmail);
         setGuestPhone(record.guestPhone);
         const parsed = parseBookingDetails(record.details);
-        prepaymentManuallyEdited.current = parsed.prepaymentAmount != null;
+        talepPrepaymentAmountRef.current =
+          parsed.prepaymentAmount != null &&
+          Number.isFinite(parsed.prepaymentAmount)
+            ? Math.round(parsed.prepaymentAmount)
+            : null;
+        prepaymentManuallyEdited.current = false;
         setDetails(defaultDetailsFromBooking(record));
         setActiveTab("rezervasyon");
       })
@@ -362,12 +369,19 @@ export default function BookingDetailModal({
       details.grossPrice,
       details.ownerDiscountAmount,
       periodPrepaymentRate,
-      details.agencyDiscountAmount
+      details.agencyDiscountAmount,
+      talepPrepaymentAmountRef.current
     );
     setDetails((current) => {
       if (prepaymentManuallyEdited.current) {
         if (current.prepaymentRate === periodPrepaymentRate) return current;
         return { ...current, prepaymentRate: periodPrepaymentRate };
+      }
+      if (
+        current.prepaymentRate === periodPrepaymentRate &&
+        current.prepaymentAmount === suggested
+      ) {
+        return current;
       }
       return {
         ...current,
@@ -391,11 +405,21 @@ export default function BookingDetailModal({
 
   useEffect(() => {
     setDetails((current) => {
-      const computed = computeCommissionAmount(netPrice, current.commissionRate);
+      const computed = computeCommissionAmount(
+        current.grossPrice,
+        current.ownerDiscountAmount,
+        current.commissionRate,
+        current.agencyDiscountAmount
+      );
       if (computed === current.commissionAmount) return current;
       return { ...current, commissionAmount: computed };
     });
-  }, [netPrice]);
+  }, [
+    details.grossPrice,
+    details.ownerDiscountAmount,
+    details.agencyDiscountAmount,
+    details.commissionRate,
+  ]);
   const nightCount = useMemo(() => {
     if (!checkIn || !checkOut) return 0;
     return getNightCount(new Date(`${checkIn}T00:00:00.000Z`), new Date(`${checkOut}T00:00:00.000Z`));
@@ -449,6 +473,7 @@ export default function BookingDetailModal({
       details.grossPrice,
       ownerDiscountRate
     );
+    prepaymentManuallyEdited.current = false;
     patchDetails({
       ownerDiscountRate,
       ownerDiscountAmount,
@@ -459,6 +484,7 @@ export default function BookingDetailModal({
 
   function handleAgencyDiscountRateChange(rate: number) {
     const agencyDiscountRate = clampDiscountRate(rate);
+    prepaymentManuallyEdited.current = false;
     patchDetails({
       agencyDiscountRate,
       agencyDiscountAmount: computeDiscountAmount(
@@ -470,14 +496,16 @@ export default function BookingDetailModal({
 
   function handleCommissionRateChange(rate: number) {
     const commissionRate = clampDiscountRate(rate);
-    setDetails((current) => {
-      const currentNet = computeNetPrice(current);
-      return {
-        ...current,
+    setDetails((current) => ({
+      ...current,
+      commissionRate,
+      commissionAmount: computeCommissionAmount(
+        current.grossPrice,
+        current.ownerDiscountAmount,
         commissionRate,
-        commissionAmount: computeCommissionAmount(currentNet, commissionRate),
-      };
-    });
+        current.agencyDiscountAmount
+      ),
+    }));
   }
 
   function handleGuestCountsChange(
@@ -601,7 +629,24 @@ export default function BookingDetailModal({
                 >
                   {BOOKING_STATUS_META[status].label}
                 </span>
-                <OptionCountdown expiresAt={optionExpiresAt} />
+                <OptionCountdown
+                  expiresAt={
+                    status === BookingStatusEnum.PREPAYMENT
+                      ? optionExpiresAt
+                      : null
+                  }
+                  onExpired={() => {
+                    if (!bookingId) return;
+                    startTransition(async () => {
+                      const result =
+                        await expirePrepaymentOptionsAction(bookingId);
+                      if (result.cancelled) {
+                        setStatus(BookingStatusEnum.CANCELLED);
+                        setOptionExpiresAt(null);
+                      }
+                    });
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -834,12 +879,13 @@ export default function BookingDetailModal({
                     rate={details.ownerDiscountRate ?? 0}
                     amount={details.ownerDiscountAmount ?? 0}
                     onRateChange={handleOwnerDiscountRateChange}
-                    onAmountChange={(amount) =>
+                    onAmountChange={(amount) => {
+                      prepaymentManuallyEdited.current = false;
                       patchDetails({
                         ownerDiscountAmount: amount ?? 0,
                         discountAmount: amount ?? 0,
-                      })
-                    }
+                      });
+                    }}
                   />
                 </FormRow>
                 <FormRow label="Acente İndirimi (% - Tutar)">
@@ -847,9 +893,10 @@ export default function BookingDetailModal({
                     rate={details.agencyDiscountRate ?? 0}
                     amount={details.agencyDiscountAmount ?? 0}
                     onRateChange={handleAgencyDiscountRateChange}
-                    onAmountChange={(amount) =>
-                      patchDetails({ agencyDiscountAmount: amount ?? 0 })
-                    }
+                    onAmountChange={(amount) => {
+                      prepaymentManuallyEdited.current = false;
+                      patchDetails({ agencyDiscountAmount: amount ?? 0 });
+                    }}
                   />
                 </FormRow>
                 <FormRow label="Acente Hizmet Bedeli">

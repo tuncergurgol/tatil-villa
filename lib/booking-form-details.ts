@@ -223,12 +223,38 @@ export function computeDiscountAmount(
   return Math.round((basePrice * clampedRate) / 100);
 }
 
+export function hasBookingDiscountAmounts(
+  ownerDiscountAmount: number | null | undefined,
+  agencyDiscountAmount: number | null | undefined
+): boolean {
+  return (ownerDiscountAmount ?? 0) > 0 || (agencyDiscountAmount ?? 0) > 0;
+}
+
+/**
+ * Ön ödeme:
+ * - Villa sahibi + acente indirim tutarları 0 ise talep tutarı korunur
+ * - İndirim varsa: (((konaklama - villa sahibi indirim) * oran) - acente indirim)
+ */
 export function computePrepaymentAmount(
   grossPrice: number | null | undefined,
   ownerDiscountAmount: number | null | undefined,
   prepaymentRate: number | null | undefined,
-  agencyDiscountAmount: number | null | undefined
+  agencyDiscountAmount: number | null | undefined,
+  talepPrepaymentAmount?: number | null
 ): number | null {
+  const hasDiscount = hasBookingDiscountAmounts(
+    ownerDiscountAmount,
+    agencyDiscountAmount
+  );
+
+  if (
+    !hasDiscount &&
+    talepPrepaymentAmount != null &&
+    Number.isFinite(talepPrepaymentAmount)
+  ) {
+    return Math.max(0, Math.round(talepPrepaymentAmount));
+  }
+
   if (grossPrice == null || !Number.isFinite(grossPrice)) return null;
 
   const ownerDiscount = ownerDiscountAmount ?? 0;
@@ -289,12 +315,32 @@ export function computeCheckInPayment(
   return balance + sumExtraFees(details);
 }
 
+/**
+ * Komisyon tutarı:
+ * (((konaklama - villa sahibi indirim) * komisyon oranı) - acente indirim)
+ */
 export function computeCommissionAmount(
-  netPrice: number | null,
-  rate: number | null | undefined
+  grossPrice: number | null | undefined,
+  ownerDiscountAmount: number | null | undefined,
+  commissionRate: number | null | undefined,
+  agencyDiscountAmount: number | null | undefined
 ): number | null {
-  if (netPrice == null || rate == null) return null;
-  return Math.round((netPrice * rate) / 100);
+  if (
+    grossPrice == null ||
+    !Number.isFinite(grossPrice) ||
+    commissionRate == null ||
+    !Number.isFinite(commissionRate)
+  ) {
+    return null;
+  }
+
+  const ownerDiscount = ownerDiscountAmount ?? 0;
+  const agencyDiscount = agencyDiscountAmount ?? 0;
+  const rate = clampDiscountRate(commissionRate);
+  const baseAfterOwnerDiscount = Math.max(0, grossPrice - ownerDiscount);
+  const commissionBase = Math.round((baseAfterOwnerDiscount * rate) / 100);
+
+  return Math.max(0, commissionBase - agencyDiscount);
 }
 
 export function buildGuestRows(

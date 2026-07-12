@@ -9,6 +9,8 @@ import {
   updateAdminBooking,
   updateBookingDetail,
   updateBookingStatus,
+  cancelExpiredPrepaymentBookingById,
+  cancelExpiredPrepaymentBookings,
 } from "@/lib/queries/bookings";
 import { getAdminBookingDetail } from "@/lib/queries/admin-booking-detail";
 import {
@@ -316,6 +318,24 @@ export async function changeBookingStatus(id: string, status: BookingStatus) {
   await requireAdmin();
   await updateBookingStatus(id, status);
   revalidatePath("/admin/rezervasyonlar");
+}
+
+/** Opsiyon süresi dolmuş ÖDEME BEKLENİYOR kayıtlarını İPTAL yapar */
+export async function expirePrepaymentOptionsAction(bookingId?: string) {
+  await requireAdmin();
+  if (bookingId) {
+    const cancelled = await cancelExpiredPrepaymentBookingById(bookingId);
+    if (cancelled) {
+      revalidatePath("/admin/rezervasyonlar");
+    }
+    return { cancelled };
+  }
+
+  const count = await cancelExpiredPrepaymentBookings();
+  if (count > 0) {
+    revalidatePath("/admin/rezervasyonlar");
+  }
+  return { count };
 }
 
 const stayStatusSchema = z.enum([
