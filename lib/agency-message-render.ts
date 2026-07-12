@@ -68,7 +68,9 @@ export function buildBookingPaymentLink(
 
 function resolvePoolHeatingFee(details: BookingDetails): number {
   return (
-    (details.poolHeatingPrivateFee ?? 0) + (details.poolHeatingIndoorFee ?? 0)
+    (details.poolHeatingPrivateFee ?? 0) +
+    (details.poolHeatingIndoorFee ?? 0) +
+    (details.poolHeatingKidsFee ?? 0)
   );
 }
 

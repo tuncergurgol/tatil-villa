@@ -38,6 +38,12 @@ export type VillaPeriodDayPricingSnapshot = {
   underfloorHeatingFeeCurrency: VillaPeriodCurrency;
   extraBedFee: number | null;
   extraBedFeeCurrency: VillaPeriodCurrency;
+  poolHeatingPrivateFee: number | null;
+  poolHeatingPrivateFeeCurrency: VillaPeriodCurrency;
+  poolHeatingIndoorFee: number | null;
+  poolHeatingIndoorFeeCurrency: VillaPeriodCurrency;
+  poolHeatingKidsFee: number | null;
+  poolHeatingKidsFeeCurrency: VillaPeriodCurrency;
   discount1Rate: number | null;
   discount2Rate: number | null;
   extraDiscountAmount: number | null;

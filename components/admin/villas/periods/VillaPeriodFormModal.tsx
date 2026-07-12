@@ -63,6 +63,9 @@ const AMOUNT_FIELDS = new Set([
   "petDamageDeposit",
   "underfloorHeatingFee",
   "extraBedFee",
+  "poolHeatingPrivateFee",
+  "poolHeatingIndoorFee",
+  "poolHeatingKidsFee",
   "extraDiscountAmount",
   "weekendPrice",
   "childFee02",
@@ -106,6 +109,12 @@ type PeriodFormState = {
   underfloorHeatingFeeCurrency: VillaPeriodCurrency;
   extraBedFee: string;
   extraBedFeeCurrency: VillaPeriodCurrency;
+  poolHeatingPrivateFee: string;
+  poolHeatingPrivateFeeCurrency: VillaPeriodCurrency;
+  poolHeatingIndoorFee: string;
+  poolHeatingIndoorFeeCurrency: VillaPeriodCurrency;
+  poolHeatingKidsFee: string;
+  poolHeatingKidsFeeCurrency: VillaPeriodCurrency;
   discount1Rate: string;
   discount2Rate: string;
   extraDiscountAmount: string;
@@ -143,6 +152,12 @@ const emptyFormState = (): PeriodFormState => ({
   underfloorHeatingFeeCurrency: "TL",
   extraBedFee: "",
   extraBedFeeCurrency: "TL",
+  poolHeatingPrivateFee: "",
+  poolHeatingPrivateFeeCurrency: "TL",
+  poolHeatingIndoorFee: "",
+  poolHeatingIndoorFeeCurrency: "TL",
+  poolHeatingKidsFee: "",
+  poolHeatingKidsFeeCurrency: "TL",
   discount1Rate: "",
   discount2Rate: "",
   extraDiscountAmount: "",
@@ -190,6 +205,12 @@ function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
     underfloorHeatingFeeCurrency: period.underfloorHeatingFeeCurrency,
     extraBedFee: toInputValue(period.extraBedFee),
     extraBedFeeCurrency: period.extraBedFeeCurrency,
+    poolHeatingPrivateFee: toInputValue(period.poolHeatingPrivateFee),
+    poolHeatingPrivateFeeCurrency: period.poolHeatingPrivateFeeCurrency,
+    poolHeatingIndoorFee: toInputValue(period.poolHeatingIndoorFee),
+    poolHeatingIndoorFeeCurrency: period.poolHeatingIndoorFeeCurrency,
+    poolHeatingKidsFee: toInputValue(period.poolHeatingKidsFee),
+    poolHeatingKidsFeeCurrency: period.poolHeatingKidsFeeCurrency,
     discount1Rate: toInputValue(period.discount1Rate),
     discount2Rate: toInputValue(period.discount2Rate),
     extraDiscountAmount: toInputValue(period.extraDiscountAmount),
@@ -950,6 +971,39 @@ export default function VillaPeriodFormModal({
                   onAmountChange={(value) => updateForm({ extraBedFee: value })}
                   onCurrencyChange={(value) =>
                     updateForm({ extraBedFeeCurrency: value })
+                  }
+                />
+                <FeeRow
+                  label="Havuz Isıtma (Özel Havuz)"
+                  amount={form.poolHeatingPrivateFee}
+                  currency={form.poolHeatingPrivateFeeCurrency}
+                  onAmountChange={(value) =>
+                    updateForm({ poolHeatingPrivateFee: value })
+                  }
+                  onCurrencyChange={(value) =>
+                    updateForm({ poolHeatingPrivateFeeCurrency: value })
+                  }
+                />
+                <FeeRow
+                  label="Havuz Isıtma (Kapalı (İç) Havuz)"
+                  amount={form.poolHeatingIndoorFee}
+                  currency={form.poolHeatingIndoorFeeCurrency}
+                  onAmountChange={(value) =>
+                    updateForm({ poolHeatingIndoorFee: value })
+                  }
+                  onCurrencyChange={(value) =>
+                    updateForm({ poolHeatingIndoorFeeCurrency: value })
+                  }
+                />
+                <FeeRow
+                  label="Havuz Isıtma (Çocuk Havuzu)"
+                  amount={form.poolHeatingKidsFee}
+                  currency={form.poolHeatingKidsFeeCurrency}
+                  onAmountChange={(value) =>
+                    updateForm({ poolHeatingKidsFee: value })
+                  }
+                  onCurrencyChange={(value) =>
+                    updateForm({ poolHeatingKidsFeeCurrency: value })
                   }
                 />
 

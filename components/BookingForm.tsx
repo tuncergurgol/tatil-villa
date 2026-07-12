@@ -11,7 +11,12 @@ import {
 import { submitBooking, type BookingActionState } from "@/app/actions/booking";
 import FloatingPanel from "@/components/FloatingPanel";
 import GuestPicker from "@/components/GuestPicker";
-import ReservationPriceSummary from "@/components/ReservationPriceSummary";
+import PreReservationModal, {
+  type PreReservationSubmitPayload,
+} from "@/components/PreReservationModal";
+import ReservationPriceSummary, {
+  getReservationGrandTotal,
+} from "@/components/ReservationPriceSummary";
 import { useVillaStaySelection } from "@/components/villa-detail/VillaStaySelectionContext";
 import {
   isNightBlocked,
@@ -22,6 +27,11 @@ import {
   normalizeStoredTurkishPhone,
   normalizeTurkishPhoneDigits,
 } from "@/lib/phone-utils";
+import {
+  emptyStayPeriodFees,
+  type StayFeeSelections,
+  type StayPeriodFees,
+} from "@/lib/stay-period-fees";
 import {
   buildStayQuoteDayMap,
   computeStayQuote,
@@ -49,6 +59,15 @@ interface BookingFormProps {
   maxGuests: number;
   pricePerNight: number | null;
   companyPhone?: string;
+  brandName?: string;
+  villaSummary: {
+    name: string;
+    code: string;
+    image: string;
+    guests: number;
+    bedrooms: number;
+    bathrooms: number;
+  };
   calendarDays?: Array<{
     date: string;
     occupancyStatus: string;
@@ -63,6 +82,14 @@ interface BookingFormProps {
     cleaningFee?: number | null;
     cleaningFeeCurrency?: string;
     cleaningDayCount?: number | null;
+    damageDeposit?: number | null;
+    petCleaningFee?: number | null;
+    petDamageDeposit?: number | null;
+    underfloorHeatingFee?: number | null;
+    extraBedFee?: number | null;
+    poolHeatingPrivateFee?: number | null;
+    poolHeatingIndoorFee?: number | null;
+    poolHeatingKidsFee?: number | null;
     price?: number;
   }>;
 }
@@ -104,9 +131,13 @@ export default function BookingForm({
   maxGuests,
   pricePerNight,
   companyPhone = "",
+  brandName = "Wings Tatil",
+  villaSummary,
   calendarDays = [],
 }: BookingFormProps) {
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [feeSelections, setFeeSelections] = useState<StayFeeSelections>({});
   const {
     checkIn,
     checkOut,
@@ -138,6 +169,37 @@ export default function BookingForm({
     if (!checkIn || !checkOut || checkIn === checkOut) return null;
     return computeStayQuote(checkIn, checkOut, quoteDaysMap);
   }, [checkIn, checkOut, quoteDaysMap]);
+
+  const periodFees = useMemo<StayPeriodFees>(() => {
+    if (!checkIn) return emptyStayPeriodFees();
+    const day = calendarDays.find((item) => item.date === checkIn);
+    if (!day) return emptyStayPeriodFees();
+    return {
+      cleaningFee: day.cleaningFee ?? null,
+      damageDeposit: day.damageDeposit ?? null,
+      petCleaningFee: day.petCleaningFee ?? null,
+      petDamageDeposit: day.petDamageDeposit ?? null,
+      underfloorHeatingFee: day.underfloorHeatingFee ?? null,
+      extraBedFee: day.extraBedFee ?? null,
+      poolHeatingPrivateFee: day.poolHeatingPrivateFee ?? null,
+      poolHeatingIndoorFee: day.poolHeatingIndoorFee ?? null,
+      poolHeatingKidsFee: day.poolHeatingKidsFee ?? null,
+    };
+  }, [calendarDays, checkIn]);
+
+  const pricingTotals = useMemo(() => {
+    if (!quote?.valid) return null;
+    return getReservationGrandTotal(
+      quote,
+      periodFees,
+      guests.pets,
+      feeSelections
+    );
+  }, [quote, periodFees, guests.pets, feeSelections]);
+
+  useEffect(() => {
+    setFeeSelections({});
+  }, [checkIn, checkOut]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const dateAnchorRef = useRef<HTMLButtonElement>(null);
@@ -324,6 +386,41 @@ export default function BookingForm({
     viewYear > minViewYear ||
     (viewYear === minViewYear && viewMonth > minViewMonth);
 
+  const canOpenModal = Boolean(checkIn && checkOut && quote?.valid);
+
+  function handleOpenModal() {
+    if (!canOpenModal) return;
+    setDatesOpen(false);
+    setGuestsOpen(false);
+    setModalOpen(true);
+  }
+
+  function handleModalSubmit(payload: PreReservationSubmitPayload) {
+    if (!checkIn || !checkOut || !quote?.valid) return;
+
+    const formData = new FormData();
+    formData.set("villaId", villaId);
+    formData.set("checkIn", checkIn);
+    formData.set("checkOut", checkOut);
+    formData.set("adults", String(guests.adults));
+    formData.set("children", String(guests.children));
+    formData.set("babies", String(guests.babies));
+    formData.set("pets", String(allowPets ? guests.pets : 0));
+    formData.set("guestName", payload.guestName);
+    formData.set("guestEmail", payload.guestEmail);
+    formData.set("guestPhone", payload.guestPhone);
+    formData.set("paymentMethod", payload.paymentMethod);
+    formData.set("paymentAmount", payload.paymentAmount);
+    formData.set("acceptMarketing", payload.acceptMarketing ? "true" : "false");
+    formData.set("totalPrice", String(pricingTotals?.grandTotal ?? quote.total));
+    formData.set(
+      "prepaymentAmount",
+      String(pricingTotals?.prepaymentAmount ?? quote.prepaymentAmount)
+    );
+    formData.set("prepaymentRate", String(quote.prepaymentRate));
+    formAction(formData);
+  }
+
   return (
     <div
       id="rezervasyon-yap"
@@ -348,7 +445,8 @@ export default function BookingForm({
           <p className="mt-1 text-sm text-slate-500">
             {quote.nights} gece · Toplam{" "}
             <span className="font-semibold text-emerald-700">
-              {quote.total.toLocaleString("tr-TR")} {quote.currency}
+              {(pricingTotals?.grandTotal ?? quote.total).toLocaleString("tr-TR")}{" "}
+              {quote.currency}
             </span>
           </p>
         ) : (
@@ -358,16 +456,8 @@ export default function BookingForm({
         )}
       </div>
 
-      <form action={formAction} className="space-y-3.5 p-4 sm:p-5">
-        <input type="hidden" name="villaId" value={villaId} />
-        <input type="hidden" name="checkIn" value={checkIn} />
-        <input type="hidden" name="checkOut" value={checkOut} />
-        <input type="hidden" name="adults" value={guests.adults} />
-        <input type="hidden" name="children" value={guests.children} />
-        <input type="hidden" name="babies" value={guests.babies} />
-        <input type="hidden" name="pets" value={allowPets ? guests.pets : 0} />
-
-        {state.error ? (
+      <div className="space-y-3.5 p-4 sm:p-5">
+        {state.error && !modalOpen ? (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {state.error}
           </div>
@@ -497,16 +587,25 @@ export default function BookingForm({
           </FloatingPanel>
         </div>
 
-        <ReservationPriceSummary quote={quote} />
+        <ReservationPriceSummary
+          quote={quote}
+          fees={periodFees}
+          pets={allowPets ? guests.pets : 0}
+          selections={feeSelections}
+          onSelectionChange={(key, value) =>
+            setFeeSelections((prev) => ({ ...prev, [key]: value }))
+          }
+        />
 
         <button
-          type="submit"
-          disabled={pending || !checkIn || !checkOut || !quote?.valid}
+          type="button"
+          onClick={handleOpenModal}
+          disabled={pending || !canOpenModal}
           className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? "Gönderiliyor..." : "Ön Rezervasyon Talebi Gönder"}
+          Ön Rezervasyon Talebi Gönder
         </button>
-      </form>
+      </div>
 
       {phoneDisplay && phoneHref ? (
         <div className="border-t border-slate-200/80 px-5 pb-5">
@@ -518,6 +617,27 @@ export default function BookingForm({
             {phoneDisplay}
           </a>
         </div>
+      ) : null}
+
+      {quote?.valid ? (
+        <PreReservationModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleModalSubmit}
+          pending={pending}
+          error={modalOpen ? state.error : null}
+          villa={villaSummary}
+          guests={guests}
+          quote={{
+            ...quote,
+            total: pricingTotals?.grandTotal ?? quote.total,
+            prepaymentAmount:
+              pricingTotals?.prepaymentAmount ?? quote.prepaymentAmount,
+            checkInPayment:
+              pricingTotals?.checkInPayment ?? quote.checkInPayment,
+          }}
+          brandName={brandName}
+        />
       ) : null}
     </div>
   );

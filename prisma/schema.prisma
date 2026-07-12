@@ -424,6 +424,12 @@ model VillaPricePeriod {
   underfloorHeatingFeeCurrency  VillaPeriodCurrency     @default(TL)
   extraBedFee                   Int?
   extraBedFeeCurrency           VillaPeriodCurrency     @default(TL)
+  poolHeatingPrivateFee         Int?
+  poolHeatingPrivateFeeCurrency VillaPeriodCurrency     @default(TL)
+  poolHeatingIndoorFee          Int?
+  poolHeatingIndoorFeeCurrency  VillaPeriodCurrency     @default(TL)
+  poolHeatingKidsFee            Int?
+  poolHeatingKidsFeeCurrency    VillaPeriodCurrency     @default(TL)
   discount1Rate                 Int?
   discount2Rate                 Int?
   extraDiscountAmount           Int?
@@ -472,6 +478,12 @@ model VillaPricePeriodDay {
   underfloorHeatingFeeCurrency  VillaPeriodCurrency     @default(TL)
   extraBedFee                   Int?
   extraBedFeeCurrency           VillaPeriodCurrency     @default(TL)
+  poolHeatingPrivateFee         Int?
+  poolHeatingPrivateFeeCurrency VillaPeriodCurrency     @default(TL)
+  poolHeatingIndoorFee          Int?
+  poolHeatingIndoorFeeCurrency  VillaPeriodCurrency     @default(TL)
+  poolHeatingKidsFee            Int?
+  poolHeatingKidsFeeCurrency    VillaPeriodCurrency     @default(TL)
   discount1Rate                 Int?
   discount2Rate                 Int?
   extraDiscountAmount           Int?

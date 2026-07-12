@@ -26,6 +26,7 @@ export type BookingDetails = {
   petCleaningFee?: number | null;
   poolHeatingPrivateFee?: number | null;
   poolHeatingIndoorFee?: number | null;
+  poolHeatingKidsFee?: number | null;
   underfloorHeatingFee?: number | null;
   heatingFee?: number | null;
   damageDeposit?: number | null;
@@ -93,8 +94,9 @@ export const BOOKING_EXTRA_FEE_FIELDS = [
   { key: "extraAccommodationFee", label: "Ek Konaklama Bedeli" },
   { key: "cleaningFee", label: "Temizlik Bedeli" },
   { key: "petCleaningFee", label: "Evcil Hayvan Temizlik Bedeli" },
-  { key: "poolHeatingPrivateFee", label: "Havuz Isıtma (Özel)" },
-  { key: "poolHeatingIndoorFee", label: "Havuz Isıtma (Kapalı)" },
+  { key: "poolHeatingPrivateFee", label: "Havuz Isıtma (Özel Havuz)" },
+  { key: "poolHeatingIndoorFee", label: "Havuz Isıtma (Kapalı (İç) Havuz)" },
+  { key: "poolHeatingKidsFee", label: "Havuz Isıtma (Çocuk Havuzu)" },
   { key: "underfloorHeatingFee", label: "Yerden Isıtma" },
 ] as const;
 
@@ -273,6 +275,7 @@ export function defaultDetailsFromBooking(booking: {
     petCleaningFee: parsed.petCleaningFee ?? null,
     poolHeatingPrivateFee: parsed.poolHeatingPrivateFee ?? null,
     poolHeatingIndoorFee: parsed.poolHeatingIndoorFee ?? null,
+    poolHeatingKidsFee: parsed.poolHeatingKidsFee ?? null,
     underfloorHeatingFee:
       parsed.underfloorHeatingFee ?? parsed.heatingFee ?? null,
     heatingFee: parsed.heatingFee ?? null,

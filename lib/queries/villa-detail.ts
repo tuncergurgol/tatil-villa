@@ -4,6 +4,7 @@ import { getRoomTypeLabel, formatBedSummary } from "@/lib/villa-room-features";
 import { formatVillaRegionLabel } from "@/lib/queries/villa-location";
 import { getVillaPeriodPriceRanges } from "@/lib/queries/villas";
 import { RegionLevel } from "@/lib/region-levels";
+import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 
 function startOfTodayUtc() {
   const now = new Date();
@@ -133,6 +134,14 @@ export async function getVillaDetailBySlug(slug: string) {
           cleaningFee: true,
           cleaningFeeCurrency: true,
           cleaningDayCount: true,
+          damageDeposit: true,
+          petCleaningFee: true,
+          petDamageDeposit: true,
+          underfloorHeatingFee: true,
+          extraBedFee: true,
+          poolHeatingPrivateFee: true,
+          poolHeatingIndoorFee: true,
+          poolHeatingKidsFee: true,
         },
       }),
     ]);
@@ -220,6 +229,7 @@ export async function getVillaDetailBySlug(slug: string) {
 
   return {
     id: villa.id,
+    villaCode: villa.villaId != null ? String(villa.villaId) : "",
     slug: villa.slug,
     name: villa.name,
     category: villa.category,
@@ -303,7 +313,7 @@ export async function getVillaDetailBySlug(slug: string) {
     periods,
     currentDamageDeposit,
     calendarDays: calendarDays.map((day) => ({
-      date: day.date.toISOString().slice(0, 10),
+      date: dbDateToDateKey(day.date),
       occupancyStatus: day.occupancyStatus,
       availability: day.availability,
       nightlyPrice: day.nightlyPrice,
@@ -317,6 +327,14 @@ export async function getVillaDetailBySlug(slug: string) {
       cleaningFee: day.cleaningFee,
       cleaningFeeCurrency: day.cleaningFeeCurrency,
       cleaningDayCount: day.cleaningDayCount,
+      damageDeposit: day.damageDeposit,
+      petCleaningFee: day.petCleaningFee,
+      petDamageDeposit: day.petDamageDeposit,
+      underfloorHeatingFee: day.underfloorHeatingFee,
+      extraBedFee: day.extraBedFee,
+      poolHeatingPrivateFee: day.poolHeatingPrivateFee,
+      poolHeatingIndoorFee: day.poolHeatingIndoorFee,
+      poolHeatingKidsFee: day.poolHeatingKidsFee,
     })),
   };
 }

@@ -87,6 +87,12 @@ const periodSchema = z.object({
   underfloorHeatingFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
   extraBedFee: optionalPositiveIntSchema,
   extraBedFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
+  poolHeatingPrivateFee: optionalPositiveIntSchema,
+  poolHeatingPrivateFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
+  poolHeatingIndoorFee: optionalPositiveIntSchema,
+  poolHeatingIndoorFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
+  poolHeatingKidsFee: optionalPositiveIntSchema,
+  poolHeatingKidsFeeCurrency: z.enum(["TL", "EUR", "USD", "GBP"]),
   discount1Rate: optionalRateSchema,
   discount2Rate: optionalRateSchema,
   extraDiscountAmount: optionalPositiveIntSchema,
@@ -216,6 +222,18 @@ function parsePeriodFormData(formData: FormData) {
     ),
     extraBedFee: formData.get("extraBedFee") || null,
     extraBedFeeCurrency: parseCurrency(formData.get("extraBedFeeCurrency")),
+    poolHeatingPrivateFee: formData.get("poolHeatingPrivateFee") || null,
+    poolHeatingPrivateFeeCurrency: parseCurrency(
+      formData.get("poolHeatingPrivateFeeCurrency")
+    ),
+    poolHeatingIndoorFee: formData.get("poolHeatingIndoorFee") || null,
+    poolHeatingIndoorFeeCurrency: parseCurrency(
+      formData.get("poolHeatingIndoorFeeCurrency")
+    ),
+    poolHeatingKidsFee: formData.get("poolHeatingKidsFee") || null,
+    poolHeatingKidsFeeCurrency: parseCurrency(
+      formData.get("poolHeatingKidsFeeCurrency")
+    ),
     discount1Rate: formData.get("discount1Rate"),
     discount2Rate: formData.get("discount2Rate"),
     extraDiscountAmount: formData.get("extraDiscountAmount") || null,
@@ -261,6 +279,18 @@ function parsePeriodPricingFormData(formData: FormData) {
     ),
     extraBedFee: formData.get("extraBedFee") || null,
     extraBedFeeCurrency: parseCurrency(formData.get("extraBedFeeCurrency")),
+    poolHeatingPrivateFee: formData.get("poolHeatingPrivateFee") || null,
+    poolHeatingPrivateFeeCurrency: parseCurrency(
+      formData.get("poolHeatingPrivateFeeCurrency")
+    ),
+    poolHeatingIndoorFee: formData.get("poolHeatingIndoorFee") || null,
+    poolHeatingIndoorFeeCurrency: parseCurrency(
+      formData.get("poolHeatingIndoorFeeCurrency")
+    ),
+    poolHeatingKidsFee: formData.get("poolHeatingKidsFee") || null,
+    poolHeatingKidsFeeCurrency: parseCurrency(
+      formData.get("poolHeatingKidsFeeCurrency")
+    ),
     weekendPrice: formData.get("weekendPrice") || null,
     weekendDays: formData.get("weekendDays") || "",
     weekendMinStayNights: formData.get("weekendMinStayNights") || null,
@@ -315,6 +345,12 @@ function buildPeriodData(parsed: z.infer<typeof periodSchema>) {
     underfloorHeatingFeeCurrency: parsed.underfloorHeatingFeeCurrency,
     extraBedFee: parsed.extraBedFee,
     extraBedFeeCurrency: parsed.extraBedFeeCurrency,
+    poolHeatingPrivateFee: parsed.poolHeatingPrivateFee,
+    poolHeatingPrivateFeeCurrency: parsed.poolHeatingPrivateFeeCurrency,
+    poolHeatingIndoorFee: parsed.poolHeatingIndoorFee,
+    poolHeatingIndoorFeeCurrency: parsed.poolHeatingIndoorFeeCurrency,
+    poolHeatingKidsFee: parsed.poolHeatingKidsFee,
+    poolHeatingKidsFeeCurrency: parsed.poolHeatingKidsFeeCurrency,
     discount1Rate: parsed.discount1Rate,
     discount2Rate: parsed.discount2Rate,
     extraDiscountAmount: parsed.extraDiscountAmount,
@@ -369,6 +405,12 @@ function buildPricingOnlyPeriodData(
     underfloorHeatingFeeCurrency: parsed.underfloorHeatingFeeCurrency,
     extraBedFee: parsed.extraBedFee,
     extraBedFeeCurrency: parsed.extraBedFeeCurrency,
+    poolHeatingPrivateFee: parsed.poolHeatingPrivateFee,
+    poolHeatingPrivateFeeCurrency: parsed.poolHeatingPrivateFeeCurrency,
+    poolHeatingIndoorFee: parsed.poolHeatingIndoorFee,
+    poolHeatingIndoorFeeCurrency: parsed.poolHeatingIndoorFeeCurrency,
+    poolHeatingKidsFee: parsed.poolHeatingKidsFee,
+    poolHeatingKidsFeeCurrency: parsed.poolHeatingKidsFeeCurrency,
     discount1Rate: existingDiscounts.discount1Rate,
     discount2Rate: existingDiscounts.discount2Rate,
     extraDiscountAmount: existingDiscounts.extraDiscountAmount,
@@ -406,6 +448,12 @@ function buildDiscountOnlyPeriodData(
     underfloorHeatingFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
     extraBedFee: number | null;
     extraBedFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
+    poolHeatingPrivateFee: number | null;
+    poolHeatingPrivateFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
+    poolHeatingIndoorFee: number | null;
+    poolHeatingIndoorFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
+    poolHeatingKidsFee: number | null;
+    poolHeatingKidsFeeCurrency: "TL" | "EUR" | "USD" | "GBP";
     weekendPrice: number | null;
     weekendDays: number[];
     weekendMinStayNights: number | null;
@@ -448,6 +496,12 @@ function buildDiscountOnlyPeriodData(
     underfloorHeatingFeeCurrency: existingPeriod.underfloorHeatingFeeCurrency,
     extraBedFee: existingPeriod.extraBedFee,
     extraBedFeeCurrency: existingPeriod.extraBedFeeCurrency,
+    poolHeatingPrivateFee: existingPeriod.poolHeatingPrivateFee,
+    poolHeatingPrivateFeeCurrency: existingPeriod.poolHeatingPrivateFeeCurrency,
+    poolHeatingIndoorFee: existingPeriod.poolHeatingIndoorFee,
+    poolHeatingIndoorFeeCurrency: existingPeriod.poolHeatingIndoorFeeCurrency,
+    poolHeatingKidsFee: existingPeriod.poolHeatingKidsFee,
+    poolHeatingKidsFeeCurrency: existingPeriod.poolHeatingKidsFeeCurrency,
     discount1Rate: parsed.discount1Rate,
     discount2Rate: parsed.discount2Rate,
     extraDiscountAmount: parsed.extraDiscountAmount,

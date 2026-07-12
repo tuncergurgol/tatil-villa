@@ -67,6 +67,7 @@ export default async function VillaDetailPage({ params }: PageProps) {
       villa={villa}
       similarVillas={similarVillas}
       companyPhone={company.phone || company.whatsapp || ""}
+      brandName={company.brandName?.trim() || undefined}
       faqs={(detailFaqs.length > 0 ? detailFaqs : faqs.slice(0, 8)).map(
         (faq) => ({
           id: faq.id,

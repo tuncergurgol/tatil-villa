@@ -56,6 +56,12 @@ export type MappedVillaPricePeriod = {
   underfloorHeatingFeeCurrency: VillaPeriodCurrency;
   extraBedFee: number | null;
   extraBedFeeCurrency: VillaPeriodCurrency;
+  poolHeatingPrivateFee: number | null;
+  poolHeatingPrivateFeeCurrency: VillaPeriodCurrency;
+  poolHeatingIndoorFee: number | null;
+  poolHeatingIndoorFeeCurrency: VillaPeriodCurrency;
+  poolHeatingKidsFee: number | null;
+  poolHeatingKidsFeeCurrency: VillaPeriodCurrency;
   discount1Rate: number | null;
   discount2Rate: number | null;
   extraDiscountAmount: number | null;
@@ -195,6 +201,12 @@ export function mapTatildeyizPeriod(
     ),
     extraBedFee: positiveInt(period.ekYatakUcreti),
     extraBedFeeCurrency: mapCurrency(null, period.ekYatakUcretiCurrencyId),
+    poolHeatingPrivateFee: null,
+    poolHeatingPrivateFeeCurrency: "TL" as const,
+    poolHeatingIndoorFee: null,
+    poolHeatingIndoorFeeCurrency: "TL" as const,
+    poolHeatingKidsFee: null,
+    poolHeatingKidsFeeCurrency: "TL" as const,
     discount1Rate: discountRates.discount1Rate,
     discount2Rate: discountRates.discount2Rate,
     extraDiscountAmount: discountRates.extraDiscountAmount,
@@ -304,6 +316,12 @@ export function buildDaySnapshotForDate(
     underfloorHeatingFeeCurrency: period.underfloorHeatingFeeCurrency,
     extraBedFee: period.extraBedFee,
     extraBedFeeCurrency: period.extraBedFeeCurrency,
+    poolHeatingPrivateFee: period.poolHeatingPrivateFee ?? null,
+    poolHeatingPrivateFeeCurrency: period.poolHeatingPrivateFeeCurrency ?? "TL",
+    poolHeatingIndoorFee: period.poolHeatingIndoorFee ?? null,
+    poolHeatingIndoorFeeCurrency: period.poolHeatingIndoorFeeCurrency ?? "TL",
+    poolHeatingKidsFee: period.poolHeatingKidsFee ?? null,
+    poolHeatingKidsFeeCurrency: period.poolHeatingKidsFeeCurrency ?? "TL",
     discount1Rate: period.discount1Rate,
     discount2Rate: period.discount2Rate,
     extraDiscountAmount: period.extraDiscountAmount,

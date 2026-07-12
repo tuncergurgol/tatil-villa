@@ -41,6 +41,7 @@ type VillaDetailViewProps = {
   faqs: FaqItem[];
   similarVillas?: SimilarVillaCard[];
   companyPhone?: string;
+  brandName?: string;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,7 @@ export default function VillaDetailView({
   faqs,
   similarVillas = [],
   companyPhone,
+  brandName,
 }: VillaDetailViewProps) {
   const featuredAmenityItems =
     villa.amenityGroups.find((group) =>
@@ -555,6 +557,15 @@ export default function VillaDetailView({
               maxGuests={villa.guests + villa.extraCapacity}
               pricePerNight={villa.pricePerNight}
               companyPhone={companyPhone}
+              brandName={brandName}
+              villaSummary={{
+                name: villa.name,
+                code: villa.villaCode || villa.name,
+                image: villa.image,
+                guests: villa.guests,
+                bedrooms: villa.bedrooms,
+                bathrooms: villa.bathrooms,
+              }}
               calendarDays={villa.calendarDays}
             />
           </aside>
