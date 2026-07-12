@@ -57,6 +57,7 @@ import {
 interface BookingFormProps {
   villaId: string;
   maxGuests: number;
+  baseCapacity: number;
   pricePerNight: number | null;
   companyPhone?: string;
   brandName?: string;
@@ -129,6 +130,7 @@ function guestSummary(
 export default function BookingForm({
   villaId,
   maxGuests,
+  baseCapacity,
   pricePerNight,
   companyPhone = "",
   brandName = "Wings Tatil",
@@ -193,9 +195,22 @@ export default function BookingForm({
       quote,
       periodFees,
       guests.pets,
-      feeSelections
+      feeSelections,
+      {
+        adults: guests.adults,
+        children: guests.children,
+        baseCapacity,
+      }
     );
-  }, [quote, periodFees, guests.pets, feeSelections]);
+  }, [
+    quote,
+    periodFees,
+    guests.pets,
+    guests.adults,
+    guests.children,
+    feeSelections,
+    baseCapacity,
+  ]);
 
   useEffect(() => {
     setFeeSelections({});
@@ -591,6 +606,9 @@ export default function BookingForm({
           quote={quote}
           fees={periodFees}
           pets={allowPets ? guests.pets : 0}
+          adults={guests.adults}
+          children={guests.children}
+          baseCapacity={baseCapacity}
           selections={feeSelections}
           onSelectionChange={(key, value) =>
             setFeeSelections((prev) => ({ ...prev, [key]: value }))

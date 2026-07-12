@@ -555,6 +555,7 @@ export default function VillaDetailView({
             <BookingForm
               villaId={villa.id}
               maxGuests={villa.guests + villa.extraCapacity}
+              baseCapacity={villa.guests}
               pricePerNight={villa.pricePerNight}
               companyPhone={companyPhone}
               brandName={brandName}

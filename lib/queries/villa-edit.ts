@@ -60,6 +60,11 @@ export async function getVillaEditPageData(
     prisma.villaPool.findMany({
       where: { villaId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      include: {
+        periods: {
+          orderBy: { startDate: "asc" },
+        },
+      },
     }),
     getAmenitiesForVillaForm(),
     getFacilityCategoriesForPicker(),

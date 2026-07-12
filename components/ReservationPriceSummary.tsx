@@ -3,11 +3,16 @@
 import type { StayQuote } from "@/lib/stay-quote";
 import PriceInfoTip from "@/components/PriceInfoTip";
 import {
-  STAY_EXTRA_BED_OPTION,
   STAY_OPTIONAL_FEE_OPTIONS,
+  STAY_PER_NIGHT_FEE_KEYS,
   computeStayExtrasTotal,
+  formatExtraBedFeeBreakdown,
   positiveFee,
+  resolveExtraBedFeeAmount,
+  resolveOptionalFeeAmount,
+  resolveOverCapacityGuests,
   type StayFeeSelections,
+  type StayOptionalFeeKey,
   type StayPeriodFees,
 } from "@/lib/stay-period-fees";
 
@@ -32,6 +37,9 @@ type ReservationPriceSummaryProps = {
   quote: StayQuote | null;
   fees?: StayPeriodFees | null;
   pets?: number;
+  adults?: number;
+  children?: number;
+  baseCapacity?: number;
   selections?: StayFeeSelections;
   onSelectionChange?: (key: keyof StayFeeSelections, value: boolean) => void;
   className?: string;
@@ -42,19 +50,26 @@ function FeeRow({
   amount,
   currency,
   tip,
+  breakdown,
 }: {
   label: string;
   amount: number;
   currency: string;
   tip?: React.ReactNode;
+  breakdown?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="inline-flex items-center gap-1.5 text-slate-600">
-        {label}
-        {tip}
+    <div className="flex items-start justify-between gap-3">
+      <span className="inline-flex min-w-0 flex-col gap-0.5 text-slate-600">
+        <span className="inline-flex items-center gap-1.5">
+          {label}
+          {tip}
+        </span>
+        {breakdown ? (
+          <span className="text-[11px] text-slate-500">{breakdown}</span>
+        ) : null}
       </span>
-      <span className="font-semibold text-slate-900">
+      <span className="shrink-0 font-semibold text-slate-900">
         {formatMoneyTl(amount, currency)}
       </span>
     </div>
@@ -64,6 +79,7 @@ function FeeRow({
 function SelectableFeeRow({
   label,
   amount,
+  unitHint,
   currency,
   checked,
   disabled,
@@ -71,6 +87,7 @@ function SelectableFeeRow({
 }: {
   label: string;
   amount: number;
+  unitHint?: string;
   currency: string;
   checked: boolean;
   disabled?: boolean;
@@ -84,21 +101,40 @@ function SelectableFeeRow({
           : "border-slate-200 bg-white hover:border-slate-300"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
     >
-      <span className="inline-flex items-center gap-2 text-slate-700">
-        <input
-          type="checkbox"
-          checked={checked}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-        />
-        {label}
+      <span className="inline-flex min-w-0 flex-col gap-0.5 text-slate-700">
+        <span className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.checked)}
+            className="h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+          />
+          <span>{label}</span>
+        </span>
+        {unitHint ? (
+          <span className="pl-6 text-[11px] text-slate-500">{unitHint}</span>
+        ) : null}
       </span>
-      <span className="font-semibold text-slate-900">
+      <span className="shrink-0 font-semibold text-slate-900">
         {formatMoneyTl(amount, currency)}
       </span>
     </label>
   );
+}
+
+function emptyFeesFromQuote(quote: StayQuote): StayPeriodFees {
+  return {
+    cleaningFee: quote.cleaningFee,
+    damageDeposit: null,
+    petCleaningFee: null,
+    petDamageDeposit: null,
+    underfloorHeatingFee: null,
+    extraBedFee: null,
+    poolHeatingPrivateFee: null,
+    poolHeatingIndoorFee: null,
+    poolHeatingKidsFee: null,
+  };
 }
 
 /** Public + admin ortak rezervasyon hesaplama özeti */
@@ -106,6 +142,9 @@ export default function ReservationPriceSummary({
   quote,
   fees = null,
   pets = 0,
+  adults = 2,
+  children = 0,
+  baseCapacity = 0,
   selections = {},
   onSelectionChange,
   className = "",
@@ -136,20 +175,26 @@ export default function ReservationPriceSummary({
   }
 
   const currency = quote.currency;
-  const periodFees = fees ?? {
-    cleaningFee: quote.cleaningFee,
-    damageDeposit: null,
-    petCleaningFee: null,
-    petDamageDeposit: null,
-    underfloorHeatingFee: null,
-    extraBedFee: null,
-    poolHeatingPrivateFee: null,
-    poolHeatingIndoorFee: null,
-    poolHeatingKidsFee: null,
-  };
+  const nights = quote.nights;
+  const periodFees = fees ?? emptyFeesFromQuote(quote);
+  const overCapacityGuests = resolveOverCapacityGuests(
+    adults,
+    children,
+    baseCapacity
+  );
+  const extraBedUnit = positiveFee(periodFees.extraBedFee);
+  const extraBedTotal = resolveExtraBedFeeAmount({
+    overCapacityGuests,
+    nights,
+    unitFee: extraBedUnit,
+  });
 
   const extrasTotal = computeStayExtrasTotal({
     pets,
+    nights,
+    adults,
+    children,
+    baseCapacity,
     fees: periodFees,
     selections,
   });
@@ -168,10 +213,9 @@ export default function ReservationPriceSummary({
   const petDamageDeposit =
     pets > 0 ? positiveFee(periodFees.petDamageDeposit) : 0;
 
-  const selectableOptions = [
-    ...STAY_OPTIONAL_FEE_OPTIONS,
-    ...(positiveFee(periodFees.extraBedFee) > 0 ? [STAY_EXTRA_BED_OPTION] : []),
-  ].filter((option) => positiveFee(periodFees[option.key]) > 0);
+  const selectableOptions = STAY_OPTIONAL_FEE_OPTIONS.filter(
+    (option) => positiveFee(periodFees[option.key]) > 0
+  );
 
   return (
     <div
@@ -184,7 +228,7 @@ export default function ReservationPriceSummary({
       <div className="mt-3 space-y-2">
         <div className="flex items-center justify-between gap-3">
           <span className="inline-flex items-center gap-1.5 text-slate-600">
-            Konaklama ({quote.nights} Gece)
+            Konaklama ({nights} Gece)
             <PriceInfoTip label="Gecelik fiyat kırılımı">
               <span className="block space-y-1 text-left">
                 {quote.nightLines.map((line) => (
@@ -235,61 +279,47 @@ export default function ReservationPriceSummary({
           />
         ) : null}
 
-        {damageDeposit > 0 ? (
-          <FeeRow
-            label="Hasar Depozitosu"
-            amount={damageDeposit}
-            currency={currency}
-            tip={
-              <PriceInfoTip label="Hasar depozitosu">
-                <span className="block">
-                  Girişte alınır, hasar yoksa iade edilir.
-                  <br />
-                  Toplam konaklama bedeline dahil değildir.
-                </span>
-              </PriceInfoTip>
-            }
-          />
-        ) : null}
+        {selectableOptions.map((option) => {
+          const unit = positiveFee(periodFees[option.key]);
+          const amount = resolveOptionalFeeAmount(
+            option.key as StayOptionalFeeKey,
+            unit,
+            nights
+          );
+          const perNight = STAY_PER_NIGHT_FEE_KEYS.has(
+            option.key as StayOptionalFeeKey
+          );
+          return (
+            <SelectableFeeRow
+              key={option.key}
+              label={option.label}
+              amount={amount}
+              unitHint={
+                perNight
+                  ? `${formatMoneyTl(unit, currency)} × ${nights} gece`
+                  : undefined
+              }
+              currency={currency}
+              checked={Boolean(selections[option.key])}
+              onChange={(value) => onSelectionChange?.(option.key, value)}
+            />
+          );
+        })}
 
-        {petDamageDeposit > 0 ? (
+        {extraBedTotal > 0 ? (
           <FeeRow
-            label="Evcil Hayvan Hasar Depozitosu"
-            amount={petDamageDeposit}
+            label="Ek Yatak Ücreti"
+            amount={extraBedTotal}
             currency={currency}
-            tip={
-              <PriceInfoTip label="Evcil hayvan hasar depozitosu">
-                <span className="block">
-                  Evcil hayvanlı konaklamalarda alınır.
-                  <br />
-                  Toplam konaklama bedeline dahil değildir.
-                </span>
-              </PriceInfoTip>
-            }
+            breakdown={formatExtraBedFeeBreakdown({
+              overCapacityGuests,
+              nights,
+              unitFee: extraBedUnit,
+              currency,
+            })}
           />
         ) : null}
       </div>
-
-      {selectableOptions.length > 0 ? (
-        <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Ek Hizmetler
-          </p>
-          {selectableOptions.map((option) => {
-            const amount = positiveFee(periodFees[option.key]);
-            return (
-              <SelectableFeeRow
-                key={option.key}
-                label={option.label}
-                amount={amount}
-                currency={currency}
-                checked={Boolean(selections[option.key])}
-                onChange={(value) => onSelectionChange?.(option.key, value)}
-              />
-            );
-          })}
-        </div>
-      ) : null}
 
       <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
         <div className="flex items-center justify-between gap-3 font-bold text-slate-900">
@@ -304,11 +334,27 @@ export default function ReservationPriceSummary({
           <span>Girişte Ödeme</span>
           <span>{formatMoneyTl(checkInPayment, currency)}</span>
         </div>
+
+        {damageDeposit > 0 ? (
+          <p className="pt-2 text-xs leading-relaxed text-slate-600">
+            <span className="font-medium text-slate-700">Hasar Depozitosu:</span>{" "}
+            {formatMoneyTl(damageDeposit, currency)}
+          </p>
+        ) : null}
+
+        {petDamageDeposit > 0 ? (
+          <p className="text-xs leading-relaxed text-slate-600">
+            <span className="font-medium text-slate-700">
+              Evcil Hayvan Hasar Depozitosu:
+            </span>{" "}
+            {formatMoneyTl(petDamageDeposit, currency)}
+          </p>
+        ) : null}
+
         {damageDeposit + petDamageDeposit > 0 ? (
-          <p className="pt-1 text-[11px] text-slate-500">
-            Depozito girişi:{" "}
-            {formatMoneyTl(damageDeposit + petDamageDeposit, currency)} (toplama
-            dahil değil)
+          <p className="pt-1 text-[11px] leading-relaxed text-slate-500">
+            Girişte alınır, çıkış kontrolünde hasar yoksa iade edilir. Toplama
+            dahil değildir.
           </p>
         ) : null}
       </div>
@@ -320,26 +366,28 @@ export function getReservationGrandTotal(
   quote: StayQuote,
   fees: StayPeriodFees | null | undefined,
   pets: number,
-  selections: StayFeeSelections
+  selections: StayFeeSelections,
+  options?: {
+    adults?: number;
+    children?: number;
+    baseCapacity?: number;
+  }
 ): {
   extrasTotal: number;
   grandTotal: number;
   prepaymentAmount: number;
   checkInPayment: number;
 } {
-  const periodFees = fees ?? {
-    cleaningFee: quote.cleaningFee,
-    damageDeposit: null,
-    petCleaningFee: null,
-    petDamageDeposit: null,
-    underfloorHeatingFee: null,
-    extraBedFee: null,
-    poolHeatingPrivateFee: null,
-    poolHeatingIndoorFee: null,
-    poolHeatingKidsFee: null,
-  };
+  const periodFees = fees ?? emptyFeesFromQuote(quote);
+  const adults = options?.adults ?? 2;
+  const children = options?.children ?? 0;
+  const baseCapacity = options?.baseCapacity ?? 0;
   const extrasTotal = computeStayExtrasTotal({
     pets,
+    nights: quote.nights,
+    adults,
+    children,
+    baseCapacity,
     fees: periodFees,
     selections,
   });

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { Villa, VillaOwner, VillaPool } from "@prisma/client";
+import type { Villa, VillaOwner } from "@prisma/client";
 import { ExternalLink, Save } from "lucide-react";
 import {
   updateVillaFeatures,
@@ -24,6 +24,7 @@ import VillaLocationTab from "@/components/admin/villas/VillaLocationTab";
 import VillaMetaSeoTab from "@/components/admin/villas/VillaMetaSeoTab";
 import VillaPersonelTab from "@/components/admin/villas/VillaPersonelTab";
 import VillaRulesTab from "@/components/admin/villas/VillaRulesTab";
+import type { VillaPoolWithPeriods } from "@/components/admin/villas/VillaPoolManager";
 import type { AmenityCategoryItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
 import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
@@ -56,7 +57,7 @@ type TabId = (typeof tabs)[number]["id"];
 
 interface VillaEditFormProps {
   villa: Villa & { owner: VillaOwner | null };
-  pools: VillaPool[];
+  pools: VillaPoolWithPeriods[];
   amenityCategories: AmenityCategoryItem[];
   facilityCategories: FacilityCategoryOption[];
   priceInclusionItems: PriceInclusionItem[];

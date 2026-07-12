@@ -1,12 +1,14 @@
 "use client";
 
 import { useRef } from "react";
-import type { Villa, VillaPool } from "@prisma/client";
+import type { Villa } from "@prisma/client";
 import { Sparkles } from "lucide-react";
 import VillaFeaturesPicker, {
   type VillaFeaturesPickerHandle,
 } from "@/components/admin/amenities/VillaFeaturesPicker";
-import VillaPoolManager from "@/components/admin/villas/VillaPoolManager";
+import VillaPoolManager, {
+  type VillaPoolWithPeriods,
+} from "@/components/admin/villas/VillaPoolManager";
 import VillaPriceInclusionPicker, {
   type VillaPriceInclusionPickerHandle,
 } from "@/components/admin/villas/VillaPriceInclusionPicker";
@@ -19,7 +21,7 @@ import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
 
 interface VillaFeaturesTabProps {
   villa: Villa;
-  pools: VillaPool[];
+  pools: VillaPoolWithPeriods[];
   amenityCategories: AmenityCategoryItem[];
   facilityCategories: FacilityCategoryOption[];
   priceInclusionItems: PriceInclusionItem[];

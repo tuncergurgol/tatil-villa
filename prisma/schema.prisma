@@ -505,23 +505,41 @@ model VillaPricePeriodDay {
 }
 
 model VillaPool {
-  id                 String          @id @default(cuid())
+  id                 String           @id @default(cuid())
   villaId            String
-  villa              Villa           @relation(fields: [villaId], references: [id], onDelete: Cascade)
-  measureUnit        PoolMeasureUnit @default(M)
+  villa              Villa            @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  measureUnit        PoolMeasureUnit  @default(M)
   width              Float?
   length             Float?
   depth              Float?
-  poolType           String          @default("")
-  purificationMethod String          @default("")
-  heated             Boolean         @default(false)
-  conservative       Boolean         @default(false)
-  sortOrder          Int             @default(0)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  poolType           String           @default("")
+  purificationMethod String           @default("")
+  heated             Boolean          @default(false)
+  conservative       Boolean          @default(false)
+  sortOrder          Int              @default(0)
+  periods            VillaPoolPeriod[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@index([villaId])
   @@index([sortOrder])
+}
+
+model VillaPoolPeriod {
+  id                 String              @id @default(cuid())
+  poolId             String
+  pool               VillaPool           @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  name               String              @default("")
+  startDate          DateTime            @db.Date
+  endDate            DateTime            @db.Date
+  heatingFee         Int?
+  heatingFeeCurrency VillaPeriodCurrency @default(TL)
+  poolOpen           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([poolId])
+  @@index([poolId, startDate, endDate])
 }
 
 model Campaign {

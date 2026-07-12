@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { PoolMeasureUnit, VillaPool } from "@prisma/client";
-import { Pencil, Plus, Waves, X } from "lucide-react";
+import { CalendarRange, Pencil, Plus, Waves, X } from "lucide-react";
 import {
   createVillaPool,
   deleteVillaPool,
@@ -12,10 +12,17 @@ import {
   poolPurificationOptions,
   poolTypeOptions,
 } from "@/lib/villa-pool-options";
+import VillaPoolPeriodsModal, {
+  type PoolPeriodItem,
+} from "@/components/admin/villas/VillaPoolPeriodsModal";
+
+export type VillaPoolWithPeriods = VillaPool & {
+  periods: PoolPeriodItem[];
+};
 
 interface VillaPoolManagerProps {
   villaId: string;
-  pools: VillaPool[];
+  pools: VillaPoolWithPeriods[];
 }
 
 type EditorMode = "create" | "edit";
@@ -113,6 +120,11 @@ export default function VillaPoolManager({
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [periodsPoolId, setPeriodsPoolId] = useState<string | null>(null);
+
+  const periodsPool = periodsPoolId
+    ? pools.find((pool) => pool.id === periodsPoolId) ?? null
+    : null;
 
   function openCreate() {
     setError(null);
@@ -175,6 +187,7 @@ export default function VillaPoolManager({
   function handleDelete(poolId: string) {
     if (!window.confirm("Bu havuz kaydını silmek istiyor musunuz?")) return;
     if (editor?.poolId === poolId) closeEditor();
+    if (periodsPoolId === poolId) setPeriodsPoolId(null);
 
     startTransition(async () => {
       await deleteVillaPool(poolId, villaId);
@@ -207,6 +220,7 @@ export default function VillaPoolManager({
 
       {pools.map((pool) => {
         const isActive = editor?.mode === "edit" && editor.poolId === pool.id;
+        const periodsEnabled = pool.heated;
 
         return (
           <div key={pool.id} className="space-y-3">
@@ -246,6 +260,24 @@ export default function VillaPoolManager({
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPeriodsPoolId(pool.id)}
+                  disabled={!periodsEnabled || isPending}
+                  title={
+                    periodsEnabled
+                      ? "Havuz periyotlarını yönet"
+                      : "Isıtma işaretli değil"
+                  }
+                  className={`${buttonClass} inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                    periodsEnabled
+                      ? "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                      : "border-gray-200 bg-gray-50 text-gray-400"
+                  }`}
+                >
+                  <CalendarRange className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Havuz Periyotları</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => openEdit(pool)}
@@ -293,6 +325,17 @@ export default function VillaPoolManager({
           onClose={closeEditor}
           onSave={handleSave}
           onUpdate={updateEditor}
+        />
+      ) : null}
+
+      {periodsPool ? (
+        <VillaPoolPeriodsModal
+          open
+          villaId={villaId}
+          poolId={periodsPool.id}
+          poolLabel={periodsPool.poolType || "Havuz"}
+          periods={periodsPool.periods}
+          onClose={() => setPeriodsPoolId(null)}
         />
       ) : null}
     </div>
