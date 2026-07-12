@@ -49,6 +49,18 @@ export async function getVillaDetailBySlug(slug: string) {
       },
       pools: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        include: {
+          periods: {
+            orderBy: { startDate: "asc" },
+            select: {
+              startDate: true,
+              endDate: true,
+              heatingFee: true,
+              heatingFeeCurrency: true,
+              poolOpen: true,
+            },
+          },
+        },
       },
       surroundingDistances: {
         include: {
@@ -287,6 +299,13 @@ export async function getVillaDetailBySlug(slug: string) {
       heated: pool.heated,
       conservative: pool.conservative,
       purificationMethod: pool.purificationMethod,
+      periods: pool.periods.map((period) => ({
+        startDate: dbDateToDateKey(period.startDate),
+        endDate: dbDateToDateKey(period.endDate),
+        heatingFee: period.heatingFee,
+        heatingFeeCurrency: period.heatingFeeCurrency,
+        poolOpen: period.poolOpen,
+      })),
     })),
     distances: Array.from(distancesByCategory.entries())
       .map(([category, items]) => ({

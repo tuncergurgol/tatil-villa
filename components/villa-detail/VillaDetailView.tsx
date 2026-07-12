@@ -559,6 +559,13 @@ export default function VillaDetailView({
               pricePerNight={villa.pricePerNight}
               companyPhone={companyPhone}
               brandName={brandName}
+              heatedPools={villa.pools
+                .filter((pool) => pool.heated)
+                .map((pool) => ({
+                  id: pool.id,
+                  name: pool.poolType || "Havuz",
+                  periods: pool.periods ?? [],
+                }))}
               villaSummary={{
                 name: villa.name,
                 code: villa.villaCode || villa.name,

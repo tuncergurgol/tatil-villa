@@ -181,7 +181,9 @@ export default function PreReservationModal({
       return;
     }
     if (!acceptTerms) {
-      setLocalError("Devam etmek için sözleşmeleri onaylamanız gerekir.");
+      setLocalError(
+        "Devam etmek için Aydınlatma Metni, Rezervasyon Sözleşmesi ve Üyelik Sözleşmesi’ni onaylamanız gerekir."
+      );
       return;
     }
 
@@ -222,10 +224,7 @@ export default function PreReservationModal({
                 />
               ) : null}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-4 pb-3 pt-10 text-white">
-                <p className="text-xs text-white/80">Villa kodu</p>
-                <p className="text-lg font-bold tracking-wide">
-                  {villa.code || villa.name}
-                </p>
+                <p className="text-lg font-bold tracking-wide">{villa.name}</p>
                 <p className="mt-0.5 text-xs text-white/85">{guestLine}</p>
               </div>
             </div>
@@ -276,16 +275,16 @@ export default function PreReservationModal({
           <div className="space-y-3 rounded-2xl bg-white p-3 shadow-lg sm:p-4">
             <div className="grid gap-2.5 sm:grid-cols-2">
               <RadioCard
-                selected={paymentMethod === "card"}
-                onSelect={() => setPaymentMethod("card")}
-                title="Kredi Kartı ile Ödeme"
-                description="Bu rezervasyonun ödemesini kredi kartı ile gerçekleştirmek istiyorum."
-              />
-              <RadioCard
                 selected={paymentMethod === "transfer"}
                 onSelect={() => setPaymentMethod("transfer")}
                 title="Havale ya da EFT ile Ödeme"
                 description="Bu rezervasyonun ödemesini havale ya da EFT ile gerçekleştirmek istiyorum."
+              />
+              <RadioCard
+                selected={paymentMethod === "card"}
+                onSelect={() => setPaymentMethod("card")}
+                title="Kredi Kartı ile Ödeme"
+                description="Bu rezervasyonun ödemesini kredi kartı ile gerçekleştirmek istiyorum."
               />
             </div>
             <div className="grid gap-2.5 sm:grid-cols-2">
@@ -359,8 +358,13 @@ export default function PreReservationModal({
                 <input
                   type="checkbox"
                   checked={acceptTerms}
-                  onChange={(event) => setAcceptTerms(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  onChange={(event) => {
+                    setAcceptTerms(event.target.checked);
+                    if (event.target.checked) setLocalError(null);
+                  }}
+                  required
+                  aria-required="true"
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer appearance-auto rounded border border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500"
                 />
                 <span>
                   <Link
@@ -397,7 +401,7 @@ export default function PreReservationModal({
                   onChange={(event) =>
                     setAcceptMarketing(event.target.checked)
                   }
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer appearance-auto rounded border border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500"
                 />
                 <span>
                   {brandName} tarafından haber ve kampanyalardan haberdar
@@ -414,7 +418,10 @@ export default function PreReservationModal({
             </div>
 
             {(localError || error) && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p
+                role="alert"
+                className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
                 {localError || error}
               </p>
             )}

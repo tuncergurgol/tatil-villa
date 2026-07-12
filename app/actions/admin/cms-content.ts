@@ -188,6 +188,7 @@ const blogPostSchema = z.object({
   seoDescription: z.string().optional(),
   seoKeywords: z.string().optional(),
   published: z.boolean().optional(),
+  publishedAt: z.string().optional(),
   sortOrder: z.coerce.number().int().optional(),
 });
 
@@ -196,6 +197,7 @@ export async function saveBlogPostAction(
   formData: FormData
 ): Promise<CmsActionState> {
   await requireAdmin();
+  const publishedAtRaw = String(formData.get("publishedAt") ?? "").trim();
   const parsed = blogPostSchema.safeParse({
     title: formData.get("title"),
     slug: formData.get("slug"),
@@ -208,14 +210,37 @@ export async function saveBlogPostAction(
     seoDescription: formData.get("seoDescription") ?? "",
     seoKeywords: formData.get("seoKeywords") ?? "",
     published: formData.get("published") === "on",
+    publishedAt: publishedAtRaw || undefined,
     sortOrder: formData.get("sortOrder") ?? 0,
   });
   if (!parsed.success) return { error: "Geçersiz blog yazısı" };
 
+  const publishedAtFromForm = publishedAtRaw
+    ? new Date(publishedAtRaw)
+    : null;
+  const hasValidPublishedAt =
+    publishedAtFromForm != null && !Number.isNaN(publishedAtFromForm.getTime());
+
+  const published = Boolean(parsed.data.published) || hasValidPublishedAt;
+
   const data = {
-    ...parsed.data,
+    title: parsed.data.title,
+    slug: parsed.data.slug,
+    excerpt: parsed.data.excerpt ?? "",
+    content: parsed.data.content,
+    coverImage: parsed.data.coverImage ?? "",
+    authorName: parsed.data.authorName ?? "Tatildeyiz",
     categoryId: parsed.data.categoryId || null,
-    publishedAt: parsed.data.published ? new Date() : null,
+    seoTitle: parsed.data.seoTitle ?? "",
+    seoDescription: parsed.data.seoDescription ?? "",
+    seoKeywords: parsed.data.seoKeywords ?? "",
+    published,
+    sortOrder: parsed.data.sortOrder ?? 0,
+    publishedAt: published
+      ? hasValidPublishedAt
+        ? publishedAtFromForm
+        : new Date()
+      : null,
   };
 
   if (id) {
@@ -224,10 +249,11 @@ export async function saveBlogPostAction(
       where: { id },
       data: {
         ...data,
-        publishedAt:
-          parsed.data.published && !existing?.publishedAt
-            ? new Date()
-            : existing?.publishedAt,
+        publishedAt: published
+          ? hasValidPublishedAt
+            ? publishedAtFromForm
+            : existing?.publishedAt ?? new Date()
+          : null,
       },
     });
   } else {
@@ -360,4 +386,98 @@ export async function deleteSiteMenuItemAction(id: string): Promise<CmsActionSta
   await prisma.siteMenuItem.delete({ where: { id } });
   revalidateCmsPaths();
   return { success: true };
+}
+
+const KNOWN_MODULE_KEYS = new Set([
+  "sss",
+  "blog",
+  "yorumlar",
+  "kurumsal",
+  "menuler",
+  "kampanyalar",
+  "custom",
+]);
+
+const contentTabSchema = z.object({
+  name: z.string().min(2, "Sekme adı gerekli"),
+  sortOrder: z.coerce.number().int(),
+  active: z.boolean(),
+  moduleKey: z.string().optional(),
+});
+
+async function uniqueContentTabKey(base: string, excludeId?: string) {
+  let key = slugifyTurkish(base) || `sekme-${Date.now()}`;
+  let attempt = 0;
+  while (attempt < 20) {
+    const candidate = attempt === 0 ? key : `${key}-${attempt + 1}`;
+    const existing = await prisma.cmsContentTab.findUnique({
+      where: { key: candidate },
+      select: { id: true },
+    });
+    if (!existing || existing.id === excludeId) return candidate;
+    attempt += 1;
+  }
+  return `${key}-${Date.now()}`;
+}
+
+export async function saveCmsContentTabAction(
+  id: string | null,
+  formData: FormData
+): Promise<CmsActionState> {
+  await requireAdmin();
+
+  const parsed = contentTabSchema.safeParse({
+    name: formData.get("name"),
+    sortOrder: formData.get("sortOrder") ?? 0,
+    active:
+      formData.get("active") === "true" || formData.get("active") === "on",
+    moduleKey: String(formData.get("moduleKey") ?? "").trim() || undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: "Geçersiz sekme bilgisi" };
+  }
+
+  const name = parsed.data.name.trim();
+  const moduleKeyRaw = parsed.data.moduleKey ?? "custom";
+  const moduleKey = KNOWN_MODULE_KEYS.has(moduleKeyRaw)
+    ? moduleKeyRaw
+    : "custom";
+
+  try {
+    if (id) {
+      const existing = await prisma.cmsContentTab.findUnique({
+        where: { id },
+        select: { id: true, key: true },
+      });
+      if (!existing) return { error: "Sekme bulunamadı" };
+
+      await prisma.cmsContentTab.update({
+        where: { id },
+        data: {
+          name,
+          sortOrder: parsed.data.sortOrder,
+          active: parsed.data.active,
+          moduleKey,
+        },
+      });
+    } else {
+      const key = await uniqueContentTabKey(name);
+      await prisma.cmsContentTab.create({
+        data: {
+          key,
+          name,
+          sortOrder: parsed.data.sortOrder,
+          active: parsed.data.active,
+          moduleKey,
+        },
+      });
+    }
+
+    revalidateCmsPaths();
+    return { success: true, message: "Sekme kaydedildi" };
+  } catch (error) {
+    console.error("saveCmsContentTabAction", error);
+    return { error: "Sekme kaydedilemedi" };
+  }
 }

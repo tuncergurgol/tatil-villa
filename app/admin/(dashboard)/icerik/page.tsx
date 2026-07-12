@@ -5,6 +5,7 @@ import {
   getAllCmsPagesForAdmin,
   getAllFaqsForAdmin,
   getAllReviewsForAdmin,
+  getCmsContentTabsForAdmin,
 } from "@/lib/queries/cms-content";
 import { getAllSiteMenusForAdmin } from "@/lib/queries/site-menus";
 import { getAllCampaigns } from "@/lib/queries/campaigns";
@@ -17,20 +18,30 @@ export default async function ContentHubPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
-  const [faqs, blogCategories, blogPosts, reviews, pages, menus, campaigns] =
-    await Promise.all([
-      getAllFaqsForAdmin(),
-      getAllBlogCategoriesForAdmin(),
-      getAllBlogPostsForAdmin(),
-      getAllReviewsForAdmin(),
-      getAllCmsPagesForAdmin(),
-      getAllSiteMenusForAdmin(),
-      getAllCampaigns(),
-    ]);
+  const [
+    contentTabs,
+    faqs,
+    blogCategories,
+    blogPosts,
+    reviews,
+    pages,
+    menus,
+    campaigns,
+  ] = await Promise.all([
+    getCmsContentTabsForAdmin(),
+    getAllFaqsForAdmin(),
+    getAllBlogCategoriesForAdmin(),
+    getAllBlogPostsForAdmin(),
+    getAllReviewsForAdmin(),
+    getAllCmsPagesForAdmin(),
+    getAllSiteMenusForAdmin(),
+    getAllCampaigns(),
+  ]);
 
   return (
     <ContentManagement
       initialTab={tab}
+      contentTabs={contentTabs}
       faqs={faqs}
       blogCategories={blogCategories}
       blogPosts={blogPosts}

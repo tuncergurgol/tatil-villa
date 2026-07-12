@@ -113,3 +113,32 @@ export async function getFooterCorporatePages() {
     select: { slug: true, title: true },
   });
 }
+
+const DEFAULT_CONTENT_TABS = [
+  { key: "sss", name: "Sık Sorulan Sorular", moduleKey: "sss", sortOrder: 1 },
+  { key: "blog", name: "Blog", moduleKey: "blog", sortOrder: 2 },
+  { key: "yorumlar", name: "Misafir Yorumları", moduleKey: "yorumlar", sortOrder: 3 },
+  { key: "kurumsal", name: "Kurumsal", moduleKey: "kurumsal", sortOrder: 4 },
+  { key: "menuler", name: "Menüler", moduleKey: "menuler", sortOrder: 5 },
+  { key: "kampanyalar", name: "Kampanyalar", moduleKey: "kampanyalar", sortOrder: 6 },
+] as const;
+
+export async function ensureDefaultCmsContentTabs() {
+  const count = await prisma.cmsContentTab.count();
+  if (count > 0) return;
+
+  await prisma.cmsContentTab.createMany({
+    data: DEFAULT_CONTENT_TABS.map((tab) => ({
+      ...tab,
+      active: true,
+    })),
+    skipDuplicates: true,
+  });
+}
+
+export async function getCmsContentTabsForAdmin() {
+  await ensureDefaultCmsContentTabs();
+  return prisma.cmsContentTab.findMany({
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+}

@@ -1,8 +1,15 @@
+"use client";
+
 import {
   createCampaign,
   deleteCampaign,
   updateCampaign,
 } from "@/app/actions/admin/campaigns";
+import {
+  CmsField,
+  CmsFormSection,
+  cmsInputClass,
+} from "@/components/admin/content/CmsFormSections";
 
 type Campaign = {
   id: string;
@@ -21,117 +28,139 @@ export default function CampaignManagement({
   campaigns: Campaign[];
 }) {
   return (
-    <div>
-      <form action={createCampaign} className="space-y-3 rounded-xl border bg-white p-5">
-        <h2 className="font-semibold">Yeni Kampanya</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            name="title"
-            placeholder="Başlık"
-            required
-            className="rounded-lg border px-3 py-2 text-sm"
-          />
-          <input
-            name="subtitle"
-            placeholder="Alt başlık"
-            required
-            className="rounded-lg border px-3 py-2 text-sm"
-          />
-          <input
-            name="image"
-            placeholder="Görsel URL"
-            required
-            className="col-span-2 rounded-lg border px-3 py-2 text-sm sm:col-span-2"
-          />
-          <input
-            name="cta"
-            placeholder="Buton metni"
-            required
-            className="rounded-lg border px-3 py-2 text-sm"
-          />
-          <input
-            name="href"
-            placeholder="Link"
-            required
-            className="rounded-lg border px-3 py-2 text-sm"
-          />
+    <div className="space-y-6">
+      <form
+        action={createCampaign}
+        className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5"
+      >
+        <h2 className="text-sm font-semibold text-gray-800">Yeni Kampanya</h2>
+
+        <CmsFormSection title="Temel Bilgiler">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <CmsField label="Başlık">
+              <input name="title" required className={cmsInputClass} />
+            </CmsField>
+            <CmsField label="Alt Başlık">
+              <input name="subtitle" required className={cmsInputClass} />
+            </CmsField>
+          </div>
+          <CmsField label="Görsel URL">
+            <input name="image" required className={cmsInputClass} />
+          </CmsField>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <CmsField label="Buton Metni">
+              <input name="cta" required className={cmsInputClass} />
+            </CmsField>
+            <CmsField label="Link">
+              <input name="href" required className={cmsInputClass} />
+            </CmsField>
+          </div>
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              name="active"
+              defaultChecked
+              className="h-4 w-4 rounded border-gray-300 text-teal-600"
+            />
+            Aktif
+          </label>
+        </CmsFormSection>
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Ekle
+          </button>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="active" defaultChecked />
-          Aktif
-        </label>
-        <button
-          type="submit"
-          className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Ekle
-        </button>
       </form>
 
-      <div className="mt-8 space-y-4">
+      <div className="space-y-4">
         {campaigns.map((campaign) => (
-          <div key={campaign.id} className="rounded-xl border bg-white p-5">
+          <div
+            key={campaign.id}
+            className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5"
+          >
             <form
               action={updateCampaign.bind(null, campaign.id)}
-              className="space-y-3"
+              className="space-y-5"
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <input
-                  name="title"
-                  defaultValue={campaign.title}
-                  required
-                  className="rounded-lg border px-3 py-2 text-sm"
-                />
-                <input
-                  name="subtitle"
-                  defaultValue={campaign.subtitle}
-                  required
-                  className="rounded-lg border px-3 py-2 text-sm"
-                />
-                <input
-                  name="image"
-                  defaultValue={campaign.image}
-                  required
-                  className="col-span-2 rounded-lg border px-3 py-2 text-sm sm:col-span-2"
-                />
-                <input
-                  name="cta"
-                  defaultValue={campaign.cta}
-                  required
-                  className="rounded-lg border px-3 py-2 text-sm"
-                />
-                <input
-                  name="href"
-                  defaultValue={campaign.href}
-                  required
-                  className="rounded-lg border px-3 py-2 text-sm"
-                />
-                <input
-                  name="sortOrder"
-                  type="number"
-                  defaultValue={campaign.sortOrder}
-                  className="rounded-lg border px-3 py-2 text-sm"
-                />
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="active"
-                  defaultChecked={campaign.active}
-                />
-                Aktif
-              </label>
-              <div className="flex gap-4">
+              <CmsFormSection title="Temel Bilgiler">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <CmsField label="Başlık">
+                    <input
+                      name="title"
+                      defaultValue={campaign.title}
+                      required
+                      className={cmsInputClass}
+                    />
+                  </CmsField>
+                  <CmsField label="Alt Başlık">
+                    <input
+                      name="subtitle"
+                      defaultValue={campaign.subtitle}
+                      required
+                      className={cmsInputClass}
+                    />
+                  </CmsField>
+                </div>
+                <CmsField label="Görsel URL">
+                  <input
+                    name="image"
+                    defaultValue={campaign.image}
+                    required
+                    className={cmsInputClass}
+                  />
+                </CmsField>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <CmsField label="Buton Metni">
+                    <input
+                      name="cta"
+                      defaultValue={campaign.cta}
+                      required
+                      className={cmsInputClass}
+                    />
+                  </CmsField>
+                  <CmsField label="Link">
+                    <input
+                      name="href"
+                      defaultValue={campaign.href}
+                      required
+                      className={cmsInputClass}
+                    />
+                  </CmsField>
+                  <CmsField label="Sıra">
+                    <input
+                      name="sortOrder"
+                      type="number"
+                      defaultValue={campaign.sortOrder}
+                      className={cmsInputClass}
+                    />
+                  </CmsField>
+                </div>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="active"
+                    defaultChecked={campaign.active}
+                    className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                  />
+                  Aktif
+                </label>
+              </CmsFormSection>
+
+              <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="text-sm font-semibold text-teal-600 hover:underline"
+                  className="text-sm font-semibold text-teal-600"
                 >
                   Güncelle
                 </button>
               </div>
             </form>
-            <form action={deleteCampaign.bind(null, campaign.id)} className="mt-2">
-              <button type="submit" className="text-sm text-red-600 hover:underline">
+            <form action={deleteCampaign.bind(null, campaign.id)}>
+              <button type="submit" className="text-sm text-red-600">
                 Sil
               </button>
             </form>
