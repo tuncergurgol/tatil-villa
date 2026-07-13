@@ -1,6 +1,8 @@
 import {
   AGENCY_MESSAGE_TEMPLATE_ROW_1_6,
   AGENCY_MESSAGE_TEMPLATE_ROW_1_7,
+  AGENCY_MESSAGE_TEMPLATE_ROW_10_2,
+  AGENCY_MESSAGE_TEMPLATE_ROW_10_3,
 } from "@/lib/agency-message-row-no";
 import {
   computeReservationTotal,
@@ -58,22 +60,39 @@ export function normalizeAgencyPlaceholderKey(key: string): string {
   return key.trim().replace(/\s+/g, "").toLocaleUpperCase("tr-TR");
 }
 
-export function resolvePrepaymentTemplateRowNo(
+/**
+ * Ödeme kanalına göre ön ödeme şablon rowNo adayları (öncelik sırasıyla).
+ * Banka → 10.2 (102), eski fallback 1.6 (16)
+ * Kredi kartı → 10.3 (103), eski fallback 1.7 (17)
+ */
+export function resolvePrepaymentTemplateRowNos(
   paymentMethod: string
-): number {
+): number[] {
   const normalized = normalizeCompanyPaymentType(paymentMethod);
 
   if (normalized === "credit_card") {
-    return AGENCY_MESSAGE_TEMPLATE_ROW_1_7;
+    return [
+      AGENCY_MESSAGE_TEMPLATE_ROW_10_3,
+      AGENCY_MESSAGE_TEMPLATE_ROW_1_7,
+    ];
   }
 
   if (normalized === "bank_transfer") {
-    return AGENCY_MESSAGE_TEMPLATE_ROW_1_6;
+    return [
+      AGENCY_MESSAGE_TEMPLATE_ROW_10_2,
+      AGENCY_MESSAGE_TEMPLATE_ROW_1_6,
+    ];
   }
 
   throw new Error(
     "Ön ödeme bilgisi yalnızca Banka Havale/Eft veya Kredi Kartı/Sanal POS ödeme türleri için gönderilebilir"
   );
+}
+
+export function resolvePrepaymentTemplateRowNo(
+  paymentMethod: string
+): number {
+  return resolvePrepaymentTemplateRowNos(paymentMethod)[0];
 }
 
 export function buildBookingPaymentLink(

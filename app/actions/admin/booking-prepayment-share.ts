@@ -7,8 +7,9 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import {
   buildBookingPrepaymentTemplateValues,
   renderAgencyMessageTemplate,
-  resolvePrepaymentTemplateRowNo,
+  resolvePrepaymentTemplateRowNos,
 } from "@/lib/agency-message-render";
+import { formatAgencyMessageRowNo } from "@/lib/agency-message-row-no";
 import {
   appendBookingActivityLog,
   resolveActivityActor,
@@ -33,7 +34,7 @@ import {
   normalizePhoneToE164,
   toWhatsAppRecipient,
 } from "@/lib/phone";
-import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
+import { getAgencyMessageTemplateByRowNos } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
 
@@ -125,9 +126,9 @@ export async function sendBookingPrepaymentInfoAction(
     };
   }
 
-  let templateRowNo: number;
+  let templateRowCandidates: number[];
   try {
-    templateRowNo = resolvePrepaymentTemplateRowNo(data.paymentMethod);
+    templateRowCandidates = resolvePrepaymentTemplateRowNos(data.paymentMethod);
   } catch (error) {
     return {
       success: false,
@@ -137,6 +138,8 @@ export async function sendBookingPrepaymentInfoAction(
           : "Geçersiz ödeme türü",
     };
   }
+
+  const primaryTemplateRowNo = templateRowCandidates[0];
 
   const [booking, template, companySettings, bankAccount] = await Promise.all([
     prisma.booking.findUnique({
@@ -149,7 +152,7 @@ export async function sendBookingPrepaymentInfoAction(
         },
       },
     }),
-    getAgencyMessageTemplateByRowNo(templateRowNo),
+    getAgencyMessageTemplateByRowNos(templateRowCandidates),
     getCompanySettings(),
     resolveBankAccount(data.paymentMethod),
   ]);
@@ -161,7 +164,7 @@ export async function sendBookingPrepaymentInfoAction(
   if (!template) {
     return {
       success: false,
-      error: `Mesaj şablonu bulunamadı (${templateRowNo})`,
+      error: `Mesaj şablonu bulunamadı (${formatAgencyMessageRowNo(primaryTemplateRowNo)})`,
     };
   }
 

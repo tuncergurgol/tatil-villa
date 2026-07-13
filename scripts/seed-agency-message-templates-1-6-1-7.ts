@@ -1,7 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import {
-  AGENCY_MESSAGE_TEMPLATE_ROW_1_6,
-  AGENCY_MESSAGE_TEMPLATE_ROW_1_7,
+  AGENCY_MESSAGE_TEMPLATE_ROW_10_2,
+  AGENCY_MESSAGE_TEMPLATE_ROW_10_3,
+  formatAgencyMessageRowNo,
 } from "../lib/agency-message-row-no";
 import {
   PREPAYMENT_BANK_TRANSFER_MESSAGE_BODY,
@@ -18,12 +19,12 @@ const prisma = new PrismaClient();
 
 const TEMPLATE_SEEDS = [
   {
-    rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_1_6,
+    rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_10_2,
     name: PREPAYMENT_BANK_TRANSFER_MESSAGE_NAME,
     body: PREPAYMENT_BANK_TRANSFER_MESSAGE_BODY,
   },
   {
-    rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_1_7,
+    rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_10_3,
     name: PREPAYMENT_CREDIT_CARD_MESSAGE_NAME,
     body: PREPAYMENT_CREDIT_CARD_MESSAGE_BODY,
   },
@@ -53,7 +54,9 @@ async function upsertTemplate(seed: (typeof TEMPLATE_SEEDS)[number]) {
       where: { id: existing.id },
       data,
     });
-    console.log(`${seed.rowNo} mesaj şablonu güncellendi.`);
+    console.log(
+      `${formatAgencyMessageRowNo(seed.rowNo)} mesaj şablonu güncellendi.`
+    );
     return;
   }
 
@@ -68,7 +71,9 @@ async function upsertTemplate(seed: (typeof TEMPLATE_SEEDS)[number]) {
     },
   });
 
-  console.log(`${seed.rowNo} mesaj şablonu eklendi.`);
+  console.log(
+    `${formatAgencyMessageRowNo(seed.rowNo)} mesaj şablonu eklendi.`
+  );
 }
 
 async function main() {

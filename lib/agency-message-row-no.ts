@@ -16,7 +16,13 @@ export function getAgencyMessageRowSortKey(rowNo: number): number {
 
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1 = 11;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_2 = 21;
+/** Ön ödeme — Banka Havale/Eft (UI: 10.2) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_10_2 = 102;
+/** Ön ödeme — Kredi Kartı/Sanal POS (UI: 10.3) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_10_3 = 103;
+/** @deprecated Eski 1.6 kodlaması; fallback için tutuluyor */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1_6 = 16;
+/** @deprecated Eski 1.7 kodlaması; fallback için tutuluyor */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1_7 = 17;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_3_1 = 31;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = 4;
