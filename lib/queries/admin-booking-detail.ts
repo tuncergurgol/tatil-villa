@@ -34,6 +34,12 @@ export async function getAdminBookingDetail(
           originalName: true,
           salesType: true,
           kbsReportable: true,
+          prepaymentPaymentType: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           owner: {
             select: {
               name: true,

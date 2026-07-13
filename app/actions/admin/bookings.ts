@@ -33,6 +33,15 @@ import {
   type BookingDetails,
   type BookingGuestEntry,
 } from "@/lib/booking-form-details";
+import {
+  appendBookingActivityLog,
+  buildActivityLogEntry,
+  normalizeActivityLogs,
+  resolveActivityActor,
+  statusChangedMessage,
+  withInitialActivityLog,
+  type BookingActivityLogEntry,
+} from "@/lib/booking-activity-log";
 import { prisma } from "@/lib/db";
 import {
   isValidTcKimlik,
@@ -100,6 +109,7 @@ const adminBookingSchema = z.object({
 export type AdminBookingActionState = {
   success?: boolean;
   error?: string;
+  activityLogs?: BookingActivityLogEntry[];
 };
 
 function parseAdminBookingForm(formData: FormData) {
@@ -213,7 +223,8 @@ export async function createAdminBookingAction(
   _prevState: AdminBookingActionState,
   formData: FormData
 ): Promise<AdminBookingActionState> {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
 
   const parsed = parseAdminBookingForm(formData);
   if (!parsed.success) {
@@ -246,7 +257,15 @@ export async function createAdminBookingAction(
     await createAdminBooking({
       ...rest,
       totalPrice,
-      details,
+      details: withInitialActivityLog(
+        details,
+        buildActivityLogEntry({
+          action: "booking_created",
+          message: `Panelden rezervasyon oluşturuldu (${parsed.data.guestName})`,
+          actorUserId: actor.actorUserId,
+          actorName: actor.actorName,
+        })
+      ),
       checkIn: new Date(`${checkIn}T00:00:00.000Z`),
       checkOut: new Date(`${checkOut}T00:00:00.000Z`),
     });
@@ -325,8 +344,12 @@ export async function changeBookingStatus(id: string, status: BookingStatus) {
 export async function changeBookingStatusAction(
   id: string,
   status: BookingStatus
-): Promise<{ success: true; status: BookingStatus } | { success: false; error: string }> {
-  await requireAdmin();
+): Promise<
+  | { success: true; status: BookingStatus; activityLogs: BookingActivityLogEntry[] }
+  | { success: false; error: string }
+> {
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
 
   const parsed = bookingStatusSchema.safeParse(status);
   if (!parsed.success) {
@@ -334,9 +357,23 @@ export async function changeBookingStatusAction(
   }
 
   try {
+    const existing = await prisma.booking.findUnique({
+      where: { id },
+      select: { status: true },
+    });
     await updateBookingStatus(id, parsed.data);
+    const activityLogs = await appendBookingActivityLog(id, {
+      action: "status_changed",
+      message: statusChangedMessage(existing?.status, parsed.data),
+      actorUserId: actor.actorUserId,
+      actorName: actor.actorName,
+      meta: {
+        from: existing?.status ?? null,
+        to: parsed.data,
+      },
+    });
     revalidatePath("/admin/rezervasyonlar");
-    return { success: true, status: parsed.data };
+    return { success: true, status: parsed.data, activityLogs };
   } catch (error) {
     return {
       success: false,
@@ -434,7 +471,9 @@ export async function getBookingPeriodFeesAction(
 export async function updateBookingDetailAction(
   payload: z.infer<typeof bookingDetailSchema>
 ): Promise<AdminBookingActionState> {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const isAdminUser =
+    (session.user as { role?: string } | undefined)?.role === "ADMIN";
 
   const parsed = bookingDetailSchema.safeParse(payload);
   if (!parsed.success) {
@@ -455,10 +494,55 @@ export async function updateBookingDetailAction(
       select: { details: true },
     });
     const existingDetails = parseBookingDetails(existing?.details);
+    const actor = await resolveActivityActor(session.user);
+    const logEntries = [...normalizeActivityLogs(existingDetails.activityLogs)];
+
+    logEntries.push(
+      buildActivityLogEntry({
+        action: "booking_updated",
+        message: "Rezervasyon formu kaydedildi",
+        actorUserId: actor.actorUserId,
+        actorName: actor.actorName,
+      })
+    );
+
+    const hadInvoice =
+      Boolean(existingDetails.invoiceNo?.trim()) ||
+      Boolean(existingDetails.invoiceDate?.trim()) ||
+      (existingDetails.invoiceAmount != null &&
+        existingDetails.invoiceAmount > 0);
+    const hasInvoice =
+      Boolean(details.invoiceNo?.trim()) ||
+      Boolean(details.invoiceDate?.trim()) ||
+      (details.invoiceAmount != null && details.invoiceAmount > 0);
+    if (hasInvoice && (!hadInvoice || details.invoiceNo !== existingDetails.invoiceNo)) {
+      logEntries.push(
+        buildActivityLogEntry({
+          action: "invoice_saved",
+          message: details.invoiceNo?.trim()
+            ? `Fatura kaydedildi (No: ${details.invoiceNo.trim()})`
+            : "Fatura bilgileri kaydedildi",
+          actorUserId: actor.actorUserId,
+          actorName: actor.actorName,
+        })
+      );
+    }
+
     const mergedDetails: BookingDetails = {
       ...details,
       confirmationSends:
         details.confirmationSends ?? existingDetails.confirmationSends,
+      ownerPayments: details.ownerPayments ?? existingDetails.ownerPayments,
+      activityLogs: logEntries,
+      // Satış temsilcisi yalnızca yönetici tarafından değiştirilebilir
+      ...(isAdminUser
+        ? {}
+        : {
+            salesRepUserId: existingDetails.salesRepUserId,
+            salesRepName: existingDetails.salesRepName,
+            salesRepCommissionRate: existingDetails.salesRepCommissionRate,
+            salesRepCommissionEarned: existingDetails.salesRepCommissionEarned,
+          }),
     };
 
     await updateBookingDetail({
@@ -479,7 +563,7 @@ export async function updateBookingDetailAction(
     });
     revalidatePath("/admin/rezervasyonlar");
     revalidatePath("/admin/musteri-yonetimi");
-    return { success: true };
+    return { success: true, activityLogs: logEntries };
   } catch (error) {
     return {
       error:

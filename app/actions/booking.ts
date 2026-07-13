@@ -10,6 +10,10 @@ import {
   DEFAULT_BOOKING_AGENCY_NAME,
   DEFAULT_BOOKING_SITE_INFO,
 } from "@/lib/booking-form-details";
+import {
+  buildActivityLogEntry,
+  withInitialActivityLog,
+} from "@/lib/booking-activity-log";
 import { mapPublicPaymentMethodToCompanyType } from "@/lib/company-payment-types";
 import { notifyNewReservationRequest } from "@/lib/public-booking-notifications";
 
@@ -161,24 +165,31 @@ export async function submitBooking(
       guestEmail,
       guestPhone,
       totalPrice: totalPrice ?? null,
-      details: {
-        paymentMethod,
-        paymentAmount,
-        importPaymentMethod: companyPaymentType || undefined,
-        prepaymentBank: companyPaymentType || undefined,
-        siteInfo: DEFAULT_BOOKING_SITE_INFO,
-        agencyName: DEFAULT_BOOKING_AGENCY_NAME,
-        grossPrice: accommodationTotal,
-        ...feeFields,
-        damageDeposit: moneyOrNull(feeLines.damageDeposit),
-        petDamageDeposit: moneyOrNull(feeLines.petDamageDeposit),
-        prepaymentAmount: moneyOrNull(prepaymentAmount),
-        prepaymentRate: prepaymentRate ?? null,
-        checkInPayment: resolvedCheckIn,
-        feesFromQuote: true,
-        acceptMarketing: acceptMarketing ?? false,
-        source: "public_pre_reservation",
-      },
+      details: withInitialActivityLog(
+        {
+          paymentMethod,
+          paymentAmount,
+          importPaymentMethod: companyPaymentType || undefined,
+          prepaymentBank: companyPaymentType || undefined,
+          siteInfo: DEFAULT_BOOKING_SITE_INFO,
+          agencyName: DEFAULT_BOOKING_AGENCY_NAME,
+          grossPrice: accommodationTotal,
+          ...feeFields,
+          damageDeposit: moneyOrNull(feeLines.damageDeposit),
+          petDamageDeposit: moneyOrNull(feeLines.petDamageDeposit),
+          prepaymentAmount: moneyOrNull(prepaymentAmount),
+          prepaymentRate: prepaymentRate ?? null,
+          checkInPayment: resolvedCheckIn,
+          feesFromQuote: true,
+          acceptMarketing: acceptMarketing ?? false,
+          source: "public_pre_reservation",
+        },
+        buildActivityLogEntry({
+          action: "booking_created",
+          message: `Web üzerinden rezervasyon talebi oluşturuldu (${guestName})`,
+          actorName: guestName || "Misafir",
+        })
+      ),
     });
   } catch (e) {
     return {

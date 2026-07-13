@@ -1,4 +1,6 @@
 import type { BookingStatus } from "@prisma/client";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import { normalizeActivityLogs } from "@/lib/booking-activity-log";
 import {
   mapPublicPaymentMethodToCompanyType,
   normalizeCompanyPaymentType,
@@ -73,7 +75,10 @@ export type BookingDetails = {
   ownerPaymentDueDate?: string;
   ownerPaymentDate?: string;
   ownerPaidAmount?: number | null;
+  /** Villa sahibine yapılan ödemeler (Ödemeler sekmesi) */
+  ownerPayments?: BookingOwnerPaymentRecord[];
   salesRepName?: string;
+  salesRepUserId?: string;
   salesRepCommissionRate?: number | null;
   salesRepCommissionEarned?: number | null;
   agencyNote?: string;
@@ -88,6 +93,8 @@ export type BookingDetails = {
   babyGuests?: BookingGuestEntry[];
   /** Konfirme gönderim geçmişi (Sistem WhatsApp / e-posta / SMS) */
   confirmationSends?: BookingConfirmationSendRecord[];
+  /** Rezervasyon işlem logları (oluşturma → fatura) */
+  activityLogs?: BookingActivityLogEntry[];
 };
 
 export type BookingConfirmationSendChannel = "whatsapp" | "email" | "sms";
@@ -99,6 +106,40 @@ export type BookingConfirmationSendRecord = {
   status: "sent" | "failed";
   error?: string;
 };
+
+export type BookingOwnerPaymentRecord = {
+  id: string;
+  /** Ödeme yapılan tarih (yyyy-mm-dd) */
+  paidAt: string;
+  amount: number;
+  createdAt: string;
+};
+
+export function normalizeOwnerPayments(
+  value: unknown
+): BookingOwnerPaymentRecord[] {
+  if (!Array.isArray(value)) return [];
+  const rows: BookingOwnerPaymentRecord[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    const paidAt = typeof row.paidAt === "string" ? row.paidAt.trim() : "";
+    const amount = Number(row.amount);
+    if (!id || !paidAt || !Number.isFinite(amount) || amount <= 0) continue;
+    const createdAt =
+      typeof row.createdAt === "string" && row.createdAt.trim()
+        ? row.createdAt
+        : new Date().toISOString();
+    rows.push({
+      id,
+      paidAt,
+      amount: Math.round(amount),
+      createdAt,
+    });
+  }
+  return rows.sort((a, b) => a.paidAt.localeCompare(b.paidAt));
+}
 
 export { STAY_STATUS_OPTIONS } from "@/lib/stay-status";
 
@@ -201,6 +242,8 @@ export function parseBookingDetails(value: unknown): BookingDetails {
   return {
     ...parsed,
     confirmationSends: normalizeConfirmationSends(parsed.confirmationSends),
+    ownerPayments: normalizeOwnerPayments(parsed.ownerPayments),
+    activityLogs: normalizeActivityLogs(parsed.activityLogs),
   };
 }
 
@@ -402,6 +445,29 @@ export function computeCommissionAmount(
   return Math.max(0, commissionBase - agencyDiscount);
 }
 
+/**
+ * Satış temsilcisi prim hakedişi:
+ * Konaklama tutarı komisyonsuz × prim oranı (%)
+ */
+export function computeSalesRepCommissionEarned(
+  accommodationWithoutCommission: number | null | undefined,
+  salesRepCommissionRate: number | null | undefined
+): number | null {
+  if (
+    accommodationWithoutCommission == null ||
+    !Number.isFinite(accommodationWithoutCommission) ||
+    salesRepCommissionRate == null ||
+    !Number.isFinite(salesRepCommissionRate)
+  ) {
+    return null;
+  }
+  const rate = clampDiscountRate(salesRepCommissionRate);
+  return Math.max(
+    0,
+    Math.round((accommodationWithoutCommission * rate) / 100)
+  );
+}
+
 export function buildGuestRows(
   count: number,
   existing: BookingGuestEntry[] = []
@@ -501,13 +567,16 @@ export function defaultDetailsFromBooking(booking: {
     ownerPaymentDueDate: parsed.ownerPaymentDueDate ?? "",
     ownerPaymentDate: parsed.ownerPaymentDate ?? "",
     ownerPaidAmount: parsed.ownerPaidAmount ?? null,
+    ownerPayments: normalizeOwnerPayments(parsed.ownerPayments),
     salesRepName: parsed.salesRepName ?? "",
+    salesRepUserId: parsed.salesRepUserId ?? "",
     salesRepCommissionRate: parsed.salesRepCommissionRate ?? 0,
     salesRepCommissionEarned: parsed.salesRepCommissionEarned ?? 0,
     agencyNote: parsed.agencyNote ?? "",
     customerNote: parsed.customerNote ?? "",
     siteInfo: normalizeBookingSiteInfo(parsed.siteInfo),
     confirmationSends: normalizeConfirmationSends(parsed.confirmationSends),
+    activityLogs: normalizeActivityLogs(parsed.activityLogs),
     adultGuests: buildGuestRows(
       booking.adults,
       parsed.adultGuests?.length
@@ -564,6 +633,10 @@ export type BookingDetailRecord = {
     originalName: string;
     salesType: string;
     kbsReportable: boolean;
+    prepaymentPaymentType: {
+      id: string;
+      name: string;
+    } | null;
     owner: {
       name: string;
       accountingCode: string;

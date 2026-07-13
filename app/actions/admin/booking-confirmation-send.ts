@@ -9,17 +9,31 @@ import {
   renderAgencyMessageTemplate,
 } from "@/lib/agency-message-render";
 import { AGENCY_MESSAGE_TEMPLATE_ROW_4 } from "@/lib/agency-message-row-no";
-import type { PrepaymentShareChannel } from "@/lib/booking-prepayment-share";
 import {
+  buildActivityLogEntry,
+  normalizeActivityLogs,
+  resolveActivityActor,
+  type BookingActivityLogEntry,
+} from "@/lib/booking-activity-log";
+import {
+  getPrepaymentShareChannelLabel,
+  type PrepaymentShareChannel,
+} from "@/lib/booking-prepayment-share";
+import {
+  computeNetPrice,
+  computeSalesRepCommissionEarned,
   normalizeConfirmationSends,
   parseBookingDetails,
   resolveExternalCode,
   type BookingConfirmationSendRecord,
+  type BookingDetails,
 } from "@/lib/booking-form-details";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
 import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
+import { toHtmlFromText } from "@/lib/email-html";
+import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
 import { sendEvolutionTextMessage } from "@/lib/evolution-client";
 import {
   isValidTurkishMobileE164,
@@ -44,6 +58,13 @@ export type SendBookingConfirmationResult =
       confirmationSentAt: string;
       confirmationSend: BookingConfirmationSendRecord;
       confirmationSends: BookingConfirmationSendRecord[];
+      activityLogs: BookingActivityLogEntry[];
+      salesRep: {
+        salesRepUserId: string;
+        salesRepName: string;
+        salesRepCommissionRate: number;
+        salesRepCommissionEarned: number | null;
+      } | null;
     }
   | { success: false; error: string };
 
@@ -86,7 +107,9 @@ async function resolveBankAccount(paymentMethod: string) {
 export async function sendBookingConfirmationAction(
   payload: z.infer<typeof sendConfirmationSchema>
 ): Promise<SendBookingConfirmationResult> {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
+  const actorUserId = actor.actorUserId ?? "";
 
   const parsed = sendConfirmationSchema.safeParse(payload);
   if (!parsed.success) {
@@ -166,10 +189,11 @@ export async function sendBookingConfirmationAction(
     }
   }
 
-  if (data.sendSms && !phone) {
+  if (data.sendSms) {
     return {
       success: false,
-      error: "SMS gönderimi için müşteri telefonu gerekli",
+      error:
+        "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
     };
   }
 
@@ -216,6 +240,12 @@ export async function sendBookingConfirmationAction(
 
   const sentChannels: PrepaymentShareChannel[] = [];
   const mailSubject = `${reservationCode} nolu rezervasyon konfirmasyonu`;
+  const emailLogo = data.sendEmail
+    ? await prepareCompanyLogoForEmail(
+        companySettings.logoUrl,
+        companySettings.domain
+      )
+    : null;
 
   const channelRequests: Array<{
     channel: PrepaymentShareChannel;
@@ -245,6 +275,10 @@ export async function sendBookingConfirmationAction(
           to: email,
           subject: mailSubject,
           text: message,
+          html: toHtmlFromText(message, {
+            logoUrl: emailLogo?.src,
+          }),
+          attachments: emailLogo?.attachments,
         });
       } catch (error) {
         return {
@@ -281,12 +315,11 @@ export async function sendBookingConfirmationAction(
         };
       }
     } else {
-      console.info(`[booking-confirmation-send] ${channel}`, {
-        bookingId: data.bookingId,
-        phone,
-        templateRowNo: AGENCY_MESSAGE_TEMPLATE_ROW_4,
-        message,
-      });
+      return {
+        success: false,
+        error:
+          "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
+      };
     }
 
     sentChannels.push(channel);
@@ -303,6 +336,69 @@ export async function sendBookingConfirmationAction(
   const existingSends = normalizeConfirmationSends(details.confirmationSends);
   const confirmationSends = [...existingSends, confirmationSend];
 
+  const channelLabels = sentChannels
+    .map((channel) => getPrepaymentShareChannelLabel(channel))
+    .join(", ");
+  const confirmationLog = buildActivityLogEntry({
+    action: "confirmation_sent",
+    message: `Konfirme gönderildi (${channelLabels})`,
+    actorUserId: actor.actorUserId,
+    actorName: actor.actorName,
+    meta: {
+      channels: channelLabels,
+    },
+  });
+  const activityLogs = [
+    ...normalizeActivityLogs(details.activityLogs),
+    confirmationLog,
+  ];
+
+  // Satış temsilcisi: ilk konfirme gönderen kullanıcı; yönetici değiştirene kadar sabit
+  let salesRepPatch: Partial<BookingDetails> = {};
+  let salesRepResult: {
+    salesRepUserId: string;
+    salesRepName: string;
+    salesRepCommissionRate: number;
+    salesRepCommissionEarned: number | null;
+  } | null = null;
+
+  if (!details.salesRepUserId?.trim() && actorUserId) {
+    const salesRepUser = await prisma.user.findUnique({
+      where: { id: actorUserId },
+      select: {
+        id: true,
+        name: true,
+        salesCommissionRate: true,
+      },
+    });
+    if (salesRepUser) {
+      const rate = Number(salesRepUser.salesCommissionRate) || 0;
+      const earned = computeSalesRepCommissionEarned(
+        computeNetPrice(details),
+        rate
+      );
+      salesRepPatch = {
+        salesRepUserId: salesRepUser.id,
+        salesRepName: salesRepUser.name,
+        salesRepCommissionRate: rate,
+        salesRepCommissionEarned: earned,
+      };
+      salesRepResult = {
+        salesRepUserId: salesRepUser.id,
+        salesRepName: salesRepUser.name,
+        salesRepCommissionRate: rate,
+        salesRepCommissionEarned: earned,
+      };
+    }
+  } else if (details.salesRepUserId?.trim()) {
+    salesRepResult = {
+      salesRepUserId: details.salesRepUserId,
+      salesRepName: details.salesRepName ?? "",
+      salesRepCommissionRate: details.salesRepCommissionRate ?? 0,
+      salesRepCommissionEarned: details.salesRepCommissionEarned ?? null,
+    };
+  }
+
   await prisma.booking.update({
     where: { id: data.bookingId },
     data: {
@@ -310,7 +406,9 @@ export async function sendBookingConfirmationAction(
       confirmationSentAt: sentAt,
       details: {
         ...details,
+        ...salesRepPatch,
         confirmationSends,
+        activityLogs,
       } as Prisma.InputJsonValue,
     },
   });
@@ -323,5 +421,7 @@ export async function sendBookingConfirmationAction(
     confirmationSentAt: sentAt.toISOString(),
     confirmationSend,
     confirmationSends,
+    activityLogs,
+    salesRep: salesRepResult,
   };
 }

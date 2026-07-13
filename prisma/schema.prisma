@@ -792,14 +792,16 @@ model BookingPrepayment {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  phone        String   @default("")
-  role         UserRole @default(ADMIN)
-  active       Boolean  @default(true)
-  villaOwner   VillaOwner?
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  passwordHash         String
+  name                 String
+  phone                String   @default("")
+  role                 UserRole @default(ADMIN)
+  active               Boolean  @default(true)
+  /** Satış temsilcisi prim oranı (0–100) */
+  salesCommissionRate  Float    @default(0)
+  villaOwner           VillaOwner?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

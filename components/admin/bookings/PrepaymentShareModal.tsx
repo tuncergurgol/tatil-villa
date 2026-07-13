@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, Send, X } from "lucide-react";
 import { sendBookingPrepaymentInfoAction } from "@/app/actions/admin/booking-prepayment-share";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
 import {
   BOOKING_PREPAYMENT_OPTION_HOURS,
   formatPrepaymentOptionLabel,
@@ -20,7 +21,10 @@ import {
 interface PrepaymentShareModalProps {
   open: boolean;
   onClose: () => void;
-  onSuccess?: (payload: { optionExpiresAt: Date }) => void;
+  onSuccess?: (payload: {
+    optionExpiresAt: Date;
+    activityLogs: BookingActivityLogEntry[];
+  }) => void;
   bookingId: string;
   prepaymentAmount: number | null;
   paymentMethod: string;
@@ -47,7 +51,7 @@ export default function PrepaymentShareModal({
   const [optionHours, setOptionHours] = useState<number>(12);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
-  const [sendSms, setSendSms] = useState(false);
+  const sendSms = false;
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -61,7 +65,6 @@ export default function PrepaymentShareModal({
     setOptionHours(12);
     setSendWhatsApp(true);
     setSendEmail(true);
-    setSendSms(false);
     setError(null);
     setSuccessMessage(null);
   }, [open]);
@@ -101,6 +104,7 @@ export default function PrepaymentShareModal({
       setSuccessMessage(buildSuccessMessage(result.channels));
       onSuccess?.({
         optionExpiresAt: new Date(Date.now() + optionHours * 60 * 60 * 1000),
+        activityLogs: result.activityLogs,
       });
     });
   }
@@ -184,14 +188,17 @@ export default function PrepaymentShareModal({
                 />
                 E-posta
               </label>
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+              <label
+                className="inline-flex cursor-not-allowed items-center gap-2 text-sm font-medium text-gray-400"
+                title="SMS sağlayıcısı henüz yapılandırılmadı"
+              >
                 <input
                   type="checkbox"
-                  checked={sendSms}
-                  onChange={(event) => setSendSms(event.target.checked)}
+                  checked={false}
+                  disabled
                   className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                 />
-                SMS
+                SMS (yakında)
               </label>
             </div>
             {sendWhatsApp ? (

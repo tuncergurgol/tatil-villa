@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/admin/booking-prepayments";
 import { sendBookingConfirmationAction } from "@/app/actions/admin/booking-confirmation-send";
 import { changeBookingStatusAction } from "@/app/actions/admin/bookings";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
 import { getPrepaymentShareChannelLabel } from "@/lib/booking-prepayment-share";
 import type {
   BookingConfirmationSendRecord,
@@ -54,14 +55,33 @@ interface BookingKonfirmeTabProps {
   prepayments: BookingPrepaymentRecord[];
   confirmationSentAt: Date | string | null;
   confirmationSends: BookingConfirmationSendRecord[];
-  onPrepaymentSaved: (prepayment: BookingPrepaymentRecord) => void;
-  onPrepaymentUpdated: (prepayment: BookingPrepaymentRecord) => void;
-  onPrepaymentDeleted: (prepaymentId: string) => void;
+  onPrepaymentSaved: (
+    prepayment: BookingPrepaymentRecord,
+    activityLogs: BookingActivityLogEntry[]
+  ) => void;
+  onPrepaymentUpdated: (
+    prepayment: BookingPrepaymentRecord,
+    activityLogs: BookingActivityLogEntry[]
+  ) => void;
+  onPrepaymentDeleted: (
+    prepaymentId: string,
+    activityLogs: BookingActivityLogEntry[]
+  ) => void;
   onConfirmationSent: (payload: {
     confirmationSentAt: Date;
     confirmationSends: BookingConfirmationSendRecord[];
+    activityLogs: BookingActivityLogEntry[];
+    salesRep: {
+      salesRepUserId: string;
+      salesRepName: string;
+      salesRepCommissionRate: number;
+      salesRepCommissionEarned: number | null;
+    } | null;
   }) => void;
-  onStatusChanged: (status: BookingStatus) => void;
+  onStatusChanged: (
+    status: BookingStatus,
+    activityLogs: BookingActivityLogEntry[]
+  ) => void;
 }
 
 function parseAmount(value: string): number | null {
@@ -137,7 +157,7 @@ export default function BookingKonfirmeTab({
 
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
-  const [sendSms, setSendSms] = useState(false);
+  const sendSms = false;
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const [confirmationSuccess, setConfirmationSuccess] = useState<string | null>(
     null
@@ -250,7 +270,7 @@ export default function BookingKonfirmeTab({
       return;
     }
 
-    onPrepaymentSaved(result.prepayment);
+    onPrepaymentSaved(result.prepayment, result.activityLogs);
     removeDraftRow(row.id);
   }
 
@@ -292,7 +312,7 @@ export default function BookingKonfirmeTab({
       return;
     }
 
-    onPrepaymentUpdated(result.prepayment);
+    onPrepaymentUpdated(result.prepayment, result.activityLogs);
     cancelEdit();
   }
 
@@ -321,7 +341,7 @@ export default function BookingKonfirmeTab({
     }
 
     if (editingId === item.id) cancelEdit();
-    onPrepaymentDeleted(item.id);
+    onPrepaymentDeleted(item.id, result.activityLogs);
   }
 
   function handleSendConfirmation() {
@@ -352,6 +372,8 @@ export default function BookingKonfirmeTab({
       onConfirmationSent({
         confirmationSentAt: new Date(result.confirmationSentAt),
         confirmationSends: result.confirmationSends,
+        activityLogs: result.activityLogs,
+        salesRep: result.salesRep,
       });
     });
   }
@@ -378,7 +400,7 @@ export default function BookingKonfirmeTab({
         return;
       }
 
-      onStatusChanged(result.status);
+      onStatusChanged(result.status, result.activityLogs);
       setStatusSuccess(
         `Durum "${getBookingStatusLabel(result.status)}" olarak güncellendi.`
       );
@@ -660,14 +682,17 @@ export default function BookingKonfirmeTab({
                 />
                 E-posta
               </label>
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+              <label
+                className="inline-flex cursor-not-allowed items-center gap-2 text-sm font-medium text-gray-400"
+                title="SMS sağlayıcısı henüz yapılandırılmadı"
+              >
                 <input
                   type="checkbox"
-                  checked={sendSms}
-                  onChange={(event) => setSendSms(event.target.checked)}
+                  checked={false}
+                  disabled
                   className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                 />
-                SMS
+                SMS (yakında)
               </label>
             </div>
             {sendWhatsApp ? (

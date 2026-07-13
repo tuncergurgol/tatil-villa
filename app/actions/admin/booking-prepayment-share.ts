@@ -10,7 +10,14 @@ import {
   resolvePrepaymentTemplateRowNo,
 } from "@/lib/agency-message-render";
 import {
+  appendBookingActivityLog,
+  resolveActivityActor,
+  type BookingActivityLogEntry,
+} from "@/lib/booking-activity-log";
+import { formatMoneyPlain } from "@/lib/booking-display";
+import {
   BOOKING_PREPAYMENT_OPTION_HOURS,
+  getPrepaymentShareChannelLabel,
   type PrepaymentShareChannel,
 } from "@/lib/booking-prepayment-share";
 import { parseBookingDetails, resolveExternalCode } from "@/lib/booking-form-details";
@@ -49,7 +56,11 @@ const sendPrepaymentInfoSchema = z.object({
 });
 
 export type SendBookingPrepaymentInfoResult =
-  | { success: true; channels: PrepaymentShareChannel[] }
+  | {
+      success: true;
+      channels: PrepaymentShareChannel[];
+      activityLogs: BookingActivityLogEntry[];
+    }
   | { success: false; error: string };
 
 function pickChannelBody(
@@ -94,7 +105,8 @@ async function resolveBankAccount(paymentMethod: string) {
 export async function sendBookingPrepaymentInfoAction(
   payload: z.infer<typeof sendPrepaymentInfoSchema>
 ): Promise<SendBookingPrepaymentInfoResult> {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
 
   const parsed = sendPrepaymentInfoSchema.safeParse(payload);
   if (!parsed.success) {
@@ -174,10 +186,11 @@ export async function sendBookingPrepaymentInfoAction(
     }
   }
 
-  if (data.sendSms && !phone) {
+  if (data.sendSms) {
     return {
       success: false,
-      error: "SMS gönderimi için müşteri telefonu gerekli",
+      error:
+        "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
     };
   }
 
@@ -216,13 +229,12 @@ export async function sendBookingPrepaymentInfoAction(
   const mailSubject = `${reservationCode} nolu rezervasyon ön ödeme bilgisi`;
   const isBankTransfer =
     normalizeCompanyPaymentType(data.paymentMethod) === "bank_transfer";
-  const emailLogo =
-    data.sendEmail && isBankTransfer
-      ? await prepareCompanyLogoForEmail(
-          companySettings.logoUrl,
-          companySettings.domain
-        )
-      : null;
+  const emailLogo = data.sendEmail
+    ? await prepareCompanyLogoForEmail(
+        companySettings.logoUrl,
+        companySettings.domain
+      )
+    : null;
 
   const channelRequests: Array<{
     channel: PrepaymentShareChannel;
@@ -260,15 +272,11 @@ export async function sendBookingPrepaymentInfoAction(
           to: email,
           subject: mailSubject,
           text: message,
-          ...(isBankTransfer && emailLogo
-            ? {
-                html: toHtmlFromText(message, {
-                  logoUrl: emailLogo.src,
-                  emphasizeBankTransferFields: true,
-                }),
-                attachments: emailLogo.attachments,
-              }
-            : {}),
+          html: toHtmlFromText(message, {
+            logoUrl: emailLogo?.src,
+            emphasizeBankTransferFields: isBankTransfer,
+          }),
+          attachments: emailLogo?.attachments,
         });
       } catch (error) {
         return {
@@ -307,12 +315,11 @@ export async function sendBookingPrepaymentInfoAction(
         };
       }
     } else {
-      console.info(`[booking-prepayment-share] ${channel}`, {
-        bookingId: data.bookingId,
-        phone,
-        templateRowNo,
-        message,
-      });
+      return {
+        success: false,
+        error:
+          "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
+      };
     }
 
     sentChannels.push(channel);
@@ -330,7 +337,22 @@ export async function sendBookingPrepaymentInfoAction(
     },
   });
 
+  const channelLabels = sentChannels
+    .map((channel) => getPrepaymentShareChannelLabel(channel))
+    .join(", ");
+  const activityLogs = await appendBookingActivityLog(data.bookingId, {
+    action: "prepayment_shared",
+    message: `Ön ödeme bilgisi gönderildi (${channelLabels}) — ${formatMoneyPlain(data.prepaymentAmount)}`,
+    actorUserId: actor.actorUserId,
+    actorName: actor.actorName,
+    meta: {
+      amount: Math.round(data.prepaymentAmount),
+      channels: channelLabels,
+      optionHours: data.optionHours,
+    },
+  });
+
   revalidatePath("/admin/rezervasyonlar");
 
-  return { success: true, channels: sentChannels };
+  return { success: true, channels: sentChannels, activityLogs };
 }

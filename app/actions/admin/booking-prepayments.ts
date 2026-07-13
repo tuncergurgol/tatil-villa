@@ -3,9 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
-import { prisma } from "@/lib/db";
+import {
+  appendBookingActivityLog,
+  resolveActivityActor,
+  type BookingActivityLogEntry,
+} from "@/lib/booking-activity-log";
+import { formatMoneyPlain } from "@/lib/booking-display";
 import type { BookingPrepaymentRecord } from "@/lib/booking-form-details";
+import {
+  getCompanyPaymentTypeLabel,
+  normalizeCompanyPaymentType,
+} from "@/lib/company-payment-types";
+import { prisma } from "@/lib/db";
 
 const createPrepaymentSchema = z.object({
   bookingId: z.string().min(1),
@@ -15,13 +24,22 @@ const createPrepaymentSchema = z.object({
 });
 
 export type BookingPrepaymentActionResult =
-  | { success: true; prepayment: BookingPrepaymentRecord }
+  | {
+      success: true;
+      prepayment: BookingPrepaymentRecord;
+      activityLogs: BookingActivityLogEntry[];
+    }
+  | { success: false; error: string };
+
+export type BookingPrepaymentDeleteResult =
+  | { success: true; activityLogs: BookingActivityLogEntry[] }
   | { success: false; error: string };
 
 export async function createBookingPrepaymentAction(
   payload: z.infer<typeof createPrepaymentSchema>
 ): Promise<BookingPrepaymentActionResult> {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
 
   const parsed = createPrepaymentSchema.safeParse(payload);
   if (!parsed.success) {
@@ -95,6 +113,19 @@ export async function createBookingPrepaymentAction(
     return created;
   });
 
+  const channelLabel = getCompanyPaymentTypeLabel(prepayment.paymentChannel);
+  const activityLogs = await appendBookingActivityLog(data.bookingId, {
+    action: "prepayment_created",
+    message: `Ön ödeme kaydı eklendi (${formatMoneyPlain(prepayment.amount)}${channelLabel ? ` · ${channelLabel}` : ""})`,
+    actorUserId: actor.actorUserId,
+    actorName: actor.actorName,
+    meta: {
+      prepaymentId: prepayment.id,
+      amount: prepayment.amount,
+      paymentChannel: prepayment.paymentChannel,
+    },
+  });
+
   revalidatePath("/admin/rezervasyonlar");
 
   return {
@@ -107,6 +138,7 @@ export async function createBookingPrepaymentAction(
       createdAt: prepayment.createdAt,
       bankAccount: prepayment.bankAccount,
     },
+    activityLogs,
   };
 }
 
@@ -170,7 +202,8 @@ const updatePrepaymentSchema = z.object({
 export async function updateBookingPrepaymentAction(
   payload: z.infer<typeof updatePrepaymentSchema>
 ): Promise<BookingPrepaymentActionResult> {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
 
   const parsed = updatePrepaymentSchema.safeParse(payload);
   if (!parsed.success) {
@@ -237,6 +270,19 @@ export async function updateBookingPrepaymentAction(
 
   revalidatePath("/admin/rezervasyonlar");
 
+  const channelLabel = getCompanyPaymentTypeLabel(prepayment.paymentChannel);
+  const activityLogs = await appendBookingActivityLog(data.bookingId, {
+    action: "prepayment_updated",
+    message: `Ön ödeme kaydı güncellendi (${formatMoneyPlain(prepayment.amount)}${channelLabel ? ` · ${channelLabel}` : ""})`,
+    actorUserId: actor.actorUserId,
+    actorName: actor.actorName,
+    meta: {
+      prepaymentId: prepayment.id,
+      amount: prepayment.amount,
+      paymentChannel: prepayment.paymentChannel,
+    },
+  });
+
   return {
     success: true,
     prepayment: {
@@ -247,14 +293,16 @@ export async function updateBookingPrepaymentAction(
       createdAt: prepayment.createdAt,
       bankAccount: prepayment.bankAccount,
     },
+    activityLogs,
   };
 }
 
 export async function deleteBookingPrepaymentAction(payload: {
   id: string;
   bookingId: string;
-}): Promise<{ success: true } | { success: false; error: string }> {
-  await requireAdmin();
+}): Promise<BookingPrepaymentDeleteResult> {
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
 
   const id = payload.id?.trim();
   const bookingId = payload.bookingId?.trim();
@@ -264,7 +312,7 @@ export async function deleteBookingPrepaymentAction(payload: {
 
   const existing = await prisma.bookingPrepayment.findFirst({
     where: { id, bookingId },
-    select: { id: true },
+    select: { id: true, amount: true, paymentChannel: true },
   });
 
   if (!existing) {
@@ -272,7 +320,21 @@ export async function deleteBookingPrepaymentAction(payload: {
   }
 
   await prisma.bookingPrepayment.delete({ where: { id } });
+
+  const channelLabel = getCompanyPaymentTypeLabel(existing.paymentChannel);
+  const activityLogs = await appendBookingActivityLog(bookingId, {
+    action: "prepayment_deleted",
+    message: `Ön ödeme kaydı silindi (${formatMoneyPlain(existing.amount)}${channelLabel ? ` · ${channelLabel}` : ""})`,
+    actorUserId: actor.actorUserId,
+    actorName: actor.actorName,
+    meta: {
+      prepaymentId: existing.id,
+      amount: existing.amount,
+      paymentChannel: existing.paymentChannel,
+    },
+  });
+
   revalidatePath("/admin/rezervasyonlar");
 
-  return { success: true };
+  return { success: true, activityLogs };
 }

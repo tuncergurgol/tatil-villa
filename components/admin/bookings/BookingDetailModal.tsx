@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useSession } from "next-auth/react";
 import { Baby, Loader2, PawPrint, Share2, User, Users, X } from "lucide-react";
 import type { BookingStatus } from "@prisma/client";
-import { BookingStatus as BookingStatusEnum } from "@prisma/client";
+import { BookingStatus as BookingStatusEnum, UserRole } from "@prisma/client";
 import { StayStatus, STAY_STATUS_OPTIONS } from "@/lib/stay-status";
 import {
   getBookingDetailAction,
@@ -32,6 +33,7 @@ import {
   computeDiscountAmount,
   computeNetPrice,
   computePrepaymentAmount,
+  computeSalesRepCommissionEarned,
   defaultDetailsFromBooking,
   dedupeSiteInfoNames,
   parseBookingDetails,
@@ -39,9 +41,20 @@ import {
   formatFeeInputValue,
   getNightCount,
   normalizeBookingSiteInfo,
+  normalizeOwnerPayments,
   resolveExternalCode,
   toDateInputValue,
 } from "@/lib/booking-form-details";
+import {
+  buildLegacyCreatedLog,
+  normalizeActivityLogs,
+  type BookingActivityLogEntry,
+} from "@/lib/booking-activity-log";
+import {
+  computeOwnerPayableAmount,
+  computeOwnerPaymentDueDate,
+} from "@/lib/owner-payment-schedule";
+import { formatMoneyPlain } from "@/lib/booking-display";
 import {
   getSortedCompanyPaymentTypeOptions,
   normalizeCompanyPaymentType,
@@ -54,8 +67,11 @@ import {
   bookingInputClass,
   bookingReadonlyClass,
 } from "@/components/admin/bookings/booking-form-ui";
+import { getActiveSalesRepOptionsAction } from "@/app/actions/admin/users";
+import type { SalesRepOption } from "@/lib/queries/users";
 import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
 import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
+import BookingOwnerPaymentsSection from "@/components/admin/bookings/BookingOwnerPaymentsSection";
 import OptionCountdown from "@/components/admin/bookings/OptionCountdown";
 import TcKimlikInput from "@/components/shared/TcKimlikInput";
 import TurkishPhoneField, {
@@ -80,9 +96,39 @@ const BOOKING_DETAIL_TABS = [
   { id: "fatura", label: "Fatura" },
   { id: "odemeler", label: "Ödemeler" },
   { id: "notlar", label: "Notlar" },
+  { id: "log", label: "Log" },
 ] as const;
 
 type BookingDetailTabId = (typeof BOOKING_DETAIL_TABS)[number]["id"];
+
+function formatActivityLogTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function resolveActivityLogRows(
+  logs: BookingActivityLogEntry[] | undefined,
+  booking: BookingDetailRecord | null
+): BookingActivityLogEntry[] {
+  const normalized = normalizeActivityLogs(logs);
+  if (normalized.length > 0) {
+    return [...normalized].sort((a, b) => b.at.localeCompare(a.at));
+  }
+  if (!booking) return [];
+  return [
+    buildLegacyCreatedLog({
+      createdAt: booking.createdAt,
+      guestName: booking.guestName,
+    }),
+  ];
+}
 
 function TabPanel({
   active,
@@ -233,15 +279,26 @@ export default function BookingDetailModal({
   const [optionExpiresAt, setOptionExpiresAt] = useState<Date | null>(null);
   const [confirmationSentAt, setConfirmationSentAt] = useState<Date | null>(null);
   const [prepayments, setPrepayments] = useState<BookingPrepaymentRecord[]>([]);
+  const [salesRepOptions, setSalesRepOptions] = useState<SalesRepOption[]>([]);
+  const salesRepEarnedManuallyEdited = useRef(false);
   const [siteInfoOptions, setSiteInfoOptions] = useState<string[]>([
     DEFAULT_BOOKING_SITE_INFO,
   ]);
   const [isPending, startTransition] = useTransition();
+  const { data: session } = useSession();
+  const isAdminUser =
+    (session?.user as { role?: string } | undefined)?.role === UserRole.ADMIN;
 
   useEffect(() => {
     getSiteInfoOptionsAction()
       .then(setSiteInfoOptions)
       .catch(() => setSiteInfoOptions([DEFAULT_BOOKING_SITE_INFO]));
+  }, []);
+
+  useEffect(() => {
+    getActiveSalesRepOptionsAction()
+      .then(setSalesRepOptions)
+      .catch(() => setSalesRepOptions([]));
   }, []);
 
   useEffect(() => {
@@ -296,6 +353,7 @@ export default function BookingDetailModal({
             ? Math.round(parsed.prepaymentAmount)
             : null;
         prepaymentManuallyEdited.current = false;
+        salesRepEarnedManuallyEdited.current = false;
         setDetails(defaultDetailsFromBooking(record));
         setActiveTab("rezervasyon");
       })
@@ -420,6 +478,81 @@ export default function BookingDetailModal({
     details.agencyDiscountAmount,
     details.commissionRate,
   ]);
+
+  const ownerPaymentTermName =
+    booking?.villa.prepaymentPaymentType?.name?.trim() || "";
+
+  const prepaymentTotalForOwner = useMemo(() => {
+    const saved = (prepayments ?? []).reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
+    if (saved > 0) return saved;
+    return details.prepaymentAmount ?? 0;
+  }, [prepayments, details.prepaymentAmount]);
+
+  const ownerPayableAmount = useMemo(
+    () =>
+      computeOwnerPayableAmount(
+        prepaymentTotalForOwner,
+        details.commissionAmount
+      ),
+    [prepaymentTotalForOwner, details.commissionAmount]
+  );
+
+  const ownerPaymentDueDate = useMemo(() => {
+    if (!booking) return "";
+    return computeOwnerPaymentDueDate({
+      paymentTypeName: ownerPaymentTermName,
+      confirmationDate: booking.confirmationSentAt,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+    });
+  }, [
+    booking,
+    ownerPaymentTermName,
+    booking?.confirmationSentAt,
+    booking?.checkIn,
+    booking?.checkOut,
+  ]);
+
+  useEffect(() => {
+    setDetails((current) => {
+      const nextTerm = ownerPaymentTermName;
+      const nextPayable = ownerPayableAmount;
+      const nextDue = ownerPaymentDueDate;
+      if (
+        current.ownerPaymentTerm === nextTerm &&
+        current.ownerPayableAmount === nextPayable &&
+        current.ownerPaymentDueDate === nextDue
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        ownerPaymentTerm: nextTerm,
+        ownerPayableAmount: nextPayable,
+        ownerPaymentDueDate: nextDue,
+      };
+    });
+  }, [ownerPaymentTermName, ownerPayableAmount, ownerPaymentDueDate]);
+
+  useEffect(() => {
+    if (salesRepEarnedManuallyEdited.current) return;
+    setDetails((current) => {
+      const computed = computeSalesRepCommissionEarned(
+        netPrice,
+        current.salesRepCommissionRate
+      );
+      if (computed === current.salesRepCommissionEarned) return current;
+      return { ...current, salesRepCommissionEarned: computed };
+    });
+  }, [
+    netPrice,
+    details.salesRepCommissionRate,
+    details.salesRepUserId,
+  ]);
+
   const nightCount = useMemo(() => {
     if (!checkIn || !checkOut) return 0;
     return getNightCount(new Date(`${checkIn}T00:00:00.000Z`), new Date(`${checkOut}T00:00:00.000Z`));
@@ -448,6 +581,13 @@ export default function BookingDetailModal({
 
   function patchDetails(patch: Partial<BookingDetails>) {
     setDetails((current) => ({ ...current, ...patch }));
+  }
+
+  function syncActivityLogs(activityLogs: BookingActivityLogEntry[]) {
+    setDetails((current) => ({
+      ...current,
+      activityLogs: normalizeActivityLogs(activityLogs),
+    }));
   }
 
   function handleGrossPriceChange(value: number | null) {
@@ -563,6 +703,10 @@ export default function BookingDetailModal({
         return;
       }
 
+      if (result.activityLogs) {
+        syncActivityLogs(result.activityLogs);
+      }
+
       onSaved();
       onClose();
     });
@@ -581,6 +725,8 @@ export default function BookingDetailModal({
       details.prepaymentBank?.trim() ||
       ""
   );
+
+  const activityLogRows = resolveActivityLogRows(details.activityLogs, booking);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3">
@@ -1016,35 +1162,52 @@ export default function BookingDetailModal({
                   prepayments={prepayments}
                   confirmationSentAt={confirmationSentAt}
                   confirmationSends={details.confirmationSends ?? []}
-                  onPrepaymentSaved={(prepayment) => {
+                  onPrepaymentSaved={(prepayment, activityLogs) => {
                     setPrepayments((current) => [...current, prepayment]);
                     setOptionExpiresAt(null);
+                    syncActivityLogs(activityLogs);
                   }}
-                  onPrepaymentUpdated={(prepayment) => {
+                  onPrepaymentUpdated={(prepayment, activityLogs) => {
                     setPrepayments((current) =>
                       current.map((item) =>
                         item.id === prepayment.id ? prepayment : item
                       )
                     );
+                    syncActivityLogs(activityLogs);
                   }}
-                  onPrepaymentDeleted={(prepaymentId) => {
+                  onPrepaymentDeleted={(prepaymentId, activityLogs) => {
                     setPrepayments((current) =>
                       current.filter((item) => item.id !== prepaymentId)
                     );
+                    syncActivityLogs(activityLogs);
                   }}
                   onConfirmationSent={({
                     confirmationSentAt: sentAt,
                     confirmationSends,
+                    salesRep,
+                    activityLogs,
                   }) => {
                     setStatus(BookingStatusEnum.CONFIRMATION_SENT);
                     setConfirmationSentAt(sentAt);
                     setDetails((current) => ({
                       ...current,
                       confirmationSends,
+                      activityLogs: normalizeActivityLogs(activityLogs),
+                      ...(salesRep
+                        ? {
+                            salesRepUserId: salesRep.salesRepUserId,
+                            salesRepName: salesRep.salesRepName,
+                            salesRepCommissionRate:
+                              salesRep.salesRepCommissionRate,
+                            salesRepCommissionEarned:
+                              salesRep.salesRepCommissionEarned,
+                          }
+                        : {}),
                     }));
                   }}
-                  onStatusChanged={(nextStatus) => {
+                  onStatusChanged={(nextStatus, activityLogs) => {
                     setStatus(nextStatus);
+                    syncActivityLogs(activityLogs);
                   }}
                 />
               </TabPanel>
@@ -1354,103 +1517,174 @@ export default function BookingDetailModal({
 
               <FormSection title="Villa Sahibi Bilgileri">
                 <FormRow label="Villa Ödeme Vadesi">
-                  <input
-                    value={details.ownerPaymentTerm ?? ""}
-                    onChange={(event) =>
-                      patchDetails({ ownerPaymentTerm: event.target.value })
-                    }
-                    className={bookingInputClass}
-                  />
+                  <ReadonlyField value={ownerPaymentTermName || "—"} />
                 </FormRow>
                 <FormRow label="Villa Sahibi Adı">
-                  <ReadonlyField value={booking.villa.owner?.name ?? ""} />
-                </FormRow>
-                <FormRow label="Villa Sahibi Muhasebe Kodu">
-                  <ReadonlyField
-                    value={booking.villa.owner?.accountingCode ?? ""}
-                  />
+                  <ReadonlyField value={booking.villa.owner?.name ?? "—"} />
                 </FormRow>
                 <FormRow label="Villa Sahibine Ödenecek Para">
-                  <input
-                    value={details.ownerPayableAmount ?? ""}
-                    onChange={(event) =>
-                      patchDetails({
-                        ownerPayableAmount: parseNumber(event.target.value),
-                      })
-                    }
-                    className={bookingInputClass}
+                  <ReadonlyField
+                    value={formatMoneyPlain(ownerPayableAmount)}
                   />
                 </FormRow>
-                <FormRow label="Villa Sahibinin Müşteriden Alacağı Para">
-                  <input
-                    value={details.ownerCollectFromGuest ?? ""}
-                    onChange={(event) =>
-                      patchDetails({
-                        ownerCollectFromGuest: parseNumber(event.target.value),
-                      })
-                    }
-                    className={bookingInputClass}
+                <FormRow label="Villa Sahibine Kalan Para">
+                  <ReadonlyField
+                    value={formatMoneyPlain(
+                      Math.max(
+                        0,
+                        ownerPayableAmount -
+                          normalizeOwnerPayments(details.ownerPayments).reduce(
+                            (sum, row) => sum + row.amount,
+                            0
+                          )
+                      )
+                    )}
                   />
                 </FormRow>
                 <FormRow label="Villa Sahibine Ödeme Yapılacak Tarih">
-                  <input
-                    type="date"
-                    value={details.ownerPaymentDueDate ?? ""}
-                    onChange={(event) =>
-                      patchDetails({ ownerPaymentDueDate: event.target.value })
+                  <ReadonlyField
+                    value={
+                      ownerPaymentDueDate
+                        ? formatBookingDate(
+                            new Date(`${ownerPaymentDueDate}T00:00:00.000Z`)
+                          )
+                        : ownerPaymentTermName.match(/rezervasyon/i) &&
+                            !booking.confirmationSentAt
+                          ? "Konfirme gönderildikten sonra hesaplanır"
+                          : "—"
                     }
-                    className={bookingInputClass}
                   />
                 </FormRow>
-                <FormRow label="Villa Sahibine Ödeme Yapılan Tarih">
-                  <input
-                    type="date"
-                    value={details.ownerPaymentDate ?? ""}
-                    onChange={(event) =>
-                      patchDetails({ ownerPaymentDate: event.target.value })
-                    }
-                    className={bookingInputClass}
+
+                <div className="pt-2">
+                  <BookingOwnerPaymentsSection
+                    bookingId={booking.id}
+                    payments={normalizeOwnerPayments(details.ownerPayments)}
+                    ownerPayableAmount={ownerPayableAmount}
+                    onChange={(ownerPayments, activityLogs) => {
+                      const paidTotal = ownerPayments.reduce(
+                        (sum, row) => sum + row.amount,
+                        0
+                      );
+                      const latestPaidAt =
+                        ownerPayments[ownerPayments.length - 1]?.paidAt ?? "";
+                      setDetails((current) => ({
+                        ...current,
+                        ownerPayments,
+                        ownerPaidAmount: paidTotal > 0 ? paidTotal : null,
+                        ownerPaymentDate: latestPaidAt,
+                        activityLogs: normalizeActivityLogs(activityLogs),
+                      }));
+                    }}
                   />
-                </FormRow>
-                <FormRow label="Villa Sahibine Ödenen Para">
-                  <input
-                    value={details.ownerPaidAmount ?? ""}
-                    onChange={(event) =>
-                      patchDetails({
-                        ownerPaidAmount: parseNumber(event.target.value),
-                      })
-                    }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
+                </div>
               </FormSection>
 
               <FormSection title="Satış Temsilcisi Bilgileri">
                 <FormRow label="Satış Temsilcisi Adı">
-                  <input
-                    value={details.salesRepName ?? ""}
-                    onChange={(event) =>
-                      patchDetails({ salesRepName: event.target.value })
-                    }
-                    className={bookingInputClass}
-                  />
+                  {isAdminUser ? (
+                    <select
+                      value={details.salesRepUserId ?? ""}
+                      onChange={(event) => {
+                        const userId = event.target.value;
+                        const selected = salesRepOptions.find(
+                          (option) => option.id === userId
+                        );
+                        salesRepEarnedManuallyEdited.current = false;
+                        patchDetails({
+                          salesRepUserId: userId,
+                          salesRepName: selected?.name ?? "",
+                          salesRepCommissionRate: selected
+                            ? selected.salesCommissionRate
+                            : 0,
+                        });
+                      }}
+                      className={bookingInputClass}
+                    >
+                      <option value="">Seçiniz</option>
+                      {salesRepOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.name}
+                        </option>
+                      ))}
+                      {details.salesRepUserId &&
+                      !salesRepOptions.some(
+                        (option) => option.id === details.salesRepUserId
+                      ) &&
+                      details.salesRepName ? (
+                        <option value={details.salesRepUserId}>
+                          {details.salesRepName} (pasif)
+                        </option>
+                      ) : null}
+                    </select>
+                  ) : (
+                    <ReadonlyField value={details.salesRepName || "—"} />
+                  )}
                 </FormRow>
                 <FormRow label="Satış Temsilcisi Prim Oranı">
-                  <input
-                    value={details.salesRepCommissionRate ?? 0}
-                    onChange={(event) =>
-                      patchDetails({
-                        salesRepCommissionRate: parseNumber(event.target.value) ?? 0,
-                      })
-                    }
-                    className={bookingInputClass}
-                  />
+                  {isAdminUser ? (
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        value={details.salesRepCommissionRate ?? 0}
+                        onChange={(event) => {
+                          salesRepEarnedManuallyEdited.current = false;
+                          const raw = Number(
+                            event.target.value.replace(",", ".")
+                          );
+                          const rate = Number.isFinite(raw)
+                            ? Math.min(100, Math.max(0, raw))
+                            : 0;
+                          patchDetails({ salesRepCommissionRate: rate });
+                        }}
+                        className={`${bookingInputClass} pr-10`}
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-gray-500">
+                        %
+                      </span>
+                    </div>
+                  ) : (
+                    <ReadonlyField
+                      value={`%${Number(details.salesRepCommissionRate ?? 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    />
+                  )}
                 </FormRow>
                 <FormRow label="Satış Temsilcisi Prim Hakedişi">
-                  <ReadonlyField
-                    value={String(details.salesRepCommissionEarned ?? 0)}
-                  />
+                  {isAdminUser ? (
+                    <input
+                      value={
+                        details.salesRepCommissionEarned != null
+                          ? String(details.salesRepCommissionEarned)
+                          : ""
+                      }
+                      onChange={(event) => {
+                        salesRepEarnedManuallyEdited.current = true;
+                        patchDetails({
+                          salesRepCommissionEarned:
+                            parseNumber(event.target.value) ?? 0,
+                        });
+                      }}
+                      className={bookingInputClass}
+                    />
+                  ) : (
+                    <ReadonlyField
+                      value={
+                        details.salesRepCommissionEarned != null
+                          ? String(details.salesRepCommissionEarned)
+                          : "—"
+                      }
+                    />
+                  )}
                 </FormRow>
+                {!isAdminUser ? (
+                  <p className="text-xs text-gray-500">
+                    Satış temsilcisi, Konfirme Gönder işlemini yapan kullanıcı
+                    olarak kaydedilir. Değiştirmek için Yönetici yetkisi gerekir.
+                  </p>
+                ) : null}
               </FormSection>
               </TabPanel>
 
@@ -1477,6 +1711,34 @@ export default function BookingDetailModal({
                   />
                 </FormRow>
               </FormSection>
+              </TabPanel>
+
+              <TabPanel active={activeTab === "log"}>
+                <FormSection title="İşlem Logu">
+                  <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                    {activityLogRows.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-sm font-medium text-gray-900">
+                            {entry.message}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {entry.actorName}
+                          </p>
+                        </div>
+                        <time
+                          dateTime={entry.at}
+                          className="shrink-0 text-xs font-medium text-gray-500"
+                        >
+                          {formatActivityLogTime(entry.at)}
+                        </time>
+                      </li>
+                    ))}
+                  </ul>
+                </FormSection>
               </TabPanel>
 
               {error ? (
@@ -1511,9 +1773,10 @@ export default function BookingDetailModal({
         <PrepaymentShareModal
           open={prepaymentShareOpen}
           onClose={() => setPrepaymentShareOpen(false)}
-          onSuccess={({ optionExpiresAt: expiresAt }) => {
+          onSuccess={({ optionExpiresAt: expiresAt, activityLogs }) => {
             setStatus(BookingStatusEnum.PREPAYMENT);
             setOptionExpiresAt(expiresAt);
+            syncActivityLogs(activityLogs);
           }}
           bookingId={booking.id}
           prepaymentAmount={details.prepaymentAmount ?? null}
