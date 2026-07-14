@@ -12,11 +12,13 @@ export type BookingActivityAction =
   | "prepayment_updated"
   | "prepayment_deleted"
   | "confirmation_sent"
+  | "guest_confirmed"
   | "status_changed"
   | "owner_payment_created"
   | "owner_payment_updated"
   | "owner_payment_deleted"
-  | "invoice_saved";
+  | "invoice_saved"
+  | "check_in_info_shared";
 
 export type BookingActivityLogEntry = {
   id: string;
@@ -36,11 +38,13 @@ const ACTION_LABELS: Record<BookingActivityAction, string> = {
   prepayment_updated: "Ön ödeme kaydı güncellendi",
   prepayment_deleted: "Ön ödeme kaydı silindi",
   confirmation_sent: "Konfirme gönderildi",
+  guest_confirmed: "Misafir onayı tamamlandı",
   status_changed: "Durum değiştirildi",
   owner_payment_created: "Villa sahibine ödeme eklendi",
   owner_payment_updated: "Villa sahibine ödeme güncellendi",
   owner_payment_deleted: "Villa sahibine ödeme silindi",
   invoice_saved: "Fatura bilgileri kaydedildi",
+  check_in_info_shared: "Giriş bilgilendirme gönderildi",
 };
 
 export function getBookingActivityActionLabel(
@@ -80,7 +84,15 @@ export function normalizeActivityLogs(
           : undefined,
     });
   }
-  return rows.sort((a, b) => a.at.localeCompare(b.at));
+  // En yeni üstte — Date ile karşılaştır (ekleme sırasına güvenme)
+  return rows.sort((a, b) => {
+    const ta = new Date(a.at).getTime();
+    const tb = new Date(b.at).getTime();
+    const na = Number.isFinite(ta) ? ta : 0;
+    const nb = Number.isFinite(tb) ? tb : 0;
+    if (nb !== na) return nb - na;
+    return b.id.localeCompare(a.id);
+  });
 }
 
 export function buildActivityLogEntry(input: {
@@ -104,23 +116,57 @@ export function buildActivityLogEntry(input: {
 export async function resolveActivityActor(sessionUser?: {
   id?: string | null;
   name?: string | null;
+  email?: string | null;
 } | null): Promise<{ actorUserId: string | null; actorName: string }> {
   const id = sessionUser?.id?.trim() || "";
-  if (!id) {
-    return {
-      actorUserId: null,
-      actorName: sessionUser?.name?.trim() || "Sistem",
-    };
+  const email = sessionUser?.email?.trim() || "";
+  const fallbackName = sessionUser?.name?.trim() || "Sistem";
+
+  if (id) {
+    const byId = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    });
+    if (byId) {
+      return {
+        actorUserId: byId.id,
+        actorName: byId.name.trim() || fallbackName,
+      };
+    }
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id },
-    select: { id: true, name: true },
-  });
+  // JWT sub eski/yeniden oluşturulmuş kullanıcıda kaybolabilir — e-posta ile çöz
+  if (email) {
+    const byEmail = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true },
+    });
+    if (byEmail) {
+      return {
+        actorUserId: byEmail.id,
+        actorName: byEmail.name.trim() || fallbackName,
+      };
+    }
+  }
+
+  const name = sessionUser?.name?.trim() || "";
+  if (name && name !== "Sistem") {
+    const matches = await prisma.user.findMany({
+      where: { name, active: true },
+      select: { id: true, name: true },
+      take: 2,
+    });
+    if (matches.length === 1) {
+      return {
+        actorUserId: matches[0]!.id,
+        actorName: matches[0]!.name.trim() || name,
+      };
+    }
+  }
 
   return {
-    actorUserId: user?.id ?? id,
-    actorName: user?.name?.trim() || sessionUser?.name?.trim() || "Sistem",
+    actorUserId: id || null,
+    actorName: fallbackName,
   };
 }
 
@@ -149,10 +195,10 @@ export async function appendBookingActivityLog(
       : {}
   ) as BookingDetails;
   const entry = buildActivityLogEntry(entryInput);
-  const activityLogs = [
+  const activityLogs = normalizeActivityLogs([
     ...normalizeActivityLogs(details.activityLogs),
     entry,
-  ];
+  ]);
 
   await prisma.booking.update({
     where: { id: bookingId },
@@ -177,7 +223,7 @@ export function withInitialActivityLog(
   );
   return {
     ...base,
-    activityLogs: [...existing, entry],
+    activityLogs: normalizeActivityLogs([...existing, entry]),
   };
 }
 

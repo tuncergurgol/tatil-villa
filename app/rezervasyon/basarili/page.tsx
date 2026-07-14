@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { CheckCircle } from "lucide-react";
 import { getBookingById } from "@/lib/queries/bookings";
 import { formatPrice } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import BookingSuccessCelebration from "@/components/celebration/BookingSuccessCelebration";
 
 export const dynamic = "force-dynamic";
 
@@ -26,54 +25,24 @@ export default async function BookingSuccessPage({ searchParams }: PageProps) {
   if (booking.babies > 0) guestParts.push(`${booking.babies} bebek`);
   if (booking.pets > 0) guestParts.push(`${booking.pets} evcil hayvan`);
 
+  const dateLabel = `${booking.checkIn.toLocaleDateString("tr-TR")} — ${booking.checkOut.toLocaleDateString("tr-TR")} (${nights} gece)`;
+  const guestLabel = `${booking.guestName} (${guestParts.join(", ")})`;
+
   return (
     <div className="bg-gray-50 py-16">
-      <div className="mx-auto max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">
-        <CheckCircle className="mx-auto h-16 w-16 text-teal-600" />
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">
-          Rezervasyon Talebiniz Alındı
-        </h1>
-        <p className="mt-2 text-gray-600">
-          En kısa sürede sizinle iletişime geçeceğiz.
-        </p>
-
-        <div className="mt-8 rounded-xl bg-gray-50 p-5 text-left text-sm">
-          <p className="mt-2">
-            <span className="font-medium text-gray-700">Rezervasyon No:</span>{" "}
-            {booking.externalCode ?? "—"}
-          </p>
-          <p className="mt-2">
-            <span className="font-medium text-gray-700">Villa:</span>{" "}
-            {booking.villa.name}
-          </p>
-          <p className="mt-2">
-            <span className="font-medium text-gray-700">Tarih:</span>{" "}
-            {booking.checkIn.toLocaleDateString("tr-TR")} —{" "}
-            {booking.checkOut.toLocaleDateString("tr-TR")} ({nights} gece)
-          </p>
-          <p className="mt-2">
-            <span className="font-medium text-gray-700">Misafir:</span>{" "}
-            {booking.guestName} ({guestParts.join(", ")})
-          </p>
-          {booking.totalPrice != null && (
-            <p className="mt-2">
-              <span className="font-medium text-gray-700">Toplam:</span>{" "}
-              {formatPrice(booking.totalPrice)}
-            </p>
-          )}
-          <p className="mt-2">
-            <span className="font-medium text-gray-700">Durum:</span>{" "}
-            <span className="text-amber-600">Onay bekliyor</span>
-          </p>
-        </div>
-
-        <Link
-          href="/villalar"
-          className="mt-8 inline-block rounded-xl bg-teal-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-teal-700"
-        >
-          Villalara Dön
-        </Link>
-      </div>
+      <BookingSuccessCelebration
+        reservationCode={
+          booking.externalCode != null
+            ? String(booking.externalCode)
+            : "—"
+        }
+        villaName={booking.villa.name}
+        dateLabel={dateLabel}
+        guestLabel={guestLabel}
+        totalLabel={
+          booking.totalPrice != null ? formatPrice(booking.totalPrice) : null
+        }
+      />
     </div>
   );
 }

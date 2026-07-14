@@ -16,6 +16,7 @@ import {
 } from "@/lib/booking-activity-log";
 import { mapPublicPaymentMethodToCompanyType } from "@/lib/company-payment-types";
 import { notifyNewReservationRequest } from "@/lib/public-booking-notifications";
+import { getRequestClientIp } from "@/lib/request-client-ip";
 
 const optionalMoney = z.coerce.number().optional().nullable();
 
@@ -154,6 +155,7 @@ export async function submitBooking(
   ) as Record<BookingExtraFeeFieldKey, number | null>;
 
   const companyPaymentType = mapPublicPaymentMethodToCompanyType(paymentMethod);
+  const clientIp = await getRequestClientIp();
 
   let booking;
   try {
@@ -188,6 +190,7 @@ export async function submitBooking(
           action: "booking_created",
           message: `Web üzerinden rezervasyon talebi oluşturuldu (${guestName})`,
           actorName: guestName || "Misafir",
+          meta: clientIp ? { ip: clientIp } : undefined,
         })
       ),
     });
