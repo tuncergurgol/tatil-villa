@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { BookingStatus } from "@prisma/client";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { assertBookingDatesOpenForActions } from "@/lib/booking-action-date-guard";
 import {
   buildBookingPrepaymentTemplateValues,
   renderAgencyMessageTemplate,
@@ -159,6 +160,11 @@ export async function sendBookingPrepaymentInfoAction(
 
   if (!booking) {
     return { success: false, error: "Rezervasyon bulunamadı" };
+  }
+
+  const datesGuard = await assertBookingDatesOpenForActions(data.bookingId);
+  if (!datesGuard.ok) {
+    return { success: false, error: datesGuard.error };
   }
 
   if (!template) {

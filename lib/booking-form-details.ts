@@ -10,8 +10,12 @@ import type { StayStatus } from "@/lib/stay-status";
 
 export type BookingGuestEntry = {
   name: string;
+  /** Soyad (public onay formu); admin tabloda name ile birleşik de tutulabilir */
+  surname?: string;
   nationalId: string;
   plate: string;
+  gender?: "male" | "female" | "";
+  nationality?: string;
 };
 
 export type BookingDetails = {
@@ -22,6 +26,10 @@ export type BookingDetails = {
   ownerDiscountAmount?: number | null;
   agencyDiscountRate?: number | null;
   agencyDiscountAmount?: number | null;
+  /** Kupon / kampanya (varsa; DEĞİŞİKLİK YAP ile temizlenir) */
+  couponCode?: string | null;
+  couponDiscountRate?: number | null;
+  couponDiscountAmount?: number | null;
   agencyServiceFee?: number | null;
   prepaymentAmount?: number | null;
   prepaymentRate?: number | null;
@@ -231,7 +239,38 @@ export function formatFeeInputValue(value: number | null | undefined): string {
 }
 
 export function emptyGuestEntry(): BookingGuestEntry {
-  return { name: "", nationalId: "", plate: "" };
+  return {
+    name: "",
+    surname: "",
+    nationalId: "",
+    plate: "",
+    gender: "",
+    nationality: "TC",
+  };
+}
+
+/**
+ * Ad + soyadı birleştirir; `name` zaten soyadı içeriyorsa (admin tek alan / onay formu)
+ * tekrar eklemez. Örn. name="Nejla Gürgöl" + surname="Gürgöl" → "Nejla Gürgöl".
+ */
+export function formatGuestFullName(guest: {
+  name?: string | null;
+  surname?: string | null;
+}): string {
+  const name = (guest.name ?? "").trim();
+  const surname = (guest.surname ?? "").trim();
+  if (!name) return surname;
+  if (!surname) return name;
+
+  const nameLower = name.toLocaleLowerCase("tr-TR");
+  const surnameLower = surname.toLocaleLowerCase("tr-TR");
+  if (
+    nameLower === surnameLower ||
+    nameLower.endsWith(` ${surnameLower}`)
+  ) {
+    return name;
+  }
+  return `${name} ${surname}`;
 }
 
 export function parseBookingDetails(value: unknown): BookingDetails {
@@ -330,6 +369,65 @@ export function hasBookingDiscountAmounts(
   agencyDiscountAmount: number | null | undefined
 ): boolean {
   return (ownerDiscountAmount ?? 0) > 0 || (agencyDiscountAmount ?? 0) > 0;
+}
+
+/** DEĞİŞİKLİK YAP: indirim + kupon alanlarını sıfırlar */
+export function clearBookingDiscountAndCouponFields(
+  details: BookingDetails
+): BookingDetails {
+  return {
+    ...details,
+    ownerDiscountRate: 0,
+    ownerDiscountAmount: 0,
+    discountRate: 0,
+    discountAmount: 0,
+    agencyDiscountRate: 0,
+    agencyDiscountAmount: 0,
+    couponCode: "",
+    couponDiscountRate: 0,
+    couponDiscountAmount: 0,
+  };
+}
+
+/**
+ * Wizard/quote pipeline sonucunu admin form details'e yazar.
+ * İndirim/kupon temizliği çağıran tarafta yapılır.
+ */
+export function applyStayQuoteToBookingDetails(
+  details: BookingDetails,
+  quoteResult: {
+    quote: {
+      valid: boolean;
+      accommodationTotal: number;
+      cleaningFee: number;
+      prepaymentRate: number;
+    };
+    fees: Record<BookingExtraFeeFieldKey, number | null>;
+    damageDeposit: number | null;
+  },
+  options?: { pets?: number }
+): BookingDetails {
+  if (!quoteResult.quote.valid) {
+    return details;
+  }
+
+  const pets = options?.pets ?? 0;
+  const fees = quoteResult.fees;
+
+  return {
+    ...details,
+    grossPrice: quoteResult.quote.accommodationTotal,
+    cleaningFee: quoteResult.quote.cleaningFee || fees.cleaningFee || null,
+    extraAccommodationFee: fees.extraAccommodationFee ?? null,
+    petCleaningFee: pets > 0 ? fees.petCleaningFee ?? null : null,
+    poolHeatingPrivateFee: fees.poolHeatingPrivateFee ?? null,
+    poolHeatingIndoorFee: fees.poolHeatingIndoorFee ?? null,
+    poolHeatingKidsFee: fees.poolHeatingKidsFee ?? null,
+    underfloorHeatingFee: fees.underfloorHeatingFee ?? null,
+    damageDeposit: quoteResult.damageDeposit ?? details.damageDeposit ?? null,
+    prepaymentRate: quoteResult.quote.prepaymentRate,
+    feesFromQuote: true,
+  };
 }
 
 /**
@@ -472,11 +570,17 @@ export function buildGuestRows(
   count: number,
   existing: BookingGuestEntry[] = []
 ): BookingGuestEntry[] {
-  return Array.from({ length: Math.max(count, 0) }, (_, index) => ({
-    name: existing[index]?.name ?? "",
-    nationalId: existing[index]?.nationalId ?? "",
-    plate: existing[index]?.plate ?? "",
-  }));
+  return Array.from({ length: Math.max(count, 0) }, (_, index) => {
+    const row = existing[index];
+    return {
+      name: row?.name ?? "",
+      surname: row?.surname ?? "",
+      nationalId: row?.nationalId ?? "",
+      plate: row?.plate ?? "",
+      gender: row?.gender ?? "",
+      nationality: row?.nationality ?? "TC",
+    };
+  });
 }
 
 export function defaultDetailsFromBooking(booking: {

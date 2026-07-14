@@ -21,6 +21,7 @@ import {
   getAdminBookingWizardVillas,
   resolveAdminBookingWizardQuote,
 } from "@/lib/queries/admin-booking-wizard";
+import { getVillaOccupancyCalendarDays } from "@/lib/queries/villa-occupancy-calendar";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
@@ -597,4 +598,10 @@ export async function getAdminBookingWizardQuoteAction(
   await requireAdmin();
   if (!villaId || !checkIn || !checkOut) return null;
   return resolveAdminBookingWizardQuote(villaId, checkIn, checkOut);
+}
+
+export async function getVillaOccupancyCalendarAction(villaId: string) {
+  await requireAdmin();
+  if (!villaId) return [];
+  return getVillaOccupancyCalendarDays(villaId);
 }

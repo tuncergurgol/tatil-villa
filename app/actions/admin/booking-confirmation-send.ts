@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { BookingStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { assertBookingDatesOpenForActions } from "@/lib/booking-action-date-guard";
 import {
   buildBookingConfirmationTemplateValues,
   renderAgencyMessageTemplate,
 } from "@/lib/agency-message-render";
-import { AGENCY_MESSAGE_TEMPLATE_ROW_4 } from "@/lib/agency-message-row-no";
+import { AGENCY_MESSAGE_TEMPLATE_ROW_10_4 } from "@/lib/agency-message-row-no";
 import {
   buildActivityLogEntry,
   normalizeActivityLogs,
@@ -146,12 +147,17 @@ export async function sendBookingConfirmationAction(
         },
       },
     }),
-    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_4),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_4),
     getCompanySettings(),
   ]);
 
   if (!booking) {
     return { success: false, error: "Rezervasyon bulunamadı" };
+  }
+
+  const datesGuard = await assertBookingDatesOpenForActions(data.bookingId);
+  if (!datesGuard.ok) {
+    return { success: false, error: datesGuard.error };
   }
 
   if (booking.prepayments.length === 0) {
@@ -164,7 +170,7 @@ export async function sendBookingConfirmationAction(
   if (!template) {
     return {
       success: false,
-      error: `Mesaj şablonu bulunamadı (${AGENCY_MESSAGE_TEMPLATE_ROW_4})`,
+      error: `Mesaj şablonu bulunamadı (${AGENCY_MESSAGE_TEMPLATE_ROW_10_4})`,
     };
   }
 
@@ -219,6 +225,7 @@ export async function sendBookingConfirmationAction(
   const templateValues = buildBookingConfirmationTemplateValues({
     reservationCode,
     guestName: booking.guestName,
+    guestEmail: email,
     guestPhone: booking.guestPhone,
     villaName: booking.villa.name,
     checkIn: booking.checkIn,
@@ -234,6 +241,9 @@ export async function sendBookingConfirmationAction(
       companyTitle: companySettings.companyTitle,
       domain: companySettings.domain,
       logoUrl: companySettings.logoUrl,
+      email: companySettings.email,
+      phone: companySettings.phone,
+      address: companySettings.address,
     },
     bankAccount,
   });
@@ -348,10 +358,10 @@ export async function sendBookingConfirmationAction(
       channels: channelLabels,
     },
   });
-  const activityLogs = [
+  const activityLogs = normalizeActivityLogs([
     ...normalizeActivityLogs(details.activityLogs),
     confirmationLog,
-  ];
+  ]);
 
   // Satış temsilcisi: ilk konfirme gönderen kullanıcı; yönetici değiştirene kadar sabit
   let salesRepPatch: Partial<BookingDetails> = {};
@@ -362,15 +372,18 @@ export async function sendBookingConfirmationAction(
     salesRepCommissionEarned: number | null;
   } | null = null;
 
-  if (!details.salesRepUserId?.trim() && actorUserId) {
-    const salesRepUser = await prisma.user.findUnique({
-      where: { id: actorUserId },
-      select: {
-        id: true,
-        name: true,
-        salesCommissionRate: true,
-      },
-    });
+  if (!details.salesRepUserId?.trim()) {
+    const salesRepUser = actorUserId
+      ? await prisma.user.findUnique({
+          where: { id: actorUserId },
+          select: {
+            id: true,
+            name: true,
+            salesCommissionRate: true,
+          },
+        })
+      : null;
+
     if (salesRepUser) {
       const rate = Number(salesRepUser.salesCommissionRate) || 0;
       const earned = computeSalesRepCommissionEarned(
@@ -388,6 +401,20 @@ export async function sendBookingConfirmationAction(
         salesRepName: salesRepUser.name,
         salesRepCommissionRate: rate,
         salesRepCommissionEarned: earned,
+      };
+    } else if (actorUserId || actor.actorName) {
+      // JWT stale id / kullanıcı silinmiş olsa bile adı damgala
+      salesRepPatch = {
+        salesRepUserId: actorUserId || "",
+        salesRepName: actor.actorName,
+        salesRepCommissionRate: 0,
+        salesRepCommissionEarned: null,
+      };
+      salesRepResult = {
+        salesRepUserId: actorUserId || "",
+        salesRepName: actor.actorName,
+        salesRepCommissionRate: 0,
+        salesRepCommissionEarned: null,
       };
     }
   } else if (details.salesRepUserId?.trim()) {

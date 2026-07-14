@@ -11,11 +11,13 @@ import {
 import { sendBookingConfirmationAction } from "@/app/actions/admin/booking-confirmation-send";
 import { changeBookingStatusAction } from "@/app/actions/admin/bookings";
 import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import { getPrepaymentShareChannelLabel } from "@/lib/booking-prepayment-share";
 import type {
   BookingConfirmationSendRecord,
   BookingPrepaymentRecord,
 } from "@/lib/booking-form-details";
+import { resolveExternalCode } from "@/lib/booking-form-details";
 import {
   formatMoneyInputValue,
   formatMoneyPlain,
@@ -33,6 +35,8 @@ import {
   bookingInputClass,
   bookingLabelClass,
 } from "@/components/admin/bookings/booking-form-ui";
+import CheckInInfoShareModal from "@/components/admin/bookings/CheckInInfoShareModal";
+import type { CheckInInfoShareAudience } from "@/app/actions/admin/booking-check-in-info-share";
 
 type BankAccountOption = {
   id: string;
@@ -51,6 +55,9 @@ interface DraftPrepaymentRow {
 
 interface BookingKonfirmeTabProps {
   bookingId: string;
+  bookingStatus: BookingStatus;
+  externalCode: number | null;
+  guestEmail: string;
   expectedPrepaymentAmount: number | null;
   prepayments: BookingPrepaymentRecord[];
   confirmationSentAt: Date | string | null;
@@ -82,6 +89,7 @@ interface BookingKonfirmeTabProps {
     status: BookingStatus,
     activityLogs: BookingActivityLogEntry[]
   ) => void;
+  onActivityLogs?: (activityLogs: BookingActivityLogEntry[]) => void;
 }
 
 function parseAmount(value: string): number | null {
@@ -137,6 +145,9 @@ function resolveHistoryItems(
 
 export default function BookingKonfirmeTab({
   bookingId,
+  bookingStatus,
+  externalCode,
+  guestEmail,
   expectedPrepaymentAmount,
   prepayments,
   confirmationSentAt,
@@ -146,6 +157,7 @@ export default function BookingKonfirmeTab({
   onPrepaymentDeleted,
   onConfirmationSent,
   onStatusChanged,
+  onActivityLogs,
 }: BookingKonfirmeTabProps) {
   const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
   const [draftRows, setDraftRows] = useState<DraftPrepaymentRow[]>([]);
@@ -166,9 +178,16 @@ export default function BookingKonfirmeTab({
   const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
   const [isConfirmPending, startConfirmTransition] = useTransition();
   const [isStatusPending, startStatusTransition] = useTransition();
+  const [checkInShareAudience, setCheckInShareAudience] =
+    useState<CheckInInfoShareAudience | null>(null);
 
   const hasPrepayments = prepayments.length > 0;
   const canSendConfirmation = hasPrepayments && !isConfirmPending;
+  const canNotifyCheckIn = bookingStatus === BookingStatus.CONFIRMED;
+  const resolvedCode =
+    resolveExternalCode(externalCode, guestEmail) || bookingId;
+  const guestPreviewPath = `/giris-bilgilendirme/${resolvedCode}`;
+  const ownerPreviewPath = `/giris-bilgilendirme/${resolvedCode}/evsahibi`;
   const paymentTypeOptions = getSortedCompanyPaymentTypeOptions();
   const historyItems = useMemo(
     () => resolveHistoryItems(confirmationSends, confirmationSentAt),
@@ -266,6 +285,7 @@ export default function BookingKonfirmeTab({
     setSavingRowId(null);
 
     if (!result.success) {
+      alertBookingClosedDatesError(result.error);
       setPrepaymentError(result.error);
       return;
     }
@@ -364,6 +384,7 @@ export default function BookingKonfirmeTab({
       });
 
       if (!result.success) {
+        alertBookingClosedDatesError(result.error);
         setConfirmationError(result.error);
         return;
       }
@@ -841,6 +862,58 @@ export default function BookingKonfirmeTab({
           </button>
         </div>
       </FormSection>
+
+      <FormSection title="Giriş Bilgilendirme">
+        {!canNotifyCheckIn ? (
+          <p className="mb-3 text-sm text-amber-700">
+            Bu butonlar yalnızca rezervasyon durumu{" "}
+            <strong>Onaylandı</strong> iken aktiftir.
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!canNotifyCheckIn}
+            onClick={() => setCheckInShareAudience("guest")}
+            title={
+              canNotifyCheckIn
+                ? guestPreviewPath
+                : "Yalnızca onaylı rezervasyonlarda aktif"
+            }
+            className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            Müşteri Bilgilendirme
+          </button>
+          <button
+            type="button"
+            disabled={!canNotifyCheckIn}
+            onClick={() => setCheckInShareAudience("owner")}
+            title={
+              canNotifyCheckIn
+                ? ownerPreviewPath
+                : "Yalnızca onaylı rezervasyonlarda aktif"
+            }
+            className="rounded-lg bg-sky-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            Villa Yetkilisi Bilgilendir
+          </button>
+        </div>
+      </FormSection>
+
+      <CheckInInfoShareModal
+        open={checkInShareAudience != null}
+        onClose={() => setCheckInShareAudience(null)}
+        bookingId={bookingId}
+        audience={checkInShareAudience ?? "guest"}
+        previewPath={
+          checkInShareAudience === "owner"
+            ? ownerPreviewPath
+            : guestPreviewPath
+        }
+        onSuccess={({ activityLogs }) => {
+          onActivityLogs?.(activityLogs);
+        }}
+      />
     </div>
   );
 }

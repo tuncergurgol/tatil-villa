@@ -4,6 +4,7 @@ import {
   AGENCY_MESSAGE_TEMPLATE_ROW_10_2,
   AGENCY_MESSAGE_TEMPLATE_ROW_10_3,
 } from "@/lib/agency-message-row-no";
+import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import {
   computeReservationTotal,
   type BookingDetails,
@@ -103,6 +104,44 @@ export function buildBookingPaymentLink(
   const base = trimmedDomain ? `https://${trimmedDomain}` : "";
   if (!base || !reservationCode.trim()) return "";
   return `${base}/odemeyonlendir/${reservationCode.trim()}`;
+}
+
+/** Misafir konfirme onay formu linki (`/onay?rezId=&mail=`) */
+export function buildBookingConfirmationLink(
+  domain: string,
+  reservationCode: string,
+  guestEmail?: string
+): string {
+  const envBase = (process.env.BOOKING_CONFIRMATION_BASE_URL ?? "")
+    .trim()
+    .replace(/\/+$/, "");
+  const trimmedDomain = domain.trim().replace(/^https?:\/\//i, "");
+  const base = envBase || (trimmedDomain ? `https://${trimmedDomain}` : "");
+  const code = reservationCode.trim();
+  if (!base || !code) return "";
+  const params = new URLSearchParams({ rezId: code });
+  const mail = (guestEmail ?? "").trim();
+  // Placeholder import mailleri doğrulama için kullanılamaz; linke yazma
+  if (mail && !isImportedPlaceholderEmail(mail)) {
+    params.set("mail", mail);
+  }
+  return `${base}/onay?${params.toString()}`;
+}
+
+/** Şirket telefonunu mail/WA için okunabilir +90 formatına çevirir */
+export function formatCompanyPhoneDisplay(phone: string): string {
+  const trimmed = phone.trim();
+  if (!trimmed) return "";
+  const digits = trimmed.replace(/\D/g, "");
+  let local = digits;
+  if (local.startsWith("90") && local.length >= 12) {
+    local = local.slice(2);
+  }
+  if (local.length === 10) {
+    return `+90 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6, 8)} ${local.slice(8)}`;
+  }
+  if (trimmed.startsWith("+")) return trimmed;
+  return trimmed;
 }
 
 function resolvePoolHeatingFee(details: BookingDetails): number {
@@ -209,6 +248,7 @@ export function buildBookingPrepaymentTemplateValues(input: {
 export function buildBookingConfirmationTemplateValues(input: {
   reservationCode: string;
   guestName: string;
+  guestEmail?: string;
   guestPhone: string;
   villaName: string;
   checkIn: Date;
@@ -224,6 +264,9 @@ export function buildBookingConfirmationTemplateValues(input: {
     companyTitle: string;
     domain: string;
     logoUrl: string;
+    email?: string;
+    phone?: string;
+    address?: string;
   };
   bankAccount?: {
     bankName: string;
@@ -231,10 +274,39 @@ export function buildBookingConfirmationTemplateValues(input: {
     iban: string;
   } | null;
 }): Record<string, string> {
-  return buildBookingPrepaymentTemplateValues({
+  const values = buildBookingPrepaymentTemplateValues({
     ...input,
     optionHours: 0,
   });
+
+  const confirmationLink = buildBookingConfirmationLink(
+    input.company.domain,
+    input.reservationCode,
+    input.guestEmail
+  );
+  const firmPhone = formatCompanyPhoneDisplay(input.company.phone ?? "");
+  const firmEmail = (input.company.email ?? "").trim();
+  const firmAddress = (input.company.address ?? "").trim();
+  const absoluteLogoUrl = resolveCompanyLogoUrl(
+    input.company.logoUrl,
+    input.company.domain
+  );
+
+  setAlias(values, ["MUSTERIADI", "MÜŞTERİADI", "MISAFIRADI", "MİSAFİRADI"], input.guestName);
+  setAlias(
+    values,
+    ["REZKOD", "REZNO", "REZERVASYONKODU", "REZERVASYONKOD"],
+    input.reservationCode
+  );
+  setAlias(values, ["ONAYLINK", "CONFIRMATIONLINK", "KONFIRMELINK"], confirmationLink);
+  // Mail HTML’de img olarak basılır; metinde boş bırakılır
+  setAlias(values, ["SITELOGO", "SİTELOGO", "LOGO"], "");
+  setAlias(values, ["SITELOGOURL", "LOGOURL"], absoluteLogoUrl);
+  setAlias(values, ["SIRKETADRES", "ADRES"], firmAddress);
+  setAlias(values, ["SIRKETTELEFON", "FIRMATEL", "FIRMATELEFON"], firmPhone);
+  setAlias(values, ["SIRKETMAIL", "INFOMAIL"], firmEmail);
+
+  return values;
 }
 
 const DEFAULT_BOOKING_SITE_FALLBACK = "Tatildeyiz";

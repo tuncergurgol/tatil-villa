@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Loader2, Send, X } from "lucide-react";
 import { sendBookingPrepaymentInfoAction } from "@/app/actions/admin/booking-prepayment-share";
 import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import {
   BOOKING_PREPAYMENT_OPTION_HOURS,
   formatPrepaymentOptionLabel,
@@ -97,6 +98,7 @@ export default function PrepaymentShareModal({
       });
 
       if (!result.success) {
+        alertBookingClosedDatesError(result.error);
         setError(result.error);
         return;
       }

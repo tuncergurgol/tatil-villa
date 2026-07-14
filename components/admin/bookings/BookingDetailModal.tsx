@@ -11,9 +11,12 @@ import {
   getBookingPeriodFeesAction,
   getBookingPrepaymentRateAction,
   getSiteInfoOptionsAction,
+  getAdminBookingWizardQuoteAction,
+  getVillaOccupancyCalendarAction,
   updateBookingDetailAction,
   expirePrepaymentOptionsAction,
 } from "@/app/actions/admin/bookings";
+import OccupancyStayDateRangePicker from "@/components/admin/availability/OccupancyStayDateRangePicker";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import {
   type BookingDetailRecord,
@@ -25,8 +28,10 @@ import {
   DEFAULT_BOOKING_SITE_INFO,
   TAXPAYER_TYPE_OPTIONS,
   YES_NO_OPTIONS,
+  applyStayQuoteToBookingDetails,
   buildGuestRows,
   clampDiscountRate,
+  clearBookingDiscountAndCouponFields,
   computeBalance,
   computeCheckInPayment,
   computeCommissionAmount,
@@ -45,6 +50,8 @@ import {
   resolveExternalCode,
   toDateInputValue,
 } from "@/lib/booking-form-details";
+import type { AllowStayRange } from "@/lib/booking-calendar-selection";
+import type { VillaOccupancyCalendarDay } from "@/lib/queries/villa-occupancy-calendar";
 import {
   buildLegacyCreatedLog,
   normalizeActivityLogs,
@@ -117,10 +124,9 @@ function resolveActivityLogRows(
   logs: BookingActivityLogEntry[] | undefined,
   booking: BookingDetailRecord | null
 ): BookingActivityLogEntry[] {
+  // normalizeActivityLogs zaten Date ile en-yeni-üstte sıralar
   const normalized = normalizeActivityLogs(logs);
-  if (normalized.length > 0) {
-    return [...normalized].sort((a, b) => b.at.localeCompare(a.at));
-  }
+  if (normalized.length > 0) return normalized;
   if (!booking) return [];
   return [
     buildLegacyCreatedLog({
@@ -128,6 +134,12 @@ function resolveActivityLogRows(
       guestName: booking.guestName,
     }),
   ];
+}
+
+function activityLogIpLabel(entry: BookingActivityLogEntry): string | null {
+  const ip = entry.meta?.ip;
+  if (typeof ip === "string" && ip.trim()) return ip.trim();
+  return null;
 }
 
 function TabPanel({
@@ -267,6 +279,12 @@ export default function BookingDetailModal({
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [isEntryEditing, setIsEntryEditing] = useState(false);
+  const [entryRecalcPending, setEntryRecalcPending] = useState(false);
+  const [occupancyCalendarDays, setOccupancyCalendarDays] = useState<
+    VillaOccupancyCalendarDay[]
+  >([]);
+  /** Kayıtlı rezervasyon aralığı — takvimde seçim istisnası */
+  const [ownStayRange, setOwnStayRange] = useState<AllowStayRange | null>(null);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
@@ -343,6 +361,11 @@ export default function BookingDetailModal({
         setCheckIn(toDateInputValue(record.checkIn));
         setCheckOut(toDateInputValue(record.checkOut));
         setIsEntryEditing(false);
+        setOwnStayRange({
+          checkIn: toDateInputValue(record.checkIn),
+          checkOut: toDateInputValue(record.checkOut),
+        });
+        setOccupancyCalendarDays([]);
         setGuestName(record.guestName);
         setGuestEmail(record.guestEmail);
         setGuestPhone(record.guestPhone);
@@ -372,6 +395,26 @@ export default function BookingDetailModal({
       window.clearTimeout(timeoutId);
     };
   }, [bookingId]);
+
+  useEffect(() => {
+    if (!booking?.villa.id) {
+      setOccupancyCalendarDays([]);
+      return;
+    }
+
+    let cancelled = false;
+    getVillaOccupancyCalendarAction(booking.villa.id)
+      .then((days) => {
+        if (!cancelled) setOccupancyCalendarDays(days);
+      })
+      .catch(() => {
+        if (!cancelled) setOccupancyCalendarDays([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [booking?.villa.id]);
 
   useEffect(() => {
     if (!booking?.villa.id || !checkIn) return;
@@ -664,6 +707,61 @@ export default function BookingDetailModal({
       childGuests: buildGuestRows(nextChildren, current.childGuests),
       babyGuests: buildGuestRows(nextBabies, current.babyGuests),
     }));
+    if (isEntryEditing && checkIn && checkOut && nextPets !== pets) {
+      void recalculateEntryPricing(checkIn, checkOut, nextPets);
+    }
+  }
+
+  async function recalculateEntryPricing(
+    nextCheckIn: string,
+    nextCheckOut: string,
+    nextPets: number
+  ) {
+    if (!booking?.villa.id || !nextCheckIn || !nextCheckOut) {
+      setDetails((current) => clearBookingDiscountAndCouponFields(current));
+      return;
+    }
+
+    setEntryRecalcPending(true);
+    prepaymentManuallyEdited.current = false;
+    talepPrepaymentAmountRef.current = null;
+
+    try {
+      const quoteResult = await getAdminBookingWizardQuoteAction(
+        booking.villa.id,
+        nextCheckIn,
+        nextCheckOut
+      );
+
+      setDetails((current) => {
+        const cleared = clearBookingDiscountAndCouponFields(current);
+        if (!quoteResult) return cleared;
+        return applyStayQuoteToBookingDetails(cleared, quoteResult, {
+          pets: nextPets,
+        });
+      });
+
+      if (quoteResult?.quote.valid) {
+        setPeriodPrepaymentRate(quoteResult.quote.prepaymentRate);
+      }
+    } catch {
+      setDetails((current) => clearBookingDiscountAndCouponFields(current));
+    } finally {
+      setEntryRecalcPending(false);
+    }
+  }
+
+  function handleApplyEntryChanges() {
+    setIsEntryEditing(true);
+    void recalculateEntryPricing(checkIn, checkOut, pets);
+  }
+
+  function handleStayDatesChange(nextCheckIn: string, nextCheckOut: string) {
+    setCheckIn(nextCheckIn);
+    setCheckOut(nextCheckOut);
+    if (isEntryEditing && nextCheckIn && nextCheckOut) {
+      void recalculateEntryPricing(nextCheckIn, nextCheckOut, pets);
+    }
   }
 
   function handleSave() {
@@ -746,8 +844,8 @@ export default function BookingDetailModal({
 
         {booking && !loading ? (
           <div className="shrink-0 border-b border-gray-200 bg-white px-5">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex gap-1 overflow-x-auto pb-px">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 gap-0.5 pb-px">
                 {BOOKING_DETAIL_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
                   return (
@@ -755,7 +853,7 @@ export default function BookingDetailModal({
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`shrink-0 rounded-t-lg px-4 py-2.5 text-sm font-semibold transition ${
+                      className={`whitespace-nowrap rounded-t-lg px-2.5 py-2.5 text-sm font-semibold transition ${
                         isActive
                           ? "border border-b-0 border-gray-200 bg-white text-violet-700"
                           : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
@@ -766,7 +864,7 @@ export default function BookingDetailModal({
                   );
                 })}
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex shrink-0 flex-col items-end gap-1">
                 <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Rezervasyon Son Durum
                 </span>
@@ -865,34 +963,39 @@ export default function BookingDetailModal({
                 <FormRow label="Tesis Adı">
                   <ReadonlyField value={booking.villa.name} />
                 </FormRow>
-                <FormRow label="Konaklama Giriş Tarihi">
-                  {isEntryEditing ? (
-                    <input
-                      type="date"
-                      value={checkIn}
-                      onChange={(event) => setCheckIn(event.target.value)}
-                      className={bookingInputClass}
+                {isEntryEditing ? (
+                  <FormRow label="Giriş – Çıkış Tarihi">
+                    <OccupancyStayDateRangePicker
+                      checkIn={checkIn}
+                      checkOut={checkOut}
+                      onChange={handleStayDatesChange}
+                      calendarDays={occupancyCalendarDays}
+                      allowStayRange={ownStayRange}
                     />
-                  ) : (
-                    <ReadonlyField
-                      value={formatBookingDate(new Date(`${checkIn}T00:00:00.000Z`))}
-                    />
-                  )}
-                </FormRow>
-                <FormRow label="Konaklama Çıkış Tarihi">
-                  {isEntryEditing ? (
-                    <input
-                      type="date"
-                      value={checkOut}
-                      onChange={(event) => setCheckOut(event.target.value)}
-                      className={bookingInputClass}
-                    />
-                  ) : (
-                    <ReadonlyField
-                      value={formatBookingDate(new Date(`${checkOut}T00:00:00.000Z`))}
-                    />
-                  )}
-                </FormRow>
+                    {entryRecalcPending ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Fiyat yeniden hesaplanıyor…
+                      </p>
+                    ) : null}
+                  </FormRow>
+                ) : (
+                  <>
+                    <FormRow label="Konaklama Giriş Tarihi">
+                      <ReadonlyField
+                        value={formatBookingDate(
+                          new Date(`${checkIn}T00:00:00.000Z`)
+                        )}
+                      />
+                    </FormRow>
+                    <FormRow label="Konaklama Çıkış Tarihi">
+                      <ReadonlyField
+                        value={formatBookingDate(
+                          new Date(`${checkOut}T00:00:00.000Z`)
+                        )}
+                      />
+                    </FormRow>
+                  </>
+                )}
                 <FormRow label="Gece Sayısı">
                   <ReadonlyField value={String(nightCount)} />
                 </FormRow>
@@ -999,11 +1102,11 @@ export default function BookingDetailModal({
                 <div className="flex justify-end pt-1">
                   <button
                     type="button"
-                    onClick={() => setIsEntryEditing(true)}
-                    disabled={isEntryEditing}
+                    onClick={handleApplyEntryChanges}
+                    disabled={isEntryEditing || entryRecalcPending}
                     className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-violet-700 hover:bg-violet-100 disabled:cursor-default disabled:opacity-60"
                   >
-                    Değişiklik Yap
+                    {entryRecalcPending ? "Hesaplanıyor…" : "Değişiklik Yap"}
                   </button>
                 </div>
               </FormSection>
@@ -1158,6 +1261,9 @@ export default function BookingDetailModal({
               <TabPanel active={activeTab === "konfirme"}>
                 <BookingKonfirmeTab
                   bookingId={booking.id}
+                  bookingStatus={status}
+                  externalCode={booking.externalCode}
+                  guestEmail={guestEmail}
                   expectedPrepaymentAmount={details.prepaymentAmount ?? null}
                   prepayments={prepayments}
                   confirmationSentAt={confirmationSentAt}
@@ -1209,6 +1315,7 @@ export default function BookingDetailModal({
                     setStatus(nextStatus);
                     syncActivityLogs(activityLogs);
                   }}
+                  onActivityLogs={syncActivityLogs}
                 />
               </TabPanel>
 
@@ -1727,6 +1834,9 @@ export default function BookingDetailModal({
                           </p>
                           <p className="text-xs text-gray-500">
                             {entry.actorName}
+                            {activityLogIpLabel(entry)
+                              ? ` · IP: ${activityLogIpLabel(entry)}`
+                              : ""}
                           </p>
                         </div>
                         <time

@@ -46,27 +46,55 @@ export function toHtmlFromText(
   }
 
   const lines = normalized.split("\n");
-  const bodyHtml = lines
-    .map((line) => {
-      const trimmed = line.trim();
+  const bodyParts: string[] = [];
 
-      if (options.emphasizeBankTransferFields) {
-        const emphasized = renderBankEmphasizedLine(line);
-        if (emphasized) return emphasized;
-      }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    const trimmed = line.trim();
 
-      const escaped = escapeHtml(line);
-      // Footer şirket satırları (Adres / Telefon … | E-mail); misafir "Telefon:" sola hizalı kalsın.
-      if (
-        /^Adres\s*:/i.test(trimmed) ||
-        (/^Telefon\s*:/i.test(trimmed) && /\bE-?mail\s*:/i.test(trimmed))
-      ) {
-        return `<div style="text-align:center;margin:4px 0;">${escaped}</div>`;
+    const markdownCta = parseMarkdownLinkLine(trimmed);
+    if (markdownCta) {
+      bodyParts.push(renderCtaButton(markdownCta.label, markdownCta.href));
+      continue;
+    }
+
+    // "ONAYLAMAK İÇİN TIKLAYIN" + sonraki satırda URL → yeşil bar
+    if (/^ONAYLAMAK\s+İÇİN\s+TIKLAYIN\.?$/i.test(trimmed)) {
+      const next = (lines[i + 1] ?? "").trim();
+      if (/^https?:\/\//i.test(next)) {
+        bodyParts.push(renderCtaButton(trimmed, next));
+        i += 1;
+        continue;
       }
-      if (!trimmed) return "<br/>";
-      return `${escaped}<br/>`;
-    })
-    .join("");
+    }
+
+    if (options.emphasizeBankTransferFields) {
+      const emphasized = renderBankEmphasizedLine(line);
+      if (emphasized) {
+        bodyParts.push(emphasized);
+        continue;
+      }
+    }
+
+    const escaped = escapeHtml(line);
+    // Footer şirket satırları (Adres / Telefon … | E-mail); misafir "Telefon:" sola hizalı kalsın.
+    if (
+      /^Adres\s*:/i.test(trimmed) ||
+      (/^Telefon\s*:/i.test(trimmed) && /\bE-?mail\s*:/i.test(trimmed))
+    ) {
+      bodyParts.push(
+        `<div style="text-align:center;margin:4px 0;">${escaped}</div>`
+      );
+      continue;
+    }
+    if (!trimmed) {
+      bodyParts.push("<br/>");
+      continue;
+    }
+    bodyParts.push(`${escaped}<br/>`);
+  }
+
+  const bodyHtml = bodyParts.join("");
 
   const logoUrl = options.logoUrl?.trim() || "";
   const logo = logoUrl
@@ -81,4 +109,22 @@ function renderBankEmphasizedLine(line: string): string | null {
   if (!match) return null;
   const [, label, value] = match;
   return `${escapeHtml(label)}<span style="${BANK_EMPHASIZE_STYLE}">${escapeHtml(value)}</span><br/>`;
+}
+
+const MARKDOWN_LINK_LINE_RE = /^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/i;
+
+/** Örn. [ONAYLAMAK İÇİN TIKLAYIN](https://...) */
+function parseMarkdownLinkLine(
+  line: string
+): { label: string; href: string } | null {
+  const match = line.match(MARKDOWN_LINK_LINE_RE);
+  if (!match) return null;
+  return { label: match[1]!.trim(), href: match[2]!.trim() };
+}
+
+/** Yeşil yatay CTA bar (konfirme onay maili) */
+function renderCtaButton(label: string, href: string): string {
+  const safeHref = escapeHtml(href);
+  const safeLabel = escapeHtml(label);
+  return `<div style="margin:16px 0;"><a href="${safeHref}" style="display:block;background-color:#b4d7a8;color:#111111;text-align:center;padding:14px 12px;text-decoration:none;font-weight:bold;font-size:14px;line-height:1.3;">${safeLabel}</a></div>`;
 }
