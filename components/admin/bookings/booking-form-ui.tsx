@@ -1,3 +1,5 @@
+import { formatMoneyInputValue } from "@/lib/booking-display";
+
 export const bookingInputClass =
   "w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100";
 
@@ -78,7 +80,7 @@ export function DiscountPercentAmountField({
         />
       </div>
       <input
-        value={amount ?? ""}
+        value={amount == null ? "" : formatMoneyInputValue(amount)}
         onChange={(event) => {
           const normalized = event.target.value
             .replace(/\./g, "")

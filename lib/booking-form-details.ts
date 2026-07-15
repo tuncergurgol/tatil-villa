@@ -235,7 +235,12 @@ export type BookingExtraFeeFieldKey =
 
 export function formatFeeInputValue(value: number | null | undefined): string {
   if (value == null || value === 0) return "";
-  return String(value);
+  const rounded = Math.round(Number(value));
+  if (!Number.isFinite(rounded)) return "";
+  return rounded.toLocaleString("tr-TR", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
 }
 
 export function emptyGuestEntry(): BookingGuestEntry {
@@ -504,6 +509,23 @@ export function computeReservationTotal(
   return accommodation + sumExtraFees(details);
 }
 
+/**
+ * Rezervasyon toplamı (Fiyat sekmesi):
+ * Konaklama Bakiyesi + Ön Ödeme Tutarı + ekstra bedeller
+ * (bakiye + ön ödeme ≈ indirimli konaklama; fazla ön ödemede ön ödeme tutarı korunur)
+ * “Girişte ödeme = Rezervasyon tutarı − ön ödeme” için kullanılır.
+ */
+export function computeGuestReservationTotal(
+  details: BookingDetails
+): number | null {
+  const net = computeNetPrice(details);
+  if (net == null) return null;
+  const balance = computeBalance(net, details.prepaymentAmount);
+  if (balance == null) return null;
+  const prepayment = details.prepaymentAmount ?? 0;
+  return balance + prepayment + sumExtraFees(details);
+}
+
 export function computeEntrancePayment(
   reservationTotal: number | null,
   prepayment: number | null | undefined
@@ -512,12 +534,14 @@ export function computeEntrancePayment(
   return Math.max(0, reservationTotal - (prepayment ?? 0));
 }
 
+/** Girişte alınacak ödeme: Rezervasyon tutarı − yapılan ön ödeme */
 export function computeCheckInPayment(
-  balance: number | null,
   details: BookingDetails
 ): number | null {
-  if (balance == null) return null;
-  return balance + sumExtraFees(details);
+  return computeEntrancePayment(
+    computeGuestReservationTotal(details),
+    details.prepaymentAmount
+  );
 }
 
 /**
@@ -550,7 +574,7 @@ export function computeCommissionAmount(
 
 /**
  * Satış temsilcisi prim hakedişi:
- * Konaklama tutarı komisyonsuz × prim oranı (%)
+ * İndirimli konaklama tutarı × prim oranı (%)
  */
 export function computeSalesRepCommissionEarned(
   accommodationWithoutCommission: number | null | undefined,

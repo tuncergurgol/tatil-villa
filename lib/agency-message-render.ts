@@ -6,6 +6,7 @@ import {
 } from "@/lib/agency-message-row-no";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import {
+  computeGuestReservationTotal,
   computeReservationTotal,
   type BookingDetails,
 } from "@/lib/booking-form-details";
@@ -25,7 +26,12 @@ export function formatAgencyBookingDate(date: Date): string {
 }
 
 export function formatAgencyMoney(amount: number): string {
-  return amount.toLocaleString("tr-TR");
+  const value = Math.round(Number(amount));
+  if (!Number.isFinite(value)) return "0";
+  return value.toLocaleString("tr-TR", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
 }
 
 export function renderAgencyMessageTemplate(
@@ -407,6 +413,7 @@ export function buildNewReservationRequestTemplateValues(input: {
 }): Record<string, string> {
   const nights = calculateNights(input.checkIn, input.checkOut);
   const reservationTotal =
+    computeGuestReservationTotal(input.details) ??
     computeReservationTotal(input.details) ??
     input.totalPrice ??
     input.details.grossPrice ??
@@ -584,4 +591,148 @@ export function resolveCompanyLogoUrl(
   if (!host) return trimmed;
   const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `https://${host}${path}`;
+}
+
+/** Public giriş-bilgilendirme yolu (önizleme / relative) */
+export function buildCheckInInfoSharePath(
+  reservationCode: string,
+  audience: "guest" | "owner" = "guest"
+): string {
+  const code = reservationCode.trim();
+  if (!code) return "";
+  return audience === "owner"
+    ? `/giris-bilgilendirme/${code}/evsahibi`
+    : `/giris-bilgilendirme/${code}`;
+}
+
+/**
+ * Müşteriye gönderilen mutlak giriş bilgilendirme linki.
+ * ONAYLINK ile aynı taban (localhost müşteriye gitmez).
+ */
+export function buildCheckInInfoShareLink(
+  domain: string,
+  reservationCode: string,
+  audience: "guest" | "owner" = "guest"
+): string {
+  const base = resolveBookingConfirmationBaseUrl(domain);
+  const path = buildCheckInInfoSharePath(reservationCode, audience);
+  if (!base || !path) return "";
+  return `${base}${path}`;
+}
+
+/**
+ * Mesaj İçeriği 11.1 (111) / 40.1 (401) — giriş bilgilendirme.
+ * Guest: müşteri şablonu; owner: villa yetkilisi (KARŞILAYAN) şablonu.
+ * Link alias’ları ve 401’deki yazım varyantları (vVILLAADI, rREZID vb.) burada doldurulur.
+ */
+export function buildCheckInInfoShareTemplateValues(input: {
+  reservationCode: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  villaName: string;
+  /** Villa.originalName — ##VILLAORJINALADI## */
+  villaOriginalName?: string;
+  villaRegion: string;
+  villaCheckInTime: string;
+  villaCheckOutTime: string;
+  checkIn: Date;
+  checkOut: Date;
+  adults: number;
+  children: number;
+  babies: number;
+  pets: number;
+  details: BookingDetails;
+  totalPrice: number | null;
+  audience: "guest" | "owner";
+  recipientName?: string;
+  greeterName?: string;
+  greeterPhone?: string;
+  company: {
+    agencyName: string;
+    brandName: string;
+    companyTitle: string;
+    domain: string;
+    logoUrl: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
+}): Record<string, string> {
+  const values = buildNewReservationRequestTemplateValues(input);
+  const recipientName = (input.recipientName ?? input.guestName).trim();
+  const infoLink = buildCheckInInfoShareLink(
+    input.company.domain,
+    input.reservationCode,
+    input.audience
+  );
+  const greeterName = (input.greeterName ?? "").trim();
+  const greeterPhone = (input.greeterPhone ?? "").trim();
+  const villaOriginalName = (input.villaOriginalName ?? "").trim();
+
+  setAlias(
+    values,
+    ["MUSTERIADI", "MÜŞTERİADI", "MISAFIRADI", "MİSAFİRADI"],
+    recipientName
+  );
+  setAlias(
+    values,
+    [
+      "REZID",
+      "RREZID",
+      "REZKOD",
+      "REZNO",
+      "REZERVASYONKODU",
+      "REZERVASYONKOD",
+      "PNR",
+    ],
+    input.reservationCode
+  );
+  setAlias(
+    values,
+    [
+      "MUSTERIGIRIŞBILGILENDIRMELINK",
+      "MUSTERIGIRISBILGILENDIRMELINK",
+      "BILGILINK",
+      "GIRISBILGILINK",
+      "CHECKININFOLINK",
+      "EVSAHIBIGIRISLINK",
+      "EVSAHIBILINK",
+      "YETKILIGIRISLINK",
+    ],
+    infoLink
+  );
+  setAlias(
+    values,
+    [
+      "MÜŞTERİKARŞILAYAN",
+      "MUSTERIKARSILAYAN",
+      "KARSILAYANADI",
+      "YETKILIADI",
+      "YETKİLİADI",
+    ],
+    greeterName || recipientName
+  );
+  setAlias(
+    values,
+    [
+      "MÜŞTERİKARŞILAYANTELEFON",
+      "MUSTERIKARSILAYANTELEFON",
+      "KARSILAYANTELEFON",
+    ],
+    greeterPhone.replace(/\D/g, "") || greeterPhone
+  );
+  // DB şablon 401: ##vVILLAADI## → VVILLAADI
+  setAlias(
+    values,
+    ["VVILLAADI", "TESISADI", "TESİSADI", "VILLAADI", "VİLLAADI"],
+    input.villaName
+  );
+  setAlias(
+    values,
+    ["VILLAORJINALADI", "VILLAORIGINALADI", "ORJINALADI", "ORIGINALADI"],
+    villaOriginalName || input.villaName
+  );
+
+  return values;
 }

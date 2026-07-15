@@ -9,7 +9,7 @@ import {
 } from "@/app/actions/admin/booking-owner-payments";
 import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
 import type { BookingOwnerPaymentRecord } from "@/lib/booking-form-details";
-import { formatMoneyPlain } from "@/lib/booking-display";
+import { formatMoneyInputValue, formatMoneyPlain } from "@/lib/booking-display";
 import {
   bookingInputClass,
   bookingLabelClass,
@@ -68,7 +68,7 @@ export default function BookingOwnerPaymentsSection({
       {
         id: crypto.randomUUID(),
         paidAt: editing?.paidAt ?? "",
-        amount: editing ? String(editing.amount) : "",
+        amount: editing ? formatMoneyInputValue(editing.amount) : "",
         editingId: editing?.id ?? null,
       },
     ]);

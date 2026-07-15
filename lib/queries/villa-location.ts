@@ -127,3 +127,16 @@ export function formatVillaRegionLabel(region: {
     .filter(Boolean)
     .join(" - ");
 }
+
+/** Rezervasyon belgesi için: Mahalle, İlçe, İl */
+export function formatVillaRegionLabelMahalleIlceIl(region: {
+  name: string;
+  parent?: {
+    name: string;
+    parent?: { name: string } | null;
+  } | null;
+}): string {
+  return [region.name, region.parent?.name, region.parent?.parent?.name]
+    .filter(Boolean)
+    .join(", ");
+}

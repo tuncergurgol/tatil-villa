@@ -1,7 +1,5 @@
-import type { Attachment } from "nodemailer/lib/mailer";
-import { ensureWhatsAppRawConfirmationUrl } from "@/lib/agency-message-render";
-import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import {
+  computeGuestReservationTotal,
   computeNetPrice,
   parseBookingDetails,
   resolveExternalCode,
@@ -12,7 +10,6 @@ import {
   getCompanyPaymentTypeLabel,
   normalizeCompanyPaymentType,
 } from "@/lib/company-payment-types";
-import { resolvePaymentMethodLabel } from "@/lib/booking-display";
 import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
@@ -26,6 +23,7 @@ import {
 import { calculateNights } from "@/lib/queries/bookings";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
+import { formatVillaRegionLabelMahalleIlceIl } from "@/lib/queries/villa-location";
 import {
   applyReservationContractPlaceholders,
   loadOnlineReservationContractBody,
@@ -37,6 +35,10 @@ import {
   type ReservationDocumentGuestRow,
 } from "@/lib/reservation-document-pdf";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
+import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
+import { resolvePaymentMethodLabel } from "@/lib/booking-display";
+import { ensureWhatsAppRawConfirmationUrl } from "@/lib/agency-message-render";
+import type { Attachment } from "nodemailer/lib/mailer";
 
 const RESERVATION_DOCUMENT_BCC = "info@tatildeyiz.com.tr";
 
@@ -115,7 +117,17 @@ export async function buildReservationDocumentDataForBooking(
           checkInTime: true,
           checkOutTime: true,
           location: true,
-          region: { select: { name: true } },
+          region: {
+            select: {
+              name: true,
+              parent: {
+                select: {
+                  name: true,
+                  parent: { select: { name: true } },
+                },
+              },
+            },
+          },
         },
       },
       prepayments: {
@@ -162,16 +174,22 @@ export async function buildReservationDocumentDataForBooking(
     prepaymentFromRecords > 0
       ? prepaymentFromRecords
       : (details.prepaymentAmount ?? 0);
+  // Rezervasyon tutarı = bakiye + ön ödeme + ekstra bedeller (PDF “Rezervasyon Toplamı”)
   const reservationTotal =
+    computeGuestReservationTotal(details) ??
     booking.totalPrice ??
     netAccommodation ??
     details.grossPrice ??
     null;
+  // Kapıda kalan = Rezervasyon tutarı − yapılan ön ödeme
   const remainingAtCheckIn =
-    details.checkInPayment ??
-    (reservationTotal != null
+    reservationTotal != null
       ? Math.max(0, reservationTotal - prepayment)
-      : null);
+      : null;
+
+  const regionLabel = booking.villa.region
+    ? formatVillaRegionLabelMahalleIlceIl(booking.villa.region)
+    : booking.villa.location || "—";
 
   const dateRangeLabel = formatDateRangeLabel(
     booking.checkIn,
@@ -213,8 +231,7 @@ export async function buildReservationDocumentDataForBooking(
     },
     stay: {
       villaName: booking.villa.name,
-      regionLabel:
-        booking.villa.region?.name || booking.villa.location || "—",
+      regionLabel,
       checkIn,
       checkOut,
       checkInTime: booking.villa.checkInTime || "16:00",
@@ -250,6 +267,9 @@ export async function buildReservationDocumentDataForBooking(
       phone: company.phone || "",
       whatsapp: company.whatsapp || company.phone || "",
       email: company.email || RESERVATION_DOCUMENT_BCC,
+      logoUrl: company.logoUrl || undefined,
+      taxOffice: company.taxOffice || undefined,
+      taxNumber: company.taxNumber || undefined,
     },
     contractBody,
   };

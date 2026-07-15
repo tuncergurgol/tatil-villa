@@ -1,12 +1,8 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { formatMoneyPlain } from "@/lib/booking-display";
 import { countNightsBetween } from "@/lib/villa-period-selection";
-
-function formatMoney(value: number | null | undefined): string {
-  if (value == null) return "—";
-  return `${value.toLocaleString("tr-TR")} TL`;
-}
 
 interface NewBookingPriceSummaryProps {
   title?: string;
@@ -80,7 +76,9 @@ export default function NewBookingPriceSummary({
             <Info className="h-3.5 w-3.5 text-gray-400" />
           </span>
           <span className="font-medium text-gray-900">
-            {formatMoney(accommodationTotal)}
+            {accommodationTotal != null
+              ? formatMoneyPlain(accommodationTotal)
+              : "—"}
           </span>
         </div>
 
@@ -88,7 +86,7 @@ export default function NewBookingPriceSummary({
           <div className="flex items-center justify-between gap-3">
             <span className="text-gray-600">Temizlik Ücreti</span>
             <span className="font-medium text-gray-900">
-              {formatMoney(cleaningFee)}
+              {formatMoneyPlain(cleaningFee)}
             </span>
           </div>
         ) : null}
@@ -108,7 +106,7 @@ export default function NewBookingPriceSummary({
               Yerden Isıtma Bedeli
             </span>
             <span className="font-medium text-gray-900">
-              +{underfloorHeatingFee.toLocaleString("tr-TR")} TL
+              +{formatMoneyPlain(underfloorHeatingFee)}
             </span>
           </label>
         ) : null}
@@ -117,20 +115,34 @@ export default function NewBookingPriceSummary({
       <div className="mt-4 space-y-2 border-t border-gray-200 pt-4 text-sm">
         <div className="flex items-center justify-between gap-3 font-bold text-gray-900">
           <span>Toplam</span>
-          <span>{formatMoney(reservationTotal)}</span>
+          <span>
+            {reservationTotal != null
+              ? formatMoneyPlain(reservationTotal)
+              : "—"}
+          </span>
         </div>
         <div className="flex items-center justify-between gap-3 text-gray-700">
           <span>Ön Ödeme (%{prepaymentRate})</span>
-          <span className="font-semibold">{formatMoney(prepaymentAmount)}</span>
+          <span className="font-semibold">
+            {prepaymentAmount != null
+              ? formatMoneyPlain(prepaymentAmount)
+              : "—"}
+          </span>
         </div>
         <div className="flex items-center justify-between gap-3 text-gray-700">
           <span>Giriş Ödemesi (Kalan)</span>
-          <span className="font-semibold">{formatMoney(entrancePayment)}</span>
+          <span className="font-semibold">
+            {entrancePayment != null
+              ? formatMoneyPlain(entrancePayment)
+              : "—"}
+          </span>
         </div>
         {!compact && damageDeposit != null && damageDeposit > 0 ? (
           <div className="flex items-center justify-between gap-3 text-gray-700">
             <span>Hasar Depozitosu</span>
-            <span className="font-semibold">{formatMoney(damageDeposit)}</span>
+            <span className="font-semibold">
+              {formatMoneyPlain(damageDeposit)}
+            </span>
           </div>
         ) : null}
       </div>

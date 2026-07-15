@@ -35,6 +35,7 @@ import {
   computeCheckInPayment,
   computeCommissionAmount,
   computeDiscountAmount,
+  computeGuestReservationTotal,
   computeNetPrice,
   computePrepaymentAmount,
   computeSalesRepCommissionEarned,
@@ -60,7 +61,7 @@ import {
   computeOwnerPayableAmount,
   computeOwnerPaymentDueDate,
 } from "@/lib/owner-payment-schedule";
-import { formatMoneyPlain } from "@/lib/booking-display";
+import { formatMoneyInputValue, formatMoneyPlain } from "@/lib/booking-display";
 import {
   getSortedCompanyPaymentTypeOptions,
   normalizeCompanyPaymentType,
@@ -78,6 +79,7 @@ import type { SalesRepOption } from "@/lib/queries/users";
 import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
 import BookingEntryQuotePreviewModal from "@/components/admin/bookings/BookingEntryQuotePreviewModal";
 import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
+import BookingPrepaymentSection from "@/components/admin/bookings/BookingPrepaymentSection";
 import BookingOwnerPaymentsSection from "@/components/admin/bookings/BookingOwnerPaymentsSection";
 import OptionCountdown from "@/components/admin/bookings/OptionCountdown";
 import TcKimlikInput from "@/components/shared/TcKimlikInput";
@@ -481,9 +483,13 @@ export default function BookingDetailModal({
     () => computeBalance(netPrice, details.prepaymentAmount),
     [netPrice, details.prepaymentAmount]
   );
+  const reservationTotal = useMemo(
+    () => computeGuestReservationTotal(details),
+    [details]
+  );
   const checkInPayment = useMemo(
-    () => computeCheckInPayment(balance, details),
-    [balance, details]
+    () => computeCheckInPayment(details),
+    [details]
   );
 
   useEffect(() => {
@@ -546,14 +552,20 @@ export default function BookingDetailModal({
   const ownerPaymentTermName =
     booking?.villa.prepaymentPaymentType?.name?.trim() || "";
 
+  const realizedPrepaymentTotal = useMemo(
+    () => (prepayments ?? []).reduce((sum, item) => sum + item.amount, 0),
+    [prepayments]
+  );
+
+  const prepaymentDifference =
+    details.prepaymentAmount != null
+      ? details.prepaymentAmount - realizedPrepaymentTotal
+      : null;
+
   const prepaymentTotalForOwner = useMemo(() => {
-    const saved = (prepayments ?? []).reduce(
-      (sum, item) => sum + item.amount,
-      0
-    );
-    if (saved > 0) return saved;
+    if (realizedPrepaymentTotal > 0) return realizedPrepaymentTotal;
     return details.prepaymentAmount ?? 0;
-  }, [prepayments, details.prepaymentAmount]);
+  }, [realizedPrepaymentTotal, details.prepaymentAmount]);
 
   const ownerPayableAmount = useMemo(
     () =>
@@ -1200,7 +1212,11 @@ export default function BookingDetailModal({
               <FormSection title="Fiyat Bilgileri">
                 <FormRow label="Konaklama Bedeli Komisyonlu">
                   <input
-                    value={details.grossPrice ?? ""}
+                    value={
+                      details.grossPrice == null
+                        ? ""
+                        : formatMoneyInputValue(details.grossPrice)
+                    }
                     onChange={(event) =>
                       handleGrossPriceChange(parseNumber(event.target.value))
                     }
@@ -1234,7 +1250,7 @@ export default function BookingDetailModal({
                 </FormRow>
                 <FormRow label="Acente Hizmet Bedeli">
                   <input
-                    value={details.agencyServiceFee ?? 0}
+                    value={formatMoneyInputValue(details.agencyServiceFee ?? 0)}
                     onChange={(event) =>
                       patchDetails({
                         agencyServiceFee: parseNumber(event.target.value) ?? 0,
@@ -1243,67 +1259,15 @@ export default function BookingDetailModal({
                     className={bookingInputClass}
                   />
                 </FormRow>
-                <FormRow label="Konaklama Tutarı Komisyonsuz">
-                  <ReadonlyField value={netPrice != null ? String(netPrice) : ""} />
-                </FormRow>
-                <FormRow label="Ön Ödeme Tutarı">
-                  <div className="flex gap-2">
-                    <input
-                      value={
-                        details.prepaymentAmount != null
-                          ? String(details.prepaymentAmount)
-                          : ""
-                      }
-                      onChange={(event) => {
-                        prepaymentManuallyEdited.current = true;
-                        patchDetails({
-                          prepaymentAmount: parseNumber(event.target.value),
-                        });
-                      }}
-                      className={bookingInputClass}
-                    />
-                    <div className="flex w-24 shrink-0 items-center justify-center rounded-md bg-gray-100 text-sm text-gray-600">
-                      %{periodPrepaymentRate}
-                    </div>
-                  </div>
-                </FormRow>
-                <FormRow label="Ödeme Türü">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <select
-                        value={normalizeCompanyPaymentType(
-                          details.importPaymentMethod ?? ""
-                        )}
-                        onChange={(event) =>
-                          patchDetails({
-                            importPaymentMethod: event.target.value,
-                            prepaymentBank: event.target.value,
-                          })
-                        }
-                        className={bookingInputClass}
-                      >
-                        <option value="">Seçiniz</option>
-                        {getSortedCompanyPaymentTypeOptions().map(
-                          (option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPrepaymentShareOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
-                    >
-                      <Share2 className="h-3.5 w-3.5" />
-                      Ön Ödeme Bilgisi Paylaş
-                    </button>
-                  </div>
+                <FormRow label="İndirimli Konaklama Tutarı">
+                  <ReadonlyField
+                    value={netPrice != null ? formatMoneyPlain(netPrice) : ""}
+                  />
                 </FormRow>
                 <FormRow label="Konaklama Bakiyesi">
-                  <ReadonlyField value={balance != null ? String(balance) : ""} />
+                  <ReadonlyField
+                    value={balance != null ? formatMoneyPlain(balance) : ""}
+                  />
                 </FormRow>
                 {BOOKING_EXTRA_FEE_FIELDS.map(({ key, label }) => (
                   <FormRow key={key} label={label}>
@@ -1318,9 +1282,129 @@ export default function BookingDetailModal({
                     />
                   </FormRow>
                 ))}
+                <FormRow label="Rezervasyon Toplamı">
+                  <ReadonlyField
+                    value={
+                      reservationTotal != null
+                        ? formatMoneyPlain(reservationTotal)
+                        : ""
+                    }
+                  />
+                </FormRow>
+              </FormSection>
+
+              <BookingPrepaymentSection
+                bookingId={booking.id}
+                expectedPrepaymentAmount={details.prepaymentAmount ?? null}
+                prepayments={prepayments}
+                header={
+                  <>
+                    <FormRow label="Ön Ödeme Oranı / Tutarı">
+                      <div className="flex gap-2">
+                        <div
+                          className="flex w-24 shrink-0 items-center justify-center rounded-md bg-gray-100 text-sm text-gray-600"
+                          title="Ön Ödeme Oranı"
+                        >
+                          %{periodPrepaymentRate}
+                        </div>
+                        <input
+                          value={
+                            details.prepaymentAmount != null
+                              ? formatMoneyInputValue(details.prepaymentAmount)
+                              : ""
+                          }
+                          onChange={(event) => {
+                            prepaymentManuallyEdited.current = true;
+                            patchDetails({
+                              prepaymentAmount: parseNumber(
+                                event.target.value
+                              ),
+                            });
+                          }}
+                          className={bookingInputClass}
+                          title="Ön Ödeme Tutarı"
+                          placeholder="Tutar"
+                        />
+                      </div>
+                    </FormRow>
+                    <FormRow label="Ön Ödeme Farkı">
+                      <ReadonlyField
+                        value={
+                          prepaymentDifference != null
+                            ? formatMoneyPlain(prepaymentDifference)
+                            : ""
+                        }
+                      />
+                    </FormRow>
+                    <FormRow label="Ödeme Türü">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <select
+                            value={normalizeCompanyPaymentType(
+                              details.importPaymentMethod ?? ""
+                            )}
+                            onChange={(event) =>
+                              patchDetails({
+                                importPaymentMethod: event.target.value,
+                                prepaymentBank: event.target.value,
+                              })
+                            }
+                            className={bookingInputClass}
+                          >
+                            <option value="">Seçiniz</option>
+                            {getSortedCompanyPaymentTypeOptions().map(
+                              (option) => (
+                                <option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPrepaymentShareOpen(true)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                          Ön Ödeme Bilgisi Paylaş
+                        </button>
+                      </div>
+                    </FormRow>
+                  </>
+                }
+                onPrepaymentSaved={(prepayment, activityLogs) => {
+                  setPrepayments((current) => [...current, prepayment]);
+                  setOptionExpiresAt(null);
+                  syncActivityLogs(activityLogs);
+                }}
+                onPrepaymentUpdated={(prepayment, activityLogs) => {
+                  setPrepayments((current) =>
+                    current.map((item) =>
+                      item.id === prepayment.id ? prepayment : item
+                    )
+                  );
+                  syncActivityLogs(activityLogs);
+                }}
+                onPrepaymentDeleted={(prepaymentId, activityLogs) => {
+                  setPrepayments((current) =>
+                    current.filter((item) => item.id !== prepaymentId)
+                  );
+                  syncActivityLogs(activityLogs);
+                }}
+              />
+
+              <FormSection title="Giriş Ödemesi">
                 <FormRow label="Girişte Alınacak Ödeme">
                   <ReadonlyField
-                    value={checkInPayment != null ? String(checkInPayment) : ""}
+                    value={
+                      checkInPayment != null
+                        ? formatMoneyPlain(checkInPayment)
+                        : ""
+                    }
                   />
                 </FormRow>
               </FormSection>
@@ -1348,29 +1432,9 @@ export default function BookingDetailModal({
                   bookingStatus={status}
                   externalCode={booking.externalCode}
                   guestEmail={guestEmail}
-                  expectedPrepaymentAmount={details.prepaymentAmount ?? null}
                   prepayments={prepayments}
                   confirmationSentAt={confirmationSentAt}
                   confirmationSends={details.confirmationSends ?? []}
-                  onPrepaymentSaved={(prepayment, activityLogs) => {
-                    setPrepayments((current) => [...current, prepayment]);
-                    setOptionExpiresAt(null);
-                    syncActivityLogs(activityLogs);
-                  }}
-                  onPrepaymentUpdated={(prepayment, activityLogs) => {
-                    setPrepayments((current) =>
-                      current.map((item) =>
-                        item.id === prepayment.id ? prepayment : item
-                      )
-                    );
-                    syncActivityLogs(activityLogs);
-                  }}
-                  onPrepaymentDeleted={(prepaymentId, activityLogs) => {
-                    setPrepayments((current) =>
-                      current.filter((item) => item.id !== prepaymentId)
-                    );
-                    syncActivityLogs(activityLogs);
-                  }}
                   onConfirmationSent={({
                     confirmationSentAt: sentAt,
                     confirmationSends,
@@ -1681,12 +1745,12 @@ export default function BookingDetailModal({
                 </FormRow>
                 <FormRow label="Acente Komisyon Hakediş Bedeli">
                   <ReadonlyField
-                    value={String(details.agencyCommissionEarned ?? 0)}
+                    value={formatMoneyPlain(details.agencyCommissionEarned ?? 0)}
                   />
                 </FormRow>
                 <FormRow label="Acenteden Gelecek Para">
                   <ReadonlyField
-                    value={String(details.agencyExpectedAmount ?? 0)}
+                    value={formatMoneyPlain(details.agencyExpectedAmount ?? 0)}
                   />
                 </FormRow>
                 <FormRow label="Acenteden Gelen Para Tarihi">
@@ -1701,7 +1765,7 @@ export default function BookingDetailModal({
                 </FormRow>
                 <FormRow label="Acenteden Gelen Para Tutarı">
                   <ReadonlyField
-                    value={String(details.agencyReceivedAmount ?? 0)}
+                    value={formatMoneyPlain(details.agencyReceivedAmount ?? 0)}
                   />
                 </FormRow>
               </FormSection>
@@ -1848,7 +1912,9 @@ export default function BookingDetailModal({
                     <input
                       value={
                         details.salesRepCommissionEarned != null
-                          ? String(details.salesRepCommissionEarned)
+                          ? formatMoneyInputValue(
+                              details.salesRepCommissionEarned
+                            )
                           : ""
                       }
                       onChange={(event) => {
@@ -1864,7 +1930,7 @@ export default function BookingDetailModal({
                     <ReadonlyField
                       value={
                         details.salesRepCommissionEarned != null
-                          ? String(details.salesRepCommissionEarned)
+                          ? formatMoneyPlain(details.salesRepCommissionEarned)
                           : "—"
                       }
                     />

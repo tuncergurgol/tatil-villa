@@ -25,7 +25,7 @@ import { getVillaOccupancyCalendarDays } from "@/lib/queries/villa-occupancy-cal
 import { requireAdmin } from "@/lib/auth-helpers";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
-  computeEntrancePayment,
+  computeCheckInPayment,
   computeReservationTotal,
   DEFAULT_BOOKING_AGENCY_NAME,
   DEFAULT_BOOKING_SITE_INFO,
@@ -176,11 +176,7 @@ function buildBookingDetailsFromAdminForm(
     siteInfo: DEFAULT_BOOKING_SITE_INFO,
     agencyName: DEFAULT_BOOKING_AGENCY_NAME,
   };
-  const reservationTotal = computeReservationTotal(details);
-  details.checkInPayment = computeEntrancePayment(
-    reservationTotal,
-    data.prepaymentAmount
-  );
+  details.checkInPayment = computeCheckInPayment(details);
   return details;
 }
 

@@ -29,3 +29,7 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_3_1 = 31;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_10_4 = 104;
 /** @deprecated Eski kodlama; 10.4 ile aynı kayıt */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = AGENCY_MESSAGE_TEMPLATE_ROW_10_4;
+/** Giriş bilgilendirme / müşteri bilgilendirme (UI: 11.1, rowNo: 111) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_11_1 = 111;
+/** Villa yetkilisi / karşılayan bilgilendirme (UI: 40.1, rowNo: 401) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_40_1 = 401;

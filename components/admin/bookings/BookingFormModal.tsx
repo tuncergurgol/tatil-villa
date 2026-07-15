@@ -26,6 +26,7 @@ import {
   clampDiscountRate,
   computeDiscountAmount,
   computeEntrancePayment,
+  computeGuestReservationTotal,
   computeNetPrice,
   computePrepaymentAmount,
   computeReservationTotal,
@@ -40,6 +41,7 @@ import type {
   AdminBookingWizardVilla,
 } from "@/lib/queries/admin-booking-wizard";
 import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
+import { formatMoneyPlain } from "@/lib/booking-display";
 
 interface BookingFormModalProps {
   open: boolean;
@@ -74,11 +76,6 @@ const inputClass =
 const labelClass = "text-sm font-semibold text-gray-800";
 
 const initialState: AdminBookingActionState = {};
-
-function formatMoney(value: number | null | undefined): string {
-  if (value == null) return "—";
-  return `${value.toLocaleString("tr-TR")} TL`;
-}
 
 export default function BookingFormModal({
   open,
@@ -220,6 +217,8 @@ export default function BookingFormModal({
     };
 
     const reservationTotal = computeReservationTotal(details);
+    const guestReservationTotal = computeGuestReservationTotal(details);
+    const netPrice = computeNetPrice(details);
     const prepaymentRate = quote?.prepaymentRate ?? 20;
     const formulaPrepayment = computePrepaymentAmount(
       grossPrice,
@@ -229,13 +228,12 @@ export default function BookingFormModal({
     );
     const prepaymentAmount =
       paymentMode === "full"
-        ? reservationTotal
+        ? guestReservationTotal
         : formulaPrepayment;
     const entrancePayment = computeEntrancePayment(
-      reservationTotal,
+      guestReservationTotal,
       prepaymentAmount
     );
-    const netPrice = computeNetPrice(details);
 
     return {
       ...details,
@@ -686,7 +684,9 @@ export default function BookingFormModal({
                       >
                         <p className="text-sm font-bold text-gray-900">Ön Ödeme</p>
                         <p className="mt-1 text-sm text-gray-600">
-                          {formatMoney(pricingDetails.prepaymentAmount)}
+                          {pricingDetails.prepaymentAmount != null
+                            ? formatMoneyPlain(pricingDetails.prepaymentAmount)
+                            : "—"}
                         </p>
                       </button>
                       <button
@@ -700,7 +700,9 @@ export default function BookingFormModal({
                       >
                         <p className="text-sm font-bold text-gray-900">Tam Ödeme</p>
                         <p className="mt-1 text-sm text-gray-600">
-                          {formatMoney(pricingDetails.reservationTotal)}
+                          {pricingDetails.reservationTotal != null
+                            ? formatMoneyPlain(pricingDetails.reservationTotal)
+                            : "—"}
                         </p>
                       </button>
                     </div>

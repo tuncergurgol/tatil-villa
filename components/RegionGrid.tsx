@@ -9,17 +9,23 @@ interface RegionGridProps {
   regions: Region[];
 }
 
-/** Bento boyut deseni — 3 sütunlu masonry hissi */
+/** Ana sayfada gösterilecek bölge kartı sayısı */
+const FEATURED_COUNT = 7;
+
+/**
+ * 7 kartlık 3 sütun bento — boş hücre bırakmadan:
+ * [tall] [short] [tall]
+ * [tall] [short] [tall]
+ * [eq  ] [eq   ] [eq  ]
+ */
 const BENTO_SIZES = [
-  "min-h-[280px] sm:row-span-2 sm:min-h-[360px]",
-  "min-h-[160px] sm:min-h-[170px]",
-  "min-h-[200px] sm:row-span-2 sm:min-h-[280px]",
-  "min-h-[180px] sm:min-h-[200px]",
-  "min-h-[160px] sm:min-h-[170px]",
-  "min-h-[160px] sm:min-h-[170px]",
-  "min-h-[180px] sm:min-h-[200px]",
-  "min-h-[160px] sm:min-h-[170px]",
-  "min-h-[200px] sm:min-h-[220px]",
+  "min-h-[240px] lg:row-span-2 lg:min-h-[360px]",
+  "min-h-[180px] lg:min-h-[170px]",
+  "min-h-[240px] lg:row-span-2 lg:min-h-[280px]",
+  "min-h-[180px] lg:min-h-[170px]",
+  "min-h-[180px] lg:min-h-[200px]",
+  "min-h-[180px] lg:min-h-[200px]",
+  "min-h-[180px] lg:min-h-[200px]",
 ] as const;
 
 export default function RegionGrid({ regions }: RegionGridProps) {
@@ -28,14 +34,22 @@ export default function RegionGrid({ regions }: RegionGridProps) {
     [regions]
   );
 
+  /** Villa sayısına göre en popüler 7 bölge */
+  const featured = useMemo(
+    () => sorted.slice(0, FEATURED_COUNT),
+    [sorted]
+  );
+
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
 
   const visible = useMemo(() => {
-    if (!activeSlug) return sorted;
-    return sorted.filter((region) => region.slug === activeSlug);
-  }, [sorted, activeSlug]);
+    if (activeSlug) {
+      return sorted.filter((region) => region.slug === activeSlug);
+    }
+    return featured;
+  }, [sorted, featured, activeSlug]);
 
-  if (sorted.length === 0) return null;
+  if (sorted.length === 0 || (featured.length === 0 && !activeSlug)) return null;
 
   return (
     <section id="bolgeler" className="bg-white py-12 sm:py-16">
