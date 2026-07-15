@@ -7,12 +7,24 @@ import {
 } from "@/lib/stay-quote";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import type { BookingExtraFeeFieldKey } from "@/lib/booking-form-details";
-import { resolveBookingPeriodFees } from "@/lib/queries/booking-prepayment";
+import {
+  resolveBookingPeriodFees,
+  resolveStayPeriodFees,
+} from "@/lib/queries/booking-prepayment";
+import type {
+  HeatedPoolOption,
+  StayPeriodFees,
+} from "@/lib/stay-period-fees";
 import type { VillaDayOccupancy } from "@prisma/client";
 
 export type VillaStayQuoteResult = {
   quote: StayQuote;
+  /** Birim ücret alanları (legacy / wizard) */
   fees: Record<BookingExtraFeeFieldKey, number | null>;
+  /** Public rezervasyon hesabı ile aynı period ücretleri */
+  periodFees: StayPeriodFees;
+  heatedPools: HeatedPoolOption[];
+  baseCapacity: number;
   damageDeposit: number | null;
 };
 
@@ -80,7 +92,7 @@ export async function resolveVillaStayQuote(
   const rangeStart = new Date(`${nightKeys[0]}T00:00:00.000Z`);
   const rangeEnd = new Date(`${nightKeys[nightKeys.length - 1]}T00:00:00.000Z`);
 
-  const [periodDays, fees, periodMeta] = await Promise.all([
+  const [periodDays, fees, periodFees, villa] = await Promise.all([
     prisma.villaPricePeriodDay.findMany({
       where: {
         villaId,
@@ -89,10 +101,29 @@ export async function resolveVillaStayQuote(
       select: QUOTE_DAY_SELECT,
     }),
     resolveBookingPeriodFees(villaId, rangeStart),
-    prisma.villaPricePeriodDay.findFirst({
-      where: { villaId, date: rangeStart },
+    resolveStayPeriodFees(villaId, rangeStart),
+    prisma.villa.findUnique({
+      where: { id: villaId },
       select: {
-        period: { select: { damageDeposit: true } },
+        guests: true,
+        pools: {
+          where: { heated: true },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            id: true,
+            poolType: true,
+            periods: {
+              orderBy: { startDate: "asc" },
+              select: {
+                startDate: true,
+                endDate: true,
+                heatingFee: true,
+                heatingFeeCurrency: true,
+                poolOpen: true,
+              },
+            },
+          },
+        },
       },
     }),
   ]);
@@ -103,9 +134,24 @@ export async function resolveVillaStayQuote(
     daysByDateKey.set(dateKey, mapDbPeriodDayToQuoteInput(dateKey, day));
   }
 
+  const heatedPools: HeatedPoolOption[] = (villa?.pools ?? []).map((pool) => ({
+    id: pool.id,
+    name: pool.poolType || "Havuz",
+    periods: pool.periods.map((period) => ({
+      startDate: dbDateToDateKey(period.startDate),
+      endDate: dbDateToDateKey(period.endDate),
+      heatingFee: period.heatingFee,
+      heatingFeeCurrency: period.heatingFeeCurrency,
+      poolOpen: period.poolOpen,
+    })),
+  }));
+
   return {
     quote: computeStayQuote(checkIn, checkOut, daysByDateKey),
     fees,
-    damageDeposit: periodMeta?.period.damageDeposit ?? null,
+    periodFees,
+    heatedPools,
+    baseCapacity: villa?.guests ?? 0,
+    damageDeposit: periodFees.damageDeposit,
   };
 }

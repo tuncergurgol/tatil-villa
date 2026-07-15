@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { VillaDayOccupancy } from "@prisma/client";
-import { isNightBlocked, rangeHasBlockedNight } from "@/lib/booking-calendar-selection";
+import { canSelectStayDay } from "@/lib/booking-calendar-selection";
 import {
   getPublicVillaDayVisualStyle,
   PUBLIC_VILLA_DAY_VISUAL_LEGEND,
@@ -133,7 +133,6 @@ function MonthGrid({
           const visual = getPublicVillaDayVisualStyle(kind);
           const price = cell.data?.price;
           const hasDayData = Boolean(cell.data);
-          const nightBlocked = isNightBlocked(occupancyMap, dateKey);
 
           const inRange =
             previewStart &&
@@ -142,23 +141,12 @@ function MonthGrid({
           const isStart = dateKey === previewStart;
           const isEnd = dateKey === previewEnd && previewStart !== previewEnd;
 
-          let canClick = !isPast;
-          if (canClick && !pendingStart) {
-            canClick = !nightBlocked;
-          } else if (canClick && pendingStart) {
-            if (
-              compareDates(parseDateKey(dateKey), parseDateKey(pendingStart)) <=
-              0
-            ) {
-              canClick = !nightBlocked;
-            } else {
-              canClick = !rangeHasBlockedNight(
-                pendingStart,
-                dateKey,
-                occupancyMap
-              );
-            }
-          }
+          const canClick = canSelectStayDay({
+            dateKey,
+            today,
+            pendingStart,
+            occupancyMap,
+          });
 
           const showNightHint =
             Boolean(pendingStart) &&

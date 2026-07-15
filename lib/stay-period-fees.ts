@@ -9,23 +9,43 @@ export type StayPeriodFees = {
   petDamageDeposit: number | null;
   underfloorHeatingFee: number | null;
   extraBedFee: number | null;
-  /** Eski villa fiyat periyodu alanları — rezervasyon UI’da kullanılmaz */
+  /** Period havuz ücretleri — ısıtmalı havuz kaydı yoksa seçmeli checkbox */
   poolHeatingPrivateFee: number | null;
   poolHeatingIndoorFee: number | null;
   poolHeatingKidsFee: number | null;
 };
 
-export type StayOptionalFeeKey = "underfloorHeatingFee";
+export type StayOptionalFeeKey =
+  | "underfloorHeatingFee"
+  | "poolHeatingPrivateFee"
+  | "poolHeatingIndoorFee"
+  | "poolHeatingKidsFee";
 
 /** Gece sayısı ile çarpılan seçmeli ücretler */
 export const STAY_PER_NIGHT_FEE_KEYS: ReadonlySet<StayOptionalFeeKey> = new Set([
   "underfloorHeatingFee",
+  "poolHeatingPrivateFee",
+  "poolHeatingIndoorFee",
+  "poolHeatingKidsFee",
 ]);
+
+/** Havuz ısıtma period alanları — ısıtmalı havuz kaydı yoksa checkbox olarak kullanılır */
+export const STAY_PERIOD_POOL_OPTIONAL_FEE_KEYS: ReadonlySet<StayOptionalFeeKey> =
+  new Set([
+    "poolHeatingPrivateFee",
+    "poolHeatingIndoorFee",
+    "poolHeatingKidsFee",
+  ]);
 
 export const STAY_OPTIONAL_FEE_OPTIONS: {
   key: StayOptionalFeeKey;
   label: string;
-}[] = [{ key: "underfloorHeatingFee", label: "Yerden Isıtma" }];
+}[] = [
+  { key: "underfloorHeatingFee", label: "Yerden Isıtma" },
+  { key: "poolHeatingPrivateFee", label: "Havuz Isıtma (Özel Havuz)" },
+  { key: "poolHeatingIndoorFee", label: "Havuz Isıtma (Kapalı (İç) Havuz)" },
+  { key: "poolHeatingKidsFee", label: "Havuz Isıtma (Çocuk Havuzu)" },
+];
 
 export type StayFeeSelections = Partial<Record<StayOptionalFeeKey, boolean>>;
 
@@ -45,6 +65,13 @@ export type HeatedPoolOption = {
 };
 
 export type PoolHeatingSelections = Record<string, boolean>;
+
+/** Isıtmalı havuz listesi varken period havuz ücretlerini tekrar gösterme */
+export function shouldUsePeriodPoolOptionalFees(
+  heatedPools: HeatedPoolOption[] | undefined
+): boolean {
+  return !heatedPools || heatedPools.length === 0;
+}
 
 export function emptyStayPeriodFees(): StayPeriodFees {
   return {
@@ -261,12 +288,17 @@ export function computeStayExtrasTotal(options: {
     unitFee: fees.extraBedFee,
   });
 
+  const usePeriodPoolFees = shouldUsePeriodPoolOptionalFees(heatedPools);
+
   for (const { key } of STAY_OPTIONAL_FEE_OPTIONS) {
+    if (!usePeriodPoolFees && STAY_PERIOD_POOL_OPTIONAL_FEE_KEYS.has(key)) {
+      continue;
+    }
     if (!selections[key]) continue;
     total += resolveOptionalFeeAmount(key, fees[key], nights);
   }
 
-  if (checkIn && checkOut) {
+  if (!usePeriodPoolFees && checkIn && checkOut) {
     for (const pool of heatedPools) {
       if (!poolHeatingSelections[pool.id]) continue;
       total += resolvePoolHeatingStayAmount({
@@ -392,8 +424,9 @@ export function buildStayBookingFeeDetails(options: {
     unitFee: fees.extraBedFee,
   });
 
+  const usePeriodPoolFees = shouldUsePeriodPoolOptionalFees(heatedPools);
   const poolFees =
-    checkIn && checkOut
+    !usePeriodPoolFees && checkIn && checkOut
       ? resolveSelectedPoolHeatingFees({
           heatedPools,
           poolHeatingSelections,
@@ -401,9 +434,18 @@ export function buildStayBookingFeeDetails(options: {
           checkOut,
         })
       : {
-          poolHeatingPrivateFee: null,
-          poolHeatingIndoorFee: null,
-          poolHeatingKidsFee: null,
+          poolHeatingPrivateFee: amountOrNull(
+            "poolHeatingPrivateFee",
+            Boolean(selections.poolHeatingPrivateFee)
+          ),
+          poolHeatingIndoorFee: amountOrNull(
+            "poolHeatingIndoorFee",
+            Boolean(selections.poolHeatingIndoorFee)
+          ),
+          poolHeatingKidsFee: amountOrNull(
+            "poolHeatingKidsFee",
+            Boolean(selections.poolHeatingKidsFee)
+          ),
         };
 
   const cleaning = positiveFee(cleaningFee ?? fees.cleaningFee);

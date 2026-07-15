@@ -9,6 +9,8 @@ import {
   type AvailabilitySearchResultItem,
   type AvailabilitySearchSort,
 } from "@/lib/queries/availability-search";
+import { resolveVillaStayQuote } from "@/lib/queries/villa-stay-quote";
+import type { StayQuote } from "@/lib/stay-quote";
 
 const searchFiltersSchema = z.object({
   phone: z.string().min(1, "Telefon numarası zorunlu"),
@@ -87,6 +89,44 @@ export async function searchAvailabilityAction(
     return {
       error:
         error instanceof Error ? error.message : "Uygunluk araması başarısız",
+    };
+  }
+}
+
+const stayQuoteSchema = z.object({
+  villaId: z.string().min(1),
+  checkIn: z.string().min(1),
+  checkOut: z.string().min(1),
+});
+
+export async function resolveAvailabilityStayQuoteAction(input: {
+  villaId: string;
+  checkIn: string;
+  checkOut: string;
+}): Promise<{ quote?: StayQuote; error?: string }> {
+  await requireAdmin();
+
+  const parsed = stayQuoteSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Geçersiz tarih aralığı" };
+  }
+
+  try {
+    const resolved = await resolveVillaStayQuote(
+      parsed.data.villaId,
+      parsed.data.checkIn,
+      parsed.data.checkOut
+    );
+    if (!resolved?.quote.valid) {
+      return {
+        error: resolved?.quote.invalidReason ?? "Bu tarihler için fiyat yok",
+      };
+    }
+    return { quote: resolved.quote };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Fiyat hesaplanamadı",
     };
   }
 }

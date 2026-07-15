@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { assertBookingDatesOpenForActions } from "@/lib/booking-action-date-guard";
 import {
   buildBookingConfirmationTemplateValues,
+  ensureWhatsAppRawConfirmationUrl,
   renderAgencyMessageTemplate,
 } from "@/lib/agency-message-render";
 import { AGENCY_MESSAGE_TEMPLATE_ROW_10_4 } from "@/lib/agency-message-row-no";
@@ -41,6 +42,7 @@ import {
   normalizePhoneToE164,
   toWhatsAppRecipient,
 } from "@/lib/phone";
+import { resolveAgencySiteDomainBySiteInfo } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
@@ -222,6 +224,12 @@ export async function sendBookingConfirmationAction(
   );
   const bankAccount = await resolveBankAccount(paymentMethod);
 
+  const siteDomain = await resolveAgencySiteDomainBySiteInfo(details.siteInfo);
+  const publicDomain =
+    siteDomain ||
+    companySettings.domain.trim() ||
+    "www.tatildeyiz.com.tr";
+
   const templateValues = buildBookingConfirmationTemplateValues({
     reservationCode,
     guestName: booking.guestName,
@@ -239,7 +247,7 @@ export async function sendBookingConfirmationAction(
       agencyName: companySettings.agencyName,
       brandName: companySettings.brandName,
       companyTitle: companySettings.companyTitle,
-      domain: companySettings.domain,
+      domain: publicDomain,
       logoUrl: companySettings.logoUrl,
       email: companySettings.email,
       phone: companySettings.phone,
@@ -307,13 +315,15 @@ export async function sendBookingConfirmationAction(
         };
       }
 
+      const whatsappMessage = ensureWhatsAppRawConfirmationUrl(message);
+
       try {
         await sendEvolutionTextMessage(
           evolution.evolutionBaseUrl,
           evolution.evolutionApiKey,
           evolution.evolutionInstanceName,
           toWhatsAppRecipient(normalizePhoneToE164(phone)),
-          message
+          whatsappMessage
         );
       } catch (error) {
         return {

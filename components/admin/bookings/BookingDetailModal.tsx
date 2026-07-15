@@ -28,7 +28,6 @@ import {
   DEFAULT_BOOKING_SITE_INFO,
   TAXPAYER_TYPE_OPTIONS,
   YES_NO_OPTIONS,
-  applyStayQuoteToBookingDetails,
   buildGuestRows,
   clampDiscountRate,
   clearBookingDiscountAndCouponFields,
@@ -77,6 +76,7 @@ import {
 import { getActiveSalesRepOptionsAction } from "@/app/actions/admin/users";
 import type { SalesRepOption } from "@/lib/queries/users";
 import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
+import BookingEntryQuotePreviewModal from "@/components/admin/bookings/BookingEntryQuotePreviewModal";
 import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
 import BookingOwnerPaymentsSection from "@/components/admin/bookings/BookingOwnerPaymentsSection";
 import OptionCountdown from "@/components/admin/bookings/OptionCountdown";
@@ -88,6 +88,16 @@ import {
   isTcKimlikAcceptable,
   validateOptionalTcKimlikFields,
 } from "@/lib/tc-kimlik";
+import type { AdminBookingWizardQuote } from "@/lib/queries/admin-booking-wizard";
+
+type EntryCommittedSnapshot = {
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  babies: number;
+  pets: number;
+};
 
 interface BookingDetailModalProps {
   bookingId: string | null;
@@ -280,6 +290,11 @@ export default function BookingDetailModal({
   const [checkOut, setCheckOut] = useState("");
   const [isEntryEditing, setIsEntryEditing] = useState(false);
   const [entryRecalcPending, setEntryRecalcPending] = useState(false);
+  const [entryQuotePreviewOpen, setEntryQuotePreviewOpen] = useState(false);
+  const [pendingEntryQuote, setPendingEntryQuote] =
+    useState<AdminBookingWizardQuote | null>(null);
+  const entryCommittedRef = useRef<EntryCommittedSnapshot | null>(null);
+  const entryQuoteRequestIdRef = useRef(0);
   const [occupancyCalendarDays, setOccupancyCalendarDays] = useState<
     VillaOccupancyCalendarDay[]
   >([]);
@@ -361,6 +376,10 @@ export default function BookingDetailModal({
         setCheckIn(toDateInputValue(record.checkIn));
         setCheckOut(toDateInputValue(record.checkOut));
         setIsEntryEditing(false);
+        setEntryQuotePreviewOpen(false);
+        setPendingEntryQuote(null);
+        entryCommittedRef.current = null;
+        entryQuoteRequestIdRef.current += 1;
         setOwnStayRange({
           checkIn: toDateInputValue(record.checkIn),
           checkOut: toDateInputValue(record.checkOut),
@@ -417,6 +436,7 @@ export default function BookingDetailModal({
   }, [booking?.villa.id]);
 
   useEffect(() => {
+    if (isEntryEditing) return;
     if (!booking?.villa.id || !checkIn) return;
 
     let cancelled = false;
@@ -433,9 +453,10 @@ export default function BookingDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [booking?.villa.id, checkIn]);
+  }, [booking?.villa.id, checkIn, isEntryEditing]);
 
   useEffect(() => {
+    if (isEntryEditing) return;
     if (!booking?.villa.id || !checkIn) return;
 
     let cancelled = false;
@@ -453,7 +474,7 @@ export default function BookingDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [booking?.villa.id, checkIn]);
+  }, [booking?.villa.id, checkIn, isEntryEditing]);
 
   const netPrice = useMemo(() => computeNetPrice(details), [details]);
   const balance = useMemo(
@@ -707,24 +728,34 @@ export default function BookingDetailModal({
       childGuests: buildGuestRows(nextChildren, current.childGuests),
       babyGuests: buildGuestRows(nextBabies, current.babyGuests),
     }));
-    if (isEntryEditing && checkIn && checkOut && nextPets !== pets) {
-      void recalculateEntryPricing(checkIn, checkOut, nextPets);
+    if (
+      isEntryEditing &&
+      checkIn &&
+      checkOut &&
+      (nextAdults !== adults ||
+        nextChildren !== children ||
+        nextBabies !== babies ||
+        nextPets !== pets)
+    ) {
+      void openEntryQuotePreview(checkIn, checkOut, nextPets);
     }
   }
 
-  async function recalculateEntryPricing(
+  async function openEntryQuotePreview(
     nextCheckIn: string,
     nextCheckOut: string,
     nextPets: number
   ) {
     if (!booking?.villa.id || !nextCheckIn || !nextCheckOut) {
-      setDetails((current) => clearBookingDiscountAndCouponFields(current));
+      setPendingEntryQuote(null);
+      setEntryQuotePreviewOpen(false);
       return;
     }
 
+    const requestId = ++entryQuoteRequestIdRef.current;
     setEntryRecalcPending(true);
-    prepaymentManuallyEdited.current = false;
-    talepPrepaymentAmountRef.current = null;
+    setEntryQuotePreviewOpen(true);
+    setPendingEntryQuote(null);
 
     try {
       const quoteResult = await getAdminBookingWizardQuoteAction(
@@ -732,35 +763,88 @@ export default function BookingDetailModal({
         nextCheckIn,
         nextCheckOut
       );
-
-      setDetails((current) => {
-        const cleared = clearBookingDiscountAndCouponFields(current);
-        if (!quoteResult) return cleared;
-        return applyStayQuoteToBookingDetails(cleared, quoteResult, {
-          pets: nextPets,
-        });
-      });
-
-      if (quoteResult?.quote.valid) {
-        setPeriodPrepaymentRate(quoteResult.quote.prepaymentRate);
-      }
+      if (requestId !== entryQuoteRequestIdRef.current) return;
+      setPendingEntryQuote(quoteResult);
     } catch {
-      setDetails((current) => clearBookingDiscountAndCouponFields(current));
+      if (requestId !== entryQuoteRequestIdRef.current) return;
+      setPendingEntryQuote(null);
     } finally {
-      setEntryRecalcPending(false);
+      if (requestId === entryQuoteRequestIdRef.current) {
+        setEntryRecalcPending(false);
+      }
     }
   }
 
+  function restoreEntryCommittedSnapshot() {
+    const snap = entryCommittedRef.current;
+    if (!snap) return;
+
+    setCheckIn(snap.checkIn);
+    setCheckOut(snap.checkOut);
+    setAdults(snap.adults);
+    setChildren(snap.children);
+    setBabies(snap.babies);
+    setPets(snap.pets);
+    setDetails((current) => ({
+      ...current,
+      adultGuests: buildGuestRows(snap.adults, current.adultGuests),
+      childGuests: buildGuestRows(snap.children, current.childGuests),
+      babyGuests: buildGuestRows(snap.babies, current.babyGuests),
+    }));
+  }
+
+  function handleCloseEntryQuotePreview() {
+    entryQuoteRequestIdRef.current += 1;
+    setEntryRecalcPending(false);
+    setEntryQuotePreviewOpen(false);
+    setPendingEntryQuote(null);
+    restoreEntryCommittedSnapshot();
+  }
+
+  function handleApplyEntryQuotePreview(payload: {
+    details: BookingDetails;
+    prepaymentRate: number;
+  }) {
+    if (!pendingEntryQuote?.quote.valid) return;
+
+    prepaymentManuallyEdited.current = false;
+    talepPrepaymentAmountRef.current = null;
+
+    setDetails((current) => ({
+      ...clearBookingDiscountAndCouponFields(current),
+      ...payload.details,
+    }));
+
+    setPeriodPrepaymentRate(payload.prepaymentRate);
+    entryCommittedRef.current = {
+      checkIn,
+      checkOut,
+      adults,
+      children,
+      babies,
+      pets,
+    };
+    setEntryQuotePreviewOpen(false);
+    setPendingEntryQuote(null);
+  }
+
   function handleApplyEntryChanges() {
+    entryCommittedRef.current = {
+      checkIn,
+      checkOut,
+      adults,
+      children,
+      babies,
+      pets,
+    };
     setIsEntryEditing(true);
-    void recalculateEntryPricing(checkIn, checkOut, pets);
   }
 
   function handleStayDatesChange(nextCheckIn: string, nextCheckOut: string) {
     setCheckIn(nextCheckIn);
     setCheckOut(nextCheckOut);
     if (isEntryEditing && nextCheckIn && nextCheckOut) {
-      void recalculateEntryPricing(nextCheckIn, nextCheckOut, pets);
+      void openEntryQuotePreview(nextCheckIn, nextCheckOut, pets);
     }
   }
 
@@ -974,7 +1058,7 @@ export default function BookingDetailModal({
                     />
                     {entryRecalcPending ? (
                       <p className="mt-1 text-xs text-gray-500">
-                        Fiyat yeniden hesaplanıyor…
+                        Yeni hesap önizlemesi hazırlanıyor…
                       </p>
                     ) : null}
                   </FormRow>
@@ -1106,7 +1190,7 @@ export default function BookingDetailModal({
                     disabled={isEntryEditing || entryRecalcPending}
                     className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-violet-700 hover:bg-violet-100 disabled:cursor-default disabled:opacity-60"
                   >
-                    {entryRecalcPending ? "Hesaplanıyor…" : "Değişiklik Yap"}
+                    Değişiklik Yap
                   </button>
                 </div>
               </FormSection>
@@ -1893,6 +1977,21 @@ export default function BookingDetailModal({
           paymentMethod={paymentMethod}
         />
       ) : null}
+
+      <BookingEntryQuotePreviewModal
+        open={entryQuotePreviewOpen}
+        loading={entryRecalcPending}
+        quote={pendingEntryQuote}
+        checkIn={checkIn}
+        checkOut={checkOut}
+        adults={adults}
+        children={children}
+        babies={babies}
+        pets={pets}
+        villaName={booking?.villa.name}
+        onApply={handleApplyEntryQuotePreview}
+        onClose={handleCloseEntryQuotePreview}
+      />
     </div>
   );
 }

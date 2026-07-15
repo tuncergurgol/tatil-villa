@@ -42,6 +42,20 @@ export async function isVillaAvailable(
   const nightKeys = getStayNightKeys(checkInKey, checkOutKey);
   if (nightKeys.length === 0) return false;
 
+  let excludedStay: { checkIn: string; checkOut: string } | null = null;
+  if (excludeBookingId) {
+    const excluded = await prisma.booking.findUnique({
+      where: { id: excludeBookingId },
+      select: { checkIn: true, checkOut: true },
+    });
+    if (excluded) {
+      excludedStay = {
+        checkIn: dbDateToDateKey(excluded.checkIn),
+        checkOut: dbDateToDateKey(excluded.checkOut),
+      };
+    }
+  }
+
   const periodDays = await prisma.villaPricePeriodDay.findMany({
     where: {
       villaId,
@@ -61,7 +75,16 @@ export async function isVillaAvailable(
   if (allNightsOnCalendar) {
     for (const nightKey of nightKeys) {
       const status = occupancyByKey.get(nightKey);
-      if (status === "BOOKED" || status === "OPTION") return false;
+      if (status !== "BOOKED" && status !== "OPTION") continue;
+      // Düzenlenen rezervasyonun kendi [in,out) geceleri engel sayılmaz
+      if (
+        excludedStay &&
+        nightKey >= excludedStay.checkIn &&
+        nightKey < excludedStay.checkOut
+      ) {
+        continue;
+      }
+      return false;
     }
     return true;
   }

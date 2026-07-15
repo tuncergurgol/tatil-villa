@@ -223,14 +223,27 @@ export function buildReservationDocumentPdf(
   data: ReservationDocumentData
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: "A4",
-      margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-      info: {
-        Title: `Rezervasyon Belgesi ${data.reservationCode}`,
-        Author: data.company.companyTitle || data.company.brandName,
-      },
-    });
+    let doc: PDFKit.PDFDocument;
+    try {
+      // Varsayılan Helvetica AFM’ye dokunma: Next webpack bundle’da
+      // node_modules/pdfkit/js/data yolu .next/vendor-chunks altına kırılıyor.
+      doc = new PDFDocument({
+        size: "A4",
+        margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
+        font: FONT_REGULAR,
+        info: {
+          Title: `Rezervasyon Belgesi ${data.reservationCode}`,
+          Author: data.company.companyTitle || data.company.brandName,
+        },
+      });
+    } catch (error) {
+      reject(
+        error instanceof Error
+          ? error
+          : new Error("PDF belgesi başlatılamadı (Arial font / pdfkit)")
+      );
+      return;
+    }
 
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -240,23 +253,16 @@ export function buildReservationDocumentPdf(
     try {
       doc.registerFont("Regular", FONT_REGULAR);
       doc.registerFont("Bold", FONT_BOLD);
-    } catch (error) {
-      reject(
-        error instanceof Error
-          ? error
-          : new Error("PDF yazı tipi yüklenemedi (assets/fonts/Arial*.ttf)")
-      );
-      return;
-    }
+      doc.font("Regular");
 
-    // —— Üst başlık ——
-    doc
-      .font("Bold")
-      .fontSize(12)
-      .fillColor("#0f172a")
-      .text(data.company.brandName || "tatildeyiz.com.tr", {
-        align: "left",
-      });
+      // —— Üst başlık ——
+      doc
+        .font("Bold")
+        .fontSize(12)
+        .fillColor("#0f172a")
+        .text(data.company.brandName || "tatildeyiz.com.tr", {
+          align: "left",
+        });
     doc
       .font("Regular")
       .fontSize(9)
@@ -578,7 +584,14 @@ export function buildReservationDocumentPdf(
     doc.text(data.company.address, { width: colWidth });
     doc.y = Math.max(leftBottom, doc.y);
 
-    doc.end();
+      doc.end();
+    } catch (error) {
+      reject(
+        error instanceof Error
+          ? error
+          : new Error("PDF yazı tipi / belge üretimi başarısız (assets/fonts/Arial*.ttf)")
+      );
+    }
   });
 }
 

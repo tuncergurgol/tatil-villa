@@ -13,6 +13,7 @@ export type BookingActivityAction =
   | "prepayment_deleted"
   | "confirmation_sent"
   | "guest_confirmed"
+  | "reservation_document_sent"
   | "status_changed"
   | "owner_payment_created"
   | "owner_payment_updated"
@@ -39,6 +40,7 @@ const ACTION_LABELS: Record<BookingActivityAction, string> = {
   prepayment_deleted: "Ön ödeme kaydı silindi",
   confirmation_sent: "Konfirme gönderildi",
   guest_confirmed: "Misafir onayı tamamlandı",
+  reservation_document_sent: "Konfirme belgesi gönderildi",
   status_changed: "Durum değiştirildi",
   owner_payment_created: "Villa sahibine ödeme eklendi",
   owner_payment_updated: "Villa sahibine ödeme güncellendi",

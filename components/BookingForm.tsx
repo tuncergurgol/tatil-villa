@@ -18,10 +18,7 @@ import ReservationPriceSummary, {
   getReservationGrandTotal,
 } from "@/components/ReservationPriceSummary";
 import { useVillaStaySelection } from "@/components/villa-detail/VillaStaySelectionContext";
-import {
-  isNightBlocked,
-  rangeHasBlockedNight,
-} from "@/lib/booking-calendar-selection";
+import { canSelectStayDay } from "@/lib/booking-calendar-selection";
 import {
   formatTurkishPhoneDisplay,
   normalizeStoredTurkishPhone,
@@ -311,7 +308,6 @@ export default function BookingForm({
             const next = occupancyMap.get(offsetDateKey(dateKey, 1));
             const kind = resolveVillaDayVisual(current, prev, next);
             const visual = getPublicVillaDayVisualStyle(kind);
-            const nightBlocked = isNightBlocked(occupancyMap, dateKey);
 
             const inRange =
               previewStart &&
@@ -321,23 +317,12 @@ export default function BookingForm({
             const isEnd =
               dateKey === previewEnd && previewStart !== previewEnd;
 
-            let canClick = !isPast;
-            if (canClick && !pendingStart) {
-              canClick = !nightBlocked;
-            } else if (canClick && pendingStart) {
-              if (
-                compareDates(parseDateKey(dateKey), parseDateKey(pendingStart)) <=
-                0
-              ) {
-                canClick = !nightBlocked;
-              } else {
-                canClick = !rangeHasBlockedNight(
-                  pendingStart,
-                  dateKey,
-                  occupancyMap
-                );
-              }
-            }
+            const canClick = canSelectStayDay({
+              dateKey,
+              today,
+              pendingStart,
+              occupancyMap,
+            });
 
             const showOccupancyBg =
               !isPast && (current !== "EMPTY" || kind !== "empty");
@@ -490,7 +475,7 @@ export default function BookingForm({
     <div
       id="rezervasyon-yap"
       ref={rootRef}
-      className="sticky top-36 overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-100 to-slate-50 shadow-[0_12px_40px_rgba(15,23,42,0.1)]"
+      className="sticky top-[var(--villa-detail-sticky-below-nav,9rem)] overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-100 to-slate-50 shadow-[0_12px_40px_rgba(15,23,42,0.1)]"
     >
       <div className="border-b border-slate-200/70 bg-white/80 px-3.5 py-2.5">
         <h3 className="text-base font-bold tracking-tight text-slate-900">

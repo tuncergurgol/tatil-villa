@@ -354,7 +354,7 @@ export default function BookingConfirmationForm({
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-slate-600">
           {isFreshSuccess
-            ? "Teşekkürler. Rezervasyon belgeniz e-posta adresinize gönderilmiştir."
+            ? "Teşekkürler. Konfirme belgeniz e-posta ve WhatsApp üzerinden gönderilmiştir."
             : "Bu rezervasyonunuz için müşteri bilgilerini daha önce tamamladınız."}
         </p>
         <p className="mt-2 text-sm text-slate-500">

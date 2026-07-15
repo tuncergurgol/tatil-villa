@@ -4,6 +4,7 @@ import type { StayQuote } from "@/lib/stay-quote";
 import PriceInfoTip from "@/components/PriceInfoTip";
 import {
   STAY_OPTIONAL_FEE_OPTIONS,
+  STAY_PERIOD_POOL_OPTIONAL_FEE_KEYS,
   STAY_PER_NIGHT_FEE_KEYS,
   computeStayExtrasTotal,
   formatExtraBedFeeBreakdown,
@@ -13,6 +14,7 @@ import {
   resolveOptionalFeeAmount,
   resolveOverCapacityGuests,
   resolvePoolHeatingStayAmount,
+  shouldUsePeriodPoolOptionalFees,
   type HeatedPoolOption,
   type PoolHeatingSelections,
   type StayFeeSelections,
@@ -227,9 +229,15 @@ export default function ReservationPriceSummary({
   const petDamageDeposit =
     pets > 0 ? positiveFee(periodFees.petDamageDeposit) : 0;
 
-  const selectableOptions = STAY_OPTIONAL_FEE_OPTIONS.filter(
-    (option) => positiveFee(periodFees[option.key]) > 0
-  );
+  const selectableOptions = STAY_OPTIONAL_FEE_OPTIONS.filter((option) => {
+    if (
+      !shouldUsePeriodPoolOptionalFees(heatedPools) &&
+      STAY_PERIOD_POOL_OPTIONAL_FEE_KEYS.has(option.key)
+    ) {
+      return false;
+    }
+    return positiveFee(periodFees[option.key]) > 0;
+  });
 
   const poolHeatingRows =
     checkIn && checkOut

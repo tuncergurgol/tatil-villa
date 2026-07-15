@@ -1,4 +1,5 @@
 import type { Attachment } from "nodemailer/lib/mailer";
+import { ensureWhatsAppRawConfirmationUrl } from "@/lib/agency-message-render";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import {
   computeNetPrice,
@@ -16,8 +17,15 @@ import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
+import { sendEvolutionTextMessage } from "@/lib/evolution-client";
+import {
+  isValidTurkishMobileE164,
+  normalizePhoneToE164,
+  toWhatsAppRecipient,
+} from "@/lib/phone";
 import { calculateNights } from "@/lib/queries/bookings";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
 import {
   applyReservationContractPlaceholders,
   loadOnlineReservationContractBody,
@@ -264,6 +272,33 @@ Adres: ${data.company.address}
 Telefon: ${data.company.phone} | E-mail: ${data.company.email}`;
 }
 
+/** WhatsApp: aynı özet; PDF e-postada (Evolution metin kanalı). */
+function buildGuestWhatsAppText(data: ReservationDocumentData): string {
+  return `Sayın ${data.guest.fullName},
+
+${data.reservationCode} kodlu rezervasyonunuz konfirme edilmiştir.
+
+Konfirme belgeniz (rezervasyon belgesi + online rezervasyon sözleşmesi) e-posta adresinize PDF olarak gönderilmiştir. Lütfen belgeyi saklayınız.
+
+Tesis: ${data.stay.villaName}
+Giriş: ${data.stay.checkIn.toLocaleDateString("tr-TR")} ${data.stay.checkInTime}
+Çıkış: ${data.stay.checkOut.toLocaleDateString("tr-TR")} ${data.stay.checkOutTime}
+
+Sorularınız için ${data.company.phone} numaralı telefondan bize ulaşabilirsiniz.
+
+Adres: ${data.company.address}
+Telefon: ${data.company.phone}
+E-mail: ${data.company.email}`;
+}
+
+export type ReservationDocumentChannel = "email" | "whatsapp";
+
+export type ReservationDocumentChannelResult = {
+  channel: ReservationDocumentChannel;
+  ok: boolean;
+  error?: string;
+};
+
 /**
  * PDF üretip misafire e-posta + BCC info@ gönderir.
  * Hataları fırlatır (çağıran loglar, success UI'yi bozmaz).
@@ -313,3 +348,150 @@ export async function sendReservationDocumentEmail(
     pdfBytes: pdfBuffer.length,
   };
 }
+
+/**
+ * Misafir onayından sonra konfirme belgesi: e-posta (PDF) + Evolution WhatsApp.
+ * Kanal hatalarını fırlatmaz; sonuçları döner (UI success bozulmaz).
+ */
+export async function sendReservationDocumentNotifications(
+  bookingId: string,
+  options?: { clientIp?: string; confirmedAt?: Date }
+): Promise<{
+  reservationCode: string;
+  pdfBytes: number;
+  results: ReservationDocumentChannelResult[];
+}> {
+  const data = await buildReservationDocumentDataForBooking(bookingId, options);
+  const results: ReservationDocumentChannelResult[] = [];
+
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await buildReservationDocumentPdf(data);
+  } catch (error) {
+    const msg =
+      error instanceof Error ? error.message : "PDF üretilemedi";
+    console.error("[sendReservationDocumentNotifications] PDF fail", {
+      bookingId,
+      error: msg,
+    });
+    return {
+      reservationCode: data.reservationCode,
+      pdfBytes: 0,
+      results: [
+        { channel: "email", ok: false, error: msg },
+        {
+          channel: "whatsapp",
+          ok: false,
+          error: `PDF üretilemedi; WA atlandı (${msg})`,
+        },
+      ],
+    };
+  }
+
+  if (!pdfBuffer.length) {
+    return {
+      reservationCode: data.reservationCode,
+      pdfBytes: 0,
+      results: [
+        { channel: "email", ok: false, error: "PDF buffer boş üretildi" },
+        { channel: "whatsapp", ok: false, error: "PDF üretilemedi; WA atlandı" },
+      ],
+    };
+  }
+
+  const company = await getCompanySettings();
+  const email = data.guest.email.trim();
+  const phoneRaw = data.guest.phone.trim() || "";
+
+  // --- E-posta (PDF ek + BCC) ---
+  if (!email || isImportedPlaceholderEmail(email)) {
+    results.push({
+      channel: "email",
+      ok: false,
+      error: "Geçerli misafir e-postası yok",
+    });
+  } else {
+    try {
+      const emailLogo = await prepareCompanyLogoForEmail(
+        company.logoUrl,
+        company.domain
+      );
+      const text = buildGuestMailText(data);
+      const attachments: Attachment[] = [
+        ...(emailLogo.attachments ?? []),
+        {
+          filename: `rezervasyon-belgesi-${data.reservationCode}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ];
+
+      await sendCompanyMail(company, {
+        to: email,
+        bcc: RESERVATION_DOCUMENT_BCC,
+        subject: `${data.reservationCode} nolu rezervasyon belgeniz`,
+        text,
+        html: toHtmlFromText(text, { logoUrl: emailLogo.src }),
+        attachments,
+      });
+      results.push({ channel: "email", ok: true });
+    } catch (error) {
+      results.push({
+        channel: "email",
+        ok: false,
+        error: error instanceof Error ? error.message : "E-posta gönderilemedi",
+      });
+    }
+  }
+
+  // --- WhatsApp (Evolution, düz metin) — booking-confirmation-send ile aynı kanal ---
+  const e164 = phoneRaw ? normalizePhoneToE164(phoneRaw) : "";
+  if (!e164 || !isValidTurkishMobileE164(e164)) {
+    results.push({
+      channel: "whatsapp",
+      ok: false,
+      error: phoneRaw
+        ? "Geçersiz telefon numarası"
+        : "Misafir telefonu yok",
+    });
+  } else {
+    try {
+      const evolution = await getEvolutionWhatsappAdminData();
+      if (!evolution.evolutionApiKey || !evolution.evolutionBaseUrl) {
+        results.push({
+          channel: "whatsapp",
+          ok: false,
+          error: "Sistem WhatsApp (Evolution) ayarları eksik",
+        });
+      } else {
+        const whatsappMessage = ensureWhatsAppRawConfirmationUrl(
+          buildGuestWhatsAppText(data)
+        );
+        await sendEvolutionTextMessage(
+          evolution.evolutionBaseUrl,
+          evolution.evolutionApiKey,
+          evolution.evolutionInstanceName,
+          toWhatsAppRecipient(e164),
+          whatsappMessage
+        );
+        results.push({ channel: "whatsapp", ok: true });
+      }
+    } catch (error) {
+      results.push({
+        channel: "whatsapp",
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "WhatsApp mesajı gönderilemedi",
+      });
+    }
+  }
+
+  return {
+    reservationCode: data.reservationCode,
+    pdfBytes: pdfBuffer.length,
+    results,
+  };
+}
+

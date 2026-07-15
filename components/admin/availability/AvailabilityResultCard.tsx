@@ -1,17 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   BedDouble,
   ChevronDown,
+  ExternalLink,
   Link2,
+  Loader2,
   MapPin,
   MessageCircle,
   Moon,
   Send,
   Users,
 } from "lucide-react";
+import { resolveAvailabilityStayQuoteAction } from "@/app/actions/admin/availability-search";
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
@@ -19,17 +23,87 @@ import {
   addDaysToDateKey,
   formatPlainPrice,
 } from "@/lib/villa-period-calendar";
+import { countNightsBetween } from "@/lib/villa-period-selection";
+import { buildWaMeUrl } from "@/lib/whatsapp-wa-me";
 import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-search";
+import type { StayQuote } from "@/lib/stay-quote";
 
 interface AvailabilityResultCardProps {
   result: AvailabilitySearchResultItem;
+  selected: boolean;
+  onToggleSelect: (villaId: string, selected: boolean) => void;
+  guestPhone: string;
+  guestName: string;
+  adults: number;
+  children: number;
+  babies: number;
+}
+
+function buildVillaPublicUrl(
+  slug: string,
+  checkIn: string,
+  checkOut: string
+): string {
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const params = new URLSearchParams();
+  if (checkIn) params.set("checkIn", checkIn);
+  if (checkOut) params.set("checkOut", checkOut);
+  const query = params.toString();
+  return `${origin}/villalar/${slug}${query ? `?${query}` : ""}`;
+}
+
+function buildOfferMessage(options: {
+  villaName: string;
+  slug: string;
+  checkIn: string;
+  checkOut: string;
+  quote: StayQuote;
+  guestName: string;
+}): string {
+  const nights = countNightsBetween(options.checkIn, options.checkOut);
+  const url = buildVillaPublicUrl(
+    options.slug,
+    options.checkIn,
+    options.checkOut
+  );
+  const total = formatPlainPrice(options.quote.total, options.quote.currency);
+  const lines = [
+    options.guestName ? `Merhaba ${options.guestName},` : "Merhaba,",
+    "",
+    `${options.villaName} için uygunluk / teklif:`,
+    `Giriş: ${options.checkIn}`,
+    `Çıkış: ${options.checkOut}`,
+    nights > 0 ? `Gece: ${nights}` : null,
+    `Toplam: ${total}`,
+    "",
+    url,
+  ];
+  return lines.filter((line) => line != null).join("\n");
 }
 
 export default function AvailabilityResultCard({
   result,
+  selected,
+  onToggleSelect,
+  guestPhone,
+  guestName,
+  adults,
+  children,
+  babies,
 }: AvailabilityResultCardProps) {
   const [checkIn, setCheckIn] = useState(result.checkIn);
   const [checkOut, setCheckOut] = useState(result.checkOut);
+  const [quote, setQuote] = useState(result.quote);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [isQuoting, startQuoteTransition] = useTransition();
+
+  useEffect(() => {
+    setCheckIn(result.checkIn);
+    setCheckOut(result.checkOut);
+    setQuote(result.quote);
+    setQuoteError(null);
+  }, [result]);
 
   const highlightTags = useMemo(() => {
     const tags: string[] = [];
@@ -63,55 +137,169 @@ export default function AvailabilityResultCard({
     [checkIn, checkOut]
   );
 
+  function refreshQuote(nextCheckIn: string, nextCheckOut: string) {
+    if (!nextCheckIn || !nextCheckOut || nextCheckIn >= nextCheckOut) {
+      setQuoteError("Geçerli giriş-çıkış seçin");
+      return;
+    }
+
+    startQuoteTransition(async () => {
+      const response = await resolveAvailabilityStayQuoteAction({
+        villaId: result.id,
+        checkIn: nextCheckIn,
+        checkOut: nextCheckOut,
+      });
+      if (response.error || !response.quote) {
+        setQuoteError(response.error ?? "Fiyat hesaplanamadı");
+        return;
+      }
+      setQuote(response.quote);
+      setQuoteError(null);
+    });
+  }
+
   function handleCheckInChange(value: string) {
     setCheckIn(value);
-    const nights = result.quote.nights;
+    const nights = quote.nights > 0 ? quote.nights : result.quote.nights;
     if (nights > 0 && value) {
-      setCheckOut(addDaysToDateKey(value, nights));
+      const nextOut = addDaysToDateKey(value, nights);
+      setCheckOut(nextOut);
+      refreshQuote(value, nextOut);
+      return;
     }
+    if (checkOut) refreshQuote(value, checkOut);
+  }
+
+  function handleCheckOutChange(value: string) {
+    setCheckOut(value);
+    if (checkIn) refreshQuote(checkIn, value);
   }
 
   function handleSendInfo() {
-    console.info("[availability-search] Bilgi Gönder", {
-      villaId: result.id,
+    const message = buildOfferMessage({
+      villaName: result.name,
+      slug: result.slug,
       checkIn,
       checkOut,
+      quote,
+      guestName,
     });
-    window.alert("Bilgi gönderme özelliği yakında eklenecek.");
+
+    if (guestPhone) {
+      const wa = buildWaMeUrl(guestPhone.startsWith("+") ? guestPhone : `+90${guestPhone}`, message);
+      if (wa.ok) {
+        window.open(wa.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+    }
+
+    void navigator.clipboard.writeText(message).then(
+      () => window.alert("Teklif metni panoya kopyalandı."),
+      () => window.alert(message)
+    );
   }
 
   function handleWhatsAppAction(action: string) {
-    console.info("[availability-search] WhatsApp", { villaId: result.id, action });
-    window.alert(`WhatsApp: ${action} (yakında)`);
+    const message = buildOfferMessage({
+      villaName: result.name,
+      slug: result.slug,
+      checkIn,
+      checkOut,
+      quote,
+      guestName,
+    });
+
+    if (action === "Kişiye Gönder") {
+      if (!guestPhone) {
+        window.alert("Müşteri telefonu gerekli.");
+        return;
+      }
+      const wa = buildWaMeUrl(
+        guestPhone.startsWith("+") ? guestPhone : `+90${guestPhone}`,
+        message
+      );
+      if (!wa.ok) {
+        window.alert(wa.error);
+        return;
+      }
+      window.open(wa.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    void navigator.clipboard.writeText(message).then(
+      () => window.alert("Grup mesajı metni panoya kopyalandı."),
+      () => window.alert("Mesaj kopyalanamadı.")
+    );
   }
 
   function handleLinkAction(action: string) {
-    console.info("[availability-search] Link gönder", { villaId: result.id, action });
-    window.alert(`Link gönder: ${action} (yakında)`);
+    if (action === "Teklif Linki") {
+      const url = buildVillaPublicUrl(result.slug, checkIn, checkOut);
+      void navigator.clipboard.writeText(url).then(
+        () => window.alert("Teklif linki panoya kopyalandı."),
+        () => window.alert(url)
+      );
+      return;
+    }
+
+    const url = buildVillaPublicUrl(result.slug, checkIn, checkOut);
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   const firstMonth = result.calendarMonths[0];
   const secondMonth = result.calendarMonths[1];
+  const adminHref = `/admin/villalar/${result.id}/duzenle`;
+  const publicHref = `/villalar/${result.slug}`;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="grid gap-0 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
         <div className="border-b border-gray-100 p-4 xl:border-b-0 xl:border-r">
           <div className="flex gap-4">
-            <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-gray-100">
-              {result.image ? (
-                <Image
-                  src={result.image}
-                  alt={result.name}
-                  fill
-                  className="object-cover"
-                  sizes="128px"
+            <div className="relative">
+              <label className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded border border-white/80 bg-white/95 shadow-sm">
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={(event) =>
+                    onToggleSelect(result.id, event.target.checked)
+                  }
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                  aria-label={`${result.name} seç`}
                 />
-              ) : null}
+              </label>
+              <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                {result.image ? (
+                  <Image
+                    src={result.image}
+                    alt={result.name}
+                    fill
+                    className="object-cover"
+                    sizes="128px"
+                  />
+                ) : null}
+              </div>
             </div>
 
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-gray-900">{result.name}</h3>
+              <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+                <Link
+                  href={adminHref}
+                  className="text-base font-bold text-gray-900 hover:text-violet-700 hover:underline"
+                >
+                  {result.name}
+                </Link>
+                <Link
+                  href={publicHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 transition hover:bg-gray-50"
+                  title="Public villa sayfası"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Önizleme
+                </Link>
+              </div>
               {result.villaId != null ? (
                 <p className="mt-0.5 text-xs text-gray-500">
                   VillaID {result.villaId}
@@ -127,22 +315,27 @@ export default function AvailabilityResultCard({
                   <Users className="h-3.5 w-3.5 text-gray-400" />
                   {result.guests}
                   {result.extraCapacity > 0 ? `+${result.extraCapacity}` : ""} kişi
+                  {(adults > 0 || children > 0 || babies > 0) && (
+                    <span className="text-gray-400">
+                      (arama: {adults}+{children}+{babies})
+                    </span>
+                  )}
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <BedDouble className="h-3.5 w-3.5 text-gray-400" />
                   {result.bedrooms} yatak odası
                 </span>
-                {result.minStayNights != null && result.minStayNights > 0 ? (
+                {quote.minStayNights != null && quote.minStayNights > 0 ? (
                   <span className="inline-flex items-center gap-1">
                     <Moon className="h-3.5 w-3.5 text-gray-400" />
-                    min {result.minStayNights} gece
+                    min {quote.minStayNights} gece
                   </span>
                 ) : null}
               </div>
 
               {result.startingPrice != null ? (
                 <p className="mt-2 text-sm font-semibold text-violet-700">
-                  {formatPlainPrice(result.startingPrice, result.quote.currency)}{" "}
+                  {formatPlainPrice(result.startingPrice, quote.currency)}{" "}
                   <span className="font-normal text-gray-500">/ gece başlayan</span>
                 </p>
               ) : null}
@@ -184,44 +377,44 @@ export default function AvailabilityResultCard({
               <input
                 type="date"
                 value={checkOut}
-                onChange={(event) => setCheckOut(event.target.value)}
+                onChange={(event) => handleCheckOutChange(event.target.value)}
                 className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100"
               />
             </label>
           </div>
 
           <div className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-gray-50/70 p-3 text-sm">
+            {isQuoting ? (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Fiyat güncelleniyor…
+              </div>
+            ) : null}
+            {quoteError ? (
+              <p className="text-xs text-red-600">{quoteError}</p>
+            ) : null}
             <div className="flex items-center justify-between gap-3">
               <span className="text-gray-500">K. Ücret</span>
               <span className="font-semibold text-gray-900">
-                {formatPlainPrice(
-                  result.quote.commissionTotal,
-                  result.quote.currency
-                )}
+                {formatPlainPrice(quote.commissionTotal, quote.currency)}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-gray-500">Toplam</span>
               <span className="font-bold text-gray-900">
-                {formatPlainPrice(result.quote.total, result.quote.currency)}
+                {formatPlainPrice(quote.total, quote.currency)}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-gray-500">Ön Öd. %{result.quote.prepaymentRate}</span>
+              <span className="text-gray-500">Ön Öd. %{quote.prepaymentRate}</span>
               <span className="font-semibold text-gray-900">
-                {formatPlainPrice(
-                  result.quote.prepaymentAmount,
-                  result.quote.currency
-                )}
+                {formatPlainPrice(quote.prepaymentAmount, quote.currency)}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-gray-500">Giriş Öd.</span>
               <span className="font-semibold text-gray-900">
-                {formatPlainPrice(
-                  result.quote.checkInPayment,
-                  result.quote.currency
-                )}
+                {formatPlainPrice(quote.checkInPayment, quote.currency)}
               </span>
             </div>
           </div>
@@ -258,7 +451,7 @@ export default function AvailabilityResultCard({
                 <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
               </summary>
               <div className="absolute left-0 z-10 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-                {["Teklif Linki", "Ödeme Linki"].map((action) => (
+                {["Teklif Linki", "Önizleme"].map((action) => (
                   <button
                     key={action}
                     type="button"

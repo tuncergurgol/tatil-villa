@@ -25,4 +25,7 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_1_6 = 16;
 /** @deprecated Eski 1.7 kodlaması; fallback için tutuluyor */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1_7 = 17;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_3_1 = 31;
-export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = 4;
+/** Konfirme belgesi gönderildi (UI: 10.4) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_10_4 = 104;
+/** @deprecated Eski kodlama; 10.4 ile aynı kayıt */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = AGENCY_MESSAGE_TEMPLATE_ROW_10_4;

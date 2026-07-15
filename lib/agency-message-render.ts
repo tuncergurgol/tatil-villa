@@ -106,17 +106,57 @@ export function buildBookingPaymentLink(
   return `${base}/odemeyonlendir/${reservationCode.trim()}`;
 }
 
+const DEFAULT_PUBLIC_BOOKING_DOMAIN = "www.tatildeyiz.com.tr";
+
+/** localhost / 127.0.0.1 — müşteri mesajlarında asla kullanılmaz */
+export function isLocalConfirmationBaseUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  try {
+    const withScheme = /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    const host = new URL(withScheme).hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return /^(localhost|127\.0\.0\.1|::1)(:\d+)?$/i.test(
+      trimmed.replace(/^https?:\/\//i, "").split("/")[0] ?? ""
+    );
+  }
+}
+
+/**
+ * Konfirme ONAYLINK tabanı:
+ * - `BOOKING_CONFIRMATION_BASE_URL` yalnızca açık (non-localhost) set edilirse override
+ * - localhost env asla müşteri linkine yansımaz
+ * - aksi halde şirket / acente site domain (https)
+ */
+export function resolveBookingConfirmationBaseUrl(domain: string): string {
+  const envBase = (process.env.BOOKING_CONFIRMATION_BASE_URL ?? "")
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (envBase && !isLocalConfirmationBaseUrl(envBase)) {
+    return envBase.replace(/^http:\/\//i, "https://");
+  }
+
+  const trimmedDomain = (domain || DEFAULT_PUBLIC_BOOKING_DOMAIN)
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
+  if (!trimmedDomain || isLocalConfirmationBaseUrl(trimmedDomain)) {
+    return `https://${DEFAULT_PUBLIC_BOOKING_DOMAIN}`;
+  }
+  return `https://${trimmedDomain}`;
+}
+
 /** Misafir konfirme onay formu linki (`/onay?rezId=&mail=`) */
 export function buildBookingConfirmationLink(
   domain: string,
   reservationCode: string,
   guestEmail?: string
 ): string {
-  const envBase = (process.env.BOOKING_CONFIRMATION_BASE_URL ?? "")
-    .trim()
-    .replace(/\/+$/, "");
-  const trimmedDomain = domain.trim().replace(/^https?:\/\//i, "");
-  const base = envBase || (trimmedDomain ? `https://${trimmedDomain}` : "");
+  const base = resolveBookingConfirmationBaseUrl(domain);
   const code = reservationCode.trim();
   if (!base || !code) return "";
   const params = new URLSearchParams({ rezId: code });
@@ -126,6 +166,17 @@ export function buildBookingConfirmationLink(
     params.set("mail", mail);
   }
   return `${base}/onay?${params.toString()}`;
+}
+
+/**
+ * WhatsApp/Evolution: markdown `[metin](url)` tıklanabilir olmaz.
+ * CTA satırını düz metin + ayrı satırda ham https URL'ye çevirir.
+ */
+export function ensureWhatsAppRawConfirmationUrl(message: string): string {
+  return message.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    (_match, label: string, href: string) => `${label}\n${href}`
+  );
 }
 
 /** Şirket telefonunu mail/WA için okunabilir +90 formatına çevirir */

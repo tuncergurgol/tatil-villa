@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { ChevronDown, ChevronUp, Loader2, Search } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  CheckSquare,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  ExternalLink,
+  Loader2,
+  Search,
+  Square,
+  X,
+} from "lucide-react";
 import { searchAvailabilityAction } from "@/app/actions/admin/availability-search";
 import { lookupCustomerByPhoneAction } from "@/app/actions/admin/customers";
 import AvailabilityResultCard from "@/components/admin/availability/AvailabilityResultCard";
@@ -43,6 +53,45 @@ function defaultCheckOut(checkIn: string): string {
   return addDaysToDateKey(checkIn, 7);
 }
 
+function sortResults(
+  items: AvailabilitySearchResultItem[],
+  sort: AvailabilitySearchSort
+) {
+  const next = [...items];
+  if (sort === "price_asc") {
+    next.sort((left, right) => left.quote.total - right.quote.total);
+  } else {
+    next.sort((left, right) => {
+      if (left.recommended !== right.recommended) {
+        return left.recommended ? -1 : 1;
+      }
+      if (left.popular !== right.popular) {
+        return left.popular ? -1 : 1;
+      }
+      return left.name.localeCompare(right.name, "tr");
+    });
+  }
+  return next;
+}
+
+function buildShareListUrl(options: {
+  villaIds: string[];
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+}): string {
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const params = new URLSearchParams();
+  params.set("ids", options.villaIds.join(","));
+  if (options.checkIn) params.set("checkIn", options.checkIn);
+  if (options.checkOut) params.set("checkOut", options.checkOut);
+  if (options.adults > 0) params.set("adults", String(options.adults));
+  if (options.children > 0) params.set("children", String(options.children));
+  return `${origin}/villalar?${params.toString()}`;
+}
+
 interface AvailabilitySearchPageProps {
   pageData: AvailabilitySearchPageData;
 }
@@ -51,6 +100,7 @@ export default function AvailabilitySearchPage({
   pageData,
 }: AvailabilitySearchPageProps) {
   const [panelOpen, setPanelOpen] = useState(true);
+  const [autoCollapse, setAutoCollapse] = useState(true);
   const [phone, setPhone] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
@@ -70,12 +120,32 @@ export default function AvailabilitySearchPage({
   const [fillEmptyDates, setFillEmptyDates] = useState(false);
   const [sort, setSort] = useState<AvailabilitySearchSort>("recommended");
   const [results, setResults] = useState<AvailabilitySearchResultItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [hasSearched, setHasSearched] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [isLookingUpPhone, setIsLookingUpPhone] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const selectedCount = selectedIds.length;
+  const allSelected =
+    results.length > 0 && selectedIds.length === results.length;
+
+  const shareUrl = useMemo(
+    () =>
+      selectedIds.length === 0
+        ? ""
+        : buildShareListUrl({
+            villaIds: selectedIds,
+            checkIn,
+            checkOut,
+            adults,
+            children,
+          }),
+    [selectedIds, checkIn, checkOut, adults, children]
+  );
 
   useEffect(() => {
     const nights = countNightsBetween(checkIn, checkOut);
@@ -97,6 +167,10 @@ export default function AvailabilitySearchPage({
 
     return () => window.clearInterval(timer);
   }, [hasSearched, isPending]);
+
+  useEffect(() => {
+    setResults((prev) => (prev.length === 0 ? prev : sortResults(prev, sort)));
+  }, [sort]);
 
   async function handlePhoneLookup(rawPhone: string) {
     const digits = normalizeTurkishPhoneDigits(rawPhone);
@@ -137,6 +211,9 @@ export default function AvailabilitySearchPage({
     if (!contactChannelId) {
       nextErrors.contactChannelId = "Ulaşım kanalı zorunlu";
     }
+    if (!checkIn || !checkOut) {
+      nextErrors.dates = "Giriş ve çıkış tarihleri zorunludur";
+    }
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -146,6 +223,7 @@ export default function AvailabilitySearchPage({
     if (!validateForm()) return;
 
     setHasSearched(true);
+    setSelectedIds([]);
 
     startTransition(async () => {
       const response = await searchAvailabilityAction({
@@ -172,14 +250,75 @@ export default function AvailabilitySearchPage({
         return;
       }
 
-      setResults(response.results ?? []);
+      setResults(sortResults(response.results ?? [], sort));
+      if (autoCollapse) setPanelOpen(false);
     });
+  }
+
+  function toggleSelect(villaId: string, nextSelected: boolean) {
+    setSelectedIds((prev) => {
+      if (nextSelected) {
+        return prev.includes(villaId) ? prev : [...prev, villaId];
+      }
+      return prev.filter((id) => id !== villaId);
+    });
+  }
+
+  function selectAll() {
+    setSelectedIds(results.map((item) => item.id));
+  }
+
+  function clearSelection() {
+    setSelectedIds([]);
+  }
+
+  async function copyShareLink() {
+    if (!shareUrl) {
+      window.alert("En az bir villa seçin.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      window.alert("Link kopyalanamadı.");
+    }
+  }
+
+  function openSharePreview() {
+    if (!shareUrl) {
+      window.alert("En az bir villa seçin.");
+      return;
+    }
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
   }
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] w-full flex-col gap-3">
       <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-end border-b border-gray-100 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setAutoCollapse((value) => !value)}
+            title={
+              autoCollapse
+                ? "Arama sonrası otomatik daralt: Açık"
+                : "Arama sonrası otomatik daralt: Kapalı"
+            }
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+              autoCollapse
+                ? "border-violet-200 bg-violet-50 text-violet-700"
+                : "border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                autoCollapse ? "bg-violet-500" : "bg-gray-300"
+              }`}
+            />
+            Auto Daralt
+          </button>
           <button
             type="button"
             onClick={() => setPanelOpen((value) => !value)}
@@ -201,6 +340,11 @@ export default function AvailabilitySearchPage({
 
         {panelOpen ? (
           <div className="space-y-3 p-3">
+            <p className="text-[11px] text-gray-500">
+              Müşteri bilgisi filtrelemeye dahil edilmez; yalnızca teklif / iletişim
+              metinlerinde kullanılır.
+            </p>
+
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <TurkishPhoneField
                 label="Telefon No *"
@@ -275,6 +419,9 @@ export default function AvailabilitySearchPage({
                   checkOut={checkOut}
                   onChange={handleDateRangeChange}
                 />
+                {fieldErrors.dates ? (
+                  <p className="mt-0.5 text-[11px] text-red-600">{fieldErrors.dates}</p>
+                ) : null}
               </label>
 
               <label className="block">
@@ -306,7 +453,7 @@ export default function AvailabilitySearchPage({
               </label>
 
               <label className="block">
-                <span className={labelClass}>Çocuk</span>
+                <span className={labelClass}>Çocuk (3-12)</span>
                 <input
                   type="number"
                   min={0}
@@ -319,7 +466,7 @@ export default function AvailabilitySearchPage({
               </label>
 
               <label className="block">
-                <span className={labelClass}>Bebek</span>
+                <span className={labelClass}>Bebek (0-2)</span>
                 <input
                   type="number"
                   min={0}
@@ -358,7 +505,10 @@ export default function AvailabilitySearchPage({
                 Esnek Tarih (±10 gün)
               </label>
 
-              <label className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700">
+              <label
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700"
+                title="Tarihler arasındaki boş günleri tara"
+              >
                 <input
                   type="checkbox"
                   checked={fillEmptyDates}
@@ -408,6 +558,60 @@ export default function AvailabilitySearchPage({
         ) : null}
       </section>
 
+      {hasSearched && results.length > 0 ? (
+        <section className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={allSelected ? clearSelection : selectAll}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {allSelected ? (
+                <CheckSquare className="h-3.5 w-3.5 text-sky-600" />
+              ) : (
+                <Square className="h-3.5 w-3.5" />
+              )}
+              {allSelected ? "Seçimi Kaldır" : "Tümünü Seç"}
+            </button>
+
+            {selectedCount > 0 ? (
+              <>
+                <span className="text-xs text-gray-500">
+                  {selectedCount} villa seçildi
+                </span>
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {shareCopied ? "Kopyalandı!" : "Linki Kopyala"}
+                </button>
+                <button
+                  type="button"
+                  onClick={openSharePreview}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Önizleme
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-50"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-gray-500">
+                Listelemek istediğiniz villaları sol üst kutucuktan seçin.
+              </span>
+            )}
+          </div>
+        </section>
+      ) : null}
+
       <section className="flex min-h-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-gray-500">
@@ -449,7 +653,17 @@ export default function AvailabilitySearchPage({
         ) : (
           <div className="space-y-3 pb-3">
             {results.map((result) => (
-              <AvailabilityResultCard key={result.id} result={result} />
+              <AvailabilityResultCard
+                key={result.id}
+                result={result}
+                selected={selectedIds.includes(result.id)}
+                onToggleSelect={toggleSelect}
+                guestPhone={`+90${normalizeTurkishPhoneDigits(phone)}`}
+                guestName={guestName.trim()}
+                adults={adults}
+                children={children}
+                babies={babies}
+              />
             ))}
           </div>
         )}

@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   buildActivityLogEntry,
   normalizeActivityLogs,
+  appendBookingActivityLog,
 } from "@/lib/booking-activity-log";
 import {
   formatGuestFullName,
@@ -16,8 +17,12 @@ import { getBookingForPublicConfirmation } from "@/lib/queries/booking-confirmat
 import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
-import { sendReservationDocumentEmail } from "@/lib/reservation-document-mail";
+import { sendReservationDocumentNotifications } from "@/lib/reservation-document-mail";
 import { getRequestClientIp } from "@/lib/request-client-ip";
+import {
+  getPrepaymentShareChannelLabel,
+  type PrepaymentShareChannel,
+} from "@/lib/booking-prepayment-share";
 
 const guestSchema = z.object({
   name: z.string().trim().min(2, "Ad gerekli"),
@@ -300,21 +305,91 @@ export async function confirmBookingGuestInfoAction(
     "BOOKED"
   );
 
-  // PDF + mail hata verse bile onay success gösterilsin
+  // Konfirme belgesi (PDF mail + Evolution WA) hata verse bile onay success
   try {
-    await sendReservationDocumentEmail(booking.id, {
+    const delivery = await sendReservationDocumentNotifications(booking.id, {
       confirmedAt: new Date(),
       clientIp: clientIp ?? undefined,
     });
+
+    const okChannels = delivery.results
+      .filter((r) => r.ok)
+      .map((r) =>
+        getPrepaymentShareChannelLabel(r.channel as PrepaymentShareChannel)
+      );
+    const failParts = delivery.results
+      .filter((r) => !r.ok)
+      .map(
+        (r) =>
+          `${getPrepaymentShareChannelLabel(r.channel as PrepaymentShareChannel)}: ${r.error ?? "hata"}`
+      );
+
+    let message: string;
+    if (okChannels.length && failParts.length === 0) {
+      message = `Konfirme belgesi gönderildi (${okChannels.join(", ")})`;
+    } else if (okChannels.length) {
+      message = `Konfirme belgesi kısmen gönderildi (${okChannels.join(", ")}). Başarısız: ${failParts.join("; ")}`;
+    } else {
+      message = `Konfirme belgesi gönderilemedi: ${failParts.join("; ") || "bilinmeyen hata"}`;
+    }
+
+    await appendBookingActivityLog(booking.id, {
+      action: "reservation_document_sent",
+      message,
+      actorName: "Sistem",
+      meta: {
+        rezId: booking.rezId,
+        reservationCode: delivery.reservationCode,
+        emailOk: delivery.results.find((r) => r.channel === "email")?.ok ?? false,
+        whatsappOk:
+          delivery.results.find((r) => r.channel === "whatsapp")?.ok ?? false,
+        emailError:
+          delivery.results.find((r) => r.channel === "email" && !r.ok)?.error ??
+          null,
+        whatsappError:
+          delivery.results.find((r) => r.channel === "whatsapp" && !r.ok)
+            ?.error ?? null,
+        pdfBytes: delivery.pdfBytes,
+      },
+    });
+
+    for (const result of delivery.results) {
+      if (!result.ok) {
+        console.error(
+          "[confirmBookingGuestInfo] konfirme belgesi kanal hatası",
+          {
+            bookingId: booking.id,
+            rezId: booking.rezId,
+            channel: result.channel,
+            error: result.error,
+          }
+        );
+      }
+    }
   } catch (error) {
     console.error(
-      "[confirmBookingGuestInfo] rezervasyon belgesi maili gönderilemedi",
+      "[confirmBookingGuestInfo] konfirme belgesi gönderilemedi",
       {
         bookingId: booking.id,
         rezId: booking.rezId,
         error: error instanceof Error ? error.message : error,
       }
     );
+    try {
+      await appendBookingActivityLog(booking.id, {
+        action: "reservation_document_sent",
+        message: `Konfirme belgesi gönderilemedi: ${
+          error instanceof Error ? error.message : "bilinmeyen hata"
+        }`,
+        actorName: "Sistem",
+        meta: { rezId: booking.rezId },
+      });
+    } catch (logError) {
+      console.error(
+        "[confirmBookingGuestInfo] activity log yazılamadı",
+        logError
+      );
+    }
   }
 
   return { success: true };

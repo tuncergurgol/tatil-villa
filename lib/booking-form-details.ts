@@ -392,6 +392,7 @@ export function clearBookingDiscountAndCouponFields(
 /**
  * Wizard/quote pipeline sonucunu admin form details'e yazar.
  * İndirim/kupon temizliği çağıran tarafta yapılır.
+ * Seçmeli ücretler için `fees` alanını çağıran taraf (buildStayBookingFeeDetails) hazırlar.
  */
 export function applyStayQuoteToBookingDetails(
   details: BookingDetails,
@@ -405,7 +406,7 @@ export function applyStayQuoteToBookingDetails(
     fees: Record<BookingExtraFeeFieldKey, number | null>;
     damageDeposit: number | null;
   },
-  options?: { pets?: number }
+  options?: { pets?: number; petDamageDeposit?: number | null }
 ): BookingDetails {
   if (!quoteResult.quote.valid) {
     return details;
@@ -425,6 +426,10 @@ export function applyStayQuoteToBookingDetails(
     poolHeatingKidsFee: fees.poolHeatingKidsFee ?? null,
     underfloorHeatingFee: fees.underfloorHeatingFee ?? null,
     damageDeposit: quoteResult.damageDeposit ?? details.damageDeposit ?? null,
+    petDamageDeposit:
+      pets > 0
+        ? (options?.petDamageDeposit ?? details.petDamageDeposit ?? null)
+        : null,
     prepaymentRate: quoteResult.quote.prepaymentRate,
     feesFromQuote: true,
   };
