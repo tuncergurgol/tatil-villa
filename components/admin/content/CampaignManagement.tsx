@@ -18,6 +18,7 @@ type Campaign = {
   image: string;
   cta: string;
   href: string;
+  displayType: "SLIDER" | "BOX";
   sortOrder: number;
   active: boolean;
 };
@@ -53,6 +54,20 @@ export default function CampaignManagement({
             </CmsField>
             <CmsField label="Link">
               <input name="href" required className={cmsInputClass} />
+            </CmsField>
+            <CmsField label="Görünüm Tipi">
+              <select name="displayType" defaultValue="SLIDER" className={cmsInputClass}>
+                <option value="SLIDER">Slider</option>
+                <option value="BOX">Kutu</option>
+              </select>
+            </CmsField>
+            <CmsField label="Sıra">
+              <input
+                name="sortOrder"
+                type="number"
+                defaultValue={0}
+                className={cmsInputClass}
+              />
             </CmsField>
           </div>
           <label className="inline-flex items-center gap-2 text-sm text-gray-700">
@@ -137,6 +152,16 @@ export default function CampaignManagement({
                       defaultValue={campaign.sortOrder}
                       className={cmsInputClass}
                     />
+                  </CmsField>
+                  <CmsField label="Görünüm Tipi">
+                    <select
+                      name="displayType"
+                      defaultValue={campaign.displayType}
+                      className={cmsInputClass}
+                    >
+                      <option value="SLIDER">Slider</option>
+                      <option value="BOX">Kutu</option>
+                    </select>
                   </CmsField>
                 </div>
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700">
