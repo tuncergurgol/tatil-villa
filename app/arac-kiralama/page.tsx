@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import PublicServicePage from "@/components/PublicServicePage";
+import CarRentalPublicPage from "@/components/car-rental/CarRentalPublicPage";
+import { getCarRentalPublicPageData } from "@/lib/queries/car-rental";
 
 export const metadata: Metadata = {
   title: "Araç Kiralama",
+  description:
+    "Türkiye genelinde havalimanı teslim noktaları ile araç kiralama seçenekleri.",
 };
 
-export default function AracKiralamaPage() {
-  return (
-    <PublicServicePage
-      title="Araç Kiralama"
-      description="Tatilinize özel araç kiralama seçenekleriyle özgürce keşfe çıkın."
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function AracKiralamaPage() {
+  const data = await getCarRentalPublicPageData();
+  return <CarRentalPublicPage {...data} />;
 }
