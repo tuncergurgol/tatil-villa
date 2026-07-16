@@ -330,6 +330,18 @@ model Villa {
   icalExportToken       String   @default(uuid())
   whatsappGroupId       String   @default("")
   whatsappGroupDifferentName Boolean @default(false)
+  externalSyncUrl1           String    @default("")
+  externalSyncUrl2           String    @default("")
+  externalSyncUrl3           String    @default("")
+  externalSyncUrl4           String    @default("")
+  externalSyncLastSyncedAt1  DateTime?
+  externalSyncLastSyncedAt2  DateTime?
+  externalSyncLastSyncedAt3  DateTime?
+  externalSyncLastSyncedAt4  DateTime?
+  externalSyncLastMessage1   String    @default("")
+  externalSyncLastMessage2   String    @default("")
+  externalSyncLastMessage3   String    @default("")
+  externalSyncLastMessage4   String    @default("")
   surroundingDistances  VillaSurroundingDistance[]
   icalSources           VillaIcalSource[]
   icalSyncEvents        VillaIcalSyncEvent[]
@@ -560,17 +572,20 @@ model VillaPoolPeriod {
 }
 
 model Campaign {
-  id        String  @id @default(cuid())
-  title     String
-  subtitle  String
-  image     String
-  cta       String
-  href      String
-  sortOrder Int     @default(0)
-  active    Boolean @default(true)
+  id          String              @id @default(cuid())
+  title       String
+  subtitle    String
+  image       String
+  cta         String              @default("İncele")
+  href        String
+  displayType CampaignDisplayType @default(SLIDER)
+  sortOrder   Int                 @default(0)
+  active      Boolean             @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([active, displayType, sortOrder])
 }
 
 model SurroundingCategory {
@@ -902,6 +917,9 @@ model CompanySettings {
   evolutionBaseUrl            String  @default("http://localhost:8080")
   evolutionApiKey             String  @default("")
   evolutionInstanceName       String  @default("tatil-villa")
+  biletallEnabled             Boolean @default(true)
+  biletallPortalSlug          String  @default("tatildeyizcomtr")
+  smsOtpEnabled               Boolean @default(false)
 
   updatedAt DateTime @updatedAt
 }
@@ -1051,4 +1069,330 @@ model SiteMenuItem {
 
   @@index([menuId, sortOrder])
   @@index([parentId])
+}
+
+enum CampaignDisplayType {
+  SLIDER
+  BOX
+}
+
+enum CallbackPreferredDay {
+  TODAY
+  TOMORROW
+  THIS_WEEK
+  ANY
+}
+
+enum CallbackPreferredTime {
+  ASAP
+  MORNING
+  AFTERNOON
+  EVENING
+}
+
+enum CallbackRequestStatus {
+  PENDING
+  VERIFIED
+  NEW
+  CONTACTED
+  CLOSED
+  CANCELLED
+}
+
+model CallbackRequest {
+  id            String                 @id @default(cuid())
+  name          String
+  phone         String
+  note          String                 @default("")
+  preferredDay  CallbackPreferredDay   @default(ANY)
+  preferredTime CallbackPreferredTime  @default(ASAP)
+  status        CallbackRequestStatus  @default(PENDING)
+  adminNote     String                 @default("")
+  verifiedAt    DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([status, createdAt])
+  @@index([phone])
+  @@index([createdAt])
+}
+
+model VerificationCode {
+  id        String    @id @default(cuid())
+  phone     String
+  code      String
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  payload   Json?
+  channel   String    @default("whatsapp")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([code, purpose, phone])
+  @@index([phone, purpose])
+  @@index([expiresAt])
+  @@index([purpose, usedAt])
+}
+
+enum TransferTripDirection {
+  ONE_WAY
+  ROUND_TRIP
+}
+
+enum TransferTripStatus {
+  NEW
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model TransferVehicleType {
+  id                String               @id @default(cuid())
+  code              String               @unique
+  name              String
+  nameEn            String               @default("")
+  description       String               @default("")
+  passengerCapacity Int                  @default(4)
+  luggageCapacity   Int                  @default(2)
+  basePricePerKm    Float                @default(1.5)
+  priceMultiplier   Float                @default(1)
+  minimumFare       Float                @default(15)
+  includedKm        Float                @default(10)
+  currency          VillaPeriodCurrency  @default(EUR)
+  image             String               @default("")
+  sortOrder         Int                  @default(0)
+  isActive          Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  routePrices TransferRouteVehiclePrice[]
+  trips       TransferTrip[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model TransferRoute {
+  id                       String   @id @default(cuid())
+  title                    String
+  slug                     String   @unique
+  startPoint               String
+  endPoint                 String
+  distanceKm               Float?
+  durationMinutes          Int?
+  priority                 Int      @default(0)
+  tag                      String   @default("")
+  sefUrl                   String   @default("")
+  seoTitle                 String   @default("")
+  seoDesc                  String   @default("")
+  seoKeywords              String   @default("")
+  creditCardPaymentEnabled Boolean  @default(false)
+  bankTransferDiscountRate Float    @default(0)
+  creditCardDiscountRate   Float    @default(0)
+  isActive                 Boolean  @default(true)
+  onList                   Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  vehiclePrices TransferRouteVehiclePrice[]
+  trips         TransferTrip[]
+
+  @@index([isActive])
+  @@index([onList])
+  @@index([priority])
+  @@index([startPoint])
+  @@index([endPoint])
+}
+
+model TransferRouteVehiclePrice {
+  id            String               @id @default(cuid())
+  routeId       String
+  route         TransferRoute        @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  vehicleTypeId String
+  vehicleType   TransferVehicleType  @relation(fields: [vehicleTypeId], references: [id], onDelete: Cascade)
+  price         Float
+  isActive      Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([routeId, vehicleTypeId])
+  @@index([routeId])
+  @@index([vehicleTypeId])
+  @@index([isActive])
+}
+
+model TransferTrip {
+  id              String                 @id @default(cuid())
+  routeId         String?
+  route           TransferRoute?         @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  vehicleTypeId   String
+  vehicleType     TransferVehicleType    @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+  startPoint      String
+  endPoint        String
+  distanceKm      Float?
+  durationMinutes Int?
+  direction       TransferTripDirection  @default(ONE_WAY)
+  serviceType     String                 @default("")
+  tripDate        DateTime               @db.Date
+  tripTime        String                 @default("")
+  returnDate      DateTime?              @db.Date
+  returnTime      String                 @default("")
+  adults          Int                    @default(1)
+  children        Int                    @default(0)
+  babies          Int                    @default(0)
+  contactName     String                 @default("")
+  contactSurname  String                 @default("")
+  contactPhone    String                 @default("")
+  contactEmail    String                 @default("")
+  contactIdNumber String                 @default("")
+  flightNumber    String                 @default("")
+  driverSign      String                 @default("")
+  totalPrice      Float?
+  currency        VillaPeriodCurrency    @default(EUR)
+  status          TransferTripStatus     @default(NEW)
+  note            String                 @default("")
+  adminNote       String                 @default("")
+  specialRequests String                 @default("")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([routeId])
+  @@index([vehicleTypeId])
+  @@index([tripDate])
+  @@index([status])
+  @@index([direction])
+}
+
+model CarRentalPageSettings {
+  id                     String   @id @default("default")
+  heroBadge              String   @default("Türkiye'nin #1 Araç Kiralama Platformu")
+  heroTitle              String   @default("Hayalinizdeki Araca Birkaç Tıkla Ulaşın")
+  heroSubtitle           String   @default("50+ lokasyon, 2000+ araç seçeneği ile Türkiye'nin her yerinde güvenilir ve uygun fiyatlı araç kiralama")
+  sameLocationDefault    Boolean  @default(true)
+  showSameLocationToggle Boolean  @default(true)
+  sameLocationLabel      String   @default("Aynı noktadan teslim")
+  pickupLabel            String   @default("Alış Noktası")
+  returnLabel            String   @default("Teslim Noktası")
+  pickupDateLabel        String   @default("Alış Tarihi")
+  returnDateLabel        String   @default("Teslim Tarihi")
+  driverAgeLabel         String   @default("Sürücü Yaşı")
+  driverAgeOptionsJson   String   @default("[\"21-24 yaş\",\"25-69 yaş\",\"70+ yaş\"]")
+  defaultDriverAge       String   @default("25-69 yaş")
+  ctaText                String   @default("Araç Ara")
+  rentalDaysHint         String   @default("7 gün kiralama")
+  categoriesTitle        String   @default("Araç Kategorileri")
+  categoriesSubtitle     String   @default("İhtiyacınıza en uygun aracı seçin")
+  locationsTitle         String   @default("Popüler Lokasyonlar")
+  locationsSubtitle      String   @default("En çok tercih edilen araç kiralama noktaları")
+  criteriaTitle          String   @default("Sürücü Kriterleri")
+  criteriaSubtitle       String   @default("Kiralama için gereken temel şartlar")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model CarRentalCategory {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  name        String
+  description String              @default("")
+  priceFrom   Float               @default(0)
+  currency    VillaPeriodCurrency @default(TL)
+  image       String              @default("")
+  sortOrder   Int                 @default(0)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model CarRentalLocation {
+  id               String   @id @default(cuid())
+  name             String
+  city             String   @default("")
+  iataCode         String   @default("")
+  vehicleCountHint String   @default("")
+  isAirport        Boolean  @default(true)
+  isPopular        Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([isPopular])
+  @@index([sortOrder])
+  @@index([city])
+  @@index([iataCode])
+}
+
+model CarRentalDriverCriterion {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  icon        String   @default("")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model Tour {
+  id                    String   @id @default(cuid())
+  sourceId              Int?
+  slug                  String   @unique
+  title                 String
+  shortDesc             String   @default("")
+  overview              String   @default("")
+  descriptionHtml       String   @default("")
+  location              String   @default("")
+  durationHours         String   @default("")
+  groupSize             String   @default("")
+  tag                   String   @default("")
+  priceFrom             Float?
+  currency              VillaPeriodCurrency @default(TL)
+  hasTransfer           Boolean  @default(false)
+  freeCancelationHours  String   @default("")
+  includesJson          String   @default("[]")
+  highlightsJson        String   @default("[]")
+  excludesJson          String   @default("[]")
+  coverImage            String   @default("")
+  seoTitle              String   @default("")
+  seoDescription        String   @default("")
+  seoKeywords           String   @default("")
+  canonicalPath         String   @default("")
+  sortOrder             Int      @default(0)
+  isActive              Boolean  @default(true)
+  onList                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  images TourImage[]
+
+  @@index([isActive])
+  @@index([onList])
+  @@index([sortOrder])
+  @@index([sourceId])
+  @@index([tag])
+}
+
+model TourImage {
+  id        String   @id @default(cuid())
+  tourId    String
+  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String   @default("")
+  isMain    Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tourId])
+  @@index([sortOrder])
+  @@index([isMain])
 }
