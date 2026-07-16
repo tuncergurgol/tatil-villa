@@ -209,6 +209,23 @@ model CompanyBankAccount {
   @@index([sortOrder])
 }
 
+model PaymentProvider {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  active      Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  mode        String   @default("test")
+  fields      Json     @default("[]")
+  credentials Json     @default("{}")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
 model AgencyMessageTemplate {
   id            String   @id @default(cuid())
   rowNo         Int

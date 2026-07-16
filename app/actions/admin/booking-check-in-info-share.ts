@@ -609,7 +609,7 @@ export async function sendCheckInInfoShareAction(
         previewPath: ctx.previewPath,
         templateRowNo: ctx.templateRowNo,
         templateLabel,
-        channelResults,
+        channelResults: JSON.stringify(channelResults),
       },
     });
 

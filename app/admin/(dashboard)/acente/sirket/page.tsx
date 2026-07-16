@@ -3,6 +3,7 @@ import { getPrepaymentPaymentTypeAdminData } from "@/lib/queries/prepayment-paym
 import { getCustomerContactChannelAdminData } from "@/lib/queries/customer-contact-channels";
 import { getCompanyBankAccountAdminData } from "@/lib/queries/company-bank-accounts";
 import { getAgencySiteAdminData } from "@/lib/queries/agency-sites";
+import { getPaymentProviderAdminData } from "@/lib/queries/payment-providers";
 import CompanySettingsForm from "@/components/admin/company/CompanySettingsForm";
 
 export const dynamic = "force-dynamic";
@@ -13,13 +14,20 @@ export default async function SirketPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
-  const [settings, prepayment, contactChannels, bankAccounts, agencySites] =
-    await Promise.all([
+  const [
+    settings,
+    prepayment,
+    contactChannels,
+    bankAccounts,
+    agencySites,
+    paymentProviders,
+  ] = await Promise.all([
     getCompanySettings(),
     getPrepaymentPaymentTypeAdminData(),
     getCustomerContactChannelAdminData(),
     getCompanyBankAccountAdminData(),
     getAgencySiteAdminData(),
+    getPaymentProviderAdminData(),
   ]);
 
   return (
@@ -30,6 +38,7 @@ export default async function SirketPage({
       contactChannels={contactChannels}
       bankAccounts={bankAccounts}
       agencySites={agencySites}
+      paymentProviders={paymentProviders}
     />
   );
 }

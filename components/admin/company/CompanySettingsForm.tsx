@@ -20,6 +20,7 @@ import {
   Search,
   Share2,
   Shield,
+  Wallet,
 } from "lucide-react";
 import {
   saveCompanySettings,
@@ -33,6 +34,7 @@ import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payme
 import CustomerContactChannelManagement from "@/components/admin/customer-contact-channels/CustomerContactChannelManagement";
 import CompanyBankAccountManagement from "@/components/admin/company/CompanyBankAccountManagement";
 import AgencySiteManagement from "@/components/admin/company/AgencySiteManagement";
+import PaymentProviderManagement from "@/components/admin/company/PaymentProviderManagement";
 import MailSettingsFields from "@/components/admin/company/MailSettingsFields";
 import WhatsAppSettingsFields from "@/components/admin/company/WhatsAppSettingsFields";
 import ThemeColorPalette from "@/components/admin/company/ThemeColorPalette";
@@ -40,6 +42,7 @@ import type { PrepaymentPaymentTypeItem } from "@/lib/queries/prepayment-payment
 import type { CustomerContactChannelItem } from "@/lib/queries/customer-contact-channels";
 import type { CompanyBankAccountItem } from "@/lib/queries/company-bank-accounts";
 import type { AgencySiteItem } from "@/lib/queries/agency-sites";
+import type { PaymentProviderItem } from "@/lib/queries/payment-providers";
 
 const tabs = [
   { id: "genel", label: "Genel Bilgiler", icon: Building2 },
@@ -69,6 +72,11 @@ const tabs = [
     label: "Acentenin Siteleri",
     icon: Globe,
   },
+  {
+    id: "odeme-yonetimi",
+    label: "Ödeme Yönetimi",
+    icon: Wallet,
+  },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -97,6 +105,11 @@ interface CompanySettingsFormProps {
     totalCount: number;
     activeCount: number;
     passiveCount: number;
+  };
+  paymentProviders: {
+    items: PaymentProviderItem[];
+    totalCount: number;
+    activeCount: number;
   };
 }
 
@@ -215,6 +228,7 @@ export default function CompanySettingsForm({
   contactChannels,
   bankAccounts,
   agencySites,
+  paymentProviders,
 }: CompanySettingsFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>(
@@ -240,6 +254,8 @@ export default function CompanySettingsForm({
           ? "/admin/acente/sirket?tab=musteri-ulasm-kanali"
           : tabId === "acentenin-siteleri"
             ? "/admin/acente/sirket?tab=acentenin-siteleri"
+          : tabId === "odeme-yonetimi"
+            ? "/admin/acente/sirket?tab=odeme-yonetimi"
           : tabId === "banka"
             ? "/admin/acente/sirket?tab=banka"
             : tabId === "mail-kurulumu"
@@ -254,6 +270,7 @@ export default function CompanySettingsForm({
     activeTab !== "on-odeme-odeme-tipleri" &&
     activeTab !== "musteri-ulasm-kanali" &&
     activeTab !== "acentenin-siteleri" &&
+    activeTab !== "odeme-yonetimi" &&
     activeTab !== "banka";
 
   return (
@@ -473,6 +490,11 @@ export default function CompanySettingsForm({
               totalCount={agencySites.totalCount}
               activeCount={agencySites.activeCount}
               passiveCount={agencySites.passiveCount}
+              embedded
+            />
+          ) : activeTab === "odeme-yonetimi" ? (
+            <PaymentProviderManagement
+              items={paymentProviders.items}
               embedded
             />
           ) : (
