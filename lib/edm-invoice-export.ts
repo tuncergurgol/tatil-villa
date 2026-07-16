@@ -20,7 +20,10 @@ export const INVOICE_REPORT_DATE_BASIS_OPTIONS: {
   { value: "createdAt", label: "Oluşturma Tarihi" },
 ];
 
-/** EDM şablonundaki 82 sütun başlığı (sıra ve metin birebir). */
+/** EDM şablonundaki sütun sayısı (EDMPortalExcelFaturaYuklemeOrnegi.xlsx → 112). */
+export const EDM_INVOICE_COLUMN_COUNT = 112;
+
+/** EDM şablonundaki 82+30 sütun başlığı (sıra ve metin birebir). */
 export const EDM_INVOICE_EXCEL_HEADERS: (string | number)[] = [
   1111111111,
   "GİB Fatura Senaryosu",
@@ -104,7 +107,16 @@ export const EDM_INVOICE_EXCEL_HEADERS: (string | number)[] = [
   "TıbbiCihaz - Seri/Sıra Numarası",
   "TıbbiCihaz - Üretim Tarihi",
   "Bedelsiz",
+  ...Array.from(
+    { length: EDM_INVOICE_COLUMN_COUNT - 82 },
+    () => ""
+  ),
 ];
+
+/** EDM Portal col 0: e-Arşiv yükleme kanalı */
+const FIXED_INVOICE_CHANNEL = "E-ARSIV";
+/** EDM Portal col 1: GİB e-Arşiv fatura senaryosu */
+const FIXED_SCENARIO = "EARSIVFATURA";
 
 export type InvoiceReportIncompleteRow = {
   bookingId: string;
@@ -164,20 +176,27 @@ const COL = {
   quantity: 38,
   unit: 39,
   unitPrice: 40,
+  discountRate: 41,
   vatRate: 42,
   netAmount: 44,
+  discountAmount: 45,
   grossAmount: 46,
 } as const;
 
-const FIXED_INVOICE_CHANNEL = "EARSIVFATURA";
-const FIXED_SCENARIO = "TEMELFATURA";
 const FIXED_INVOICE_TYPE = "SATIS";
 const FIXED_LINE_DESCRIPTION = "ACENTE HİZMET BEDELİ";
 const VAT_RATE = 20;
 const VAT_DIVISOR = 1.2;
 
 function emptyRow(): (string | number)[] {
-  return Array.from({ length: EDM_INVOICE_EXCEL_HEADERS.length }, () => "");
+  return Array.from({ length: EDM_INVOICE_COLUMN_COUNT }, () => "");
+}
+
+function toEdmTaxNumber(value: string): number | "" {
+  const digits = normalizeTaxNumber(value);
+  if (!digits) return "";
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : "";
 }
 
 function normalizeTaxNumber(value: string): string {
@@ -297,8 +316,8 @@ export function buildInvoiceReportRow(
   row[COL.invoiceChannel] = FIXED_INVOICE_CHANNEL;
   row[COL.scenario] = FIXED_SCENARIO;
   row[COL.invoiceType] = FIXED_INVOICE_TYPE;
-  row[COL.senderTaxNo] = normalizeTaxNumber(company.taxNumber);
-  row[COL.recipientTaxNo] = resolveOwnerTaxNumber(owner);
+  row[COL.senderTaxNo] = toEdmTaxNumber(company.taxNumber);
+  row[COL.recipientTaxNo] = toEdmTaxNumber(resolveOwnerTaxNumber(owner));
   row[COL.recipientTitle] = ownerDisplayName(owner);
   row[COL.recipientAddress] = owner.address.trim();
   row[COL.country] = owner.country.trim().toLocaleUpperCase("tr");
@@ -314,8 +333,10 @@ export function buildInvoiceReportRow(
   row[COL.quantity] = 1;
   row[COL.unit] = "Adet";
   row[COL.unitPrice] = net;
+  row[COL.discountRate] = 0;
   row[COL.vatRate] = VAT_RATE;
   row[COL.netAmount] = net;
+  row[COL.discountAmount] = 0;
   row[COL.grossAmount] = gross;
 
   return row;

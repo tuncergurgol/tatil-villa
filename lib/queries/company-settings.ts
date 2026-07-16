@@ -80,20 +80,33 @@ export const DEFAULT_COMPANY_SETTINGS = {
   evolutionBaseUrl: "http://localhost:8080",
   evolutionApiKey: "",
   evolutionInstanceName: "tatil-villa",
+  smsOtpEnabled: false,
+  biletallEnabled: true,
+  biletallPortalSlug: "tatildeyizcomtr",
 };
 
 export async function getCompanySettings() {
-  let settings = await prisma.companySettings.findUnique({
-    where: { id: "default" },
-  });
-
-  if (!settings) {
-    settings = await prisma.companySettings.create({
-      data: { id: "default", ...DEFAULT_COMPANY_SETTINGS },
+  try {
+    let settings = await prisma.companySettings.findUnique({
+      where: { id: "default" },
     });
-  }
 
-  return settings;
+    if (!settings) {
+      settings = await prisma.companySettings.create({
+        data: { id: "default", ...DEFAULT_COMPANY_SETTINGS },
+      });
+    }
+
+    return settings;
+  } catch (error) {
+    // Schema/migration gecikmesinde public villa + bilet sayfalarını ayakta tut.
+    console.error("[getCompanySettings] fallback to defaults:", error);
+    return {
+      id: "default",
+      ...DEFAULT_COMPANY_SETTINGS,
+      updatedAt: new Date(),
+    };
+  }
 }
 
 export async function updateCompanySettings(

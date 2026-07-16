@@ -573,6 +573,34 @@ export function computeCommissionAmount(
 }
 
 /**
+ * Rezervasyon formuyla aynı kuralla komisyon tutarını çözer.
+ * Kayıtlı tutar yoksa: grossPrice (yoksa totalPrice) × (oran yoksa %20).
+ */
+export function resolveBookingCommissionAmount(
+  details: BookingDetails,
+  totalPrice?: number | null
+): number {
+  if (details.commissionAmount != null && details.commissionAmount > 0) {
+    return Math.round(details.commissionAmount);
+  }
+
+  const fromQuoteFees = details.feesFromQuote === true;
+  const gross = fromQuoteFees
+    ? (details.grossPrice ?? null)
+    : (details.grossPrice ?? totalPrice ?? null);
+  const rate = details.commissionRate ?? 20;
+
+  const computed = computeCommissionAmount(
+    gross,
+    details.ownerDiscountAmount ?? details.discountAmount,
+    rate,
+    details.agencyDiscountAmount
+  );
+
+  return computed != null && computed > 0 ? Math.round(computed) : 0;
+}
+
+/**
  * Satış temsilcisi prim hakedişi:
  * İndirimli konaklama tutarı × prim oranı (%)
  */

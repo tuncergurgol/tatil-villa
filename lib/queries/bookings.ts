@@ -10,6 +10,7 @@ import {
 import { getStayNightKeys } from "@/lib/stay-quote";
 import { calculateNights } from "@/lib/stay-nights";
 import { offsetDateKey } from "@/lib/villa-period-selection";
+import { syncBookingStayOccupancy } from "@/lib/villa-occupancy-service";
 
 export { calculateNights };
 
@@ -329,6 +330,19 @@ export async function updateBookingDetail(data: {
   totalPrice: number | null;
   details: Record<string, unknown>;
 }) {
+  const existing = await prisma.booking.findUnique({
+    where: { id: data.id },
+    select: {
+      status: true,
+      villaId: true,
+      checkIn: true,
+      checkOut: true,
+    },
+  });
+  if (!existing) {
+    throw new Error("Rezervasyon bulunamadı");
+  }
+
   const booking = await prisma.booking.update({
     where: { id: data.id },
     data: {
@@ -345,6 +359,20 @@ export async function updateBookingDetail(data: {
       guestPhone: data.guestPhone,
       totalPrice: data.totalPrice,
       details: data.details as Prisma.InputJsonValue,
+    },
+  });
+
+  await syncBookingStayOccupancy({
+    villaId: existing.villaId,
+    previous: {
+      status: existing.status,
+      checkIn: existing.checkIn,
+      checkOut: existing.checkOut,
+    },
+    next: {
+      status: data.status,
+      checkIn: data.checkIn,
+      checkOut: data.checkOut,
     },
   });
 
@@ -372,10 +400,39 @@ export async function getBookingById(id: string) {
 }
 
 export async function updateBookingStatus(id: string, status: BookingStatus) {
-  return prisma.booking.update({
+  const existing = await prisma.booking.findUnique({
+    where: { id },
+    select: {
+      status: true,
+      villaId: true,
+      checkIn: true,
+      checkOut: true,
+    },
+  });
+  if (!existing) {
+    throw new Error("Rezervasyon bulunamadı");
+  }
+
+  const booking = await prisma.booking.update({
     where: { id },
     data: { status },
   });
+
+  await syncBookingStayOccupancy({
+    villaId: existing.villaId,
+    previous: {
+      status: existing.status,
+      checkIn: existing.checkIn,
+      checkOut: existing.checkOut,
+    },
+    next: {
+      status,
+      checkIn: existing.checkIn,
+      checkOut: existing.checkOut,
+    },
+  });
+
+  return booking;
 }
 
 /** ÖDEME BEKLENİYOR + opsiyon süresi dolmuş → İPTAL */

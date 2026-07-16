@@ -9,6 +9,7 @@ import {
   buildCheckInInfoShareTemplateValues,
   ensureWhatsAppRawConfirmationUrl,
   renderAgencyMessageTemplate,
+  resolveCheckInInfoShareCode,
   stripZeroAmountLines,
 } from "@/lib/agency-message-render";
 import {
@@ -218,7 +219,8 @@ async function loadCheckInInfoShareContext(
 
   const reservationCode =
     resolveExternalCode(booking.externalCode, booking.guestEmail) || "—";
-  const previewPath = buildCheckInInfoSharePath(reservationCode, audience);
+  const shareCode = resolveCheckInInfoShareCode(booking.id);
+  const previewPath = buildCheckInInfoSharePath(shareCode, audience);
   const details = parseBookingDetails(booking.details);
   const { greeterName, greeterPhone } = resolveGreeter(booking.villa);
 
@@ -242,6 +244,7 @@ async function loadCheckInInfoShareContext(
 
   const templateValues = buildCheckInInfoShareTemplateValues({
     reservationCode,
+    shareCode,
     guestName: booking.guestName,
     guestEmail,
     guestPhone,
@@ -282,6 +285,7 @@ async function loadCheckInInfoShareContext(
     companySettings,
     publicDomain,
     reservationCode,
+    shareCode,
     previewPath,
     phone,
     email,
@@ -341,7 +345,7 @@ export async function previewCheckInInfoShareAction(raw: {
     );
     const absoluteLink = buildCheckInInfoShareLink(
       ctx.publicDomain,
-      ctx.reservationCode,
+      ctx.shareCode,
       parsed.data.audience
     );
 

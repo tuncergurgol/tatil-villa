@@ -2,8 +2,8 @@ import { prisma } from "@/lib/db";
 import { normalizeActivityLogs } from "@/lib/booking-activity-log-core";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import {
-  computeCommissionAmount,
   parseBookingDetails,
+  resolveBookingCommissionAmount,
   resolveExternalCode,
 } from "@/lib/booking-form-details";
 import { getOwnerDisplayName } from "@/lib/btrans-report";
@@ -136,21 +136,6 @@ function resolveReportBasisDate(
   return booking.checkIn;
 }
 
-function resolveCommissionAmount(details: ReturnType<typeof parseBookingDetails>) {
-  if (details.commissionAmount != null && details.commissionAmount > 0) {
-    return Math.round(details.commissionAmount);
-  }
-
-  const computed = computeCommissionAmount(
-    details.grossPrice,
-    details.ownerDiscountAmount ?? details.discountAmount,
-    details.commissionRate,
-    details.agencyDiscountAmount
-  );
-
-  return computed != null && computed > 0 ? Math.round(computed) : 0;
-}
-
 function toBookingInput(booking: InvoiceBookingRecord): InvoiceReportBookingInput {
   const details = parseBookingDetails(booking.details);
 
@@ -161,7 +146,7 @@ function toBookingInput(booking: InvoiceBookingRecord): InvoiceReportBookingInpu
     guestName: booking.guestName,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
-    commissionAmount: resolveCommissionAmount(details),
+    commissionAmount: resolveBookingCommissionAmount(details, booking.totalPrice),
     owner: booking.villa.owner,
     villa: { name: booking.villa.name },
   };
