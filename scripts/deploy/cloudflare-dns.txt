@@ -1,0 +1,19 @@
+# Cloudflare DNS (zone: tatildeyiz.com.tr)
+# Tip: A | İçerik: 185.184.210.96 | Proxy: Açık (turuncu bulut)
+
+bont.tatildeyiz.com.tr     -> 185.184.210.96   # Admin panel
+www.tatildeyiz.com.tr      -> 185.184.210.96   # Site 1
+tatildeyiz.com.tr            -> 185.184.210.96   # www yönlendirmesi için (Page Rule veya redirect)
+
+# Zone: balayivillacisi.com
+www.balayivillacisi.com    -> 185.184.210.96   # Site 2
+balayivillacisi.com        -> 185.184.210.96   # www yönlendirmesi
+
+# Cloudflare SSL/TLS
+# - Başlangıç: Full
+# - Origin sertifikası kurulunca: Full (strict)
+# - Always Use HTTPS: Açık
+# - Minimum TLS: 1.2
+
+# Real IP (nginx logları için) — Cloudflare IP aralıkları zaten nginx real_ip modülü ile
+# scripts/deploy/nginx-tatildeyiz.conf içinde tanımlı

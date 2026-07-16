@@ -59,4 +59,12 @@ next-env.d.ts
 /scripts/*-report.xlsx
 /scripts/*-match-report.*
 /scripts/*-catalog-cache.json
+/scripts/*-pilot-*.json
+/scripts/*-smoke-*.json
+/scripts/aylik-ilan-raporu-*.xlsx
+/scripts/haftalikkayit*.xlsx
+/scripts/rezervasyon-takip-*.xlsx
 /.tmp-*
+
+# broken local symlink created by a font-lookup step (pdfkit)
+/assets/
