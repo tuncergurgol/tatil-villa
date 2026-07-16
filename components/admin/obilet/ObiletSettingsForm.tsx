@@ -1,0 +1,172 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState } from "react";
+import {
+  saveBiletallSettings,
+  type BiletallSettingsActionState,
+} from "@/app/actions/admin/biletall-settings";
+import { getBiletallAdminLinks } from "@/lib/biletall";
+
+const inputClass =
+  "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100";
+
+const initialState: BiletallSettingsActionState = {};
+
+type ObiletSettingsFormProps = {
+  biletallEnabled: boolean;
+  biletallPortalSlug: string;
+};
+
+export default function ObiletSettingsForm({
+  biletallEnabled,
+  biletallPortalSlug,
+}: ObiletSettingsFormProps) {
+  const [state, formAction, pending] = useActionState(
+    saveBiletallSettings,
+    initialState
+  );
+  const links = getBiletallAdminLinks(biletallPortalSlug);
+
+  return (
+    <div className="space-y-6">
+      <header className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-orange-50 p-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
+          Entegrasyonlar
+        </p>
+        <h1 className="mt-1 text-2xl font-bold text-gray-900">
+          Obilet / Biletall
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm text-gray-600">
+          Biletall iframe portal ayarları. Public sayfalar{" "}
+          <code className="rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-800">
+            /bilet/ara
+          </code>
+          ,{" "}
+          <code className="rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-800">
+            /bilet/satinal
+          </code>{" "}
+          ve{" "}
+          <code className="rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-800">
+            /bilet/sonuc
+          </code>{" "}
+          üzerinden gömülü çalışır.
+        </p>
+      </header>
+
+      <form
+        action={formAction}
+        className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+      >
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Portal ayarları</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            CRM Biletall entegrasyonundaki portal slug ile aynı olmalıdır.
+          </p>
+        </div>
+
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3">
+          <input
+            type="checkbox"
+            name="biletallEnabled"
+            defaultChecked={biletallEnabled}
+            className="size-4 rounded border-gray-300 text-sky-600 focus:ring-sky-200"
+          />
+          <span className="text-sm font-medium text-gray-800">
+            Biletall entegrasyonu aktif
+          </span>
+        </label>
+
+        <div>
+          <label
+            htmlFor="biletallPortalSlug"
+            className="mb-1.5 block text-sm font-medium text-gray-700"
+          >
+            Portal slug
+          </label>
+          <input
+            id="biletallPortalSlug"
+            name="biletallPortalSlug"
+            defaultValue={biletallPortalSlug}
+            placeholder="tatildeyizcomtr"
+            className={inputClass}
+            required
+          />
+          <p className="mt-1.5 text-xs text-gray-500">
+            Örnek iframe host:{" "}
+            <span className="font-mono text-gray-700">
+              iframe.biletall.com/portals/{"{slug}"}/UI/...
+            </span>
+          </p>
+        </div>
+
+        {state.error ? (
+          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+            {state.error}
+          </p>
+        ) : null}
+        {state.success ? (
+          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            Ayarlar kaydedildi.
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {pending ? "Kaydediliyor…" : "Kaydet"}
+        </button>
+      </form>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Public route & iframe URL’leri
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Biletall callback parametreleri site içi path’lerle eşleşir.
+        </p>
+        <ul className="mt-4 space-y-3">
+          {links.map((item) => (
+            <li
+              key={item.kind}
+              className="rounded-xl border border-gray-100 bg-slate-50/80 p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
+                <Link
+                  href={item.publicPath}
+                  className="text-sm font-medium text-sky-700 hover:text-sky-900"
+                  target="_blank"
+                >
+                  {item.publicPath} ↗
+                </Link>
+              </div>
+              <p className="mt-2 break-all font-mono text-xs leading-relaxed text-gray-600">
+                {item.iframeSrc}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-6">
+        <h2 className="text-sm font-semibold text-amber-900">CRM referans</h2>
+        <p className="mt-1 text-sm text-amber-800/90">
+          Kaynak panel:{" "}
+          <a
+            href="https://crm.tatildeyiz.com.tr/entegrasyonlar/biletall"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium underline decoration-amber-300 underline-offset-2 hover:text-amber-950"
+          >
+            crm.tatildeyiz.com.tr/entegrasyonlar/biletall
+          </a>
+          . API key / kullanıcı bilgileri Biletall hesabınızda tutulur; bu
+          panel portal slug ve public iframe route’larını yönetir.
+        </p>
+      </section>
+    </div>
+  );
+}
