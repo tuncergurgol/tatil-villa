@@ -8,7 +8,10 @@ import {
   dbDateToDateKey,
 } from "@/lib/villa-period-calendar";
 import { getStayNightKeys } from "@/lib/stay-quote";
+import { calculateNights } from "@/lib/stay-nights";
 import { offsetDateKey } from "@/lib/villa-period-selection";
+
+export { calculateNights };
 
 async function syncBookingGuestToCustomer(data: {
   guestName: string;
@@ -106,11 +109,6 @@ export async function isVillaAvailable(
     const bookingOut = dbDateToDateKey(booking.checkOut);
     return checkInKey < bookingOut && checkOutKey > bookingIn;
   });
-}
-
-export function calculateNights(checkIn: Date, checkOut: Date) {
-  return getStayNightKeys(toStayDateKey(checkIn), toStayDateKey(checkOut))
-    .length;
 }
 
 export async function createBooking(data: {

@@ -1,4 +1,4 @@
-export interface NavLink {
+﻿export interface NavLink {
   label: string;
   href: string;
 }
@@ -50,6 +50,7 @@ export const adminNavSections: NavSection[] = [
     items: [
       { label: "Aylık İlan Raporu", href: "/admin/raporlar/aylik-ilan" },
       { label: "Belge Kontrol", href: "/admin/raporlar/belge-kontrol" },
+      { label: "Fatura Raporları", href: "/admin/raporlar/fatura-raporlari" },
     ],
   },
   { label: "Tur & Aktiviteler", href: "/admin/tur-aktiviteler" },
@@ -70,4 +71,3 @@ export const adminAgencyNav: NavGroup = {
     { label: "Güvenlik & Log", href: "/admin/acente/guvenlik" },
   ],
 };
-

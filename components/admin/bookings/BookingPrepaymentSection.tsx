@@ -8,7 +8,7 @@ import {
   getBookingBankAccountsAction,
   updateBookingPrepaymentAction,
 } from "@/app/actions/admin/booking-prepayments";
-import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import type { BookingPrepaymentRecord } from "@/lib/booking-form-details";
 import {

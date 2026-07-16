@@ -8,7 +8,7 @@ import {
   type BookingDetails,
   type BookingGuestEntry,
 } from "@/lib/booking-form-details";
-import { calculateNights } from "@/lib/queries/bookings";
+import { calculateNights } from "@/lib/stay-nights";
 
 const confirmationInclude = {
   villa: { select: { name: true, slug: true, image: true, images: true } },

@@ -16,7 +16,7 @@ import {
   normalizeCompanyPaymentType,
   type CompanyPaymentTypeValue,
 } from "@/lib/company-payment-types";
-import { calculateNights } from "@/lib/queries/bookings";
+import { calculateNights } from "@/lib/stay-nights";
 
 export function formatAgencyBookingDate(date: Date): string {
   const day = date.getDate();
@@ -593,12 +593,20 @@ export function resolveCompanyLogoUrl(
   return `https://${host}${path}`;
 }
 
+/**
+ * Giriş bilgilendirme URL kodu: sıralı externalCode değil, Booking.id (cuid).
+ * Tahmin edilemez; public sayfa yalnızca bu kod + kısa cuid son eki ile açılır.
+ */
+export function resolveCheckInInfoShareCode(bookingId: string): string {
+  return bookingId.trim();
+}
+
 /** Public giriş-bilgilendirme yolu (önizleme / relative) */
 export function buildCheckInInfoSharePath(
-  reservationCode: string,
+  shareCode: string,
   audience: "guest" | "owner" = "guest"
 ): string {
-  const code = reservationCode.trim();
+  const code = shareCode.trim();
   if (!code) return "";
   return audience === "owner"
     ? `/giris-bilgilendirme/${code}/evsahibi`
@@ -608,14 +616,15 @@ export function buildCheckInInfoSharePath(
 /**
  * Müşteriye gönderilen mutlak giriş bilgilendirme linki.
  * ONAYLINK ile aynı taban (localhost müşteriye gitmez).
+ * `shareCode` = Booking.id (cuid); ##REZID## metninden ayrıdır.
  */
 export function buildCheckInInfoShareLink(
   domain: string,
-  reservationCode: string,
+  shareCode: string,
   audience: "guest" | "owner" = "guest"
 ): string {
   const base = resolveBookingConfirmationBaseUrl(domain);
-  const path = buildCheckInInfoSharePath(reservationCode, audience);
+  const path = buildCheckInInfoSharePath(shareCode, audience);
   if (!base || !path) return "";
   return `${base}${path}`;
 }
@@ -626,7 +635,13 @@ export function buildCheckInInfoShareLink(
  * Link alias’ları ve 401’deki yazım varyantları (vVILLAADI, rREZID vb.) burada doldurulur.
  */
 export function buildCheckInInfoShareTemplateValues(input: {
+  /** Mesajdaki ##REZID## — insan okunur rezervasyon no (externalCode) */
   reservationCode: string;
+  /**
+   * URL’deki güvenli kod (Booking.id / cuid).
+   * Verilmezse rezervasyon no kullanılır (eski davranış; önerilmez).
+   */
+  shareCode?: string;
   guestName: string;
   guestEmail: string;
   guestPhone: string;
@@ -661,9 +676,12 @@ export function buildCheckInInfoShareTemplateValues(input: {
 }): Record<string, string> {
   const values = buildNewReservationRequestTemplateValues(input);
   const recipientName = (input.recipientName ?? input.guestName).trim();
+  const shareCode =
+    resolveCheckInInfoShareCode(input.shareCode ?? "") ||
+    input.reservationCode.trim();
   const infoLink = buildCheckInInfoShareLink(
     input.company.domain,
-    input.reservationCode,
+    shareCode,
     input.audience
   );
   const greeterName = (input.greeterName ?? "").trim();

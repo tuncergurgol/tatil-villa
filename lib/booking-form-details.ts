@@ -1,11 +1,11 @@
 import type { BookingStatus } from "@prisma/client";
-import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
-import { normalizeActivityLogs } from "@/lib/booking-activity-log";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
+import { normalizeActivityLogs } from "@/lib/booking-activity-log-core";
 import {
   mapPublicPaymentMethodToCompanyType,
   normalizeCompanyPaymentType,
 } from "@/lib/company-payment-types";
-import { calculateNights } from "@/lib/queries/bookings";
+import { calculateNights } from "@/lib/stay-nights";
 import type { StayStatus } from "@/lib/stay-status";
 
 export type BookingGuestEntry = {
@@ -99,7 +99,7 @@ export type BookingDetails = {
   adultGuests?: BookingGuestEntry[];
   childGuests?: BookingGuestEntry[];
   babyGuests?: BookingGuestEntry[];
-  /** Konfirme gönderim geçmişi (Sistem WhatsApp / e-posta / SMS) */
+  /** Konfirme gönderim geçmişi (Bildirim WhatsApp / e-posta / SMS) */
   confirmationSends?: BookingConfirmationSendRecord[];
   /** Rezervasyon işlem logları (oluşturma → fatura) */
   activityLogs?: BookingActivityLogEntry[];

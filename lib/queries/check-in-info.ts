@@ -14,9 +14,13 @@ import {
   type BookingDetails,
   type BookingGuestEntry,
 } from "@/lib/booking-form-details";
-import { calculateNights } from "@/lib/queries/bookings";
+import { calculateNights } from "@/lib/stay-nights";
 import { formatMoneyPlain } from "@/lib/booking-display";
 import { formatVillaRegionLabelMahalleIlceIl } from "@/lib/queries/villa-location";
+import {
+  computeOwnerPayableAmount,
+  computeOwnerPaymentDueDate,
+} from "@/lib/owner-payment-schedule";
 
 const checkInInfoInclude = {
   villa: {
@@ -36,6 +40,7 @@ const checkInInfoInclude = {
       documentAddress: true,
       greeterName: true,
       greeterPhone: true,
+      prepaymentPaymentType: { select: { name: true } },
       region: {
         select: {
           name: true,
@@ -64,27 +69,30 @@ type CheckInInfoBookingRow = Prisma.BookingGetPayload<{
   include: typeof checkInInfoInclude;
 }>;
 
-/** rezervasyon no / cuid / kısa kod — onay resolve ile aynı mantık */
+/**
+ * Yalnızca Booking.id (cuid) veya cuid son 4–8 karakteri.
+ * Sıralı externalCode (örn. 116005) kabul edilmez — enumerasyon riski.
+ */
 async function findBookingForCheckInInfo(
   code: string
 ): Promise<CheckInInfoBookingRow | null> {
-  const numericCode = Number.parseInt(code, 10);
-  if (Number.isFinite(numericCode) && String(numericCode) === code) {
-    const byExternal = await prisma.booking.findFirst({
-      where: { externalCode: numericCode },
-      include: checkInInfoInclude,
-    });
-    if (byExternal) return byExternal;
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+
+  // Saf sayısal kod (externalCode) bilinçli olarak reddedilir
+  if (/^\d+$/.test(trimmed)) {
+    return null;
   }
 
   const byId = await prisma.booking.findFirst({
-    where: { id: code },
+    where: { id: trimmed },
     include: checkInInfoInclude,
   });
   if (byId) return byId;
 
-  if (/^[A-Za-z0-9]{4,8}$/.test(code) && !/^\d+$/.test(code)) {
-    const suffix = code.toLowerCase();
+  // Kısa paylaşıım kodu: cuid son 4–8 karakter (örn. id.slice(-5))
+  if (/^[A-Za-z0-9]{4,8}$/.test(trimmed)) {
+    const suffix = trimmed.toLowerCase();
     const candidates = await prisma.booking.findMany({
       where: { id: { endsWith: suffix } },
       include: checkInInfoInclude,
@@ -420,9 +428,17 @@ function formatOwnerPaymentDueDateLabel(raw: string | null | undefined): string 
   return value;
 }
 
+/**
+ * Rezervasyon formu (Ödemeler) ile aynı:
+ * Villa Sahibine Ödenecek = gerçekleşen ön ödeme − komisyon.
+ * Tarih = villa ön ödeme tipi vadesi (örn. Giriş + 1 gün).
+ * details.ownerPayableAmount eski/stale kalabilir; canlı hesaplanır.
+ */
 function buildOwnerPaymentLines(
+  booking: CheckInInfoBookingRow,
   details: BookingDetails,
-  guestLines: CheckInInfoPaymentLine[]
+  guestLines: CheckInInfoPaymentLine[],
+  prepaymentSum: number
 ): CheckInInfoPaymentLine[] {
   const lines: CheckInInfoPaymentLine[] = [...guestLines];
   const agencyExpected = details.agencyExpectedAmount ?? 0;
@@ -433,7 +449,25 @@ function buildOwnerPaymentLines(
     });
   }
 
-  const ownerPayable = details.ownerPayableAmount ?? 0;
+  const prepaymentTotalForOwner =
+    prepaymentSum > 0 ? prepaymentSum : (details.prepaymentAmount ?? 0);
+  const ownerPayable = computeOwnerPayableAmount(
+    prepaymentTotalForOwner,
+    details.commissionAmount
+  );
+
+  const paymentTypeName =
+    booking.villa.prepaymentPaymentType?.name?.trim() ||
+    details.ownerPaymentTerm?.trim() ||
+    "";
+  const dueDateRaw =
+    computeOwnerPaymentDueDate({
+      paymentTypeName,
+      confirmationDate: booking.confirmationSentAt,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+    }) || details.ownerPaymentDueDate;
+
   if (ownerPayable > 0) {
     lines.push({
       label: "Villa Sahibine Ödenecek Para",
@@ -441,8 +475,7 @@ function buildOwnerPaymentLines(
     });
     lines.push({
       label: "Villa Sahibine Ödeme Yapılacak Tarih",
-      amountLabel:
-        formatOwnerPaymentDueDateLabel(details.ownerPaymentDueDate) || "—",
+      amountLabel: formatOwnerPaymentDueDateLabel(dueDateRaw) || "—",
     });
   }
 
@@ -510,7 +543,12 @@ export async function getPublicCheckInInfo(input: {
   const accountLines = buildAccountLines(details, nights);
   const accountSummaryLines = buildAccountSummaryLines(booking, details);
   const paymentLines = buildPaymentLines(booking, details, prepaymentSum);
-  const ownerPaymentLines = buildOwnerPaymentLines(details, paymentLines);
+  const ownerPaymentLines = buildOwnerPaymentLines(
+    booking,
+    details,
+    paymentLines,
+    prepaymentSum
+  );
 
   const invoice = buildInvoice(details, booking.guestName, revealed);
   const villaLocation = booking.villa.region

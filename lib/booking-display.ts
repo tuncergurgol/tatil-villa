@@ -1,4 +1,4 @@
-import { calculateNights } from "@/lib/queries/bookings";
+import { calculateNights } from "@/lib/stay-nights";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import type { BookingStatus } from "@prisma/client";
 

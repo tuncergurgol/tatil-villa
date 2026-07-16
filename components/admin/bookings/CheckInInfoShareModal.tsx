@@ -7,7 +7,7 @@ import {
   sendCheckInInfoShareAction,
   type CheckInInfoShareAudience,
 } from "@/app/actions/admin/booking-check-in-info-share";
-import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { getPrepaymentShareChannelLabel } from "@/lib/booking-prepayment-share";
 import { bookingLabelClass } from "@/components/admin/bookings/booking-form-ui";
 
@@ -252,8 +252,9 @@ export default function CheckInInfoShareModal({
             </div>
             {sendWhatsApp ? (
               <p className="mt-2 text-xs text-gray-500">
-                WhatsApp seçildiğinde mesaj Sistem WhatsApp (Evolution API)
-                üzerinden otomatik gönderilir.
+                {audience === "guest"
+                  ? "WhatsApp seçildiğinde mesaj Bildirim WhatsApp (WAHA) üzerinden otomatik gönderilir."
+                  : "WhatsApp seçildiğinde mesaj Evolution WhatsApp üzerinden otomatik gönderilir (misafir karşılayan)."}
               </p>
             ) : null}
             {sendEmail ? (

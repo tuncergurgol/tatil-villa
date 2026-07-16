@@ -56,7 +56,7 @@ import {
   buildLegacyCreatedLog,
   normalizeActivityLogs,
   type BookingActivityLogEntry,
-} from "@/lib/booking-activity-log";
+} from "@/lib/booking-activity-log-core";
 import {
   computeOwnerPayableAmount,
   computeOwnerPaymentDueDate,

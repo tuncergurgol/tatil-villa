@@ -4,14 +4,13 @@ import { useMemo, useState, useTransition } from "react";
 import { Loader2, Send } from "lucide-react";
 import { sendBookingConfirmationAction } from "@/app/actions/admin/booking-confirmation-send";
 import { changeBookingStatusAction } from "@/app/actions/admin/bookings";
-import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import { getPrepaymentShareChannelLabel } from "@/lib/booking-prepayment-share";
 import type {
   BookingConfirmationSendRecord,
   BookingPrepaymentRecord,
 } from "@/lib/booking-form-details";
-import { resolveExternalCode } from "@/lib/booking-form-details";
 import { getBookingStatusLabel } from "@/lib/booking-status";
 import { BookingStatus } from "@prisma/client";
 import {
@@ -53,7 +52,7 @@ function buildSuccessMessage(
 ): string {
   const parts = channels.map((channel) => {
     if (channel === "whatsapp") {
-      return "Sistem WhatsApp üzerinden gönderildi";
+      return "Bildirim WhatsApp üzerinden gönderildi";
     }
     return `${getPrepaymentShareChannelLabel(channel)} üzerinden gönderildi`;
   });
@@ -79,8 +78,8 @@ function resolveHistoryItems(
 export default function BookingKonfirmeTab({
   bookingId,
   bookingStatus,
-  externalCode,
-  guestEmail,
+  externalCode: _externalCode,
+  guestEmail: _guestEmail,
   prepayments,
   confirmationSentAt,
   confirmationSends,
@@ -105,10 +104,8 @@ export default function BookingKonfirmeTab({
   const hasPrepayments = prepayments.length > 0;
   const canSendConfirmation = hasPrepayments && !isConfirmPending;
   const canNotifyCheckIn = bookingStatus === BookingStatus.CONFIRMED;
-  const resolvedCode =
-    resolveExternalCode(externalCode, guestEmail) || bookingId;
-  const guestPreviewPath = buildCheckInInfoSharePath(resolvedCode, "guest");
-  const ownerPreviewPath = buildCheckInInfoSharePath(resolvedCode, "owner");
+  const guestPreviewPath = buildCheckInInfoSharePath(bookingId, "guest");
+  const ownerPreviewPath = buildCheckInInfoSharePath(bookingId, "owner");
   const historyItems = useMemo(
     () => resolveHistoryItems(confirmationSends, confirmationSentAt),
     [confirmationSends, confirmationSentAt]
@@ -219,8 +216,8 @@ export default function BookingKonfirmeTab({
             </div>
             {sendWhatsApp ? (
               <p className="mt-2 text-xs text-gray-500">
-                WhatsApp seçildiğinde mesaj Sistem WhatsApp (Evolution API)
-                üzerinden otomatik gönderilir.
+                WhatsApp seçildiğinde mesaj Bildirim WhatsApp (WAHA) üzerinden
+                otomatik gönderilir.
               </p>
             ) : null}
           </div>

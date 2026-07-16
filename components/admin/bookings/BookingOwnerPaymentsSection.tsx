@@ -7,7 +7,7 @@ import {
   deleteBookingOwnerPaymentAction,
   updateBookingOwnerPaymentAction,
 } from "@/app/actions/admin/booking-owner-payments";
-import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import type { BookingOwnerPaymentRecord } from "@/lib/booking-form-details";
 import { formatMoneyInputValue, formatMoneyPlain } from "@/lib/booking-display";
 import {

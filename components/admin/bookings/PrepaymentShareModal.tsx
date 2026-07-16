@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, Send, X } from "lucide-react";
 import { sendBookingPrepaymentInfoAction } from "@/app/actions/admin/booking-prepayment-share";
-import type { BookingActivityLogEntry } from "@/lib/booking-activity-log";
+import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import {
   BOOKING_PREPAYMENT_OPTION_HOURS,
@@ -205,8 +205,8 @@ export default function PrepaymentShareModal({
             </div>
             {sendWhatsApp ? (
               <p className="mt-2 text-xs text-gray-500">
-                WhatsApp seçildiğinde mesaj Sistem WhatsApp (Evolution API)
-                üzerinden otomatik gönderilir.
+                WhatsApp seçildiğinde mesaj Bildirim WhatsApp (WAHA) üzerinden
+                otomatik gönderilir.
               </p>
             ) : null}
           </div>

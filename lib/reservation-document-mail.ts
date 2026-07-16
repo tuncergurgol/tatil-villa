@@ -14,15 +14,9 @@ import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
-import { sendEvolutionTextMessage } from "@/lib/evolution-client";
-import {
-  isValidTurkishMobileE164,
-  normalizePhoneToE164,
-  toWhatsAppRecipient,
-} from "@/lib/phone";
-import { calculateNights } from "@/lib/queries/bookings";
+import { calculateNights } from "@/lib/stay-nights";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
+import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 import { formatVillaRegionLabelMahalleIlceIl } from "@/lib/queries/villa-location";
 import {
   applyReservationContractPlaceholders,
@@ -370,7 +364,7 @@ export async function sendReservationDocumentEmail(
 }
 
 /**
- * Misafir onayından sonra konfirme belgesi: e-posta (PDF) + Evolution WhatsApp.
+ * Misafir onayından sonra konfirme belgesi: e-posta (PDF) + Bildirim WhatsApp (WAHA).
  * Kanal hatalarını fırlatmaz; sonuçları döner (UI success bozulmaz).
  */
 export async function sendReservationDocumentNotifications(
@@ -464,48 +458,26 @@ export async function sendReservationDocumentNotifications(
     }
   }
 
-  // --- WhatsApp (Evolution, düz metin) — booking-confirmation-send ile aynı kanal ---
-  const e164 = phoneRaw ? normalizePhoneToE164(phoneRaw) : "";
-  if (!e164 || !isValidTurkishMobileE164(e164)) {
+  // --- WhatsApp (WAHA, düz metin) — booking-confirmation-send ile aynı kanal ---
+  if (!phoneRaw?.trim()) {
     results.push({
       channel: "whatsapp",
       ok: false,
-      error: phoneRaw
-        ? "Geçersiz telefon numarası"
-        : "Misafir telefonu yok",
+      error: "Misafir telefonu yok",
     });
   } else {
-    try {
-      const evolution = await getEvolutionWhatsappAdminData();
-      if (!evolution.evolutionApiKey || !evolution.evolutionBaseUrl) {
-        results.push({
-          channel: "whatsapp",
-          ok: false,
-          error: "Sistem WhatsApp (Evolution) ayarları eksik",
-        });
-      } else {
-        const whatsappMessage = ensureWhatsAppRawConfirmationUrl(
-          buildGuestWhatsAppText(data)
-        );
-        await sendEvolutionTextMessage(
-          evolution.evolutionBaseUrl,
-          evolution.evolutionApiKey,
-          evolution.evolutionInstanceName,
-          toWhatsAppRecipient(e164),
-          whatsappMessage
-        );
-        results.push({ channel: "whatsapp", ok: true });
-      }
-    } catch (error) {
-      results.push({
-        channel: "whatsapp",
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "WhatsApp mesajı gönderilemedi",
-      });
-    }
+    const whatsappMessage = ensureWhatsAppRawConfirmationUrl(
+      buildGuestWhatsAppText(data)
+    );
+    const wa = await sendCustomerNotificationWhatsApp(
+      phoneRaw,
+      whatsappMessage
+    );
+    results.push({
+      channel: "whatsapp",
+      ok: wa.ok,
+      error: wa.ok ? undefined : wa.error,
+    });
   }
 
   return {
