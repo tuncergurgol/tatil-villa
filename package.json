@@ -50,6 +50,7 @@
     "sync:customers": "tsx scripts/sync-customers-from-bookings.ts",
     "sync:customers:excel": "tsx scripts/sync-customers-from-excel.ts",
     "fix:booking-contacts": "tsx scripts/fix-booking-guest-contacts.ts",
+    "normalize:names": "tsx scripts/normalize-person-names-casing.ts",
     "sync:ical": "tsx scripts/sync-villa-ical-sources.ts",
     "seed:cms": "tsx scripts/seed-cms-content.ts",
     "import:cms": "tsx scripts/import-cms-from-tatildeyiz.ts",

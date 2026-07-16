@@ -50,6 +50,7 @@ export const adminNavSections: NavSection[] = [
     items: [
       { label: "Aylık İlan Raporu", href: "/admin/raporlar/aylik-ilan" },
       { label: "Belge Kontrol", href: "/admin/raporlar/belge-kontrol" },
+      { label: "BTRANS Bildirimi (538)", href: "/admin/raporlar/btrans-bildirim" },
       { label: "Fatura Raporları", href: "/admin/raporlar/fatura-raporlari" },
     ],
   },
