@@ -29,15 +29,13 @@ import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText, collapseBankTransferIbanBlankLine } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
-import { sendEvolutionTextMessage } from "@/lib/evolution-client";
 import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
-  toWhatsAppRecipient,
 } from "@/lib/phone";
 import { getAgencyMessageTemplateByRowNos } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
+import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
 const sendPrepaymentInfoSchema = z.object({
   bookingId: z.string().min(1),
@@ -297,30 +295,11 @@ export async function sendBookingPrepaymentInfoAction(
         };
       }
     } else if (channel === "whatsapp") {
-      const evolution = await getEvolutionWhatsappAdminData();
-      if (!evolution.evolutionApiKey || !evolution.evolutionBaseUrl) {
+      const wa = await sendCustomerNotificationWhatsApp(phone, message);
+      if (!wa.ok) {
         return {
           success: false,
-          error:
-            "Sistem WhatsApp (Evolution) ayarları eksik. Acente → Evolution WhatsApp sayfasından yapılandırın.",
-        };
-      }
-
-      try {
-        await sendEvolutionTextMessage(
-          evolution.evolutionBaseUrl,
-          evolution.evolutionApiKey,
-          evolution.evolutionInstanceName,
-          toWhatsAppRecipient(normalizePhoneToE164(phone)),
-          message
-        );
-      } catch (error) {
-        return {
-          success: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "WhatsApp mesajı gönderilemedi",
+          error: wa.error ?? "WhatsApp mesajı gönderilemedi",
         };
       }
     } else {

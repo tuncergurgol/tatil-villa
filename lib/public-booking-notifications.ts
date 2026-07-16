@@ -11,15 +11,9 @@ import { parseBookingDetails } from "@/lib/booking-form-details";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
-import { sendEvolutionTextMessage } from "@/lib/evolution-client";
-import {
-  isValidTurkishMobileE164,
-  normalizePhoneToE164,
-  toWhatsAppRecipient,
-} from "@/lib/phone";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
+import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
 const ADMIN_NOTIFY_EMAIL = "info@tatildeyiz.com.tr";
 
@@ -63,27 +57,15 @@ function pickChannelBody(
 }
 
 async function sendGuestWhatsApp(phone: string, message: string) {
-  const e164 = normalizePhoneToE164(phone);
-  if (!e164 || !isValidTurkishMobileE164(e164)) {
-    console.warn("[new-reservation-notify] WhatsApp: geçersiz telefon", phone);
-    return false;
-  }
-
-  const evolution = await getEvolutionWhatsappAdminData();
-  if (!evolution.evolutionApiKey || !evolution.evolutionBaseUrl) {
+  const result = await sendCustomerNotificationWhatsApp(phone, message);
+  if (!result.ok) {
     console.warn(
-      "[new-reservation-notify] WhatsApp: Evolution ayarları eksik, mesaj gönderilemedi"
+      "[new-reservation-notify] WhatsApp:",
+      result.error ?? "mesaj gönderilemedi",
+      phone
     );
     return false;
   }
-
-  await sendEvolutionTextMessage(
-    evolution.evolutionBaseUrl,
-    evolution.evolutionApiKey,
-    evolution.evolutionInstanceName,
-    toWhatsAppRecipient(e164),
-    message
-  );
   return true;
 }
 

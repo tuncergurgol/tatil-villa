@@ -25,9 +25,11 @@ export default async function EvolutionWhatsappPage() {
         </p>
         <h1 className="mt-1 text-2xl font-bold text-gray-900">Evolution WhatsApp</h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-600">
-          Evolution API ile WhatsApp instance oluşturun ve bağlayın. QR kodu veya telefon
-          numarası ile eşleştirme kodu kullanabilirsiniz. Takvim otomasyonu aynen
-          çalışmaya devam eder.
+          Evolution API ile WhatsApp instance oluşturun ve bağlayın. Bu hat{" "}
+          <strong>takvim otomasyonu</strong> ve{" "}
+          <strong>misafir karşılayan</strong> (villa yetkilisi) bildirimleri
+          içindir. Müşteri bildirimleri Bildirim WhatsApp (WAHA) üzerinden
+          gider.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-violet-100 px-3 py-1 font-medium text-violet-800">

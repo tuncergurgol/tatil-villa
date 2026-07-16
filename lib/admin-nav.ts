@@ -65,6 +65,7 @@ export const adminAgencyNav: NavGroup = {
     { label: "Şirket", href: "/admin/acente/sirket" },
     { label: "Takvim Import", href: "/admin/acente/takvim-import" },
     { label: "Evolution WhatsApp", href: "/admin/acente/evolution-whatsapp" },
+    { label: "Bildirim WhatsApp", href: "/admin/acente/bildirim-whatsapp" },
     { label: "Mesaj İçeriği", href: "/admin/acente/mesaj-icerigi" },
     { label: "Kullanıcılar", href: "/admin/acente/kullanicilar" },
     { label: "İçerik Yönetimi", href: "/admin/icerik" },

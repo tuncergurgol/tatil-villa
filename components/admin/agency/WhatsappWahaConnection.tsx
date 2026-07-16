@@ -2,33 +2,35 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
-  disconnectEvolutionAction,
-  saveEvolutionConnectionSettings,
-  type EvolutionConnectionState,
-} from "@/app/actions/admin/evolution-connection";
+  disconnectWahaAction,
+  saveWahaConnectionSettings,
+  type WahaConnectionState,
+} from "@/app/actions/admin/waha-connection";
 
 const inputClass =
-  "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100";
+  "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100";
 
 function isPlaceholderApiKey(value: string) {
   const trimmed = value.trim().toLowerCase();
   return (
     !trimmed ||
-    trimmed.includes("authentication_api_key") ||
-    trimmed.includes("evolution/.env")
+    trimmed.includes("waha_api_key") ||
+    trimmed.includes("waha/.env") ||
+    trimmed === "yoursecretkey" ||
+    /^0+$/.test(trimmed)
   );
 }
 
 async function saveSettingsToServer(
   baseUrl: string,
   apiKey: string,
-  instanceName: string
+  sessionName: string
 ) {
   const formData = new FormData();
-  formData.set("evolutionBaseUrl", baseUrl);
-  formData.set("evolutionApiKey", apiKey);
-  formData.set("evolutionInstanceName", instanceName);
-  return saveEvolutionConnectionSettings({}, formData);
+  formData.set("wahaBaseUrl", baseUrl);
+  formData.set("wahaApiKey", apiKey);
+  formData.set("wahaSessionName", sessionName);
+  return saveWahaConnectionSettings({}, formData);
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -48,21 +50,21 @@ function statusBadgeClass(status: string | null) {
   return "bg-gray-100 text-gray-700";
 }
 
-async function fetchEvolutionStatus(includeQr: boolean): Promise<EvolutionConnectionState> {
-  const res = await fetch(`/api/admin/evolution/status?qr=${includeQr ? "1" : "0"}`, {
+async function fetchWahaStatus(includeQr: boolean): Promise<WahaConnectionState> {
+  const res = await fetch(`/api/admin/waha/status?qr=${includeQr ? "1" : "0"}`, {
     cache: "no-store",
   });
   if (!res.ok) {
     throw new Error("Durum alınamadı");
   }
-  return (await res.json()) as EvolutionConnectionState;
+  return (await res.json()) as WahaConnectionState;
 }
 
-async function postEvolutionAction(
+async function postWahaAction(
   action: "start" | "retry" | "force-restart",
   webhookUrl: string
-): Promise<EvolutionConnectionState> {
-  const res = await fetch("/api/admin/evolution/status", {
+): Promise<WahaConnectionState> {
+  const res = await fetch("/api/admin/waha/status", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, webhookUrl }),
@@ -70,14 +72,14 @@ async function postEvolutionAction(
   if (!res.ok) {
     throw new Error("İstek başarısız");
   }
-  return (await res.json()) as EvolutionConnectionState;
+  return (await res.json()) as WahaConnectionState;
 }
 
-async function postEvolutionPairingCode(
+async function postWahaPairingCode(
   phoneNumber: string,
   webhookUrl: string
-): Promise<EvolutionConnectionState> {
-  const res = await fetch("/api/admin/evolution/status", {
+): Promise<WahaConnectionState> {
+  const res = await fetch("/api/admin/waha/status", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -89,24 +91,43 @@ async function postEvolutionPairingCode(
   if (!res.ok) {
     throw new Error("Eşleştirme kodu alınamadı");
   }
-  return (await res.json()) as EvolutionConnectionState;
+  return (await res.json()) as WahaConnectionState;
 }
 
-export default function WhatsappEvolutionConnection({
-  evolutionBaseUrl,
-  evolutionApiKey,
-  evolutionInstanceName,
+async function postWahaTestMessage(
+  phoneNumber: string,
+  text: string
+): Promise<WahaConnectionState> {
+  const res = await fetch("/api/admin/waha/status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "send-test",
+      phoneNumber,
+      text,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error("Test mesajı gönderilemedi");
+  }
+  return (await res.json()) as WahaConnectionState;
+}
+
+export default function WhatsappWahaConnection({
+  wahaBaseUrl,
+  wahaApiKey,
+  wahaSessionName,
   webhookUrl,
 }: {
-  evolutionBaseUrl: string;
-  evolutionApiKey: string;
-  evolutionInstanceName: string;
+  wahaBaseUrl: string;
+  wahaApiKey: string;
+  wahaSessionName: string;
   webhookUrl: string;
 }) {
-  const [baseUrl, setBaseUrl] = useState(evolutionBaseUrl);
-  const [apiKey, setApiKey] = useState(evolutionApiKey);
-  const [instanceName, setInstanceName] = useState(evolutionInstanceName);
-  const [connection, setConnection] = useState<EvolutionConnectionState | null>(null);
+  const [baseUrl, setBaseUrl] = useState(wahaBaseUrl);
+  const [apiKey, setApiKey] = useState(wahaApiKey);
+  const [sessionName, setSessionName] = useState(wahaSessionName);
+  const [connection, setConnection] = useState<WahaConnectionState | null>(null);
   const [notice, setNotice] = useState<{ type: "ok" | "error"; message: string } | null>(
     null
   );
@@ -115,14 +136,18 @@ export default function WhatsappEvolutionConnection({
   const [isCheckingPairing, setIsCheckingPairing] = useState(false);
   const [authMethod, setAuthMethod] = useState<"qr" | "phone">("qr");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [testPhone, setTestPhone] = useState("");
+  const [testText, setTestText] = useState(
+    "Tatildeyiz Bildirim WhatsApp test mesajı"
+  );
   const mountedRef = useRef(true);
   const qrShownAtRef = useRef<number | null>(null);
   const lastStatusRef = useRef<string | null>(null);
 
-  const applyState = useCallback((state: EvolutionConnectionState) => {
+  const applyState = useCallback((state: WahaConnectionState) => {
     if (!mountedRef.current) return;
 
-    const resolved: EvolutionConnectionState =
+    const resolved: WahaConnectionState =
       state.phoneId && state.status !== "WORKING"
         ? {
             ...state,
@@ -174,13 +199,12 @@ export default function WhatsappEvolutionConnection({
     };
   }, []);
 
-  // İlk yükleme: QR ile birlikte
   useEffect(() => {
     if (!baseUrl.trim() || !apiKey.trim()) return;
     let cancelled = false;
     (async () => {
       try {
-        const state = await fetchEvolutionStatus(true);
+        const state = await fetchWahaStatus(true);
         if (!cancelled) applyState(state);
       } catch {
         // ignore first load errors
@@ -191,7 +215,6 @@ export default function WhatsappEvolutionConnection({
     };
   }, [baseUrl, apiKey, applyState]);
 
-  // Eşleştirme kodu veya QR beklerken sık durum yoklaması
   useEffect(() => {
     if (!connection?.configured) return;
     const status = connection.status;
@@ -209,7 +232,7 @@ export default function WhatsappEvolutionConnection({
       if (cancelled) return;
       if (waitingForPairing) setIsCheckingPairing(true);
       try {
-        const state = await fetchEvolutionStatus(false);
+        const state = await fetchWahaStatus(false);
         if (!cancelled) applyState(state);
       } catch {
         // geçici hata yoksay
@@ -236,7 +259,6 @@ export default function WhatsappEvolutionConnection({
     applyState,
   ]);
 
-  // QR sadece 60 sn sonra yenilenir
   useEffect(() => {
     if (connection?.status !== "SCAN_QR_CODE") return;
 
@@ -245,7 +267,7 @@ export default function WhatsappEvolutionConnection({
       if (!shownAt || Date.now() - shownAt < 60_000) return;
       void (async () => {
         try {
-          const state = await fetchEvolutionStatus(true);
+          const state = await fetchWahaStatus(true);
           applyState(state);
           if (state.qrDataUrl) qrShownAtRef.current = Date.now();
         } catch {
@@ -263,18 +285,18 @@ export default function WhatsappEvolutionConnection({
       setNotice({
         type: "error",
         message:
-          "API anahtarı geçersiz. evolution/.env dosyasındaki AUTHENTICATION_API_KEY değerini yapıştırın.",
+          "API anahtarı geçersiz. waha/.env dosyasındaki WAHA_API_KEY değerini yapıştırın.",
       });
       return;
     }
     startTransition(async () => {
-      const result = await saveSettingsToServer(baseUrl, apiKey, instanceName);
+      const result = await saveSettingsToServer(baseUrl, apiKey, sessionName);
       setNotice({
         type: result.success ? "ok" : "error",
         message: result.message ?? result.error ?? "Kayıt başarısız",
       });
       if (result.success) {
-        const state = await fetchEvolutionStatus(true);
+        const state = await fetchWahaStatus(true);
         applyState(state);
       }
     });
@@ -282,18 +304,18 @@ export default function WhatsappEvolutionConnection({
 
   async function ensureSettingsSaved(): Promise<boolean> {
     if (!baseUrl.trim()) {
-      setNotice({ type: "error", message: "Evolution API sunucu adresi gerekli" });
+      setNotice({ type: "error", message: "WAHA API sunucu adresi gerekli" });
       return false;
     }
     if (isPlaceholderApiKey(apiKey)) {
       setNotice({
         type: "error",
         message:
-          "Önce API anahtarını girin: evolution/.env → AUTHENTICATION_API_KEY satırındaki değer",
+          "Önce API anahtarını girin: waha/.env → WAHA_API_KEY satırındaki değer",
       });
       return false;
     }
-    const result = await saveSettingsToServer(baseUrl, apiKey, instanceName);
+    const result = await saveSettingsToServer(baseUrl, apiKey, sessionName);
     if (!result.success) {
       setNotice({
         type: "error",
@@ -307,7 +329,6 @@ export default function WhatsappEvolutionConnection({
   async function handleConnect(mode: "start" | "retry" | "force-restart" = "start") {
     setNotice(null);
     setIsBusy(true);
-    // Eski QR'ı temizle ki loading görünsün
     if (mode !== "start") {
       setConnection((prev) =>
         prev ? { ...prev, qrDataUrl: null, status: "STARTING", error: null } : prev
@@ -317,7 +338,7 @@ export default function WhatsappEvolutionConnection({
     try {
       if (!(await ensureSettingsSaved())) return;
 
-      const state = await postEvolutionAction(mode, webhookUrl);
+      const state = await postWahaAction(mode, webhookUrl);
       applyState(state);
       if (state.qrDataUrl) qrShownAtRef.current = Date.now();
 
@@ -360,7 +381,7 @@ export default function WhatsappEvolutionConnection({
     setNotice(null);
     setIsBusy(true);
     try {
-      const state = await fetchEvolutionStatus(false);
+      const state = await fetchWahaStatus(false);
       applyState(state);
       if (state.status === "WORKING" || state.phoneId) {
         setNotice({ type: "ok", message: "WhatsApp bağlantısı aktif" });
@@ -389,14 +410,12 @@ export default function WhatsappEvolutionConnection({
     setNotice(null);
     setIsBusy(true);
     setConnection((prev) =>
-      prev
-        ? { ...prev, pairingCode: null, error: null }
-        : prev
+      prev ? { ...prev, pairingCode: null, error: null } : prev
     );
     try {
       if (!(await ensureSettingsSaved())) return;
 
-      const state = await postEvolutionPairingCode(phoneNumber, webhookUrl);
+      const state = await postWahaPairingCode(phoneNumber, webhookUrl);
       applyState(state);
 
       if (state.error) {
@@ -409,10 +428,9 @@ export default function WhatsappEvolutionConnection({
           message:
             "Eşleştirme kodu hazır — WhatsApp uygulamasında telefon numarası ile bağlan seçeneğine girin",
         });
-        // Kod girildikten sonra hızlı kontrol
         for (let attempt = 0; attempt < 20; attempt += 1) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
-          const latest = await fetchEvolutionStatus(false);
+          const latest = await fetchWahaStatus(false);
           applyState(latest);
           if (latest.status === "WORKING" || latest.phoneId) break;
         }
@@ -430,11 +448,33 @@ export default function WhatsappEvolutionConnection({
     }
   }
 
+  async function handleSendTest() {
+    setNotice(null);
+    setIsBusy(true);
+    try {
+      const state = await postWahaTestMessage(testPhone, testText);
+      applyState(state);
+      if (state.error) {
+        setNotice({ type: "error", message: state.error });
+      } else {
+        setNotice({ type: "ok", message: "Test mesajı gönderildi" });
+      }
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Test mesajı gönderilemedi",
+      });
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   function handleDisconnect() {
     if (!window.confirm("WhatsApp bağlantısı kesilsin mi?")) return;
     setNotice(null);
     startTransition(async () => {
-      const state = await disconnectEvolutionAction();
+      const state = await disconnectWahaAction();
       applyState(state);
       setNotice({ type: "ok", message: "WhatsApp bağlantısı kesildi" });
     });
@@ -447,11 +487,10 @@ export default function WhatsappEvolutionConnection({
     <section className="rounded-2xl border border-gray-200 bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-gray-800">Evolution API Bağlantısı</h2>
+          <h2 className="text-sm font-semibold text-gray-800">WAHA API Bağlantısı</h2>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Evolution API üzerinden QR veya telefon numarası ile WhatsApp
-            bağlantısı kurun. Takvim otomasyonu ve misafir karşılayan
-            bildirimleri bu hat üzerinden çalışır.
+            WAHA üzerinden QR veya telefon numarası ile WhatsApp bağlayın. Bu hat
+            rezervasyon bildirimleri (müşteri) için kullanılır.
           </p>
         </div>
         {connection?.configured && status ? (
@@ -485,33 +524,35 @@ export default function WhatsappEvolutionConnection({
         <div className="space-y-4">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-gray-500">
-              Evolution API Sunucu Adresi
+              WAHA API Sunucu Adresi
             </span>
             <input
               value={baseUrl}
               onChange={(event) => setBaseUrl(event.target.value)}
               className={inputClass}
-              placeholder="http://localhost:8080"
+              placeholder="http://localhost:3001"
             />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-gray-500">
-              Evolution API Anahtarı
+              WAHA API Anahtarı
             </span>
             <input
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
               className={inputClass}
-              placeholder="örn. dda43df148a748b1827dd63b7804bab9"
+              placeholder="waha/.env → WAHA_API_KEY"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-500">Instance Adı</span>
+            <span className="mb-1 block text-xs font-medium text-gray-500">
+              Oturum Adı
+            </span>
             <input
-              value={instanceName}
-              onChange={(event) => setInstanceName(event.target.value)}
+              value={sessionName}
+              onChange={(event) => setSessionName(event.target.value)}
               className={inputClass}
-              placeholder="tatil-villa"
+              placeholder="default"
             />
           </label>
           <div className="flex flex-wrap gap-2">
@@ -531,7 +572,7 @@ export default function WhatsappEvolutionConnection({
               onClick={() => setAuthMethod("qr")}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                 authMethod === "qr"
-                  ? "bg-white text-violet-700 shadow-sm"
+                  ? "bg-white text-emerald-700 shadow-sm"
                   : "text-gray-600 hover:text-gray-800"
               }`}
             >
@@ -542,7 +583,7 @@ export default function WhatsappEvolutionConnection({
               onClick={() => setAuthMethod("phone")}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                 authMethod === "phone"
-                  ? "bg-white text-violet-700 shadow-sm"
+                  ? "bg-white text-emerald-700 shadow-sm"
                   : "text-gray-600 hover:text-gray-800"
               }`}
             >
@@ -562,7 +603,7 @@ export default function WhatsappEvolutionConnection({
                   )
                 }
                 disabled={busy}
-                className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
               >
                 {status === "WORKING"
                   ? "Durumu Yenile"
@@ -614,7 +655,7 @@ export default function WhatsappEvolutionConnection({
                   type="button"
                   onClick={() => void handleRequestPairingCode()}
                   disabled={busy || !phoneNumber.trim()}
-                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+                  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                 >
                   Eşleştirme Kodu Al
                 </button>
@@ -623,7 +664,7 @@ export default function WhatsappEvolutionConnection({
                     type="button"
                     onClick={() => void handleCheckConnection()}
                     disabled={busy}
-                    className="rounded-xl border border-violet-200 px-4 py-2.5 text-sm font-semibold text-violet-800 hover:bg-violet-50 disabled:opacity-60"
+                    className="rounded-xl border border-emerald-200 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60"
                   >
                     Bağlantıyı Kontrol Et
                   </button>
@@ -647,6 +688,45 @@ export default function WhatsappEvolutionConnection({
               ? "QR okuttuktan sonra ekran otomatik \"Bağlı\" olur. Aynı QR 60 saniye geçerlidir — bu sürede tekrar basmayın."
               : "Kodu aldıktan sonra WhatsApp → Bağlı Cihazlar → Telefon numarası ile bağlan yolunu izleyin. Kod çalışmazsa QR sekmesine geçin."}
           </p>
+
+          {status === "WORKING" ? (
+            <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                Test Mesajı
+              </p>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-500">
+                  Alıcı Telefon
+                </span>
+                <input
+                  value={testPhone}
+                  onChange={(event) => setTestPhone(event.target.value)}
+                  className={inputClass}
+                  placeholder="905551234567"
+                  inputMode="tel"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-500">
+                  Mesaj
+                </span>
+                <textarea
+                  value={testText}
+                  onChange={(event) => setTestText(event.target.value)}
+                  className={`${inputClass} min-h-[80px]`}
+                  rows={3}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleSendTest()}
+                disabled={busy || !testPhone.trim() || !testText.trim()}
+                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                Test Mesajı Gönder
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 p-6 text-center">
@@ -660,20 +740,20 @@ export default function WhatsappEvolutionConnection({
                 <p className="text-xs text-gray-500">{connection.phoneId}</p>
               ) : null}
               <p className="text-sm text-gray-500">
-                Instance bağlandı. Takvim webhook entegrasyonu test aşamasında.
+                Bildirim WhatsApp oturumu hazır.
               </p>
             </div>
           ) : connection?.pairingCode ? (
             <div className="space-y-3">
               <p className="text-sm font-medium text-gray-700">Eşleştirme Kodu</p>
-              <p className="rounded-xl border border-violet-200 bg-white px-6 py-4 font-mono text-3xl font-bold tracking-[0.35em] text-violet-800">
+              <p className="rounded-xl border border-emerald-200 bg-white px-6 py-4 font-mono text-3xl font-bold tracking-[0.35em] text-emerald-800">
                 {connection.pairingCode}
               </p>
               <p className="text-sm text-gray-600">
                 WhatsApp → Bağlı Cihazlar → Cihaz Bağla → Telefon numarası ile bağlan
               </p>
               {isCheckingPairing ? (
-                <p className="text-xs font-medium text-violet-700">
+                <p className="text-xs font-medium text-emerald-700">
                   Bağlantı kontrol ediliyor…
                 </p>
               ) : (
@@ -715,7 +795,7 @@ export default function WhatsappEvolutionConnection({
               <p>
                 {authMethod === "phone"
                   ? "Telefon numaranızı girin ve \"Eşleştirme Kodu Al\" deyin."
-                  : "Evolution API ayarlarını kaydedin ve \"QR ile Bağlan\" deyin."}
+                  : "WAHA API ayarlarını kaydedin ve \"QR ile Bağlan\" deyin."}
               </p>
               <p>
                 {authMethod === "phone"

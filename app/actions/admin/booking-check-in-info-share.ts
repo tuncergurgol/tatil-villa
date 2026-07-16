@@ -43,16 +43,17 @@ import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
-import { sendEvolutionTextMessage } from "@/lib/evolution-client";
 import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
-  toWhatsAppRecipient,
 } from "@/lib/phone";
 import { resolveAgencySiteDomainBySiteInfo } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
+import {
+  sendCustomerNotificationWhatsApp,
+  sendOperationsWhatsApp,
+} from "@/lib/whatsapp-delivery";
 
 const audienceSchema = z.enum(["guest", "owner"]);
 
@@ -365,9 +366,9 @@ export async function previewCheckInInfoShareAction(raw: {
 
 /**
  * Giriş bilgilendirme gönderir:
- * - Müşteri → Mesaj İçeriği 11.1 (111)
- * - Villa yetkilisi → Mesaj İçeriği 40.1 (401)
- * WhatsApp → Sistem WhatsApp (Evolution), E-posta → rezervasyon@ SMTP.
+ * - Müşteri → Mesaj İçeriği 11.1 (111) — WhatsApp: Bildirim WhatsApp (WAHA)
+ * - Villa yetkilisi → Mesaj İçeriği 40.1 (401) — WhatsApp: Evolution
+ * E-posta → rezervasyon@ SMTP.
  * Kanallar bağımsız denenir; kısmi başarı kullanıcıya net bildirilir.
  */
 export async function sendCheckInInfoShareAction(
@@ -525,33 +526,14 @@ export async function sendCheckInInfoShareAction(
 
       if (channel === "whatsapp") {
         try {
-          const evolution = await getEvolutionWhatsappAdminData();
-          if (!evolution.evolutionApiKey?.trim()) {
-            throw new Error(
-              "Sistem WhatsApp (Evolution) API anahtarı eksik. Acente → Evolution WhatsApp sayfasından yapılandırın."
-            );
-          }
-          if (!evolution.evolutionBaseUrl?.trim()) {
-            throw new Error(
-              "Sistem WhatsApp (Evolution) base URL eksik. Acente → Evolution WhatsApp sayfasından yapılandırın."
-            );
-          }
-
-          const e164 = normalizePhoneToE164(ctx.phone);
-          if (!e164 || !isValidTurkishMobileE164(e164)) {
-            throw new Error(
-              "Geçersiz telefon numarası. Türkiye cep numarası girin"
-            );
-          }
-
           const whatsappMessage = ensureWhatsAppRawConfirmationUrl(message);
-          await sendEvolutionTextMessage(
-            evolution.evolutionBaseUrl,
-            evolution.evolutionApiKey,
-            evolution.evolutionInstanceName,
-            toWhatsAppRecipient(e164),
-            whatsappMessage
-          );
+          const wa =
+            audience === "guest"
+              ? await sendCustomerNotificationWhatsApp(ctx.phone, whatsappMessage)
+              : await sendOperationsWhatsApp(ctx.phone, whatsappMessage);
+          if (!wa.ok) {
+            throw new Error(wa.error ?? "WhatsApp mesajı gönderilemedi");
+          }
           channelResults.push({ channel, ok: true });
           sentChannels.push(channel);
         } catch (error) {

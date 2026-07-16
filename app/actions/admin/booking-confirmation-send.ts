@@ -36,16 +36,14 @@ import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
-import { sendEvolutionTextMessage } from "@/lib/evolution-client";
 import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
-  toWhatsAppRecipient,
 } from "@/lib/phone";
 import { resolveAgencySiteDomainBySiteInfo } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
+import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
 const sendConfirmationSchema = z.object({
   bookingId: z.string().min(1),
@@ -306,32 +304,12 @@ export async function sendBookingConfirmationAction(
         };
       }
     } else if (channel === "whatsapp") {
-      const evolution = await getEvolutionWhatsappAdminData();
-      if (!evolution.evolutionApiKey || !evolution.evolutionBaseUrl) {
-        return {
-          success: false,
-          error:
-            "Sistem WhatsApp (Evolution) ayarları eksik. Acente → Evolution WhatsApp sayfasından yapılandırın.",
-        };
-      }
-
       const whatsappMessage = ensureWhatsAppRawConfirmationUrl(message);
-
-      try {
-        await sendEvolutionTextMessage(
-          evolution.evolutionBaseUrl,
-          evolution.evolutionApiKey,
-          evolution.evolutionInstanceName,
-          toWhatsAppRecipient(normalizePhoneToE164(phone)),
-          whatsappMessage
-        );
-      } catch (error) {
+      const wa = await sendCustomerNotificationWhatsApp(phone, whatsappMessage);
+      if (!wa.ok) {
         return {
           success: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "WhatsApp mesajı gönderilemedi",
+          error: wa.error ?? "WhatsApp mesajı gönderilemedi",
         };
       }
     } else {
