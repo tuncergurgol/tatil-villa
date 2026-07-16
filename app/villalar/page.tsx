@@ -24,6 +24,7 @@ interface PageProps {
   searchParams: Promise<{
     filter?: string;
     region?: string;
+    ids?: string;
     checkIn?: string;
     checkOut?: string;
     adults?: string;
@@ -88,6 +89,10 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+  const idList = (params.ids ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   const minPrice = params.minPrice ? Number(params.minPrice) : undefined;
   const maxPrice = params.maxPrice ? Number(params.maxPrice) : undefined;
@@ -114,6 +119,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       region: params.region,
       category: params.category,
       facilities: facilityList,
+      ids: idList,
       q: params.q,
       checkIn: params.checkIn,
       checkOut: params.checkOut,
@@ -122,7 +128,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       maxPrice: Number.isFinite(maxPrice) ? maxPrice : undefined,
       amenities: amenityList,
       sort,
-      limit: SEARCH_RESULT_LIMIT,
+      limit: idList.length > 0 ? Math.max(idList.length, SEARCH_RESULT_LIMIT) : SEARCH_RESULT_LIMIT,
     }),
   ]);
 

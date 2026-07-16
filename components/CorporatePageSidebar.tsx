@@ -33,7 +33,11 @@ export default function CorporatePageSidebar({
           return (
             <li key={item.slug} className="shrink-0 lg:shrink">
               <Link
-                href={`/kurumsal/${item.slug}`}
+                href={
+                  item.slug === "sizi-arayalim"
+                    ? "/sizi-arayalim"
+                    : `/kurumsal/${item.slug}`
+                }
                 className={`group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-sm font-semibold transition ${
                   active
                     ? "border-teal-300 bg-gradient-to-r from-teal-50 to-emerald-50 text-teal-900 shadow-sm ring-1 ring-teal-200/70"

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen, ChevronDown, HelpCircle, MessageCircleHeart } from "lucide-react";
+import BlogInspirationSlider from "@/components/blog/BlogInspirationSlider";
 
 type FaqItem = {
   id: string;
@@ -290,58 +291,16 @@ export default function SitePreFooterAccordions({
           subtitle="Tatil rehberi, bölge önerileri ve villa ipuçları"
           icon={BookOpen}
         >
-          {posts.length === 0 ? (
-            <p className="text-center text-sm text-gray-500">Henüz yazı yok.</p>
-          ) : (
-            <div className="mx-auto w-full max-w-4xl">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {posts.map((post) => (
-                  <article
-                    key={post.id}
-                    className="overflow-hidden rounded-2xl border border-sky-100/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <Link href={`/blog/${post.slug}`} className="block">
-                      {post.coverImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={post.coverImage}
-                          alt={post.title}
-                          className="h-40 w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-40 items-center justify-center bg-sky-50 text-sm font-medium text-sky-600">
-                          Blog
-                        </div>
-                      )}
-                      <div className="p-4 text-center sm:text-left">
-                        {post.category ? (
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-600">
-                            {post.category.name}
-                          </p>
-                        ) : null}
-                        <h3 className="mt-1.5 font-semibold leading-snug text-gray-900">
-                          {post.title}
-                        </h3>
-                        {post.excerpt ? (
-                          <p className="mt-1.5 line-clamp-2 text-sm text-gray-500">
-                            {post.excerpt}
-                          </p>
-                        ) : null}
-                      </div>
-                    </Link>
-                  </article>
-                ))}
-              </div>
-              <div className="mt-6 text-center">
-                <Link
-                  href="/blog"
-                  className="inline-flex items-center gap-1 rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-600"
-                >
-                  Tüm yazıları gör
-                </Link>
-              </div>
-            </div>
-          )}
+          <BlogInspirationSlider
+            posts={posts.map((post) => ({
+              id: post.id,
+              slug: post.slug,
+              title: post.title,
+              excerpt: post.excerpt,
+              coverImage: post.coverImage,
+              categoryName: post.category?.name ?? null,
+            }))}
+          />
         </AccordionSection>
       </div>
     </section>

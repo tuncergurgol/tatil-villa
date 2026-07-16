@@ -6,6 +6,7 @@ import {
   Bus,
   Car,
   ChevronDown,
+  Compass,
   Home,
   Map,
   Plane,
@@ -25,6 +26,12 @@ const SEARCH_TABS = [
   { id: "ucak-otobus", label: "Uçak/Otobüs", icon: Plane },
   { id: "transfer", label: "Transfer", icon: Bus },
   { id: "arac", label: "Araç Kiralama", icon: Car },
+  {
+    id: "gunubirlik",
+    label: "Günübirlik Tur/Aktiviteler",
+    icon: Compass,
+    href: "/tur/liste",
+  },
 ] as const;
 
 interface HeroSearchProps {
@@ -113,11 +120,18 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
           {SEARCH_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const href = "href" in tab ? tab.href : undefined;
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (href) {
+                    router.push(href);
+                    return;
+                  }
+                  setActiveTab(tab.id);
+                }}
                 className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-medium transition ${
                   isActive
                     ? "bg-sky-50 text-sky-700"
@@ -125,7 +139,7 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
                 }`}
               >
                 <Icon
-                  className={`h-4 w-4 ${isActive ? "text-sky-600" : "text-gray-500"}`}
+                  className={`h-4 w-4 shrink-0 ${isActive ? "text-sky-600" : "text-gray-500"}`}
                 />
                 <span className="hidden sm:inline">{tab.label}</span>
                 <span className="sm:hidden">{tab.label.split("/")[0]}</span>

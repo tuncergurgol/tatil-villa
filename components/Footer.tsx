@@ -32,7 +32,7 @@ const defaultQuickLinks: FooterLink[] = [
   { href: "/villalar", label: "Tüm Villalar" },
   { href: "/villalar?filter=deal", label: "Fırsat Villalar" },
   { href: "/#bolgeler", label: "Popüler Bölgeler" },
-  { href: "/#neden-biz", label: "Neden Biz" },
+  { href: "/#seyahat-macerasi", label: "Hizmetler" },
 ];
 
 const DEFAULT_LOGO = "/uploads/company/logo-1783080885848.svg";

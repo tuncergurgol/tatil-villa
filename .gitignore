@@ -44,3 +44,19 @@ next-env.d.ts
 /public/uploads/**
 !/public/uploads/**/
 !/public/uploads/**/.gitkeep
+
+# editor / local workspace state
+/.cursor/
+
+# WhatsApp (WAHA) runtime session data — browser profile/cache, not source
+/waha/
+
+# scratch scripts, one-off exploration files and generated run artifacts
+/scripts/_*
+/scripts/*.log
+/scripts/*-report.json
+/scripts/*-report.csv
+/scripts/*-report.xlsx
+/scripts/*-match-report.*
+/scripts/*-catalog-cache.json
+/.tmp-*

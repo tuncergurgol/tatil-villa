@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
+import CallbackFloatingButton from "@/components/CallbackFloatingButton";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
 import {
   getFooterCorporatePages,
@@ -24,7 +25,7 @@ const defaultQuickLinks = [
   { href: "/villalar", label: "Tüm Villalar" },
   { href: "/villalar?filter=deal", label: "Fırsat Villalar" },
   { href: "/#bolgeler", label: "Popüler Bölgeler" },
-  { href: "/#neden-biz", label: "Neden Biz" },
+  { href: "/#seyahat-macerasi", label: "Hizmetler" },
 ];
 
 export default async function SiteChrome({ children }: { children: React.ReactNode }) {
@@ -59,7 +60,10 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
       : defaultQuickLinks;
 
   const corporateLinks = corporatePages.map((page) => ({
-    href: `/kurumsal/${page.slug}`,
+    href:
+      page.slug === "sizi-arayalim"
+        ? "/sizi-arayalim"
+        : `/kurumsal/${page.slug}`,
     label: page.title,
   }));
 
@@ -97,6 +101,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
         }}
       />
       <ScrollToTopButton />
+      <CallbackFloatingButton />
     </>
   );
 }

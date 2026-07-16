@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import ContactPageView from "@/components/corporate/ContactPageView";
 import CorporateHtmlContent from "@/components/CorporateHtmlContent";
@@ -18,6 +18,13 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (slug === "sizi-arayalim") {
+    return {
+      title: "Sizi Arayalım",
+      description:
+        "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın.",
+    };
+  }
   const page = await getPublishedCmsPage(slug);
   if (!page) return { title: "Sayfa Bulunamadı" };
 
@@ -29,6 +36,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CorporatePage({ params }: Props) {
   const { slug } = await params;
+  if (slug === "sizi-arayalim") {
+    redirect("/sizi-arayalim");
+  }
+
   const [page, menuItems] = await Promise.all([
     getPublishedCmsPage(slug),
     getCorporateMenuPages(),

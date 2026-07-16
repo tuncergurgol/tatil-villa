@@ -21,6 +21,40 @@ body {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
+/* Tıklanabilir alanlarda el imleci */
+a[href],
+button:not(:disabled):not([disabled]),
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+[role="option"]:not([aria-disabled="true"]),
+[role="link"],
+[role="checkbox"]:not([aria-disabled="true"]),
+[role="radio"]:not([aria-disabled="true"]),
+[role="switch"]:not([aria-disabled="true"]),
+summary,
+label[for],
+select:not(:disabled):not([disabled]),
+input[type="button"]:not(:disabled):not([disabled]),
+input[type="submit"]:not(:disabled):not([disabled]),
+input[type="reset"]:not(:disabled):not([disabled]),
+input[type="checkbox"]:not(:disabled):not([disabled]),
+input[type="radio"]:not(:disabled):not([disabled]),
+input[type="file"]:not(:disabled):not([disabled]),
+input[type="image"]:not(:disabled):not([disabled]) {
+  cursor: pointer;
+}
+
+button:disabled,
+button[disabled],
+[aria-disabled="true"],
+select:disabled,
+select[disabled],
+input:disabled,
+input[disabled] {
+  cursor: not-allowed;
+}
+
 /* Horizontal scroll styling */
 .overflow-x-auto {
   scrollbar-width: thin;
@@ -39,3 +73,23 @@ body {
   background-color: #99f6e4;
   border-radius: 9999px;
 }
+
+@keyframes callback-float-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-6deg) scale(1.04);
+  }
+  30% {
+    transform: rotate(5deg) scale(1.04);
+  }
+  45% {
+    transform: rotate(-3deg);
+  }
+  60% {
+    transform: rotate(2deg);
+  }
+}
+

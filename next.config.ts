@@ -1,9 +1,26 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["node-ical"],
+  // pdfkit/fontkit: webpack vendor-chunks Helvetica.afm yolunu bozar (ENOENT .next/.../data/)
+  serverExternalPackages: ["node-ical", "pdfkit", "fontkit"],
   outputFileTracingExcludes: {
     "*": ["public/uploads/**"],
+  },
+  async headers() {
+    return [
+      {
+        source: "/bilet/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "frame-src 'self' https://iframe.biletall.com https://*.biletall.com",
+              "child-src 'self' https://iframe.biletall.com https://*.biletall.com",
+            ].join("; "),
+          },
+        ],
+      },
+    ];
   },
   async rewrites() {
     return [
@@ -27,6 +44,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "r2.fluxesoft.com",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.fluxesoft.com",
       },
     ],
   },

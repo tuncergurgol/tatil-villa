@@ -30,5 +30,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "waha", "evolution", "public/uploads"]
+  "exclude": [
+    "node_modules",
+    "waha",
+    "evolution",
+    "public/uploads",
+    "scripts/match-villavillam-by-document.ts",
+    "scripts/apply-villavillam-external-sync.ts"
+  ]
 }
+

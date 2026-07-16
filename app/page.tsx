@@ -2,11 +2,12 @@ import Image from "next/image";
 import HeroSearch from "@/components/HeroSearch";
 import CampaignBanner from "@/components/CampaignBanner";
 import VillaSection from "@/components/VillaSection";
+import DreamVacationSection from "@/components/DreamVacationSection";
 import RegionGrid from "@/components/RegionGrid";
-import WhyUs from "@/components/WhyUs";
-import { siteConfig } from "@/lib/data";
+import TravelAdventureSection from "@/components/villa-detail/TravelAdventureSection";
 import { getCampaigns } from "@/lib/queries/campaigns";
 import { getRegionsWithCount, getHeroSearchRegions } from "@/lib/queries/regions";
+import { getHomeDreamCategories } from "@/lib/queries/facility-categories";
 import {
   getDealVillas,
   getPopularVillas,
@@ -16,14 +17,22 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [popular, deals, recommended, regions, campaigns, searchRegions] =
-    await Promise.all([
+  const [
+    popular,
+    deals,
+    recommended,
+    regions,
+    campaigns,
+    searchRegions,
+    dreamCards,
+  ] = await Promise.all([
     getPopularVillas(),
     getDealVillas(),
     getRecommendedVillas(),
     getRegionsWithCount(),
     getCampaigns(),
     getHeroSearchRegions(),
+    getHomeDreamCategories(),
   ]);
 
   return (
@@ -45,12 +54,9 @@ export default async function HomePage() {
             <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">
               Yeni Maceranı Keşfet
             </h1>
-            <p className="mt-4 text-base text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)] sm:text-lg">
-              Villa · Tur · Aktivite — {siteConfig.tagline}
-            </p>
           </div>
 
-          <div className="relative z-20 mt-10">
+          <div className="relative z-20 mt-8">
             <HeroSearch regions={searchRegions} />
           </div>
         </div>
@@ -81,9 +87,18 @@ export default async function HomePage() {
         viewAllHref="/villalar?filter=recommended"
       />
 
+      <DreamVacationSection cards={dreamCards} />
+
       <RegionGrid regions={regions} />
 
-      <WhyUs />
+      <section
+        id="seyahat-macerasi"
+        className="border-t border-slate-100 bg-white py-12 sm:py-16"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <TravelAdventureSection />
+        </div>
+      </section>
     </>
   );
 }
