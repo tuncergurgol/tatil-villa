@@ -525,27 +525,36 @@ export default function VillaPeriodFormModal({
   }
 
   async function handleOccupancyAction(mode: "EMPTY" | "BOOKED") {
-    if (!form.actionStartDate || !form.actionEndDate) return;
+    if (!form.actionStartDate || !form.actionEndDate) {
+      setError("Başlangıç ve bitiş tarihi gerekli");
+      return;
+    }
 
     setError(null);
     setAvailabilityPending(true);
 
-    const result = await updateVillaPeriodDaysOccupancy(
-      villaId,
-      form.actionStartDate,
-      form.actionEndDate,
-      mode
-    );
+    try {
+      const result = await updateVillaPeriodDaysOccupancy(
+        villaId,
+        form.actionStartDate,
+        form.actionEndDate,
+        mode
+      );
 
-    setAvailabilityPending(false);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
 
-    if (result.error) {
-      setError(result.error);
-      return;
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Uygunluk durumu güncellenemedi"
+      );
+    } finally {
+      setAvailabilityPending(false);
     }
-
-    onSaved();
-    onClose();
   }
 
   function handlePricingSave() {
@@ -735,7 +744,7 @@ export default function VillaPeriodFormModal({
                         onClick={() => handleOccupancyAction("EMPTY")}
                         className="mt-3 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
                       >
-                        Aç
+                        {availabilityPending ? "Açılıyor..." : "Aç"}
                       </button>
                     ) : null}
 
@@ -750,7 +759,7 @@ export default function VillaPeriodFormModal({
                         onClick={() => handleOccupancyAction("BOOKED")}
                         className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
                       >
-                        Kapat
+                        {availabilityPending ? "Kapatılıyor..." : "Kapat"}
                       </button>
                     ) : null}
                   </div>

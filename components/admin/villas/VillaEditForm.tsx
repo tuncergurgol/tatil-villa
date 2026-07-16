@@ -32,7 +32,7 @@ import type { ActiveVillaOwnerOption } from "@/lib/queries/villa-owners";
 import type {
   RegionPickerOption,
   SurroundingLocationOption,
-} from "@/lib/queries/villa-location";
+} from "@/lib/villa-location-helpers";
 import type { VillaIcalTabData } from "@/lib/queries/villa-ical";
 import type { VillaRoom } from "@prisma/client";
 import type { TurkeyProvince } from "@/lib/mernis-ilce";

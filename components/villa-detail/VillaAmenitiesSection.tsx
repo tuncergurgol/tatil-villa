@@ -18,9 +18,11 @@ function isGeneralCategory(category: string) {
 }
 
 function AmenityList({ items }: { items: string[] }) {
+  const uniqueItems = Array.from(new Set(items));
+
   return (
     <ul className="grid gap-2 sm:grid-cols-2">
-      {items.map((item) => (
+      {uniqueItems.map((item) => (
         <li
           key={item}
           className="flex items-start gap-2 text-sm text-slate-700"

@@ -149,6 +149,8 @@ async function importCampaigns(dryRun: boolean) {
       image: campaign.imageUrl,
       cta: "Detayları Gör",
       href,
+      displayType:
+        campaign.type === "box" ? ("BOX" as const) : ("SLIDER" as const),
       sortOrder: campaign.order,
       active: true,
     };

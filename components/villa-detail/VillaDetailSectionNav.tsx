@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type VillaDetailNavItem = {
   id: string;
@@ -9,13 +9,66 @@ export type VillaDetailNavItem = {
 
 type VillaDetailSectionNavProps = {
   items: VillaDetailNavItem[];
+  className?: string;
 };
+
+const FALLBACK_HEADER_PX = 112;
 
 export default function VillaDetailSectionNav({
   items,
+  className = "",
 }: VillaDetailSectionNavProps) {
   const [activeId, setActiveId] = useState(items[0]?.id ?? "");
   const [stuck, setStuck] = useState(false);
+  const [headerOffset, setHeaderOffset] = useState(FALLBACK_HEADER_PX);
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const header = document.querySelector("header");
+    if (!header) return;
+
+    const syncHeaderHeight = () => {
+      const height = Math.ceil(header.getBoundingClientRect().height);
+      if (height > 0) setHeaderOffset(height);
+    };
+
+    syncHeaderHeight();
+    const ro = new ResizeObserver(syncHeaderHeight);
+    ro.observe(header);
+    window.addEventListener("resize", syncHeaderHeight);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", syncHeaderHeight);
+    };
+  }, []);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const syncOffsets = () => {
+      const navH = Math.ceil(nav.getBoundingClientRect().height);
+      const root = document.documentElement;
+      root.style.setProperty(
+        "--villa-detail-sticky-below-nav",
+        `${headerOffset + navH}px`
+      );
+      root.style.setProperty(
+        "--villa-detail-scroll-mt",
+        `${headerOffset + navH + 8}px`
+      );
+    };
+
+    syncOffsets();
+    const ro = new ResizeObserver(syncOffsets);
+    ro.observe(nav);
+    return () => {
+      ro.disconnect();
+      const root = document.documentElement;
+      root.style.removeProperty("--villa-detail-sticky-below-nav");
+      root.style.removeProperty("--villa-detail-scroll-mt");
+    };
+  }, [headerOffset]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -51,11 +104,14 @@ export default function VillaDetailSectionNav({
       ([entry]) => {
         setStuck(!entry.isIntersecting);
       },
-      { threshold: [1] }
+      {
+        rootMargin: `-${headerOffset}px 0px 0px 0px`,
+        threshold: [1],
+      }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, []);
+  }, [headerOffset]);
 
   if (items.length === 0) return null;
 
@@ -63,10 +119,12 @@ export default function VillaDetailSectionNav({
     <>
       <div id="villa-detail-nav-sentinel" className="h-px w-full" aria-hidden />
       <nav
+        ref={navRef}
         aria-label="Villa bölümleri"
-        className={`sticky top-[7.5rem] z-40 -mx-4 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:top-[8.75rem] sm:mx-0 ${
+        style={{ top: headerOffset }}
+        className={`sticky z-40 -mx-4 border-b border-slate-200 bg-white sm:mx-0 ${
           stuck ? "shadow-md" : ""
-        }`}
+        } ${className}`}
       >
         <ul className="flex gap-0 overflow-x-auto px-2 scrollbar-thin sm:px-0">
           {items.map((item) => {

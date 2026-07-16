@@ -21,7 +21,7 @@ const SERVICES = [
     icon: Ship,
   },
   {
-    href: "/turlar",
+    href: "/tur/liste",
     label: "Tur & Aktivite",
     description: "Yerel deneyimler ve turlar",
     icon: Map,

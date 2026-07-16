@@ -113,6 +113,32 @@ export type TatildeyizPropertyDetail = {
   locationInfo: string | null;
 };
 
+export type TatildeyizPoolType = {
+  id: number;
+  name: string;
+};
+
+export type TatildeyizPoolWaterTreatment = {
+  id: number;
+  name: string;
+};
+
+export type TatildeyizPropertyPool = {
+  id: number;
+  width: number | null;
+  length: number | null;
+  height: number | null;
+  unit: string | null;
+  heating: boolean | null;
+  typeId: number | null;
+  propertyId: number;
+  treatmentId: number | null;
+  conservative_friendly: boolean | null;
+  poolType: TatildeyizPoolType | null;
+  poolWaterTreatment: TatildeyizPoolWaterTreatment | null;
+  poolPeriods?: unknown[];
+};
+
 export type TatildeyizLocationCategory = {
   id: number;
   name: string;
@@ -171,6 +197,7 @@ export type TatildeyizProperty = {
   description: string | null;
   propertyDetail: TatildeyizPropertyDetail | null;
   PropertyRooms: TatildeyizPropertyRoom[];
+  pools?: TatildeyizPropertyPool[];
   propertyPeriodPrices: TatildeyizPropertyPeriodPrice[];
   propertyDiscounts: TatildeyizPropertyDiscount[];
   bookings: TatildeyizPropertyBooking[];
@@ -216,6 +243,6 @@ export async function fetchTatildeyizProperty(
 }
 
 export async function fetchTatildeyizPropertyWithDelay(slug: string) {
-  await sleep(300);
+  await sleep(500);
   return fetchTatildeyizProperty(slug);
 }

@@ -113,7 +113,6 @@ export const AMENITY_SEED_DATA: AmenityCategorySeed[] = [
       { name: "Jakuzi" },
       { name: "Saunalı" },
       { name: "Türk Hamamı" },
-      { name: "Yerden Isıtma" },
       { name: "Denize Yakın" },
       { name: "Özel Plaj" },
       { name: "Panoramik Manzara" },

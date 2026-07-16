@@ -2,6 +2,10 @@ import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getWhatsappCalendarGroupsForPicker } from "@/lib/queries/whatsapp-calendar";
 import {
+  getExternalSyncSlots,
+  isExternalIcalSourceName,
+} from "@/lib/villa-external-sync";
+import {
   buildVillaIcalExportUrl,
   resolveSiteOrigin,
 } from "@/lib/villa-ical-url";
@@ -28,6 +32,18 @@ export async function getVillaIcalTabData(
         icalExportToken: true,
         whatsappGroupId: true,
         whatsappGroupDifferentName: true,
+        externalSyncUrl1: true,
+        externalSyncUrl2: true,
+        externalSyncUrl3: true,
+        externalSyncUrl4: true,
+        externalSyncLastSyncedAt1: true,
+        externalSyncLastSyncedAt2: true,
+        externalSyncLastSyncedAt3: true,
+        externalSyncLastSyncedAt4: true,
+        externalSyncLastMessage1: true,
+        externalSyncLastMessage2: true,
+        externalSyncLastMessage3: true,
+        externalSyncLastMessage4: true,
       },
     }),
     getWhatsappCalendarGroupsForPicker(),
@@ -44,13 +60,14 @@ export async function getVillaIcalTabData(
   });
 
   return {
-    sources,
+    sources: sources.filter((source) => !isExternalIcalSourceName(source.name)),
     syncEvents,
     exportUrl: buildVillaIcalExportUrl(
       siteOrigin,
       villaId,
       villa.icalExportToken
     ),
+    externalSyncLinks: getExternalSyncSlots(villa),
     whatsappGroupId: villa.whatsappGroupId,
     whatsappGroupDifferentName: villa.whatsappGroupDifferentName,
     whatsappModuleConnected: companySettings.whatsappCalendarEnabled,

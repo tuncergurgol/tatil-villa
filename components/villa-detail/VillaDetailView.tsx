@@ -18,6 +18,7 @@ import SimilarVillasCarousel from "@/components/villa-detail/SimilarVillasCarous
 import TourismPermitBadge from "@/components/villa-detail/TourismPermitBadge";
 import TravelAdventureSection from "@/components/villa-detail/TravelAdventureSection";
 import VillaAmenitiesSection from "@/components/villa-detail/VillaAmenitiesSection";
+import VillaApproximateMap from "@/components/villa-detail/VillaApproximateMap";
 import VillaAvailabilityCalendar from "@/components/villa-detail/VillaAvailabilityCalendar";
 import VillaDetailGallery from "@/components/villa-detail/VillaDetailGallery";
 import VillaDetailSectionNav, {
@@ -64,7 +65,7 @@ function DetailSection({
   return (
     <section
       id={id}
-      className={`scroll-mt-[12.5rem] border-b border-slate-200 py-8 last:border-b-0 ${className}`}
+      className={`scroll-mt-[var(--villa-detail-scroll-mt,12.5rem)] border-b border-slate-200 py-8 last:border-b-0 ${className}`}
     >
       {children}
     </section>
@@ -130,10 +131,6 @@ export default function VillaDetailView({
     faqs.length > 0 ? { id: "sss", label: "SSS" } : null,
   ].filter(Boolean) as VillaDetailNavItem[];
 
-  const mapUrl = villa.hasCoords
-    ? `https://www.google.com/maps?q=${villa.latitude},${villa.longitude}`
-    : null;
-
   const hasHeatedPool = villa.pools.some((pool) => pool.heated);
   const hasConservativePool = villa.pools.some((pool) => pool.conservative);
 
@@ -160,9 +157,7 @@ export default function VillaDetailView({
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 lg:px-8">
         <VillaDetailGallery name={villa.name} images={villa.images} />
 
-        <div className="mt-5">
-          <VillaDetailSectionNav items={navItems} />
-        </div>
+        <VillaDetailSectionNav items={navItems} className="mt-5" />
 
         <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0">
@@ -181,11 +176,9 @@ export default function VillaDetailView({
                   <MapPin className="h-4 w-4 text-slate-400" />
                   {villa.regionLabel}
                 </p>
-                {mapUrl ? (
+                {villa.hasCoords ? (
                   <a
-                    href={mapUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                    href="#lokasyon"
                     className="font-semibold text-sky-700 underline-offset-2 hover:underline"
                   >
                     Haritada Göster
@@ -424,15 +417,12 @@ export default function VillaDetailView({
                     Mesafe bilgisi henüz eklenmemiş.
                   </p>
                 )}
-                {mapUrl ? (
-                  <a
-                    href={mapUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-5 inline-flex text-sm font-semibold text-sky-700 hover:underline"
-                  >
-                    Google Haritalar&apos;da aç →
-                  </a>
+                {villa.hasCoords ? (
+                  <VillaApproximateMap
+                    latitude={villa.latitude}
+                    longitude={villa.longitude}
+                    regionLabel={villa.regionLabel}
+                  />
                 ) : null}
               </DetailSection>
             ) : null}

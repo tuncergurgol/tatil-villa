@@ -11,6 +11,8 @@ export interface VillaFilters {
   region?: string;
   category?: string;
   facilities?: string[];
+  /** Paylaşım / teklif linki: seçili villa id listesi */
+  ids?: string[];
   q?: string;
   checkIn?: string;
   checkOut?: string;
@@ -125,6 +127,10 @@ function mapVilla(
 export async function getVillas(filters: VillaFilters = {}) {
   const where: Record<string, unknown> = { active: true };
 
+  if (filters.ids && filters.ids.length > 0) {
+    where.id = { in: filters.ids };
+  }
+
   if (filters.filter === "popular") where.popular = true;
   if (filters.filter === "deal") where.deal = true;
   if (filters.filter === "recommended") where.recommended = true;
@@ -228,6 +234,13 @@ export async function getVillas(filters: VillaFilters = {}) {
 
   if (filters.adults) {
     result = result.filter((v) => v.guests >= filters.adults!);
+  }
+
+  if (filters.ids && filters.ids.length > 0) {
+    const order = new Map(filters.ids.map((id, index) => [id, index]));
+    result.sort(
+      (left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0)
+    );
   }
 
   if (isRandom) {

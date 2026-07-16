@@ -6,6 +6,10 @@ import {
   mappedPeriodToPeriodData,
 } from "@/lib/tatildeyiz-period-import";
 import { fetchTatildeyizPropertyWithDelay } from "@/lib/tatildeyiz-property";
+import {
+  assertTatildeyizVillaSource,
+  mapTatildeyizFetchError,
+} from "@/lib/tatildeyiz-villa-source";
 import { dateKeyToDbDate, toDateKey } from "@/lib/villa-period-calendar";
 
 export type VillaPeriodImportResult = {
@@ -36,11 +40,38 @@ function countOccupancyDays(
   return { dayCount, bookedDays, optionDays };
 }
 
+/**
+ * Tatildeyiz’den fiyat periyotları + müsaitlik günlerini aktarır.
+ * Mevcut VillaPricePeriod / VillaPricePeriodDay kayıtlarını silip üzerine yazar.
+ */
 export async function importVillaPeriodsFromTatildeyiz(
   villaId: string,
-  slug: string
+  slug: string,
+  options?: { dryRun?: boolean }
 ): Promise<VillaPeriodImportResult> {
-  const property = await fetchTatildeyizPropertyWithDelay(slug);
+  const dryRun = options?.dryRun ?? false;
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { id: true, slug: true, villaId: true },
+  });
+  if (!villa) {
+    throw new Error("Villa bulunamadı");
+  }
+
+  assertTatildeyizVillaSource({
+    slug: slug || villa.slug,
+    villaId: villa.villaId,
+  });
+
+  const sourceSlug = (slug || villa.slug).trim();
+  let property;
+  try {
+    property = await fetchTatildeyizPropertyWithDelay(sourceSlug);
+  } catch (error) {
+    throw mapTatildeyizFetchError(error, sourceSlug);
+  }
+
   const periods = mapTatildeyizPropertyPeriods(property);
   const occupancyByDateKey = buildOccupancyByDateKey(property);
   const { dayCount, bookedDays, optionDays } = countOccupancyDays(
@@ -50,6 +81,15 @@ export async function importVillaPeriodsFromTatildeyiz(
 
   if (periods.length === 0) {
     throw new Error("Tatildeyiz'den periyot bulunamadı");
+  }
+
+  if (dryRun) {
+    return {
+      periodCount: periods.length,
+      dayCount,
+      bookedDays,
+      optionDays,
+    };
   }
 
   await prisma.$transaction(async (tx) => {

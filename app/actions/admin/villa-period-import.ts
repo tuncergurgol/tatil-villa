@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { importVillaPeriodsFromTatildeyiz } from "@/lib/tatildeyiz-period-import-runner";
+import { villaTakvimPath } from "@/lib/villa-takvim-path";
 
 type ImportActionResult = {
   success: boolean;
@@ -96,7 +97,7 @@ async function runSingleImport(villa: { id: string; slug: string }) {
         attemptedAt: now,
       },
     });
-    return { success: false as const };
+    return { success: false as const, message };
   }
 }
 
@@ -194,7 +195,53 @@ export async function retryVillaPeriodImportByVillaIdAction(
   const result = await runSingleImport(villa);
   revalidatePath("/admin/acente/takvim-import");
   if (!result.success) {
-    return { success: false, message: `${villa.name} için aktarım başarısız` };
+    return {
+      success: false,
+      message: result.message || `${villa.name} için aktarım başarısız`,
+    };
   }
   return { success: true, message: `${villa.name} için aktarım başarılı` };
+}
+
+/**
+ * Tek villa takvim/fiyat periyotlarını Tatildeyiz'den yeniden aktarır.
+ * Mevcut periyot + gün kayıtlarını silip üzerine yazar (production runner).
+ */
+export async function importVillaPeriodsFromTatildeyizAction(
+  villaId: string
+): Promise<ImportActionResult & { periodCount?: number; dayCount?: number }> {
+  await requireAdmin();
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { id: true, slug: true, name: true, villaId: true },
+  });
+  if (!villa) return { success: false, message: "Villa bulunamadı" };
+
+  const result = await runSingleImport(villa);
+
+  revalidatePath("/admin/acente/takvim-import");
+  revalidatePath("/admin/konaklama/takvim");
+  revalidatePath(villaTakvimPath(villa));
+
+  if (!result.success) {
+    return {
+      success: false,
+      message:
+        result.message ||
+        `${villa.name} için fiyat/takvim aktarımı başarısız`,
+    };
+  }
+
+  const log = await prisma.villaPeriodImportLog.findUnique({
+    where: { villaId: villa.id },
+    select: { periodCount: true, dayCount: true },
+  });
+
+  return {
+    success: true,
+    message: `${villa.name}: ${log?.periodCount ?? 0} periyot, ${log?.dayCount ?? 0} gün Tatildeyiz'den aktarıldı`,
+    periodCount: log?.periodCount,
+    dayCount: log?.dayCount,
+  };
 }

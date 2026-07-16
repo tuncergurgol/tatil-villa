@@ -303,7 +303,11 @@ export function villaRoomsAlreadyDetailed(
 export async function applyTatildeyizRoomsToVilla(
   prisma: PrismaClient,
   slug: string,
-  options: { dryRun?: boolean; force?: boolean } = {}
+  options: {
+    dryRun?: boolean;
+    force?: boolean;
+    property?: TatildeyizProperty;
+  } = {}
 ): Promise<ImportVillaRoomsResult> {
   const { dryRun = false, force = false } = options;
 
@@ -322,7 +326,8 @@ export async function applyTatildeyizRoomsToVilla(
     return { slug, status: "error", error: "Villa veritabanında bulunamadı" };
   }
 
-  const property = await fetchTatildeyizPropertyWithDelay(slug);
+  const property =
+    options.property ?? (await fetchTatildeyizPropertyWithDelay(slug));
   const { rooms: mappedRooms, source } = resolveMappedVillaRooms(property);
 
   if (mappedRooms.length === 0 || !source) {

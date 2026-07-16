@@ -5,6 +5,7 @@ import { formatVillaRegionLabel } from "@/lib/queries/villa-location";
 import { getVillaPeriodPriceRanges } from "@/lib/queries/villas";
 import { RegionLevel } from "@/lib/region-levels";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
+import { approximateVillaCoords } from "@/lib/villa-approximate-location";
 
 function startOfTodayUtc() {
   const now = new Date();
@@ -204,7 +205,9 @@ export async function getVillaDetailBySlug(slug: string) {
       sortOrder,
       items: [],
     };
-    group.items.push(name);
+    if (!group.items.includes(name)) {
+      group.items.push(name);
+    }
     amenityGroupsMap.set(category, group);
   }
   const amenityGroups = Array.from(amenityGroupsMap.entries())
@@ -219,6 +222,15 @@ export async function getVillaDetailBySlug(slug: string) {
     Number.isFinite(villa.latitude) &&
     Number.isFinite(villa.longitude) &&
     !(villa.latitude === 0 && villa.longitude === 0);
+
+  // Public payload: only approximate coords (exact lat/lng never leave the server).
+  const mapCoords = hasCoords
+    ? approximateVillaCoords(
+        villa.latitude,
+        villa.longitude,
+        villa.id
+      )
+    : null;
 
   const periods = villa.pricePeriods.map((period) => ({
     id: period.id,
@@ -263,8 +275,8 @@ export async function getVillaDetailBySlug(slug: string) {
     amenities: villa.amenities,
     amenityGroups,
     facilityCategories: villa.facilityCategories,
-    latitude: villa.latitude,
-    longitude: villa.longitude,
+    latitude: mapCoords?.latitude ?? 0,
+    longitude: mapCoords?.longitude ?? 0,
     hasCoords,
     videoUrl: villa.videoUrl,
     checkInTime: villa.checkInTime,

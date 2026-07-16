@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
@@ -26,6 +26,7 @@ import {
   todayDate,
 } from "@/lib/villa-period-calendar";
 import { offsetDateKey } from "@/lib/villa-period-selection";
+import { importVillaPeriodsFromTatildeyizAction } from "@/app/actions/admin/villa-period-import";
 
 interface VillaPeriodManagementProps {
   villa: {
@@ -92,6 +93,9 @@ export default function VillaPeriodManagement({
     useState<PeriodCalendarSelectionRange | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const selectionCompletedRef = useRef(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [isImporting, startImport] = useTransition();
 
   const dayDisplayByDate = useMemo(() => {
     const map = new Map<string, PeriodCalendarDayDisplay>();
@@ -181,6 +185,26 @@ export default function VillaPeriodManagement({
 
   function handleSaved() {
     router.refresh();
+  }
+
+  function handleImportFromTatildeyiz() {
+    const confirmMessage =
+      normalizedPeriods.length > 0
+        ? "Mevcut fiyat periyotları ve müsaitlik silinip Tatildeyiz'den yeniden aktarılacak. Devam edilsin mi?"
+        : "Tatildeyiz'den fiyat periyotları ve müsaitlik takvimi aktarılsın mı?";
+    if (!confirm(confirmMessage)) return;
+
+    setImportMessage(null);
+    setImportError(null);
+    startImport(async () => {
+      const result = await importVillaPeriodsFromTatildeyizAction(villa.id);
+      if (!result.success) {
+        setImportError(result.message);
+        return;
+      }
+      setImportMessage(result.message);
+      router.refresh();
+    });
   }
 
   function clearSelection() {
@@ -309,16 +333,41 @@ export default function VillaPeriodManagement({
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => openCreateModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              <Plus className="h-4 w-4" />
-              Periyot Ekle Devam Et
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleImportFromTatildeyiz}
+                disabled={isImporting}
+                className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm font-semibold text-teal-800 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isImporting ? "animate-spin" : ""}`}
+                />
+                {isImporting ? "Güncelleniyor..." : "TATİLDEYİZDEN GÜNCELLE"}
+              </button>
+              <button
+                type="button"
+                onClick={() => openCreateModal(true)}
+                disabled={isImporting}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Plus className="h-4 w-4" />
+                Periyot Ekle Devam Et
+              </button>
+            </div>
           </div>
         </div>
+
+        {importMessage ? (
+          <div className="shrink-0 border-b border-green-200 bg-green-50 px-5 py-3 text-sm text-green-800">
+            {importMessage}
+          </div>
+        ) : null}
+        {importError ? (
+          <div className="shrink-0 border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-800">
+            {importError}
+          </div>
+        ) : null}
 
         <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[1fr_320px]">
           <div className="min-h-0 overflow-y-auto border-b border-gray-200 p-4 xl:border-b-0 xl:border-r">

@@ -13,6 +13,7 @@ import {
   splitOwnerName,
 } from "@/lib/villa-owner-utils";
 import { isValidTcKimlik, normalizeTcKimlik } from "@/lib/tc-kimlik";
+import { getActiveVillaOwners } from "@/lib/queries/villa-owners";
 
 export type VillaOwnerActionState = {
   success?: boolean;
@@ -189,6 +190,19 @@ function validateTurkeyLocation(
 function revalidateOwnerPaths() {
   revalidatePath("/admin/tanimlamalar/villa-sahipleri");
   revalidatePath("/admin/villalar");
+}
+
+export async function getActiveVillaOwnersAction(): Promise<{
+  owners?: Awaited<ReturnType<typeof getActiveVillaOwners>>;
+  error?: string;
+}> {
+  await requireAdmin();
+  try {
+    const owners = await getActiveVillaOwners();
+    return { owners };
+  } catch {
+    return { error: "Villa sahipleri yüklenemedi" };
+  }
 }
 
 export async function createVillaOwner(

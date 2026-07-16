@@ -7,11 +7,11 @@ import { RegionLevel } from "@/lib/region-levels";
 import type {
   RegionPickerOption,
   SurroundingLocationOption,
-} from "@/lib/queries/villa-location";
+} from "@/lib/villa-location-helpers";
 import {
   buildRegionSelectionLabel,
   resolveRegionHierarchy,
-} from "@/lib/queries/villa-location";
+} from "@/lib/villa-location-helpers";
 
 interface VillaLocationTabProps {
   villa: Villa;

@@ -3,7 +3,16 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Copy, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+} from "lucide-react";
 import {
   clearVillaIcalData,
   createVillaIcalSource,
@@ -13,7 +22,13 @@ import {
   syncSingleVillaIcalSourceAction,
   syncVillaIcalSourcesAction,
 } from "@/app/actions/admin/villa-ical";
+import {
+  clearVillaExternalSyncUrlAction,
+  saveVillaExternalSyncUrlAction,
+  syncVillaExternalSyncSlotAction,
+} from "@/app/actions/admin/villa-external-sync";
 import type { VillaIcalTabData } from "@/lib/queries/villa-ical";
+import type { ExternalSyncSlot } from "@/lib/villa-external-sync";
 
 interface VillaIcalTabProps {
   villaId: string;
@@ -59,11 +74,28 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
   const [differentGroupName, setDifferentGroupName] = useState(
     data.whatsappGroupDifferentName
   );
+  const [externalDrafts, setExternalDrafts] = useState<Record<number, string>>(
+    () =>
+      Object.fromEntries(
+        data.externalSyncLinks.map((link) => [link.slot, link.url])
+      )
+  );
+  const [editingSlots, setEditingSlots] = useState<Record<number, boolean>>({});
+  const [busySlot, setBusySlot] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setExportUrl(data.exportUrl);
   }, [data.exportUrl]);
+
+  useEffect(() => {
+    setExternalDrafts(
+      Object.fromEntries(
+        data.externalSyncLinks.map((link) => [link.slot, link.url])
+      )
+    );
+    setEditingSlots({});
+  }, [data.externalSyncLinks]);
 
   const isWhatsappConnected =
     data.whatsappModuleConnected && Boolean(data.whatsappGroupId);
@@ -192,6 +224,92 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
         return;
       }
       setNotice(result.message ?? "Kaynak senkronlandı");
+      refresh();
+    });
+  }
+
+  function handleExternalSync(slot: ExternalSyncSlot) {
+    const draft = (externalDrafts[slot] ?? "").trim();
+    if (!draft) {
+      setError(`Link ${slot} boş — önce bir URL girip kaydedin`);
+      return;
+    }
+
+    // iCal dışı linkler (tatildeyiz / public villa sayfası) yerel periyotları overwrite eder
+    const looksLikeIcal =
+      /\.ics(\?|$)/i.test(draft) ||
+      /\/ical/i.test(draft) ||
+      /[?&](format|export|type)=(ical|ics)\b/i.test(draft);
+    if (
+      !looksLikeIcal &&
+      !confirm(
+        `Link ${slot}: Mevcut fiyat periyotları ve müsaitlik silinip kaynaktan yeniden aktarılacak. Devam edilsin mi?`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+    setBusySlot(slot);
+    startTransition(async () => {
+      const savedUrl = data.externalSyncLinks.find((l) => l.slot === slot)?.url;
+      const needsSave = draft !== (savedUrl ?? "");
+      const result = await syncVillaExternalSyncSlotAction(
+        villaId,
+        slot,
+        needsSave || editingSlots[slot] ? draft : undefined
+      );
+      setBusySlot(null);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice(`Link ${slot}: ${result.message ?? "Güncellendi"}`);
+      setEditingSlots((prev) => ({ ...prev, [slot]: false }));
+      refresh();
+    });
+  }
+
+  function handleExternalEditToggle(slot: ExternalSyncSlot) {
+    const savedUrl = data.externalSyncLinks.find((l) => l.slot === slot)?.url ?? "";
+    // Kayıtlı URL yoksa alan zaten yazılabilir — doğrudan kaydet
+    if (editingSlots[slot] || !savedUrl) {
+      const draft = (externalDrafts[slot] ?? "").trim();
+      setError(null);
+      setNotice(null);
+      setBusySlot(slot);
+      startTransition(async () => {
+        const result = await saveVillaExternalSyncUrlAction(villaId, slot, draft);
+        setBusySlot(null);
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        setNotice(`Link ${slot}: ${result.message ?? "Kaydedildi"}`);
+        setEditingSlots((prev) => ({ ...prev, [slot]: false }));
+        refresh();
+      });
+      return;
+    }
+    setEditingSlots((prev) => ({ ...prev, [slot]: true }));
+  }
+
+  function handleExternalClear(slot: ExternalSyncSlot) {
+    if (!confirm(`Link ${slot} temizlensin mi?`)) return;
+    setError(null);
+    setNotice(null);
+    setBusySlot(slot);
+    startTransition(async () => {
+      const result = await clearVillaExternalSyncUrlAction(villaId, slot);
+      setBusySlot(null);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setExternalDrafts((prev) => ({ ...prev, [slot]: "" }));
+      setEditingSlots((prev) => ({ ...prev, [slot]: false }));
+      setNotice(`Link ${slot} temizlendi`);
       refresh();
     });
   }
@@ -333,14 +451,14 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
                     Senkronla
                   </button>
                   <button
-                  type="button"
-                  onClick={() => handleDeleteSource(source.id)}
-                  disabled={isPending}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Sil
-                </button>
+                    type="button"
+                    onClick={() => handleDeleteSource(source.id)}
+                    disabled={isPending}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Sil
+                  </button>
                 </div>
               </li>
             ))}
@@ -350,6 +468,106 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
             Henüz kaynak eklenmemiş. Yeni Kaynak Ekle butonuna basarak başlayın.
           </p>
         )}
+      </SectionCard>
+
+      <SectionCard title="Harici Sync Linkleri">
+        <p className="mb-4 text-sm text-gray-500">
+          .ics / iCal,{" "}
+          <code className="rounded bg-gray-100 px-1">tatildeyiz.com.tr</code>{" "}
+          veya public villa sayfası linki ekleyin — sayfadan fiyat ve takvim
+          çekilir. Güncelle hemen aktarır (villa sayfası / Tatildeyiz mevcut
+          periyotları üzerine yazar); otomatik tarama için{" "}
+          <code className="rounded bg-gray-100 px-1">npm run sync:external-links</code>{" "}
+          veya{" "}
+          <code className="rounded bg-gray-100 px-1">/api/cron/villa-external-sync</code>{" "}
+          (CRON_SECRET, önerilen aralık 1 saat).
+        </p>
+
+        <ul className="space-y-3">
+          {data.externalSyncLinks.map((link) => {
+            const isEditing = Boolean(editingSlots[link.slot]);
+            const draft = externalDrafts[link.slot] ?? "";
+            const slotBusy = busySlot === link.slot && isPending;
+            const showSaveLabel = isEditing || !link.url;
+
+            return (
+              <li
+                key={link.slot}
+                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <label className="block min-w-0 flex-1">
+                    <span className={labelClass}>Link {link.slot}</span>
+                    <input
+                      value={draft}
+                      onChange={(event) =>
+                        setExternalDrafts((prev) => ({
+                          ...prev,
+                          [link.slot]: event.target.value,
+                        }))
+                      }
+                      readOnly={!isEditing && Boolean(link.url)}
+                      type="url"
+                      placeholder="https://... (.ics, tatildeyiz veya villa sayfası)"
+                      className={`mt-1.5 ${inputClass} ${
+                        !isEditing && link.url
+                          ? "cursor-default bg-white text-gray-700"
+                          : ""
+                      }`}
+                    />
+                  </label>
+                  <div className="flex shrink-0 items-center gap-1 sm:pt-6">
+                    <button
+                      type="button"
+                      title="Güncelle"
+                      onClick={() => handleExternalSync(link.slot)}
+                      disabled={isPending || !draft.trim()}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${slotBusy ? "animate-spin" : ""}`}
+                      />
+                      Güncelle
+                    </button>
+                    <button
+                      type="button"
+                      title={showSaveLabel ? "Kaydet" : "Değiştir"}
+                      onClick={() => handleExternalEditToggle(link.slot)}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+                    >
+                      {showSaveLabel ? (
+                        <Save className="h-3.5 w-3.5" />
+                      ) : (
+                        <Pencil className="h-3.5 w-3.5" />
+                      )}
+                      {showSaveLabel ? "Kaydet" : "Değiştir"}
+                    </button>
+                    <button
+                      type="button"
+                      title="Sil"
+                      onClick={() => handleExternalClear(link.slot)}
+                      disabled={isPending || (!link.url && !draft.trim())}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Sil
+                    </button>
+                  </div>
+                </div>
+                {link.lastSyncedAt ? (
+                  <p className="mt-2 text-xs text-gray-400">
+                    Son güncelleme:{" "}
+                    {new Date(link.lastSyncedAt).toLocaleString("tr-TR")}
+                    {link.lastMessage ? ` — ${link.lastMessage}` : ""}
+                  </p>
+                ) : link.url ? (
+                  <p className="mt-2 text-xs text-amber-600">Henüz güncellenmedi</p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </SectionCard>
 
       <SectionCard title="Giden iCal URL (Airbnb / Booking / VRBO için)">

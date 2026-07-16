@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import { assignVillaOwner } from "@/app/actions/admin/villas";
+import { getActiveVillaOwnersAction } from "@/app/actions/admin/villa-owners";
 import VillaOwnerFormModal from "@/components/admin/villa-owners/VillaOwnerFormModal";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import type { ActiveVillaOwnerOption } from "@/lib/queries/villa-owners";
@@ -46,25 +47,67 @@ export default function VillaPersonelTab({
   const [search, setSearch] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState(villa.ownerId ?? "");
   const [savedOwnerId, setSavedOwnerId] = useState(villa.ownerId ?? "");
+  const [owners, setOwners] = useState(activeOwners);
   const [ownerError, setOwnerError] = useState<string | null>(null);
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [isSavingOwner, startSaveOwner] = useTransition();
+  const [isLoadingOwners, startLoadOwners] = useTransition();
+
+  useEffect(() => {
+    setOwners(activeOwners);
+  }, [activeOwners]);
+
+  useEffect(() => {
+    setSavedOwnerId(villa.ownerId ?? "");
+    setSelectedOwnerId(villa.ownerId ?? "");
+  }, [villa.ownerId]);
 
   const savedOwner = useMemo(
-    () => activeOwners.find((owner) => owner.id === savedOwnerId) ?? villa.owner,
-    [activeOwners, savedOwnerId, villa.owner]
+    () => owners.find((owner) => owner.id === savedOwnerId) ?? villa.owner,
+    [owners, savedOwnerId, villa.owner]
   );
 
   const filteredOwners = useMemo(() => {
-    if (!search.trim()) return activeOwners;
+    if (!search.trim()) return owners;
 
-    return activeOwners.filter((owner) =>
+    return owners.filter((owner) =>
       includesSearchText(
         [owner.name, owner.phone, owner.email].join(" "),
         search
       )
     );
-  }, [activeOwners, search]);
+  }, [owners, search]);
+
+  function refreshOwners(options?: {
+    selectOwnerId?: string;
+    openSelector?: boolean;
+  }) {
+    setOwnerError(null);
+    startLoadOwners(async () => {
+      const result = await getActiveVillaOwnersAction();
+      if (result.error || !result.owners) {
+        setOwnerError(result.error ?? "Villa sahipleri yüklenemedi");
+        return;
+      }
+
+      setOwners(result.owners);
+      if (options?.selectOwnerId) {
+        setSelectedOwnerId(options.selectOwnerId);
+        setSearch("");
+      }
+      if (options?.openSelector) {
+        setIsSelectingOwner(true);
+      }
+      router.refresh();
+    });
+  }
+
+  function handleChangeOwner() {
+    setSelectedOwnerId(savedOwnerId);
+    setSearch("");
+    setIsSelectingOwner(true);
+    refreshOwners({ openSelector: true });
+  }
 
   function handleSaveOwner() {
     if (!selectedOwnerId) {
@@ -86,9 +129,8 @@ export default function VillaPersonelTab({
   }
 
   function handleOwnerCreated(ownerId: string) {
-    setSelectedOwnerId(ownerId);
-    setSearch("");
-    router.refresh();
+    setShowOwnerModal(false);
+    refreshOwners({ selectOwnerId: ownerId, openSelector: true });
   }
 
   return (
@@ -107,12 +149,13 @@ export default function VillaPersonelTab({
             </div>
             <button
               type="button"
-              onClick={() => {
-                setIsSelectingOwner(true);
-                setSelectedOwnerId(savedOwnerId);
-              }}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              onClick={handleChangeOwner}
+              disabled={isLoadingOwners}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
             >
+              {isLoadingOwners ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
               Değiştir
             </button>
           </div>
@@ -135,7 +178,12 @@ export default function VillaPersonelTab({
             </label>
 
             <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-200">
-              {filteredOwners.length > 0 ? (
+              {isLoadingOwners ? (
+                <p className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Güncel liste yükleniyor...
+                </p>
+              ) : filteredOwners.length > 0 ? (
                 filteredOwners.map((owner) => {
                   const isSelected = selectedOwnerId === owner.id;
                   return (

@@ -1,4 +1,4 @@
-import type { VillaDayOccupancy } from "@prisma/client";
+import type { BookingStatus, VillaDayOccupancy } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   dateKeyToDbDate,
@@ -87,4 +87,69 @@ export async function applyVillaPeriodDaysOccupancy(
   }
 
   return { updatedDays: updates.length };
+}
+
+/**
+ * Rezervasyon durum / tarih değişiminde takvim doluluğunu senkronlar.
+ * - ONAYLANDI → İPTAL: giriş–çıkış aralığını (check-in dahil, check-out hariç) açar
+ * - ONAYLANDI olurken: aynı kurala göre BOOKED yazar
+ * - ONAYLANDI kalıp tarihler değişirse: eski aralığı açar, yeniyi BOOKED yapar
+ */
+export async function syncBookingStayOccupancy(input: {
+  villaId: string;
+  previous: {
+    status: BookingStatus;
+    checkIn: Date;
+    checkOut: Date;
+  };
+  next: {
+    status: BookingStatus;
+    checkIn: Date;
+    checkOut: Date;
+  };
+}): Promise<void> {
+  const prevIn = dbDateToDateKey(input.previous.checkIn);
+  const prevOut = dbDateToDateKey(input.previous.checkOut);
+  const nextIn = dbDateToDateKey(input.next.checkIn);
+  const nextOut = dbDateToDateKey(input.next.checkOut);
+
+  const wasConfirmed = input.previous.status === "CONFIRMED";
+  const isConfirmed = input.next.status === "CONFIRMED";
+  const isCancelled = input.next.status === "CANCELLED";
+
+  if (wasConfirmed && isCancelled) {
+    await applyVillaPeriodDaysOccupancy(
+      input.villaId,
+      prevIn,
+      prevOut,
+      "EMPTY"
+    );
+    return;
+  }
+
+  if (wasConfirmed && isConfirmed) {
+    if (prevIn === nextIn && prevOut === nextOut) return;
+    await applyVillaPeriodDaysOccupancy(
+      input.villaId,
+      prevIn,
+      prevOut,
+      "EMPTY"
+    );
+    await applyVillaPeriodDaysOccupancy(
+      input.villaId,
+      nextIn,
+      nextOut,
+      "BOOKED"
+    );
+    return;
+  }
+
+  if (!wasConfirmed && isConfirmed) {
+    await applyVillaPeriodDaysOccupancy(
+      input.villaId,
+      nextIn,
+      nextOut,
+      "BOOKED"
+    );
+  }
 }

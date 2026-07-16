@@ -191,4 +191,26 @@ export const FACILITY_CATEGORY_SEED_DATA: FacilityCategorySeedItem[] = [
     image:
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80",
   },
+  {
+    name: "Geniş Bahçeli Villalar",
+    slug: "genis-bahceli-villalar",
+    published: true,
+    showInSearch: true,
+    showInOffer: true,
+    description:
+      "Geniş bahçeli tatil villaları; açık alan, çocuk oyun alanı ve doğayla iç içe bir tatil için idealdir.",
+    image:
+      "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&q=80",
+  },
+  {
+    name: "Eğlence ve Aktivite İmkanlı Villalar",
+    slug: "eglence-ve-aktivite-imkanli-villalar",
+    published: true,
+    showInSearch: true,
+    showInOffer: true,
+    description:
+      "Bilardo, oyun konsolu ve benzeri aktivitelerle dolu eğlence imkânlı tatil villaları.",
+    image:
+      "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&q=80",
+  },
 ];

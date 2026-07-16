@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   CloudDownload,
   CloudUpload,
+  RefreshCw,
   Search,
   Star,
   Trash2,
@@ -13,6 +14,7 @@ import {
 import {
   deleteAllVillaGalleryImages,
   deleteVillaGalleryImages,
+  importVillaGalleryFromTatildeyizAction,
   setVillaGalleryVitrin,
   updateVillaGalleryOrder,
   uploadVillaGalleryImages,
@@ -36,11 +38,15 @@ export default function VillaGalleryTab({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isImporting, startImport] = useTransition();
 
   useEffect(() => {
     setImages(initialImages);
   }, [initialImages]);
+
+  const busy = isPending || isImporting;
 
   const allSelected = images.length > 0 && selected.size === images.length;
   const hasSelection = selected.size > 0;
@@ -176,6 +182,27 @@ export default function VillaGalleryTab({
     });
   }
 
+  function handleImportFromTatildeyiz() {
+    const confirmMessage =
+      images.length > 0
+        ? "Mevcut galeri silinip Tatildeyiz görselleriyle değiştirilecek. Devam edilsin mi?"
+        : "Tatildeyiz'den villa galerisi aktarılsın mı?";
+    if (!confirm(confirmMessage)) return;
+
+    setError(null);
+    setSuccessMessage(null);
+    startImport(async () => {
+      const result = await importVillaGalleryFromTatildeyizAction(villaId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setSelected(new Set());
+      setSuccessMessage(result.message ?? "Galeri Tatildeyiz'den güncellendi");
+      refresh();
+    });
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -185,8 +212,17 @@ export default function VillaGalleryTab({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={handleImportFromTatildeyiz}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-800 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isImporting ? "animate-spin" : ""}`} />
+            {isImporting ? "Güncelleniyor..." : "TATİLDEYİZDEN GÜNCELLE"}
+          </button>
+          <button
+            type="button"
             onClick={handleDownloadAll}
-            disabled={images.length === 0 || isPending}
+            disabled={images.length === 0 || busy}
             className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CloudDownload className="h-4 w-4" />
@@ -195,7 +231,7 @@ export default function VillaGalleryTab({
           <button
             type="button"
             onClick={handleDeleteAll}
-            disabled={images.length === 0 || isPending}
+            disabled={images.length === 0 || busy}
             className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
@@ -204,6 +240,11 @@ export default function VillaGalleryTab({
         </div>
       </div>
 
+      {successMessage ? (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {successMessage}
+        </div>
+      ) : null}
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -221,11 +262,11 @@ export default function VillaGalleryTab({
         <button
           type="button"
           onClick={handleUpload}
-          disabled={isPending}
+          disabled={busy}
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
         >
           <CloudUpload className="h-4 w-4" />
-          {isPending ? "Yükleniyor..." : "Yükle"}
+          {busy ? "Yükleniyor..." : "Yükle"}
         </button>
         <span className="text-xs text-gray-500">
           JPG, PNG, WEBP — filigransız WEBP olarak kaydedilir
@@ -254,7 +295,7 @@ export default function VillaGalleryTab({
           <button
             type="button"
             onClick={handleDeleteSelected}
-            disabled={isPending}
+            disabled={busy}
             className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
@@ -318,7 +359,7 @@ export default function VillaGalleryTab({
                   <button
                     type="button"
                     onClick={() => handleSetVitrin(url)}
-                    disabled={isPending || isVitrin}
+                    disabled={busy || isVitrin}
                     title="Vitrin yap"
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-400 text-gray-900 transition hover:bg-amber-300 disabled:opacity-50"
                   >
@@ -335,7 +376,7 @@ export default function VillaGalleryTab({
                   <button
                     type="button"
                     onClick={() => handleDeleteOne(url)}
-                    disabled={isPending}
+                    disabled={busy}
                     title="Sil"
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-50"
                   >

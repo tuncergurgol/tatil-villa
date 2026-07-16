@@ -136,6 +136,7 @@ function isOccupied(status: VillaDayOccupancy): boolean {
 /**
  * AÇ komutu: seçilen aralığı mevcut komşu doluluklarla birleştirir.
  * - Dolu blok ortasında açılırsa: ilk gün ÇIKIŞ (EMPTY), son gün GİRİŞ (BOOKED).
+ * - Blok sonundan (veya sonrasında dolu yoksa) açılırsa tüm seçim EMPTY olur.
  * - İç günler EMPTY olur.
  * - Son günden sonraki güne dokunulmaz.
  */
@@ -183,28 +184,15 @@ export function buildEmptyOccupancyForRangeMerged(
   }
 
   const firstDayKey = keys[0]!;
-  const existingStart = getOccupancy(existingOccupancyByDateKey, firstDayKey);
-  const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
-
-  const openingGapInBookedBlock =
-    (isOccupied(prevStart) && isOccupied(nextEnd)) ||
-    (isOccupied(prevStart) &&
-      isOccupied(existingStart) &&
-      isOccupied(existingEnd)) ||
-    (isOccupied(nextEnd) &&
-      isOccupied(existingStart) &&
-      isOccupied(existingEnd));
 
   for (let index = 1; index < keys.length - 1; index++) {
     map.set(keys[index]!, "EMPTY");
   }
 
+  // İlk gün her zaman çıkar (ÇIKIŞ). Son gün yalnızca sonrasında
+  // dolu gece varsa GİRİŞ olarak BOOKED kalır; blok sonundan açılıyorsa EMPTY.
   map.set(firstDayKey, "EMPTY");
-
-  const lastStatus: VillaDayOccupancy =
-    openingGapInBookedBlock || isOccupied(nextEnd) ? "BOOKED" : "EMPTY";
-
-  map.set(lastDayKey, lastStatus);
+  map.set(lastDayKey, isOccupied(nextEnd) ? "BOOKED" : "EMPTY");
   return map;
 }
 

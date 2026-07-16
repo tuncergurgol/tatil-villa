@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { processGalleryImageToWebp } from "@/lib/process-gallery-image";
+import { importVillaGalleryFromTatildeyiz } from "@/lib/tatildeyiz-gallery-import-runner";
 import {
   buildSeoGalleryFileName,
   getNextGallerySequence,
@@ -240,5 +241,36 @@ export async function deleteAllVillaGalleryImages(
     return { success: true };
   } catch {
     return { error: "Galeri temizlenemedi" };
+  }
+}
+
+export type VillaGalleryImportActionState = VillaGalleryActionState & {
+  message?: string;
+  importedCount?: number;
+};
+
+export async function importVillaGalleryFromTatildeyizAction(
+  villaId: string
+): Promise<VillaGalleryImportActionState> {
+  await requireAdmin();
+
+  try {
+    const { villa, siteName } = await getVillaGalleryContext(villaId);
+    const result = await importVillaGalleryFromTatildeyiz(villa.id, {
+      siteName,
+      force: true,
+    });
+
+    await revalidateVillaGallery(villa.id, villa.slug);
+    return {
+      success: true,
+      importedCount: result.importedCount,
+      urls: result.localUrls,
+      message: `${result.importedCount} görsel Tatildeyiz'den aktarıldı`,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Galeri içe aktarılamadı";
+    return { error: message };
   }
 }

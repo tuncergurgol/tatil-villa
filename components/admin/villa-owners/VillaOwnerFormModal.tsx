@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { VillaOwnerType } from "@prisma/client";
 import { X } from "lucide-react";
 import {
@@ -97,6 +98,7 @@ export default function VillaOwnerFormModal({
   const [country, setCountry] = useState(owner?.country || "Türkiye");
   const [active, setActive] = useState(owner?.active ?? true);
   const [tcKimlikNo, setTcKimlikNo] = useState(owner?.tcKimlikNo ?? "");
+  const [mounted, setMounted] = useState(false);
   const [state, formAction, pending] = useActionState<
     VillaOwnerActionState,
     FormData
@@ -107,14 +109,20 @@ export default function VillaOwnerFormModal({
   const tcAcceptable = isTcKimlikAcceptable(tcKimlikNo, tcRequired);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (state.success) {
       if (!isEdit && state.id) onCreated?.(state.id);
       onClose();
     }
   }, [isEdit, onClose, onCreated, state.id, state.success]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-lg font-bold text-gray-900">
@@ -328,6 +336,7 @@ export default function VillaOwnerFormModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
