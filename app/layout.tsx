@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import ConditionalSiteChrome from "@/components/ConditionalSiteChrome";
 import SiteChrome from "@/components/SiteChrome";
 import Providers from "@/components/Providers";
-import { siteConfig } from "@/lib/data";
+import { buildRootMetadata } from "@/lib/site-metadata";
 import "./globals.css";
 
 const inter = Inter({
@@ -11,16 +11,9 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: `${siteConfig.name} - ${siteConfig.tagline}`,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description:
-    "Türkiye'nin en güzel bölgelerinde villa ve bungalov kiralama. En iyi fiyat garantisi ile hızlı rezervasyon.",
-  // TÜRSAB DDS doğrulaması için referrer origin gerekli (rel=noreferrer kullanılmamalı)
-  referrer: "origin",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return buildRootMetadata();
+}
 
 export default function RootLayout({
   children,
