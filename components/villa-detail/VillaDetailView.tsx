@@ -43,6 +43,9 @@ type VillaDetailViewProps = {
   similarVillas?: SimilarVillaCard[];
   companyPhone?: string;
   brandName?: string;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialAdults?: number;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -100,6 +103,9 @@ export default function VillaDetailView({
   similarVillas = [],
   companyPhone,
   brandName,
+  initialCheckIn = "",
+  initialCheckOut = "",
+  initialAdults = 2,
 }: VillaDetailViewProps) {
   const featuredAmenityItems =
     villa.amenityGroups.find((group) =>
@@ -135,6 +141,9 @@ export default function VillaDetailView({
     <VillaStaySelectionProvider
       calendarDays={villa.calendarDays}
       allowPets={villa.allowPets}
+      initialCheckIn={initialCheckIn}
+      initialCheckOut={initialCheckOut}
+      initialAdults={initialAdults}
     >
     <div className="bg-white">
       <div className="border-b border-slate-100 bg-slate-50">

@@ -47,27 +47,62 @@ type VillaStaySelectionContextValue = {
 const VillaStaySelectionContext =
   createContext<VillaStaySelectionContextValue | null>(null);
 
+function resolveInitialStayRange(
+  initialCheckIn: string | undefined,
+  initialCheckOut: string | undefined,
+  calendarDays: CalendarDayInput[]
+): { checkIn: string; checkOut: string } {
+  const start = (initialCheckIn ?? "").trim();
+  const end = (initialCheckOut ?? "").trim();
+  if (!start || !end) return { checkIn: "", checkOut: "" };
+  if (compareDates(parseDateKey(start), parseDateKey(end)) >= 0) {
+    return { checkIn: "", checkOut: "" };
+  }
+  if (compareDates(parseDateKey(start), todayDate()) < 0) {
+    return { checkIn: "", checkOut: "" };
+  }
+  const occupancyMap = buildOccupancyMap(calendarDays);
+  if (rangeHasBlockedNight(start, end, occupancyMap)) {
+    return { checkIn: "", checkOut: "" };
+  }
+  return { checkIn: start, checkOut: end };
+}
+
 export function VillaStaySelectionProvider({
   calendarDays,
   allowPets,
+  initialCheckIn = "",
+  initialCheckOut = "",
+  initialAdults = 2,
   children,
 }: {
   calendarDays: CalendarDayInput[];
   allowPets: boolean;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialAdults?: number;
   children: ReactNode;
 }) {
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
+  const [checkIn, setCheckIn] = useState(
+    () =>
+      resolveInitialStayRange(initialCheckIn, initialCheckOut, calendarDays)
+        .checkIn
+  );
+  const [checkOut, setCheckOut] = useState(
+    () =>
+      resolveInitialStayRange(initialCheckIn, initialCheckOut, calendarDays)
+        .checkOut
+  );
   const [pendingStart, setPendingStart] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
   const [datesOpen, setDatesOpen] = useState(false);
   const [guestsOpen, setGuestsOpen] = useState(false);
-  const [guests, setGuests] = useState<GuestCounts>({
-    adults: 2,
+  const [guests, setGuests] = useState<GuestCounts>(() => ({
+    adults: Math.max(1, Math.min(50, Math.floor(initialAdults) || 2)),
     children: 0,
     babies: 0,
     pets: 0,
-  });
+  }));
 
   const occupancyMap = useMemo(
     () => buildOccupancyMap(calendarDays),
