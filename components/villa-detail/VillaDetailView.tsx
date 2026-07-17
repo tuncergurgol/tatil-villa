@@ -163,7 +163,11 @@ export default function VillaDetailView({
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 lg:px-8">
         <VillaDetailGallery name={villa.name} images={villa.images} />
 
-        <VillaDetailSectionNav items={navItems} className="mt-5" />
+        <VillaDetailSectionNav
+          items={navItems}
+          villaName={villa.name}
+          className="mt-5"
+        />
 
         <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0">

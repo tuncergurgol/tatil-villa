@@ -293,7 +293,7 @@ export default function ReservationPriceSummary({
               quote.cleaningDayCount != null && quote.cleaningDayCount > 0 ? (
                 <PriceInfoTip label="Temizlik ücreti bilgisi">
                   <span className="block">
-                    {quote.cleaningDayCount} günü altında yapılan
+                    {quote.cleaningDayCount} gece altında yapılan
                     <br />
                     kiralamalarda temizlik ücreti
                     <br />

@@ -50,10 +50,7 @@ export async function searchActiveVillasByName(
   const villas = await prisma.villa.findMany({
     where: {
       active: true,
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { originalName: { contains: q, mode: "insensitive" } },
-      ],
+      name: { contains: q, mode: "insensitive" },
     },
     select: {
       id: true,
