@@ -26,10 +26,10 @@ export const ROOM_TYPE_OPTIONS = [
 export function formatBedSummary(singleBeds: number, doubleBeds: number) {
   const parts: string[] = [];
   if (doubleBeds > 0) {
-    parts.push(`${doubleBeds} Çift`);
+    parts.push(`${doubleBeds} Çift Kişilik Yatak`);
   }
   if (singleBeds > 0) {
-    parts.push(`${singleBeds} Tek`);
+    parts.push(`${singleBeds} Tek Kişilik Yatak`);
   }
   return parts.length > 0 ? parts.join(", ") : "Yatak yok";
 }
