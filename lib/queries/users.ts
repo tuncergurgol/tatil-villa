@@ -1,26 +1,13 @@
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import type { AdminUserListItem, AppUserRole } from "@/lib/user-roles";
 
-export const USER_ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN: "Yönetici",
-  SALES_REP: "Satış Temsilcisi",
-};
-
-export const USER_ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  ADMIN: "Tüm yetkilere sahip",
-  SALES_REP: "Şu an yetki yok, daha sonra yetkilendirme yapılacak",
-};
-
-export type AdminUserListItem = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: UserRole;
-  active: boolean;
-  salesCommissionRate: number;
-  createdAt: Date;
-};
+export type { AdminUserListItem, AppUserRole } from "@/lib/user-roles";
+export {
+  USER_ROLE_DESCRIPTIONS,
+  USER_ROLE_LABELS,
+  USER_ROLE_OPTIONS,
+} from "@/lib/user-roles";
 
 export type SalesRepOption = {
   id: string;
@@ -29,7 +16,7 @@ export type SalesRepOption = {
 };
 
 export async function getAdminUsers(): Promise<AdminUserListItem[]> {
-  return prisma.user.findMany({
+  const users = await prisma.user.findMany({
     select: {
       id: true,
       name: true,
@@ -42,6 +29,17 @@ export async function getAdminUsers(): Promise<AdminUserListItem[]> {
     },
     orderBy: { createdAt: "asc" },
   });
+
+  return users.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role as AppUserRole,
+    active: user.active,
+    salesCommissionRate: user.salesCommissionRate,
+    createdAt: user.createdAt.toISOString(),
+  }));
 }
 
 /** Rezervasyon formu — aktif kullanıcılar (satış temsilcisi seçimi) */
@@ -70,4 +68,9 @@ export async function getAdminUserById(id: string) {
       salesCommissionRate: true,
     },
   });
+}
+
+/** Prisma enum ile uyumluluk kontrolü (server-only) */
+export function isUserRole(value: string): value is UserRole {
+  return value === UserRole.ADMIN || value === UserRole.SALES_REP;
 }

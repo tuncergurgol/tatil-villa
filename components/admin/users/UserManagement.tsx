@@ -1,20 +1,20 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { UserRole } from "@prisma/client";
 import { Pencil, UserPlus, Users, X } from "lucide-react";
 import {
   createAdminUser,
   updateAdminUser,
   type UserActionState,
 } from "@/app/actions/admin/users";
-import type { AdminUserListItem } from "@/lib/queries/users";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
+import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
 import {
   USER_ROLE_DESCRIPTIONS,
   USER_ROLE_LABELS,
-} from "@/lib/queries/users";
-import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
-import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
+  USER_ROLE_OPTIONS,
+  type AdminUserListItem,
+} from "@/lib/user-roles";
 
 type StatusFilter = "active" | "passive" | "all";
 
@@ -109,10 +109,10 @@ function UserFormFields({
         <span className="text-xs font-medium text-gray-500">Kullanıcı Rolü</span>
         <select
           name="role"
-          defaultValue={user?.role ?? UserRole.ADMIN}
+          defaultValue={user?.role ?? "ADMIN"}
           className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
         >
-          {Object.values(UserRole).map((role) => (
+          {USER_ROLE_OPTIONS.map((role) => (
             <option key={role} value={role}>
               {USER_ROLE_LABELS[role]} — {USER_ROLE_DESCRIPTIONS[role]}
             </option>
