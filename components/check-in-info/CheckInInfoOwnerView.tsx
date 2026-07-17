@@ -224,6 +224,41 @@ export default function CheckInInfoOwnerView({
         <PaymentList lines={page.ownerPaymentLines} />
       </SectionCard>
 
+      {page.depositLines.length > 0 ? (
+        <SectionCard title="Hasar Depozitosu">
+          <ul className="divide-y divide-slate-100">
+            {page.depositLines.map((line, index) => {
+              const isTotal = index === page.depositLines.length - 1;
+              return (
+                <li
+                  key={line.label}
+                  className={`flex items-center justify-between gap-3 py-2.5 text-sm ${
+                    isTotal
+                      ? "border-t border-slate-200 font-bold text-slate-900"
+                      : "text-slate-600"
+                  }`}
+                >
+                  <span>{line.label}</span>
+                  <span
+                    className={
+                      isTotal
+                        ? "font-bold text-slate-900"
+                        : "font-semibold text-slate-900"
+                    }
+                  >
+                    {line.amountLabel}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-xs text-slate-500">
+            Girişte alınır; hasar veya kesinti yoksa çıkışta iade edilir.
+            Rezervasyon toplamına dahil değildir.
+          </p>
+        </SectionCard>
+      ) : null}
+
       <SectionCard title="Konaklayacak Kişiler">
         <ul className="space-y-2">
           {page.stayGuests.map((guest, index) => (

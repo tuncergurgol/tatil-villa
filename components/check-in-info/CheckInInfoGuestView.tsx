@@ -242,7 +242,7 @@ export default function CheckInInfoGuestView({
       </SectionCard>
 
       {page.depositLines.length > 0 ? (
-        <SectionCard title="Depozito Bilgileri">
+        <SectionCard title="Hasar Depozitosu">
           <ul className="divide-y divide-slate-100">
             {page.depositLines.map((line, index) => {
               const isTotal = index === page.depositLines.length - 1;

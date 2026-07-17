@@ -22,6 +22,7 @@ import {
   computeOwnerPayableAmount,
   computeOwnerPaymentDueDate,
 } from "@/lib/owner-payment-schedule";
+import { resolveStayPeriodFees } from "@/lib/queries/booking-prepayment";
 
 const checkInInfoInclude = {
   villa: {
@@ -418,9 +419,26 @@ function buildAccountLines(
   return lines;
 }
 
-function buildDepositLines(details: BookingDetails): CheckInInfoPaymentLine[] {
-  const damageDeposit = Math.max(0, details.damageDeposit ?? 0);
-  const petDamageDeposit = Math.max(0, details.petDamageDeposit ?? 0);
+function buildDepositLines(
+  details: BookingDetails,
+  pets: number,
+  periodDeposits?: {
+    damageDeposit: number | null;
+    petDamageDeposit: number | null;
+  } | null
+): CheckInInfoPaymentLine[] {
+  // Öncelik: giriş tarihinin bağlı olduğu periyot; yoksa rezervasyon details.
+  const damageDeposit = Math.max(
+    0,
+    periodDeposits?.damageDeposit ?? details.damageDeposit ?? 0
+  );
+  const petDamageDeposit =
+    pets > 0
+      ? Math.max(
+          0,
+          periodDeposits?.petDamageDeposit ?? details.petDamageDeposit ?? 0
+        )
+      : 0;
   const lines: CheckInInfoPaymentLine[] = [];
 
   if (damageDeposit > 0) {
@@ -609,10 +627,17 @@ export async function getPublicCheckInInfo(input: {
   );
   const nights = calculateNights(booking.checkIn, booking.checkOut);
   const greeterRaw = resolveGreeterRaw(booking.villa);
+  const periodFees = await resolveStayPeriodFees(
+    booking.villaId,
+    booking.checkIn
+  );
   const accountLines = buildAccountLines(details, nights);
   const accountSummaryLines = buildAccountSummaryLines(booking, details);
   const paymentLines = buildPaymentLines(booking, details, prepaymentSum);
-  const depositLines = buildDepositLines(details);
+  const depositLines = buildDepositLines(details, booking.pets, {
+    damageDeposit: periodFees.damageDeposit,
+    petDamageDeposit: periodFees.petDamageDeposit,
+  });
   const ownerPaymentLines = buildOwnerPaymentLines(
     booking,
     details,
