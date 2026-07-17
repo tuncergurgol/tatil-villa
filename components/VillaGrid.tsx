@@ -4,6 +4,7 @@ import { Bath, BedDouble, MapPin, Users } from "lucide-react";
 import VillaPriceRange from "@/components/VillaPriceRange";
 import type { Villa } from "@/lib/types";
 import { categoryLabel } from "@/lib/utils";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 interface VillaGridProps {
   villas: Villa[];
@@ -32,7 +33,7 @@ export default function VillaGrid({ villas }: VillaGridProps) {
       {villas.map((villa) => (
         <Link
           key={villa.id}
-          href={`/villalar/${villa.slug}`}
+          href={villaPublicPath(villa.slug)}
           className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
           <div className="relative aspect-[4/3] overflow-hidden">

@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/villalar/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

@@ -13,6 +13,7 @@ import { DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID } from "@/lib/villa-rules-defaults";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 function parseBool(value: FormDataEntryValue | null) {
   return value === "true" || value === "on";
@@ -184,6 +185,7 @@ export async function updateVillaGeneral(
     revalidatePath("/admin/villalar");
     await revalidateVillaEditPage(id);
     if (updated.slug) {
+      revalidatePath(villaPublicPath(updated.slug));
       revalidatePath(`/villalar/${updated.slug}`);
     }
 
@@ -257,6 +259,7 @@ export async function updateVillaMetaSeo(id: string, formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/villalar");
+  revalidatePath(villaPublicPath(villa.slug));
   revalidatePath(`/villalar/${villa.slug}`);
   revalidatePath("/admin/villalar");
   await revalidateVillaEditPage(id);

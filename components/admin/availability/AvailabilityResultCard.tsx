@@ -24,6 +24,7 @@ import { countNightsBetween } from "@/lib/villa-period-selection";
 import { buildWaMeUrl } from "@/lib/whatsapp-wa-me";
 import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-search";
 import type { StayQuote } from "@/lib/stay-quote";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 interface AvailabilityResultCardProps {
   result: AvailabilitySearchResultItem;
@@ -48,7 +49,7 @@ function buildVillaPublicUrl(
   if (checkIn) params.set("checkIn", checkIn);
   if (checkOut) params.set("checkOut", checkOut);
   const query = params.toString();
-  return `${origin}/villalar/${slug}${query ? `?${query}` : ""}`;
+  return `${origin}${villaPublicPath(slug)}${query ? `?${query}` : ""}`;
 }
 
 function buildOfferMessage(options: {
@@ -261,7 +262,7 @@ export default function AvailabilityResultCard({
   const firstMonth = result.calendarMonths[0];
   const secondMonth = result.calendarMonths[1];
   const adminHref = `/admin/villalar/${result.id}/duzenle`;
-  const publicHref = `/villalar/${result.slug}`;
+  const publicHref = villaPublicPath(result.slug);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">

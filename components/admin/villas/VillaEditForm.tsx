@@ -28,6 +28,7 @@ import type { VillaPoolWithPeriods } from "@/components/admin/villas/VillaPoolMa
 import type { AmenityCategoryItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
 import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
+import { villaPublicPath } from "@/lib/villa-public-path";
 import type { ActiveVillaOwnerOption } from "@/lib/queries/villa-owners";
 import type {
   RegionPickerOption,
@@ -223,7 +224,7 @@ export default function VillaEditForm({
             </div>
           ) : null}
           <Link
-            href={`/villalar/${villa.slug}`}
+            href={villaPublicPath(villa.slug)}
             target="_blank"
             className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
           >

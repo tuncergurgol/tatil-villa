@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { Villa } from "@/lib/types";
 import { categoryLabel, formatPrice } from "@/lib/utils";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 interface VillaResultCardProps {
   villa: Villa;
@@ -36,7 +37,7 @@ export default function VillaResultCard({
     <article className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md">
       <div className="flex flex-col sm:flex-row">
         <div className="relative aspect-[16/11] w-full shrink-0 overflow-hidden sm:aspect-auto sm:min-h-[220px] sm:w-[280px] lg:w-[320px]">
-          <Link href={`/villalar/${villa.slug}`} className="absolute inset-0">
+          <Link href={villaPublicPath(villa.slug)} className="absolute inset-0">
             <Image
               src={villa.image}
               alt={villa.name}
@@ -67,7 +68,7 @@ export default function VillaResultCard({
               ) : null}
             </div>
 
-            <Link href={`/villalar/${villa.slug}`}>
+            <Link href={villaPublicPath(villa.slug)}>
               <h3 className="text-base font-bold leading-snug text-gray-900 transition hover:text-sky-700 sm:text-lg">
                 {villa.name}
               </h3>
@@ -148,7 +149,7 @@ export default function VillaResultCard({
             </div>
 
             <Link
-              href={`/villalar/${villa.slug}`}
+              href={villaPublicPath(villa.slug)}
               className="mt-3 inline-flex rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600 sm:mt-4"
             >
               İncele

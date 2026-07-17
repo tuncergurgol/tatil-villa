@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { MapPin, Search } from "lucide-react";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 type SearchResult = {
   id: string;
@@ -98,7 +99,7 @@ export default function HeaderVillaSearch({
   function selectVilla(villa: SearchResult) {
     setQuery(villa.name);
     setOpen(false);
-    router.push(`/villalar/${villa.slug}`);
+    router.push(villaPublicPath(villa.slug));
   }
 
   return (

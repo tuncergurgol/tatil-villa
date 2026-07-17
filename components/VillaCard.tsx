@@ -4,6 +4,7 @@ import { Bath, BedDouble, MapPin, Users } from "lucide-react";
 import VillaPriceRange from "@/components/VillaPriceRange";
 import type { Villa } from "@/lib/types";
 import { categoryLabel } from "@/lib/utils";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 interface VillaCardProps {
   villa: Villa;
@@ -19,7 +20,7 @@ export default function VillaCard({
 
   return (
     <Link
-      href={`/villalar/${villa.slug}`}
+      href={villaPublicPath(villa.slug)}
       className={`group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
         isFluid
           ? "h-full w-full min-w-0"

@@ -47,6 +47,18 @@ export function parseAmountInput(value: string): number | null {
   return Math.round(parsed);
 }
 
+/** Form/API girdilerinde TR binlik ayraçlı tutarları güvenli okur (`Number("7.000")` → 7 hatasını önler). */
+export function parseOptionalPositiveInt(
+  value: string | number | null | undefined
+): number | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return Math.round(value);
+  }
+  return parseAmountInput(String(value));
+}
+
 export function formatAmountInput(value: number | null | undefined): string {
   if (value == null || value <= 0) return "";
   return value.toLocaleString("tr-TR", { maximumFractionDigits: 0 });

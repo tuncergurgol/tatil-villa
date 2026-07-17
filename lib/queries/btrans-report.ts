@@ -22,6 +22,7 @@ import {
 } from "@/lib/booking-form-details";
 import { normalizeActivityLogs } from "@/lib/booking-activity-log-core";
 import { getIlPlakaKodu } from "@/lib/turkey-il-plaka-codes";
+import { villaPublicUrl } from "@/lib/villa-public-path";
 
 /**
  * "Onay tarihi": rezervasyon CONFIRMED durumuna geçtiği en son
@@ -219,10 +220,13 @@ export async function generateBtransReport(input: {
       buildIslemXml({
         siteAdi: booking.villa.name,
         siteKodu: booking.villa.villaId != null ? String(booking.villa.villaId) : "0",
-        webAdresi: `${companySettings.domain
-          .trim()
-          .replace(/^https?:\/\//i, "")
-          .replace(/\/+$/g, "")}/villalar/${booking.villa.slug}`,
+        webAdresi: villaPublicUrl(
+          companySettings.domain
+            .trim()
+            .replace(/^https?:\/\//i, "")
+            .replace(/\/+$/g, ""),
+          booking.villa.slug
+        ).replace(/^https?:\/\//i, ""),
         ilKodu: regionCodes.ilKodu ?? "0",
         ilceKodu: regionCodes.ilceKodu ?? "0",
         mahalleAdi: regionCodes.mahalleAdi,

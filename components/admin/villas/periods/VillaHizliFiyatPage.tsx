@@ -150,6 +150,11 @@ function periodToRow(period: VillaPricePeriodItem): PeriodRowState {
   };
 }
 
+function setOptionalAmount(formData: FormData, key: string, value: string) {
+  const parsed = parseAmountInput(value);
+  formData.set(key, parsed != null ? String(parsed) : "");
+}
+
 function buildPeriodFormData(
   row: PeriodRowState,
   sourcePeriod?: VillaPricePeriodItem
@@ -167,20 +172,25 @@ function buildPeriodFormData(
   formData.set("availability", "available");
   formData.set("nightlyPrice", String(parseAmountInput(row.nightlyPrice) ?? 0));
   formData.set("nightlyPriceCurrency", row.nightlyPriceCurrency);
-  formData.set("weeklyPrice", synced?.weeklyPrice ?? row.weeklyPrice ?? "");
+  formData.set(
+    "weeklyPrice",
+    synced
+      ? String(parseAmountInput(synced.weeklyPrice) ?? "")
+      : String(parseAmountInput(row.weeklyPrice) ?? "")
+  );
   formData.set("prepaymentRate", row.prepaymentRate || "");
   formData.set("commissionRate", row.commissionRate || "");
   formData.set(
     "nightlyPriceWithoutCommission",
-    synced?.nightlyPriceWithoutCommission ??
-      row.nightlyPriceWithoutCommission ??
-      ""
+    synced
+      ? String(parseAmountInput(synced.nightlyPriceWithoutCommission) ?? "")
+      : String(parseAmountInput(row.nightlyPriceWithoutCommission) ?? "")
   );
   formData.set("minStayNights", row.minStayNights || "");
   formData.set("cleaningDayCount", row.cleaningDayCount || "");
-  formData.set("cleaningFee", row.cleaningFee || "");
+  setOptionalAmount(formData, "cleaningFee", row.cleaningFee);
   formData.set("cleaningFeeCurrency", row.nightlyPriceCurrency);
-  formData.set("damageDeposit", row.damageDeposit || "");
+  setOptionalAmount(formData, "damageDeposit", row.damageDeposit);
   formData.set("damageDepositCurrency", row.nightlyPriceCurrency);
   formData.set("petCleaningFee", String(sourcePeriod?.petCleaningFee ?? ""));
   formData.set(
@@ -231,8 +241,8 @@ function buildPeriodFormData(
   );
   formData.set("discount1Rate", row.discount1Rate || "");
   formData.set("discount2Rate", row.discount2Rate || "");
-  formData.set("extraDiscountAmount", row.extraDiscountAmount || "");
-  formData.set("weekendPrice", row.weekendPrice || "");
+  setOptionalAmount(formData, "extraDiscountAmount", row.extraDiscountAmount);
+  setOptionalAmount(formData, "weekendPrice", row.weekendPrice);
   formData.set("weekendDays", row.weekendDays || "");
   formData.set("weekendMinStayNights", row.weekendMinStayNights || "");
   formData.set("childFee02", String(sourcePeriod?.childFee02 ?? ""));
@@ -885,13 +895,11 @@ export default function VillaHizliFiyatPage({
                               const period = periods.find((p) => p.id === row.id);
                               if (period) openAdvancedModal(period);
                             }}
-                            className="rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                             title="Gelişmiş düzenle"
+                            aria-label="Gelişmiş düzenle"
                           >
-                            <span className="inline-flex items-center gap-1">
-                              <Pencil className="h-3 w-3" />
-                              Hızlı Düzenle
-                            </span>
+                            <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             type="button"

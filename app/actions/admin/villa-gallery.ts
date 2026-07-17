@@ -13,6 +13,7 @@ import {
   getNextGallerySequence,
 } from "@/lib/villa-gallery-filename";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
@@ -32,6 +33,7 @@ async function revalidateVillaGallery(villaId: string, slug?: string) {
   revalidatePath("/admin/villalar");
   await revalidateVillaEditPage(villaId);
   if (slug) {
+    revalidatePath(villaPublicPath(slug));
     revalidatePath(`/villalar/${slug}`);
   }
   revalidatePath("/villalar");

@@ -20,13 +20,16 @@ import FloatingPanel from "./FloatingPanel";
 
 function formatHeroDate(dateKey: string) {
   const date = parseDateKey(dateKey);
-  const day = date.getDate();
-  const month = date
-    .toLocaleDateString("tr-TR", { month: "short" })
-    .replace(".", "");
-  const year = String(date.getFullYear()).slice(-2);
+  const formattedDate = date.toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   const weekday = date.toLocaleDateString("tr-TR", { weekday: "long" });
-  return { main: `${day} ${month} ${year}`, weekday };
+  const capitalizedWeekday =
+    weekday.charAt(0).toLocaleUpperCase("tr-TR") + weekday.slice(1);
+
+  return `${formattedDate} - ${capitalizedWeekday}`;
 }
 
 interface HeroDateRangePickerProps {
@@ -290,7 +293,7 @@ export default function HeroDateRangePicker({
           </span>
           {checkInFmt ? (
             <span className="mt-1 inline-block truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900">
-              {checkInFmt.main}
+              {checkInFmt}
             </span>
           ) : (
             <span className="mt-1 text-sm leading-tight text-gray-400">
@@ -299,14 +302,17 @@ export default function HeroDateRangePicker({
           )}
         </div>
 
-        <div className="flex flex-col items-center justify-center px-1.5 text-sky-500">
-          <Moon className="h-3.5 w-3.5" />
+        <div
+          className="flex min-w-9 flex-col items-center justify-center px-2 text-sky-500"
+          aria-label={displayNights > 0 ? `${displayNights} Gece` : undefined}
+        >
+          <Moon className="h-5 w-5" />
           {displayNights > 0 ? (
-            <span className="mt-0.5 text-[10px] font-bold leading-none">
+            <span className="mt-1 text-sm font-extrabold leading-none">
               {displayNights}
             </span>
           ) : (
-            <span className="mt-0.5 text-[10px] leading-none text-gray-300">—</span>
+            <span className="mt-1 text-sm leading-none text-gray-300">—</span>
           )}
         </div>
 
@@ -316,7 +322,7 @@ export default function HeroDateRangePicker({
           </span>
           {checkOutFmt ? (
             <span className="mt-1 inline-block truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900">
-              {checkOutFmt.main}
+              {checkOutFmt}
             </span>
           ) : (
             <span className="mt-1 text-sm leading-tight text-gray-400">

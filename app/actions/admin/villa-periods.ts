@@ -24,6 +24,7 @@ import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
 import {
   parseAvailability,
   parseCurrency,
+  parseOptionalPositiveInt,
   resolveVillaPeriodPricing,
 } from "@/lib/villa-period-pricing";
 
@@ -65,12 +66,7 @@ const optionalRateSchema = z
 const optionalPositiveIntSchema = z
   .union([z.string(), z.number(), z.null()])
   .optional()
-  .transform((value) => {
-    if (value == null || value === "") return null;
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed <= 0) return null;
-    return Math.round(parsed);
-  });
+  .transform((value) => parseOptionalPositiveInt(value));
 
 const weekendDaysSchema = z
   .union([z.string(), z.null()])
