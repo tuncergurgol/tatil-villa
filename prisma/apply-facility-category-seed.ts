@@ -15,6 +15,25 @@ async function upsertCategory(
   });
 
   if (existing) {
+    const current = await prisma.facilityCategory.findUnique({
+      where: { id: existing.id },
+      select: { image: true },
+    });
+    const nextImage = category.image ?? "";
+    const shouldRefreshImage =
+      Boolean(nextImage) &&
+      (!current?.image ||
+        current.image.includes("photo-1600047509807-ba8f99d2cd2e"));
+
+    if (shouldRefreshImage) {
+      await prisma.facilityCategory.update({
+        where: { id: existing.id },
+        data: { image: nextImage },
+      });
+      console.log(`Görsel güncellendi: ${category.name}`);
+      return "updated" as const;
+    }
+
     console.log(`Mevcut: ${category.name}`);
     return "skipped" as const;
   }

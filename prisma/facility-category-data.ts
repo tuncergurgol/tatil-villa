@@ -145,7 +145,7 @@ export const FACILITY_CATEGORY_SEED_DATA: FacilityCategorySeedItem[] = [
     published: true,
     showInSearch: true,
     image:
-      "https://images.unsplash.com/photo-1600047509807-ba8f99d2cd2e?w=400&q=80",
+      "https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=400&q=80",
   },
   {
     name: "Özel Havuzlu Villalar",
