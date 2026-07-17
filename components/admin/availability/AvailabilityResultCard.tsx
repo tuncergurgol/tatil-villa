@@ -5,12 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BedDouble,
-  ChevronDown,
   ExternalLink,
-  Link2,
   Loader2,
   MapPin,
-  MessageCircle,
   Moon,
   Send,
   Users,
@@ -34,8 +31,9 @@ interface AvailabilityResultCardProps {
   onToggleSelect: (villaId: string, selected: boolean) => void;
   guestPhone: string;
   guestName: string;
+  guestEmail: string;
   adults: number;
-  children: number;
+  childGuests: number;
   babies: number;
 }
 
@@ -88,17 +86,26 @@ export default function AvailabilityResultCard({
   onToggleSelect,
   guestPhone,
   guestName,
+  guestEmail,
   adults,
-  children,
+  childGuests,
   babies,
 }: AvailabilityResultCardProps) {
   const [checkIn, setCheckIn] = useState(result.checkIn);
   const [checkOut, setCheckOut] = useState(result.checkOut);
   const [quote, setQuote] = useState(result.quote);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [deliveryMethod, setDeliveryMethod] = useState<
+    "WHATSAPP" | "EMAIL" | "SMS"
+  >("WHATSAPP");
+  const [linkType, setLinkType] = useState<"DETAILED" | "VILLA_ONLY">(
+    "DETAILED"
+  );
   const [isQuoting, startQuoteTransition] = useTransition();
 
   useEffect(() => {
+    // Yeni arama sonucu aynı villayı döndürse de tarih ve fiyatı yenile.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCheckIn(result.checkIn);
     setCheckOut(result.checkOut);
     setQuote(result.quote);
@@ -176,40 +183,24 @@ export default function AvailabilityResultCard({
   }
 
   function handleSendInfo() {
-    const message = buildOfferMessage({
-      villaName: result.name,
-      slug: result.slug,
-      checkIn,
-      checkOut,
-      quote,
-      guestName,
-    });
+    const message =
+      linkType === "DETAILED"
+        ? buildOfferMessage({
+            villaName: result.name,
+            slug: result.slug,
+            checkIn,
+            checkOut,
+            quote,
+            guestName,
+          })
+        : [
+            guestName ? `Merhaba ${guestName},` : "Merhaba,",
+            "",
+            `${result.name} villa bağlantısı:`,
+            buildVillaPublicUrl(result.slug, "", ""),
+          ].join("\n");
 
-    if (guestPhone) {
-      const wa = buildWaMeUrl(guestPhone.startsWith("+") ? guestPhone : `+90${guestPhone}`, message);
-      if (wa.ok) {
-        window.open(wa.url, "_blank", "noopener,noreferrer");
-        return;
-      }
-    }
-
-    void navigator.clipboard.writeText(message).then(
-      () => window.alert("Teklif metni panoya kopyalandı."),
-      () => window.alert(message)
-    );
-  }
-
-  function handleWhatsAppAction(action: string) {
-    const message = buildOfferMessage({
-      villaName: result.name,
-      slug: result.slug,
-      checkIn,
-      checkOut,
-      quote,
-      guestName,
-    });
-
-    if (action === "Kişiye Gönder") {
+    if (deliveryMethod === "WHATSAPP") {
       if (!guestPhone) {
         window.alert("Müşteri telefonu gerekli.");
         return;
@@ -218,32 +209,53 @@ export default function AvailabilityResultCard({
         guestPhone.startsWith("+") ? guestPhone : `+90${guestPhone}`,
         message
       );
-      if (!wa.ok) {
-        window.alert(wa.error);
+      if (wa.ok) {
+        window.open(wa.url, "_blank", "noopener,noreferrer");
         return;
       }
-      window.open(wa.url, "_blank", "noopener,noreferrer");
+      window.alert(wa.error);
       return;
     }
 
-    void navigator.clipboard.writeText(message).then(
-      () => window.alert("Grup mesajı metni panoya kopyalandı."),
-      () => window.alert("Mesaj kopyalanamadı.")
+    if (deliveryMethod === "EMAIL") {
+      if (!guestEmail) {
+        window.alert("Müşteri e-posta adresi gerekli.");
+        return;
+      }
+      window.location.href = `mailto:${encodeURIComponent(
+        guestEmail
+      )}?subject=${encodeURIComponent(
+        `${result.name} uygunluk teklifi`
+      )}&body=${encodeURIComponent(message)}`;
+      return;
+    }
+
+    if (!guestPhone) {
+      window.alert("Müşteri telefonu gerekli.");
+      return;
+    }
+    window.location.href = `sms:${guestPhone}?body=${encodeURIComponent(
+      message
+    )}`;
+  }
+
+  function handlePublicPreview() {
+    window.open(
+      buildVillaPublicUrl(result.slug, checkIn, checkOut),
+      "_blank",
+      "noopener,noreferrer"
     );
   }
 
-  function handleLinkAction(action: string) {
-    if (action === "Teklif Linki") {
-      const url = buildVillaPublicUrl(result.slug, checkIn, checkOut);
-      void navigator.clipboard.writeText(url).then(
-        () => window.alert("Teklif linki panoya kopyalandı."),
-        () => window.alert(url)
-      );
-      return;
-    }
-
-    const url = buildVillaPublicUrl(result.slug, checkIn, checkOut);
-    window.open(url, "_blank", "noopener,noreferrer");
+  function handleCopyLink() {
+    const url =
+      linkType === "DETAILED"
+        ? buildVillaPublicUrl(result.slug, checkIn, checkOut)
+        : buildVillaPublicUrl(result.slug, "", "");
+    void navigator.clipboard.writeText(url).then(
+      () => window.alert("Villa bağlantısı panoya kopyalandı."),
+      () => window.alert(url)
+    );
   }
 
   const firstMonth = result.calendarMonths[0];
@@ -253,7 +265,7 @@ export default function AvailabilityResultCard({
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="grid gap-0 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className="grid gap-0 xl:grid-cols-[minmax(15rem,0.72fr)_minmax(14rem,0.65fr)_minmax(34rem,2fr)]">
         <div className="border-b border-gray-100 p-4 xl:border-b-0 xl:border-r">
           <div className="flex gap-4">
             <div className="relative">
@@ -315,9 +327,9 @@ export default function AvailabilityResultCard({
                   <Users className="h-3.5 w-3.5 text-gray-400" />
                   {result.guests}
                   {result.extraCapacity > 0 ? `+${result.extraCapacity}` : ""} kişi
-                  {(adults > 0 || children > 0 || babies > 0) && (
+                  {(adults > 0 || childGuests > 0 || babies > 0) && (
                     <span className="text-gray-400">
-                      (arama: {adults}+{children}+{babies})
+                      (arama: {adults}+{childGuests}+{babies})
                     </span>
                   )}
                 </span>
@@ -419,50 +431,34 @@ export default function AvailabilityResultCard({
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <details className="group relative">
-              <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700">
-                <span className="inline-flex items-center gap-1.5">
-                  <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
-                  WhatsApp
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
-              </summary>
-              <div className="absolute left-0 z-10 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-                {["Gruba Gönder", "Kişiye Gönder"].map((action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    onClick={() => handleWhatsAppAction(action)}
-                    className="block w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
-                  >
-                    {action}
-                  </button>
-                ))}
-              </div>
-            </details>
-
-            <details className="group relative">
-              <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700">
-                <span className="inline-flex items-center gap-1.5">
-                  <Link2 className="h-3.5 w-3.5 text-sky-600" />
-                  Link Gönder
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
-              </summary>
-              <div className="absolute left-0 z-10 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-                {["Teklif Linki", "Önizleme"].map((action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    onClick={() => handleLinkAction(action)}
-                    className="block w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50"
-                  >
-                    {action}
-                  </button>
-                ))}
-              </div>
-            </details>
+          <div className="mt-3 space-y-2">
+            <select
+              value={deliveryMethod}
+              onChange={(event) =>
+                setDeliveryMethod(
+                  event.target.value as "WHATSAPP" | "EMAIL" | "SMS"
+                )
+              }
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 outline-none focus:border-violet-300"
+              aria-label="Gönderim kanalı"
+            >
+              <option value="WHATSAPP">WhatsApp</option>
+              <option value="EMAIL">E-posta</option>
+              <option value="SMS">SMS</option>
+            </select>
+            <select
+              value={linkType}
+              onChange={(event) =>
+                setLinkType(event.target.value as "DETAILED" | "VILLA_ONLY")
+              }
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 outline-none focus:border-violet-300"
+              aria-label="Gönderilecek bağlantı türü"
+            >
+              <option value="DETAILED">
+                Tarih ve fiyat detaylı link gönder
+              </option>
+              <option value="VILLA_ONLY">Sadece villa linki gönder</option>
+            </select>
           </div>
 
           <button
@@ -473,6 +469,22 @@ export default function AvailabilityResultCard({
             <Send className="h-4 w-4" />
             Bilgi Gönder
           </button>
+          <div className="mt-2 flex justify-center gap-3 text-[11px]">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="font-medium text-gray-500 hover:text-violet-700"
+            >
+              Linki kopyala
+            </button>
+            <button
+              type="button"
+              onClick={handlePublicPreview}
+              className="font-medium text-gray-500 hover:text-violet-700"
+            >
+              Önizle
+            </button>
+          </div>
         </div>
 
         <div className="p-4">

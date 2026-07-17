@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, MapPin, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import type { RegionTreeNode } from "@/lib/regions-tree";
 
 function filterRegionTree(
@@ -152,55 +152,54 @@ export default function RegionTreePanel({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
-        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-900">
-          <MapPin className="h-3.5 w-3.5 text-sky-600" />
-          Bölge
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-gray-500">{summary}</span>
+    <details className="group relative">
+      <summary className="flex h-9 cursor-pointer list-none items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:ring-2 focus:ring-sky-100">
+        <span className={selectedSlugs.length > 0 ? "font-semibold text-sky-700" : ""}>
+          {selectedSlugs.length > 0 ? summary : "Bölge seçin..."}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 text-gray-400 transition group-open:rotate-180" />
+      </summary>
+      <div className="absolute left-0 top-full z-30 mt-1 w-full min-w-72 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+        <div className="flex items-center gap-1.5 border-b border-gray-100 p-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50/80 px-2 py-1.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Bölge ara..."
+              className="min-w-0 flex-1 bg-transparent text-xs text-gray-900 outline-none placeholder:text-gray-400"
+            />
+          </div>
           {selectedSlugs.length > 0 ? (
             <button
               type="button"
               onClick={() => onChange([])}
-              className="text-[11px] font-medium text-sky-600 hover:text-sky-700"
+              className="shrink-0 px-1 text-[11px] font-medium text-sky-600 hover:text-sky-700"
             >
               Temizle
             </button>
           ) : null}
         </div>
-      </div>
-      <div className="border-b border-gray-100 px-2 py-1.5">
-        <div className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50/80 px-2 py-1.5">
-          <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Bölge ara..."
-            className="min-w-0 flex-1 bg-transparent text-xs text-gray-900 outline-none placeholder:text-gray-400"
-          />
+        <div className="max-h-64 overflow-y-auto py-1">
+          {filteredTree.length > 0 ? (
+            filteredTree.map((node) => (
+              <RegionTreeRow
+                key={node.id}
+                node={node}
+                depth={0}
+                expanded={visibleExpanded}
+                selectedSlugs={selectedSlugs}
+                onToggleExpand={toggleExpanded}
+                onToggleSelect={toggleSelect}
+              />
+            ))
+          ) : (
+            <p className="px-3 py-4 text-center text-xs text-gray-400">
+              {search.trim() ? "Eşleşen bölge yok." : "Bölge bulunamadı."}
+            </p>
+          )}
         </div>
       </div>
-      <div className="max-h-36 overflow-y-auto py-0.5">
-        {filteredTree.length > 0 ? (
-          filteredTree.map((node) => (
-            <RegionTreeRow
-              key={node.id}
-              node={node}
-              depth={0}
-              expanded={visibleExpanded}
-              selectedSlugs={selectedSlugs}
-              onToggleExpand={toggleExpanded}
-              onToggleSelect={toggleSelect}
-            />
-          ))
-        ) : (
-          <p className="px-3 py-4 text-center text-xs text-gray-400">
-            {search.trim() ? "Eşleşen bölge yok." : "Bölge bulunamadı."}
-          </p>
-        )}
-      </div>
-    </div>
+    </details>
   );
 }

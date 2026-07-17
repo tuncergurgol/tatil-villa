@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Copy,
   ExternalLink,
+  Info,
   Loader2,
   Search,
   Square,
@@ -33,7 +34,7 @@ import { countNightsBetween } from "@/lib/villa-period-selection";
 import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 
-const NIGHT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 10, 14, 21, 28] as const;
+const NIGHT_OPTIONS = Array.from({ length: 30 }, (_, index) => index + 1);
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm font-medium text-gray-900 outline-none transition focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100";
@@ -113,6 +114,8 @@ export default function AvailabilitySearchPage({
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [babies, setBabies] = useState(0);
+  const [budgetMin, setBudgetMin] = useState("");
+  const [budgetMax, setBudgetMax] = useState("");
   const [regionSlugs, setRegionSlugs] = useState<string[]>([]);
   const [amenityNames, setAmenityNames] = useState<string[]>([]);
   const [guestCounts, setGuestCounts] = useState<number[]>([]);
@@ -148,29 +151,14 @@ export default function AvailabilitySearchPage({
   );
 
   useEffect(() => {
-    const nights = countNightsBetween(checkIn, checkOut);
-    if (nights > 0 && nights !== nightCount) {
-      setNightCount(nights);
-    }
-  }, [checkIn, checkOut, nightCount]);
+    if (!isPending) return;
 
-  useEffect(() => {
-    if (!isPending) {
-      setProgress(hasSearched ? 100 : 0);
-      return;
-    }
-
-    setProgress(12);
     const timer = window.setInterval(() => {
       setProgress((value) => (value >= 92 ? value : value + 8));
     }, 180);
 
     return () => window.clearInterval(timer);
-  }, [hasSearched, isPending]);
-
-  useEffect(() => {
-    setResults((prev) => (prev.length === 0 ? prev : sortResults(prev, sort)));
-  }, [sort]);
+  }, [isPending]);
 
   async function handlePhoneLookup(rawPhone: string) {
     const digits = normalizeTurkishPhoneDigits(rawPhone);
@@ -223,6 +211,7 @@ export default function AvailabilitySearchPage({
     if (!validateForm()) return;
 
     setHasSearched(true);
+    setProgress(12);
     setSelectedIds([]);
 
     startTransition(async () => {
@@ -236,6 +225,8 @@ export default function AvailabilitySearchPage({
         adults,
         children,
         babies,
+        budgetMin: Number(budgetMin) > 0 ? Number(budgetMin) : null,
+        budgetMax: Number(budgetMax) > 0 ? Number(budgetMax) : null,
         regionSlugs,
         amenityNames,
         guestCounts,
@@ -247,12 +238,19 @@ export default function AvailabilitySearchPage({
       if (response.error) {
         setError(response.error);
         setResults([]);
+        setProgress(100);
         return;
       }
 
       setResults(sortResults(response.results ?? [], sort));
+      setProgress(100);
       if (autoCollapse) setPanelOpen(false);
     });
+  }
+
+  function handleSortChange(nextSort: AvailabilitySearchSort) {
+    setSort(nextSort);
+    setResults((current) => sortResults(current, nextSort));
   }
 
   function toggleSelect(villaId: string, nextSelected: boolean) {
@@ -297,7 +295,16 @@ export default function AvailabilitySearchPage({
   return (
     <div className="flex min-h-[calc(100vh-4rem)] w-full flex-col gap-3">
       <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 px-3 py-2">
+          <div className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-900">
+            <Search className="h-4 w-4 text-gray-500" />
+            Uygunluk Ara
+          </div>
+          <p className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-[11px] text-gray-500">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            Tüm bilgileri doğru girdiğinizden emin olun. Aramalar yol ve
+            istatistikler için loglanır.
+          </p>
           <button
             type="button"
             onClick={() => setAutoCollapse((value) => !value)}
@@ -340,30 +347,27 @@ export default function AvailabilitySearchPage({
 
         {panelOpen ? (
           <div className="space-y-3 p-3">
-            <p className="text-[11px] text-gray-500">
-              Müşteri bilgisi filtrelemeye dahil edilmez; yalnızca teklif / iletişim
-              metinlerinde kullanılır.
-            </p>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-12">
+              <div className="xl:col-span-3">
+                <TurkishPhoneField
+                  label="Telefon *"
+                  value={phone}
+                  onChange={setPhone}
+                  onBlur={handlePhoneLookup}
+                  focusPalette="violet"
+                  compact
+                  error={fieldErrors.phone}
+                  suffix={
+                    isLookingUpPhone ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />
+                    ) : null
+                  }
+                />
+              </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <TurkishPhoneField
-                label="Telefon No *"
-                value={phone}
-                onChange={setPhone}
-                onBlur={handlePhoneLookup}
-                focusPalette="violet"
-                compact
-                error={fieldErrors.phone}
-                suffix={
-                  isLookingUpPhone ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />
-                  ) : null
-                }
-              />
-
-              <label className="block">
+              <label className="block xl:col-span-3">
                 <span className={labelClass}>
-                  Adı Soyadı <span className="text-red-500">*</span>
+                  Ad Soyad <span className="text-red-500">*</span>
                 </span>
                 <input
                   value={guestName}
@@ -376,7 +380,7 @@ export default function AvailabilitySearchPage({
                 ) : null}
               </label>
 
-              <label className="block">
+              <label className="block xl:col-span-4">
                 <span className={labelClass}>E-posta</span>
                 <input
                   type="email"
@@ -387,9 +391,9 @@ export default function AvailabilitySearchPage({
                 />
               </label>
 
-              <label className="block">
+              <label className="block xl:col-span-2">
                 <span className={labelClass}>
-                  Ulaşım Kanalı <span className="text-red-500">*</span>
+                  Kanal <span className="text-red-500">*</span>
                 </span>
                 <select
                   value={contactChannelId}
@@ -411,9 +415,11 @@ export default function AvailabilitySearchPage({
               </label>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
-              <label className="col-span-2 block">
-                <span className={labelClass}>Giriş – Çıkış</span>
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-12">
+              <label className="col-span-2 block lg:col-span-6">
+                <span className={`${labelClass} font-bold text-sky-600`}>
+                  <span className="text-amber-500">*</span> TARİH
+                </span>
                 <StayDateRangePicker
                   checkIn={checkIn}
                   checkOut={checkOut}
@@ -424,8 +430,8 @@ export default function AvailabilitySearchPage({
                 ) : null}
               </label>
 
-              <label className="block">
-                <span className={labelClass}>Gece</span>
+              <label className="block lg:col-span-1">
+                <span className={labelClass}>Gece Sayısı</span>
                 <select
                   value={nightCount}
                   onChange={(event) =>
@@ -435,13 +441,39 @@ export default function AvailabilitySearchPage({
                 >
                   {NIGHT_OPTIONS.map((nights) => (
                     <option key={nights} value={nights}>
-                      {nights}
+                      {nights} Gece
                     </option>
                   ))}
                 </select>
               </label>
 
-              <label className="block">
+              <label className="block lg:col-span-1">
+                <span className={labelClass}>Bütçe Alt</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={budgetMin}
+                  onChange={(event) => setBudgetMin(event.target.value)}
+                  placeholder="₺ 0"
+                  className={compactInputClass}
+                />
+              </label>
+
+              <label className="block lg:col-span-1">
+                <span className={labelClass}>Bütçe Üst</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={budgetMax}
+                  onChange={(event) => setBudgetMax(event.target.value)}
+                  placeholder="₺ Sınırsız"
+                  className={compactInputClass}
+                />
+              </label>
+
+              <label className="block lg:col-span-1">
                 <span className={labelClass}>Yetişkin</span>
                 <input
                   type="number"
@@ -452,8 +484,8 @@ export default function AvailabilitySearchPage({
                 />
               </label>
 
-              <label className="block">
-                <span className={labelClass}>Çocuk (3-12)</span>
+              <label className="block lg:col-span-1">
+                <span className={labelClass}>Çocuk (3-12 yaş)</span>
                 <input
                   type="number"
                   min={0}
@@ -465,8 +497,8 @@ export default function AvailabilitySearchPage({
                 />
               </label>
 
-              <label className="block">
-                <span className={labelClass}>Bebek (0-2)</span>
+              <label className="block lg:col-span-1">
+                <span className={labelClass}>Bebek (0-2 yaş)</span>
                 <input
                   type="number"
                   min={0}
@@ -478,20 +510,29 @@ export default function AvailabilitySearchPage({
             </div>
 
             <div className="grid gap-2 xl:grid-cols-3">
-              <RegionTreePanel
-                tree={pageData.regionTree}
-                selectedSlugs={regionSlugs}
-                onChange={setRegionSlugs}
-              />
-              <AmenityMultiSelect
-                options={pageData.amenities}
-                selectedNames={amenityNames}
-                onChange={setAmenityNames}
-              />
-              <GuestCountMultiSelect
-                selectedCounts={guestCounts}
-                onChange={setGuestCounts}
-              />
+              <div>
+                <div className={`${labelClass} mb-1`}>Bölge</div>
+                <RegionTreePanel
+                  tree={pageData.regionTree}
+                  selectedSlugs={regionSlugs}
+                  onChange={setRegionSlugs}
+                />
+              </div>
+              <div>
+                <div className={`${labelClass} mb-1`}>Özellik</div>
+                <AmenityMultiSelect
+                  options={pageData.amenities}
+                  selectedNames={amenityNames}
+                  onChange={setAmenityNames}
+                />
+              </div>
+              <div>
+                <div className={`${labelClass} mb-1`}>Kişi</div>
+                <GuestCountMultiSelect
+                  selectedCounts={guestCounts}
+                  onChange={setGuestCounts}
+                />
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
@@ -528,7 +569,7 @@ export default function AvailabilitySearchPage({
                   <button
                     key={item.value}
                     type="button"
-                    onClick={() => setSort(item.value)}
+                    onClick={() => handleSortChange(item.value)}
                     className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
                       sort === item.value
                         ? "bg-white text-violet-700 shadow-sm"
@@ -614,13 +655,24 @@ export default function AvailabilitySearchPage({
 
       <section className="flex min-h-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-gray-500">
-            {hasSearched
-              ? `${results.length} villa bulundu`
-              : "Arama yapmak için formu doldurun ve Ara'ya tıklayın."}
-          </p>
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">
+              {hasSearched
+                ? `Arama Sonuçları (${results.length} villa)`
+                : "Uygunluk Sonuçları"}
+            </h2>
+            <p className="mt-0.5 text-[11px] text-gray-500">
+              {hasSearched
+                ? `${results.length} villa gösteriliyor`
+                : "Arama yapmak için formu doldurun ve Ara'ya tıklayın."}
+            </p>
+          </div>
           {hasSearched ? (
-            <div className="min-w-[160px]">
+            <div className="min-w-[180px]">
+              <div className="mb-1 flex justify-between text-[10px] text-gray-400">
+                <span>{results.length} sonuç</span>
+                <span>%{progress}</span>
+              </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-violet-500 to-sky-500 transition-all duration-300"
@@ -660,8 +712,9 @@ export default function AvailabilitySearchPage({
                 onToggleSelect={toggleSelect}
                 guestPhone={`+90${normalizeTurkishPhoneDigits(phone)}`}
                 guestName={guestName.trim()}
+                guestEmail={guestEmail.trim()}
                 adults={adults}
-                children={children}
+                  childGuests={children}
                 babies={babies}
               />
             ))}
