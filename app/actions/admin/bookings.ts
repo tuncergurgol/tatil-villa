@@ -457,6 +457,8 @@ export async function getBookingPeriodFeesAction(
       poolHeatingIndoorFee: null,
       poolHeatingKidsFee: null,
       underfloorHeatingFee: null,
+      damageDeposit: null,
+      petDamageDeposit: null,
     };
   }
   return resolveBookingPeriodFees(
@@ -488,9 +490,17 @@ export async function updateBookingDetailAction(
   try {
     const existing = await prisma.booking.findUnique({
       where: { id: parsed.data.id },
-      select: { details: true },
+      select: { details: true, villaId: true },
     });
+    if (!existing) {
+      return { error: "Rezervasyon bulunamadı" };
+    }
+
     const existingDetails = parseBookingDetails(existing?.details);
+    const periodFees = await resolveBookingPeriodFees(
+      existing.villaId,
+      new Date(`${parsed.data.checkIn}T00:00:00.000Z`)
+    );
     const actor = await resolveActivityActor(session.user);
     const logEntries = [...normalizeActivityLogs(existingDetails.activityLogs)];
 
@@ -527,6 +537,10 @@ export async function updateBookingDetailAction(
 
     const mergedDetails: BookingDetails = {
       ...details,
+      // Depozitolar her kayıtta giriş tarihinin bağlı olduğu periyottan alınır.
+      damageDeposit: periodFees.damageDeposit,
+      petDamageDeposit:
+        parsed.data.pets > 0 ? periodFees.petDamageDeposit : null,
       confirmationSends:
         details.confirmationSends ?? existingDetails.confirmationSends,
       ownerPayments: details.ownerPayments ?? existingDetails.ownerPayments,

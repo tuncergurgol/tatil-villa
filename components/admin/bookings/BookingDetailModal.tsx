@@ -476,6 +476,9 @@ export default function BookingDetailModal({
           setDetails((current) => ({
             ...current,
             ...mergePeriodFeesIntoDetails(current, periodFees),
+            damageDeposit: periodFees.damageDeposit,
+            petDamageDeposit:
+              pets > 0 ? periodFees.petDamageDeposit : null,
           }));
         }
       })
@@ -484,7 +487,7 @@ export default function BookingDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [booking?.villa.id, checkIn, isEntryEditing]);
+  }, [booking?.villa.id, checkIn, isEntryEditing, pets]);
 
   const netPrice = useMemo(() => computeNetPrice(details), [details]);
   const balance = useMemo(
@@ -1449,27 +1452,17 @@ export default function BookingDetailModal({
 
               <FormSection title="Hasar Depozitosu">
                 <FormRow label="Hasar Depozitosu">
-                  <input
-                    value={formatFeeInputValue(details.damageDeposit)}
-                    onChange={(event) =>
-                      patchDetails({
-                        damageDeposit: parseNumber(event.target.value),
-                      })
-                    }
-                    className={bookingInputClass}
+                  <ReadonlyField
+                    value={formatMoneyPlain(details.damageDeposit ?? 0)}
                   />
                 </FormRow>
-                <FormRow label="Evcil Hayvan Depozitosu">
-                  <input
-                    value={formatFeeInputValue(details.petDamageDeposit)}
-                    onChange={(event) =>
-                      patchDetails({
-                        petDamageDeposit: parseNumber(event.target.value),
-                      })
-                    }
-                    className={bookingInputClass}
-                  />
-                </FormRow>
+                {(details.petDamageDeposit ?? 0) > 0 ? (
+                  <FormRow label="Evcil Hayvan Depozitosu">
+                    <ReadonlyField
+                      value={formatMoneyPlain(details.petDamageDeposit ?? 0)}
+                    />
+                  </FormRow>
+                ) : null}
                 <FormRow label="Toplam Depozito">
                   <ReadonlyField
                     value={formatMoneyPlain(

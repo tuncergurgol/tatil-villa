@@ -7,7 +7,10 @@ import {
 
 const DEFAULT_PREPAYMENT_RATE = 20;
 
-export type BookingPeriodFees = Record<BookingExtraFeeFieldKey, number | null>;
+export type BookingPeriodFees = Record<BookingExtraFeeFieldKey, number | null> & {
+  damageDeposit: number | null;
+  petDamageDeposit: number | null;
+};
 
 export async function resolveBookingPrepaymentRate(
   villaId: string,
@@ -81,5 +84,7 @@ export async function resolveBookingPeriodFees(
     poolHeatingIndoorFee: fees.poolHeatingIndoorFee,
     poolHeatingKidsFee: fees.poolHeatingKidsFee,
     underfloorHeatingFee: fees.underfloorHeatingFee,
+    damageDeposit: fees.damageDeposit,
+    petDamageDeposit: fees.petDamageDeposit,
   };
 }
