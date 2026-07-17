@@ -9,6 +9,12 @@ tatildeyiz.com.tr            -> 185.184.210.96   # www yönlendirmesi için (Pag
 www.balayivillacisi.com    -> 185.184.210.96   # Site 2
 balayivillacisi.com        -> 185.184.210.96   # www yönlendirmesi
 
+# Zone: tatilvillacisi.com
+# NOT: Eski A/AAAA kayitlari baska bir hosting'e (Plesk) bakiyordu; 185.184.210.96'ya cevrildi.
+# AAAA (IPv6) kayitlari silinmeli; sunucuda IPv6 origin yok.
+www.tatilvillacisi.com     -> 185.184.210.96   # Site 3
+tatilvillacisi.com         -> 185.184.210.96   # www yönlendirmesi
+
 # Cloudflare SSL/TLS
 # - Başlangıç: Full
 # - Origin sertifikası kurulunca: Full (strict)
