@@ -5,15 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  FileSpreadsheet,
+  Pencil,
   Plus,
   Save,
   Trash2,
+  WandSparkles,
 } from "lucide-react";
 import {
   deleteVillaPricePeriod,
   updateVillaPricePeriod,
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
+import VillaPeriodExcelImportModal from "@/components/admin/villas/periods/VillaPeriodExcelImportModal";
 import type { VillaAdminRoute } from "@/lib/villa-admin-path";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
@@ -62,8 +66,30 @@ type PeriodRowState = {
   discount1Rate: string;
   discount2Rate: string;
   extraDiscountAmount: string;
+  weekendPrice: string;
+  weekendDays: string;
+  weekendMinStayNights: string;
   dirty: boolean;
 };
+
+type BulkEditField =
+  | "commissionRate"
+  | "prepaymentRate"
+  | "nightlyPrice"
+  | "minStayNights"
+  | "cleaningDayCount"
+  | "cleaningFee"
+  | "damageDeposit";
+
+const BULK_EDIT_OPTIONS: { value: BulkEditField; label: string }[] = [
+  { value: "commissionRate", label: "Komisyon %" },
+  { value: "prepaymentRate", label: "Ön Ödeme %" },
+  { value: "nightlyPrice", label: "Gecelik Fiyat" },
+  { value: "minStayNights", label: "Minimum Gece" },
+  { value: "cleaningDayCount", label: "Temizlik Gün Sayısı" },
+  { value: "cleaningFee", label: "Temizlik Bedeli" },
+  { value: "damageDeposit", label: "Hasar Depozitosu" },
+];
 
 const cellInputClass =
   "w-full min-w-0 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100";
@@ -114,11 +140,20 @@ function periodToRow(period: VillaPricePeriodItem): PeriodRowState {
     discount2Rate:
       period.discount2Rate != null ? String(period.discount2Rate) : "",
     extraDiscountAmount: formatAmountInput(period.extraDiscountAmount),
+    weekendPrice: formatAmountInput(period.weekendPrice),
+    weekendDays: period.weekendDays.join(","),
+    weekendMinStayNights:
+      period.weekendMinStayNights != null
+        ? String(period.weekendMinStayNights)
+        : "",
     dirty: false,
   };
 }
 
-function buildPeriodFormData(row: PeriodRowState): FormData {
+function buildPeriodFormData(
+  row: PeriodRowState,
+  sourcePeriod?: VillaPricePeriodItem
+): FormData {
   const commissionRate = Number(row.commissionRate) || 0;
   const synced = syncPeriodPrices({
     source: "commissioned",
@@ -147,24 +182,69 @@ function buildPeriodFormData(row: PeriodRowState): FormData {
   formData.set("cleaningFeeCurrency", row.nightlyPriceCurrency);
   formData.set("damageDeposit", row.damageDeposit || "");
   formData.set("damageDepositCurrency", row.nightlyPriceCurrency);
-  formData.set("petCleaningFee", "");
-  formData.set("petCleaningFeeCurrency", row.nightlyPriceCurrency);
-  formData.set("petDamageDeposit", "");
-  formData.set("petDamageDepositCurrency", row.nightlyPriceCurrency);
-  formData.set("underfloorHeatingFee", "");
-  formData.set("underfloorHeatingFeeCurrency", row.nightlyPriceCurrency);
-  formData.set("extraBedFee", "");
-  formData.set("extraBedFeeCurrency", row.nightlyPriceCurrency);
+  formData.set("petCleaningFee", String(sourcePeriod?.petCleaningFee ?? ""));
+  formData.set(
+    "petCleaningFeeCurrency",
+    sourcePeriod?.petCleaningFeeCurrency ?? row.nightlyPriceCurrency
+  );
+  formData.set("petDamageDeposit", String(sourcePeriod?.petDamageDeposit ?? ""));
+  formData.set(
+    "petDamageDepositCurrency",
+    sourcePeriod?.petDamageDepositCurrency ?? row.nightlyPriceCurrency
+  );
+  formData.set(
+    "underfloorHeatingFee",
+    String(sourcePeriod?.underfloorHeatingFee ?? "")
+  );
+  formData.set(
+    "underfloorHeatingFeeCurrency",
+    sourcePeriod?.underfloorHeatingFeeCurrency ?? row.nightlyPriceCurrency
+  );
+  formData.set("extraBedFee", String(sourcePeriod?.extraBedFee ?? ""));
+  formData.set(
+    "extraBedFeeCurrency",
+    sourcePeriod?.extraBedFeeCurrency ?? row.nightlyPriceCurrency
+  );
+  formData.set(
+    "poolHeatingPrivateFee",
+    String(sourcePeriod?.poolHeatingPrivateFee ?? "")
+  );
+  formData.set(
+    "poolHeatingPrivateFeeCurrency",
+    sourcePeriod?.poolHeatingPrivateFeeCurrency ?? row.nightlyPriceCurrency
+  );
+  formData.set(
+    "poolHeatingIndoorFee",
+    String(sourcePeriod?.poolHeatingIndoorFee ?? "")
+  );
+  formData.set(
+    "poolHeatingIndoorFeeCurrency",
+    sourcePeriod?.poolHeatingIndoorFeeCurrency ?? row.nightlyPriceCurrency
+  );
+  formData.set(
+    "poolHeatingKidsFee",
+    String(sourcePeriod?.poolHeatingKidsFee ?? "")
+  );
+  formData.set(
+    "poolHeatingKidsFeeCurrency",
+    sourcePeriod?.poolHeatingKidsFeeCurrency ?? row.nightlyPriceCurrency
+  );
   formData.set("discount1Rate", row.discount1Rate || "");
   formData.set("discount2Rate", row.discount2Rate || "");
   formData.set("extraDiscountAmount", row.extraDiscountAmount || "");
-  formData.set("weekendPrice", "");
-  formData.set("weekendDays", "");
-  formData.set("weekendMinStayNights", "");
-  formData.set("childFee02", "");
-  formData.set("childFee02Currency", row.nightlyPriceCurrency);
-  formData.set("childFee03_09", "");
-  formData.set("childFee03_09Currency", row.nightlyPriceCurrency);
+  formData.set("weekendPrice", row.weekendPrice || "");
+  formData.set("weekendDays", row.weekendDays || "");
+  formData.set("weekendMinStayNights", row.weekendMinStayNights || "");
+  formData.set("childFee02", String(sourcePeriod?.childFee02 ?? ""));
+  formData.set(
+    "childFee02Currency",
+    sourcePeriod?.childFee02Currency ?? row.nightlyPriceCurrency
+  );
+  formData.set("childFee03_09", String(sourcePeriod?.childFee03_09 ?? ""));
+  formData.set(
+    "childFee03_09Currency",
+    sourcePeriod?.childFee03_09Currency ?? row.nightlyPriceCurrency
+  );
   return formData;
 }
 
@@ -218,6 +298,10 @@ export default function VillaHizliFiyatPage({
   );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [modalOpen, setModalOpen] = useState(false);
+  const [excelImportOpen, setExcelImportOpen] = useState(false);
+  const [bulkField, setBulkField] =
+    useState<BulkEditField>("commissionRate");
+  const [bulkValue, setBulkValue] = useState("");
   const [editingPeriod, setEditingPeriod] = useState<VillaPricePeriodItem | null>(
     null
   );
@@ -225,6 +309,8 @@ export default function VillaHizliFiyatPage({
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    // Sunucudan yenilenen veriyi yerel toplu düzenleme tablosuna aktar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(periods.map(periodToRow));
     setSelectedIds(new Set());
   }, [periods]);
@@ -280,7 +366,10 @@ export default function VillaHizliFiyatPage({
         const result = await updateVillaPricePeriod(
           villa.id,
           row.id,
-          buildPeriodFormData(row)
+          buildPeriodFormData(
+            row,
+            periods.find((period) => period.id === row.id)
+          )
         );
         if (result.error) {
           setError(result.error);
@@ -308,6 +397,84 @@ export default function VillaHizliFiyatPage({
       setSelectedIds(new Set());
       router.refresh();
     });
+  }
+
+  function handleApplyBulkEdit() {
+    if (selectedIds.size === 0) {
+      setError("Hızlı düzenleme için en az bir periyot seçin.");
+      return;
+    }
+    if (!bulkValue.trim()) {
+      setError("Uygulanacak değeri girin.");
+      return;
+    }
+
+    const sanitizedValue =
+      bulkField === "nightlyPrice" ||
+      bulkField === "cleaningFee" ||
+      bulkField === "damageDeposit"
+        ? sanitizeAmountInput(bulkValue)
+        : String(Math.max(0, Math.round(Number(bulkValue))));
+
+    if (
+      !sanitizedValue ||
+      !Number.isFinite(
+        bulkField === "nightlyPrice" ||
+          bulkField === "cleaningFee" ||
+          bulkField === "damageDeposit"
+          ? parseAmountInput(sanitizedValue)
+          : Number(sanitizedValue)
+      )
+    ) {
+      setError("Geçerli bir değer girin.");
+      return;
+    }
+
+    setRows((current) =>
+      current.map((row) => {
+        if (!selectedIds.has(row.id)) return row;
+        const next = {
+          ...row,
+          [bulkField]: sanitizedValue,
+          dirty: true,
+        };
+        return bulkField === "commissionRate" || bulkField === "nightlyPrice"
+          ? recalcRowPrices(next)
+          : next;
+      })
+    );
+    setBulkValue("");
+    setError(null);
+  }
+
+  function handleApplyWeekendPrice() {
+    if (selectedIds.size === 0) {
+      setError("Haftasonu fiyatı için en az bir periyot seçin.");
+      return;
+    }
+    const rawPrice = window.prompt(
+      `${selectedIds.size} periyoda uygulanacak haftasonu gecelik fiyatını girin:`
+    );
+    if (rawPrice == null) return;
+    const weekendPrice = sanitizeAmountInput(rawPrice);
+    if (!weekendPrice || parseAmountInput(weekendPrice) == null) {
+      setError("Geçerli bir haftasonu fiyatı girin.");
+      return;
+    }
+
+    setRows((current) =>
+      current.map((row) =>
+        selectedIds.has(row.id)
+          ? {
+              ...row,
+              weekendPrice,
+              weekendDays: row.weekendDays || "5,6",
+              dirty: true,
+            }
+          : row
+      )
+    );
+    setError(null);
   }
 
   function handleDeleteRow(id: string) {
@@ -366,6 +533,14 @@ export default function VillaHizliFiyatPage({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={() => setExcelImportOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel&apos;den İçeri Al
+            </button>
+            <button
+              type="button"
               onClick={() => openAdvancedModal()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             >
@@ -411,7 +586,7 @@ export default function VillaHizliFiyatPage({
 
       <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleDeleteSelected}
@@ -420,14 +595,61 @@ export default function VillaHizliFiyatPage({
             >
               Seçilenleri Sil ({selectedIds.size})
             </button>
+
+            <div className="h-6 w-px bg-gray-200" />
+
+            <select
+              value={bulkField}
+              onChange={(event) =>
+                setBulkField(event.target.value as BulkEditField)
+              }
+              className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-xs font-medium text-gray-700 outline-none focus:border-violet-300"
+              aria-label="Hızlı düzenleme alanı"
+            >
+              {BULK_EDIT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={bulkValue}
+              onChange={(event) => setBulkValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleApplyBulkEdit();
+              }}
+              placeholder="Değer"
+              className="h-8 w-24 rounded-lg border border-gray-200 px-2 text-xs outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+            />
+            <button
+              type="button"
+              onClick={handleApplyBulkEdit}
+              disabled={selectedIds.size === 0}
+              className="inline-flex h-8 items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 disabled:opacity-50"
+            >
+              <WandSparkles className="h-3.5 w-3.5" />
+              Seçilene Uygula ({selectedIds.size})
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => openAdvancedModal()}
-            className="text-sm font-semibold text-violet-700 hover:text-violet-800"
-          >
-            + Yeni Periyot Ekle
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleApplyWeekendPrice}
+              disabled={selectedIds.size === 0}
+              className="h-8 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+            >
+              Haftasonu Fiyatı Gir ({selectedIds.size})
+            </button>
+            <button
+              type="button"
+              onClick={() => openAdvancedModal()}
+              className="h-8 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white transition hover:bg-violet-700"
+            >
+              + Yeni Periyot Ekle
+            </button>
+          </div>
         </div>
 
         <div className="h-[calc(100%-3.25rem)] overflow-auto">
@@ -666,7 +888,10 @@ export default function VillaHizliFiyatPage({
                             className="rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                             title="Gelişmiş düzenle"
                           >
-                            +
+                            <span className="inline-flex items-center gap-1">
+                              <Pencil className="h-3 w-3" />
+                              Hızlı Düzenle
+                            </span>
                           </button>
                           <button
                             type="button"
@@ -699,6 +924,18 @@ export default function VillaHizliFiyatPage({
         onSaved={() => {
           setModalOpen(false);
           setEditingPeriod(null);
+          router.refresh();
+        }}
+      />
+
+      <VillaPeriodExcelImportModal
+        open={excelImportOpen}
+        villaId={villa.id}
+        onClose={() => setExcelImportOpen(false)}
+        onImported={(count) => {
+          setExcelImportOpen(false);
+          setError(null);
+          window.alert(`${count} periyot Excel'den içeri aktarıldı.`);
           router.refresh();
         }}
       />

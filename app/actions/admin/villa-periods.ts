@@ -32,6 +32,26 @@ export type VillaPeriodActionState = {
   error?: string;
 };
 
+export type VillaPeriodExcelImportRow = {
+  startDate: string;
+  endDate: string;
+  nightlyPrice: number;
+  nightlyPriceCurrency?: "TL" | "EUR" | "USD" | "GBP";
+  prepaymentRate?: number | null;
+  commissionRate?: number | null;
+  minStayNights?: number | null;
+  cleaningDayCount?: number | null;
+  cleaningFee?: number | null;
+  damageDeposit?: number | null;
+  weekendPrice?: number | null;
+  weekendDays?: number[];
+  weekendMinStayNights?: number | null;
+};
+
+export type VillaPeriodExcelImportResult = VillaPeriodActionState & {
+  importedCount?: number;
+};
+
 const optionalRateSchema = z
   .union([z.string(), z.number(), z.null()])
   .optional()
@@ -567,6 +587,129 @@ export async function createVillaPricePeriod(
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Periyot oluşturulamadı",
+    };
+  }
+}
+
+export async function importVillaPricePeriodsFromExcel(
+  villaId: string,
+  rows: VillaPeriodExcelImportRow[]
+): Promise<VillaPeriodExcelImportResult> {
+  await requireAdmin();
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { error: "Excel dosyasında aktarılacak periyot bulunamadı" };
+  }
+  if (rows.length > 500) {
+    return { error: "Tek seferde en fazla 500 periyot aktarabilirsiniz" };
+  }
+
+  const parsedRows: z.infer<typeof periodSchema>[] = [];
+  for (const [index, row] of rows.entries()) {
+    const currency = parseCurrency(row.nightlyPriceCurrency ?? "TL");
+    const parsed = periodSchema.safeParse({
+      startDate: row.startDate,
+      endDate: row.endDate,
+      availability: "available",
+      nightlyPrice: row.nightlyPrice,
+      nightlyPriceCurrency: currency,
+      weeklyPrice: null,
+      prepaymentRate: row.prepaymentRate ?? null,
+      commissionRate: row.commissionRate ?? null,
+      nightlyPriceWithoutCommission: null,
+      minStayNights: row.minStayNights ?? null,
+      cleaningDayCount: row.cleaningDayCount ?? null,
+      cleaningFee: row.cleaningFee ?? null,
+      cleaningFeeCurrency: currency,
+      damageDeposit: row.damageDeposit ?? null,
+      damageDepositCurrency: currency,
+      petCleaningFee: null,
+      petCleaningFeeCurrency: currency,
+      petDamageDeposit: null,
+      petDamageDepositCurrency: currency,
+      underfloorHeatingFee: null,
+      underfloorHeatingFeeCurrency: currency,
+      extraBedFee: null,
+      extraBedFeeCurrency: currency,
+      poolHeatingPrivateFee: null,
+      poolHeatingPrivateFeeCurrency: currency,
+      poolHeatingIndoorFee: null,
+      poolHeatingIndoorFeeCurrency: currency,
+      poolHeatingKidsFee: null,
+      poolHeatingKidsFeeCurrency: currency,
+      discount1Rate: null,
+      discount2Rate: null,
+      extraDiscountAmount: null,
+      weekendPrice: row.weekendPrice ?? null,
+      weekendDays: (row.weekendDays ?? []).join(","),
+      weekendMinStayNights: row.weekendMinStayNights ?? null,
+      childFee02: null,
+      childFee02Currency: currency,
+      childFee03_09: null,
+      childFee03_09Currency: currency,
+    });
+
+    if (!parsed.success) {
+      return {
+        error: `${index + 2}. satır: ${formatPeriodFormError(parsed.error)}`,
+      };
+    }
+
+    try {
+      parsePeriodDates(parsed.data.startDate, parsed.data.endDate);
+    } catch (error) {
+      return {
+        error: `${index + 2}. satır: ${
+          error instanceof Error ? error.message : "Tarih aralığı geçersiz"
+        }`,
+      };
+    }
+    parsedRows.push(parsed.data);
+  }
+
+  try {
+    for (const parsed of parsedRows) {
+      const { startDate, endDate } = parsePeriodDates(
+        parsed.startDate,
+        parsed.endDate
+      );
+      const periodData = buildPeriodData(parsed);
+      const overlapping = await findOverlappingPeriods(
+        villaId,
+        startDate,
+        endDate
+      );
+
+      if (overlapping.length > 0) {
+        await applyVillaPriceRangeMergedEdit(
+          villaId,
+          startDate,
+          endDate,
+          periodData as VillaPeriodDayPricingSnapshot,
+          overlapping
+        );
+      } else {
+        const period = await prisma.villaPricePeriod.create({
+          data: { villaId, startDate, endDate, ...periodData },
+        });
+        await syncVillaPricePeriodDays(
+          period.id,
+          villaId,
+          startDate,
+          endDate,
+          periodData as VillaPeriodDayPricingSnapshot
+        );
+      }
+    }
+
+    await revalidatePeriodPaths(villaId);
+    return { success: true, importedCount: parsedRows.length };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Excel periyotları içeri aktarılamadı",
     };
   }
 }

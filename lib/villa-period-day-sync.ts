@@ -35,6 +35,20 @@ export async function syncVillaPricePeriodDays(
   const dateKeys = dates.map((date) => toDateKey(date));
 
   await prisma.$transaction(async (tx) => {
+    const existingDays = await tx.villaPricePeriodDay.findMany({
+      where: {
+        villaId,
+        date: { in: dbDates },
+      },
+      select: {
+        date: true,
+        occupancyStatus: true,
+      },
+    });
+    const occupancyByDate = new Map(
+      existingDays.map((day) => [toDateKey(day.date), day.occupancyStatus])
+    );
+
     await tx.villaPricePeriodDay.deleteMany({
       where: {
         villaId,
@@ -49,7 +63,9 @@ export async function syncVillaPricePeriodDays(
         const daySnapshot = buildDaySnapshotForDate(
           snapshot,
           date,
-          snapshot.occupancyStatus ?? "EMPTY"
+          occupancyByDate.get(toDateKey(date)) ??
+            snapshot.occupancyStatus ??
+            "EMPTY"
         );
 
         return {
@@ -154,6 +170,7 @@ export async function reassignPeriodDaysInRange(
       availability: dayAvailability,
       ...pricingData
     } = daySnapshot;
+    void _occupancy;
 
     if (existing) {
       await tx.villaPricePeriodDay.update({
