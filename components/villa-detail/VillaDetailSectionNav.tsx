@@ -134,7 +134,7 @@ export default function VillaDetailSectionNav({
             <a
               href="#genel-bakis"
               title={title}
-              className="flex max-w-[42%] shrink-0 items-center border-r border-slate-200 px-2.5 py-2.5 text-xs font-bold leading-snug text-slate-900 sm:max-w-[220px] sm:px-3 sm:text-sm md:max-w-[260px]"
+              className="flex max-w-[42%] shrink-0 items-center border-r border-slate-200 px-2.5 py-2.5 text-[15px] font-bold leading-snug text-slate-900 sm:max-w-[220px] sm:px-3 sm:text-[17px] md:max-w-[260px]"
             >
               <span className="line-clamp-2 sm:truncate sm:whitespace-nowrap">
                 {title}
