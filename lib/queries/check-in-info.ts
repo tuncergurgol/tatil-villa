@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import {
   BOOKING_EXTRA_FEE_FIELDS,
   computeGuestReservationTotal,
+  computeNetPrice,
   defaultDetailsFromBooking,
   formatGuestFullName,
   resolveExternalCode,
@@ -184,6 +185,8 @@ export type PublicCheckInInfoPage = {
   /** Toplam */
   accountSummaryLines: CheckInInfoPaymentLine[];
   paymentLines: CheckInInfoPaymentLine[];
+  /** Girişte alınan, rezervasyon toplamına dahil olmayan depozitolar */
+  depositLines: CheckInInfoPaymentLine[];
   ownerPaymentLines: CheckInInfoPaymentLine[];
   contactActionsEnabled: boolean;
 };
@@ -346,10 +349,47 @@ function buildAccountLines(
 ): CheckInInfoPaymentLine[] {
   const lines: CheckInInfoPaymentLine[] = [];
   const accommodation = details.grossPrice ?? 0;
+  const ownerDiscount =
+    details.ownerDiscountAmount ?? details.discountAmount ?? 0;
+  const agencyDiscount = details.agencyDiscountAmount ?? 0;
+  const agencyServiceFee = details.agencyServiceFee ?? 0;
+  const discountedAccommodation = computeNetPrice(details);
+
   if (accommodation > 0) {
     lines.push({
       label: `Konaklama (${nights} Gece)`,
       amountLabel: formatMoneyPlain(accommodation),
+    });
+  }
+
+  if (ownerDiscount > 0) {
+    lines.push({
+      label: "Ev Sahibi İndirimi",
+      amountLabel: `-${formatMoneyPlain(ownerDiscount)}`,
+    });
+  }
+
+  if (agencyDiscount > 0) {
+    lines.push({
+      label: "Acente İndirimi",
+      amountLabel: `-${formatMoneyPlain(agencyDiscount)}`,
+    });
+  }
+
+  if (agencyServiceFee > 0) {
+    lines.push({
+      label: "Acente Hizmet Bedeli",
+      amountLabel: formatMoneyPlain(agencyServiceFee),
+    });
+  }
+
+  if (
+    discountedAccommodation != null &&
+    (ownerDiscount > 0 || agencyDiscount > 0 || agencyServiceFee > 0)
+  ) {
+    lines.push({
+      label: "İndirimli Konaklama Bedeli",
+      amountLabel: formatMoneyPlain(discountedAccommodation),
     });
   }
 
@@ -373,6 +413,35 @@ function buildAccountLines(
         amountLabel: formatMoneyPlain(amount),
       });
     }
+  }
+
+  return lines;
+}
+
+function buildDepositLines(details: BookingDetails): CheckInInfoPaymentLine[] {
+  const damageDeposit = Math.max(0, details.damageDeposit ?? 0);
+  const petDamageDeposit = Math.max(0, details.petDamageDeposit ?? 0);
+  const lines: CheckInInfoPaymentLine[] = [];
+
+  if (damageDeposit > 0) {
+    lines.push({
+      label: "Hasar Depozitosu",
+      amountLabel: formatMoneyPlain(damageDeposit),
+    });
+  }
+
+  if (petDamageDeposit > 0) {
+    lines.push({
+      label: "Evcil Hayvan Depozitosu",
+      amountLabel: formatMoneyPlain(petDamageDeposit),
+    });
+  }
+
+  if (lines.length > 0) {
+    lines.push({
+      label: "Toplam Depozito",
+      amountLabel: formatMoneyPlain(damageDeposit + petDamageDeposit),
+    });
   }
 
   return lines;
@@ -543,6 +612,7 @@ export async function getPublicCheckInInfo(input: {
   const accountLines = buildAccountLines(details, nights);
   const accountSummaryLines = buildAccountSummaryLines(booking, details);
   const paymentLines = buildPaymentLines(booking, details, prepaymentSum);
+  const depositLines = buildDepositLines(details);
   const ownerPaymentLines = buildOwnerPaymentLines(
     booking,
     details,
@@ -597,6 +667,7 @@ export async function getPublicCheckInInfo(input: {
     accountLines,
     accountSummaryLines,
     paymentLines,
+    depositLines,
     ownerPaymentLines,
     contactActionsEnabled: revealed,
   };
