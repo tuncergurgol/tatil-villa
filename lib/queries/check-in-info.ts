@@ -193,12 +193,14 @@ export type PublicCheckInInfoPage = {
 };
 
 function formatTrDay(date: Date): string {
-  return date.toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return date
+    .toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    })
+    .toLocaleUpperCase("tr-TR");
 }
 
 function formatTrWeekday(date: Date): string {
