@@ -17,6 +17,15 @@
 #   7. localhost:3000/admin/login dogrulamasi
 #
 # Idempotent ve guvenlidir: hata olursa aninda durur (set -euo pipefail).
+#
+# ONEMLI — public/uploads:
+#   Galeri/logo dosyalari Git'te YOKTUR. Bu script git reset --hard yapar ama
+#   ignored public/uploads dosyalarini genelde SILMEZ. Yine de:
+#   - `rm -rf public` veya temiz clone yapmayin
+#   - Yeni sunucu / bos diskte once local'den sync edin:
+#       scripts/deploy/sync-uploads.md
+#       scripts/deploy/sync-uploads.ps1  (PC PowerShell)
+#   - Sync sonrasi: curl -sI http://127.0.0.1:3000/uploads/company/logo-*.svg
 # =============================================================================
 
 set -euo pipefail
@@ -161,4 +170,11 @@ echo "    - .env.bak.$STAMP"
 echo "    - $DUMP_FILE"
 echo "  Geri alma gerekirse dump'i geri yukleyin ve onceki commit'e"
 echo "  git reset --hard <eski_hash> yapip yeniden build alin."
+echo ""
+echo "  Hatirlatma: public/uploads Git'te yoktur."
+echo "  Logo/villa 404 ise PC'den sync-uploads.ps1 calistirin"
+echo "  (bkz. scripts/deploy/sync-uploads.md)."
+if [[ ! -d "$APP_DIR/public/uploads/company" ]]; then
+  echo "  UYARI: public/uploads/company YOK — gorseller icin sync gerekli."
+fi
 echo "=========================================================="
