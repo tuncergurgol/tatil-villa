@@ -13,6 +13,7 @@ import { getSiteMenuItemsForPublic } from "@/lib/queries/site-menus";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getFooterRegionLinks } from "@/lib/queries/regions";
 import { siteConfig } from "@/lib/data";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 
 const defaultHeaderLinks = [
   { href: "/villalar", label: "Villalar" },
@@ -48,6 +49,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     getApprovedReviewsForPublic(6),
     getPublishedBlogPosts({ limit: 6 }),
   ]);
+  const site = await getPublicSiteProfile(company);
 
   const headerLinks =
     headerMenu.length > 0
@@ -67,7 +69,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     label: page.title,
   }));
 
-  const brandName = company.brandName?.trim() || siteConfig.name;
+  const brandName = site.brandName?.trim() || siteConfig.name;
   const phone = company.phone?.trim() || siteConfig.phone;
 
   return (
@@ -76,7 +78,8 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
         navLinks={headerLinks}
         phone={phone}
         brandName={brandName}
-        logoUrl={company.logoUrl || company.whiteLogoUrl}
+        logoUrl={site.logoUrl}
+        useDefaultLogo={site.useDefaultLogo}
         agencyName={company.agencyName}
         tursabNo={company.tursabNo}
       />
@@ -96,7 +99,8 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
           tursabNo: company.tursabNo,
           brandName,
           companyTitle: company.companyTitle,
-          logoUrl: company.logoUrl || company.whiteLogoUrl,
+          logoUrl: site.logoUrl,
+          useDefaultLogo: site.useDefaultLogo,
           tursabVerificationLogoUrl: company.tursabVerificationLogoUrl,
         }}
       />

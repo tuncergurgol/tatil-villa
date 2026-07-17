@@ -19,6 +19,7 @@ export type FooterContact = {
   brandName?: string;
   companyTitle?: string;
   logoUrl?: string;
+  useDefaultLogo?: boolean;
   tursabVerificationLogoUrl?: string;
 };
 
@@ -70,7 +71,9 @@ export default function Footer({
   const agencyName = contact?.agencyName?.trim() || siteConfig.agency;
   const tursabNo = contact?.tursabNo?.trim() || siteConfig.tursabNo;
   const companyTitle = contact?.companyTitle?.trim() || "";
-  const logoSrc = contact?.logoUrl?.trim() || DEFAULT_LOGO;
+  const logoSrc =
+    contact?.logoUrl?.trim() ||
+    (contact?.useDefaultLogo === false ? "" : DEFAULT_LOGO);
   const tursabDdsLogo =
     contact?.tursabVerificationLogoUrl?.trim() || DEFAULT_TURSAB_DDS_LOGO;
 
@@ -79,14 +82,20 @@ export default function Footer({
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
         <div>
           <Link href="/" className="inline-block">
-            <Image
-              src={logoSrc}
-              alt={brandName}
-              width={280}
-              height={72}
-              className="h-12 w-auto object-contain sm:h-14"
-              unoptimized={logoSrc.endsWith(".svg")}
-            />
+            {logoSrc ? (
+              <Image
+                src={logoSrc}
+                alt={brandName}
+                width={280}
+                height={72}
+                className="h-12 w-auto object-contain sm:h-14"
+                unoptimized={logoSrc.endsWith(".svg")}
+              />
+            ) : (
+              <span className="text-2xl font-bold tracking-tight text-gray-900">
+                {brandName}
+              </span>
+            )}
           </Link>
           {companyTitle ? (
             <p className="mt-3 text-sm font-medium leading-snug text-gray-800">

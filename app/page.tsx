@@ -8,6 +8,8 @@ import TravelAdventureSection from "@/components/villa-detail/TravelAdventureSec
 import { getCampaigns } from "@/lib/queries/campaigns";
 import { getRegionsWithCount, getHeroSearchRegions } from "@/lib/queries/regions";
 import { getHomeDreamCategories } from "@/lib/queries/facility-categories";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
   getDealVillas,
   getPopularVillas,
@@ -25,6 +27,7 @@ export default async function HomePage() {
     campaigns,
     searchRegions,
     dreamCards,
+    company,
   ] = await Promise.all([
     getPopularVillas(),
     getDealVillas(),
@@ -33,7 +36,9 @@ export default async function HomePage() {
     getCampaigns(),
     getHeroSearchRegions(),
     getHomeDreamCategories(),
+    getCompanySettings(),
   ]);
+  const site = await getPublicSiteProfile(company);
 
   return (
     <>
@@ -52,7 +57,7 @@ export default async function HomePage() {
         <div className="relative z-10 w-full px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
             <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">
-              Yeni Maceranı Keşfet
+              {site.heroTitle}
             </h1>
           </div>
 

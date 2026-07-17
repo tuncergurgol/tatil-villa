@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { siteConfig } from "@/lib/data";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 function resolveMetadataBase(domain: string): URL {
@@ -19,17 +20,18 @@ function absoluteAssetUrl(base: URL, assetPath: string): string {
 
 export async function buildRootMetadata(): Promise<Metadata> {
   const settings = await getCompanySettings();
-  const metadataBase = resolveMetadataBase(settings.domain || siteConfig.name);
+  const site = await getPublicSiteProfile(settings);
+  const metadataBase = resolveMetadataBase(site.domain || siteConfig.name);
   const title =
-    settings.seoTitle?.trim() ||
+    site.seoTitle?.trim() ||
     `${siteConfig.name} - ${siteConfig.tagline}`;
   const description =
-    settings.seoDescription?.trim() ||
+    site.seoDescription?.trim() ||
     "Türkiye'nin en güzel bölgelerinde villa ve bungalov kiralama.";
-  const faviconUrl = settings.faviconUrl?.trim() || "";
+  const faviconUrl = site.faviconUrl?.trim() || "";
   const ogImageUrl =
-    settings.ogImageUrl?.trim() ||
-    settings.logoUrl?.trim() ||
+    site.ogImageUrl?.trim() ||
+    site.logoUrl?.trim() ||
     "";
   const ogImages = ogImageUrl
     ? [{ url: absoluteAssetUrl(metadataBase, ogImageUrl) }]
@@ -39,10 +41,10 @@ export async function buildRootMetadata(): Promise<Metadata> {
     metadataBase,
     title: {
       default: title,
-      template: `%s | ${siteConfig.name}`,
+      template: `%s | ${site.brandName || siteConfig.name}`,
     },
     description,
-    applicationName: siteConfig.name,
+    applicationName: site.brandName || siteConfig.name,
     referrer: "origin",
     icons: faviconUrl
       ? {
@@ -54,7 +56,7 @@ export async function buildRootMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       locale: "tr_TR",
-      siteName: siteConfig.name,
+      siteName: site.brandName || siteConfig.name,
       title,
       description,
       images: ogImages,

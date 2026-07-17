@@ -55,6 +55,7 @@ export default function Header({
   phone = siteConfig.phone,
   brandName = siteConfig.name,
   logoUrl,
+  useDefaultLogo = true,
   agencyName = siteConfig.agency,
   tursabNo = siteConfig.tursabNo,
 }: {
@@ -62,6 +63,7 @@ export default function Header({
   phone?: string;
   brandName?: string;
   logoUrl?: string;
+  useDefaultLogo?: boolean;
   whiteLogoUrl?: string;
   agencyName?: string;
   tursabNo?: string;
@@ -70,7 +72,7 @@ export default function Header({
   const rawPhone = phone.trim() || siteConfig.phone;
   const displayPhone = displayPhoneLabel(rawPhone);
   const waHref = whatsappHref(rawPhone);
-  const logoSrc = logoUrl?.trim() || DEFAULT_LOGO;
+  const logoSrc = logoUrl?.trim() || (useDefaultLogo ? DEFAULT_LOGO : "");
   const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
 
   return (
