@@ -131,9 +131,6 @@ export default function VillaDetailView({
     faqs.length > 0 ? { id: "sss", label: "SSS" } : null,
   ].filter(Boolean) as VillaDetailNavItem[];
 
-  const hasHeatedPool = villa.pools.some((pool) => pool.heated);
-  const hasConservativePool = villa.pools.some((pool) => pool.conservative);
-
   return (
     <VillaStaySelectionProvider
       calendarDays={villa.calendarDays}
@@ -200,15 +197,6 @@ export default function VillaDetailView({
                     icon={Bath}
                     value={`${villa.bathrooms} Banyo`}
                   />
-                  {hasHeatedPool ? (
-                    <CapacityStat icon={Flame} value="Isıtmalı Havuz" />
-                  ) : null}
-                  {hasConservativePool ? (
-                    <CapacityStat
-                      icon={Shield}
-                      value="Muhafazakar Havuz"
-                    />
-                  ) : null}
                 </div>
                 {villa.documentNo ? (
                   <TourismPermitBadge documentNo={villa.documentNo} />
