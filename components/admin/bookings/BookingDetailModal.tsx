@@ -11,6 +11,7 @@ import {
   getBookingPeriodFeesAction,
   getBookingPrepaymentRateAction,
   getSiteInfoOptionsAction,
+  getAgencySiteOptionsAction,
   getAdminBookingWizardQuoteAction,
   getVillaOccupancyCalendarAction,
   updateBookingDetailAction,
@@ -62,6 +63,7 @@ import {
   computeOwnerPaymentDueDate,
 } from "@/lib/owner-payment-schedule";
 import { formatMoneyInputValue, formatMoneyPlain } from "@/lib/booking-display";
+import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 import {
   getSortedCompanyPaymentTypeOptions,
   normalizeCompanyPaymentType,
@@ -319,6 +321,9 @@ export default function BookingDetailModal({
   const [siteInfoOptions, setSiteInfoOptions] = useState<string[]>([
     DEFAULT_BOOKING_SITE_INFO,
   ]);
+  const [agencySiteOptions, setAgencySiteOptions] = useState<
+    Array<{ name: string; domain: string }>
+  >([]);
   const [isPending, startTransition] = useTransition();
   const { data: session } = useSession();
   const isAdminUser =
@@ -328,6 +333,9 @@ export default function BookingDetailModal({
     getSiteInfoOptionsAction()
       .then(setSiteInfoOptions)
       .catch(() => setSiteInfoOptions([DEFAULT_BOOKING_SITE_INFO]));
+    getAgencySiteOptionsAction()
+      .then(setAgencySiteOptions)
+      .catch(() => setAgencySiteOptions([]));
   }, []);
 
   useEffect(() => {
@@ -638,6 +646,20 @@ export default function BookingDetailModal({
     const current = normalizeBookingSiteInfo(details.siteInfo);
     return dedupeSiteInfoNames([...siteInfoOptions, current]);
   }, [siteInfoOptions, details.siteInfo]);
+
+  const selectedSiteDomain = useMemo(() => {
+    const brand = resolveBookingSiteBrand({
+      siteInfo: details.siteInfo,
+      originDomain: details.originDomain,
+      company: {
+        brandName: DEFAULT_BOOKING_SITE_INFO,
+        domain: "www.tatildeyiz.com.tr",
+        logoUrl: "",
+      },
+      agencySites: agencySiteOptions,
+    });
+    return brand.domain;
+  }, [details.siteInfo, details.originDomain, agencySiteOptions]);
 
   const tcFieldsAcceptable = useMemo(() => {
     const guestFields = [
@@ -1022,21 +1044,37 @@ export default function BookingDetailModal({
                   <ReadonlyField value={formatBookingDate(booking.createdAt)} />
                 </FormRow>
                 <FormRow label="Site Bilgisi">
-                  <select
-                    value={normalizeBookingSiteInfo(details.siteInfo)}
-                    onChange={(event) =>
-                      patchDetails({
-                        siteInfo: normalizeBookingSiteInfo(event.target.value),
-                      })
-                    }
-                    className={bookingInputClass}
-                  >
-                    {siteOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-1.5">
+                    <select
+                      value={normalizeBookingSiteInfo(details.siteInfo)}
+                      onChange={(event) => {
+                        const nextSiteInfo = normalizeBookingSiteInfo(
+                          event.target.value
+                        );
+                        const brand = resolveBookingSiteBrand({
+                          siteInfo: nextSiteInfo,
+                          company: {
+                            brandName: DEFAULT_BOOKING_SITE_INFO,
+                            domain: "www.tatildeyiz.com.tr",
+                            logoUrl: "",
+                          },
+                          agencySites: agencySiteOptions,
+                        });
+                        patchDetails({
+                          siteInfo: nextSiteInfo,
+                          originDomain: brand.domain,
+                        });
+                      }}
+                      className={bookingInputClass}
+                    >
+                      {siteOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500">{selectedSiteDomain}</p>
+                  </div>
                 </FormRow>
                 <FormRow label="Konaklama Durumu">
                   <select

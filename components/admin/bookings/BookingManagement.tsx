@@ -322,7 +322,9 @@ export default function BookingManagement({
                             <CopyButton value={String(booking.externalCode)} />
                           ) : null}
                         </div>
-                        <p className="mt-0.5 text-xs text-gray-500">{siteDomain}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          {booking.siteDomain || siteDomain}
+                        </p>
                       </td>
 
                       <td className="px-3 py-2 align-top">

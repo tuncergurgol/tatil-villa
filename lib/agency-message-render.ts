@@ -8,6 +8,7 @@ import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import {
   computeGuestReservationTotal,
   computeReservationTotal,
+  normalizeBookingSiteInfo,
   type BookingDetails,
 } from "@/lib/booking-form-details";
 import { formatPrepaymentOptionLabel } from "@/lib/booking-prepayment-share";
@@ -431,10 +432,11 @@ export function buildNewReservationRequestTemplateValues(input: {
     ? getCompanyPaymentTypeLabel(paymentMethod)
     : "";
   const firmName =
+    normalizeBookingSiteInfo(input.details.siteInfo) ||
     input.company.brandName ||
     input.company.agencyName ||
     DEFAULT_BOOKING_SITE_FALLBACK;
-  const siteName = DEFAULT_BOOKING_SITE_FALLBACK;
+  const siteName = normalizeBookingSiteInfo(input.details.siteInfo);
   const dateRange = `${formatAgencyBookingDate(input.checkIn)} - ${formatAgencyBookingDate(input.checkOut)}`;
   const checkInDay = formatWeekdayTr(input.checkIn);
   const checkOutDay = formatWeekdayTr(input.checkOut);

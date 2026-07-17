@@ -24,6 +24,10 @@ export type AdminBookingListItem = {
   prepaymentAmount: number | null;
   /** details.importPaymentMethod / paymentMethod */
   paymentMethod: string | null;
+  /** details.siteInfo — talebin geldiği site adı */
+  siteInfo: string;
+  /** Site domain (AgencySite / originDomain / şirket fallback) */
+  siteDomain: string;
   villa: {
     id: string;
     villaId: number | null;

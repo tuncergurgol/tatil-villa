@@ -1,12 +1,20 @@
 import { prisma } from "@/lib/db";
 import type { AdminBookingListItem } from "@/lib/booking-display";
-import { parseBookingDetails } from "@/lib/booking-form-details";
+import {
+  normalizeBookingSiteInfo,
+  parseBookingDetails,
+} from "@/lib/booking-form-details";
+import {
+  buildAgencySiteDomainMap,
+  resolveBookingSiteBrand,
+  resolveDomainFromSiteMap,
+} from "@/lib/booking-site-brand";
 import { cancelExpiredPrepaymentBookings } from "@/lib/queries/bookings";
 
 export async function getAdminBookingListData() {
   await cancelExpiredPrepaymentBookings();
 
-  const [bookings, villas, companySettings] = await Promise.all([
+  const [bookings, villas, companySettings, agencySites] = await Promise.all([
     prisma.booking.findMany({
       include: {
         villa: {
@@ -28,9 +36,24 @@ export async function getAdminBookingListData() {
     }),
     prisma.companySettings.findUnique({
       where: { id: "default" },
-      select: { domain: true, brandName: true },
+      select: { domain: true, brandName: true, logoUrl: true },
+    }),
+    prisma.agencySite.findMany({
+      where: { active: true },
+      select: { name: true, domain: true },
     }),
   ]);
+
+  const fallbackDomain =
+    companySettings?.domain?.trim() ||
+    companySettings?.brandName?.trim() ||
+    "www.tatildeyiz.com.tr";
+  const domainBySiteName = buildAgencySiteDomainMap(agencySites);
+  const companyBrand = {
+    brandName: companySettings?.brandName?.trim() || "Tatildeyiz",
+    domain: fallbackDomain,
+    logoUrl: companySettings?.logoUrl?.trim() || "",
+  };
 
   const mapped: AdminBookingListItem[] = bookings.map((booking) => {
     const details = parseBookingDetails(booking.details);
@@ -44,6 +67,17 @@ export async function getAdminBookingListData() {
       details.prepaymentBank?.trim() ||
       details.paymentMethod?.trim() ||
       null;
+
+    const siteInfo = normalizeBookingSiteInfo(details.siteInfo);
+    const brand = resolveBookingSiteBrand({
+      siteInfo,
+      originDomain: details.originDomain,
+      company: companyBrand,
+      agencySites,
+    });
+    const siteDomain =
+      brand.domain ||
+      resolveDomainFromSiteMap(siteInfo, domainBySiteName, fallbackDomain);
 
     return {
       id: booking.id,
@@ -63,6 +97,8 @@ export async function getAdminBookingListData() {
       optionExpiresAt: booking.optionExpiresAt,
       prepaymentAmount,
       paymentMethod,
+      siteInfo,
+      siteDomain,
       villa: booking.villa,
     };
   });
@@ -70,9 +106,6 @@ export async function getAdminBookingListData() {
   return {
     bookings: mapped,
     villas,
-    siteDomain:
-      companySettings?.domain ||
-      companySettings?.brandName ||
-      "www.tatildeyiz.com.tr",
+    siteDomain: fallbackDomain,
   };
 }

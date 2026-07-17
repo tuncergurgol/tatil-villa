@@ -8,7 +8,7 @@ import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
 import type { BookingExtraFeeFieldKey } from "@/lib/booking-form-details";
 import {
   DEFAULT_BOOKING_AGENCY_NAME,
-  DEFAULT_BOOKING_SITE_INFO,
+  normalizeBookingSiteInfo,
 } from "@/lib/booking-form-details";
 import {
   buildActivityLogEntry,
@@ -17,6 +17,8 @@ import {
 import { mapPublicPaymentMethodToCompanyType } from "@/lib/company-payment-types";
 import { notifyNewReservationRequest } from "@/lib/public-booking-notifications";
 import { getRequestClientIp } from "@/lib/request-client-ip";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 
 const optionalMoney = z.coerce.number().optional().nullable();
 
@@ -156,6 +158,10 @@ export async function submitBooking(
 
   const companyPaymentType = mapPublicPaymentMethodToCompanyType(paymentMethod);
   const clientIp = await getRequestClientIp();
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  const siteInfo = normalizeBookingSiteInfo(site.brandName);
+  const originDomain = site.domain?.trim() || company.domain?.trim() || "";
 
   let booking;
   try {
@@ -173,8 +179,10 @@ export async function submitBooking(
           paymentAmount,
           importPaymentMethod: companyPaymentType || undefined,
           prepaymentBank: companyPaymentType || undefined,
-          siteInfo: DEFAULT_BOOKING_SITE_INFO,
-          agencyName: DEFAULT_BOOKING_AGENCY_NAME,
+          siteInfo,
+          originDomain,
+          agencyName:
+            company.agencyName?.trim() || DEFAULT_BOOKING_AGENCY_NAME,
           grossPrice: accommodationTotal,
           ...feeFields,
           damageDeposit: moneyOrNull(feeLines.damageDeposit),
@@ -190,7 +198,9 @@ export async function submitBooking(
           action: "booking_created",
           message: `Web üzerinden rezervasyon talebi oluşturuldu (${guestName})`,
           actorName: guestName || "Misafir",
-          meta: clientIp ? { ip: clientIp } : undefined,
+          meta: clientIp
+            ? { ip: clientIp, site: siteInfo, domain: originDomain }
+            : { site: siteInfo, domain: originDomain },
         })
       ),
     });

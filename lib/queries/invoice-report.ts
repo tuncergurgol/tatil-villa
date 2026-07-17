@@ -2,10 +2,12 @@ import { prisma } from "@/lib/db";
 import { normalizeActivityLogs } from "@/lib/booking-activity-log-core";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import {
+  normalizeBookingSiteInfo,
   parseBookingDetails,
   resolveBookingCommissionAmount,
   resolveExternalCode,
 } from "@/lib/booking-form-details";
+import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 import { getOwnerDisplayName } from "@/lib/btrans-report";
 import {
   buildInvoiceReportExportFilename,
@@ -170,7 +172,8 @@ function resolveOwnerName(owner: InvoiceBookingRecord["villa"]["owner"]): string
 
 function mapBookingToListItem(
   booking: InvoiceBookingRecord,
-  company: { taxNumber: string }
+  company: { taxNumber: string },
+  brandFallback: { brandName: string; domain: string; logoUrl: string }
 ): InvoiceReportListItem {
   const details = parseBookingDetails(booking.details);
   const prepaymentAmount =
@@ -184,6 +187,12 @@ function mapBookingToListItem(
     null;
   const invoiceInput = toBookingInput(booking);
   const missing = checkInvoiceReportMissingFields(invoiceInput, company);
+  const siteInfo = normalizeBookingSiteInfo(details.siteInfo);
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo,
+    originDomain: details.originDomain,
+    company: brandFallback,
+  });
 
   return {
     id: booking.id,
@@ -203,6 +212,8 @@ function mapBookingToListItem(
     optionExpiresAt: booking.optionExpiresAt,
     prepaymentAmount,
     paymentMethod,
+    siteInfo,
+    siteDomain: siteBrand.domain,
     villa: {
       id: booking.villa.id,
       villaId: booking.villa.villaId,
@@ -240,8 +251,13 @@ export async function getInvoiceReportListData() {
   ]);
 
   const company = { taxNumber: companySettings.taxNumber };
+  const brandFallback = {
+    brandName: companySettings.brandName,
+    domain: companySettings.domain,
+    logoUrl: companySettings.logoUrl,
+  };
   const items = bookings.map((booking) =>
-    mapBookingToListItem(booking, company)
+    mapBookingToListItem(booking, company, brandFallback)
   );
 
   return {

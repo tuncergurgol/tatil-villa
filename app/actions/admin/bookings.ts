@@ -581,6 +581,20 @@ export async function getSiteInfoOptionsAction(): Promise<string[]> {
   return dedupeSiteInfoNames(names);
 }
 
+export async function getAgencySiteOptionsAction(): Promise<
+  Array<{ name: string; domain: string }>
+> {
+  await requireAdmin();
+
+  const sites = await getAgencySitesForPicker();
+  return sites
+    .map((site) => ({
+      name: site.name.trim(),
+      domain: site.domain.trim(),
+    }))
+    .filter((site) => site.name && site.domain);
+}
+
 export async function getAdminBookingWizardVillasAction() {
   await requireAdmin();
   return getAdminBookingWizardVillas();

@@ -8,10 +8,12 @@ import {
   AGENCY_MESSAGE_TEMPLATE_ROW_2,
 } from "@/lib/agency-message-row-no";
 import { parseBookingDetails } from "@/lib/booking-form-details";
+import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
@@ -90,13 +92,25 @@ export async function notifyNewReservationRequest(
   booking: NewReservationBooking
 ): Promise<void> {
   try {
-    const [company, guestTemplate, adminTemplate] = await Promise.all([
-      getCompanySettings(),
-      getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_1),
-      getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_2),
-    ]);
+    const [company, agencySites, guestTemplate, adminTemplate] =
+      await Promise.all([
+        getCompanySettings(),
+        getAgencySitesForPicker(),
+        getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_1),
+        getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_2),
+      ]);
 
     const details = parseBookingDetails(booking.details);
+    const siteBrand = resolveBookingSiteBrand({
+      siteInfo: details.siteInfo,
+      originDomain: details.originDomain,
+      company: {
+        brandName: company.brandName,
+        domain: company.domain,
+        logoUrl: company.logoUrl,
+      },
+      agencySites,
+    });
     const reservationCode =
       booking.externalCode != null ? String(booking.externalCode) : booking.id;
 
@@ -119,10 +133,10 @@ export async function notifyNewReservationRequest(
       totalPrice: booking.totalPrice,
       company: {
         agencyName: company.agencyName,
-        brandName: company.brandName,
+        brandName: siteBrand.siteInfo || company.brandName,
         companyTitle: company.companyTitle,
-        domain: company.domain,
-        logoUrl: company.logoUrl,
+        domain: siteBrand.domain || company.domain,
+        logoUrl: siteBrand.logoUrl || company.logoUrl,
         email: company.email,
         phone: company.phone,
         address: company.address,
@@ -130,8 +144,8 @@ export async function notifyNewReservationRequest(
     });
 
     const emailLogo = await prepareCompanyLogoForEmail(
-      company.logoUrl,
-      company.domain
+      siteBrand.logoUrl || company.logoUrl,
+      siteBrand.domain || company.domain
     );
 
     if (guestTemplate) {

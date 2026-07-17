@@ -92,6 +92,8 @@ export type BookingDetails = {
   agencyNote?: string;
   customerNote?: string;
   siteInfo?: string;
+  /** Talebin geldiği host/domain (www.balayivillacisi.com vb.) */
+  originDomain?: string;
   importPaymentMethod?: string;
   /** Public talep: card | transfer */
   paymentMethod?: string;
@@ -736,6 +738,7 @@ export function defaultDetailsFromBooking(booking: {
     agencyNote: parsed.agencyNote ?? "",
     customerNote: parsed.customerNote ?? "",
     siteInfo: normalizeBookingSiteInfo(parsed.siteInfo),
+    originDomain: parsed.originDomain?.trim() || "",
     confirmationSends: normalizeConfirmationSends(parsed.confirmationSends),
     activityLogs: normalizeActivityLogs(parsed.activityLogs),
     adultGuests: buildGuestRows(
