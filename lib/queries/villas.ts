@@ -5,6 +5,17 @@ import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { getRegionIdsForFilter } from "@/lib/queries/region-tree";
 import { formatVillaRegionLabel } from "@/lib/queries/villa-location";
 import { facilityTypeOptions } from "@/lib/facility-type";
+import {
+  computeStayQuote,
+  getStayNightKeys,
+  type StayQuoteDayInput,
+} from "@/lib/stay-quote";
+import {
+  dateKeyToDbDate,
+  dbDateToDateKey,
+} from "@/lib/villa-period-calendar";
+import { mapDbPeriodDayToQuoteInput } from "@/lib/queries/villa-stay-quote";
+import { offsetDateKey } from "@/lib/villa-period-selection";
 
 export interface VillaFilters {
   filter?: string;
@@ -110,6 +121,8 @@ function mapVilla(
     pricePerNight: villa.pricePerNight,
     minNightlyPrice: null as number | null,
     maxNightlyPrice: null as number | null,
+    /** Tarih seçili aramada konaklama bedeli (gecelik toplam) */
+    stayTotal: null as number | null,
     image: getVillaShowcaseImage(villa),
     images: villa.images,
     description: villa.description,
@@ -167,7 +180,11 @@ export async function getVillas(filters: VillaFilters = {}) {
     where.facilityCategories = { hasEvery: filters.facilities };
   }
 
-  if (filters.minPrice != null || filters.maxPrice != null) {
+  if (
+    !filters.checkIn &&
+    !filters.checkOut &&
+    (filters.minPrice != null || filters.maxPrice != null)
+  ) {
     where.pricePerNight = {
       ...(filters.minPrice != null ? { gte: filters.minPrice } : {}),
       ...(filters.maxPrice != null ? { lte: filters.maxPrice } : {}),
@@ -226,10 +243,48 @@ export async function getVillas(filters: VillaFilters = {}) {
   });
 
   if (filters.checkIn && filters.checkOut) {
-    const checkIn = new Date(filters.checkIn);
-    const checkOut = new Date(filters.checkOut);
-    const availableIds = await getAvailableVillaIds(checkIn, checkOut);
-    result = result.filter((v) => availableIds.has(v.id));
+    const checkInKey = filters.checkIn.slice(0, 10);
+    const checkOutKey = filters.checkOut.slice(0, 10);
+    const stay = await resolvePublicSearchStay(
+      result.map((v) => v.id),
+      checkInKey,
+      checkOutKey
+    );
+
+    result = result
+      .filter((villa) => stay.availableIds.has(villa.id))
+      .map((villa) => {
+        const quote = stay.quotes.get(villa.id);
+        if (!quote || !quote.valid || quote.nights <= 0) return null;
+        return {
+          ...villa,
+          stayTotal: quote.accommodationTotal,
+          pricePerNight: Math.round(
+            quote.accommodationTotal / quote.nights
+          ),
+        };
+      })
+      .filter((villa): villa is NonNullable<typeof villa> => villa != null);
+
+    if (filters.minPrice != null || filters.maxPrice != null) {
+      result = result.filter((villa) => {
+        const total = villa.stayTotal;
+        if (total == null) return false;
+        if (filters.minPrice != null && total < filters.minPrice) return false;
+        if (filters.maxPrice != null && total > filters.maxPrice) return false;
+        return true;
+      });
+    }
+
+    if (filters.sort === "price_asc") {
+      result.sort(
+        (a, b) => (a.stayTotal ?? Number.POSITIVE_INFINITY) - (b.stayTotal ?? Number.POSITIVE_INFINITY)
+      );
+    } else if (filters.sort === "price_desc") {
+      result.sort(
+        (a, b) => (b.stayTotal ?? 0) - (a.stayTotal ?? 0)
+      );
+    }
   }
 
   if (filters.adults) {
@@ -318,19 +373,128 @@ export async function getVillaPeriodPriceRanges(
   return map;
 }
 
-async function getAvailableVillaIds(checkIn: Date, checkOut: Date) {
-  const conflicting = await prisma.booking.findMany({
-    where: {
-      status: { in: BOOKING_BLOCKING_STATUSES },
-      checkIn: { lt: checkOut },
-      checkOut: { gt: checkIn },
-    },
-    select: { villaId: true },
-  });
+/**
+ * Public arama: takvim occupancy (BOOKED/OPTION) + eksik günde Booking fallback.
+ * Fiyat: seçili gecelerin computeStayQuote konaklama toplamı.
+ * Detay sayfası / isVillaAvailable ile aynı kaynak.
+ */
+async function resolvePublicSearchStay(
+  villaIds: string[],
+  checkInKey: string,
+  checkOutKey: string
+): Promise<{
+  availableIds: Set<string>;
+  quotes: Map<
+    string,
+    { valid: boolean; nights: number; accommodationTotal: number }
+  >;
+}> {
+  const availableIds = new Set<string>();
+  const quotes = new Map<
+    string,
+    { valid: boolean; nights: number; accommodationTotal: number }
+  >();
 
-  const blockedIds = new Set(conflicting.map((b) => b.villaId));
-  const allVillas = await prisma.villa.findMany({ select: { id: true } });
-  return new Set(allVillas.filter((v) => !blockedIds.has(v.id)).map((v) => v.id));
+  if (villaIds.length === 0) return { availableIds, quotes };
+  if (checkInKey >= checkOutKey) return { availableIds, quotes };
+
+  const nightKeys = getStayNightKeys(checkInKey, checkOutKey);
+  if (nightKeys.length === 0) return { availableIds, quotes };
+
+  const nightDates = nightKeys.map((key) => dateKeyToDbDate(key));
+
+  const [periodDays, blockingBookings] = await Promise.all([
+    prisma.villaPricePeriodDay.findMany({
+      where: {
+        villaId: { in: villaIds },
+        date: { in: nightDates },
+      },
+      select: {
+        villaId: true,
+        date: true,
+        nightlyPrice: true,
+        nightlyPriceWithoutCommission: true,
+        discountedNightlyPrice: true,
+        nightlyPriceCurrency: true,
+        availability: true,
+        occupancyStatus: true,
+        minStayNights: true,
+        prepaymentRate: true,
+        cleaningFee: true,
+        cleaningFeeCurrency: true,
+        cleaningDayCount: true,
+      },
+    }),
+    prisma.booking.findMany({
+      where: {
+        villaId: { in: villaIds },
+        status: { in: BOOKING_BLOCKING_STATUSES },
+        checkIn: { lt: dateKeyToDbDate(offsetDateKey(checkOutKey, 1)) },
+        checkOut: { gt: dateKeyToDbDate(offsetDateKey(checkInKey, -1)) },
+      },
+      select: { villaId: true, checkIn: true, checkOut: true },
+    }),
+  ]);
+
+  const daysByVilla = new Map<string, Map<string, StayQuoteDayInput>>();
+  for (const day of periodDays) {
+    const dateKey = dbDateToDateKey(day.date);
+    if (!daysByVilla.has(day.villaId)) {
+      daysByVilla.set(day.villaId, new Map());
+    }
+    daysByVilla
+      .get(day.villaId)!
+      .set(dateKey, mapDbPeriodDayToQuoteInput(dateKey, day));
+  }
+
+  const bookingsByVilla = new Map<
+    string,
+    Array<{ checkIn: string; checkOut: string }>
+  >();
+  for (const booking of blockingBookings) {
+    if (!bookingsByVilla.has(booking.villaId)) {
+      bookingsByVilla.set(booking.villaId, []);
+    }
+    bookingsByVilla.get(booking.villaId)!.push({
+      checkIn: dbDateToDateKey(booking.checkIn),
+      checkOut: dbDateToDateKey(booking.checkOut),
+    });
+  }
+
+  for (const villaId of villaIds) {
+    const daysByDateKey = daysByVilla.get(villaId) ?? new Map();
+    const allNightsOnCalendar = nightKeys.every((key) =>
+      daysByDateKey.has(key)
+    );
+
+    let available = false;
+    if (allNightsOnCalendar) {
+      available = nightKeys.every((key) => {
+        const status = daysByDateKey.get(key)?.occupancyStatus;
+        return status !== "BOOKED" && status !== "OPTION";
+      });
+    } else {
+      const bookings = bookingsByVilla.get(villaId) ?? [];
+      available = !bookings.some(
+        (booking) =>
+          checkInKey < booking.checkOut && checkOutKey > booking.checkIn
+      );
+    }
+
+    if (!available) continue;
+
+    const quote = computeStayQuote(checkInKey, checkOutKey, daysByDateKey);
+    if (!quote.valid) continue;
+
+    availableIds.add(villaId);
+    quotes.set(villaId, {
+      valid: true,
+      nights: quote.nights,
+      accommodationTotal: quote.accommodationTotal,
+    });
+  }
+
+  return { availableIds, quotes };
 }
 
 export async function getSearchCategoryOptions() {

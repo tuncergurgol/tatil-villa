@@ -17,6 +17,8 @@ export interface Villa {
   minNightlyPrice?: number | null;
   /** Güncel + gelecek dönemlerden gecelik max */
   maxNightlyPrice?: number | null;
+  /** Tarih seçili aramada konaklama bedeli (seçili gecelerin toplamı) */
+  stayTotal?: number | null;
   image: string;
   images: string[];
   description: string;

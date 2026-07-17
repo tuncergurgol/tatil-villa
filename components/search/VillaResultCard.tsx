@@ -21,9 +21,16 @@ export default function VillaResultCard({
   nights = 0,
 }: VillaResultCardProps) {
   const total =
-    villa.pricePerNight && nights > 0
-      ? villa.pricePerNight * nights
-      : null;
+    nights > 0 && villa.stayTotal != null && villa.stayTotal > 0
+      ? villa.stayTotal
+      : villa.pricePerNight && nights > 0
+        ? villa.pricePerNight * nights
+        : null;
+
+  const nightlyAverage =
+    total != null && nights > 0
+      ? Math.round(total / nights)
+      : villa.pricePerNight;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md">
@@ -106,7 +113,7 @@ export default function VillaResultCard({
                     {formatPrice(total)}
                   </p>
                   <p className="mt-0.5 text-sm text-gray-500">
-                    {formatPrice(villa.pricePerNight!)} / Gece
+                    {formatPrice(nightlyAverage!)} / Gece
                   </p>
                 </>
               ) : villa.minNightlyPrice != null &&
