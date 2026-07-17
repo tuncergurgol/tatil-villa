@@ -33,7 +33,7 @@ Write-Host "==> Kaynak: $LocalUploads (Part=$Part)"
 if (Test-Path $IdentityFile) {
   Write-Host "==> SSH key: $IdentityFile"
 } else {
-  Write-Host "==> SSH key yok — sifre sorulacak"
+  Write-Host "==> SSH key yok - sifre sorulacak"
 }
 
 & ssh @sshArgs $Target "mkdir -p ${RemoteApp}/public/uploads"
