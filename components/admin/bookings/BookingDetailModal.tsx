@@ -1447,6 +1447,39 @@ export default function BookingDetailModal({
                 </FormRow>
               </FormSection>
 
+              <FormSection title="Hasar Depozitosu">
+                <FormRow label="Hasar Depozitosu">
+                  <input
+                    value={formatFeeInputValue(details.damageDeposit)}
+                    onChange={(event) =>
+                      patchDetails({
+                        damageDeposit: parseNumber(event.target.value),
+                      })
+                    }
+                    className={bookingInputClass}
+                  />
+                </FormRow>
+                <FormRow label="Evcil Hayvan Depozitosu">
+                  <input
+                    value={formatFeeInputValue(details.petDamageDeposit)}
+                    onChange={(event) =>
+                      patchDetails({
+                        petDamageDeposit: parseNumber(event.target.value),
+                      })
+                    }
+                    className={bookingInputClass}
+                  />
+                </FormRow>
+                <FormRow label="Toplam Depozito">
+                  <ReadonlyField
+                    value={formatMoneyPlain(
+                      Math.max(0, details.damageDeposit ?? 0) +
+                        Math.max(0, details.petDamageDeposit ?? 0)
+                    )}
+                  />
+                </FormRow>
+              </FormSection>
+
               <FormSection title="Villa ve Komisyon Bilgileri">
                 <FormRow label="Satış Türü">
                   <ReadonlyField value={booking.villa.salesType} />
