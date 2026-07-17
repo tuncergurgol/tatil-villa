@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 
 export type AgencySiteItem = {
   id: string;
@@ -17,8 +18,8 @@ export async function getAgencySitesForPicker() {
 }
 
 /**
- * Rezervasyon `siteInfo` adına göre acente sitesi domain'i.
- * Eşleşme yoksa null (çağıran şirket domain'ine düşer).
+ * Rezervasyon `siteInfo` adına göre public site domain'i.
+ * AgencySite + bilinen marka; admin host (bont.*) dönmez.
  */
 export async function resolveAgencySiteDomainBySiteInfo(
   siteInfo: string | null | undefined
@@ -31,12 +32,13 @@ export async function resolveAgencySiteDomainBySiteInfo(
     select: { name: true, domain: true },
   });
 
-  const match = sites.find(
-    (site) =>
-      site.name.localeCompare(name, "tr", { sensitivity: "base" }) === 0
-  );
-  const domain = match?.domain?.trim() || "";
-  return domain || null;
+  const brand = resolveBookingSiteBrand({
+    siteInfo: name,
+    company: { brandName: "", domain: "", logoUrl: "" },
+    agencySites: sites,
+  });
+
+  return brand.domain || null;
 }
 
 export async function getAgencySiteAdminData() {

@@ -133,28 +133,38 @@ export function isLocalConfirmationBaseUrl(url: string): boolean {
 }
 
 /**
- * Konfirme ONAYLINK tabanı:
- * - `BOOKING_CONFIRMATION_BASE_URL` yalnızca açık (non-localhost) set edilirse override
- * - localhost env asla müşteri linkine yansımaz
- * - aksi halde şirket / acente site domain (https)
+ * Konfirme / giriş-bilgilendirme link tabanı:
+ * - Verilen public domain (site markası) önceliklidir
+ * - Admin/localhost domain yok sayılır
+ * - `BOOKING_CONFIRMATION_BASE_URL` yalnızca domain boş/geçersizse fallback
  */
 export function resolveBookingConfirmationBaseUrl(domain: string): string {
+  const trimmedDomain = (domain || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
+
+  if (
+    trimmedDomain &&
+    !isLocalConfirmationBaseUrl(trimmedDomain) &&
+    !/^bont\./i.test(trimmedDomain)
+  ) {
+    return `https://${trimmedDomain}`;
+  }
+
   const envBase = (process.env.BOOKING_CONFIRMATION_BASE_URL ?? "")
     .trim()
     .replace(/\/+$/, "");
 
-  if (envBase && !isLocalConfirmationBaseUrl(envBase)) {
+  if (
+    envBase &&
+    !isLocalConfirmationBaseUrl(envBase) &&
+    !/bont\./i.test(envBase)
+  ) {
     return envBase.replace(/^http:\/\//i, "https://");
   }
 
-  const trimmedDomain = (domain || DEFAULT_PUBLIC_BOOKING_DOMAIN)
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/+$/, "");
-  if (!trimmedDomain || isLocalConfirmationBaseUrl(trimmedDomain)) {
-    return `https://${DEFAULT_PUBLIC_BOOKING_DOMAIN}`;
-  }
-  return `https://${trimmedDomain}`;
+  return `https://${DEFAULT_PUBLIC_BOOKING_DOMAIN}`;
 }
 
 /** Misafir konfirme onay formu linki (`/onay?rezId=&mail=`) */

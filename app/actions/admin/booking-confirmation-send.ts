@@ -40,7 +40,8 @@ import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
-import { resolveAgencySiteDomainBySiteInfo } from "@/lib/queries/agency-sites";
+import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
@@ -129,7 +130,7 @@ export async function sendBookingConfirmationAction(
     };
   }
 
-  const [booking, template, companySettings] = await Promise.all([
+  const [booking, template, companySettings, agencySites] = await Promise.all([
     prisma.booking.findUnique({
       where: { id: data.bookingId },
       include: {
@@ -149,6 +150,7 @@ export async function sendBookingConfirmationAction(
     }),
     getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_4),
     getCompanySettings(),
+    getAgencySitesForPicker(),
   ]);
 
   if (!booking) {
@@ -222,11 +224,17 @@ export async function sendBookingConfirmationAction(
   );
   const bankAccount = await resolveBankAccount(paymentMethod);
 
-  const siteDomain = await resolveAgencySiteDomainBySiteInfo(details.siteInfo);
-  const publicDomain =
-    siteDomain ||
-    companySettings.domain.trim() ||
-    "www.tatildeyiz.com.tr";
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo: details.siteInfo,
+    originDomain: details.originDomain,
+    company: {
+      brandName: companySettings.brandName,
+      domain: companySettings.domain,
+      logoUrl: companySettings.logoUrl,
+    },
+    agencySites,
+  });
+  const publicDomain = siteBrand.domain;
 
   const templateValues = buildBookingConfirmationTemplateValues({
     reservationCode,
@@ -243,10 +251,10 @@ export async function sendBookingConfirmationAction(
     paymentMethod,
     company: {
       agencyName: companySettings.agencyName,
-      brandName: companySettings.brandName,
+      brandName: siteBrand.siteInfo || companySettings.brandName,
       companyTitle: companySettings.companyTitle,
       domain: publicDomain,
-      logoUrl: companySettings.logoUrl,
+      logoUrl: siteBrand.logoUrl || companySettings.logoUrl,
       email: companySettings.email,
       phone: companySettings.phone,
       address: companySettings.address,
@@ -258,8 +266,8 @@ export async function sendBookingConfirmationAction(
   const mailSubject = `${reservationCode} nolu rezervasyon konfirmasyonu`;
   const emailLogo = data.sendEmail
     ? await prepareCompanyLogoForEmail(
-        companySettings.logoUrl,
-        companySettings.domain
+        siteBrand.logoUrl || companySettings.logoUrl,
+        publicDomain
       )
     : null;
 

@@ -48,7 +48,8 @@ import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
-import { resolveAgencySiteDomainBySiteInfo } from "@/lib/queries/agency-sites";
+import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
@@ -166,7 +167,7 @@ async function loadCheckInInfoShareContext(
   audience: CheckInInfoShareAudience
 ) {
   const templateRowNo = resolveCheckInInfoTemplateRowNo(audience);
-  const [booking, template, companySettings] = await Promise.all([
+  const [booking, template, companySettings, agencySites] = await Promise.all([
     prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
@@ -196,6 +197,7 @@ async function loadCheckInInfoShareContext(
     }),
     getAgencyMessageTemplateByRowNo(templateRowNo),
     getCompanySettings(),
+    getAgencySitesForPicker(),
   ]);
 
   if (!booking) {
@@ -220,7 +222,6 @@ async function loadCheckInInfoShareContext(
   const reservationCode =
     resolveExternalCode(booking.externalCode, booking.guestEmail) || "—";
   const shareCode = resolveCheckInInfoShareCode(booking.id);
-  const previewPath = buildCheckInInfoSharePath(shareCode, audience);
   const details = parseBookingDetails(booking.details);
   const { greeterName, greeterPhone } = resolveGreeter(booking.villa);
 
@@ -236,11 +237,20 @@ async function loadCheckInInfoShareContext(
       ? booking.guestName
       : greeterName || booking.villa.owner?.name || "Yetkili";
 
-  const siteDomain = await resolveAgencySiteDomainBySiteInfo(details.siteInfo);
-  const publicDomain =
-    siteDomain ||
-    companySettings.domain.trim() ||
-    "www.tatildeyiz.com.tr";
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo: details.siteInfo,
+    originDomain: details.originDomain,
+    company: {
+      brandName: companySettings.brandName,
+      domain: companySettings.domain,
+      logoUrl: companySettings.logoUrl,
+    },
+    agencySites,
+  });
+  const publicDomain = siteBrand.domain;
+  const previewPath =
+    buildCheckInInfoShareLink(publicDomain, shareCode, audience) ||
+    buildCheckInInfoSharePath(shareCode, audience);
 
   const templateValues = buildCheckInInfoShareTemplateValues({
     reservationCode,
@@ -267,10 +277,10 @@ async function loadCheckInInfoShareContext(
     greeterPhone,
     company: {
       agencyName: companySettings.agencyName,
-      brandName: companySettings.brandName,
+      brandName: siteBrand.siteInfo || companySettings.brandName,
       companyTitle: companySettings.companyTitle,
       domain: publicDomain,
-      logoUrl: companySettings.logoUrl,
+      logoUrl: siteBrand.logoUrl || companySettings.logoUrl,
       email: companySettings.email,
       phone: companySettings.phone,
       address: companySettings.address,
@@ -284,6 +294,7 @@ async function loadCheckInInfoShareContext(
     templateRowNo,
     companySettings,
     publicDomain,
+    brandLogoUrl: siteBrand.logoUrl || companySettings.logoUrl,
     reservationCode,
     shareCode,
     previewPath,
@@ -456,8 +467,8 @@ export async function sendCheckInInfoShareAction(
     const mailSubject = `${ctx.reservationCode} nolu rezervasyon giriş bilgilendirme`;
     const emailLogo = sendEmail
       ? await prepareCompanyLogoForEmail(
-          ctx.companySettings.logoUrl,
-          ctx.companySettings.domain
+          ctx.brandLogoUrl,
+          ctx.publicDomain
         )
       : null;
 
