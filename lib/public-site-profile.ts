@@ -50,9 +50,9 @@ export function resolvePublicSiteProfile(
       key: "balayi-villacisi",
       domain: "www.balayivillacisi.com",
       brandName: "Balayı Villacısı",
-      logoUrl: "",
-      faviconUrl: "",
-      ogImageUrl: "",
+      logoUrl: "/brands/balayi-villacisi/logo.png",
+      faviconUrl: "/brands/balayi-villacisi/favicon.png",
+      ogImageUrl: "/brands/balayi-villacisi/og-image.png",
       seoTitle: "Balayı Villacısı - Aşkınıza Özel Hayalinizdeki Balayı",
       seoDescription:
         "Balayı çiftlerine özel korunaklı, jakuzili ve özel havuzlu kiralık villaları keşfedin. Aşkınıza özel unutulmaz bir balayı tatili planlayın.",
