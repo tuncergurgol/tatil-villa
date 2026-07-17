@@ -93,11 +93,23 @@ echo "    HEAD: $(git rev-parse --short HEAD) — $(git log -1 --format='%s' | c
 # ---- 3) Bagimliliklar ------------------------------------------------------
 echo ""
 echo "==> [3/7] Bagimliliklar kuruluyor (npm ci)"
+# Eski node_modules / bozuk lock senkronu riskine karsi temiz kurulum
+rm -rf node_modules
 if [[ -f package-lock.json ]]; then
   npm ci
 else
   echo "    package-lock.json yok, npm install kullaniliyor"
   npm install
+fi
+
+EXPECTED_NEXT="$(node -e "console.log(require('./package.json').dependencies.next)" 2>/dev/null || true)"
+INSTALLED_NEXT="$(node -e "console.log(require('next/package.json').version)" 2>/dev/null || echo 'YOK')"
+echo "    package.json next: ${EXPECTED_NEXT:-?}"
+echo "    kurulu next     : $INSTALLED_NEXT"
+if [[ -n "${EXPECTED_NEXT:-}" && "$INSTALLED_NEXT" != "$EXPECTED_NEXT" ]]; then
+  echo "    HATA: Next surumu eslesmiyor (beklenen $EXPECTED_NEXT, kurulu $INSTALLED_NEXT)."
+  echo "    package-lock.json / npm ci sonucunu kontrol edin."
+  exit 1
 fi
 
 # ---- 4) Prisma generate + migrate ------------------------------------------
@@ -109,6 +121,8 @@ npx prisma migrate deploy
 # ---- 5) Build --------------------------------------------------------------
 echo ""
 echo "==> [5/7] Next build (npm run build)"
+# Onceki basarisiz Turbopack/webpack denemesinden kalan cache'i temizle
+rm -rf .next
 npm run build
 if [[ ! -f .next/BUILD_ID ]]; then
   echo "    HATA: .next/BUILD_ID olusmadi, build basarisiz. pm2 restart atlandi."
