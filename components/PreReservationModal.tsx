@@ -200,7 +200,12 @@ export default function PreReservationModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[220] flex items-stretch justify-center bg-slate-950/70 p-0 sm:items-center sm:p-4">
-      <div className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[min(94vh,900px)] sm:rounded-2xl lg:flex-row">
+      {/*
+        Mobil: tek dikey scroll — overflow-hidden + panel içi scroll
+        formu (Gönder) viewport altında bırakıyordu.
+        lg+: yan yana paneller kendi içinde kayar.
+      */}
+      <div className="relative flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[min(94vh,900px)] sm:rounded-2xl lg:flex-row">
         <button
           type="button"
           onClick={onClose}
@@ -211,231 +216,236 @@ export default function PreReservationModal({
           <X className="h-4 w-4" />
         </button>
 
-        {/* Sol panel */}
-        <aside className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto bg-[#0b1b3a] p-4 sm:p-5 lg:w-[42%] lg:max-w-md">
-          <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
-            <div className="relative aspect-[16/11] bg-slate-200">
-              {villa.image ? (
-                <Image
-                  src={villa.image}
-                  alt={villa.name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 420px"
-                />
-              ) : null}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-4 pb-3 pt-10 text-white">
-                <p className="text-lg font-bold tracking-wide">{villa.name}</p>
-                <p className="mt-0.5 text-xs text-white/85">{guestLine}</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 p-4">
-              <div className="flex items-center justify-between rounded-lg bg-[#f3ebe0] px-3 py-2.5">
-                <span className="text-sm font-medium text-slate-700">
-                  Toplam Ödeme
-                </span>
-                <span className="text-base font-bold text-[#c45c26]">
-                  {formatMoney(total)}
-                </span>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain lg:flex-row lg:overflow-hidden">
+          {/* Sol panel */}
+          <aside className="flex w-full shrink-0 flex-col gap-4 bg-[#0b1b3a] p-4 sm:p-5 lg:w-[42%] lg:max-w-md lg:overflow-y-auto lg:overscroll-contain">
+            <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
+              <div className="relative aspect-[16/11] bg-slate-200">
+                {villa.image ? (
+                  <Image
+                    src={villa.image}
+                    alt={villa.name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 420px"
+                  />
+                ) : null}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent px-4 pb-3 pt-10 text-white">
+                  <p className="text-lg font-bold tracking-wide">{villa.name}</p>
+                  <p className="mt-0.5 text-xs text-white/85">{guestLine}</p>
+                </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-slate-800">
-                    Ön Ödeme
+              <div className="space-y-3 p-4">
+                <div className="flex items-center justify-between rounded-lg bg-[#f3ebe0] px-3 py-2.5">
+                  <span className="text-sm font-medium text-slate-700">
+                    Toplam Ödeme
                   </span>
-                  <span className="text-sm font-bold text-slate-900">
-                    {formatMoney(prepayment)}
+                  <span className="text-base font-bold text-[#c45c26]">
+                    {formatMoney(total)}
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] leading-snug text-slate-500">
-                  Rezervasyonu gerçekleştirmek için yapmanız gereken ön ödeme
-                  tutarı
-                </p>
-              </div>
 
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-slate-800">
-                    Tesise Girişte
-                  </span>
-                  <span className="text-sm font-bold text-slate-900">
-                    {formatMoney(remainder)}
-                  </span>
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-slate-800">
+                      Ön Ödeme
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {formatMoney(prepayment)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                    Rezervasyonu gerçekleştirmek için yapmanız gereken ön ödeme
+                    tutarı
+                  </p>
                 </div>
-                <p className="mt-1 text-[11px] leading-snug text-slate-500">
-                  Ön ödeme sonrası yapmanız gereken kalan tutar girişte
-                  alınacaktır.
-                </p>
+
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-slate-800">
+                      Tesise Girişte
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {formatMoney(remainder)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-snug text-slate-500">
+                    Ön ödeme sonrası yapmanız gereken kalan tutar girişte
+                    alınacaktır.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Resim 2 — ödeme seçimleri */}
-          <div className="space-y-3 rounded-2xl bg-white p-3 shadow-lg sm:p-4">
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              <RadioCard
-                selected={paymentMethod === "transfer"}
-                onSelect={() => setPaymentMethod("transfer")}
-                title="Havale ya da EFT ile Ödeme"
-                description="Bu rezervasyonun ödemesini havale ya da EFT ile gerçekleştirmek istiyorum."
-              />
-              <RadioCard
-                selected={paymentMethod === "card"}
-                onSelect={() => setPaymentMethod("card")}
-                title="Kredi Kartı ile Ödeme"
-                description="Bu rezervasyonun ödemesini kredi kartı ile gerçekleştirmek istiyorum."
-              />
-            </div>
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              <RadioCard
-                selected={paymentAmount === "prepayment"}
-                onSelect={() => setPaymentAmount("prepayment")}
-                title={`%${quote.prepaymentRate} Ön Ödeme Tutarı`}
-                price={formatMoneyLira(prepayment)}
-                description="Toplam tutarın sadece ön ödemesini yapmak istiyorum."
-              />
-              <RadioCard
-                selected={paymentAmount === "full"}
-                onSelect={() => setPaymentAmount("full")}
-                title="Tutarın Tamamı"
-                price={formatMoneyLira(total)}
-                description="Toplam tutarın tamamını yapmak istiyorum."
-              />
-            </div>
-            <p className="text-center text-xs text-slate-500">
-              Şimdi ödenecek:{" "}
-              <span className="font-semibold text-slate-800">
-                {formatMoneyLira(payNow)}
-              </span>
-            </p>
-          </div>
-        </aside>
-
-        {/* Sağ form */}
-        <section className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-6 sm:px-8 sm:py-8">
-          <p className="text-sm font-medium text-[#e07a2f]">
-            Şu an rezervasyon talebi oluşturuyorsunuz.
-          </p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#0b1b3a] sm:text-3xl">
-            Bilgilerinizi giriniz
-          </h2>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-            Ön rezervasyon talebi alabilmemiz için lütfen rezervasyon sahibi
-            bilgilerini giriniz.
-          </p>
-
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-1 flex-col">
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={guestName}
-                onChange={(event) => setGuestName(event.target.value)}
-                placeholder="İsim Soyisim"
-                required
-                className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              />
-              <input
-                type="email"
-                value={guestEmail}
-                onChange={(event) => setGuestEmail(event.target.value)}
-                placeholder="E-mail Adresiniz"
-                required
-                className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-              />
-              <TurkishPhoneField
-                hideLabel
-                required
-                value={guestPhone}
-                onChange={setGuestPhone}
-                placeholder="Telefon Numaranız"
-                focusPalette="blue"
-              />
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <label className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={acceptTerms}
-                  onChange={(event) => {
-                    setAcceptTerms(event.target.checked);
-                    if (event.target.checked) setLocalError(null);
-                  }}
-                  required
-                  aria-required="true"
-                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer appearance-auto rounded border border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500"
+            {/* Resim 2 — ödeme seçimleri */}
+            <div className="space-y-3 rounded-2xl bg-white p-3 shadow-lg sm:p-4">
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <RadioCard
+                  selected={paymentMethod === "transfer"}
+                  onSelect={() => setPaymentMethod("transfer")}
+                  title="Havale ya da EFT ile Ödeme"
+                  description="Bu rezervasyonun ödemesini havale ya da EFT ile gerçekleştirmek istiyorum."
                 />
-                <span>
-                  <Link
-                    href="/kurumsal/gizlilik-politikasi"
-                    target="_blank"
-                    className="underline underline-offset-2"
-                  >
-                    Kişisel Verilerin İşlenmesine İlişkin Aydınlatma Metni
-                  </Link>
-                  &apos;ni,{" "}
-                  <Link
-                    href="/kurumsal/online-rezervasyon-sozlesmesi"
-                    target="_blank"
-                    className="underline underline-offset-2"
-                  >
-                    Rezervasyon Sözleşmesi
-                  </Link>
-                  &apos;ni ve{" "}
-                  <Link
-                    href="/kurumsal/uyelik-sozlesmesi"
-                    target="_blank"
-                    className="underline underline-offset-2"
-                  >
-                    Üyelik Sözleşmesi
-                  </Link>
-                  &apos;ni okudum, anladım ve kabul ediyorum.
-                </span>
-              </label>
-
-              <label className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={acceptMarketing}
-                  onChange={(event) =>
-                    setAcceptMarketing(event.target.checked)
-                  }
-                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer appearance-auto rounded border border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500"
+                <RadioCard
+                  selected={paymentMethod === "card"}
+                  onSelect={() => setPaymentMethod("card")}
+                  title="Kredi Kartı ile Ödeme"
+                  description="Bu rezervasyonun ödemesini kredi kartı ile gerçekleştirmek istiyorum."
                 />
-                <span>
-                  {brandName} tarafından haber ve kampanyalardan haberdar
-                  edilmek istiyorum.{" "}
-                  <Link
-                    href="/kurumsal/gizlilik-politikasi"
-                    target="_blank"
-                    className="underline underline-offset-2"
-                  >
-                    Detaylı Bilgi
-                  </Link>
+              </div>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <RadioCard
+                  selected={paymentAmount === "prepayment"}
+                  onSelect={() => setPaymentAmount("prepayment")}
+                  title={`%${quote.prepaymentRate} Ön Ödeme Tutarı`}
+                  price={formatMoneyLira(prepayment)}
+                  description="Toplam tutarın sadece ön ödemesini yapmak istiyorum."
+                />
+                <RadioCard
+                  selected={paymentAmount === "full"}
+                  onSelect={() => setPaymentAmount("full")}
+                  title="Tutarın Tamamı"
+                  price={formatMoneyLira(total)}
+                  description="Toplam tutarın tamamını yapmak istiyorum."
+                />
+              </div>
+              <p className="text-center text-xs text-slate-500">
+                Şimdi ödenecek:{" "}
+                <span className="font-semibold text-slate-800">
+                  {formatMoneyLira(payNow)}
                 </span>
-              </label>
-            </div>
-
-            {(localError || error) && (
-              <p
-                role="alert"
-                className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
-              >
-                {localError || error}
               </p>
-            )}
+            </div>
+          </aside>
 
-            <button
-              type="submit"
-              disabled={pending}
-              className="mt-auto w-full rounded-xl bg-sky-600 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-wait disabled:opacity-70"
+          {/* Sağ form */}
+          <section className="flex min-h-0 flex-1 flex-col px-5 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-8 lg:overflow-y-auto lg:overscroll-contain">
+            <p className="text-sm font-medium text-[#e07a2f]">
+              Şu an rezervasyon talebi oluşturuyorsunuz.
+            </p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#0b1b3a] sm:text-3xl">
+              Bilgilerinizi giriniz
+            </h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
+              Ön rezervasyon talebi alabilmemiz için lütfen rezervasyon sahibi
+              bilgilerini giriniz.
+            </p>
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-6 flex flex-1 flex-col"
             >
-              {pending ? "Gönderiliyor..." : "Gönder"}
-            </button>
-          </form>
-        </section>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(event) => setGuestName(event.target.value)}
+                  placeholder="İsim Soyisim"
+                  required
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                />
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={(event) => setGuestEmail(event.target.value)}
+                  placeholder="E-mail Adresiniz"
+                  required
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                />
+                <TurkishPhoneField
+                  hideLabel
+                  required
+                  value={guestPhone}
+                  onChange={setGuestPhone}
+                  placeholder="Telefon Numaranız"
+                  focusPalette="blue"
+                />
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <label className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={acceptTerms}
+                    onChange={(event) => {
+                      setAcceptTerms(event.target.checked);
+                      if (event.target.checked) setLocalError(null);
+                    }}
+                    required
+                    aria-required="true"
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer appearance-auto rounded border border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500"
+                  />
+                  <span>
+                    <Link
+                      href="/kurumsal/gizlilik-politikasi"
+                      target="_blank"
+                      className="underline underline-offset-2"
+                    >
+                      Kişisel Verilerin İşlenmesine İlişkin Aydınlatma Metni
+                    </Link>
+                    &apos;ni,{" "}
+                    <Link
+                      href="/kurumsal/online-rezervasyon-sozlesmesi"
+                      target="_blank"
+                      className="underline underline-offset-2"
+                    >
+                      Rezervasyon Sözleşmesi
+                    </Link>
+                    &apos;ni ve{" "}
+                    <Link
+                      href="/kurumsal/uyelik-sozlesmesi"
+                      target="_blank"
+                      className="underline underline-offset-2"
+                    >
+                      Üyelik Sözleşmesi
+                    </Link>
+                    &apos;ni okudum, anladım ve kabul ediyorum.
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={acceptMarketing}
+                    onChange={(event) =>
+                      setAcceptMarketing(event.target.checked)
+                    }
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer appearance-auto rounded border border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500"
+                  />
+                  <span>
+                    {brandName} tarafından haber ve kampanyalardan haberdar
+                    edilmek istiyorum.{" "}
+                    <Link
+                      href="/kurumsal/gizlilik-politikasi"
+                      target="_blank"
+                      className="underline underline-offset-2"
+                    >
+                      Detaylı Bilgi
+                    </Link>
+                  </span>
+                </label>
+              </div>
+
+              {(localError || error) && (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+                >
+                  {localError || error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={pending}
+                className="mt-6 w-full rounded-xl bg-sky-600 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-wait disabled:opacity-70 lg:mt-auto"
+              >
+                {pending ? "Gönderiliyor..." : "Gönder"}
+              </button>
+            </form>
+          </section>
+        </div>
       </div>
     </div>,
     document.body
