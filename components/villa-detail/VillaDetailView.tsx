@@ -454,7 +454,7 @@ export default function VillaDetailView({
                       Müsait günlerde gecelik fiyatlar görünür.
                     </p>
                     {foreignCurrencyDisclaimer ? (
-                      <p className="mt-2 text-[11px] font-semibold uppercase leading-snug tracking-wide text-amber-800 sm:text-xs">
+                      <p className="mt-2 text-[11px] font-medium leading-snug text-amber-800 sm:text-xs">
                         {foreignCurrencyDisclaimer}
                       </p>
                     ) : null}

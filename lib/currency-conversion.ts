@@ -65,5 +65,5 @@ export function buildForeignCurrencyPaymentDisclaimer(
 ): string | null {
   if (foreignCurrencies.length === 0) return null;
   const label = foreignCurrencies.join(" / ");
-  return `GECELİK FİYATLAR ${label} VERİLMİŞ OLUP, YAPTIĞINIZ ÖN ÖDEME VE GİRİŞTE YAPACAĞINIZ ÖDEME O PARA BİRİMİ İLE DEĞERLENDİRİLİR. TL PARA BİRİMİ BİLGİLENDİRME AMAÇLIDIR.`;
+  return `Gecelik fiyatlar ${label} olarak belirlenmiş, yaptığınız ön ödeme ve girişte yapacağınız ödeme ${label} olarak değerlendirilir. TL para birimi bilgilendirme amaçlıdır.`;
 }

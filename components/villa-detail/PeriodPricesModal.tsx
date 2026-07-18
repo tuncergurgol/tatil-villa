@@ -325,7 +325,7 @@ export default function PeriodPricesModal({
             Fiyatlar gecelik olarak gösterilmektedir
           </p>
           {foreignCurrencyDisclaimer ? (
-            <p className="text-center text-[11px] font-semibold uppercase leading-snug tracking-wide text-amber-800">
+            <p className="text-center text-[11px] font-medium leading-snug text-amber-800">
               {foreignCurrencyDisclaimer}
             </p>
           ) : null}
