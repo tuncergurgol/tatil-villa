@@ -64,6 +64,7 @@ export default function CrmVillaFeatureImportManagement({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [onlyUnmatched, setOnlyUnmatched] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [selectedVilla, setSelectedVilla] =
     useState<CrmVillaFeatureImportRow | null>(null);
   const [preview, setPreview] = useState<CrmVillaFeaturePreview | null>(null);
@@ -80,6 +81,40 @@ export default function CrmVillaFeatureImportManagement({
         .some((value) => value.includes(term));
     });
   }, [onlyUnmatched, query, rows]);
+
+  const filteredIds = useMemo(
+    () => filteredRows.map((row) => row.id),
+    [filteredRows]
+  );
+  const checkedFilteredCount = useMemo(
+    () => filteredIds.filter((id) => checkedIds.has(id)).length,
+    [checkedIds, filteredIds]
+  );
+  const allFilteredChecked =
+    filteredIds.length > 0 && checkedFilteredCount === filteredIds.length;
+  const someFilteredChecked =
+    checkedFilteredCount > 0 && checkedFilteredCount < filteredIds.length;
+
+  function toggleRowChecked(id: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllFiltered(checked: boolean) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        for (const id of filteredIds) next.add(id);
+      } else {
+        for (const id of filteredIds) next.delete(id);
+      }
+      return next;
+    });
+  }
 
   function openPreview(row: CrmVillaFeatureImportRow) {
     setSelectedVilla(row);
@@ -181,6 +216,11 @@ export default function CrmVillaFeatureImportManagement({
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <p className="text-sm font-semibold text-slate-800">
             Villa Eşleştirmeleri
+            {checkedIds.size > 0 ? (
+              <span className="ml-2 font-medium text-sky-700">
+                · {checkedIds.size} seçili
+              </span>
+            ) : null}
           </p>
           <span className="text-xs text-slate-500">
             {filteredRows.length} / {rows.length} villa
@@ -190,6 +230,26 @@ export default function CrmVillaFeatureImportManagement({
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
+                <th className="w-12 px-4 py-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredChecked}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someFilteredChecked;
+                      }}
+                      onChange={(event) =>
+                        toggleAllFiltered(event.target.checked)
+                      }
+                      disabled={filteredIds.length === 0}
+                      className="h-4 w-4 rounded border-slate-300 text-sky-600"
+                      aria-label="Tümünü seç"
+                    />
+                    <span className="whitespace-nowrap text-[11px] font-semibold normal-case tracking-normal text-slate-600">
+                      Tümünü seç
+                    </span>
+                  </label>
+                </th>
                 <th className="px-4 py-3">Bizim sistem</th>
                 <th className="px-4 py-3">CRM eşleşmesi</th>
                 <th className="px-4 py-3">Mevcut özellik</th>
@@ -199,8 +259,23 @@ export default function CrmVillaFeatureImportManagement({
             <tbody className="divide-y divide-slate-100">
               {filteredRows.map((row) => {
                 const matched = row.villaId != null;
+                const isChecked = checkedIds.has(row.id);
                 return (
-                  <tr key={row.id} className="hover:bg-slate-50/70">
+                  <tr
+                    key={row.id}
+                    className={`hover:bg-slate-50/70 ${
+                      isChecked ? "bg-sky-50/60" : ""
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleRowChecked(row.id)}
+                        className="h-4 w-4 rounded border-slate-300 text-sky-600"
+                        aria-label={`${row.name} seç`}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-slate-900">{row.name}</p>
                       <p className="mt-0.5 text-xs text-slate-500">
