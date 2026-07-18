@@ -46,14 +46,19 @@ export default async function EvolutionWhatsappPage() {
         </div>
       </header>
 
-      <WhatsappEvolutionConnection
-        evolutionBaseUrl={evolutionData.evolutionBaseUrl}
-        evolutionApiKey={evolutionData.evolutionApiKey}
-        evolutionInstanceName={evolutionData.evolutionInstanceName}
+      <WhatsappCalendarAutomation
+        data={calendarData}
         webhookUrl={webhookUrl}
+        connectionPanel={
+          <WhatsappEvolutionConnection
+            evolutionBaseUrl={evolutionData.evolutionBaseUrl}
+            evolutionApiKey={evolutionData.evolutionApiKey}
+            evolutionInstanceName={evolutionData.evolutionInstanceName}
+            webhookUrl={webhookUrl}
+            embedded
+          />
+        }
       />
-
-      <WhatsappCalendarAutomation data={calendarData} webhookUrl={webhookUrl} />
     </div>
   );
 }

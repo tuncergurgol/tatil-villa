@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   createWhatsappCalendarGroup,
@@ -39,9 +39,11 @@ const STATUS_LABELS: Record<string, string> = {
 export default function WhatsappCalendarAutomation({
   data,
   webhookUrl,
+  connectionPanel,
 }: {
   data: WhatsappCalendarAdminData;
   webhookUrl: string;
+  connectionPanel: ReactNode;
 }) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(data.enabled);
@@ -223,8 +225,8 @@ export default function WhatsappCalendarAutomation({
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="grid gap-6 xl:grid-cols-3">
+      <div className="order-1 xl:col-span-3">
         <h1 className="text-2xl font-bold text-gray-900">Takvim WhatsApp Otomasyonu</h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-500">
           Takvim WhatsApp hattınızdaki grup mesajlarını webhook ile alır, villayla eşleştirir
@@ -232,7 +234,7 @@ export default function WhatsappCalendarAutomation({
         </p>
       </div>
 
-      <section className="rounded-2xl border border-sky-200 bg-sky-50/70 p-5">
+      <section className="order-2 rounded-2xl border border-sky-200 bg-sky-50/70 p-5 xl:col-span-3">
         <h2 className="text-sm font-semibold text-sky-900">
           WhatsApp dinleme nasıl çalışır?
         </h2>
@@ -265,7 +267,7 @@ export default function WhatsappCalendarAutomation({
 
       {notice ? (
         <div
-          className={`rounded-xl px-4 py-3 text-sm ${
+          className={`order-3 rounded-xl px-4 py-3 text-sm xl:col-span-3 ${
             notice.type === "ok"
               ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
               : "border border-red-200 bg-red-50 text-red-700"
@@ -275,7 +277,7 @@ export default function WhatsappCalendarAutomation({
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="order-4 grid gap-4 sm:grid-cols-3 xl:col-span-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <p className="text-sm text-gray-500">Eşleşen Villa</p>
           <p className="mt-1 text-3xl font-bold text-gray-900">{mappedCount}</p>
@@ -290,7 +292,19 @@ export default function WhatsappCalendarAutomation({
         </div>
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      <details className="group order-5 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="text-sm font-semibold text-gray-800">
+            Takvim WhatsApp Bağlantısı
+          </span>
+          <span className="text-lg text-gray-400 transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <div className="border-t border-gray-100">{connectionPanel}</div>
+      </details>
+
+      <section className="order-6 h-full rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-gray-800">Webhook Ayarları</h2>
         <div className="mt-4 space-y-4">
           <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -343,7 +357,7 @@ export default function WhatsappCalendarAutomation({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      <section className="order-6 h-full rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-gray-800">WhatsApp Grupları</h2>
         <p className="mt-2 text-sm text-gray-500">
           Grup adı, WhatsApp&apos;ta bağlı cihazınızdaki grup listesinden gelir. Listeden
@@ -446,17 +460,23 @@ export default function WhatsappCalendarAutomation({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Mesaj Örnekleri (Öğrenme)
-        </h2>
-        <p className="mt-2 text-sm text-gray-500">
+      <details className="group order-8 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="text-sm font-semibold text-gray-800">
+            Mesaj Örnekleri (Öğrenme)
+          </span>
+          <span className="text-lg text-gray-400 transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <div className="border-t border-gray-100 p-5">
+          <p className="text-sm text-gray-500">
           Gelen mesajda bu ifadelerden biri geçiyorsa sistem ilgili işlemi uygular.
           Örnek: ifade <code>kapatalım</code> + işlem <strong>Kapat</strong> → mesaj{" "}
           <code>19-20 temmuz kapatalım</code> takvimde o günleri dolu yapar. Tarih kısmını
           sistem mesajdan otomatik okur; buraya yalnızca anahtar ifadeyi yazın.
         </p>
-        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="min-w-[220px] flex-[1.4]">
             <span className="mb-1 block text-xs font-medium text-gray-500">
               Mesaj örneği / ifade
@@ -492,8 +512,8 @@ export default function WhatsappCalendarAutomation({
           >
             Örnek Ekle
           </button>
-        </div>
-        <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
+          </div>
+          <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
@@ -551,17 +571,24 @@ export default function WhatsappCalendarAutomation({
               )}
             </tbody>
           </table>
+          </div>
         </div>
-      </section>
+      </details>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-800">Mesaj Testi</h2>
-        <p className="mt-2 text-sm text-gray-500">
+      <details className="group order-7 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="text-sm font-semibold text-gray-800">Mesaj Testi</span>
+          <span className="text-lg text-gray-400 transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <div className="border-t border-gray-100 p-5">
+          <p className="text-sm text-gray-500">
           Takvime uygulamadan önce sistemin mesajı nasıl okuduğunu deneyin. Örnek:{" "}
           <code>15-20 Temmuz dolu</code>, <code>01.08-05.08 açık</code>,{" "}
           <code>10-12 Ağustos opsiyon</code>
         </p>
-        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="min-w-[280px] flex-1">
             <span className="mb-1 block text-xs font-medium text-gray-500">Örnek Mesaj</span>
             <input
@@ -578,10 +605,11 @@ export default function WhatsappCalendarAutomation({
           >
             Mesajı Test Et
           </button>
+          </div>
         </div>
-      </section>
+      </details>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      <section className="order-6 h-full rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-gray-800">Villa - Grup Eşleşmeleri</h2>
         <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
           <table className="w-full text-left text-sm">
@@ -616,7 +644,7 @@ export default function WhatsappCalendarAutomation({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      <section className="order-9 rounded-2xl border border-gray-200 bg-white p-5 xl:col-span-3">
         <h2 className="text-sm font-semibold text-gray-800">Son Gelen Mesajlar</h2>
         <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
           <table className="w-full text-left text-sm">

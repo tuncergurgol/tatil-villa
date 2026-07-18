@@ -97,11 +97,13 @@ export default function WhatsappEvolutionConnection({
   evolutionApiKey,
   evolutionInstanceName,
   webhookUrl,
+  embedded = false,
 }: {
   evolutionBaseUrl: string;
   evolutionApiKey: string;
   evolutionInstanceName: string;
   webhookUrl: string;
+  embedded?: boolean;
 }) {
   const [baseUrl, setBaseUrl] = useState(evolutionBaseUrl);
   const [apiKey, setApiKey] = useState(evolutionApiKey);
@@ -445,8 +447,18 @@ export default function WhatsappEvolutionConnection({
   const busy = isPending || isBusy;
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section
+      className={
+        embedded
+          ? "bg-white p-5"
+          : "rounded-2xl border border-gray-200 bg-white p-5"
+      }
+    >
+      <div
+        className={`flex flex-wrap items-start justify-between gap-3 ${
+          embedded ? "sr-only" : ""
+        }`}
+      >
         <div>
           <h2 className="text-sm font-semibold text-gray-800">
             Takvim WhatsApp Bağlantısı
