@@ -173,10 +173,15 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
 
   function handleMatchGroup(formData: FormData) {
     setError(null);
+    setNotice(null);
     startTransition(async () => {
       const result = await matchVillaWhatsappGroup(villaId, formData);
-      if (result.error) setError(result.error);
-      else refresh();
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice("Villa WhatsApp grubuna eşlendi.");
+      refresh();
     });
   }
 
@@ -192,8 +197,19 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
   }
 
   function submitMatchGroup() {
+    const trimmedId = whatsappGroupId.trim();
+    if (!trimmedId) {
+      setError("Lütfen bir WhatsApp grubu seçin veya grup ID girin");
+      return;
+    }
     const formData = new FormData();
-    formData.set("whatsappGroupId", whatsappGroupId);
+    formData.set("whatsappGroupId", trimmedId);
+    const selectedName = data.whatsappGroups.find(
+      (group) => group.id === trimmedId
+    )?.name;
+    if (selectedName) {
+      formData.set("whatsappGroupName", selectedName);
+    }
     if (differentGroupName) {
       formData.set("whatsappGroupDifferentName", "on");
     }
