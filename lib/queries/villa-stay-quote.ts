@@ -1,10 +1,16 @@
 import { prisma } from "@/lib/db";
 import {
   computeStayQuote,
+  convertStayQuoteDayToTl,
   getStayNightKeys,
   type StayQuote,
   type StayQuoteDayInput,
 } from "@/lib/stay-quote";
+import {
+  convertNullableCurrencyAmount,
+  type PublicExchangeRates,
+} from "@/lib/currency-conversion";
+import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import type { BookingExtraFeeFieldKey } from "@/lib/booking-form-details";
 import {
@@ -19,6 +25,7 @@ import type { VillaDayOccupancy } from "@prisma/client";
 
 export type VillaStayQuoteResult = {
   quote: StayQuote;
+  exchangeRates: PublicExchangeRates;
   /** Birim ücret alanları (legacy / wizard) */
   fees: Record<BookingExtraFeeFieldKey, number | null>;
   /** Public rezervasyon hesabı ile aynı period ücretleri */
@@ -62,9 +69,10 @@ export function mapDbPeriodDayToQuoteInput(
     cleaningFee: number | null;
     cleaningFeeCurrency: StayQuoteDayInput["cleaningFeeCurrency"];
     cleaningDayCount?: number | null;
-  }
+  },
+  exchangeRates?: PublicExchangeRates
 ): StayQuoteDayInput {
-  return {
+  const input: StayQuoteDayInput = {
     dateKey,
     nightlyPrice: day.nightlyPrice,
     nightlyPriceWithoutCommission: day.nightlyPriceWithoutCommission,
@@ -78,6 +86,9 @@ export function mapDbPeriodDayToQuoteInput(
     cleaningFeeCurrency: day.cleaningFeeCurrency,
     cleaningDayCount: day.cleaningDayCount ?? null,
   };
+  return exchangeRates
+    ? convertStayQuoteDayToTl(input, exchangeRates)
+    : input;
 }
 
 /** Tüm sistemde kullanılan rezervasyon hesaplama sorgusu */
@@ -91,6 +102,7 @@ export async function resolveVillaStayQuote(
 
   const rangeStart = new Date(`${nightKeys[0]}T00:00:00.000Z`);
   const rangeEnd = new Date(`${nightKeys[nightKeys.length - 1]}T00:00:00.000Z`);
+  const exchangeRates = await getPublicExchangeRates();
 
   const [periodDays, fees, periodFees, villa] = await Promise.all([
     prisma.villaPricePeriodDay.findMany({
@@ -100,8 +112,8 @@ export async function resolveVillaStayQuote(
       },
       select: QUOTE_DAY_SELECT,
     }),
-    resolveBookingPeriodFees(villaId, rangeStart),
-    resolveStayPeriodFees(villaId, rangeStart),
+    resolveBookingPeriodFees(villaId, rangeStart, exchangeRates),
+    resolveStayPeriodFees(villaId, rangeStart, exchangeRates),
     prisma.villa.findUnique({
       where: { id: villaId },
       select: {
@@ -131,7 +143,10 @@ export async function resolveVillaStayQuote(
   const daysByDateKey = new Map<string, StayQuoteDayInput>();
   for (const day of periodDays) {
     const dateKey = dbDateToDateKey(new Date(day.date));
-    daysByDateKey.set(dateKey, mapDbPeriodDayToQuoteInput(dateKey, day));
+    daysByDateKey.set(
+      dateKey,
+      mapDbPeriodDayToQuoteInput(dateKey, day, exchangeRates)
+    );
   }
 
   const heatedPools: HeatedPoolOption[] = (villa?.pools ?? []).map((pool) => ({
@@ -140,14 +155,20 @@ export async function resolveVillaStayQuote(
     periods: pool.periods.map((period) => ({
       startDate: dbDateToDateKey(period.startDate),
       endDate: dbDateToDateKey(period.endDate),
-      heatingFee: period.heatingFee,
-      heatingFeeCurrency: period.heatingFeeCurrency,
+      heatingFee: convertNullableCurrencyAmount(
+        period.heatingFee,
+        period.heatingFeeCurrency,
+        "TL",
+        exchangeRates
+      ),
+      heatingFeeCurrency: "TL",
       poolOpen: period.poolOpen,
     })),
   }));
 
   return {
     quote: computeStayQuote(checkIn, checkOut, daysByDateKey),
+    exchangeRates,
     fees,
     periodFees,
     heatedPools,

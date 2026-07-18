@@ -19,22 +19,12 @@ import { notifyNewReservationRequest } from "@/lib/public-booking-notifications"
 import { getRequestClientIp } from "@/lib/request-client-ip";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
-
-const optionalMoney = z.coerce.number().optional().nullable();
-
-const priceDetailsSchema = z
-  .object({
-    extraAccommodationFee: optionalMoney,
-    cleaningFee: optionalMoney,
-    petCleaningFee: optionalMoney,
-    poolHeatingPrivateFee: optionalMoney,
-    poolHeatingIndoorFee: optionalMoney,
-    poolHeatingKidsFee: optionalMoney,
-    underfloorHeatingFee: optionalMoney,
-    damageDeposit: optionalMoney,
-    petDamageDeposit: optionalMoney,
-  })
-  .partial();
+import { resolveVillaStayQuote } from "@/lib/queries/villa-stay-quote";
+import {
+  buildStayBookingFeeDetails,
+  type PoolHeatingSelections,
+  type StayFeeSelections,
+} from "@/lib/stay-period-fees";
 
 const bookingSchema = z.object({
   villaId: z.string().min(1),
@@ -53,12 +43,8 @@ const bookingSchema = z.object({
     .refine((value) => value.length >= 12, "Geçerli telefon girin"),
   paymentMethod: z.enum(["card", "transfer"]).default("transfer"),
   paymentAmount: z.enum(["prepayment", "full"]).default("prepayment"),
-  totalPrice: z.coerce.number().optional(),
-  grossPrice: z.coerce.number().optional(),
-  prepaymentAmount: z.coerce.number().optional(),
-  prepaymentRate: z.coerce.number().optional(),
-  checkInPayment: z.coerce.number().optional(),
-  priceDetails: z.string().optional(),
+  feeSelections: z.string().optional(),
+  poolHeatingSelections: z.string().optional(),
   acceptMarketing: z
     .enum(["true", "false", "on", "off", ""])
     .optional()
@@ -71,19 +57,21 @@ export type BookingActionState = {
   bookingId?: string;
 };
 
-function parsePriceDetails(raw: string | undefined) {
-  if (!raw?.trim()) return {};
+function parseBooleanRecord<T extends Record<string, boolean>>(
+  raw: string | undefined
+): T {
+  if (!raw?.trim()) return {} as T;
   try {
-    const parsed = priceDetailsSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : {};
+    const value = JSON.parse(raw) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {} as T;
+    }
+    return Object.fromEntries(
+      Object.entries(value).filter(([, selected]) => selected === true)
+    ) as T;
   } catch {
-    return {};
+    return {} as T;
   }
-}
-
-function moneyOrNull(value: number | null | undefined): number | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  return Math.round(value);
 }
 
 export async function submitBooking(
@@ -103,12 +91,9 @@ export async function submitBooking(
     guestPhone: formData.get("guestPhone"),
     paymentMethod: formData.get("paymentMethod") ?? "transfer",
     paymentAmount: formData.get("paymentAmount") ?? "prepayment",
-    totalPrice: formData.get("totalPrice") || undefined,
-    grossPrice: formData.get("grossPrice") || undefined,
-    prepaymentAmount: formData.get("prepaymentAmount") || undefined,
-    prepaymentRate: formData.get("prepaymentRate") || undefined,
-    checkInPayment: formData.get("checkInPayment") || undefined,
-    priceDetails: formData.get("priceDetails")?.toString() || undefined,
+    feeSelections: formData.get("feeSelections")?.toString() || undefined,
+    poolHeatingSelections:
+      formData.get("poolHeatingSelections")?.toString() || undefined,
     acceptMarketing: formData.get("acceptMarketing") ?? "",
   });
 
@@ -124,23 +109,15 @@ export async function submitBooking(
     guestPhone,
     paymentMethod,
     paymentAmount,
-    totalPrice,
-    grossPrice,
-    prepaymentAmount,
-    prepaymentRate,
-    checkInPayment,
-    priceDetails: priceDetailsRaw,
+    feeSelections: feeSelectionsRaw,
+    poolHeatingSelections: poolHeatingSelectionsRaw,
     acceptMarketing,
-    ...rest
+    villaId,
+    adults,
+    children,
+    babies,
+    pets,
   } = parsed.data;
-
-  const feeLines = parsePriceDetails(priceDetailsRaw);
-  const accommodationTotal = moneyOrNull(grossPrice);
-  const resolvedCheckIn =
-    moneyOrNull(checkInPayment) ??
-    (totalPrice != null && prepaymentAmount != null
-      ? Math.max(0, totalPrice - prepaymentAmount)
-      : null);
 
   const feeFieldKeys: BookingExtraFeeFieldKey[] = [
     "extraAccommodationFee",
@@ -152,9 +129,51 @@ export async function submitBooking(
     "underfloorHeatingFee",
   ];
 
-  const feeFields = Object.fromEntries(
-    feeFieldKeys.map((key) => [key, moneyOrNull(feeLines[key])])
-  ) as Record<BookingExtraFeeFieldKey, number | null>;
+  const selections = parseBooleanRecord<StayFeeSelections>(feeSelectionsRaw);
+  const poolSelections = parseBooleanRecord<PoolHeatingSelections>(
+    poolHeatingSelectionsRaw
+  );
+
+  let verifiedPricing;
+  try {
+    verifiedPricing = await resolveVillaStayQuote(
+      villaId,
+      checkIn,
+      checkOut
+    );
+  } catch {
+    return { error: "Güncel fiyat ve döviz kuru doğrulanamadı." };
+  }
+  if (!verifiedPricing?.quote.valid) {
+    return {
+      error:
+        verifiedPricing?.quote.invalidReason ??
+        "Seçilen tarihler için fiyat hesaplanamadı.",
+    };
+  }
+
+  const feeFields = buildStayBookingFeeDetails({
+    fees: verifiedPricing.periodFees,
+    selections,
+    pets,
+    nights: verifiedPricing.quote.nights,
+    adults,
+    children,
+    baseCapacity: verifiedPricing.baseCapacity,
+    cleaningFee: verifiedPricing.quote.cleaningFee,
+    heatedPools: verifiedPricing.heatedPools,
+    poolHeatingSelections: poolSelections,
+    checkIn,
+    checkOut,
+  });
+  const verifiedExtraTotal = feeFieldKeys.reduce(
+    (sum, key) => sum + (feeFields[key] ?? 0),
+    0
+  );
+  const accommodationTotal = verifiedPricing.quote.accommodationTotal;
+  const verifiedTotal = accommodationTotal + verifiedExtraTotal;
+  const verifiedPrepayment = verifiedPricing.quote.prepaymentAmount;
+  const resolvedCheckIn = Math.max(0, verifiedTotal - verifiedPrepayment);
 
   const companyPaymentType = mapPublicPaymentMethodToCompanyType(paymentMethod);
   const clientIp = await getRequestClientIp();
@@ -166,13 +185,17 @@ export async function submitBooking(
   let booking;
   try {
     booking = await createBooking({
-      ...rest,
+      villaId,
+      adults,
+      children,
+      babies,
+      pets,
       checkIn: dateKeyToDbDate(checkIn),
       checkOut: dateKeyToDbDate(checkOut),
       guestName,
       guestEmail,
       guestPhone,
-      totalPrice: totalPrice ?? null,
+      totalPrice: verifiedTotal,
       details: withInitialActivityLog(
         {
           paymentMethod,
@@ -185,12 +208,24 @@ export async function submitBooking(
             company.agencyName?.trim() || DEFAULT_BOOKING_AGENCY_NAME,
           grossPrice: accommodationTotal,
           ...feeFields,
-          damageDeposit: moneyOrNull(feeLines.damageDeposit),
-          petDamageDeposit: moneyOrNull(feeLines.petDamageDeposit),
-          prepaymentAmount: moneyOrNull(prepaymentAmount),
-          prepaymentRate: prepaymentRate ?? null,
+          damageDeposit: verifiedPricing.periodFees.damageDeposit,
+          petDamageDeposit:
+            pets > 0
+              ? verifiedPricing.periodFees.petDamageDeposit
+              : null,
+          prepaymentAmount: verifiedPrepayment,
+          prepaymentRate: verifiedPricing.quote.prepaymentRate,
           checkInPayment: resolvedCheckIn,
           feesFromQuote: true,
+          exchangeRateVerified: true,
+          exchangeRateSource: verifiedPricing.exchangeRates.source,
+          exchangeRatePublishedAt:
+            verifiedPricing.exchangeRates.publishedAt,
+          exchangeRates: {
+            EUR: verifiedPricing.exchangeRates.EUR,
+            USD: verifiedPricing.exchangeRates.USD,
+            GBP: verifiedPricing.exchangeRates.GBP,
+          },
           acceptMarketing: acceptMarketing ?? false,
           source: "public_pre_reservation",
         },

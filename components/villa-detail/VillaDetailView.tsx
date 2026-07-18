@@ -26,6 +26,7 @@ import VillaDetailSectionNav, {
 } from "@/components/villa-detail/VillaDetailSectionNav";
 import VillaKnowBeforeSection from "@/components/villa-detail/VillaKnowBeforeSection";
 import { VillaStaySelectionProvider } from "@/components/villa-detail/VillaStaySelectionContext";
+import type { PublicExchangeRates } from "@/lib/currency-conversion";
 import type {
   SimilarVillaCard,
   VillaDetail,
@@ -43,6 +44,7 @@ type VillaDetailViewProps = {
   similarVillas?: SimilarVillaCard[];
   companyPhone?: string;
   brandName?: string;
+  exchangeRates: PublicExchangeRates;
   initialCheckIn?: string;
   initialCheckOut?: string;
   initialAdults?: number;
@@ -103,6 +105,7 @@ export default function VillaDetailView({
   similarVillas = [],
   companyPhone,
   brandName,
+  exchangeRates,
   initialCheckIn = "",
   initialCheckOut = "",
   initialAdults = 2,
@@ -441,6 +444,7 @@ export default function VillaDetailView({
                   </div>
                   <PeriodPricesTrigger
                     periods={villa.periods}
+                    exchangeRates={exchangeRates}
                     className="shrink-0 self-start sm:mt-0.5 sm:self-center"
                   />
                 </div>
@@ -554,6 +558,7 @@ export default function VillaDetailView({
               pricePerNight={villa.pricePerNight}
               companyPhone={companyPhone}
               brandName={brandName}
+              exchangeRates={exchangeRates}
               heatedPools={villa.pools
                 .filter((pool) => pool.heated)
                 .map((pool) => ({

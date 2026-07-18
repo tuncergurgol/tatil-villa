@@ -4,6 +4,11 @@ import {
   emptyStayPeriodFees,
   type StayPeriodFees,
 } from "@/lib/stay-period-fees";
+import {
+  convertNullableCurrencyAmount,
+  type PublicExchangeRates,
+} from "@/lib/currency-conversion";
+import { getPublicExchangeRates } from "@/lib/exchange-rates";
 
 const DEFAULT_PREPAYMENT_RATE = 20;
 
@@ -35,46 +40,89 @@ export async function resolveBookingPrepaymentRate(
 
 export async function resolveStayPeriodFees(
   villaId: string,
-  checkIn: Date
+  checkIn: Date,
+  suppliedExchangeRates?: PublicExchangeRates
 ): Promise<StayPeriodFees> {
-  const day = await prisma.villaPricePeriodDay.findFirst({
-    where: {
-      villaId,
-      date: checkIn,
-    },
-    select: {
-      cleaningFee: true,
-      damageDeposit: true,
-      petCleaningFee: true,
-      petDamageDeposit: true,
-      underfloorHeatingFee: true,
-      extraBedFee: true,
-      poolHeatingPrivateFee: true,
-      poolHeatingIndoorFee: true,
-      poolHeatingKidsFee: true,
-    },
-  });
+  const [day, exchangeRates] = await Promise.all([
+    prisma.villaPricePeriodDay.findFirst({
+      where: {
+        villaId,
+        date: checkIn,
+      },
+      select: {
+        cleaningFee: true,
+        cleaningFeeCurrency: true,
+        damageDeposit: true,
+        damageDepositCurrency: true,
+        petCleaningFee: true,
+        petCleaningFeeCurrency: true,
+        petDamageDeposit: true,
+        petDamageDepositCurrency: true,
+        underfloorHeatingFee: true,
+        underfloorHeatingFeeCurrency: true,
+        extraBedFee: true,
+        extraBedFeeCurrency: true,
+        poolHeatingPrivateFee: true,
+        poolHeatingPrivateFeeCurrency: true,
+        poolHeatingIndoorFee: true,
+        poolHeatingIndoorFeeCurrency: true,
+        poolHeatingKidsFee: true,
+        poolHeatingKidsFeeCurrency: true,
+      },
+    }),
+    suppliedExchangeRates ?? getPublicExchangeRates(),
+  ]);
 
   if (!day) return emptyStayPeriodFees();
 
+  const toTl = (
+    amount: number | null,
+    currency: string
+  ): number | null =>
+    convertNullableCurrencyAmount(
+      amount,
+      currency,
+      "TL",
+      exchangeRates
+    );
+
   return {
-    cleaningFee: day.cleaningFee,
-    damageDeposit: day.damageDeposit,
-    petCleaningFee: day.petCleaningFee,
-    petDamageDeposit: day.petDamageDeposit,
-    underfloorHeatingFee: day.underfloorHeatingFee,
-    extraBedFee: day.extraBedFee,
-    poolHeatingPrivateFee: day.poolHeatingPrivateFee,
-    poolHeatingIndoorFee: day.poolHeatingIndoorFee,
-    poolHeatingKidsFee: day.poolHeatingKidsFee,
+    cleaningFee: toTl(day.cleaningFee, day.cleaningFeeCurrency),
+    damageDeposit: toTl(day.damageDeposit, day.damageDepositCurrency),
+    petCleaningFee: toTl(
+      day.petCleaningFee,
+      day.petCleaningFeeCurrency
+    ),
+    petDamageDeposit: toTl(
+      day.petDamageDeposit,
+      day.petDamageDepositCurrency
+    ),
+    underfloorHeatingFee: toTl(
+      day.underfloorHeatingFee,
+      day.underfloorHeatingFeeCurrency
+    ),
+    extraBedFee: toTl(day.extraBedFee, day.extraBedFeeCurrency),
+    poolHeatingPrivateFee: toTl(
+      day.poolHeatingPrivateFee,
+      day.poolHeatingPrivateFeeCurrency
+    ),
+    poolHeatingIndoorFee: toTl(
+      day.poolHeatingIndoorFee,
+      day.poolHeatingIndoorFeeCurrency
+    ),
+    poolHeatingKidsFee: toTl(
+      day.poolHeatingKidsFee,
+      day.poolHeatingKidsFeeCurrency
+    ),
   };
 }
 
 export async function resolveBookingPeriodFees(
   villaId: string,
-  checkIn: Date
+  checkIn: Date,
+  exchangeRates?: PublicExchangeRates
 ): Promise<BookingPeriodFees> {
-  const fees = await resolveStayPeriodFees(villaId, checkIn);
+  const fees = await resolveStayPeriodFees(villaId, checkIn, exchangeRates);
 
   return {
     extraAccommodationFee: fees.extraBedFee,

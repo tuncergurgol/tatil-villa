@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import {
   getSimilarVillas,
   getVillaDetailBySlug,
@@ -58,10 +59,11 @@ export default async function VillaDetailPage({
   const stayDates = resolveVillaStayDatesFromSearchParams(query);
   const initialAdults = resolveVillaStayAdultsFromSearchParams(query, 2);
 
-  const [villa, faqs, company] = await Promise.all([
+  const [villa, faqs, company, exchangeRates] = await Promise.all([
     getVillaDetailBySlug(slug),
     getActiveFaqsForPublic(),
     getCompanySettings(),
+    getPublicExchangeRates(),
   ]);
 
   if (!villa) notFound();
@@ -90,6 +92,7 @@ export default async function VillaDetailPage({
       similarVillas={similarVillas}
       companyPhone={company.phone || company.whatsapp || ""}
       brandName={company.brandName?.trim() || undefined}
+      exchangeRates={exchangeRates}
       initialCheckIn={stayDates?.checkIn ?? ""}
       initialCheckOut={stayDates?.checkOut ?? ""}
       initialAdults={initialAdults}

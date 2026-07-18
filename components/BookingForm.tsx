@@ -17,6 +17,10 @@ import PreReservationModal, {
 import ReservationPriceSummary, {
   getReservationGrandTotal,
 } from "@/components/ReservationPriceSummary";
+import {
+  convertNullableCurrencyAmount,
+  type PublicExchangeRates,
+} from "@/lib/currency-conversion";
 import { useVillaStaySelection } from "@/components/villa-detail/VillaStaySelectionContext";
 import { canSelectStayDay } from "@/lib/booking-calendar-selection";
 import {
@@ -26,7 +30,6 @@ import {
 } from "@/lib/phone-utils";
 import {
   emptyStayPeriodFees,
-  buildStayBookingFeeDetails,
   type HeatedPoolOption,
   type PoolHeatingSelections,
   type StayFeeSelections,
@@ -61,6 +64,7 @@ interface BookingFormProps {
   pricePerNight: number | null;
   companyPhone?: string;
   brandName?: string;
+  exchangeRates: PublicExchangeRates;
   heatedPools?: HeatedPoolOption[];
   villaSummary: {
     name: string;
@@ -85,13 +89,21 @@ interface BookingFormProps {
     cleaningFeeCurrency?: string;
     cleaningDayCount?: number | null;
     damageDeposit?: number | null;
+    damageDepositCurrency?: string;
     petCleaningFee?: number | null;
+    petCleaningFeeCurrency?: string;
     petDamageDeposit?: number | null;
+    petDamageDepositCurrency?: string;
     underfloorHeatingFee?: number | null;
+    underfloorHeatingFeeCurrency?: string;
     extraBedFee?: number | null;
+    extraBedFeeCurrency?: string;
     poolHeatingPrivateFee?: number | null;
+    poolHeatingPrivateFeeCurrency?: string;
     poolHeatingIndoorFee?: number | null;
+    poolHeatingIndoorFeeCurrency?: string;
     poolHeatingKidsFee?: number | null;
+    poolHeatingKidsFeeCurrency?: string;
     price?: number;
   }>;
 }
@@ -135,6 +147,7 @@ export default function BookingForm({
   pricePerNight,
   companyPhone = "",
   brandName = "Wings Tatil",
+  exchangeRates,
   heatedPools = [],
   villaSummary,
   calendarDays = [],
@@ -167,8 +180,8 @@ export default function BookingForm({
   } = useVillaStaySelection();
 
   const quoteDaysMap = useMemo(
-    () => buildStayQuoteDayMap(calendarDays),
-    [calendarDays]
+    () => buildStayQuoteDayMap(calendarDays, exchangeRates),
+    [calendarDays, exchangeRates]
   );
 
   const quote = useMemo(() => {
@@ -180,18 +193,58 @@ export default function BookingForm({
     if (!checkIn) return emptyStayPeriodFees();
     const day = calendarDays.find((item) => item.date === checkIn);
     if (!day) return emptyStayPeriodFees();
+    const toTl = (
+      amount: number | null | undefined,
+      currency: string | undefined
+    ) => convertNullableCurrencyAmount(amount, currency, "TL", exchangeRates);
     return {
-      cleaningFee: day.cleaningFee ?? null,
-      damageDeposit: day.damageDeposit ?? null,
-      petCleaningFee: day.petCleaningFee ?? null,
-      petDamageDeposit: day.petDamageDeposit ?? null,
-      underfloorHeatingFee: day.underfloorHeatingFee ?? null,
-      extraBedFee: day.extraBedFee ?? null,
-      poolHeatingPrivateFee: day.poolHeatingPrivateFee ?? null,
-      poolHeatingIndoorFee: day.poolHeatingIndoorFee ?? null,
-      poolHeatingKidsFee: day.poolHeatingKidsFee ?? null,
+      cleaningFee: toTl(day.cleaningFee, day.cleaningFeeCurrency),
+      damageDeposit: toTl(day.damageDeposit, day.damageDepositCurrency),
+      petCleaningFee: toTl(
+        day.petCleaningFee,
+        day.petCleaningFeeCurrency
+      ),
+      petDamageDeposit: toTl(
+        day.petDamageDeposit,
+        day.petDamageDepositCurrency
+      ),
+      underfloorHeatingFee: toTl(
+        day.underfloorHeatingFee,
+        day.underfloorHeatingFeeCurrency
+      ),
+      extraBedFee: toTl(day.extraBedFee, day.extraBedFeeCurrency),
+      poolHeatingPrivateFee: toTl(
+        day.poolHeatingPrivateFee,
+        day.poolHeatingPrivateFeeCurrency
+      ),
+      poolHeatingIndoorFee: toTl(
+        day.poolHeatingIndoorFee,
+        day.poolHeatingIndoorFeeCurrency
+      ),
+      poolHeatingKidsFee: toTl(
+        day.poolHeatingKidsFee,
+        day.poolHeatingKidsFeeCurrency
+      ),
     };
-  }, [calendarDays, checkIn]);
+  }, [calendarDays, checkIn, exchangeRates]);
+
+  const heatedPoolsInTl = useMemo<HeatedPoolOption[]>(
+    () =>
+      heatedPools.map((pool) => ({
+        ...pool,
+        periods: pool.periods.map((period) => ({
+          ...period,
+          heatingFee: convertNullableCurrencyAmount(
+            period.heatingFee,
+            period.heatingFeeCurrency,
+            "TL",
+            exchangeRates
+          ),
+          heatingFeeCurrency: "TL",
+        })),
+      })),
+    [exchangeRates, heatedPools]
+  );
 
   const pricingTotals = useMemo(() => {
     if (!quote?.valid) return null;
@@ -204,7 +257,7 @@ export default function BookingForm({
         adults: guests.adults,
         children: guests.children,
         baseCapacity,
-        heatedPools,
+        heatedPools: heatedPoolsInTl,
         poolHeatingSelections,
         checkIn,
         checkOut,
@@ -218,7 +271,7 @@ export default function BookingForm({
     guests.children,
     feeSelections,
     poolHeatingSelections,
-    heatedPools,
+    heatedPoolsInTl,
     baseCapacity,
     checkIn,
     checkOut,
@@ -414,27 +467,6 @@ export default function BookingForm({
   function handleModalSubmit(payload: PreReservationSubmitPayload) {
     if (!checkIn || !checkOut || !quote?.valid) return;
 
-    const feeDetails = buildStayBookingFeeDetails({
-      fees: periodFees,
-      selections: feeSelections,
-      pets: allowPets ? guests.pets : 0,
-      nights: quote.nights,
-      adults: guests.adults,
-      children: guests.children,
-      baseCapacity,
-      cleaningFee: quote.cleaningFee,
-      heatedPools,
-      poolHeatingSelections,
-      checkIn,
-      checkOut,
-    });
-
-    const totals = pricingTotals ?? {
-      grandTotal: quote.total,
-      prepaymentAmount: quote.prepaymentAmount,
-      checkInPayment: Math.max(0, quote.total - quote.prepaymentAmount),
-    };
-
     const formData = new FormData();
     formData.set("villaId", villaId);
     formData.set("checkIn", checkIn);
@@ -449,22 +481,10 @@ export default function BookingForm({
     formData.set("paymentMethod", payload.paymentMethod);
     formData.set("paymentAmount", payload.paymentAmount);
     formData.set("acceptMarketing", payload.acceptMarketing ? "true" : "false");
-    formData.set("totalPrice", String(totals.grandTotal));
-    formData.set("prepaymentAmount", String(totals.prepaymentAmount));
-    formData.set("prepaymentRate", String(quote.prepaymentRate));
-    formData.set("grossPrice", String(quote.accommodationTotal));
+    formData.set("feeSelections", JSON.stringify(feeSelections));
     formData.set(
-      "checkInPayment",
-      String(totals.checkInPayment)
-    );
-    formData.set(
-      "priceDetails",
-      JSON.stringify({
-        ...feeDetails,
-        damageDeposit: periodFees.damageDeposit,
-        petDamageDeposit:
-          allowPets && guests.pets > 0 ? periodFees.petDamageDeposit : null,
-      })
+      "poolHeatingSelections",
+      JSON.stringify(poolHeatingSelections)
     );
     startTransition(() => {
       formAction(formData);
@@ -648,7 +668,7 @@ export default function BookingForm({
           baseCapacity={baseCapacity}
           checkIn={checkIn}
           checkOut={checkOut}
-          heatedPools={heatedPools}
+          heatedPools={heatedPoolsInTl}
           selections={feeSelections}
           poolHeatingSelections={poolHeatingSelections}
           onSelectionChange={(key, value) =>

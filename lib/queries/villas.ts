@@ -16,6 +16,8 @@ import {
 } from "@/lib/villa-period-calendar";
 import { mapDbPeriodDayToQuoteInput } from "@/lib/queries/villa-stay-quote";
 import { offsetDateKey } from "@/lib/villa-period-selection";
+import { convertCurrencyAmount } from "@/lib/currency-conversion";
+import { getPublicExchangeRates } from "@/lib/exchange-rates";
 
 export interface VillaFilters {
   filter?: string;
@@ -346,20 +348,29 @@ export async function getVillaPeriodPriceRanges(
     Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
   );
 
-  const periods = await prisma.villaPricePeriod.findMany({
-    where: {
-      villaId: { in: villaIds },
-      endDate: { gte: today },
-    },
-    select: {
-      villaId: true,
-      nightlyPrice: true,
-      discountedNightlyPrice: true,
-    },
-  });
+  const [periods, exchangeRates] = await Promise.all([
+    prisma.villaPricePeriod.findMany({
+      where: {
+        villaId: { in: villaIds },
+        endDate: { gte: today },
+      },
+      select: {
+        villaId: true,
+        nightlyPrice: true,
+        discountedNightlyPrice: true,
+        nightlyPriceCurrency: true,
+      },
+    }),
+    getPublicExchangeRates(),
+  ]);
 
   for (const period of periods) {
-    const price = period.discountedNightlyPrice ?? period.nightlyPrice;
+    const price = convertCurrencyAmount(
+      period.discountedNightlyPrice ?? period.nightlyPrice,
+      period.nightlyPriceCurrency,
+      "TL",
+      exchangeRates
+    );
     if (!Number.isFinite(price) || price <= 0) continue;
     const existing = map.get(period.villaId);
     if (!existing) {
@@ -403,7 +414,7 @@ async function resolvePublicSearchStay(
 
   const nightDates = nightKeys.map((key) => dateKeyToDbDate(key));
 
-  const [periodDays, blockingBookings] = await Promise.all([
+  const [periodDays, blockingBookings, exchangeRates] = await Promise.all([
     prisma.villaPricePeriodDay.findMany({
       where: {
         villaId: { in: villaIds },
@@ -434,6 +445,7 @@ async function resolvePublicSearchStay(
       },
       select: { villaId: true, checkIn: true, checkOut: true },
     }),
+    getPublicExchangeRates(),
   ]);
 
   const daysByVilla = new Map<string, Map<string, StayQuoteDayInput>>();
@@ -444,7 +456,10 @@ async function resolvePublicSearchStay(
     }
     daysByVilla
       .get(day.villaId)!
-      .set(dateKey, mapDbPeriodDayToQuoteInput(dateKey, day));
+      .set(
+        dateKey,
+        mapDbPeriodDayToQuoteInput(dateKey, day, exchangeRates)
+      );
   }
 
   const bookingsByVilla = new Map<

@@ -1,4 +1,8 @@
 import type { VillaDayOccupancy, VillaPeriodCurrency } from "@prisma/client";
+import {
+  convertNullableCurrencyAmount,
+  type PublicExchangeRates,
+} from "@/lib/currency-conversion";
 import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
 import { enumerateDateKeysInRange } from "@/lib/villa-period-selection";
 
@@ -16,6 +20,42 @@ export type StayQuoteDayInput = {
   cleaningFeeCurrency: VillaPeriodCurrency;
   cleaningDayCount: number | null;
 };
+
+export function convertStayQuoteDayToTl(
+  day: StayQuoteDayInput,
+  rates: PublicExchangeRates
+): StayQuoteDayInput {
+  return {
+    ...day,
+    nightlyPrice:
+      convertNullableCurrencyAmount(
+        day.nightlyPrice,
+        day.nightlyPriceCurrency,
+        "TL",
+        rates
+      ) ?? 0,
+    nightlyPriceWithoutCommission: convertNullableCurrencyAmount(
+      day.nightlyPriceWithoutCommission,
+      day.nightlyPriceCurrency,
+      "TL",
+      rates
+    ),
+    discountedNightlyPrice: convertNullableCurrencyAmount(
+      day.discountedNightlyPrice,
+      day.nightlyPriceCurrency,
+      "TL",
+      rates
+    ),
+    nightlyPriceCurrency: "TL",
+    cleaningFee: convertNullableCurrencyAmount(
+      day.cleaningFee,
+      day.cleaningFeeCurrency,
+      "TL",
+      rates
+    ),
+    cleaningFeeCurrency: "TL",
+  };
+}
 
 export type StayQuoteNightLine = {
   dateKey: string;
@@ -204,7 +244,8 @@ export function buildStayQuoteDayMap(
     cleaningDayCount?: number | null;
     price?: number;
     currency?: string;
-  }>
+  }>,
+  exchangeRates?: PublicExchangeRates
 ): Map<string, StayQuoteDayInput> {
   const map = new Map<string, StayQuoteDayInput>();
 
@@ -221,7 +262,7 @@ export function buildStayQuoteDayMap(
       : "available") as VillaPeriodAvailability;
     const nightlyPrice = day.nightlyPrice ?? day.price ?? 0;
 
-    map.set(day.date, {
+    const input: StayQuoteDayInput = {
       dateKey: day.date,
       nightlyPrice,
       nightlyPriceWithoutCommission: day.nightlyPriceWithoutCommission ?? null,
@@ -235,7 +276,12 @@ export function buildStayQuoteDayMap(
       cleaningFeeCurrency: (day.cleaningFeeCurrency ??
         currency) as VillaPeriodCurrency,
       cleaningDayCount: day.cleaningDayCount ?? null,
-    });
+    };
+
+    map.set(
+      day.date,
+      exchangeRates ? convertStayQuoteDayToTl(input, exchangeRates) : input
+    );
   }
 
   return map;

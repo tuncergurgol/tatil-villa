@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CalendarRange } from "lucide-react";
+import type { PublicExchangeRates } from "@/lib/currency-conversion";
 import PeriodPricesModal, {
   filterCurrentAndFuturePeriods,
   type PeriodPriceItem,
@@ -9,11 +10,13 @@ import PeriodPricesModal, {
 
 type PeriodPricesTriggerProps = {
   periods: PeriodPriceItem[];
+  exchangeRates: PublicExchangeRates;
   className?: string;
 };
 
 export default function PeriodPricesTrigger({
   periods,
+  exchangeRates,
   className = "",
 }: PeriodPricesTriggerProps) {
   const [open, setOpen] = useState(false);
@@ -36,6 +39,7 @@ export default function PeriodPricesTrigger({
       </button>
       <PeriodPricesModal
         periods={visiblePeriods}
+        exchangeRates={exchangeRates}
         open={open}
         onClose={() => setOpen(false)}
       />

@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, Info, X } from "lucide-react";
+import {
+  convertCurrencyAmount,
+  type PublicExchangeRates,
+} from "@/lib/currency-conversion";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
 import { VILLA_PERIOD_CURRENCIES } from "@/lib/villa-period-pricing";
 
@@ -20,6 +24,7 @@ export type PeriodPriceItem = {
 
 type PeriodPricesModalProps = {
   periods: PeriodPriceItem[];
+  exchangeRates: PublicExchangeRates;
   open: boolean;
   onClose: () => void;
 };
@@ -127,6 +132,7 @@ function cleaningTooltip(period: PeriodPriceItem) {
 
 export default function PeriodPricesModal({
   periods,
+  exchangeRates,
   open,
   onClose,
 }: PeriodPricesModalProps) {
@@ -234,10 +240,12 @@ export default function PeriodPricesModal({
               period.endDate
             );
             const tip = cleaningTooltip(period);
-            const displayCurrency =
-              period.currency === currency
-                ? currency
-                : (period.currency as string);
+            const displayPrice = convertCurrencyAmount(
+              period.nightlyPrice,
+              period.currency,
+              currency,
+              exchangeRates
+            );
             const showTip = tooltipId === period.id;
 
             return (
@@ -287,7 +295,7 @@ export default function PeriodPricesModal({
                         active ? "text-teal-600" : "text-slate-800"
                       }`}
                     >
-                      {formatMoney(period.nightlyPrice, displayCurrency)}
+                      {formatMoney(displayPrice, currency)}
                     </p>
                   </div>
                   {showTip && tip ? (

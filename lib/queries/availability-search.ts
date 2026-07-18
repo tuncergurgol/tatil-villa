@@ -20,10 +20,13 @@ import {
 import { countNightsBetween } from "@/lib/villa-period-selection";
 import {
   computeStayQuote,
+  convertStayQuoteDayToTl,
   getStayNightKeys,
   type StayQuote,
   type StayQuoteDayInput,
 } from "@/lib/stay-quote";
+import type { PublicExchangeRates } from "@/lib/currency-conversion";
+import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import type { PeriodCalendarDayDisplay } from "@/components/admin/villas/periods/PeriodCalendarGrid";
 
 export type AvailabilitySearchSort = "recommended" | "price_asc";
@@ -131,9 +134,10 @@ function mapPeriodDayToQuoteInput(
     cleaningFeeCurrency: StayQuoteDayInput["cleaningFeeCurrency"];
     cleaningDayCount?: number | null;
     periodId: string;
-  }
+  },
+  exchangeRates: PublicExchangeRates
 ): StayQuoteDayInput {
-  return {
+  return convertStayQuoteDayToTl({
     dateKey,
     nightlyPrice: day.nightlyPrice,
     nightlyPriceWithoutCommission: day.nightlyPriceWithoutCommission,
@@ -146,7 +150,7 @@ function mapPeriodDayToQuoteInput(
     cleaningFee: day.cleaningFee,
     cleaningFeeCurrency: day.cleaningFeeCurrency,
     cleaningDayCount: day.cleaningDayCount ?? null,
-  };
+  }, exchangeRates);
 }
 
 function isStayAvailable(
@@ -406,7 +410,7 @@ export async function searchAvailability(
 
   if (villaIds.length === 0) return [];
 
-  const [periodDays, blockingBookings] = await Promise.all([
+  const [periodDays, blockingBookings, exchangeRates] = await Promise.all([
     prisma.villaPricePeriodDay.findMany({
       where: {
         villaId: { in: villaIds },
@@ -445,6 +449,7 @@ export async function searchAvailability(
         checkOut: true,
       },
     }),
+    getPublicExchangeRates(),
   ]);
 
   const daysByVilla = new Map<string, Map<string, StayQuoteDayInput>>();
@@ -469,7 +474,7 @@ export async function searchAvailability(
       rawDaysByVilla.set(day.villaId, []);
     }
 
-    const quoteDay = mapPeriodDayToQuoteInput(dateKey, day);
+    const quoteDay = mapPeriodDayToQuoteInput(dateKey, day, exchangeRates);
     daysByVilla.get(day.villaId)!.set(dateKey, quoteDay);
     rawDaysByVilla.get(day.villaId)!.push({
       date: day.date,
