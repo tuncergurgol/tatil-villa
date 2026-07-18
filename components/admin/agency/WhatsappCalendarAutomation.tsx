@@ -36,6 +36,11 @@ const STATUS_LABELS: Record<string, string> = {
   DUPLICATE: "Tekrar",
 };
 
+function canonicalWhatsappGroupId(value: string) {
+  const trimmed = value.trim();
+  return trimmed.endsWith("@g.us") ? trimmed : `${trimmed}@g.us`;
+}
+
 export default function WhatsappCalendarAutomation({
   data,
   webhookUrl,
@@ -67,6 +72,20 @@ export default function WhatsappCalendarAutomation({
     () => data.messages.filter((item) => item.status === "APPLIED").length,
     [data.messages]
   );
+  const groupVillaNames = useMemo(() => {
+    const namesByGroupId = new Map<string, string[]>();
+
+    for (const villa of data.mappedVillas) {
+      const groupId = canonicalWhatsappGroupId(villa.whatsappGroupId);
+      const villaLabel = `#${villa.villaId ?? "-"} - ${villa.name}`;
+      namesByGroupId.set(groupId, [
+        ...(namesByGroupId.get(groupId) ?? []),
+        villaLabel,
+      ]);
+    }
+
+    return namesByGroupId;
+  }, [data.mappedVillas]);
 
   async function loadLiveGroups() {
     setGroupsLoading(true);
@@ -103,6 +122,14 @@ export default function WhatsappCalendarAutomation({
       window.removeEventListener("takvim-whatsapp-connected", handleConnected);
     };
   }, []);
+
+  useEffect(() => {
+    const messageRefreshTimer = window.setInterval(() => {
+      router.refresh();
+    }, 60_000);
+
+    return () => window.clearInterval(messageRefreshTimer);
+  }, [router]);
 
   function handleSelectLiveGroup(groupId: string) {
     const selected = liveGroups.find((group) => group.id === groupId);
@@ -226,48 +253,9 @@ export default function WhatsappCalendarAutomation({
 
   return (
     <div className="grid gap-6 xl:grid-cols-3">
-      <div className="order-1 xl:col-span-3">
-        <h1 className="text-2xl font-bold text-gray-900">Takvim WhatsApp Otomasyonu</h1>
-        <p className="mt-2 max-w-3xl text-sm text-gray-500">
-          Takvim WhatsApp hattınızdaki grup mesajlarını webhook ile alır, villayla eşleştirir
-          ve mesajdaki tarihe göre takvimi otomatik açar/kapatır.
-        </p>
-      </div>
-
-      <section className="order-2 rounded-2xl border border-sky-200 bg-sky-50/70 p-5 xl:col-span-3">
-        <h2 className="text-sm font-semibold text-sky-900">
-          WhatsApp dinleme nasıl çalışır?
-        </h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-sky-900/90">
-          <li>
-            Bağlı Takvim WhatsApp hattı (Evolution) gruptaki mesajları{" "}
-            <strong>anlık</strong> dinler.
-          </li>
-          <li>
-            Yeni mesaj gelince Evolution, sistemimizin webhook adresine (
-            <code className="rounded bg-white/80 px-1">/api/webhooks/whatsapp-calendar</code>
-            ) POST isteği atar.
-          </li>
-          <li>
-            Sistem mesajı grup ID ile villaya eşleştirir; aşağıdaki{" "}
-            <strong>Mesaj Örnekleri</strong> + tarih bilgisinden işlemi çıkarır ve takvimi
-            günceller.
-          </li>
-          <li>
-            Sonuç <strong>Son Gelen Mesajlar</strong> tablosuna yazılır (Uygulandı / Yok
-            sayıldı / Hata).
-          </li>
-        </ol>
-        <p className="mt-3 text-xs text-sky-800">
-          Not: Kendi hattınızdan (fromMe) gönderilen mesajlar yok sayılır. Dinlemenin
-          çalışması için üstte otomasyonun açık olması ve Evolution webhook&apos;unun kayıtlı
-          olması gerekir (Ayarları Kaydet).
-        </p>
-      </section>
-
       {notice ? (
         <div
-          className={`order-3 rounded-xl px-4 py-3 text-sm xl:col-span-3 ${
+          className={`order-1 rounded-xl px-4 py-3 text-sm xl:col-span-3 ${
             notice.type === "ok"
               ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
               : "border border-red-200 bg-red-50 text-red-700"
@@ -277,7 +265,7 @@ export default function WhatsappCalendarAutomation({
         </div>
       ) : null}
 
-      <div className="order-4 grid gap-4 sm:grid-cols-3 xl:col-span-3">
+      <div className="order-2 grid gap-4 sm:grid-cols-3 xl:col-span-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <p className="text-sm text-gray-500">Eşleşen Villa</p>
           <p className="mt-1 text-3xl font-bold text-gray-900">{mappedCount}</p>
@@ -292,7 +280,7 @@ export default function WhatsappCalendarAutomation({
         </div>
       </div>
 
-      <details className="group order-5 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
+      <details className="group order-3 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
           <span className="text-sm font-semibold text-gray-800">
             Takvim WhatsApp Bağlantısı
@@ -304,9 +292,16 @@ export default function WhatsappCalendarAutomation({
         <div className="border-t border-gray-100">{connectionPanel}</div>
       </details>
 
-      <section className="order-6 h-full rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-800">Webhook Ayarları</h2>
-        <div className="mt-4 space-y-4">
+      <details className="group order-4 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="text-sm font-semibold text-gray-800">
+            Webhook Ayarları
+          </span>
+          <span className="text-lg text-gray-400 transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-gray-100 p-5">
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -355,14 +350,15 @@ export default function WhatsappCalendarAutomation({
             <code>?secret=...</code> parametresi verin.
           </p>
         </div>
-      </section>
+      </details>
 
-      <section className="order-6 h-full rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-800">WhatsApp Grupları</h2>
+      <section className="order-5 rounded-2xl border border-gray-200 bg-white p-5 xl:col-span-3">
+        <h2 className="text-sm font-semibold text-gray-800">
+          WhatsApp Grubu - Villa Eşleşmeleri
+        </h2>
         <p className="mt-2 text-sm text-gray-500">
           Grup adı, WhatsApp&apos;ta bağlı cihazınızdaki grup listesinden gelir. Listeden
-          seçin; Grup ID otomatik dolar. Sonra villa iCal sekmesinden bu grubu villaya
-          eşleştirin.
+          seçildiğinde Group ID otomatik dolar. Villa eşleşmeleri aynı tabloda gösterilir.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="min-w-[220px] flex-[1.2]">
@@ -425,26 +421,37 @@ export default function WhatsappCalendarAutomation({
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
-                <th className="px-4 py-3">Grup Adı</th>
-                <th className="px-4 py-3">Grup ID</th>
-                <th className="px-4 py-3 text-right">İşlem</th>
+                <th className="px-4 py-3">WhatsApp Grubu</th>
+                <th className="px-4 py-3">Group ID</th>
+                <th className="px-4 py-3">Villa Adı</th>
               </tr>
             </thead>
             <tbody>
               {data.groups.length > 0 ? (
                 data.groups.map((group) => (
                   <tr key={group.id} className="border-t border-gray-100">
-                    <td className="px-4 py-3 font-medium text-gray-900">{group.name}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{group.externalId}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteGroup(group.id)}
-                        disabled={isPending}
-                        className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
-                      >
-                        Sil
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-gray-900">{group.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGroup(group.id)}
+                          disabled={isPending}
+                          className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
+                        >
+                          Sil
+                        </button>
+                      </div>
+                    </td>
+                    <td className="break-all px-4 py-3 text-xs text-gray-600">
+                      {group.externalId}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {groupVillaNames.get(
+                        canonicalWhatsappGroupId(group.externalId)
+                      )?.join(", ") ?? (
+                        <span className="text-gray-400">Eşleşme yok</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -460,7 +467,7 @@ export default function WhatsappCalendarAutomation({
         </div>
       </section>
 
-      <details className="group order-8 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
+      <details className="group order-7 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
           <span className="text-sm font-semibold text-gray-800">
             Mesaj Örnekleri (Öğrenme)
@@ -575,7 +582,7 @@ export default function WhatsappCalendarAutomation({
         </div>
       </details>
 
-      <details className="group order-7 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
+      <details className="group order-6 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
           <span className="text-sm font-semibold text-gray-800">Mesaj Testi</span>
           <span className="text-lg text-gray-400 transition-transform group-open:rotate-180">
@@ -609,43 +616,13 @@ export default function WhatsappCalendarAutomation({
         </div>
       </details>
 
-      <section className="order-6 h-full rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-800">Villa - Grup Eşleşmeleri</h2>
-        <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              <tr>
-                <th className="px-4 py-3">Villa</th>
-                <th className="px-4 py-3">Grup ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.mappedVillas.length > 0 ? (
-                data.mappedVillas.map((villa) => (
-                  <tr key={villa.id} className="border-t border-gray-100">
-                    <td className="px-4 py-3">
-                      #{villa.villaId ?? "-"} - {villa.name}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">
-                      {villa.whatsappGroupId}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={2} className="px-4 py-8 text-center text-sm text-gray-500">
-                    Henüz villa-grup eşleşmesi yok. Villa düzenle → iCal Takvim sekmesinden
-                    eşleştirin.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      <section className="order-8 rounded-2xl border border-gray-200 bg-white p-5 xl:col-span-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-gray-800">Son Gelen Mesajlar</h2>
+          <span className="text-xs text-gray-500">
+            Mesajlar anında uygulanır; liste her 1 dakikada yenilenir.
+          </span>
         </div>
-      </section>
-
-      <section className="order-9 rounded-2xl border border-gray-200 bg-white p-5 xl:col-span-3">
-        <h2 className="text-sm font-semibold text-gray-800">Son Gelen Mesajlar</h2>
         <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
