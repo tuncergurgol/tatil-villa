@@ -3,10 +3,13 @@ import AdminSessionProvider from "@/components/admin/AdminSessionProvider";
 
 export const metadata: Metadata = {
   title: {
-    default: "Bont-Yönetim Paneli",
-    template: "%s | Bont-Yönetim Paneli",
+    absolute: "Bont-Yönetim Paneli",
   },
   applicationName: "Bont-Yönetim Paneli",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function AdminLayout({
