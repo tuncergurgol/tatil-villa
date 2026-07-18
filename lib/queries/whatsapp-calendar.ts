@@ -23,6 +23,8 @@ export async function getWhatsappCalendarAdminData() {
       select: {
         id: true,
         name: true,
+        originalName: true,
+        documentNo: true,
         villaId: true,
         slug: true,
         whatsappGroupId: true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   createWhatsappCalendarGroup,
@@ -16,6 +16,7 @@ import {
 } from "@/app/actions/admin/whatsapp-calendar";
 import type { WhatsappCalendarAdminData } from "@/lib/queries/whatsapp-calendar";
 import type { EvolutionWhatsappGroup } from "@/lib/evolution-client";
+import { includesSearchText } from "@/lib/search-text";
 import { WHATSAPP_CALENDAR_INTENT_LABELS } from "@/lib/whatsapp-calendar-parser";
 import type { WhatsappCalendarPhraseIntent } from "@prisma/client";
 
@@ -35,6 +36,29 @@ function canonicalWhatsappGroupId(value: string) {
   return trimmed.endsWith("@g.us") ? trimmed : `${trimmed}@g.us`;
 }
 
+function formatVillaOptionLabel(villa: {
+  name: string;
+  originalName: string;
+  villaId: number | null;
+}) {
+  const original = villa.originalName.trim();
+  const base = original ? `${villa.name} (${original})` : villa.name;
+  return `#${villa.villaId ?? "-"} - ${base}`;
+}
+
+function matchesVillaPickerSearch(
+  villa: {
+    name: string;
+    originalName: string;
+    documentNo: string;
+  },
+  query: string
+) {
+  return [villa.name, villa.originalName, villa.documentNo].some((value) =>
+    includesSearchText(value, query)
+  );
+}
+
 export default function WhatsappCalendarAutomation({
   data,
   webhookUrl,
@@ -50,6 +74,9 @@ export default function WhatsappCalendarAutomation({
   const [groupName, setGroupName] = useState("");
   const [groupExternalId, setGroupExternalId] = useState("");
   const [selectedVillaId, setSelectedVillaId] = useState("");
+  const [villaSearch, setVillaSearch] = useState("");
+  const [villaPickerOpen, setVillaPickerOpen] = useState(false);
+  const villaPickerRef = useRef<HTMLDivElement | null>(null);
   const [liveGroups, setLiveGroups] = useState<EvolutionWhatsappGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
@@ -72,7 +99,7 @@ export default function WhatsappCalendarAutomation({
 
     for (const villa of data.mappedVillas) {
       const groupId = canonicalWhatsappGroupId(villa.whatsappGroupId);
-      const villaLabel = `#${villa.villaId ?? "-"} - ${villa.name}`;
+      const villaLabel = formatVillaOptionLabel(villa);
       namesByGroupId.set(groupId, [
         ...(namesByGroupId.get(groupId) ?? []),
         villaLabel,
@@ -81,6 +108,30 @@ export default function WhatsappCalendarAutomation({
 
     return namesByGroupId;
   }, [data.mappedVillas]);
+
+  const selectedVilla = useMemo(
+    () => data.villas.find((villa) => villa.id === selectedVillaId) ?? null,
+    [data.villas, selectedVillaId]
+  );
+
+  const filteredVillas = useMemo(
+    () =>
+      data.villas.filter((villa) => matchesVillaPickerSearch(villa, villaSearch)),
+    [data.villas, villaSearch]
+  );
+
+  useEffect(() => {
+    if (!villaPickerOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!villaPickerRef.current?.contains(event.target as Node)) {
+        setVillaPickerOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, [villaPickerOpen]);
 
   async function loadLiveGroups() {
     setGroupsLoading(true);
@@ -184,6 +235,8 @@ export default function WhatsappCalendarAutomation({
       setGroupName("");
       setGroupExternalId("");
       setSelectedVillaId("");
+      setVillaSearch("");
+      setVillaPickerOpen(false);
       setNotice({
         type: "ok",
         message: result.message ?? "Grup-villa eşleşmesi kaydedildi",
@@ -408,24 +461,72 @@ export default function WhatsappCalendarAutomation({
               placeholder="Listeden grup seçince dolar"
             />
           </label>
-          <label className="min-w-[220px] flex-[1.2]">
+          <div ref={villaPickerRef} className="relative min-w-[280px] flex-[1.4]">
             <span className="mb-1 block text-xs font-medium text-gray-500">
               Villa Seçimi
             </span>
-            <select
-              value={selectedVillaId}
-              onChange={(event) => setSelectedVillaId(event.target.value)}
-              className={inputClass}
+            <button
+              type="button"
+              onClick={() => setVillaPickerOpen((open) => !open)}
               disabled={isPending}
+              className={`${inputClass} flex items-center justify-between gap-2 text-left disabled:opacity-60`}
             >
-              <option value="">Villa seçin</option>
-              {data.villas.map((villa) => (
-                <option key={villa.id} value={villa.id}>
-                  #{villa.villaId ?? "-"} - {villa.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <span
+                className={
+                  selectedVilla ? "truncate text-gray-900" : "truncate text-gray-400"
+                }
+              >
+                {selectedVilla
+                  ? formatVillaOptionLabel(selectedVilla)
+                  : "Villa seçin"}
+              </span>
+              <span className="text-gray-400">⌄</span>
+            </button>
+            {villaPickerOpen ? (
+              <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+                <div className="border-b border-gray-100 p-2">
+                  <input
+                    autoFocus
+                    value={villaSearch}
+                    onChange={(event) => setVillaSearch(event.target.value)}
+                    placeholder="Villa adı, orijinal adı veya belge no ara..."
+                    className={inputClass}
+                  />
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {filteredVillas.length > 0 ? (
+                    filteredVillas.map((villa) => (
+                      <button
+                        key={villa.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedVillaId(villa.id);
+                          setVillaSearch("");
+                          setVillaPickerOpen(false);
+                        }}
+                        className={`flex w-full flex-col gap-0.5 border-b border-gray-50 px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-teal-50 ${
+                          selectedVillaId === villa.id ? "bg-teal-50" : ""
+                        }`}
+                      >
+                        <span className="font-medium text-gray-900">
+                          {formatVillaOptionLabel(villa)}
+                        </span>
+                        {villa.documentNo.trim() ? (
+                          <span className="text-xs text-gray-500">
+                            Belge No: {villa.documentNo}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="px-4 py-6 text-center text-sm text-gray-500">
+                      Eşleşen villa bulunamadı.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={() => void loadLiveGroups()}
