@@ -70,7 +70,7 @@ function fallbackRow(siteKey: PublicSiteKey): PublicSiteTrackingRow {
     label: meta.label,
     ...EMPTY_FIELDS,
     ...(siteKey === "tatildeyiz"
-      ? { googleAnalyticsId: "G-5PDN00BR9S" }
+      ? { googleAnalyticsId: "G-3QYZX0CQ1D" }
       : {}),
   };
 }
@@ -86,7 +86,7 @@ export async function ensurePublicSiteTrackingRows(): Promise<void> {
         label: meta.label,
         ...EMPTY_FIELDS,
         ...(siteKey === "tatildeyiz"
-          ? { googleAnalyticsId: "G-5PDN00BR9S" }
+          ? { googleAnalyticsId: "G-3QYZX0CQ1D" }
           : {}),
       },
       update: {},

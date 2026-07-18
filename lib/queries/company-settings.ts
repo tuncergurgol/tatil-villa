@@ -45,7 +45,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   seoTitle: "Tatildeyiz - Tatilin Keyfini Çıkarın",
   seoDescription:
     "Doğanın kalbinde, jakuzili ve havuzlu bungalov evlerinde tatilin keyfini çıkarın. Unutulmaz bir kaçamak için en popüler rotalar Tatildeyiz'de sizi bekliyor.",
-  googleAnalyticsId: "G-5PDN00BR9S",
+  googleAnalyticsId: "G-3QYZX0CQ1D",
   googleAdsId: "",
   microsoftClarityId: "",
   googleTagManagerId: "",
