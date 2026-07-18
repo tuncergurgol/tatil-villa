@@ -78,7 +78,8 @@ export async function saveWhatsappCalendarSettings(
     process.env.EVOLUTION_INSTANCE_NAME?.trim() ||
     "tatil-villa";
 
-  if (baseUrl && apiKey && webhookSecret) {
+  let webhookNote = "";
+  if (enabled && baseUrl && apiKey && webhookSecret) {
     const siteOrigin = resolveSiteOrigin({
       companyDomain: settings.domain,
     });
@@ -91,13 +92,16 @@ export async function saveWhatsappCalendarSettings(
         webhookUrl,
         webhookSecret
       );
-    } catch {
-      // Evolution erişilemiyorsa ayar yine de kaydedilir.
+      webhookNote = " Webhook Evolution'a kaydedildi.";
+    } catch (error) {
+      webhookNote = ` UYARI: Webhook kurulamadı (${
+        error instanceof Error ? error.message : "bilinmeyen hata"
+      }). WhatsApp bağlantısını tamamlayıp tekrar kaydedin.`;
     }
   }
 
   revalidateWhatsappCalendarPaths();
-  return { success: true, message: "Ayarlar kaydedildi" };
+  return { success: true, message: `Ayarlar kaydedildi.${webhookNote}` };
 }
 
 export async function generateWhatsappCalendarWebhookSecretAction(): Promise<WhatsappCalendarActionState> {

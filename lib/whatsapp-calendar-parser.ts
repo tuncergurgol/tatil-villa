@@ -31,11 +31,12 @@ const MONTHS: Record<string, number> = {
   aralık: 12,
 };
 
+// Kökleri baz alır; Türkçe çekimleri (kapatalım, kapattık, açalım, doldu...) yakalar.
 const CLOSE_KEYWORDS =
-  /\b(dolu|kapal[ıi]|rezerve|rezervasyon|booked|full|kapat|kapatt[ıi]k|doldu|kiraland[ıi]|bloke|blok)\b/i;
+  /\b(kapat\w*|kapal[ıi]\w*|dol(?:u|du|dur)\w*|rezerv\w*|booked|full|kiralan\w*|bloke|blok\w*|tuttu\w*|tutuld\w*)\b/i;
 const OPEN_KEYWORDS =
-  /\b(a[cç][ıi]k|m[üu]sait|musait|bo[sş]|available|serbest|a[cç]t[ıi]k|iptal|bos)\b/i;
-const OPTION_KEYWORDS = /\b(opsiyon|option|hold)\b/i;
+  /\b(a[cç][ıi]k\w*|a[cç]al[ıi]m|a[cç]t[ıi]k|a[cç][ıi]ld[ıi]|m[üu]sait\w*|bo[sş]\w*|available|serbest\w*|iptal\w*)\b/i;
+const OPTION_KEYWORDS = /\b(opsiyon\w*|option\w*|hold)\b/i;
 
 function normalizeText(value: string) {
   return value
