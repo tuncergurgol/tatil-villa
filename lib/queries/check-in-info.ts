@@ -161,6 +161,8 @@ export type PublicCheckInInfoPage = {
   revealed: boolean;
   /** Rezervasyonun geldiği sitenin gösterim domaini (www. önekiz) */
   siteDomain: string;
+  /** Rezervasyonun geldiği sitenin adı (örn. "Tatil Villacısı") */
+  siteName: string;
   villaName: string;
   villaLocation: string;
   villaImage: string | null;
@@ -643,6 +645,7 @@ export async function getPublicCheckInInfo(input: {
     agencySites,
   });
   const siteDomain = siteBrand.domain.replace(/^www\./i, "");
+  const siteName = siteBrand.siteInfo;
 
   const prepaymentSum = booking.prepayments.reduce(
     (sum, item) => sum + item.amount,
@@ -678,6 +681,7 @@ export async function getPublicCheckInInfo(input: {
     code: resolvedCode,
     revealed,
     siteDomain,
+    siteName,
     villaName: booking.villa.name,
     villaLocation,
     villaImage: booking.villa.images[0] ?? booking.villa.image ?? null,

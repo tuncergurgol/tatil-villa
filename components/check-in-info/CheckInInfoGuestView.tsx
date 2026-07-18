@@ -138,7 +138,7 @@ export default function CheckInInfoGuestView({
             Sayın {page.primaryGuestName || "Misafir"},
           </p>
           <p>
-            Tatildeyiz.com.tr ailesi olarak sizlere keyifli ve unutulmaz bir
+            {page.siteName} ailesi olarak sizlere keyifli ve unutulmaz bir
             tatil geçirmenizi dileriz..
           </p>
           <p>
