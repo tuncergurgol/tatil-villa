@@ -23,6 +23,9 @@ import {
   computeOwnerPaymentDueDate,
 } from "@/lib/owner-payment-schedule";
 import { resolveStayPeriodFees } from "@/lib/queries/booking-prepayment";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
+import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 
 const checkInInfoInclude = {
   villa: {
@@ -156,6 +159,8 @@ export type PublicCheckInInfoPage = {
   audience: CheckInInfoAudience;
   code: string;
   revealed: boolean;
+  /** Rezervasyonun geldiği sitenin gösterim domaini (www. önekiz) */
+  siteDomain: string;
   villaName: string;
   villaLocation: string;
   villaImage: string | null;
@@ -623,6 +628,22 @@ export async function getPublicCheckInInfo(input: {
   const resolvedCode =
     resolveExternalCode(booking.externalCode, booking.guestEmail) || code;
 
+  const [company, agencySites] = await Promise.all([
+    getCompanySettings(),
+    getAgencySitesForPicker(),
+  ]);
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo: details.siteInfo,
+    originDomain: details.originDomain,
+    company: {
+      brandName: company.brandName,
+      domain: company.domain,
+      logoUrl: company.logoUrl,
+    },
+    agencySites,
+  });
+  const siteDomain = siteBrand.domain.replace(/^www\./i, "");
+
   const prepaymentSum = booking.prepayments.reduce(
     (sum, item) => sum + item.amount,
     0
@@ -656,6 +677,7 @@ export async function getPublicCheckInInfo(input: {
     audience: input.audience,
     code: resolvedCode,
     revealed,
+    siteDomain,
     villaName: booking.villa.name,
     villaLocation,
     villaImage: booking.villa.images[0] ?? booking.villa.image ?? null,

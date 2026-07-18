@@ -294,7 +294,7 @@ export default function CheckInInfoOwnerView({
       ) : null}
 
       <p className="pb-6 text-center text-sm text-slate-500">
-        Rezervasyon no: {page.code} · tatildeyiz.com.tr
+        Rezervasyon no: {page.code} · {page.siteDomain}
       </p>
     </div>
   );

@@ -117,7 +117,7 @@ export default function CheckInInfoGuestView({
     <div className="mx-auto max-w-3xl space-y-5 px-4 py-8 sm:px-6 sm:py-12">
       <header className="space-y-3 text-center sm:text-left">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
-          tatildeyiz.com.tr · Hoş Geldiniz
+          {page.siteDomain} · Hoş Geldiniz
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           {page.villaName}
@@ -329,7 +329,7 @@ export default function CheckInInfoGuestView({
       ) : null}
 
       <p className="pb-6 text-center text-sm text-slate-500">
-        İyi tatiller dileriz · tatildeyiz.com.tr
+        İyi tatiller dileriz · {page.siteDomain}
       </p>
     </div>
   );
