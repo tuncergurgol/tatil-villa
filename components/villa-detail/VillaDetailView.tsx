@@ -121,9 +121,8 @@ export default function VillaDetailView({
   const amenityGroups = villa.amenityGroups.filter(
     (group) => !isFeaturedAmenityCategory(group.category)
   );
-  const highlightedFeatures = Array.from(
-    new Set([...villa.facilityCategories, ...featuredAmenityItems])
-  );
+  /** Admin Özellikler → ÖNE ÇIKANLAR’da işaretli olanak adları (ev kategorisi değil) */
+  const highlightedFeatures = featuredAmenityItems;
 
   const navItems: VillaDetailNavItem[] = [
     { id: "genel-bakis", label: "Genel Bakış" },
