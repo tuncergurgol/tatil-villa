@@ -222,14 +222,24 @@ export async function testWhatsappCalendarParserAction(
 ): Promise<WhatsappCalendarActionState> {
   await requireAdmin();
 
-  const parsed = parseWhatsappCalendarMessage(sampleText);
+  const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { phrase: true, intent: true },
+  });
+
+  const parsed = parseWhatsappCalendarMessage(sampleText, phraseRules);
   if (!parsed) {
     return { error: "Mesajdan takvim komutu çıkarılamadı" };
   }
 
+  const phraseNote = parsed.matchedPhrase
+    ? ` · eşleşen ifade: "${parsed.matchedPhrase}"`
+    : "";
+
   return {
     success: true,
-    message: `${parsed.summary} (${mapIntentToOccupancyMode(parsed.intent)})`,
+    message: `${parsed.summary} (${mapIntentToOccupancyMode(parsed.intent)})${phraseNote}`,
   };
 }
 
@@ -239,7 +249,13 @@ export async function applyWhatsappCalendarParserTestAction(
 ): Promise<WhatsappCalendarActionState> {
   await requireAdmin();
 
-  const parsed = parseWhatsappCalendarMessage(sampleText);
+  const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { phrase: true, intent: true },
+  });
+
+  const parsed = parseWhatsappCalendarMessage(sampleText, phraseRules);
   if (!parsed) {
     return { error: "Mesajdan takvim komutu çıkarılamadı" };
   }
@@ -257,4 +273,77 @@ export async function applyWhatsappCalendarParserTestAction(
     success: true,
     message: `${parsed.summary} uygulandı (${result.updatedDays} gün güncellendi)`,
   };
+}
+
+const phraseRuleSchema = z.object({
+  phrase: z.string().min(1, "Mesaj örneği / ifade gerekli").max(120),
+  intent: z.enum(["CLOSE", "OPEN", "OPTION"]),
+});
+
+export async function createWhatsappCalendarPhraseRule(
+  _prev: WhatsappCalendarActionState,
+  formData: FormData
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const parsed = phraseRuleSchema.safeParse({
+    phrase: String(formData.get("phrase") ?? "").trim(),
+    intent: formData.get("intent"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form" };
+  }
+
+  const maxSort = await prisma.whatsappCalendarPhraseRule.aggregate({
+    _max: { sortOrder: true },
+  });
+
+  try {
+    await prisma.whatsappCalendarPhraseRule.create({
+      data: {
+        phrase: parsed.data.phrase,
+        intent: parsed.data.intent,
+        sortOrder: (maxSort._max.sortOrder ?? 0) + 10,
+      },
+    });
+    revalidateWhatsappCalendarPaths();
+    return { success: true, message: "Mesaj örneği eklendi" };
+  } catch {
+    return { error: "Bu ifade aynı işlem için zaten kayıtlı" };
+  }
+}
+
+export async function deleteWhatsappCalendarPhraseRule(
+  id: string
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  try {
+    await prisma.whatsappCalendarPhraseRule.delete({ where: { id } });
+    revalidateWhatsappCalendarPaths();
+    return { success: true, message: "Mesaj örneği silindi" };
+  } catch {
+    return { error: "Mesaj örneği silinemedi" };
+  }
+}
+
+export async function toggleWhatsappCalendarPhraseRule(
+  id: string,
+  active: boolean
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  try {
+    await prisma.whatsappCalendarPhraseRule.update({
+      where: { id },
+      data: { active },
+    });
+    revalidateWhatsappCalendarPaths();
+    return {
+      success: true,
+      message: active ? "Örnek etkinleştirildi" : "Örnek pasifleştirildi",
+    };
+  } catch {
+    return { error: "Durum güncellenemedi" };
+  }
 }

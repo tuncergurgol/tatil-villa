@@ -185,7 +185,13 @@ export async function processWhatsappCalendarWebhook(
     select: { id: true, name: true, villaId: true },
   });
 
-  const parsed = parseWhatsappCalendarMessage(normalized.body);
+  const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { phrase: true, intent: true },
+  });
+
+  const parsed = parseWhatsappCalendarMessage(normalized.body, phraseRules);
 
   if (!villa) {
     await logWhatsappCalendarMessage({

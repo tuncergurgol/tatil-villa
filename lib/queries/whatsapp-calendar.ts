@@ -2,34 +2,38 @@ import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export async function getWhatsappCalendarAdminData() {
-  const [settings, groups, messages, mappedVillas] = await Promise.all([
-    getCompanySettings(),
-    prisma.whatsappCalendarGroup.findMany({
-      where: { active: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.whatsappCalendarMessage.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      include: {
-        villa: {
-          select: { id: true, name: true, villaId: true },
+  const [settings, groups, messages, mappedVillas, phraseRules] =
+    await Promise.all([
+      getCompanySettings(),
+      prisma.whatsappCalendarGroup.findMany({
+        where: { active: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.whatsappCalendarMessage.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        include: {
+          villa: {
+            select: { id: true, name: true, villaId: true },
+          },
         },
-      },
-    }),
-    prisma.villa.findMany({
-      where: { whatsappGroupId: { not: "" } },
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        villaId: true,
-        slug: true,
-        whatsappGroupId: true,
-        whatsappGroupDifferentName: true,
-      },
-    }),
-  ]);
+      }),
+      prisma.villa.findMany({
+        where: { whatsappGroupId: { not: "" } },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          villaId: true,
+          slug: true,
+          whatsappGroupId: true,
+          whatsappGroupDifferentName: true,
+        },
+      }),
+      prisma.whatsappCalendarPhraseRule.findMany({
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      }),
+    ]);
 
   return {
     enabled: settings.whatsappCalendarEnabled,
@@ -47,6 +51,7 @@ export async function getWhatsappCalendarAdminData() {
     groups,
     messages,
     mappedVillas,
+    phraseRules,
   };
 }
 
@@ -59,5 +64,13 @@ export async function getWhatsappCalendarGroupsForPicker() {
     where: { active: true },
     orderBy: { name: "asc" },
     select: { id: true, externalId: true, name: true },
+  });
+}
+
+export async function getActiveWhatsappCalendarPhraseRules() {
+  return prisma.whatsappCalendarPhraseRule.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { phrase: true, intent: true },
   });
 }

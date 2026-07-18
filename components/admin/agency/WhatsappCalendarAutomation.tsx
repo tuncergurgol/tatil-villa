@@ -4,14 +4,19 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createWhatsappCalendarGroup,
+  createWhatsappCalendarPhraseRule,
   deleteWhatsappCalendarGroup,
+  deleteWhatsappCalendarPhraseRule,
   generateWhatsappCalendarWebhookSecretAction,
   listEvolutionWhatsappGroupsAction,
   saveWhatsappCalendarSettings,
   testWhatsappCalendarParserAction,
+  toggleWhatsappCalendarPhraseRule,
 } from "@/app/actions/admin/whatsapp-calendar";
 import type { WhatsappCalendarAdminData } from "@/lib/queries/whatsapp-calendar";
 import type { EvolutionWhatsappGroup } from "@/lib/evolution-client";
+import { WHATSAPP_CALENDAR_INTENT_LABELS } from "@/lib/whatsapp-calendar-parser";
+import type { WhatsappCalendarPhraseIntent } from "@prisma/client";
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100";
@@ -47,6 +52,9 @@ export default function WhatsappCalendarAutomation({
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const [sampleText, setSampleText] = useState("15-20 Temmuz dolu");
+  const [phraseText, setPhraseText] = useState("");
+  const [phraseIntent, setPhraseIntent] =
+    useState<WhatsappCalendarPhraseIntent>("CLOSE");
   const [notice, setNotice] = useState<{ type: "ok" | "error"; message: string } | null>(
     null
   );
@@ -174,16 +182,86 @@ export default function WhatsappCalendarAutomation({
     });
   }
 
+  function handleCreatePhraseRule() {
+    setNotice(null);
+    const formData = new FormData();
+    formData.set("phrase", phraseText.trim());
+    formData.set("intent", phraseIntent);
+    startTransition(async () => {
+      const result = await createWhatsappCalendarPhraseRule({}, formData);
+      if (result.error) {
+        setNotice({ type: "error", message: result.error });
+        return;
+      }
+      setPhraseText("");
+      setNotice({ type: "ok", message: result.message ?? "Mesaj örneği eklendi" });
+      router.refresh();
+    });
+  }
+
+  function handleDeletePhraseRule(id: string) {
+    if (!window.confirm("Bu mesaj örneği silinsin mi?")) return;
+    startTransition(async () => {
+      const result = await deleteWhatsappCalendarPhraseRule(id);
+      setNotice({
+        type: result.success ? "ok" : "error",
+        message: result.message ?? result.error ?? "Silinemedi",
+      });
+      if (result.success) router.refresh();
+    });
+  }
+
+  function handleTogglePhraseRule(id: string, active: boolean) {
+    startTransition(async () => {
+      const result = await toggleWhatsappCalendarPhraseRule(id, active);
+      setNotice({
+        type: result.success ? "ok" : "error",
+        message: result.message ?? result.error ?? "Güncellenemedi",
+      });
+      if (result.success) router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Takvim WhatsApp Otomasyonu</h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-500">
           Takvim WhatsApp hattınızdaki grup mesajlarını webhook ile alır, villayla eşleştirir
-          ve mesajdaki tarihe göre takvimi otomatik açar/kapatır. Bağlantı servisiniz (Evolution
-          API dahil) tarafından iletilen grup mesajlarını destekler.
+          ve mesajdaki tarihe göre takvimi otomatik açar/kapatır.
         </p>
       </div>
+
+      <section className="rounded-2xl border border-sky-200 bg-sky-50/70 p-5">
+        <h2 className="text-sm font-semibold text-sky-900">
+          WhatsApp dinleme nasıl çalışır?
+        </h2>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-sky-900/90">
+          <li>
+            Bağlı Takvim WhatsApp hattı (Evolution) gruptaki mesajları{" "}
+            <strong>anlık</strong> dinler.
+          </li>
+          <li>
+            Yeni mesaj gelince Evolution, sistemimizin webhook adresine (
+            <code className="rounded bg-white/80 px-1">/api/webhooks/whatsapp-calendar</code>
+            ) POST isteği atar.
+          </li>
+          <li>
+            Sistem mesajı grup ID ile villaya eşleştirir; aşağıdaki{" "}
+            <strong>Mesaj Örnekleri</strong> + tarih bilgisinden işlemi çıkarır ve takvimi
+            günceller.
+          </li>
+          <li>
+            Sonuç <strong>Son Gelen Mesajlar</strong> tablosuna yazılır (Uygulandı / Yok
+            sayıldı / Hata).
+          </li>
+        </ol>
+        <p className="mt-3 text-xs text-sky-800">
+          Not: Kendi hattınızdan (fromMe) gönderilen mesajlar yok sayılır. Dinlemenin
+          çalışması için üstte otomasyonun açık olması ve Evolution webhook&apos;unun kayıtlı
+          olması gerekir (Ayarları Kaydet).
+        </p>
+      </section>
 
       {notice ? (
         <div
@@ -369,9 +447,118 @@ export default function WhatsappCalendarAutomation({
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-gray-800">
+          Mesaj Örnekleri (Öğrenme)
+        </h2>
+        <p className="mt-2 text-sm text-gray-500">
+          Gelen mesajda bu ifadelerden biri geçiyorsa sistem ilgili işlemi uygular.
+          Örnek: ifade <code>kapatalım</code> + işlem <strong>Kapat</strong> → mesaj{" "}
+          <code>19-20 temmuz kapatalım</code> takvimde o günleri dolu yapar. Tarih kısmını
+          sistem mesajdan otomatik okur; buraya yalnızca anahtar ifadeyi yazın.
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="min-w-[220px] flex-[1.4]">
+            <span className="mb-1 block text-xs font-medium text-gray-500">
+              Mesaj örneği / ifade
+            </span>
+            <input
+              value={phraseText}
+              onChange={(event) => setPhraseText(event.target.value)}
+              placeholder="Örn: kapatalım, kiralandı, açalım"
+              className={inputClass}
+            />
+          </label>
+          <label className="min-w-[180px] flex-1">
+            <span className="mb-1 block text-xs font-medium text-gray-500">
+              Yapılacak işlem
+            </span>
+            <select
+              value={phraseIntent}
+              onChange={(event) =>
+                setPhraseIntent(event.target.value as WhatsappCalendarPhraseIntent)
+              }
+              className={inputClass}
+            >
+              <option value="CLOSE">{WHATSAPP_CALENDAR_INTENT_LABELS.CLOSE}</option>
+              <option value="OPEN">{WHATSAPP_CALENDAR_INTENT_LABELS.OPEN}</option>
+              <option value="OPTION">{WHATSAPP_CALENDAR_INTENT_LABELS.OPTION}</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={handleCreatePhraseRule}
+            disabled={isPending || !phraseText.trim()}
+            className="rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+          >
+            Örnek Ekle
+          </button>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Mesaj Örneği</th>
+                <th className="px-4 py-3">İşlem</th>
+                <th className="px-4 py-3">Durum</th>
+                <th className="px-4 py-3 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.phraseRules.length > 0 ? (
+                data.phraseRules.map((rule) => (
+                  <tr key={rule.id} className="border-t border-gray-100">
+                    <td className="px-4 py-3 font-medium text-gray-900">{rule.phrase}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {WHATSAPP_CALENDAR_INTENT_LABELS[rule.intent]}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          rule.active
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {rule.active ? "Aktif" : "Pasif"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePhraseRule(rule.id, !rule.active)}
+                        disabled={isPending}
+                        className="mr-3 text-xs font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-60"
+                      >
+                        {rule.active ? "Pasifleştir" : "Aktifleştir"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePhraseRule(rule.id)}
+                        disabled={isPending}
+                        className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
+                      >
+                        Sil
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                    Henüz mesaj örneği yok. Yukarıdan ekleyin.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-gray-800">Mesaj Testi</h2>
         <p className="mt-2 text-sm text-gray-500">
-          Örnek: <code>15-20 Temmuz dolu</code>, <code>01.08-05.08 açık</code>,{" "}
+          Takvime uygulamadan önce sistemin mesajı nasıl okuduğunu deneyin. Örnek:{" "}
+          <code>15-20 Temmuz dolu</code>, <code>01.08-05.08 açık</code>,{" "}
           <code>10-12 Ağustos opsiyon</code>
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">

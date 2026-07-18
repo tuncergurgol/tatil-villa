@@ -2,12 +2,18 @@ import { compareDates, parseDateKey, toDateKey } from "@/lib/villa-period-calend
 
 export type WhatsappCalendarIntent = "OPEN" | "CLOSE" | "OPTION";
 
+export type WhatsappCalendarPhraseRuleInput = {
+  phrase: string;
+  intent: WhatsappCalendarIntent;
+};
+
 export type ParsedWhatsappCalendarMessage = {
   intent: WhatsappCalendarIntent;
   startDateKey: string;
   endDateKey: string;
   confidence: "high" | "low";
   summary: string;
+  matchedPhrase?: string;
 };
 
 const MONTHS: Record<string, number> = {
@@ -38,7 +44,7 @@ const OPEN_KEYWORDS =
   /\b(a[cç][ıi]k\w*|a[cç]al[ıi]m|a[cç]t[ıi]k|a[cç][ıi]ld[ıi]|m[üu]sait\w*|bo[sş]\w*|available|serbest\w*|iptal\w*)\b/i;
 const OPTION_KEYWORDS = /\b(opsiyon\w*|option\w*|hold)\b/i;
 
-function normalizeText(value: string) {
+export function normalizeWhatsappCalendarText(value: string) {
   return value
     .toLocaleLowerCase("tr-TR")
     .replace(/ı/g, "i")
@@ -49,11 +55,60 @@ function normalizeText(value: string) {
     .replace(/ç/g, "c");
 }
 
-function detectIntent(text: string): WhatsappCalendarIntent | null {
+function normalizeText(value: string) {
+  return normalizeWhatsappCalendarText(value);
+}
+
+function detectBuiltinIntent(text: string): WhatsappCalendarIntent | null {
   if (OPTION_KEYWORDS.test(text)) return "OPTION";
   if (CLOSE_KEYWORDS.test(text)) return "CLOSE";
   if (OPEN_KEYWORDS.test(text)) return "OPEN";
   return null;
+}
+
+/** Kullanıcı kuralları önce; en uzun eşleşen ifade kazanır. */
+export function detectIntentFromPhraseRules(
+  text: string,
+  rules: WhatsappCalendarPhraseRuleInput[]
+): { intent: WhatsappCalendarIntent; phrase: string } | null {
+  if (rules.length === 0) return null;
+
+  const normalizedBody = normalizeText(text);
+  let best: { intent: WhatsappCalendarIntent; phrase: string; length: number } | null =
+    null;
+
+  for (const rule of rules) {
+    const phrase = rule.phrase.trim();
+    if (!phrase) continue;
+    const normalizedPhrase = normalizeText(phrase);
+    if (!normalizedPhrase) continue;
+    if (!normalizedBody.includes(normalizedPhrase)) continue;
+    if (!best || normalizedPhrase.length > best.length) {
+      best = {
+        intent: rule.intent,
+        phrase,
+        length: normalizedPhrase.length,
+      };
+    }
+  }
+
+  return best
+    ? { intent: best.intent, phrase: best.phrase }
+    : null;
+}
+
+function detectIntent(
+  text: string,
+  rules?: WhatsappCalendarPhraseRuleInput[]
+): { intent: WhatsappCalendarIntent; matchedPhrase?: string } | null {
+  const fromRules = detectIntentFromPhraseRules(text, rules ?? []);
+  if (fromRules) {
+    return { intent: fromRules.intent, matchedPhrase: fromRules.phrase };
+  }
+
+  const builtin = detectBuiltinIntent(text);
+  if (!builtin) return null;
+  return { intent: builtin };
 }
 
 function buildDateKey(year: number, month: number, day: number) {
@@ -167,13 +222,14 @@ function extractDateRange(text: string) {
 }
 
 export function parseWhatsappCalendarMessage(
-  rawBody: string
+  rawBody: string,
+  rules?: WhatsappCalendarPhraseRuleInput[]
 ): ParsedWhatsappCalendarMessage | null {
   const body = rawBody.trim();
   if (!body) return null;
 
-  const intent = detectIntent(body);
-  if (!intent) return null;
+  const detected = detectIntent(body, rules);
+  if (!detected) return null;
 
   const range = extractDateRange(body);
   if (!range) return null;
@@ -187,16 +243,21 @@ export function parseWhatsappCalendarMessage(
   }
 
   const intentLabel =
-    intent === "OPEN" ? "Aç" : intent === "CLOSE" ? "Kapat" : "Opsiyon";
+    detected.intent === "OPEN"
+      ? "Aç"
+      : detected.intent === "CLOSE"
+        ? "Kapat"
+        : "Opsiyon";
 
   return {
-    intent,
+    intent: detected.intent,
     startDateKey: start,
     endDateKey: end,
     confidence: /(\d{1,2}[./-]\d{1,2}|\d{1,2}\s*-\s*\d{1,2})/.test(body)
       ? "high"
       : "low",
     summary: `${intentLabel}: ${start} → ${end}`,
+    matchedPhrase: detected.matchedPhrase,
   };
 }
 
@@ -207,3 +268,12 @@ export function mapIntentToOccupancyMode(
   if (intent === "OPTION") return "OPTION";
   return "BOOKED";
 }
+
+export const WHATSAPP_CALENDAR_INTENT_LABELS: Record<
+  WhatsappCalendarIntent,
+  string
+> = {
+  CLOSE: "Kapat (Dolu)",
+  OPEN: "Aç (Müsait)",
+  OPTION: "Opsiyon",
+};
