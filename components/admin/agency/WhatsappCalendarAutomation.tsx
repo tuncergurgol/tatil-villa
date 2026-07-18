@@ -73,6 +73,9 @@ export default function WhatsappCalendarAutomation({
   const [webhookSecret, setWebhookSecret] = useState(data.webhookSecret);
   const [groupName, setGroupName] = useState("");
   const [groupExternalId, setGroupExternalId] = useState("");
+  const [groupSearch, setGroupSearch] = useState("");
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const groupPickerRef = useRef<HTMLDivElement | null>(null);
   const [selectedVillaId, setSelectedVillaId] = useState("");
   const [villaSearch, setVillaSearch] = useState("");
   const [villaPickerOpen, setVillaPickerOpen] = useState(false);
@@ -109,6 +112,26 @@ export default function WhatsappCalendarAutomation({
     return namesByGroupId;
   }, [data.mappedVillas]);
 
+  const matchedGroupIds = useMemo(
+    () => new Set(groupVillaNames.keys()),
+    [groupVillaNames]
+  );
+
+  const selectedLiveGroup = useMemo(
+    () => liveGroups.find((group) => group.id === groupExternalId) ?? null,
+    [liveGroups, groupExternalId]
+  );
+
+  const filteredLiveGroups = useMemo(() => {
+    const query = groupSearch.trim();
+    if (!query) return liveGroups;
+    return liveGroups.filter(
+      (group) =>
+        includesSearchText(group.name, query) ||
+        includesSearchText(group.id, query)
+    );
+  }, [liveGroups, groupSearch]);
+
   const selectedVilla = useMemo(
     () => data.villas.find((villa) => villa.id === selectedVillaId) ?? null,
     [data.villas, selectedVillaId]
@@ -121,17 +144,29 @@ export default function WhatsappCalendarAutomation({
   );
 
   useEffect(() => {
-    if (!villaPickerOpen) return;
+    if (!villaPickerOpen && !groupPickerOpen) return;
 
     function handlePointerDown(event: MouseEvent) {
-      if (!villaPickerRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        villaPickerOpen &&
+        villaPickerRef.current &&
+        !villaPickerRef.current.contains(target)
+      ) {
         setVillaPickerOpen(false);
+      }
+      if (
+        groupPickerOpen &&
+        groupPickerRef.current &&
+        !groupPickerRef.current.contains(target)
+      ) {
+        setGroupPickerOpen(false);
       }
     }
 
     window.addEventListener("mousedown", handlePointerDown);
     return () => window.removeEventListener("mousedown", handlePointerDown);
-  }, [villaPickerOpen]);
+  }, [villaPickerOpen, groupPickerOpen]);
 
   async function loadLiveGroups() {
     setGroupsLoading(true);
@@ -186,6 +221,8 @@ export default function WhatsappCalendarAutomation({
     }
     setGroupName(selected.name);
     setGroupExternalId(selected.id);
+    setGroupSearch("");
+    setGroupPickerOpen(false);
   }
 
   function handleSaveSettings() {
@@ -234,6 +271,8 @@ export default function WhatsappCalendarAutomation({
       }
       setGroupName("");
       setGroupExternalId("");
+      setGroupSearch("");
+      setGroupPickerOpen(false);
       setSelectedVillaId("");
       setVillaSearch("");
       setVillaPickerOpen(false);
@@ -430,28 +469,87 @@ export default function WhatsappCalendarAutomation({
           eşleştirin. Eşleşmeler aşağıdaki tabloda görünür.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
-          <label className="min-w-[220px] flex-[1.2]">
+          <div ref={groupPickerRef} className="relative min-w-[240px] flex-[1.2]">
             <span className="mb-1 block text-xs font-medium text-gray-500">
               WhatsApp Grubu
             </span>
-            <select
-              value={groupExternalId}
-              onChange={(event) => handleSelectLiveGroup(event.target.value)}
-              className={inputClass}
+            <button
+              type="button"
+              onClick={() => setGroupPickerOpen((open) => !open)}
               disabled={groupsLoading || isPending}
+              className={`${inputClass} flex items-center justify-between gap-2 text-left disabled:opacity-60 ${
+                selectedLiveGroup &&
+                matchedGroupIds.has(canonicalWhatsappGroupId(selectedLiveGroup.id))
+                  ? "border-emerald-200 bg-emerald-50"
+                  : ""
+              }`}
             >
-              <option value="">
+              <span
+                className={
+                  selectedLiveGroup
+                    ? "truncate text-gray-900"
+                    : "truncate text-gray-400"
+                }
+              >
                 {groupsLoading
                   ? "Gruplar yükleniyor…"
-                  : "Grup seçin"}
-              </option>
-              {liveGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </label>
+                  : selectedLiveGroup
+                    ? selectedLiveGroup.name
+                    : "Grup seçin"}
+              </span>
+              <span className="text-gray-400">⌄</span>
+            </button>
+            {groupPickerOpen ? (
+              <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+                <div className="border-b border-gray-100 p-2">
+                  <input
+                    autoFocus
+                    value={groupSearch}
+                    onChange={(event) => setGroupSearch(event.target.value)}
+                    placeholder="Grup adı veya ID ara..."
+                    className={inputClass}
+                  />
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {filteredLiveGroups.length > 0 ? (
+                    filteredLiveGroups.map((group) => {
+                      const isMatched = matchedGroupIds.has(
+                        canonicalWhatsappGroupId(group.id)
+                      );
+                      return (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => handleSelectLiveGroup(group.id)}
+                          className={`flex w-full flex-col gap-0.5 border-b border-gray-50 px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-teal-50 ${
+                            isMatched ? "bg-emerald-50" : ""
+                          } ${
+                            groupExternalId === group.id ? "ring-1 ring-inset ring-teal-300" : ""
+                          }`}
+                        >
+                          <span className="font-medium text-gray-900">
+                            {group.name}
+                          </span>
+                          {isMatched ? (
+                            <span className="text-xs font-medium text-emerald-700">
+                              Eşleşmiş ·{" "}
+                              {groupVillaNames
+                                .get(canonicalWhatsappGroupId(group.id))
+                                ?.join(", ")}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p className="px-4 py-6 text-center text-sm text-gray-500">
+                      Eşleşen grup bulunamadı.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
           <label className="min-w-[220px] flex-[1.2]">
             <span className="mb-1 block text-xs font-medium text-gray-500">Grup ID</span>
             <input
@@ -565,8 +663,19 @@ export default function WhatsappCalendarAutomation({
             </thead>
             <tbody>
               {data.groups.length > 0 ? (
-                data.groups.map((group) => (
-                  <tr key={group.id} className="border-t border-gray-100">
+                data.groups.map((group) => {
+                  const isMatched = matchedGroupIds.has(
+                    canonicalWhatsappGroupId(group.externalId)
+                  );
+                  return (
+                  <tr
+                    key={group.id}
+                    className={`border-t ${
+                      isMatched
+                        ? "border-emerald-100 bg-emerald-50"
+                        : "border-gray-100 bg-white"
+                    }`}
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-medium text-gray-900">{group.name}</span>
@@ -591,7 +700,8 @@ export default function WhatsappCalendarAutomation({
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500">
