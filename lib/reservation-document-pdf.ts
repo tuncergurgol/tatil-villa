@@ -62,6 +62,7 @@ export type ReservationDocumentData = {
   };
   company: {
     brandName: string;
+    domain?: string;
     agencyName: string;
     companyTitle: string;
     tursabNo: string;

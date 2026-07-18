@@ -16,7 +16,12 @@ import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
 import { calculateNights } from "@/lib/stay-nights";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
+import {
+  appendBookingSiteFooter,
+  resolveBookingSiteBrand,
+} from "@/lib/booking-site-brand";
 import { formatVillaRegionLabelMahalleIlceIl } from "@/lib/queries/villa-location";
 import {
   applyReservationContractPlaceholders,
@@ -136,8 +141,21 @@ export async function buildReservationDocumentDataForBooking(
   }
 
   const details = parseBookingDetails(booking.details);
-  const company = await getCompanySettings();
-  const contractSource = await loadOnlineReservationContractBody();
+  const [company, contractSource, agencySites] = await Promise.all([
+    getCompanySettings(),
+    loadOnlineReservationContractBody(),
+    getAgencySitesForPicker(),
+  ]);
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo: details.siteInfo,
+    originDomain: details.originDomain,
+    company: {
+      brandName: company.brandName,
+      domain: company.domain,
+      logoUrl: company.logoUrl,
+    },
+    agencySites,
+  });
 
   const reservationCode =
     resolveExternalCode(booking.externalCode, booking.guestEmail) ||
@@ -199,7 +217,7 @@ export async function buildReservationDocumentDataForBooking(
       villaName: booking.villa.name,
       dateRangeLabel,
       reservationCode,
-      brandDomain: company.domain || company.brandName,
+      brandDomain: siteBrand.domain || company.domain || company.brandName,
     }
   );
 
@@ -253,7 +271,8 @@ export async function buildReservationDocumentDataForBooking(
       remainingAtCheckIn,
     },
     company: {
-      brandName: company.brandName || "tatildeyiz.com.tr",
+      brandName: siteBrand.siteInfo || company.brandName || "tatildeyiz.com.tr",
+      domain: siteBrand.domain || company.domain,
       agencyName: company.agencyName || "",
       companyTitle: company.companyTitle || "",
       tursabNo: company.tursabNo || "",
@@ -261,7 +280,7 @@ export async function buildReservationDocumentDataForBooking(
       phone: company.phone || "",
       whatsapp: company.whatsapp || company.phone || "",
       email: company.email || RESERVATION_DOCUMENT_BCC,
-      logoUrl: company.logoUrl || undefined,
+      logoUrl: siteBrand.logoUrl || company.logoUrl || undefined,
       taxOffice: company.taxOffice || undefined,
       taxNumber: company.taxNumber || undefined,
     },
@@ -335,8 +354,8 @@ export async function sendReservationDocumentEmail(
 
   const company = await getCompanySettings();
   const emailLogo = await prepareCompanyLogoForEmail(
-    company.logoUrl,
-    company.domain
+    data.company.logoUrl,
+    data.company.domain
   );
   const text = buildGuestMailText(data);
   const attachments: Attachment[] = [
@@ -427,8 +446,8 @@ export async function sendReservationDocumentNotifications(
   } else {
     try {
       const emailLogo = await prepareCompanyLogoForEmail(
-        company.logoUrl,
-        company.domain
+        data.company.logoUrl,
+        data.company.domain
       );
       const text = buildGuestMailText(data);
       const attachments: Attachment[] = [
@@ -467,7 +486,10 @@ export async function sendReservationDocumentNotifications(
     });
   } else {
     const whatsappMessage = ensureWhatsAppRawConfirmationUrl(
-      buildGuestWhatsAppText(data)
+      appendBookingSiteFooter(
+        buildGuestWhatsAppText(data),
+        data.company.brandName
+      )
     );
     const wa = await sendCustomerNotificationWhatsApp(
       phoneRaw,

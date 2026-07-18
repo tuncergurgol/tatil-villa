@@ -6,6 +6,29 @@ export type BookingSiteBrand = {
   logoUrl: string;
 };
 
+/** Müşteri WhatsApp mesajlarının sonunda gösterilecek kaynak site etiketi. */
+export function formatBookingSiteLabel(
+  siteInfo: string | null | undefined
+): string {
+  return normalizeBookingSiteInfo(siteInfo).toLocaleUpperCase("tr-TR");
+}
+
+/** Kaynak site adını WhatsApp mesajına tek seferlik alt bilgi olarak ekler. */
+export function appendBookingSiteFooter(
+  message: string,
+  siteInfo: string | null | undefined
+): string {
+  const body = message.trimEnd();
+  const label = formatBookingSiteLabel(siteInfo);
+  const lastLine = body.split(/\r?\n/).at(-1)?.trim() || "";
+
+  if (lastLine.localeCompare(label, "tr", { sensitivity: "base" }) === 0) {
+    return body;
+  }
+
+  return `${body}\n\n${label}`;
+}
+
 type CompanyBrandFallback = {
   brandName: string;
   domain: string;

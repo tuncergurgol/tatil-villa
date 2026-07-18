@@ -33,6 +33,11 @@ import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
+import {
+  appendBookingSiteFooter,
+  resolveBookingSiteBrand,
+} from "@/lib/booking-site-brand";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNos } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
@@ -140,7 +145,8 @@ export async function sendBookingPrepaymentInfoAction(
 
   const primaryTemplateRowNo = templateRowCandidates[0];
 
-  const [booking, template, companySettings, bankAccount] = await Promise.all([
+  const [booking, template, companySettings, bankAccount, agencySites] =
+    await Promise.all([
     prisma.booking.findUnique({
       where: { id: data.bookingId },
       include: {
@@ -154,6 +160,7 @@ export async function sendBookingPrepaymentInfoAction(
     getAgencyMessageTemplateByRowNos(templateRowCandidates),
     getCompanySettings(),
     resolveBankAccount(data.paymentMethod),
+    getAgencySitesForPicker(),
   ]);
 
   if (!booking) {
@@ -209,6 +216,16 @@ export async function sendBookingPrepaymentInfoAction(
   }
 
   const details = parseBookingDetails(booking.details);
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo: details.siteInfo,
+    originDomain: details.originDomain,
+    company: {
+      brandName: companySettings.brandName,
+      domain: companySettings.domain,
+      logoUrl: companySettings.logoUrl,
+    },
+    agencySites,
+  });
   const templateValues = buildBookingPrepaymentTemplateValues({
     reservationCode,
     guestName: booking.guestName,
@@ -224,10 +241,10 @@ export async function sendBookingPrepaymentInfoAction(
     optionHours: data.optionHours,
     company: {
       agencyName: companySettings.agencyName,
-      brandName: companySettings.brandName,
+      brandName: siteBrand.siteInfo || companySettings.brandName,
       companyTitle: companySettings.companyTitle,
-      domain: companySettings.domain,
-      logoUrl: companySettings.logoUrl,
+      domain: siteBrand.domain || companySettings.domain,
+      logoUrl: siteBrand.logoUrl || companySettings.logoUrl,
     },
     bankAccount,
   });
@@ -238,8 +255,8 @@ export async function sendBookingPrepaymentInfoAction(
     normalizeCompanyPaymentType(data.paymentMethod) === "bank_transfer";
   const emailLogo = data.sendEmail
     ? await prepareCompanyLogoForEmail(
-        companySettings.logoUrl,
-        companySettings.domain
+        siteBrand.logoUrl || companySettings.logoUrl,
+        siteBrand.domain || companySettings.domain
       )
     : null;
 
@@ -295,7 +312,14 @@ export async function sendBookingPrepaymentInfoAction(
         };
       }
     } else if (channel === "whatsapp") {
-      const wa = await sendCustomerNotificationWhatsApp(phone, message);
+      const whatsappMessage = appendBookingSiteFooter(
+        message,
+        siteBrand.siteInfo
+      );
+      const wa = await sendCustomerNotificationWhatsApp(
+        phone,
+        whatsappMessage
+      );
       if (!wa.ok) {
         return {
           success: false,

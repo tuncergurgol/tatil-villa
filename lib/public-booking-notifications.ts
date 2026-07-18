@@ -8,7 +8,10 @@ import {
   AGENCY_MESSAGE_TEMPLATE_ROW_2,
 } from "@/lib/agency-message-row-no";
 import { parseBookingDetails } from "@/lib/booking-form-details";
-import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
+import {
+  appendBookingSiteFooter,
+  resolveBookingSiteBrand,
+} from "@/lib/booking-site-brand";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
@@ -172,7 +175,10 @@ export async function notifyNewReservationRequest(
 
       if (waBody && booking.guestPhone.trim()) {
         try {
-          const message = renderAgencyMessageTemplate(waBody, values);
+          const message = appendBookingSiteFooter(
+            renderAgencyMessageTemplate(waBody, values),
+            siteBrand.siteInfo
+          );
           await sendGuestWhatsApp(booking.guestPhone, message);
         } catch (error) {
           console.error("[new-reservation-notify] WhatsApp hatası", error);

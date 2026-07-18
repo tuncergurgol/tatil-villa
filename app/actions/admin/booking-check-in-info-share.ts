@@ -48,7 +48,10 @@ import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
-import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
+import {
+  appendBookingSiteFooter,
+  resolveBookingSiteBrand,
+} from "@/lib/booking-site-brand";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
@@ -294,6 +297,7 @@ async function loadCheckInInfoShareContext(
     templateRowNo,
     companySettings,
     publicDomain,
+    siteInfo: siteBrand.siteInfo,
     brandLogoUrl: siteBrand.logoUrl || companySettings.logoUrl,
     reservationCode,
     shareCode,
@@ -349,7 +353,10 @@ export async function previewCheckInInfoShareAction(raw: {
       parsed.data.audience
     );
     const whatsappPreview = ensureWhatsAppRawConfirmationUrl(
-      renderAgencyMessageTemplate(waBody, ctx.templateValues)
+      appendBookingSiteFooter(
+        renderAgencyMessageTemplate(waBody, ctx.templateValues),
+        ctx.siteInfo
+      )
     );
     const emailPreview = stripZeroAmountLines(
       renderAgencyMessageTemplate(mailBody, ctx.templateValues)
@@ -541,7 +548,12 @@ export async function sendCheckInInfoShareAction(
 
       if (channel === "whatsapp") {
         try {
-          const whatsappMessage = ensureWhatsAppRawConfirmationUrl(message);
+          const whatsappMessage = ensureWhatsAppRawConfirmationUrl(
+            appendBookingSiteFooter(
+              message,
+              ctx.siteInfo
+            )
+          );
           const wa =
             audience === "guest"
               ? await sendCustomerNotificationWhatsApp(ctx.phone, whatsappMessage)

@@ -40,7 +40,10 @@ import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
-import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
+import {
+  appendBookingSiteFooter,
+  resolveBookingSiteBrand,
+} from "@/lib/booking-site-brand";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
@@ -312,7 +315,10 @@ export async function sendBookingConfirmationAction(
         };
       }
     } else if (channel === "whatsapp") {
-      const whatsappMessage = ensureWhatsAppRawConfirmationUrl(message);
+      const whatsappMessage = appendBookingSiteFooter(
+        ensureWhatsAppRawConfirmationUrl(message),
+        siteBrand.siteInfo
+      );
       const wa = await sendCustomerNotificationWhatsApp(phone, whatsappMessage);
       if (!wa.ok) {
         return {
