@@ -294,8 +294,8 @@ export default function AvailabilitySearchPage({
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] w-full flex-col gap-3">
-      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 px-3 py-2">
+      <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-t-xl border-b border-gray-100 px-3 py-2">
           <div className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-900">
             <Search className="h-4 w-4 text-gray-500" />
             Uygunluk Ara
