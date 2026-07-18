@@ -20,6 +20,14 @@ import type { CrmVillaFeatureImportRow } from "@/lib/queries/crm-villa-feature-i
 
 type Notice = { type: "success" | "error"; message: string };
 
+type BulkProgress = {
+  current: number;
+  total: number;
+  successCount: number;
+  failCount: number;
+  currentName: string;
+};
+
 function normalize(value: string) {
   return value.toLocaleLowerCase("tr-TR");
 }
@@ -69,7 +77,9 @@ export default function CrmVillaFeatureImportManagement({
     useState<CrmVillaFeatureImportRow | null>(null);
   const [preview, setPreview] = useState<CrmVillaFeaturePreview | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
   const [isPending, startTransition] = useTransition();
+  const isBusy = isPending || bulkProgress != null;
 
   const filteredRows = useMemo(() => {
     const term = normalize(query.trim());
@@ -94,6 +104,14 @@ export default function CrmVillaFeatureImportManagement({
     filteredIds.length > 0 && checkedFilteredCount === filteredIds.length;
   const someFilteredChecked =
     checkedFilteredCount > 0 && checkedFilteredCount < filteredIds.length;
+
+  const selectedImportableRows = useMemo(
+    () =>
+      filteredRows.filter(
+        (row) => checkedIds.has(row.id) && row.villaId != null
+      ),
+    [checkedIds, filteredRows]
+  );
 
   function toggleRowChecked(id: string) {
     setCheckedIds((prev) => {
@@ -151,6 +169,67 @@ export default function CrmVillaFeatureImportManagement({
       });
       router.refresh();
     });
+  }
+
+  async function importAllSelected() {
+    if (selectedImportableRows.length === 0 || isBusy) return;
+
+    const skipped = checkedFilteredCount - selectedImportableRows.length;
+    const confirmed = window.confirm(
+      `${selectedImportableRows.length} villa için özellikler CRM verisiyle değiştirilecek` +
+        (skipped > 0 ? ` (${skipped} villa CRM ID olmadığı için atlanacak)` : "") +
+        `. Devam edilsin mi?`
+    );
+    if (!confirmed) return;
+
+    setNotice(null);
+    setSelectedVilla(null);
+    setPreview(null);
+
+    let successCount = 0;
+    let failCount = 0;
+    let importedFeatureTotal = 0;
+    const failures: string[] = [];
+
+    for (let index = 0; index < selectedImportableRows.length; index++) {
+      const row = selectedImportableRows[index]!;
+      setBulkProgress({
+        current: index + 1,
+        total: selectedImportableRows.length,
+        successCount,
+        failCount,
+        currentName: row.name,
+      });
+
+      const response = await importCrmVillaFeaturesAction(row.id);
+      if (response.ok) {
+        successCount += 1;
+        importedFeatureTotal += response.result.importedCount;
+      } else {
+        failCount += 1;
+        if (failures.length < 5) {
+          failures.push(`${row.name}: ${response.error}`);
+        }
+      }
+
+      setBulkProgress({
+        current: index + 1,
+        total: selectedImportableRows.length,
+        successCount,
+        failCount,
+        currentName: row.name,
+      });
+    }
+
+    setBulkProgress(null);
+    setNotice({
+      type: failCount > 0 && successCount === 0 ? "error" : "success",
+      message:
+        `${successCount} villa aktarıldı (${importedFeatureTotal} özellik)` +
+        (failCount > 0 ? `, ${failCount} villa başarısız.` : ".") +
+        (failures.length > 0 ? ` Örnek: ${failures.join(" · ")}` : ""),
+    });
+    router.refresh();
   }
 
   return (
@@ -213,7 +292,7 @@ export default function CrmVillaFeatureImportManagement({
       ) : null}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <p className="text-sm font-semibold text-slate-800">
             Villa Eşleştirmeleri
             {checkedIds.size > 0 ? (
@@ -222,10 +301,50 @@ export default function CrmVillaFeatureImportManagement({
               </span>
             ) : null}
           </p>
-          <span className="text-xs text-slate-500">
-            {filteredRows.length} / {rows.length} villa
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            {allFilteredChecked ? (
+              <button
+                type="button"
+                disabled={isBusy || selectedImportableRows.length === 0}
+                onClick={() => void importAllSelected()}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {bulkProgress ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ArrowDownToLine className="h-3.5 w-3.5" />
+                )}
+                Tümünü Aktar ({selectedImportableRows.length})
+              </button>
+            ) : null}
+            <span className="text-xs text-slate-500">
+              {filteredRows.length} / {rows.length} villa
+            </span>
+          </div>
         </div>
+        {bulkProgress ? (
+          <div className="border-b border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">
+                Aktarılıyor: {bulkProgress.current} / {bulkProgress.total} —{" "}
+                {bulkProgress.currentName}
+              </p>
+              <p className="text-xs text-sky-700">
+                Başarılı {bulkProgress.successCount} · Hatalı {bulkProgress.failCount}
+              </p>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-sky-100">
+              <div
+                className="h-full rounded-full bg-sky-600 transition-all"
+                style={{
+                  width: `${Math.round(
+                    (bulkProgress.current / bulkProgress.total) * 100
+                  )}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -310,7 +429,7 @@ export default function CrmVillaFeatureImportManagement({
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
-                        disabled={!matched || isPending}
+                        disabled={!matched || isBusy}
                         onClick={() => openPreview(row)}
                         className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40"
                       >
@@ -409,7 +528,7 @@ export default function CrmVillaFeatureImportManagement({
                     </a>
                     <button
                       type="button"
-                      disabled={isPending || preview.matchedNames.length === 0}
+                      disabled={isBusy || preview.matchedNames.length === 0}
                       onClick={importFeatures}
                       className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                     >
