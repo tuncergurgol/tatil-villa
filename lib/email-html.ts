@@ -98,7 +98,7 @@ export function toHtmlFromText(
 
   const logoUrl = options.logoUrl?.trim() || "";
   const logo = logoUrl
-    ? `<p style="text-align:center;margin:0 0 16px;"><img src="${escapeHtml(logoUrl)}" alt="Logo" style="max-width:180px;height:auto;" /></p>`
+    ? `<p style="text-align:center;margin:0 0 16px;"><img src="${escapeHtml(logoUrl)}" alt="Logo" width="180" style="display:inline-block;width:180px;max-width:180px;height:auto;" /></p>`
     : "";
 
   return `${logo}<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#111;">${bodyHtml}</div>`;
