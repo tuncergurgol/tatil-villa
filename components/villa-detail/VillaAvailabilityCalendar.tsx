@@ -5,6 +5,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { VillaDayOccupancy } from "@prisma/client";
 import { canSelectStayDay } from "@/lib/booking-calendar-selection";
 import {
+  convertCurrencyAmount,
+  type PublicExchangeRates,
+} from "@/lib/currency-conversion";
+import {
   getPublicVillaDayVisualStyle,
   PUBLIC_VILLA_DAY_VISUAL_LEGEND,
   resolveVillaDayVisual,
@@ -22,6 +26,7 @@ type CalendarDay = {
 
 type VillaAvailabilityCalendarProps = {
   days: CalendarDay[];
+  exchangeRates: PublicExchangeRates;
 };
 
 const WEEKDAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"] as const;
@@ -81,11 +86,13 @@ function MonthGrid({
   month,
   dayMap,
   occupancyMap,
+  exchangeRates,
 }: {
   year: number;
   month: number;
   dayMap: Map<string, CalendarDay>;
   occupancyMap: Map<string, VillaDayOccupancy>;
+  exchangeRates: PublicExchangeRates;
 }) {
   const {
     pendingStart,
@@ -131,8 +138,16 @@ function MonthGrid({
           const next = occupancyMap.get(offsetDateKey(dateKey, 1));
           const kind = resolveVillaDayVisual(current, prev, next);
           const visual = getPublicVillaDayVisualStyle(kind);
-          const price = cell.data?.price;
           const hasDayData = Boolean(cell.data);
+          const priceTl =
+            cell.data != null
+              ? convertCurrencyAmount(
+                  cell.data.price,
+                  cell.data.currency,
+                  "TL",
+                  exchangeRates
+                )
+              : null;
 
           const inRange =
             previewStart &&
@@ -195,9 +210,9 @@ function MonthGrid({
               <p className="text-[11px] font-semibold text-slate-800 sm:text-xs">
                 {cell.day}
               </p>
-              {visual.showPrice && price != null && hasDayData ? (
+              {visual.showPrice && priceTl != null && hasDayData ? (
                 <p className="mt-0.5 text-[9px] leading-tight text-slate-600 sm:text-[10px]">
-                  {formatDayPrice(price)}
+                  {formatDayPrice(priceTl)}
                   <span className="text-slate-400">₺</span>
                 </p>
               ) : null}
@@ -221,6 +236,7 @@ function MonthGrid({
 
 export default function VillaAvailabilityCalendar({
   days,
+  exchangeRates,
 }: VillaAvailabilityCalendarProps) {
   const { occupancyMap } = useVillaStaySelection();
 
@@ -302,6 +318,7 @@ export default function VillaAvailabilityCalendar({
           month={month1}
           dayMap={dayMap}
           occupancyMap={occupancyMap}
+          exchangeRates={exchangeRates}
         />
         {showTwo ? (
           <MonthGrid
@@ -309,6 +326,7 @@ export default function VillaAvailabilityCalendar({
             month={month2}
             dayMap={dayMap}
             occupancyMap={occupancyMap}
+            exchangeRates={exchangeRates}
           />
         ) : null}
       </div>

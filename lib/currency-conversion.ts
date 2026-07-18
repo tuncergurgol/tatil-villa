@@ -47,3 +47,23 @@ export function convertNullableCurrencyAmount(
   if (amount == null) return null;
   return convertCurrencyAmount(amount, fromCurrency, toCurrency, rates);
 }
+
+/** Periyotlarda geçen TL dışı para birimleri (EUR → USD → GBP sırası). */
+export function resolveForeignPriceCurrencies(
+  currencies: Array<VillaPeriodCurrency | string | null | undefined>
+): Exclude<VillaPeriodCurrency, "TL">[] {
+  const found = new Set<Exclude<VillaPeriodCurrency, "TL">>();
+  for (const currency of currencies) {
+    const normalized = normalizeCurrency(currency);
+    if (normalized !== "TL") found.add(normalized);
+  }
+  return (["EUR", "USD", "GBP"] as const).filter((code) => found.has(code));
+}
+
+export function buildForeignCurrencyPaymentDisclaimer(
+  foreignCurrencies: Exclude<VillaPeriodCurrency, "TL">[]
+): string | null {
+  if (foreignCurrencies.length === 0) return null;
+  const label = foreignCurrencies.join(" / ");
+  return `GECELİK FİYATLAR ${label} VERİLMİŞ OLUP, YAPTIĞINIZ ÖN ÖDEME VE GİRİŞTE YAPACAĞINIZ ÖDEME O PARA BİRİMİ İLE DEĞERLENDİRİLİR. TL PARA BİRİMİ BİLGİLENDİRME AMAÇLIDIR.`;
+}

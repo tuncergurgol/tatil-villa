@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, Info, X } from "lucide-react";
 import {
+  buildForeignCurrencyPaymentDisclaimer,
   convertCurrencyAmount,
+  resolveForeignPriceCurrencies,
   type PublicExchangeRates,
 } from "@/lib/currency-conversion";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
@@ -163,6 +165,14 @@ export default function PeriodPricesModal({
     [periods]
   );
 
+  const foreignCurrencyDisclaimer = useMemo(
+    () =>
+      buildForeignCurrencyPaymentDisclaimer(
+        resolveForeignPriceCurrencies(sorted.map((period) => period.currency))
+      ),
+    [sorted]
+  );
+
   if (!open || !mounted) return null;
 
   return createPortal(
@@ -309,9 +319,16 @@ export default function PeriodPricesModal({
           })}
         </div>
 
-        <footer className="flex shrink-0 items-center justify-center gap-1.5 border-t border-slate-100 bg-white px-4 py-3 text-xs text-slate-500">
-          <Info className="h-3.5 w-3.5 shrink-0" />
-          Fiyatlar gecelik olarak gösterilmektedir
+        <footer className="shrink-0 space-y-1.5 border-t border-slate-100 bg-white px-4 py-3 text-xs text-slate-500">
+          <p className="flex items-center justify-center gap-1.5">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            Fiyatlar gecelik olarak gösterilmektedir
+          </p>
+          {foreignCurrencyDisclaimer ? (
+            <p className="text-center text-[11px] font-semibold uppercase leading-snug tracking-wide text-amber-800">
+              {foreignCurrencyDisclaimer}
+            </p>
+          ) : null}
         </footer>
       </div>
     </div>,

@@ -26,7 +26,11 @@ import VillaDetailSectionNav, {
 } from "@/components/villa-detail/VillaDetailSectionNav";
 import VillaKnowBeforeSection from "@/components/villa-detail/VillaKnowBeforeSection";
 import { VillaStaySelectionProvider } from "@/components/villa-detail/VillaStaySelectionContext";
-import type { PublicExchangeRates } from "@/lib/currency-conversion";
+import {
+  buildForeignCurrencyPaymentDisclaimer,
+  resolveForeignPriceCurrencies,
+  type PublicExchangeRates,
+} from "@/lib/currency-conversion";
 import type {
   SimilarVillaCard,
   VillaDetail,
@@ -139,6 +143,14 @@ export default function VillaDetailView({
     { id: "bilmeniz-gerekenler", label: "Bilmeniz Gerekenler" },
     faqs.length > 0 ? { id: "sss", label: "SSS" } : null,
   ].filter(Boolean) as VillaDetailNavItem[];
+
+  const foreignPriceCurrencies = resolveForeignPriceCurrencies([
+    ...villa.periods.map((period) => period.currency),
+    ...villa.calendarDays.map((day) => day.currency),
+  ]);
+  const foreignCurrencyDisclaimer = buildForeignCurrencyPaymentDisclaimer(
+    foreignPriceCurrencies
+  );
 
   return (
     <VillaStaySelectionProvider
@@ -441,6 +453,11 @@ export default function VillaDetailView({
                       <br />
                       Müsait günlerde gecelik fiyatlar görünür.
                     </p>
+                    {foreignCurrencyDisclaimer ? (
+                      <p className="mt-2 text-[11px] font-semibold uppercase leading-snug tracking-wide text-amber-800 sm:text-xs">
+                        {foreignCurrencyDisclaimer}
+                      </p>
+                    ) : null}
                   </div>
                   <PeriodPricesTrigger
                     periods={villa.periods}
@@ -450,7 +467,10 @@ export default function VillaDetailView({
                 </div>
                 {villa.calendarDays.length > 0 ? (
                   <div className="mt-5">
-                    <VillaAvailabilityCalendar days={villa.calendarDays} />
+                    <VillaAvailabilityCalendar
+                      days={villa.calendarDays}
+                      exchangeRates={exchangeRates}
+                    />
                   </div>
                 ) : (
                   <p className="mt-4 text-sm text-slate-600">
