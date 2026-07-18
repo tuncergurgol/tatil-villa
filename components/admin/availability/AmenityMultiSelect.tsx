@@ -19,6 +19,7 @@ export default function AmenityMultiSelect({
   selectedNames,
   onChange,
 }: AmenityMultiSelectProps) {
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -38,7 +39,13 @@ export default function AmenityMultiSelect({
   }
 
   return (
-    <details className="group relative">
+    <details
+      className="group relative"
+      open={open}
+      onToggle={(event) => {
+        setOpen((event.currentTarget as HTMLDetailsElement).open);
+      }}
+    >
       <summary className="flex h-9 cursor-pointer list-none items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:ring-2 focus:ring-violet-100">
         <span className={selectedNames.length > 0 ? "font-semibold text-violet-700" : ""}>
           {selectedNames.length > 0
@@ -96,6 +103,15 @@ export default function AmenityMultiSelect({
               {search.trim() ? "Eşleşen özellik yok." : "Olanak bulunamadı."}
             </p>
           )}
+        </div>
+        <div className="flex items-center justify-end border-t border-gray-100 px-2 py-1.5">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-md bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-gray-800"
+          >
+            Kapat
+          </button>
         </div>
       </div>
     </details>
