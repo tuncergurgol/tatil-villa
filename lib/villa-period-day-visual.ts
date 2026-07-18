@@ -36,16 +36,20 @@ function normalizeOccupancy(
   return value;
 }
 
-/** Sol alttan sağ üste çapraz */
-function diagonal(bottomLeft: string, topRight: string) {
-  return `linear-gradient(to top right, ${bottomLeft} 50%, ${topRight} 50%)`;
+/**
+ * Referans takvimdeki "/" ayrım çizgisi (sol alt köşeden sağ üst köşeye).
+ * Sol üst üçgen (topLeft) ile sağ alt üçgen (bottomRight) ayrılır.
+ * Çıkış günü sol-üst dolu, giriş günü sağ-alt dolu görünür.
+ */
+function diagonal(bottomRight: string, topLeft: string) {
+  return `linear-gradient(to top left, ${bottomRight} 50%, ${topLeft} 50%)`;
 }
 
-/** Aynı gün çıkış + giriş: iki alan arasında referanstaki beyaz çapraz çizgi. */
-function turnoverDiagonal(bottomLeft: string, topRight: string) {
+/** Aynı gün çıkış + giriş: iki alan arasında referanstaki beyaz "/" çapraz çizgi. */
+function turnoverDiagonal(bottomRight: string, topLeft: string) {
   return [
-    "linear-gradient(to top right, transparent 47.5%, #ffffff 47.5%, #ffffff 52.5%, transparent 52.5%)",
-    diagonal(bottomLeft, topRight),
+    "linear-gradient(to top left, transparent 47.5%, #ffffff 47.5%, #ffffff 52.5%, transparent 52.5%)",
+    diagonal(bottomRight, topLeft),
   ].join(", ");
 }
 
@@ -100,7 +104,7 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
       return { background: COLORS.white, useLightText: false };
     case "check_in":
       return {
-        // Giriş: yeni konaklama sol alttan başlar.
+        // Giriş: yeni konaklama sağ alt üçgende görünür.
         background: diagonal(COLORS.red, COLORS.white),
         useLightText: false,
       };
@@ -108,7 +112,7 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
       return { background: COLORS.red, useLightText: true };
     case "check_out":
       return {
-        // Çıkış: önceki konaklama sağ üstte biter.
+        // Çıkış: önceki konaklama sol üst üçgende görünür.
         background: diagonal(COLORS.white, COLORS.red),
         useLightText: false,
       };
