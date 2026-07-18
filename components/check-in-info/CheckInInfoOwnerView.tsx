@@ -119,6 +119,11 @@ export default function CheckInInfoOwnerView({
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           {page.villaName}
         </h1>
+        {page.villaOriginalName ? (
+          <p className="text-base font-medium text-slate-700">
+            ({page.villaOriginalName})
+          </p>
+        ) : null}
         <p className="text-sm text-slate-600">{page.villaLocation}</p>
       </header>
 

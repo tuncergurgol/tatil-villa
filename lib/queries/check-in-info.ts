@@ -31,6 +31,7 @@ const checkInInfoInclude = {
   villa: {
     select: {
       name: true,
+      originalName: true,
       slug: true,
       image: true,
       images: true,
@@ -164,6 +165,8 @@ export type PublicCheckInInfoPage = {
   /** Rezervasyonun geldiği sitenin adı (örn. "Tatil Villacısı") */
   siteName: string;
   villaName: string;
+  /** Villa.originalName — boş olabilir */
+  villaOriginalName: string;
   villaLocation: string;
   villaImage: string | null;
   villaSlug: string;
@@ -683,6 +686,7 @@ export async function getPublicCheckInInfo(input: {
     siteDomain,
     siteName,
     villaName: booking.villa.name,
+    villaOriginalName: booking.villa.originalName?.trim() || "",
     villaLocation,
     villaImage: booking.villa.images[0] ?? booking.villa.image ?? null,
     villaSlug: booking.villa.slug,
