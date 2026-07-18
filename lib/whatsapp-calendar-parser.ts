@@ -183,17 +183,20 @@ function extractDateRange(text: string) {
     }
   }
 
-  const monthRangeRepeat = normalized.match(
-    /(\d{1,2})\s+([a-zçğıöşü]+)\s*(?:-|–|—|ile|ve|\/)\s*(\d{1,2})\s+\2(?:\s+(\d{4}))?/i
+  // İki tam tarih: "21 temmuz 22 temmuz", "21 temmuz - 22 temmuz",
+  // "30 temmuz 2 ağustos" (tire opsiyonel, aylar farklı olabilir).
+  const twoMonthDay = normalized.match(
+    /(\d{1,2})\s+([a-zçğıöşü]+)\s*(?:-|–|—|ile|ve|\/)?\s*(\d{1,2})\s+([a-zçğıöşü]+)(?:\s+(\d{4}))?/i
   );
-  if (monthRangeRepeat) {
-    const month = MONTHS[normalizeText(monthRangeRepeat[2])];
-    if (month) {
-      const year = monthRangeRepeat[4]
-        ? Number(monthRangeRepeat[4])
-        : inferYear(month);
-      const start = buildDateKey(year, month, Number(monthRangeRepeat[1]));
-      const end = buildDateKey(year, month, Number(monthRangeRepeat[3]));
+  if (twoMonthDay) {
+    const startMonth = MONTHS[normalizeText(twoMonthDay[2])];
+    const endMonth = MONTHS[normalizeText(twoMonthDay[4])];
+    if (startMonth && endMonth) {
+      const explicitYear = twoMonthDay[5] ? Number(twoMonthDay[5]) : undefined;
+      const startYear = explicitYear ?? inferYear(startMonth);
+      const endYear = explicitYear ?? inferYear(endMonth);
+      const start = buildDateKey(startYear, startMonth, Number(twoMonthDay[1]));
+      const end = buildDateKey(endYear, endMonth, Number(twoMonthDay[3]));
       return { startDateKey: start, endDateKey: end };
     }
   }
