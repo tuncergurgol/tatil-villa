@@ -40,6 +40,7 @@ function revalidateWhatsappCalendarPaths() {
 const groupSchema = z.object({
   name: z.string().min(1, "Grup adı gerekli"),
   externalId: z.string().min(3, "Grup ID gerekli"),
+  villaId: z.string().min(1, "Villa seçimi gerekli"),
 });
 
 export async function saveWhatsappCalendarSettings(
@@ -182,24 +183,54 @@ export async function createWhatsappCalendarGroup(
   const parsed = groupSchema.safeParse({
     name: formData.get("name"),
     externalId: formData.get("externalId"),
+    villaId: formData.get("villaId"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Geçersiz form" };
   }
 
   const externalId = normalizeWhatsappGroupId(parsed.data.externalId);
+  const groupName = parsed.data.name.trim();
+  const villaId = parsed.data.villaId.trim();
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { id: true, name: true, villaId: true },
+  });
+  if (!villa) {
+    return { error: "Seçilen villa bulunamadı" };
+  }
 
   try {
-    await prisma.whatsappCalendarGroup.create({
-      data: {
-        name: parsed.data.name.trim(),
-        externalId,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.whatsappCalendarGroup.upsert({
+        where: { externalId },
+        create: {
+          externalId,
+          name: groupName,
+          active: true,
+        },
+        update: {
+          name: groupName,
+          active: true,
+        },
+      });
+
+      await tx.villa.update({
+        where: { id: villa.id },
+        data: {
+          whatsappGroupId: externalId,
+        },
+      });
     });
+
     revalidateWhatsappCalendarPaths();
-    return { success: true };
+    return {
+      success: true,
+      message: `${groupName} grubu #${villa.villaId ?? "-"} ${villa.name} villasına eşlendi`,
+    };
   } catch {
-    return { error: "Grup kaydı oluşturulamadı (ID benzersiz olmalı)" };
+    return { error: "Grup-villa eşleşmesi kaydedilemedi" };
   }
 }
 

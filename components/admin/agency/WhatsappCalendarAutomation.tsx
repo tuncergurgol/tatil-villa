@@ -55,6 +55,7 @@ export default function WhatsappCalendarAutomation({
   const [webhookSecret, setWebhookSecret] = useState(data.webhookSecret);
   const [groupName, setGroupName] = useState("");
   const [groupExternalId, setGroupExternalId] = useState("");
+  const [selectedVillaId, setSelectedVillaId] = useState("");
   const [liveGroups, setLiveGroups] = useState<EvolutionWhatsappGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
@@ -172,9 +173,14 @@ export default function WhatsappCalendarAutomation({
 
   function handleCreateGroup() {
     setNotice(null);
+    if (!selectedVillaId) {
+      setNotice({ type: "error", message: "Lütfen bir villa seçin" });
+      return;
+    }
     const formData = new FormData();
     formData.set("name", groupName);
     formData.set("externalId", groupExternalId);
+    formData.set("villaId", selectedVillaId);
     startTransition(async () => {
       const result = await createWhatsappCalendarGroup({}, formData);
       if (result.error) {
@@ -183,7 +189,11 @@ export default function WhatsappCalendarAutomation({
       }
       setGroupName("");
       setGroupExternalId("");
-      setNotice({ type: "ok", message: "Grup kaydı eklendi" });
+      setSelectedVillaId("");
+      setNotice({
+        type: "ok",
+        message: result.message ?? "Grup-villa eşleşmesi kaydedildi",
+      });
       router.refresh();
     });
   }
@@ -357,8 +367,8 @@ export default function WhatsappCalendarAutomation({
           WhatsApp Grubu - Villa Eşleşmeleri
         </h2>
         <p className="mt-2 text-sm text-gray-500">
-          Grup adı, WhatsApp&apos;ta bağlı cihazınızdaki grup listesinden gelir. Listeden
-          seçildiğinde Group ID otomatik dolar. Villa eşleşmeleri aynı tabloda gösterilir.
+          WhatsApp grubunu seçin, Group ID otomatik dolsun; ardından villayı seçip
+          eşleştirin. Eşleşmeler aşağıdaki tabloda görünür.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="min-w-[220px] flex-[1.2]">
@@ -392,6 +402,24 @@ export default function WhatsappCalendarAutomation({
               placeholder="Listeden grup seçince dolar"
             />
           </label>
+          <label className="min-w-[220px] flex-[1.2]">
+            <span className="mb-1 block text-xs font-medium text-gray-500">
+              Villa Seçimi
+            </span>
+            <select
+              value={selectedVillaId}
+              onChange={(event) => setSelectedVillaId(event.target.value)}
+              className={inputClass}
+              disabled={isPending}
+            >
+              <option value="">Villa seçin</option>
+              {data.villas.map((villa) => (
+                <option key={villa.id} value={villa.id}>
+                  #{villa.villaId ?? "-"} - {villa.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => void loadLiveGroups()}
@@ -403,10 +431,12 @@ export default function WhatsappCalendarAutomation({
           <button
             type="button"
             onClick={handleCreateGroup}
-            disabled={isPending || !groupName || !groupExternalId}
+            disabled={
+              isPending || !groupName || !groupExternalId || !selectedVillaId
+            }
             className="rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
-            Grup Ekle
+            Eşleştir
           </button>
         </div>
         {groupsError ? (
