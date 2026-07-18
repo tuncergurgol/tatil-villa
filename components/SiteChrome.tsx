@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import CallbackFloatingButton from "@/components/CallbackFloatingButton";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
+import SiteTrackingScripts from "@/components/SiteTrackingScripts";
 import {
   getFooterCorporatePages,
   getActiveFaqsForPublic,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/queries/cms-content";
 import { getSiteMenuItemsForPublic } from "@/lib/queries/site-menus";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 import { getFooterRegionLinks } from "@/lib/queries/regions";
 import { siteConfig } from "@/lib/data";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
@@ -50,6 +52,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     getPublishedBlogPosts({ limit: 6 }),
   ]);
   const site = await getPublicSiteProfile(company);
+  const tracking = await getPublicSiteTracking(site.key);
 
   const headerLinks =
     headerMenu.length > 0
@@ -74,6 +77,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
 
   return (
     <>
+      <SiteTrackingScripts tracking={tracking} />
       <Header
         navLinks={headerLinks}
         phone={phone}

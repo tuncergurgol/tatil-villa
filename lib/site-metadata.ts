@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/lib/data";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 
 function resolveMetadataBase(domain: string): URL {
   const cleaned = domain
@@ -21,6 +22,7 @@ function absoluteAssetUrl(base: URL, assetPath: string): string {
 export async function buildRootMetadata(): Promise<Metadata> {
   const settings = await getCompanySettings();
   const site = await getPublicSiteProfile(settings);
+  const tracking = await getPublicSiteTracking(site.key);
   const metadataBase = resolveMetadataBase(site.domain || siteConfig.name);
   const title =
     site.seoTitle?.trim() ||
@@ -36,6 +38,7 @@ export async function buildRootMetadata(): Promise<Metadata> {
   const ogImages = ogImageUrl
     ? [{ url: absoluteAssetUrl(metadataBase, ogImageUrl) }]
     : undefined;
+  const gscCode = tracking.googleSearchConsoleCode?.trim();
 
   return {
     metadataBase,
@@ -67,9 +70,7 @@ export async function buildRootMetadata(): Promise<Metadata> {
       description,
       images: ogImages?.map((image) => image.url),
     },
-    verification: settings.googleSearchConsoleCode?.trim()
-      ? { google: settings.googleSearchConsoleCode.trim() }
-      : undefined,
+    verification: gscCode ? { google: gscCode } : undefined,
     robots: {
       index: true,
       follow: true,

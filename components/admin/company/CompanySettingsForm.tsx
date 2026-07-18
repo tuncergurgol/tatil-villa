@@ -30,6 +30,7 @@ import ContactSettingsFields from "@/components/admin/company/ContactSettingsFie
 import LogoSettingsFields from "@/components/admin/company/LogoSettingsFields";
 import TursabSettingsFields from "@/components/admin/company/TursabSettingsFields";
 import AnalyticsSettingsFields from "@/components/admin/company/AnalyticsSettingsFields";
+import type { PublicSiteTrackingRow } from "@/lib/queries/public-site-tracking";
 import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payment-types/PrepaymentPaymentTypeManagement";
 import CustomerContactChannelManagement from "@/components/admin/customer-contact-channels/CustomerContactChannelManagement";
 import CompanyBankAccountManagement from "@/components/admin/company/CompanyBankAccountManagement";
@@ -83,6 +84,7 @@ type TabId = (typeof tabs)[number]["id"];
 
 interface CompanySettingsFormProps {
   settings: CompanySettings;
+  siteTrackings: PublicSiteTrackingRow[];
   initialTab?: string;
   prepayment: {
     items: PrepaymentPaymentTypeItem[];
@@ -223,6 +225,7 @@ const initialState: CompanySettingsActionState = {};
 
 export default function CompanySettingsForm({
   settings,
+  siteTrackings,
   initialTab,
   prepayment,
   contactChannels,
@@ -436,7 +439,7 @@ export default function CompanySettingsForm({
           </TabPanel>
 
           <TabPanel active={activeTab === "analytics"}>
-            <AnalyticsSettingsFields settings={settings} />
+            <AnalyticsSettingsFields siteTrackings={siteTrackings} />
           </TabPanel>
 
           <TabPanel active={activeTab === "loading"}>

@@ -3,10 +3,12 @@ import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
   getSimilarVillas,
   getVillaDetailBySlug,
 } from "@/lib/queries/villa-detail";
+import { buildVillaLodgingJsonLd } from "@/lib/villa-json-ld";
 import {
   resolveVillaStayAdultsFromSearchParams,
   resolveVillaStayDatesFromSearchParams,
@@ -86,23 +88,43 @@ export default async function VillaDetailPage({
     })
     .slice(0, 10);
 
+  const site = await getPublicSiteProfile(company);
+  const origin = `https://${site.domain
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "") || "www.tatildeyiz.com.tr"}`;
+  const brandName = site.brandName?.trim() || company.brandName?.trim() || "";
+  const lodgingJsonLd = buildVillaLodgingJsonLd({
+    villa,
+    brandName,
+    origin,
+  });
+
   return (
-    <VillaDetailView
-      villa={villa}
-      similarVillas={similarVillas}
-      companyPhone={company.phone || company.whatsapp || ""}
-      brandName={company.brandName?.trim() || undefined}
-      exchangeRates={exchangeRates}
-      initialCheckIn={stayDates?.checkIn ?? ""}
-      initialCheckOut={stayDates?.checkOut ?? ""}
-      initialAdults={initialAdults}
-      faqs={(detailFaqs.length > 0 ? detailFaqs : faqs.slice(0, 8)).map(
-        (faq) => ({
-          id: faq.id,
-          question: faq.question,
-          answer: faq.answer,
-        })
-      )}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(lodgingJsonLd),
+        }}
+      />
+      <VillaDetailView
+        villa={villa}
+        similarVillas={similarVillas}
+        companyPhone={company.phone || company.whatsapp || ""}
+        brandName={brandName || undefined}
+        exchangeRates={exchangeRates}
+        initialCheckIn={stayDates?.checkIn ?? ""}
+        initialCheckOut={stayDates?.checkOut ?? ""}
+        initialAdults={initialAdults}
+        faqs={(detailFaqs.length > 0 ? detailFaqs : faqs.slice(0, 8)).map(
+          (faq) => ({
+            id: faq.id,
+            question: faq.question,
+            answer: faq.answer,
+          })
+        )}
+      />
+    </>
   );
 }

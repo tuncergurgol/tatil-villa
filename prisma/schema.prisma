@@ -193,6 +193,24 @@ model AgencySite {
   @@index([sortOrder])
 }
 
+/// Site başına GA / GTM / GSC ve özel scriptler (host → siteKey).
+model PublicSiteTracking {
+  id                      String   @id @default(cuid())
+  siteKey                 String   @unique
+  domain                  String   @default("")
+  label                   String   @default("")
+  googleAnalyticsId       String   @default("")
+  googleAdsId             String   @default("")
+  microsoftClarityId      String   @default("")
+  googleTagManagerId      String   @default("")
+  facebookPixelId         String   @default("")
+  googleSearchConsoleCode String   @default("")
+  headScripts             String   @default("") @db.Text
+  bodyScripts             String   @default("") @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
 model CompanyBankAccount {
   id            String              @id @default(cuid())
   paymentType   String              @default("")

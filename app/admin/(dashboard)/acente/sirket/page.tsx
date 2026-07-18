@@ -1,4 +1,5 @@
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getAllPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 import { getPrepaymentPaymentTypeAdminData } from "@/lib/queries/prepayment-payment-types";
 import { getCustomerContactChannelAdminData } from "@/lib/queries/customer-contact-channels";
 import { getCompanyBankAccountAdminData } from "@/lib/queries/company-bank-accounts";
@@ -16,6 +17,7 @@ export default async function SirketPage({
   const { tab } = await searchParams;
   const [
     settings,
+    siteTrackings,
     prepayment,
     contactChannels,
     bankAccounts,
@@ -23,6 +25,7 @@ export default async function SirketPage({
     paymentProviders,
   ] = await Promise.all([
     getCompanySettings(),
+    getAllPublicSiteTracking(),
     getPrepaymentPaymentTypeAdminData(),
     getCustomerContactChannelAdminData(),
     getCompanyBankAccountAdminData(),
@@ -33,6 +36,7 @@ export default async function SirketPage({
   return (
     <CompanySettingsForm
       settings={settings}
+      siteTrackings={siteTrackings}
       initialTab={tab}
       prepayment={prepayment}
       contactChannels={contactChannels}

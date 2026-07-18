@@ -4,6 +4,25 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { updateCompanySettings } from "@/lib/queries/company-settings";
+import {
+  PUBLIC_SITE_KEYS,
+  type PublicSiteKey,
+} from "@/lib/public-site-keys";
+import {
+  upsertAllPublicSiteTracking,
+  type PublicSiteTrackingFields,
+} from "@/lib/queries/public-site-tracking";
+
+const trackingFieldsSchema = z.object({
+  googleAnalyticsId: z.string(),
+  googleAdsId: z.string(),
+  microsoftClarityId: z.string(),
+  googleTagManagerId: z.string(),
+  facebookPixelId: z.string(),
+  googleSearchConsoleCode: z.string(),
+  headScripts: z.string(),
+  bodyScripts: z.string(),
+});
 
 const companySettingsSchema = z.object({
   agencyName: z.string(),
@@ -43,14 +62,6 @@ const companySettingsSchema = z.object({
   youtube: z.string(),
   seoTitle: z.string(),
   seoDescription: z.string(),
-  googleAnalyticsId: z.string(),
-  googleAdsId: z.string(),
-  microsoftClarityId: z.string(),
-  googleTagManagerId: z.string(),
-  facebookPixelId: z.string(),
-  googleSearchConsoleCode: z.string(),
-  headScripts: z.string(),
-  bodyScripts: z.string(),
   customScripts: z.string(),
   loadingEnabled: z.coerce.boolean(),
   loadingText: z.string(),
@@ -64,6 +75,30 @@ const companySettingsSchema = z.object({
   smtpFromName: z.string(),
   smtpEnabled: z.coerce.boolean(),
 });
+
+function readTrackingFields(
+  formData: FormData,
+  siteKey: PublicSiteKey
+): PublicSiteTrackingFields {
+  const prefix = `tracking__${siteKey}__`;
+  const raw = {
+    googleAnalyticsId: String(formData.get(`${prefix}googleAnalyticsId`) ?? ""),
+    googleAdsId: String(formData.get(`${prefix}googleAdsId`) ?? ""),
+    microsoftClarityId: String(
+      formData.get(`${prefix}microsoftClarityId`) ?? ""
+    ),
+    googleTagManagerId: String(
+      formData.get(`${prefix}googleTagManagerId`) ?? ""
+    ),
+    facebookPixelId: String(formData.get(`${prefix}facebookPixelId`) ?? ""),
+    googleSearchConsoleCode: String(
+      formData.get(`${prefix}googleSearchConsoleCode`) ?? ""
+    ),
+    headScripts: String(formData.get(`${prefix}headScripts`) ?? ""),
+    bodyScripts: String(formData.get(`${prefix}bodyScripts`) ?? ""),
+  };
+  return trackingFieldsSchema.parse(raw);
+}
 
 export type CompanySettingsActionState = {
   success?: boolean;
@@ -114,15 +149,7 @@ export async function saveCompanySettings(
     youtube: formData.get("youtube"),
     seoTitle: formData.get("seoTitle"),
     seoDescription: formData.get("seoDescription"),
-    googleAnalyticsId: formData.get("googleAnalyticsId"),
-    googleAdsId: formData.get("googleAdsId"),
-    microsoftClarityId: formData.get("microsoftClarityId"),
-    googleTagManagerId: formData.get("googleTagManagerId"),
-    facebookPixelId: formData.get("facebookPixelId"),
-    googleSearchConsoleCode: formData.get("googleSearchConsoleCode"),
-    headScripts: formData.get("headScripts"),
-    bodyScripts: formData.get("bodyScripts"),
-    customScripts: formData.get("customScripts"),
+    customScripts: formData.get("customScripts") ?? "",
     loadingEnabled: formData.get("loadingEnabled") === "on",
     loadingText: formData.get("loadingText"),
     smtpProvider: formData.get("smtpProvider"),
@@ -140,8 +167,41 @@ export async function saveCompanySettings(
     return { error: "Geçersiz form verisi" };
   }
 
+  let siteTrackings: Array<{
+    siteKey: PublicSiteKey;
+    data: PublicSiteTrackingFields;
+  }>;
   try {
-    await updateCompanySettings(parsed.data);
+    siteTrackings = PUBLIC_SITE_KEYS.map((siteKey) => ({
+      siteKey,
+      data: readTrackingFields(formData, siteKey),
+    }));
+  } catch {
+    return { error: "Analytics form verisi geçersiz" };
+  }
+
+  const tatildeyiz = siteTrackings.find((row) => row.siteKey === "tatildeyiz")
+    ?.data;
+
+  try {
+    await Promise.all([
+      updateCompanySettings({
+        ...parsed.data,
+        ...(tatildeyiz
+          ? {
+              googleAnalyticsId: tatildeyiz.googleAnalyticsId,
+              googleAdsId: tatildeyiz.googleAdsId,
+              microsoftClarityId: tatildeyiz.microsoftClarityId,
+              googleTagManagerId: tatildeyiz.googleTagManagerId,
+              facebookPixelId: tatildeyiz.facebookPixelId,
+              googleSearchConsoleCode: tatildeyiz.googleSearchConsoleCode,
+              headScripts: tatildeyiz.headScripts,
+              bodyScripts: tatildeyiz.bodyScripts,
+            }
+          : {}),
+      }),
+      upsertAllPublicSiteTracking(siteTrackings),
+    ]);
     revalidatePath("/admin/acente/sirket");
     revalidatePath("/", "layout");
     revalidatePath("/");
