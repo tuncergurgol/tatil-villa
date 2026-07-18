@@ -93,7 +93,22 @@ export const adminNavSections: NavSection[] = [
       { label: "Evler", href: "/admin/villalar", icon: "home" },
       { label: "Takvim", href: "/admin/konaklama/takvim", icon: "calendar" },
       { label: "Tanımlamalar", icon: "list-tree", items: tanimlamalarNav },
-      { label: "Ayarlar", href: "/admin/konaklama/ayarlar", icon: "settings" },
+      {
+        label: "Ayarlar",
+        icon: "settings",
+        items: [
+          {
+            label: "Özellikleri Aktar",
+            href: "/admin/konaklama/ayarlar/ozellikleri-aktar",
+            icon: "import",
+          },
+          {
+            label: "Genel Ayarlar",
+            href: "/admin/konaklama/ayarlar",
+            icon: "settings",
+          },
+        ],
+      },
     ],
   },
   { label: "Tur & Aktiviteler", href: "/admin/tur", icon: "compass" },
