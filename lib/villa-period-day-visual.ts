@@ -41,9 +41,12 @@ function diagonal(bottomLeft: string, topRight: string) {
   return `linear-gradient(to top right, ${bottomLeft} 50%, ${topRight} 50%)`;
 }
 
-/** Dikey aynalama: sol üstten sağ alta çapraz */
-function diagonalMirrorVertical(topLeft: string, bottomRight: string) {
-  return `linear-gradient(to bottom right, ${topLeft} 50%, ${bottomRight} 50%)`;
+/** Aynı gün çıkış + giriş: iki alan arasında referanstaki beyaz çapraz çizgi. */
+function turnoverDiagonal(bottomLeft: string, topRight: string) {
+  return [
+    "linear-gradient(to top right, transparent 47.5%, #ffffff 47.5%, #ffffff 52.5%, transparent 52.5%)",
+    diagonal(bottomLeft, topRight),
+  ].join(", ");
 }
 
 export function resolveVillaDayVisual(
@@ -74,7 +77,6 @@ export function resolveVillaDayVisual(
 
   if (currentStatus === "BOOKED") {
     if (prevStatus === "OPTION") return "option_out_booked_in";
-    if (prevStatus === "EMPTY" && nextStatus === "EMPTY") return "turnover_booked";
     if (prevStatus === "EMPTY") return "check_in";
     return "full";
   }
@@ -98,38 +100,43 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
       return { background: COLORS.white, useLightText: false };
     case "check_in":
       return {
-        background: diagonalMirrorVertical(COLORS.white, COLORS.red),
+        // Giriş: yeni konaklama sol alttan başlar.
+        background: diagonal(COLORS.red, COLORS.white),
         useLightText: false,
       };
     case "full":
       return { background: COLORS.red, useLightText: true };
     case "check_out":
       return {
-        background: diagonalMirrorVertical(COLORS.red, COLORS.white),
+        // Çıkış: önceki konaklama sağ üstte biter.
+        background: diagonal(COLORS.white, COLORS.red),
         useLightText: false,
       };
     case "turnover_booked":
-      return { background: COLORS.red, useLightText: true };
+      return {
+        background: turnoverDiagonal(COLORS.red, COLORS.red),
+        useLightText: true,
+      };
     case "option_check_in":
       return {
-        background: diagonal(COLORS.white, COLORS.yellow),
+        background: diagonal(COLORS.yellow, COLORS.white),
         useLightText: false,
       };
     case "option_full":
       return { background: COLORS.yellow, useLightText: false };
     case "option_check_out":
       return {
-        background: diagonalMirrorVertical(COLORS.yellow, COLORS.white),
+        background: diagonal(COLORS.white, COLORS.yellow),
         useLightText: false,
       };
     case "option_out_booked_in":
       return {
-        background: diagonal(COLORS.yellow, COLORS.red),
+        background: turnoverDiagonal(COLORS.red, COLORS.yellow),
         useLightText: false,
       };
     case "booked_out_option_in":
       return {
-        background: diagonal(COLORS.red, COLORS.yellow),
+        background: turnoverDiagonal(COLORS.yellow, COLORS.red),
         useLightText: false,
       };
     default:
@@ -154,7 +161,7 @@ export function getPublicVillaDayVisualStyle(kind: VillaDayVisualKind): {
       };
     case "check_in":
       return {
-        background: diagonalMirrorVertical(SOFT_COLORS.white, SOFT_COLORS.bookedDeep),
+        background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.white),
         useLightText: false,
         showPrice: true,
         statusLabel: "Giriş",
@@ -168,21 +175,24 @@ export function getPublicVillaDayVisualStyle(kind: VillaDayVisualKind): {
       };
     case "check_out":
       return {
-        background: diagonalMirrorVertical(SOFT_COLORS.bookedDeep, SOFT_COLORS.white),
+        background: diagonal(SOFT_COLORS.white, SOFT_COLORS.bookedDeep),
         useLightText: false,
         showPrice: true,
         statusLabel: "Çıkış",
       };
     case "turnover_booked":
       return {
-        background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.booked),
+        background: turnoverDiagonal(
+          SOFT_COLORS.bookedDeep,
+          SOFT_COLORS.bookedDeep
+        ),
         useLightText: false,
         showPrice: false,
         statusLabel: "Giriş+Çıkış",
       };
     case "option_check_in":
       return {
-        background: diagonal(SOFT_COLORS.white, SOFT_COLORS.optionDeep),
+        background: diagonal(SOFT_COLORS.optionDeep, SOFT_COLORS.white),
         useLightText: false,
         showPrice: true,
         statusLabel: "Ops. Giriş",
@@ -196,21 +206,27 @@ export function getPublicVillaDayVisualStyle(kind: VillaDayVisualKind): {
       };
     case "option_check_out":
       return {
-        background: diagonalMirrorVertical(SOFT_COLORS.optionDeep, SOFT_COLORS.white),
+        background: diagonal(SOFT_COLORS.white, SOFT_COLORS.optionDeep),
         useLightText: false,
         showPrice: true,
         statusLabel: "Ops. Çıkış",
       };
     case "option_out_booked_in":
       return {
-        background: diagonal(SOFT_COLORS.optionDeep, SOFT_COLORS.bookedDeep),
+        background: turnoverDiagonal(
+          SOFT_COLORS.bookedDeep,
+          SOFT_COLORS.optionDeep
+        ),
         useLightText: false,
         showPrice: false,
         statusLabel: "Giriş+Çıkış",
       };
     case "booked_out_option_in":
       return {
-        background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.optionDeep),
+        background: turnoverDiagonal(
+          SOFT_COLORS.optionDeep,
+          SOFT_COLORS.bookedDeep
+        ),
         useLightText: false,
         showPrice: false,
         statusLabel: "Giriş+Çıkış",
@@ -234,18 +250,18 @@ export const VILLA_DAY_VISUAL_LEGEND: {
   {
     kind: "check_in",
     label: "Giriş",
-    swatchStyle: { background: diagonalMirrorVertical(COLORS.white, COLORS.red) },
+    swatchStyle: { background: diagonal(COLORS.red, COLORS.white) },
   },
   { kind: "full", label: "Dolu", swatchStyle: { background: COLORS.red } },
   {
     kind: "check_out",
     label: "Çıkış",
-    swatchStyle: { background: diagonalMirrorVertical(COLORS.red, COLORS.white) },
+    swatchStyle: { background: diagonal(COLORS.white, COLORS.red) },
   },
   {
     kind: "option_check_in",
     label: "Opsiyon Giriş",
-    swatchStyle: { background: diagonal(COLORS.white, COLORS.yellow) },
+    swatchStyle: { background: diagonal(COLORS.yellow, COLORS.white) },
   },
   {
     kind: "option_full",
@@ -256,7 +272,7 @@ export const VILLA_DAY_VISUAL_LEGEND: {
     kind: "option_check_out",
     label: "Opsiyon Çıkış",
     swatchStyle: {
-      background: diagonalMirrorVertical(COLORS.yellow, COLORS.white),
+      background: diagonal(COLORS.white, COLORS.yellow),
     },
   },
 ];
@@ -276,13 +292,16 @@ export const PUBLIC_VILLA_DAY_VISUAL_LEGEND: {
   {
     label: "Giriş / Çıkış",
     swatchStyle: {
-      background: diagonalMirrorVertical(SOFT_COLORS.white, SOFT_COLORS.bookedDeep),
+      background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.white),
     },
   },
   {
     label: "Giriş + Çıkış",
     swatchStyle: {
-      background: diagonal(SOFT_COLORS.bookedDeep, SOFT_COLORS.optionDeep),
+      background: turnoverDiagonal(
+        SOFT_COLORS.bookedDeep,
+        SOFT_COLORS.bookedDeep
+      ),
     },
   },
   {
