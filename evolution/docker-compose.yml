@@ -4,9 +4,11 @@ services:
     image: evoapicloud/evolution-api:v2.3.7
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - evolution_instances:/evolution/instances
     depends_on:
@@ -21,7 +23,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: evolution
-      POSTGRES_PASSWORD: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD}
       POSTGRES_DB: evolution
     volumes:
       - evolution_postgres:/var/lib/postgresql/data

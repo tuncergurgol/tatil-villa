@@ -114,7 +114,7 @@ export default function WhatsappEvolutionConnection({
   const [isBusy, setIsBusy] = useState(false);
   const [isCheckingPairing, setIsCheckingPairing] = useState(false);
   const [authMethod, setAuthMethod] = useState<"qr" | "phone">("qr");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("905436124151");
   const mountedRef = useRef(true);
   const qrShownAtRef = useRef<number | null>(null);
   const lastStatusRef = useRef<string | null>(null);
@@ -156,6 +156,7 @@ export default function WhatsappEvolutionConnection({
 
     if (resolved.status === "WORKING" && lastStatusRef.current !== "WORKING") {
       setNotice({ type: "ok", message: "WhatsApp bağlantısı aktif" });
+      window.dispatchEvent(new Event("takvim-whatsapp-connected"));
     }
 
     lastStatusRef.current = resolved.status;
@@ -447,11 +448,14 @@ export default function WhatsappEvolutionConnection({
     <section className="rounded-2xl border border-gray-200 bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-gray-800">Evolution API Bağlantısı</h2>
+          <h2 className="text-sm font-semibold text-gray-800">
+            Takvim WhatsApp Bağlantısı
+          </h2>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             Evolution API üzerinden QR veya telefon numarası ile WhatsApp
-            bağlantısı kurun. Takvim otomasyonu ve misafir karşılayan
-            bildirimleri bu hat üzerinden çalışır.
+            bağlantısı kurun. Bu bağlantı Bildirim WhatsApp&apos;tan tamamen
+            bağımsızdır; takvim otomasyonu ve misafir karşılayan bildirimleri
+            bu hat üzerinden çalışır.
           </p>
         </div>
         {connection?.configured && status ? (

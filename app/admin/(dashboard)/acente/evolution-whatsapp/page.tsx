@@ -23,13 +23,15 @@ export default async function EvolutionWhatsappPage() {
         <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">
           Acente Yönetimi
         </p>
-        <h1 className="mt-1 text-2xl font-bold text-gray-900">Evolution WhatsApp</h1>
+        <h1 className="mt-1 text-2xl font-bold text-gray-900">
+          Takvim WhatsApp
+        </h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-600">
-          Evolution API ile WhatsApp instance oluşturun ve bağlayın. Bu hat{" "}
+          905436124151 numaralı hattı Evolution API ile bağlayın. Bu hat{" "}
           <strong>takvim otomasyonu</strong> ve{" "}
           <strong>misafir karşılayan</strong> (villa yetkilisi) bildirimleri
-          içindir. Müşteri bildirimleri Bildirim WhatsApp (WAHA) üzerinden
-          gider.
+          içindir. Müşteri bildirimlerini gönderen Bildirim WhatsApp (WAHA)
+          bağlantısından tamamen bağımsız çalışır.
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-violet-100 px-3 py-1 font-medium text-violet-800">
@@ -39,12 +41,10 @@ export default async function EvolutionWhatsappPage() {
             Instance: {evolutionData.evolutionInstanceName}
           </span>
           <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">
-            Test aşaması
+            Bağımsız WhatsApp hattı
           </span>
         </div>
       </header>
-
-      <WhatsappCalendarAutomation data={calendarData} webhookUrl={webhookUrl} />
 
       <WhatsappEvolutionConnection
         evolutionBaseUrl={evolutionData.evolutionBaseUrl}
@@ -52,6 +52,8 @@ export default async function EvolutionWhatsappPage() {
         evolutionInstanceName={evolutionData.evolutionInstanceName}
         webhookUrl={webhookUrl}
       />
+
+      <WhatsappCalendarAutomation data={calendarData} webhookUrl={webhookUrl} />
     </div>
   );
 }

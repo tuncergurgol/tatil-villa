@@ -80,7 +80,18 @@ export default function WhatsappCalendarAutomation({
   }
 
   useEffect(() => {
-    void loadLiveGroups();
+    const initialLoad = window.setTimeout(() => {
+      void loadLiveGroups();
+    }, 0);
+
+    const handleConnected = () => {
+      void loadLiveGroups();
+    };
+    window.addEventListener("takvim-whatsapp-connected", handleConnected);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.removeEventListener("takvim-whatsapp-connected", handleConnected);
+    };
   }, []);
 
   function handleSelectLiveGroup(groupId: string) {

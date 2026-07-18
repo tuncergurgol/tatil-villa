@@ -210,7 +210,7 @@ export const adminAgencyNav: NavGroup = {
       icon: "import",
     },
     {
-      label: "Evolution WhatsApp",
+      label: "Takvim WhatsApp",
       href: "/admin/acente/evolution-whatsapp",
       icon: "message-circle",
     },
