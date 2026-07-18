@@ -9,6 +9,7 @@ import {
   deleteWhatsappCalendarPhraseRule,
   generateWhatsappCalendarWebhookSecretAction,
   listEvolutionWhatsappGroupsAction,
+  retryWhatsappCalendarMessageAction,
   saveWhatsappCalendarSettings,
   testWhatsappCalendarParserAction,
   toggleWhatsappCalendarPhraseRule,
@@ -28,13 +29,6 @@ function formatDate(value: Date | string | null) {
     timeStyle: "short",
   }).format(new Date(value));
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  APPLIED: "Uygulandı",
-  IGNORED: "Yok sayıldı",
-  FAILED: "Hata",
-  DUPLICATE: "Tekrar",
-};
 
 function canonicalWhatsappGroupId(value: string) {
   const trimmed = value.trim();
@@ -258,6 +252,18 @@ export default function WhatsappCalendarAutomation({
         message: result.message ?? result.error ?? "Güncellenemedi",
       });
       if (result.success) router.refresh();
+    });
+  }
+
+  function handleRetryMessage(messageId: string) {
+    setNotice(null);
+    startTransition(async () => {
+      const result = await retryWhatsappCalendarMessageAction(messageId);
+      setNotice({
+        type: result.success ? "ok" : "error",
+        message: result.success ? "Uygulandı" : "Hata",
+      });
+      router.refresh();
     });
   }
 
@@ -678,7 +684,23 @@ export default function WhatsappCalendarAutomation({
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-700">{item.body}</td>
                     <td className="px-4 py-3 text-xs font-semibold text-gray-700">
-                      {STATUS_LABELS[item.status] ?? item.status}
+                      {item.status === "FAILED" ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span>Hata</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRetryMessage(item.id)}
+                            disabled={isPending}
+                            className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-rose-700 disabled:opacity-60"
+                          >
+                            ÇİLEK
+                          </button>
+                        </span>
+                      ) : item.status === "APPLIED" ? (
+                        "Uygulandı"
+                      ) : (
+                        "Hata"
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-600">{item.resultMessage}</td>
                   </tr>

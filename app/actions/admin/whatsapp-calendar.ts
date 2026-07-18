@@ -3,6 +3,7 @@
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { WhatsappCalendarMessageStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import {
@@ -10,6 +11,7 @@ import {
   parseWhatsappCalendarMessage,
 } from "@/lib/whatsapp-calendar-parser";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
@@ -376,5 +378,141 @@ export async function toggleWhatsappCalendarPhraseRule(
     };
   } catch {
     return { error: "Durum güncellenemedi" };
+  }
+}
+
+export async function retryWhatsappCalendarMessageAction(
+  messageId: string
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const message = await prisma.whatsappCalendarMessage.findUnique({
+    where: { id: messageId },
+    select: {
+      id: true,
+      body: true,
+      groupExternalId: true,
+      villaId: true,
+      status: true,
+    },
+  });
+
+  if (!message) {
+    return { error: "Mesaj kaydı bulunamadı" };
+  }
+
+  if (message.status !== WhatsappCalendarMessageStatus.FAILED) {
+    return { error: "ÇİLEK yalnızca Hata durumundaki mesajlar için kullanılır" };
+  }
+
+  const groupId = normalizeWhatsappGroupId(message.groupExternalId);
+  const villa =
+    (message.villaId
+      ? await prisma.villa.findUnique({
+          where: { id: message.villaId },
+          select: { id: true, name: true, villaId: true },
+        })
+      : null) ??
+    (await prisma.villa.findFirst({
+      where: {
+        OR: [
+          { whatsappGroupId: groupId },
+          { whatsappGroupId: groupId.replace(/@g\.us$/, "") },
+        ],
+        active: true,
+      },
+      select: { id: true, name: true, villaId: true },
+    }));
+
+  const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { phrase: true, intent: true },
+  });
+
+  const parsed = parseWhatsappCalendarMessage(message.body, phraseRules);
+
+  if (!villa) {
+    await prisma.whatsappCalendarMessage.update({
+      where: { id: message.id },
+      data: {
+        status: WhatsappCalendarMessageStatus.FAILED,
+        resultMessage: "Bu grup ile eşleşen villa bulunamadı",
+        intent: parsed?.intent ?? "",
+        startDate: parsed ? dateKeyToDbDate(parsed.startDateKey) : null,
+        endDate: parsed ? dateKeyToDbDate(parsed.endDateKey) : null,
+      },
+    });
+    revalidateWhatsappCalendarPaths();
+    return { error: "Hata" };
+  }
+
+  if (!parsed) {
+    await prisma.whatsappCalendarMessage.update({
+      where: { id: message.id },
+      data: {
+        villaId: villa.id,
+        status: WhatsappCalendarMessageStatus.FAILED,
+        resultMessage: "Mesaj örneklerinden komut algılanamadı",
+        intent: "",
+        startDate: null,
+        endDate: null,
+      },
+    });
+    revalidateWhatsappCalendarPaths();
+    return { error: "Hata" };
+  }
+
+  try {
+    const mode = mapIntentToOccupancyMode(parsed.intent);
+    const { updatedDays } = await applyVillaPeriodDaysOccupancy(
+      villa.id,
+      parsed.startDateKey,
+      parsed.endDateKey,
+      mode
+    );
+
+    const resultMessage = `${villa.name} için ${parsed.summary} uygulandı (${updatedDays} gün güncellendi)`;
+
+    await prisma.$transaction([
+      prisma.villaIcalSyncEvent.create({
+        data: {
+          villaId: villa.id,
+          message: `WhatsApp ÇİLEK: ${resultMessage}`,
+        },
+      }),
+      prisma.whatsappCalendarMessage.update({
+        where: { id: message.id },
+        data: {
+          villaId: villa.id,
+          intent: parsed.intent,
+          startDate: dateKeyToDbDate(parsed.startDateKey),
+          endDate: dateKeyToDbDate(parsed.endDateKey),
+          status: WhatsappCalendarMessageStatus.APPLIED,
+          resultMessage,
+        },
+      }),
+    ]);
+
+    revalidateWhatsappCalendarPaths();
+    return { success: true, message: "Uygulandı" };
+  } catch (error) {
+    const resultMessage =
+      error instanceof Error ? error.message : "Takvim güncellenemedi";
+
+    await prisma.whatsappCalendarMessage.update({
+      where: { id: message.id },
+      data: {
+        villaId: villa.id,
+        intent: parsed.intent,
+        startDate: dateKeyToDbDate(parsed.startDateKey),
+        endDate: dateKeyToDbDate(parsed.endDateKey),
+        status: WhatsappCalendarMessageStatus.FAILED,
+        resultMessage,
+      },
+    });
+
+    revalidateWhatsappCalendarPaths();
+    return { error: "Hata" };
   }
 }
