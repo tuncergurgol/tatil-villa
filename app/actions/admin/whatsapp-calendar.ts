@@ -14,6 +14,7 @@ import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
   fetchEvolutionWhatsappGroups,
+  getEvolutionConnectionState,
   setEvolutionWebhook,
   type EvolutionWhatsappGroup,
 } from "@/lib/evolution-client";
@@ -143,6 +144,15 @@ export async function listEvolutionWhatsappGroupsAction(): Promise<ListEvolution
   }
 
   try {
+    const connection = await getEvolutionConnectionState(
+      baseUrl,
+      apiKey,
+      instanceName
+    );
+    if (connection?.status !== "WORKING") {
+      return { success: true, groups: [] };
+    }
+
     const groups = await fetchEvolutionWhatsappGroups(
       baseUrl,
       apiKey,
