@@ -360,29 +360,33 @@ export async function fetchEvolutionWhatsappGroups(
   apiKey: string,
   instanceName: string
 ): Promise<EvolutionWhatsappGroup[]> {
+  // Not: `/group/fetchAllGroups` WhatsApp'tan canlı meta veri çektiği için
+  // yüzlerce grupta dakikalarca sürebilir ve proxy zaman aşımına yol açar.
+  // Bunun yerine Evolution'ın kendi veritabanından okuyan hızlı `/chat/findChats`
+  // ucunu kullanıp grup sohbetlerini süzüyoruz.
   const data = await evolutionRequest<
-    | Array<Record<string, unknown>>
-    | { groups?: Array<Record<string, unknown>> }
-  >(
-    baseUrl,
-    apiKey,
-    `/group/fetchAllGroups/${encodeURIComponent(instanceName)}?getParticipants=false`
-  );
+    Array<Record<string, unknown>> | { chats?: Array<Record<string, unknown>> }
+  >(baseUrl, apiKey, `/chat/findChats/${encodeURIComponent(instanceName)}`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 
-  const rows = Array.isArray(data) ? data : data.groups ?? [];
+  const rows = Array.isArray(data) ? data : data.chats ?? [];
+  const byId = new Map<string, string>();
 
-  return rows
-    .map((row) => {
-      const id = String(
-        row.id ?? row.jid ?? row.groupJid ?? row.remoteJid ?? ""
-      ).trim();
-      const name = String(
-        row.subject ?? row.name ?? row.groupName ?? row.pushName ?? id
-      ).trim();
-      if (!id.includes("@g.us")) return null;
-      return { id, name: name || id };
-    })
-    .filter((item): item is EvolutionWhatsappGroup => Boolean(item))
+  for (const row of rows) {
+    const id = String(
+      row.remoteJid ?? row.id ?? row.jid ?? row.groupJid ?? ""
+    ).trim();
+    if (!id.includes("@g.us")) continue;
+    const name = String(
+      row.pushName ?? row.subject ?? row.name ?? row.groupName ?? id
+    ).trim();
+    if (!byId.has(id)) byId.set(id, name || id);
+  }
+
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 }
 
