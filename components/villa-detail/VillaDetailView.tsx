@@ -430,15 +430,19 @@ export default function VillaDetailView({
 
             {villa.calendarDays.length > 0 || villa.periods.length > 0 ? (
               <DetailSection id="musaitlik">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <SectionTitle>Müsaitlik Takvimi</SectionTitle>
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
                       Tarihlere tıklayarak giriş ve çıkış seçebilirsiniz.
+                      <br />
                       Müsait günlerde gecelik fiyatlar görünür.
                     </p>
                   </div>
-                  <PeriodPricesTrigger periods={villa.periods} />
+                  <PeriodPricesTrigger
+                    periods={villa.periods}
+                    className="shrink-0 self-start sm:mt-0.5 sm:self-center"
+                  />
                 </div>
                 {villa.calendarDays.length > 0 ? (
                   <div className="mt-5">
