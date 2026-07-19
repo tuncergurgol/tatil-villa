@@ -13,7 +13,7 @@ type VillaDetailSectionNavProps = {
   className?: string;
 };
 
-const FALLBACK_HEADER_PX = 112;
+const FALLBACK_HEADER_PX = 0;
 
 export default function VillaDetailSectionNav({
   items,
@@ -31,8 +31,9 @@ export default function VillaDetailSectionNav({
     if (!header) return;
 
     const syncHeaderHeight = () => {
+      const isSticky = window.getComputedStyle(header).position === "sticky";
       const height = Math.ceil(header.getBoundingClientRect().height);
-      if (height > 0) setHeaderOffset(height);
+      setHeaderOffset(isSticky && height > 0 ? height : 0);
     };
 
     syncHeaderHeight();

@@ -76,7 +76,7 @@ export default function Header({
   const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white text-gray-900 shadow-sm">
+    <header className="relative z-50 border-b border-gray-200 bg-white text-gray-900 shadow-sm md:sticky md:top-0">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-3.5 lg:px-8">
         <Link href="/" className="flex min-w-0 shrink-0 flex-col gap-0.5 leading-tight">
           {logoSrc ? (
