@@ -269,10 +269,7 @@ export default function WhatsappCalendarAutomation({
         setNotice({ type: "error", message: result.error });
         return;
       }
-      setGroupName("");
-      setGroupExternalId("");
-      setGroupSearch("");
-      setGroupPickerOpen(false);
+      // Aynı gruba ikinci villayı kolay eklemek için grup seçili kalsın.
       setSelectedVillaId("");
       setVillaSearch("");
       setVillaPickerOpen(false);
@@ -466,7 +463,11 @@ export default function WhatsappCalendarAutomation({
         </h2>
         <p className="mt-2 text-sm text-gray-500">
           WhatsApp grubunu seçin, Group ID otomatik dolsun; ardından villayı seçip
-          eşleştirin. Bağlantı yapılan villalar aşağıda tıklanınca açılır.
+          eşleştirin. Aynı gruba birden fazla villa bağlayabilirsiniz: grubu
+          seçili bırakıp sırayla her villayı &quot;Eşleştir&quot; ile ekleyin
+          (ör. Habitat 1-2 grubuna Habitat 1, sonra Habitat 2). Mesajda villa adı
+          geçmezse komut gruptaki tüm villalara uygulanır; villa adı yazılırsa
+          yalnız o villa güncellenir.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <div ref={groupPickerRef} className="relative min-w-[240px] flex-[1.2]">
@@ -536,6 +537,13 @@ export default function WhatsappCalendarAutomation({
                               {groupVillaNames
                                 .get(canonicalWhatsappGroupId(group.id))
                                 ?.join(", ")}
+                              {(
+                                groupVillaNames.get(
+                                  canonicalWhatsappGroupId(group.id)
+                                )?.length ?? 0
+                              ) > 1
+                                ? " (çoklu villa)"
+                                : ""}
                             </span>
                           ) : null}
                         </button>
@@ -609,7 +617,14 @@ export default function WhatsappCalendarAutomation({
                         <span className="font-medium text-gray-900">
                           {formatVillaOptionLabel(villa)}
                         </span>
-                        {villa.documentNo.trim() ? (
+                        {villa.whatsappGroupId.trim() &&
+                        groupExternalId &&
+                        canonicalWhatsappGroupId(villa.whatsappGroupId) ===
+                          canonicalWhatsappGroupId(groupExternalId) ? (
+                          <span className="text-xs font-medium text-emerald-700">
+                            Bu gruba bağlı
+                          </span>
+                        ) : villa.documentNo.trim() ? (
                           <span className="text-xs text-gray-500">
                             Belge No: {villa.documentNo}
                           </span>
@@ -644,6 +659,19 @@ export default function WhatsappCalendarAutomation({
             Eşleştir
           </button>
         </div>
+        {groupExternalId &&
+        (groupVillaNames.get(canonicalWhatsappGroupId(groupExternalId))
+          ?.length ?? 0) > 0 ? (
+          <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Bu gruba bağlı villalar:{" "}
+            <span className="font-semibold">
+              {groupVillaNames
+                .get(canonicalWhatsappGroupId(groupExternalId))
+                ?.join(", ")}
+            </span>
+            . Başka villa eklemek için listeden seçip tekrar Eşleştir’e basın.
+          </p>
+        ) : null}
         {groupsError ? (
           <p className="mt-2 text-xs text-red-600">{groupsError}</p>
         ) : (

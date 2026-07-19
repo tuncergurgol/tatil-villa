@@ -13,6 +13,10 @@ import {
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
+import {
+  findVillasByWhatsappGroupId,
+  resolveWhatsappCalendarTargetVillas,
+} from "@/lib/whatsapp-calendar-villas";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
   fetchEvolutionWhatsappGroups,
@@ -406,23 +410,11 @@ export async function retryWhatsappCalendarMessageAction(
   }
 
   const groupId = normalizeWhatsappGroupId(message.groupExternalId);
-  const villa =
-    (message.villaId
-      ? await prisma.villa.findUnique({
-          where: { id: message.villaId },
-          select: { id: true, name: true, villaId: true },
-        })
-      : null) ??
-    (await prisma.villa.findFirst({
-      where: {
-        OR: [
-          { whatsappGroupId: groupId },
-          { whatsappGroupId: groupId.replace(/@g\.us$/, "") },
-        ],
-        active: true,
-      },
-      select: { id: true, name: true, villaId: true },
-    }));
+  const linkedVillas = await findVillasByWhatsappGroupId(groupId);
+  const targetVillas = resolveWhatsappCalendarTargetVillas(
+    linkedVillas,
+    message.body
+  );
 
   const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
     where: { active: true },
@@ -432,7 +424,7 @@ export async function retryWhatsappCalendarMessageAction(
 
   const parsed = parseWhatsappCalendarMessage(message.body, phraseRules);
 
-  if (!villa) {
+  if (targetVillas.length === 0) {
     await prisma.whatsappCalendarMessage.update({
       where: { id: message.id },
       data: {
@@ -451,7 +443,7 @@ export async function retryWhatsappCalendarMessageAction(
     await prisma.whatsappCalendarMessage.update({
       where: { id: message.id },
       data: {
-        villaId: villa.id,
+        villaId: targetVillas[0]?.id,
         status: WhatsappCalendarMessageStatus.FAILED,
         resultMessage: "Mesaj örneklerinden komut algılanamadı",
         intent: "",
@@ -465,26 +457,36 @@ export async function retryWhatsappCalendarMessageAction(
 
   try {
     const mode = mapIntentToOccupancyMode(parsed.intent);
-    const { updatedDays } = await applyVillaPeriodDaysOccupancy(
-      villa.id,
-      parsed.startDateKey,
-      parsed.endDateKey,
-      mode
-    );
+    const applied: Array<{ name: string; updatedDays: number }> = [];
 
-    const resultMessage = `${villa.name} için ${parsed.summary} uygulandı (${updatedDays} gün güncellendi)`;
+    for (const villa of targetVillas) {
+      const { updatedDays } = await applyVillaPeriodDaysOccupancy(
+        villa.id,
+        parsed.startDateKey,
+        parsed.endDateKey,
+        mode
+      );
+      applied.push({ name: villa.name, updatedDays });
+    }
+
+    const resultMessage =
+      applied.length === 1
+        ? `${applied[0]!.name} için ${parsed.summary} uygulandı (${applied[0]!.updatedDays} gün güncellendi)`
+        : `${applied.map((item) => item.name).join(", ")} için ${parsed.summary} uygulandı (${applied.length} villa, ${applied.reduce((sum, item) => sum + item.updatedDays, 0)} gün güncellendi)`;
 
     await prisma.$transaction([
-      prisma.villaIcalSyncEvent.create({
-        data: {
-          villaId: villa.id,
-          message: `WhatsApp ÇİLEK: ${resultMessage}`,
-        },
-      }),
+      ...targetVillas.map((villa, index) =>
+        prisma.villaIcalSyncEvent.create({
+          data: {
+            villaId: villa.id,
+            message: `WhatsApp ÇİLEK: ${villa.name} için ${parsed.summary} uygulandı (${applied[index]?.updatedDays ?? 0} gün güncellendi)`,
+          },
+        })
+      ),
       prisma.whatsappCalendarMessage.update({
         where: { id: message.id },
         data: {
-          villaId: villa.id,
+          villaId: targetVillas[0]!.id,
           intent: parsed.intent,
           startDate: dateKeyToDbDate(parsed.startDateKey),
           endDate: dateKeyToDbDate(parsed.endDateKey),
@@ -503,7 +505,7 @@ export async function retryWhatsappCalendarMessageAction(
     await prisma.whatsappCalendarMessage.update({
       where: { id: message.id },
       data: {
-        villaId: villa.id,
+        villaId: targetVillas[0]?.id,
         intent: parsed.intent,
         startDate: dateKeyToDbDate(parsed.startDateKey),
         endDate: dateKeyToDbDate(parsed.endDateKey),

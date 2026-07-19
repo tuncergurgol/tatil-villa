@@ -8,6 +8,14 @@ import {
   mapIntentToOccupancyMode,
   parseWhatsappCalendarMessage,
 } from "@/lib/whatsapp-calendar-parser";
+import {
+  findVillasByWhatsappGroupId,
+  normalizeWhatsappGroupId,
+  resolveWhatsappCalendarTargetVillas,
+  type WhatsappCalendarLinkedVilla,
+} from "@/lib/whatsapp-calendar-villas";
+
+export { normalizeWhatsappGroupId };
 
 export type NormalizedWhatsappCalendarPayload = {
   externalId: string | null;
@@ -26,13 +34,6 @@ function readNestedMessageText(message: Record<string, unknown> | undefined) {
   const image = message.imageMessage as { caption?: string } | undefined;
   if (image?.caption) return image.caption;
   return "";
-}
-
-export function normalizeWhatsappGroupId(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (trimmed.endsWith("@g.us")) return trimmed;
-  return `${trimmed}@g.us`;
 }
 
 export function normalizeWhatsappCalendarPayload(
@@ -174,16 +175,11 @@ export async function processWhatsappCalendarWebhook(
   }
 
   const groupId = normalized.groupExternalId;
-  const villa = await prisma.villa.findFirst({
-    where: {
-      OR: [
-        { whatsappGroupId: groupId },
-        { whatsappGroupId: groupId.replace(/@g\.us$/, "") },
-      ],
-      active: true,
-    },
-    select: { id: true, name: true, villaId: true },
-  });
+  const linkedVillas = await findVillasByWhatsappGroupId(groupId);
+  const targetVillas = resolveWhatsappCalendarTargetVillas(
+    linkedVillas,
+    normalized.body
+  );
 
   const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
     where: { active: true },
@@ -193,7 +189,7 @@ export async function processWhatsappCalendarWebhook(
 
   const parsed = parseWhatsappCalendarMessage(normalized.body, phraseRules);
 
-  if (!villa) {
+  if (targetVillas.length === 0) {
     await logWhatsappCalendarMessage({
       ...normalized,
       status: WhatsappCalendarMessageStatus.FAILED,
@@ -208,7 +204,7 @@ export async function processWhatsappCalendarWebhook(
   if (!parsed) {
     await logWhatsappCalendarMessage({
       ...normalized,
-      villaId: villa.id,
+      villaId: targetVillas[0]?.id,
       status: WhatsappCalendarMessageStatus.IGNORED,
       resultMessage: "Takvim komutu veya tarih algılanamadı",
     });
@@ -217,27 +213,33 @@ export async function processWhatsappCalendarWebhook(
 
   try {
     const mode = mapIntentToOccupancyMode(parsed.intent);
-    const { updatedDays } = await applyVillaPeriodDaysOccupancy(
-      villa.id,
+    const applied = await applyOccupancyToVillas(
+      targetVillas,
       parsed.startDateKey,
       parsed.endDateKey,
       mode
     );
 
-    const resultMessage = `${villa.name} için ${parsed.summary} uygulandı (${updatedDays} gün güncellendi)`;
+    const resultMessage = buildMultiVillaResultMessage(
+      applied,
+      parsed.summary
+    );
+    const primaryVillaId = applied[0]?.villa.id ?? targetVillas[0]!.id;
 
     await prisma.$transaction([
-      prisma.villaIcalSyncEvent.create({
-        data: {
-          villaId: villa.id,
-          message: `WhatsApp: ${resultMessage}`,
-        },
-      }),
+      ...applied.map((item) =>
+        prisma.villaIcalSyncEvent.create({
+          data: {
+            villaId: item.villa.id,
+            message: `WhatsApp: ${item.villa.name} için ${parsed.summary} uygulandı (${item.updatedDays} gün güncellendi)`,
+          },
+        })
+      ),
       prisma.whatsappCalendarMessage.create({
         data: {
           externalId: normalized.externalId,
           groupExternalId: groupId,
-          villaId: villa.id,
+          villaId: primaryVillaId,
           senderName: normalized.senderName,
           senderPhone: normalized.senderPhone,
           body: normalized.body,
@@ -257,7 +259,7 @@ export async function processWhatsappCalendarWebhook(
 
     await logWhatsappCalendarMessage({
       ...normalized,
-      villaId: villa.id,
+      villaId: targetVillas[0]?.id,
       intent: parsed.intent,
       startDate: dateKeyToDbDate(parsed.startDateKey),
       endDate: dateKeyToDbDate(parsed.endDateKey),
@@ -267,6 +269,44 @@ export async function processWhatsappCalendarWebhook(
 
     return { ok: false, message: resultMessage };
   }
+}
+
+async function applyOccupancyToVillas(
+  villas: WhatsappCalendarLinkedVilla[],
+  startDateKey: string,
+  endDateKey: string,
+  mode: "EMPTY" | "BOOKED" | "OPTION"
+) {
+  const applied: Array<{
+    villa: WhatsappCalendarLinkedVilla;
+    updatedDays: number;
+  }> = [];
+
+  for (const villa of villas) {
+    const { updatedDays } = await applyVillaPeriodDaysOccupancy(
+      villa.id,
+      startDateKey,
+      endDateKey,
+      mode
+    );
+    applied.push({ villa, updatedDays });
+  }
+
+  return applied;
+}
+
+function buildMultiVillaResultMessage(
+  applied: Array<{ villa: WhatsappCalendarLinkedVilla; updatedDays: number }>,
+  summary: string
+) {
+  if (applied.length === 1) {
+    const only = applied[0]!;
+    return `${only.villa.name} için ${summary} uygulandı (${only.updatedDays} gün güncellendi)`;
+  }
+
+  const names = applied.map((item) => item.villa.name).join(", ");
+  const totalDays = applied.reduce((sum, item) => sum + item.updatedDays, 0);
+  return `${names} için ${summary} uygulandı (${applied.length} villa, ${totalDays} gün güncellendi)`;
 }
 
 export function verifyWhatsappCalendarWebhookSecret(
