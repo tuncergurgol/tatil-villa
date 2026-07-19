@@ -12,14 +12,14 @@ function isAdminHostAllowed(host: string): boolean {
 
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
 
-  if (process.env.NODE_ENV !== "production") {
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname.endsWith(".local")
-    ) {
-      return true;
-    }
+  // Sunucu içi health check / yerel erişim
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname.endsWith(".local")
+  ) {
+    return true;
   }
 
   return configured.includes(hostname);
