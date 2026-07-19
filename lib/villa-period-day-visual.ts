@@ -63,17 +63,11 @@ export function resolveVillaDayVisual(
   const nextStatus = normalizeOccupancy(next);
 
   // Rezervasyon geceleri: check-in günü dahil, check-out sabahı hariç.
-  // Çıkış görseli konaklanan son gecenin ertesinde (boş gün) gösterilir.
+  // Çıkış görseli konaklanan son gecenin ertesindeki BOŞ günde gösterilir.
+  // İki dolu blok arasındaki boş gece (örn. 8 boş, 7 ve 9 dolu) turnover değildir;
+  // yalnızca önceki konaklamanın çıkışı gösterilir. Aynı gün çıkış+giriş,
+  // yeni konaklamanın ilk BOOKED/OPTION gününde temsil edilir.
   if (currentStatus === "EMPTY") {
-    if (prevStatus === "BOOKED" && nextStatus === "BOOKED") {
-      return "turnover_booked";
-    }
-    if (prevStatus === "BOOKED" && nextStatus === "OPTION") {
-      return "booked_out_option_in";
-    }
-    if (prevStatus === "OPTION" && nextStatus === "BOOKED") {
-      return "option_out_booked_in";
-    }
     if (prevStatus === "BOOKED") return "check_out";
     if (prevStatus === "OPTION") return "option_check_out";
     return "empty";

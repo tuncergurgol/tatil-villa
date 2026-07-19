@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
@@ -20,6 +21,7 @@ import {
   PUBLIC_SITE_KEYS,
   PUBLIC_SITE_META,
 } from "@/lib/public-site-keys";
+import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 
 const searchFiltersSchema = z.object({
   phone: z.string().min(1, "Telefon numarası zorunlu"),
@@ -171,6 +173,60 @@ export async function resolveAvailabilityStayQuoteAction(input: {
   }
 }
 
+const publicShareLinkSchema = z.object({
+  villaIds: z.array(z.string().min(1)).min(1).max(500),
+  checkIn: z.string().min(1),
+  checkOut: z.string().min(1),
+  adults: z.coerce.number().int().min(1).max(50).default(2),
+});
+
+export async function createPublicVillaShareLinkAction(input: {
+  villaIds: string[];
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+}): Promise<{ url?: string; error?: string }> {
+  await requireAdmin();
+
+  const parsed = publicShareLinkSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz link bilgisi" };
+  }
+
+  const villaIds = [...new Set(parsed.data.villaIds)];
+  const existingVillaCount = await prisma.villa.count({
+    where: { id: { in: villaIds }, active: true },
+  });
+  if (existingVillaCount !== villaIds.length) {
+    return { error: "Seçilen villalardan biri artık yayında değil" };
+  }
+
+  try {
+    const share = await prisma.publicVillaShareLink.create({
+      data: {
+        code: randomBytes(6).toString("hex"),
+        villaIds,
+        checkIn: parsed.data.checkIn,
+        checkOut: parsed.data.checkOut,
+        adults: parsed.data.adults,
+      },
+      select: { code: true },
+    });
+
+    const domain = sanitizePublicBookingDomain("www.tatildeyiz.com.tr");
+    return {
+      url: `https://${domain}/teklif/${share.code}`,
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Kısa teklif bağlantısı oluşturulamadı",
+    };
+  }
+}
+
 const availabilityOfferSchema = z.object({
   villaId: z.string().min(1),
   channel: z.enum(["WHATSAPP", "EMAIL", "SMS"]),
@@ -217,6 +273,7 @@ export async function sendAvailabilityOfferAction(input: {
   if (!villa) return { error: "Villa bulunamadı" };
 
   const site = PUBLIC_SITE_META[data.siteKey];
+  const domain = sanitizePublicBookingDomain(site.domain);
   const params = new URLSearchParams();
   if (data.linkType === "DETAILED") {
     params.set("checkIn", data.checkIn);
@@ -224,7 +281,7 @@ export async function sendAvailabilityOfferAction(input: {
     params.set("adults", String(Math.max(1, data.adults)));
   }
   const query = params.toString();
-  const url = `https://${site.domain}/${villa.slug}${query ? `?${query}` : ""}`;
+  const url = `https://${domain}/${villa.slug}${query ? `?${query}` : ""}`;
 
   const quote = await resolveVillaStayQuote(
     data.villaId,

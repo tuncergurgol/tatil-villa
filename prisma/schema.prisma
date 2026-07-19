@@ -1434,3 +1434,16 @@ model TourImage {
   @@index([sortOrder])
   @@index([isMain])
 }
+
+model PublicVillaShareLink {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  villaIds  String[]
+  checkIn   String
+  checkOut  String
+  adults    Int      @default(2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}

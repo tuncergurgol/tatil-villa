@@ -13,7 +13,10 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { searchAvailabilityAction } from "@/app/actions/admin/availability-search";
+import {
+  createPublicVillaShareLinkAction,
+  searchAvailabilityAction,
+} from "@/app/actions/admin/availability-search";
 import { lookupCustomerByPhoneAction } from "@/app/actions/admin/customers";
 import AvailabilityResultCard from "@/components/admin/availability/AvailabilityResultCard";
 import AmenityMultiSelect from "@/components/admin/availability/AmenityMultiSelect";
@@ -33,6 +36,11 @@ import {
 import { countNightsBetween } from "@/lib/villa-period-selection";
 import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
+import {
+  PUBLIC_SITE_KEYS,
+  PUBLIC_SITE_META,
+  type PublicSiteKey,
+} from "@/lib/public-site-keys";
 
 const NIGHT_OPTIONS = Array.from({ length: 30 }, (_, index) => index + 1);
 
@@ -75,24 +83,6 @@ function sortResults(
   return next;
 }
 
-function buildShareListUrl(options: {
-  villaIds: string[];
-  checkIn: string;
-  checkOut: string;
-  adults: number;
-  children: number;
-}): string {
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
-  const params = new URLSearchParams();
-  params.set("ids", options.villaIds.join(","));
-  if (options.checkIn) params.set("checkIn", options.checkIn);
-  if (options.checkOut) params.set("checkOut", options.checkOut);
-  if (options.adults > 0) params.set("adults", String(options.adults));
-  if (options.children > 0) params.set("children", String(options.children));
-  return `${origin}/villalar?${params.toString()}`;
-}
-
 interface AvailabilitySearchPageProps {
   pageData: AvailabilitySearchPageData;
 }
@@ -111,11 +101,7 @@ export default function AvailabilitySearchPage({
   const [checkIn, setCheckIn] = useState(defaultCheckIn);
   const [checkOut, setCheckOut] = useState(() => defaultCheckOut(defaultCheckIn()));
   const [nightCount, setNightCount] = useState(7);
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
-  const [babies, setBabies] = useState(0);
-  const [budgetMin, setBudgetMin] = useState("");
-  const [budgetMax, setBudgetMax] = useState("");
+  const [siteKey, setSiteKey] = useState<PublicSiteKey>("tatildeyiz");
   const [regionSlugs, setRegionSlugs] = useState<string[]>([]);
   const [amenityNames, setAmenityNames] = useState<string[]>([]);
   const [guestCounts, setGuestCounts] = useState<number[]>([]);
@@ -131,23 +117,26 @@ export default function AvailabilitySearchPage({
   const [isPending, startTransition] = useTransition();
   const [isLookingUpPhone, setIsLookingUpPhone] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [isCreatingShare, setIsCreatingShare] = useState(false);
+  const [shareLinkCache, setShareLinkCache] = useState<{
+    key: string;
+    url: string;
+  } | null>(null);
 
   const selectedCount = selectedIds.length;
   const allSelected =
     results.length > 0 && selectedIds.length === results.length;
 
-  const shareUrl = useMemo(
+  const selectedGuestCount = guestCounts[0] ?? 2;
+  const shareKey = useMemo(
     () =>
-      selectedIds.length === 0
-        ? ""
-        : buildShareListUrl({
-            villaIds: selectedIds,
-            checkIn,
-            checkOut,
-            adults,
-            children,
-          }),
-    [selectedIds, checkIn, checkOut, adults, children]
+      JSON.stringify({
+        villaIds: [...selectedIds].sort(),
+        checkIn,
+        checkOut,
+        adults: selectedGuestCount,
+      }),
+    [selectedIds, checkIn, checkOut, selectedGuestCount]
   );
 
   useEffect(() => {
@@ -222,11 +211,11 @@ export default function AvailabilitySearchPage({
         contactChannelId,
         checkIn,
         checkOut,
-        adults,
-        children,
-        babies,
-        budgetMin: Number(budgetMin) > 0 ? Number(budgetMin) : null,
-        budgetMax: Number(budgetMax) > 0 ? Number(budgetMax) : null,
+        adults: selectedGuestCount,
+        children: 0,
+        babies: 0,
+        budgetMin: null,
+        budgetMax: null,
         regionSlugs,
         amenityNames,
         guestCounts,
@@ -270,13 +259,39 @@ export default function AvailabilitySearchPage({
     setSelectedIds([]);
   }
 
-  async function copyShareLink() {
-    if (!shareUrl) {
+  async function resolveShareUrl(): Promise<string | null> {
+    if (selectedIds.length === 0) {
       window.alert("En az bir villa seçin.");
-      return;
+      return null;
     }
+    if (shareLinkCache?.key === shareKey) {
+      return shareLinkCache.url;
+    }
+
+    setIsCreatingShare(true);
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      const response = await createPublicVillaShareLinkAction({
+        villaIds: selectedIds,
+        checkIn,
+        checkOut,
+        adults: selectedGuestCount,
+      });
+      if (!response.url) {
+        window.alert(response.error ?? "Kısa teklif bağlantısı oluşturulamadı.");
+        return null;
+      }
+      setShareLinkCache({ key: shareKey, url: response.url });
+      return response.url;
+    } finally {
+      setIsCreatingShare(false);
+    }
+  }
+
+  async function copyShareLink() {
+    const url = await resolveShareUrl();
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
       setShareCopied(true);
       window.setTimeout(() => setShareCopied(false), 2000);
     } catch {
@@ -284,12 +299,10 @@ export default function AvailabilitySearchPage({
     }
   }
 
-  function openSharePreview() {
-    if (!shareUrl) {
-      window.alert("En az bir villa seçin.");
-      return;
-    }
-    window.open(shareUrl, "_blank", "noopener,noreferrer");
+  async function openSharePreview() {
+    const url = await resolveShareUrl();
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -416,7 +429,7 @@ export default function AvailabilitySearchPage({
             </div>
 
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-12">
-              <label className="col-span-2 block lg:col-span-6">
+              <label className="col-span-2 block lg:col-span-7">
                 <span className={`${labelClass} font-bold text-sky-600`}>
                   <span className="text-amber-500">*</span> TARİH
                 </span>
@@ -430,7 +443,7 @@ export default function AvailabilitySearchPage({
                 ) : null}
               </label>
 
-              <label className="block lg:col-span-1">
+              <label className="block lg:col-span-2">
                 <span className={labelClass}>Gece Sayısı</span>
                 <select
                   value={nightCount}
@@ -447,65 +460,21 @@ export default function AvailabilitySearchPage({
                 </select>
               </label>
 
-              <label className="block lg:col-span-1">
-                <span className={labelClass}>Bütçe Alt</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={budgetMin}
-                  onChange={(event) => setBudgetMin(event.target.value)}
-                  placeholder="₺ 0"
-                  className={compactInputClass}
-                />
-              </label>
-
-              <label className="block lg:col-span-1">
-                <span className={labelClass}>Bütçe Üst</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={budgetMax}
-                  onChange={(event) => setBudgetMax(event.target.value)}
-                  placeholder="₺ Sınırsız"
-                  className={compactInputClass}
-                />
-              </label>
-
-              <label className="block lg:col-span-1">
-                <span className={labelClass}>Yetişkin</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={adults}
-                  onChange={(event) => setAdults(Number(event.target.value) || 0)}
-                  className={compactInputClass}
-                />
-              </label>
-
-              <label className="block lg:col-span-1">
-                <span className={labelClass}>Çocuk (3-12 yaş)</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={children}
+              <label className="block lg:col-span-3">
+                <span className={labelClass}>Site Adı</span>
+                <select
+                  value={siteKey}
                   onChange={(event) =>
-                    setChildren(Number(event.target.value) || 0)
+                    setSiteKey(event.target.value as PublicSiteKey)
                   }
                   className={compactInputClass}
-                />
-              </label>
-
-              <label className="block lg:col-span-1">
-                <span className={labelClass}>Bebek (0-2 yaş)</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={babies}
-                  onChange={(event) => setBabies(Number(event.target.value) || 0)}
-                  className={compactInputClass}
-                />
+                >
+                  {PUBLIC_SITE_KEYS.map((key) => (
+                    <option key={key} value={key}>
+                      {PUBLIC_SITE_META[key].label} ({PUBLIC_SITE_META[key].domain})
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 
@@ -622,20 +591,37 @@ export default function AvailabilitySearchPage({
                 </span>
                 <button
                   type="button"
-                  onClick={copyShareLink}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => void copyShareLink()}
+                  disabled={isCreatingShare}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                 >
-                  <Copy className="h-3.5 w-3.5" />
+                  {isCreatingShare ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
                   {shareCopied ? "Kopyalandı!" : "Linki Kopyala"}
                 </button>
                 <button
                   type="button"
-                  onClick={openSharePreview}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => void openSharePreview()}
+                  disabled={isCreatingShare}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Önizleme
                 </button>
+                {shareLinkCache?.key === shareKey ? (
+                  <a
+                    href={shareLinkCache.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="max-w-[18rem] truncate text-xs font-medium text-violet-700 hover:underline"
+                    title={shareLinkCache.url}
+                  >
+                    {shareLinkCache.url}
+                  </a>
+                ) : null}
                 <button
                   type="button"
                   onClick={clearSelection}
@@ -713,9 +699,10 @@ export default function AvailabilitySearchPage({
                 guestPhone={`+90${normalizeTurkishPhoneDigits(phone)}`}
                 guestName={guestName.trim()}
                 guestEmail={guestEmail.trim()}
-                adults={adults}
-                  childGuests={children}
-                babies={babies}
+                adults={selectedGuestCount}
+                childGuests={0}
+                babies={0}
+                siteKey={siteKey}
               />
             ))}
           </div>

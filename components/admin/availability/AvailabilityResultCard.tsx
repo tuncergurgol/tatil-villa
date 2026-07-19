@@ -14,18 +14,18 @@ import {
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
+import StayDateRangePicker from "@/components/admin/availability/StayDateRangePicker";
 import ReservationPriceSummary, {
   getReservationGrandTotal,
 } from "@/components/ReservationPriceSummary";
-import { addDaysToDateKey } from "@/lib/villa-period-calendar";
 import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-search";
 import type { StayQuote } from "@/lib/stay-quote";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import {
-  PUBLIC_SITE_KEYS,
   PUBLIC_SITE_META,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
+import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import type {
   PoolHeatingSelections,
   StayFeeSelections,
@@ -41,6 +41,7 @@ interface AvailabilityResultCardProps {
   adults: number;
   childGuests: number;
   babies: number;
+  siteKey: PublicSiteKey;
 }
 
 function buildVillaPublicUrl(
@@ -55,9 +56,8 @@ function buildVillaPublicUrl(
   if (checkOut) params.set("checkOut", checkOut);
   if (adults > 0) params.set("adults", String(adults));
   const query = params.toString();
-  return `https://${PUBLIC_SITE_META[siteKey].domain}${villaPublicPath(slug)}${
-    query ? `?${query}` : ""
-  }`;
+  const domain = sanitizePublicBookingDomain(PUBLIC_SITE_META[siteKey].domain);
+  return `https://${domain}${villaPublicPath(slug)}${query ? `?${query}` : ""}`;
 }
 
 export default function AvailabilityResultCard({
@@ -70,6 +70,7 @@ export default function AvailabilityResultCard({
   adults,
   childGuests,
   babies,
+  siteKey,
 }: AvailabilityResultCardProps) {
   const [checkIn, setCheckIn] = useState(result.checkIn);
   const [checkOut, setCheckOut] = useState(result.checkOut);
@@ -88,7 +89,6 @@ export default function AvailabilityResultCard({
   const [deliveryMethod, setDeliveryMethod] = useState<
     "WHATSAPP" | "EMAIL" | "SMS"
   >("WHATSAPP");
-  const [siteKey, setSiteKey] = useState<PublicSiteKey>("tatildeyiz");
   const [linkType, setLinkType] = useState<"DETAILED" | "VILLA_ONLY">(
     "DETAILED"
   );
@@ -190,22 +190,16 @@ export default function AvailabilityResultCard({
     });
   }
 
-  function handleCheckInChange(value: string) {
-    setCheckIn(value);
-    const nights =
-      quote?.nights && quote.nights > 0 ? quote.nights : result.quote.nights;
-    if (nights > 0 && value) {
-      const nextOut = addDaysToDateKey(value, nights);
-      setCheckOut(nextOut);
-      refreshQuote(value, nextOut);
-      return;
+  function handleStayDatesChange(nextCheckIn: string, nextCheckOut: string) {
+    setCheckIn(nextCheckIn);
+    setCheckOut(nextCheckOut);
+    if (
+      nextCheckIn &&
+      nextCheckOut &&
+      nextCheckIn !== nextCheckOut
+    ) {
+      refreshQuote(nextCheckIn, nextCheckOut);
     }
-    if (checkOut) refreshQuote(value, checkOut);
-  }
-
-  function handleCheckOutChange(value: string) {
-    setCheckOut(value);
-    if (checkIn) refreshQuote(checkIn, value);
   }
 
   function handleSendInfo() {
@@ -315,7 +309,10 @@ export default function AvailabilityResultCard({
               ) : null}
               {result.location.trim() ? <p>{result.location}</p> : null}
               <p>{result.regionName}</p>
-              <p>Kişi : {result.guests + result.extraCapacity}</p>
+              <p>
+                Kişi : {result.guests}
+                {result.extraCapacity > 0 ? `+${result.extraCapacity}` : ""}
+              </p>
               <p>Y. Odası : {result.bedrooms}</p>
               <p>Banyo : {result.bathrooms}</p>
               {minStayNights != null && minStayNights > 0 ? (
@@ -347,25 +344,15 @@ export default function AvailabilityResultCard({
         </div>
 
         <div className="border-b border-gray-100 p-4 xl:border-b-0 xl:border-r">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs font-medium text-gray-500">Giriş</span>
-              <input
-                type="date"
-                value={checkIn}
-                onChange={(event) => handleCheckInChange(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-gray-500">Çıkış</span>
-              <input
-                type="date"
-                value={checkOut}
-                onChange={(event) => handleCheckOutChange(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100"
-              />
-            </label>
+          <div>
+            <span className="text-xs font-medium text-gray-500">
+              Giriş / Çıkış
+            </span>
+            <StayDateRangePicker
+              checkIn={checkIn}
+              checkOut={checkOut}
+              onChange={handleStayDatesChange}
+            />
           </div>
 
           <div className="mt-4">
@@ -436,25 +423,10 @@ export default function AvailabilityResultCard({
               </option>
               <option value="VILLA_ONLY">Sadece villa linki gönder</option>
             </select>
-            <label className="block">
-              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
-                Site Adı
-              </span>
-              <select
-                value={siteKey}
-                onChange={(event) =>
-                  setSiteKey(event.target.value as PublicSiteKey)
-                }
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 outline-none focus:border-violet-300"
-                aria-label="Gönderilecek site"
-              >
-                {PUBLIC_SITE_KEYS.map((key) => (
-                  <option key={key} value={key}>
-                    {PUBLIC_SITE_META[key].label} ({PUBLIC_SITE_META[key].domain})
-                  </option>
-                ))}
-              </select>
-            </label>
+            <p className="rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-[11px] font-medium text-violet-700">
+              Site: {PUBLIC_SITE_META[siteKey].label} (
+              {PUBLIC_SITE_META[siteKey].domain})
+            </p>
           </div>
 
           <button

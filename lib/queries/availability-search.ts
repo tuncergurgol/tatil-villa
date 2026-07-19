@@ -413,10 +413,14 @@ export async function searchAvailability(
   );
 
   const capacityFiltered = villas.filter((villa) => {
+    const baseCapacity = villa.guests;
     const totalCapacity = villa.guests + villa.extraCapacity;
     if (partySize > 0 && partySize > totalCapacity) return false;
     if (guestCounts.length === 0) return true;
-    return guestCounts.some((count) => totalCapacity >= count);
+    // Kişi filtresi: seçilen sayı villa kapasitesi veya kapasite+ek kapasite toplamına eşit olmalı.
+    return guestCounts.some(
+      (count) => count === baseCapacity || count === totalCapacity
+    );
   });
 
   if (!filters.checkIn || !filters.checkOut) {

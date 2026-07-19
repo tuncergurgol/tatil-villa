@@ -193,7 +193,7 @@ function CalendarDayCell({
 
   return (
     <div
-      className={`${minCellHeight} relative flex flex-col rounded-lg p-2 ${
+      className={`${minCellHeight} relative flex flex-col overflow-hidden rounded-lg p-2 ${
         isToday ? "ring-2 ring-inset ring-indigo-400" : ""
       } ${isInSelection ? "ring-2 ring-inset ring-blue-500 z-[1]" : ""} ${
         isSelectable ? "cursor-pointer select-none" : ""

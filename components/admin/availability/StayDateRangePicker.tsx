@@ -177,29 +177,50 @@ export default function StayDateRangePicker({
     );
   }
 
-  const label =
-    checkIn && checkOut
-      ? `${formatDisplayDate(checkIn)} – ${formatDisplayDate(checkOut)}`
-      : "Giriş – Çıkış tarihi seçin";
+  function openCalendar() {
+    setOpen((value) => !value);
+    setPendingStart(null);
+    setHoverDate(null);
+    if (checkIn) {
+      const date = parseDateKey(checkIn);
+      setViewYear(date.getFullYear());
+      setViewMonth(date.getMonth());
+    }
+  }
 
   return (
     <div ref={rootRef} className={`relative ${className}`}>
       <button
         type="button"
-        onClick={() => {
-          setOpen((value) => !value);
-          setPendingStart(null);
-          setHoverDate(null);
-          if (checkIn) {
-            const date = parseDateKey(checkIn);
-            setViewYear(date.getFullYear());
-            setViewMonth(date.getMonth());
-          }
-        }}
-        className="mt-1 flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-left text-sm font-medium text-gray-900 outline-none transition hover:bg-white focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100"
+        onClick={openCalendar}
+        className={`mt-1 grid w-full grid-cols-2 overflow-hidden rounded-lg border bg-gray-50/80 text-left text-sm font-medium text-gray-900 outline-none transition hover:bg-white focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100 ${
+          open ? "border-violet-300 ring-2 ring-violet-100" : "border-gray-200"
+        }`}
       >
-        <Calendar className="h-4 w-4 shrink-0 text-violet-500" />
-        <span className="truncate">{label}</span>
+        <span className="flex items-center gap-2 border-r border-gray-200 px-3 py-2">
+          <Calendar className="h-4 w-4 shrink-0 text-violet-500" />
+          <span className="min-w-0">
+            <span className="block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+              Giriş
+            </span>
+            <span className="block truncate">
+              {checkIn ? formatDisplayDate(checkIn) : "Tarih seçin"}
+            </span>
+          </span>
+        </span>
+        <span className="flex items-center gap-2 px-3 py-2">
+          <Calendar className="h-4 w-4 shrink-0 text-violet-500" />
+          <span className="min-w-0">
+            <span className="block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+              Çıkış
+            </span>
+            <span className="block truncate">
+              {checkOut && checkOut !== checkIn
+                ? formatDisplayDate(checkOut)
+                : "Tarih seçin"}
+            </span>
+          </span>
+        </span>
       </button>
 
       {open ? (
