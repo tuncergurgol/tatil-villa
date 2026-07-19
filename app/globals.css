@@ -21,6 +21,29 @@ body {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
+/* Public içerik koruması — form alanları hariç metin seçimini zorlaştır */
+body:not(.admin-shell) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body:not(.admin-shell) input,
+body:not(.admin-shell) textarea,
+body:not(.admin-shell) select,
+body:not(.admin-shell) [contenteditable="true"],
+body:not(.admin-shell) .allow-select {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+body:not(.admin-shell) img,
+body:not(.admin-shell) picture,
+body:not(.admin-shell) video {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+}
+
 /* Tıklanabilir alanlarda el imleci */
 a[href],
 button:not(:disabled):not([disabled]),

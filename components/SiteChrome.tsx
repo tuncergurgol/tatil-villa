@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import CallbackFloatingButton from "@/components/CallbackFloatingButton";
 import MobileBottomNavigation from "@/components/MobileBottomNavigation";
+import PublicContentProtection from "@/components/PublicContentProtection";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
 import SiteTrackingScripts from "@/components/SiteTrackingScripts";
 import {
@@ -78,6 +79,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
 
   return (
     <>
+      <PublicContentProtection />
       <SiteTrackingScripts tracking={tracking} />
       <Header
         navLinks={headerLinks}

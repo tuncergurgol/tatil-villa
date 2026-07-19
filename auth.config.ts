@@ -10,6 +10,9 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt",
+    // 8 saat — idle panel oturumunu kısaltır
+    maxAge: 8 * 60 * 60,
+    updateAge: 60 * 60,
   },
   providers: [],
   callbacks: {

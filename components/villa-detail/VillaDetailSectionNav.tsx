@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export type VillaDetailNavItem = {
@@ -25,6 +26,14 @@ export default function VillaDetailSectionNav({
   const [headerOffset, setHeaderOffset] = useState(FALLBACK_HEADER_PX);
   const navRef = useRef<HTMLElement>(null);
   const title = villaName.trim();
+
+  const activeIndex = Math.max(
+    0,
+    items.findIndex((item) => item.id === activeId)
+  );
+  const activeItem = items[activeIndex] ?? items[0];
+  const hasPrev = activeIndex > 0;
+  const hasNext = activeIndex < items.length - 1;
 
   useEffect(() => {
     const header = document.querySelector("header");
@@ -72,7 +81,7 @@ export default function VillaDetailSectionNav({
       root.style.removeProperty("--villa-detail-sticky-below-nav");
       root.style.removeProperty("--villa-detail-scroll-mt");
     };
-  }, [headerOffset, stuck, title]);
+  }, [headerOffset, stuck, title, activeItem?.label]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -117,6 +126,15 @@ export default function VillaDetailSectionNav({
     return () => observer.disconnect();
   }, [headerOffset]);
 
+  function goToSection(id: string) {
+    setActiveId(id);
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.replaceState(null, "", `#${id}`);
+    }
+  }
+
   if (items.length === 0) return null;
 
   return (
@@ -130,27 +148,86 @@ export default function VillaDetailSectionNav({
           stuck ? "shadow-md" : ""
         } ${className}`}
       >
-        <div className="flex min-w-0 items-stretch">
+        {/* Mobil: villa adı + bölüm pager */}
+        <div className="flex min-w-0 items-stretch sm:hidden">
+          {title ? (
+            <a
+              href="#genel-bakis"
+              title={title}
+              onClick={(e) => {
+                e.preventDefault();
+                goToSection("genel-bakis");
+              }}
+              className="flex max-w-[44%] shrink-0 items-center border-r border-slate-200 px-2.5 py-2.5 text-[14px] font-bold leading-snug text-slate-900"
+            >
+              <span className="line-clamp-2">{title}</span>
+            </a>
+          ) : null}
+
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 px-1 py-1.5">
+            <button
+              type="button"
+              aria-label="Önceki bölüm"
+              disabled={!hasPrev}
+              onClick={() => {
+                if (!hasPrev) return;
+                goToSection(items[activeIndex - 1]!.id);
+              }}
+              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
+                hasPrev
+                  ? "text-teal-700 hover:bg-teal-50"
+                  : "invisible pointer-events-none"
+              }`}
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+            </button>
+
+            <p
+              className="min-w-0 flex-1 truncate text-center text-[13px] font-semibold text-teal-800"
+              aria-live="polite"
+            >
+              {activeItem?.label}
+            </p>
+
+            <button
+              type="button"
+              aria-label="Sonraki bölüm"
+              disabled={!hasNext}
+              onClick={() => {
+                if (!hasNext) return;
+                goToSection(items[activeIndex + 1]!.id);
+              }}
+              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
+                hasNext
+                  ? "text-teal-700 hover:bg-teal-50"
+                  : "invisible pointer-events-none"
+              }`}
+            >
+              <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
+            </button>
+          </div>
+        </div>
+
+        {/* Masaüstü: villa adı (sticky) + sekmeler */}
+        <div className="hidden min-w-0 items-stretch sm:flex">
           {stuck && title ? (
             <a
               href="#genel-bakis"
               title={title}
-              className="flex max-w-[42%] shrink-0 items-center border-r border-slate-200 px-2.5 py-2.5 text-[15px] font-bold leading-snug text-slate-900 sm:max-w-[220px] sm:px-3 sm:text-[17px] md:max-w-[260px]"
+              className="flex max-w-[220px] shrink-0 items-center border-r border-slate-200 px-3 py-2.5 text-[17px] font-bold leading-snug text-slate-900 md:max-w-[260px]"
             >
-              <span className="line-clamp-2 sm:truncate sm:whitespace-nowrap">
-                {title}
-              </span>
+              <span className="truncate whitespace-nowrap">{title}</span>
             </a>
           ) : null}
 
-          <ul className="flex min-w-0 flex-1 gap-0 overflow-x-auto overscroll-x-contain px-1 scrollbar-thin sm:px-0 [-webkit-overflow-scrolling:touch]">
+          <ul className="flex min-w-0 flex-1 gap-0 overflow-x-auto overscroll-x-contain px-0 scrollbar-thin [-webkit-overflow-scrolling:touch]">
             {items.map((item) => {
               const active = item.id === activeId;
               return (
                 <li key={item.id} className="shrink-0">
                   <a
                     href={`#${item.id}`}
-                    className={`relative inline-flex cursor-pointer whitespace-nowrap px-3 py-3.5 text-[13px] font-medium transition sm:px-3.5 sm:text-sm ${
+                    className={`relative inline-flex cursor-pointer whitespace-nowrap px-3.5 py-3.5 text-sm font-medium transition ${
                       active
                         ? "text-teal-800"
                         : "text-slate-500 hover:text-slate-800"

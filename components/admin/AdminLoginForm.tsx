@@ -43,7 +43,8 @@ export default function AdminLoginForm() {
           type="email"
           name="email"
           required
-          defaultValue="admin@tatildeyiz.com.tr"
+          autoComplete="username"
+          placeholder="ornek@firma.com"
           className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
         />
       </label>
