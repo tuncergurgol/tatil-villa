@@ -189,11 +189,19 @@ function extractDateRange(text: string) {
   if (monthRange) {
     const month = MONTHS[normalizeText(monthRange[3])];
     if (month) {
-      const year = monthRange[4]
+      const endYear = monthRange[4]
         ? Number(monthRange[4])
         : inferYear(month);
-      const start = buildDateKey(year, month, Number(monthRange[1]));
-      const end = buildDateKey(year, month, Number(monthRange[2]));
+      const startDay = Number(monthRange[1]);
+      const endDay = Number(monthRange[2]);
+
+      // "26-2 Ağustos" gibi azalan gün aralıklarında ay adı bitiş
+      // tarihine aittir: başlangıç bir önceki ay olarak yorumlanır.
+      const crossesMonth = startDay > endDay;
+      const startMonth = crossesMonth ? (month === 1 ? 12 : month - 1) : month;
+      const startYear = crossesMonth && month === 1 ? endYear - 1 : endYear;
+      const start = buildDateKey(startYear, startMonth, startDay);
+      const end = buildDateKey(endYear, month, endDay);
       return { startDateKey: start, endDateKey: end };
     }
   }
