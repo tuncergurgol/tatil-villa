@@ -27,8 +27,11 @@ const MONTHS: Record<string, number> = {
   haziran: 6,
   tem: 7,
   temmuz: 7,
+  agu: 8,
+  ağu: 8,
   agustos: 8,
   ağustos: 8,
+  eyl: 9,
   eylul: 9,
   eylül: 9,
   ekim: 10,
@@ -40,7 +43,7 @@ const MONTHS: Record<string, number> = {
 
 // Kökleri baz alır; Türkçe çekimleri (kapatalım, kapattık, açalım, doldu...) yakalar.
 const CLOSE_KEYWORDS =
-  /\b(kapat\w*|kapal[ıi]\w*|dol(?:u|du|dur)\w*|rezerv\w*|booked|full|kiralan\w*|bloke|blok\w*|tuttu\w*|tutuld\w*)\b/i;
+  /\b(kapat\w*|kapal[ıi]\w*|dol(?:u|du|dur)\w*|rezerv\w*|booked|full|kira(?:ya|lan\w*|land[ıi]|landik)?|bloke|blok\w*|tuttu\w*|tutuld\w*)\b/i;
 const OPEN_KEYWORDS =
   /\b(a[cç][ıi]k\w*|a[cç]al[ıi]m|a[cç]t[ıi]k|a[cç][ıi]ld[ıi]|m[üu]sait\w*|bo[sş]\w*|available|serbest\w*|iptal\w*)\b/i;
 const OPTION_KEYWORDS = /\b(ops(?:iyon)?\w*|option\w*|hold)\b/i;
@@ -249,9 +252,14 @@ function extractDateRange(text: string) {
   return null;
 }
 
+/**
+ * Intent mevcut mesajdan, tarih yoksa alıntılanan / bağlam mesajından alınır.
+ * Örn. yanıt: "kiraya verildi, kapatalım" + alıntı: "22-25 ağu opsiyon"
+ */
 export function parseWhatsappCalendarMessage(
   rawBody: string,
-  rules?: WhatsappCalendarPhraseRuleInput[]
+  rules?: WhatsappCalendarPhraseRuleInput[],
+  contextBody?: string
 ): ParsedWhatsappCalendarMessage | null {
   const body = rawBody.trim();
   if (!body) return null;
@@ -259,7 +267,9 @@ export function parseWhatsappCalendarMessage(
   const detected = detectIntent(body, rules);
   if (!detected) return null;
 
-  const range = extractDateRange(body);
+  const range =
+    extractDateRange(body) ??
+    (contextBody?.trim() ? extractDateRange(contextBody.trim()) : null);
   if (!range) return null;
 
   const { start, end } = range.startDateKey <= range.endDateKey
@@ -277,11 +287,13 @@ export function parseWhatsappCalendarMessage(
         ? "Kapat"
         : "Opsiyon";
 
+  const dateSource = `${body} ${contextBody ?? ""}`;
+
   return {
     intent: detected.intent,
     startDateKey: start,
     endDateKey: end,
-    confidence: /(\d{1,2}[./-]\d{1,2}|\d{1,2}\s*-\s*\d{1,2})/.test(body)
+    confidence: /(\d{1,2}[./-]\d{1,2}|\d{1,2}\s*-\s*\d{1,2})/.test(dateSource)
       ? "high"
       : "low",
     summary: `${intentLabel}: ${start} → ${end}`,

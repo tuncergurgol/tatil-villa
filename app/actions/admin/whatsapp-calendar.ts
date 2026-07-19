@@ -411,10 +411,6 @@ export async function retryWhatsappCalendarMessageAction(
 
   const groupId = normalizeWhatsappGroupId(message.groupExternalId);
   const linkedVillas = await findVillasByWhatsappGroupId(groupId);
-  const targetVillas = resolveWhatsappCalendarTargetVillas(
-    linkedVillas,
-    message.body
-  );
 
   const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
     where: { active: true },
@@ -422,7 +418,27 @@ export async function retryWhatsappCalendarMessageAction(
     select: { phrase: true, intent: true },
   });
 
-  const parsed = parseWhatsappCalendarMessage(message.body, phraseRules);
+  // Tarih yoksa aynı gruptaki önceki mesajdan tarih bağlamı al.
+  const recentContext = await prisma.whatsappCalendarMessage.findFirst({
+    where: {
+      groupExternalId: groupId,
+      id: { not: message.id },
+      body: { not: "" },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { body: true },
+  });
+
+  const parsed = parseWhatsappCalendarMessage(
+    message.body,
+    phraseRules,
+    recentContext?.body
+  );
+
+  const targetVillas = resolveWhatsappCalendarTargetVillas(
+    linkedVillas,
+    [message.body, recentContext?.body ?? ""].filter(Boolean).join(" ")
+  );
 
   if (targetVillas.length === 0) {
     await prisma.whatsappCalendarMessage.update({

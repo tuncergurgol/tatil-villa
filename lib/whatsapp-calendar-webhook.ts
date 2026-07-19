@@ -23,6 +23,8 @@ export type NormalizedWhatsappCalendarPayload = {
   senderName: string;
   senderPhone: string;
   body: string;
+  /** Yanıt verilen / alıntılanan mesaj metni (tarih buradan alınabilir). */
+  quotedBody: string;
   fromMe: boolean;
 };
 
@@ -34,6 +36,28 @@ function readNestedMessageText(message: Record<string, unknown> | undefined) {
   const image = message.imageMessage as { caption?: string } | undefined;
   if (image?.caption) return image.caption;
   return "";
+}
+
+/** Evolution / Baileys contextInfo.quotedMessage içinden alıntı metnini çıkarır. */
+function readQuotedMessageText(message: Record<string, unknown> | undefined) {
+  if (!message) return "";
+
+  const fromExtended = message.extendedTextMessage as
+    | { contextInfo?: { quotedMessage?: Record<string, unknown> } }
+    | undefined;
+  const fromImage = message.imageMessage as
+    | { contextInfo?: { quotedMessage?: Record<string, unknown> } }
+    | undefined;
+  const topContext = message.contextInfo as
+    | { quotedMessage?: Record<string, unknown> }
+    | undefined;
+
+  const quoted =
+    fromExtended?.contextInfo?.quotedMessage ??
+    fromImage?.contextInfo?.quotedMessage ??
+    topContext?.quotedMessage;
+
+  return readNestedMessageText(quoted);
 }
 
 export function normalizeWhatsappCalendarPayload(
@@ -51,6 +75,8 @@ export function normalizeWhatsappCalendarPayload(
       senderPhone:
         typeof body.senderPhone === "string" ? body.senderPhone : "",
       body: body.text.trim(),
+      quotedBody:
+        typeof body.quotedText === "string" ? body.quotedText.trim() : "",
       fromMe: body.fromMe === true,
     };
   }
@@ -89,6 +115,7 @@ export function normalizeWhatsappCalendarPayload(
           ? key.participant
           : "",
     body: text.trim(),
+    quotedBody: readQuotedMessageText(message),
     fromMe: key?.fromMe === true || data.fromMe === true,
   };
 }
@@ -178,7 +205,7 @@ export async function processWhatsappCalendarWebhook(
   const linkedVillas = await findVillasByWhatsappGroupId(groupId);
   const targetVillas = resolveWhatsappCalendarTargetVillas(
     linkedVillas,
-    normalized.body
+    [normalized.body, normalized.quotedBody].filter(Boolean).join(" ")
   );
 
   const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
@@ -187,7 +214,17 @@ export async function processWhatsappCalendarWebhook(
     select: { phrase: true, intent: true },
   });
 
-  const parsed = parseWhatsappCalendarMessage(normalized.body, phraseRules);
+  // Tarih yoksa önce alıntı metni, yoksa aynı gruptaki son opsiyon/kapama mesajı.
+  let contextForDates = normalized.quotedBody;
+  if (!contextForDates) {
+    contextForDates = await findRecentGroupDateContext(groupId);
+  }
+
+  const parsed = parseWhatsappCalendarMessage(
+    normalized.body,
+    phraseRules,
+    contextForDates || undefined
+  );
 
   if (targetVillas.length === 0) {
     await logWhatsappCalendarMessage({
@@ -291,6 +328,27 @@ export async function processWhatsappCalendarWebhook(
 
     return { ok: false, message: resultMessage };
   }
+}
+
+async function findRecentGroupDateContext(groupExternalId: string) {
+  const recent = await prisma.whatsappCalendarMessage.findFirst({
+    where: {
+      groupExternalId,
+      OR: [
+        { startDate: { not: null } },
+        { body: { not: "" } },
+      ],
+      status: {
+        in: [
+          WhatsappCalendarMessageStatus.APPLIED,
+          WhatsappCalendarMessageStatus.FAILED,
+        ],
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { body: true },
+  });
+  return recent?.body?.trim() ?? "";
 }
 
 async function applyOccupancyToVillas(
