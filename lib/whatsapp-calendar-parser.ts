@@ -184,8 +184,9 @@ function extractDateRange(text: string) {
     }
   }
 
+  // "6-12 eylül", "6/12 eylül", "6/12/ eylül" (ay adından önce / . - olabilir).
   const monthRange = normalized.match(
-    /(\d{1,2})\s*(?:-|–|—|ile|ve|\/)\s*(\d{1,2})\s+([a-zçğıöşü]+)(?:\s+(\d{4}))?/i
+    /(\d{1,2})\s*(?:-|–|—|ile|ve|\/)\s*(\d{1,2})(?:\s*[\/.-]\s*|\s+)([a-zçğıöşü]+)(?:\s+(\d{4}))?/i
   );
   if (monthRange) {
     const month = MONTHS[normalizeText(monthRange[3])];

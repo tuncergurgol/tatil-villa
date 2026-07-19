@@ -469,20 +469,46 @@ export async function retryWhatsappCalendarMessageAction(
       applied.push({ name: villa.name, updatedDays });
     }
 
+    const totalUpdatedDays = applied.reduce(
+      (sum, item) => sum + item.updatedDays,
+      0
+    );
+
+    // Takvimde hiçbir gün değişmediyse "Uygulandı" sayma → HATA.
+    if (totalUpdatedDays === 0) {
+      const names = applied.map((item) => item.name).join(", ") || "Villa";
+      await prisma.whatsappCalendarMessage.update({
+        where: { id: message.id },
+        data: {
+          villaId: targetVillas[0]!.id,
+          intent: parsed.intent,
+          startDate: dateKeyToDbDate(parsed.startDateKey),
+          endDate: dateKeyToDbDate(parsed.endDateKey),
+          status: WhatsappCalendarMessageStatus.FAILED,
+          resultMessage: `${names} için ${parsed.summary} uygulanamadı: takvimde güncellenecek gün bulunamadı (0 gün).`,
+        },
+      });
+      revalidateWhatsappCalendarPaths();
+      return { error: "Hata" };
+    }
+
     const resultMessage =
       applied.length === 1
         ? `${applied[0]!.name} için ${parsed.summary} uygulandı (${applied[0]!.updatedDays} gün güncellendi)`
-        : `${applied.map((item) => item.name).join(", ")} için ${parsed.summary} uygulandı (${applied.length} villa, ${applied.reduce((sum, item) => sum + item.updatedDays, 0)} gün güncellendi)`;
+        : `${applied.map((item) => item.name).join(", ")} için ${parsed.summary} uygulandı (${applied.length} villa, ${totalUpdatedDays} gün güncellendi)`;
 
     await prisma.$transaction([
-      ...targetVillas.map((villa, index) =>
-        prisma.villaIcalSyncEvent.create({
-          data: {
-            villaId: villa.id,
-            message: `WhatsApp ÇİLEK: ${villa.name} için ${parsed.summary} uygulandı (${applied[index]?.updatedDays ?? 0} gün güncellendi)`,
-          },
-        })
-      ),
+      ...targetVillas
+        .map((villa, index) => ({ villa, updatedDays: applied[index]?.updatedDays ?? 0 }))
+        .filter((item) => item.updatedDays > 0)
+        .map((item) =>
+          prisma.villaIcalSyncEvent.create({
+            data: {
+              villaId: item.villa.id,
+              message: `WhatsApp ÇİLEK: ${item.villa.name} için ${parsed.summary} uygulandı (${item.updatedDays} gün güncellendi)`,
+            },
+          })
+        ),
       prisma.whatsappCalendarMessage.update({
         where: { id: message.id },
         data: {

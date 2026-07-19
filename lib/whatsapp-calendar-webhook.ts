@@ -220,21 +220,43 @@ export async function processWhatsappCalendarWebhook(
       mode
     );
 
+    const totalUpdatedDays = applied.reduce(
+      (sum, item) => sum + item.updatedDays,
+      0
+    );
+    const primaryVillaId = applied[0]?.villa.id ?? targetVillas[0]!.id;
+
+    // Hiçbir gün güncellenmediyse takvim gerçekten kapanmamıştır → HATA.
+    if (totalUpdatedDays === 0) {
+      const failMessage = buildNoChangeResultMessage(applied, parsed.summary);
+      await logWhatsappCalendarMessage({
+        ...normalized,
+        villaId: primaryVillaId,
+        intent: parsed.intent,
+        startDate: dateKeyToDbDate(parsed.startDateKey),
+        endDate: dateKeyToDbDate(parsed.endDateKey),
+        status: WhatsappCalendarMessageStatus.FAILED,
+        resultMessage: failMessage,
+      });
+      return { ok: false, message: failMessage };
+    }
+
     const resultMessage = buildMultiVillaResultMessage(
       applied,
       parsed.summary
     );
-    const primaryVillaId = applied[0]?.villa.id ?? targetVillas[0]!.id;
 
     await prisma.$transaction([
-      ...applied.map((item) =>
-        prisma.villaIcalSyncEvent.create({
-          data: {
-            villaId: item.villa.id,
-            message: `WhatsApp: ${item.villa.name} için ${parsed.summary} uygulandı (${item.updatedDays} gün güncellendi)`,
-          },
-        })
-      ),
+      ...applied
+        .filter((item) => item.updatedDays > 0)
+        .map((item) =>
+          prisma.villaIcalSyncEvent.create({
+            data: {
+              villaId: item.villa.id,
+              message: `WhatsApp: ${item.villa.name} için ${parsed.summary} uygulandı (${item.updatedDays} gün güncellendi)`,
+            },
+          })
+        ),
       prisma.whatsappCalendarMessage.create({
         data: {
           externalId: normalized.externalId,
@@ -307,6 +329,14 @@ function buildMultiVillaResultMessage(
   const names = applied.map((item) => item.villa.name).join(", ");
   const totalDays = applied.reduce((sum, item) => sum + item.updatedDays, 0);
   return `${names} için ${summary} uygulandı (${applied.length} villa, ${totalDays} gün güncellendi)`;
+}
+
+function buildNoChangeResultMessage(
+  applied: Array<{ villa: WhatsappCalendarLinkedVilla; updatedDays: number }>,
+  summary: string
+) {
+  const names = applied.map((item) => item.villa.name).join(", ") || "Villa";
+  return `${names} için ${summary} uygulanamadı: takvimde güncellenecek gün bulunamadı (0 gün). Tarihler için fiyat/dönem tanımı olmayabilir.`;
 }
 
 export function verifyWhatsappCalendarWebhookSecret(
