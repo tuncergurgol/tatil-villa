@@ -7,23 +7,13 @@ import {
 import {
   buildBookedOccupancyForStay,
   buildEmptyOccupancyForRange,
+  buildOptionOccupancyForStay,
   enumerateDateKeysInRange,
   normalizeDateRange,
   offsetDateKey,
 } from "@/lib/villa-period-selection";
 
 export type OccupancyApplyMode = "EMPTY" | "BOOKED" | "OPTION";
-
-function buildOptionOccupancyForRange(
-  startKey: string,
-  endKey: string
-): Map<string, VillaDayOccupancy> {
-  const map = new Map<string, VillaDayOccupancy>();
-  for (const dateKey of enumerateDateKeysInRange(startKey, endKey)) {
-    map.set(dateKey, "OPTION");
-  }
-  return map;
-}
 
 export async function applyVillaPeriodDaysOccupancy(
   villaId: string,
@@ -64,7 +54,7 @@ export async function applyVillaPeriodDaysOccupancy(
     mode === "BOOKED"
       ? buildBookedOccupancyForStay(start, end, existingOccupancyByDateKey)
       : mode === "OPTION"
-        ? buildOptionOccupancyForRange(start, end)
+        ? buildOptionOccupancyForStay(start, end, existingOccupancyByDateKey)
         : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey);
 
   const updates = [...occupancyByDateKey.entries()]

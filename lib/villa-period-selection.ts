@@ -134,6 +134,74 @@ function isOccupied(status: VillaDayOccupancy): boolean {
 }
 
 /**
+ * OPSİYON komutu: DOLU ile aynı giriş–çıkış mantığını izler.
+ * - İç geceler (başlangıç .. bitiş-1) OPTION olur.
+ * - Son gün ÇIKIŞ kabul edilir: mevcut GİRİŞ/opsiyon girişi korunur,
+ *   aksi halde EMPTY kalır (çıkış günü opsiyon değildir).
+ * - Tek gün seçiminde komşuya göre OPTION veya EMPTY atanır.
+ */
+export function buildOptionOccupancyForStayMerged(
+  startKey: string,
+  endKey: string,
+  existingOccupancyByDateKey: ReadonlyMap<string, VillaDayOccupancy>
+): Map<string, VillaDayOccupancy> {
+  const { start, end } = normalizeDateRange(startKey, endKey);
+  const keys = enumerateDateKeys(start, end);
+  const map = new Map<string, VillaDayOccupancy>();
+
+  if (keys.length === 0) return map;
+
+  if (keys.length === 1) {
+    const onlyKey = keys[0]!;
+    const existing = getOccupancy(existingOccupancyByDateKey, onlyKey);
+    const next = getOccupancy(
+      existingOccupancyByDateKey,
+      offsetDateKey(onlyKey, 1)
+    );
+
+    if (isOccupied(existing)) {
+      map.set(onlyKey, "OPTION");
+    } else {
+      map.set(onlyKey, isOccupied(next) ? "OPTION" : "EMPTY");
+    }
+    return map;
+  }
+
+  for (let index = 0; index < keys.length - 1; index++) {
+    map.set(keys[index]!, "OPTION");
+  }
+
+  const lastDayKey = keys[keys.length - 1]!;
+  const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
+
+  map.set(lastDayKey, isOccupied(existingEnd) ? "OPTION" : "EMPTY");
+  return map;
+}
+
+export function buildOptionOccupancyForStay(
+  startKey: string,
+  endKey: string,
+  existingOccupancyByDateKey?: ReadonlyMap<string, VillaDayOccupancy>
+): Map<string, VillaDayOccupancy> {
+  if (existingOccupancyByDateKey) {
+    return buildOptionOccupancyForStayMerged(
+      startKey,
+      endKey,
+      existingOccupancyByDateKey
+    );
+  }
+
+  const { start, end } = normalizeDateRange(startKey, endKey);
+  const result = new Map<string, VillaDayOccupancy>();
+
+  for (const key of enumerateDateKeys(start, end)) {
+    result.set(key, key === end ? "EMPTY" : "OPTION");
+  }
+
+  return result;
+}
+
+/**
  * AÇ komutu: seçilen aralığı mevcut komşu doluluklarla birleştirir.
  * - Dolu blok ortasında açılırsa: ilk gün ÇIKIŞ (EMPTY), son gün GİRİŞ (BOOKED).
  * - Blok sonundan (veya sonrasında dolu yoksa) açılırsa tüm seçim EMPTY olur.
