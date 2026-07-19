@@ -11,12 +11,36 @@ import { facilityTypeOptions } from "@/lib/facility-type";
 import { salesTypeOptions } from "@/lib/sales-type";
 
 interface VillaGeneralTabProps {
-  villa: Villa;
+  villa: VillaGeneralFormValue;
   regionBreadcrumb: string;
   roomCount: number;
   bedroomDraft: number;
   onBedroomsChange: (value: number) => void;
+  aiEnabled?: boolean;
 }
+
+export type VillaGeneralFormValue = Pick<
+  Villa,
+  | "id"
+  | "villaId"
+  | "name"
+  | "originalName"
+  | "category"
+  | "salesType"
+  | "guests"
+  | "extraCapacity"
+  | "livingRooms"
+  | "bedrooms"
+  | "bathrooms"
+  | "active"
+  | "showInSearch"
+  | "showInOffer"
+  | "ribbonText1"
+  | "ribbonText2"
+  | "description"
+  | "amenities"
+  | "allowChildren"
+>;
 
 function Field({
   label,
@@ -49,6 +73,7 @@ export default function VillaGeneralTab({
   roomCount,
   bedroomDraft,
   onBedroomsChange,
+  aiEnabled = true,
 }: VillaGeneralTabProps) {
   const [active, setActive] = useState(villa.active);
   const [showInSearch, setShowInSearch] = useState(villa.showInSearch);
@@ -231,7 +256,13 @@ export default function VillaGeneralTab({
           <button
             type="button"
             onClick={() => setAiModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700"
+            disabled={!aiEnabled}
+            title={
+              aiEnabled
+                ? undefined
+                : "AI açıklaması villa ilk kez kaydedildikten sonra kullanılabilir"
+            }
+            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
             AI ile Oluştur

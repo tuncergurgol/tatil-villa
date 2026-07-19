@@ -13,7 +13,9 @@ import { DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID } from "@/lib/villa-rules-defaults";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
+import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaPublicPath } from "@/lib/villa-public-path";
+import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
 
 function parseBool(value: FormDataEntryValue | null) {
   return value === "true" || value === "on";
@@ -36,6 +38,92 @@ async function assertMahalleRegion(regionId: string) {
 
   if (region.level !== RegionLevel.MAHALLE) {
     throw new Error("Villa yalnızca mahalle seviyesindeki bir bölgeye atanabilir");
+  }
+}
+
+export async function createVillaFromGeneral(
+  formData: FormData
+): Promise<
+  | { success: true; editPath: string }
+  | { success: false; error: string }
+> {
+  try {
+    await requireAdmin();
+
+    const name = String(formData.get("name") ?? "").trim();
+    if (!name) {
+      return { success: false, error: "Villa adı zorunludur" };
+    }
+
+    const fallbackRegion = await prisma.region.findFirst({
+      where: { level: RegionLevel.MAHALLE, active: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true },
+    });
+    if (!fallbackRegion) {
+      return {
+        success: false,
+        error: "Villa oluşturmak için aktif bir mahalle kaydı bulunamadı",
+      };
+    }
+
+    const baseSlug = slugifyTurkish(name) || "yeni-villa";
+    const slugExists = await prisma.villa.findUnique({
+      where: { slug: baseSlug },
+      select: { id: true },
+    });
+    const slug = slugExists
+      ? `${baseSlug}-${Date.now().toString(36)}`
+      : baseSlug;
+    const salesType = String(
+      formData.get("salesType") ?? "komisyon"
+    ) as SalesType;
+
+    const villa = await prisma.villa.create({
+      data: {
+        slug,
+        name,
+        originalName: String(formData.get("originalName") ?? "").trim(),
+        category:
+          (formData.get("category") as VillaCategory) || VillaCategory.villa,
+        regionId: fallbackRegion.id,
+        location: "",
+        guests: parseIntField(formData.get("guests"), 1),
+        extraCapacity: parseIntField(formData.get("extraCapacity"), 0),
+        livingRooms: parseIntField(formData.get("livingRooms"), 0),
+        bedrooms: parseIntField(formData.get("bedrooms"), 1),
+        bathrooms: parseIntField(formData.get("bathrooms"), 1),
+        image: "",
+        images: [],
+        description: String(formData.get("description") ?? ""),
+        amenities: [],
+        facilityCategories: [],
+        salesType:
+          salesType === SalesType.garanti
+            ? SalesType.garanti
+            : SalesType.komisyon,
+        active: parseBool(formData.get("active")),
+        showInSearch: parseBool(formData.get("showInSearch")),
+        showInOffer: parseBool(formData.get("showInOffer")),
+        ribbonText1: String(formData.get("ribbonText1") ?? ""),
+        ribbonText2: String(formData.get("ribbonText2") ?? ""),
+      },
+      select: { id: true, villaId: true },
+    });
+
+    await syncVillaRooms(villa.id);
+    revalidatePath("/admin/villalar");
+
+    return {
+      success: true,
+      editPath: villaAdminEditPath(villa),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Villa oluşturulamadı",
+    };
   }
 }
 
