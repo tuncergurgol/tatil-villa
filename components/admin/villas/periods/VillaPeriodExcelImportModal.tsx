@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { FileSpreadsheet, Upload, X } from "lucide-react";
+import { Download, FileSpreadsheet, Upload, X } from "lucide-react";
 import {
   importVillaPricePeriodsFromExcel,
   type VillaPeriodExcelImportRow,
@@ -16,6 +16,56 @@ interface VillaPeriodExcelImportModalProps {
   onClose: () => void;
   onImported: (count: number) => void;
 }
+
+/** Şablon başlıkları — HEADER_ALIASES ile birebir eşleşir. */
+const TEMPLATE_HEADERS = [
+  "Başlangıç",
+  "Bitiş",
+  "Fiyat",
+  "Para Birimi",
+  "Ön Ödeme %",
+  "Komisyon %",
+  "Min Gece",
+  "Temizlik Gün",
+  "Temizlik Bedeli",
+  "Hasar Depozitosu",
+  "Haftasonu Fiyatı",
+  "Haftasonu Günleri",
+  "Haftasonu Min Gece",
+] as const;
+
+const TEMPLATE_EXAMPLE_ROWS: Array<Record<(typeof TEMPLATE_HEADERS)[number], string | number>> = [
+  {
+    Başlangıç: "01.06.2026",
+    Bitiş: "30.06.2026",
+    Fiyat: 8500,
+    "Para Birimi": "TL",
+    "Ön Ödeme %": 30,
+    "Komisyon %": 20,
+    "Min Gece": 3,
+    "Temizlik Gün": 1,
+    "Temizlik Bedeli": 1500,
+    "Hasar Depozitosu": 5000,
+    "Haftasonu Fiyatı": 9500,
+    "Haftasonu Günleri": "Cuma,Cumartesi",
+    "Haftasonu Min Gece": 2,
+  },
+  {
+    Başlangıç: "01.07.2026",
+    Bitiş: "31.08.2026",
+    Fiyat: 12000,
+    "Para Birimi": "TL",
+    "Ön Ödeme %": 30,
+    "Komisyon %": 20,
+    "Min Gece": 5,
+    "Temizlik Gün": 1,
+    "Temizlik Bedeli": 2000,
+    "Hasar Depozitosu": 7000,
+    "Haftasonu Fiyatı": "",
+    "Haftasonu Günleri": "",
+    "Haftasonu Min Gece": "",
+  },
+];
 
 const HEADER_ALIASES = {
   startDate: ["baslangic", "baslangic tarihi", "ilk tarih", "start date"],
@@ -202,6 +252,19 @@ function parseSheetRows(rows: SheetRow[]) {
   return { parsed, errors };
 }
 
+async function downloadExcelTemplate() {
+  const XLSX = await import("xlsx");
+  const worksheet = XLSX.utils.json_to_sheet(TEMPLATE_EXAMPLE_ROWS, {
+    header: [...TEMPLATE_HEADERS],
+  });
+  worksheet["!cols"] = TEMPLATE_HEADERS.map((header) => ({
+    wch: Math.max(14, header.length + 2),
+  }));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Periyotlar");
+  XLSX.writeFile(workbook, "villa-fiyat-periyot-sablonu.xlsx");
+}
+
 export default function VillaPeriodExcelImportModal({
   open,
   villaId,
@@ -213,8 +276,21 @@ export default function VillaPeriodExcelImportModal({
   const [rows, setRows] = useState<VillaPeriodExcelImportRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
 
   if (!open) return null;
+
+  async function handleDownloadTemplate() {
+    setError(null);
+    setIsDownloadingTemplate(true);
+    try {
+      await downloadExcelTemplate();
+    } catch {
+      setError("Örnek Excel şablonu indirilemedi.");
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  }
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -308,16 +384,29 @@ export default function VillaPeriodExcelImportModal({
                 {fileName || "Excel dosyası seçin"}
               </span>
               <span className="mt-0.5 block text-xs text-emerald-700">
-                .xlsx veya .xls
+                .xlsx veya .xls — şablondaki sütun başlıklarını kullanın
               </span>
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleDownloadTemplate()}
+            disabled={isDownloadingTemplate}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" />
+            {isDownloadingTemplate
+              ? "Şablon hazırlanıyor..."
+              : "ÖRNEK EXCEL ŞABLONU İNDİR"}
           </button>
 
           <div className="rounded-xl bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-600">
             <span className="font-semibold text-gray-800">Zorunlu sütunlar:</span>{" "}
             Başlangıç, Bitiş, Fiyat. İsteğe bağlı: Para Birimi, Ön Ödeme %,
             Komisyon %, Min Gece, Temizlik Gün, Temizlik Bedeli, Hasar
-            Depozitosu, Haftasonu Fiyatı ve Haftasonu Günleri.
+            Depozitosu, Haftasonu Fiyatı, Haftasonu Günleri ve Haftasonu Min
+            Gece. Tarih formatı: GG.AA.YYYY
           </div>
 
           {error ? (
