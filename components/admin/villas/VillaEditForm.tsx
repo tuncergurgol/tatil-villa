@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Villa, VillaOwner } from "@prisma/client";
-import { ExternalLink, Save } from "lucide-react";
+import { ArrowLeft, ExternalLink, Save } from "lucide-react";
 import {
   updateVillaFeatures,
   updateVillaGeneral,
@@ -197,6 +197,13 @@ export default function VillaEditForm({
     <div className="flex h-[calc(100dvh-3rem)] flex-col gap-4">
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
+          <Link
+            href="/admin/villalar"
+            className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Geri
+          </Link>
           <p className="text-xs font-semibold tracking-[0.2em] text-gray-400 uppercase">
             Villa Düzenle
           </p>
@@ -336,6 +343,13 @@ export default function VillaEditForm({
           </div>
 
           <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
+            <Link
+              href="/admin/villalar"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Geri
+            </Link>
             <Link
               href={returnPath}
               className="cursor-pointer rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
