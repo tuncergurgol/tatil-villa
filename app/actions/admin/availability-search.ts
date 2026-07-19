@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/db";
 import {
   getAvailabilitySearchPageData,
   searchAvailability,
@@ -11,6 +12,14 @@ import {
 } from "@/lib/queries/availability-search";
 import { resolveVillaStayQuote } from "@/lib/queries/villa-stay-quote";
 import type { StayQuote } from "@/lib/stay-quote";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
+import { sendCompanyMail } from "@/lib/email";
+import { toHtmlFromText } from "@/lib/email-html";
+import {
+  PUBLIC_SITE_KEYS,
+  PUBLIC_SITE_META,
+} from "@/lib/public-site-keys";
 
 const searchFiltersSchema = z.object({
   phone: z.string().min(1, "Telefon numarası zorunlu"),
@@ -84,7 +93,27 @@ export async function searchAvailabilityAction(
       sort: parsed.data.sort as AvailabilitySearchSort,
     });
 
-    return { success: true, results };
+    const enrichedResults = await Promise.all(
+      results.map(async (result) => {
+        const pricing = await resolveVillaStayQuote(
+          result.id,
+          result.checkIn,
+          result.checkOut
+        );
+        return {
+          ...result,
+          pricingContext: pricing
+            ? {
+                periodFees: pricing.periodFees,
+                heatedPools: pricing.heatedPools,
+                baseCapacity: pricing.baseCapacity,
+              }
+            : undefined,
+        };
+      })
+    );
+
+    return { success: true, results: enrichedResults };
   } catch (error) {
     return {
       error:
@@ -103,7 +132,11 @@ export async function resolveAvailabilityStayQuoteAction(input: {
   villaId: string;
   checkIn: string;
   checkOut: string;
-}): Promise<{ quote?: StayQuote; error?: string }> {
+}): Promise<{
+  quote?: StayQuote;
+  pricingContext?: AvailabilitySearchResultItem["pricingContext"];
+  error?: string;
+}> {
   await requireAdmin();
 
   const parsed = stayQuoteSchema.safeParse(input);
@@ -122,11 +155,141 @@ export async function resolveAvailabilityStayQuoteAction(input: {
         error: resolved?.quote.invalidReason ?? "Bu tarihler için fiyat yok",
       };
     }
-    return { quote: resolved.quote };
+    return {
+      quote: resolved.quote,
+      pricingContext: {
+        periodFees: resolved.periodFees,
+        heatedPools: resolved.heatedPools,
+        baseCapacity: resolved.baseCapacity,
+      },
+    };
   } catch (error) {
     return {
       error:
         error instanceof Error ? error.message : "Fiyat hesaplanamadı",
     };
   }
+}
+
+const availabilityOfferSchema = z.object({
+  villaId: z.string().min(1),
+  channel: z.enum(["WHATSAPP", "EMAIL", "SMS"]),
+  siteKey: z.enum(PUBLIC_SITE_KEYS),
+  guestName: z.string().trim().max(150).default(""),
+  guestPhone: z.string().trim().max(30).default(""),
+  guestEmail: z.string().trim().max(254).default(""),
+  checkIn: z.string().min(1),
+  checkOut: z.string().min(1),
+  adults: z.coerce.number().int().min(0).max(50).default(2),
+  children: z.coerce.number().int().min(0).max(50).default(0),
+  babies: z.coerce.number().int().min(0).max(50).default(0),
+  linkType: z.enum(["DETAILED", "VILLA_ONLY"]),
+  grandTotal: z.coerce.number().min(0).optional(),
+});
+
+export async function sendAvailabilityOfferAction(input: {
+  villaId: string;
+  channel: "WHATSAPP" | "EMAIL" | "SMS";
+  siteKey: (typeof PUBLIC_SITE_KEYS)[number];
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  babies: number;
+  linkType: "DETAILED" | "VILLA_ONLY";
+  grandTotal?: number;
+}): Promise<{ success?: boolean; error?: string; message?: string }> {
+  await requireAdmin();
+
+  const parsed = availabilityOfferSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz gönderim bilgisi" };
+  }
+
+  const data = parsed.data;
+  const villa = await prisma.villa.findUnique({
+    where: { id: data.villaId },
+    select: { name: true, slug: true },
+  });
+  if (!villa) return { error: "Villa bulunamadı" };
+
+  const site = PUBLIC_SITE_META[data.siteKey];
+  const params = new URLSearchParams();
+  if (data.linkType === "DETAILED") {
+    params.set("checkIn", data.checkIn);
+    params.set("checkOut", data.checkOut);
+    params.set("adults", String(Math.max(1, data.adults)));
+  }
+  const query = params.toString();
+  const url = `https://${site.domain}/${villa.slug}${query ? `?${query}` : ""}`;
+
+  const quote = await resolveVillaStayQuote(
+    data.villaId,
+    data.checkIn,
+    data.checkOut
+  );
+  if (data.linkType === "DETAILED" && !quote?.quote.valid) {
+    return {
+      error: quote?.quote.invalidReason ?? "Seçilen tarihler için fiyat hesaplanamadı",
+    };
+  }
+
+  const total = data.grandTotal ?? quote?.quote.total ?? 0;
+  const nights = quote?.quote.nights ?? 0;
+  const lines = [
+    data.guestName ? `Merhaba ${data.guestName},` : "Merhaba,",
+    "",
+    `${villa.name} için uygunluk / teklif bilgisi:`,
+    data.linkType === "DETAILED" ? `Giriş: ${data.checkIn}` : null,
+    data.linkType === "DETAILED" ? `Çıkış: ${data.checkOut}` : null,
+    data.linkType === "DETAILED" && nights > 0 ? `Gece: ${nights}` : null,
+    data.linkType === "DETAILED" && total > 0
+      ? `Toplam: ${total.toLocaleString("tr-TR")} TL`
+      : null,
+    "",
+    url,
+    "",
+    site.label,
+  ];
+  const message = lines.filter((line) => line != null).join("\n");
+
+  if (data.channel === "WHATSAPP") {
+    if (!data.guestPhone) return { error: "Müşteri telefonu gerekli" };
+    const sent = await sendCustomerNotificationWhatsApp(
+      data.guestPhone,
+      message
+    );
+    return sent.ok
+      ? { success: true, message: "WhatsApp mesajı gönderildi" }
+      : { error: sent.error ?? "WhatsApp mesajı gönderilemedi" };
+  }
+
+  if (data.channel === "EMAIL") {
+    if (!data.guestEmail) return { error: "Müşteri e-posta adresi gerekli" };
+    try {
+      const company = await getCompanySettings();
+      await sendCompanyMail(company, {
+        to: data.guestEmail,
+        fromEmail: "rezervasyon@tatildeyiz.com.tr",
+        fromName: site.label,
+        replyTo: "rezervasyon@tatildeyiz.com.tr",
+        subject: `${villa.name} uygunluk teklifi`,
+        text: message,
+        html: toHtmlFromText(message, ""),
+      });
+      return { success: true, message: "E-posta gönderildi" };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "E-posta gönderilemedi",
+      };
+    }
+  }
+
+  // SMS kanalı ve payload'ı hazır; sağlayıcı bağlandığında burada teslim edilir.
+  return {
+    error: "SMS gönderim altyapısı hazır; SMS sağlayıcısı henüz bağlı değil",
+  };
 }

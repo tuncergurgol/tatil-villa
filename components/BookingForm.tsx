@@ -278,6 +278,7 @@ export default function BookingForm({
   ]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFeeSelections({});
     setPoolHeatingSelections({});
   }, [checkIn, checkOut]);
@@ -664,7 +665,7 @@ export default function BookingForm({
           fees={periodFees}
           pets={allowPets ? guests.pets : 0}
           adults={guests.adults}
-          children={guests.children}
+          childGuests={guests.children}
           baseCapacity={baseCapacity}
           checkIn={checkIn}
           checkOut={checkOut}

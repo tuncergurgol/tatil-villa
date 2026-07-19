@@ -57,6 +57,7 @@ export default function BookingEntryQuotePreviewModal({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFeeSelections({});
     setPoolHeatingSelections({});
   }, [open, checkIn, checkOut, quote?.quote.nights]);
@@ -186,7 +187,7 @@ export default function BookingEntryQuotePreviewModal({
                 fees={periodFees}
                 pets={pets}
                 adults={adults}
-                children={children}
+                childGuests={children}
                 baseCapacity={baseCapacity}
                 checkIn={checkIn}
                 checkOut={checkOut}

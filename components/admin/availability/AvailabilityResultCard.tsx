@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -12,19 +12,32 @@ import {
   Send,
   Users,
 } from "lucide-react";
-import { resolveAvailabilityStayQuoteAction } from "@/app/actions/admin/availability-search";
+import {
+  resolveAvailabilityStayQuoteAction,
+  sendAvailabilityOfferAction,
+} from "@/app/actions/admin/availability-search";
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
+import ReservationPriceSummary, {
+  getReservationGrandTotal,
+} from "@/components/ReservationPriceSummary";
 import {
   addDaysToDateKey,
   formatPlainPrice,
 } from "@/lib/villa-period-calendar";
-import { countNightsBetween } from "@/lib/villa-period-selection";
-import { buildWaMeUrl } from "@/lib/whatsapp-wa-me";
 import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-search";
 import type { StayQuote } from "@/lib/stay-quote";
 import { villaPublicPath } from "@/lib/villa-public-path";
+import {
+  PUBLIC_SITE_KEYS,
+  PUBLIC_SITE_META,
+  type PublicSiteKey,
+} from "@/lib/public-site-keys";
+import type {
+  PoolHeatingSelections,
+  StayFeeSelections,
+} from "@/lib/stay-period-fees";
 
 interface AvailabilityResultCardProps {
   result: AvailabilitySearchResultItem;
@@ -39,46 +52,20 @@ interface AvailabilityResultCardProps {
 }
 
 function buildVillaPublicUrl(
+  siteKey: PublicSiteKey,
   slug: string,
   checkIn: string,
-  checkOut: string
+  checkOut: string,
+  adults: number
 ): string {
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
   const params = new URLSearchParams();
   if (checkIn) params.set("checkIn", checkIn);
   if (checkOut) params.set("checkOut", checkOut);
+  if (adults > 0) params.set("adults", String(adults));
   const query = params.toString();
-  return `${origin}${villaPublicPath(slug)}${query ? `?${query}` : ""}`;
-}
-
-function buildOfferMessage(options: {
-  villaName: string;
-  slug: string;
-  checkIn: string;
-  checkOut: string;
-  quote: StayQuote;
-  guestName: string;
-}): string {
-  const nights = countNightsBetween(options.checkIn, options.checkOut);
-  const url = buildVillaPublicUrl(
-    options.slug,
-    options.checkIn,
-    options.checkOut
-  );
-  const total = formatPlainPrice(options.quote.total, options.quote.currency);
-  const lines = [
-    options.guestName ? `Merhaba ${options.guestName},` : "Merhaba,",
-    "",
-    `${options.villaName} için uygunluk / teklif:`,
-    `Giriş: ${options.checkIn}`,
-    `Çıkış: ${options.checkOut}`,
-    nights > 0 ? `Gece: ${nights}` : null,
-    `Toplam: ${total}`,
-    "",
-    url,
-  ];
-  return lines.filter((line) => line != null).join("\n");
+  return `https://${PUBLIC_SITE_META[siteKey].domain}${villaPublicPath(slug)}${
+    query ? `?${query}` : ""
+  }`;
 }
 
 export default function AvailabilityResultCard({
@@ -94,15 +81,28 @@ export default function AvailabilityResultCard({
 }: AvailabilityResultCardProps) {
   const [checkIn, setCheckIn] = useState(result.checkIn);
   const [checkOut, setCheckOut] = useState(result.checkOut);
-  const [quote, setQuote] = useState(result.quote);
+  const [quote, setQuote] = useState<StayQuote | null>(result.quote);
+  const [pricingContext, setPricingContext] = useState(
+    result.pricingContext ?? null
+  );
+  const [feeSelections, setFeeSelections] = useState<StayFeeSelections>({});
+  const [poolHeatingSelections, setPoolHeatingSelections] =
+    useState<PoolHeatingSelections>({});
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [sendNotice, setSendNotice] = useState<{
+    type: "ok" | "error";
+    text: string;
+  } | null>(null);
   const [deliveryMethod, setDeliveryMethod] = useState<
     "WHATSAPP" | "EMAIL" | "SMS"
   >("WHATSAPP");
+  const [siteKey, setSiteKey] = useState<PublicSiteKey>("tatildeyiz");
   const [linkType, setLinkType] = useState<"DETAILED" | "VILLA_ONLY">(
     "DETAILED"
   );
   const [isQuoting, startQuoteTransition] = useTransition();
+  const [isSending, startSendTransition] = useTransition();
+  const quoteRequestRef = useRef(0);
 
   useEffect(() => {
     // Yeni arama sonucu aynı villayı döndürse de tarih ve fiyatı yenile.
@@ -110,22 +110,44 @@ export default function AvailabilityResultCard({
     setCheckIn(result.checkIn);
     setCheckOut(result.checkOut);
     setQuote(result.quote);
+    setPricingContext(result.pricingContext ?? null);
+    setFeeSelections({});
+    setPoolHeatingSelections({});
     setQuoteError(null);
   }, [result]);
 
+  const pricingTotals = useMemo(() => {
+    if (!quote?.valid) return null;
+    return getReservationGrandTotal(
+      quote,
+      pricingContext?.periodFees,
+      0,
+      feeSelections,
+      {
+        adults,
+        children: childGuests,
+        baseCapacity: pricingContext?.baseCapacity ?? result.guests,
+        heatedPools: pricingContext?.heatedPools ?? [],
+        poolHeatingSelections,
+        checkIn,
+        checkOut,
+      }
+    );
+  }, [
+    adults,
+    checkIn,
+    checkOut,
+    childGuests,
+    feeSelections,
+    poolHeatingSelections,
+    pricingContext,
+    quote,
+    result.guests,
+  ]);
+
   const highlightTags = useMemo(() => {
-    const tags: string[] = [];
-    for (const amenity of result.amenities) {
-      if (!tags.includes(amenity)) tags.push(amenity);
-      if (tags.length >= 6) break;
-    }
-    for (const categoryName of result.facilityCategories) {
-      if (tags.includes(categoryName)) continue;
-      tags.push(categoryName);
-      if (tags.length >= 6) break;
-    }
-    return tags;
-  }, [result.amenities, result.facilityCategories]);
+    return result.featuredAmenities.slice(0, 8);
+  }, [result.featuredAmenities]);
 
   const dayDisplayByDate = useMemo(() => {
     const map = new Map<string, PeriodCalendarDayDisplay>();
@@ -151,24 +173,35 @@ export default function AvailabilityResultCard({
       return;
     }
 
+    const requestId = ++quoteRequestRef.current;
+    setQuote(null);
+    setPricingContext(null);
+    setFeeSelections({});
+    setPoolHeatingSelections({});
+    setQuoteError(null);
+
     startQuoteTransition(async () => {
       const response = await resolveAvailabilityStayQuoteAction({
         villaId: result.id,
         checkIn: nextCheckIn,
         checkOut: nextCheckOut,
       });
+      if (requestId !== quoteRequestRef.current) return;
       if (response.error || !response.quote) {
         setQuoteError(response.error ?? "Fiyat hesaplanamadı");
+        setQuote(null);
         return;
       }
       setQuote(response.quote);
+      setPricingContext(response.pricingContext ?? null);
       setQuoteError(null);
     });
   }
 
   function handleCheckInChange(value: string) {
     setCheckIn(value);
-    const nights = quote.nights > 0 ? quote.nights : result.quote.nights;
+    const nights =
+      quote?.nights && quote.nights > 0 ? quote.nights : result.quote.nights;
     if (nights > 0 && value) {
       const nextOut = addDaysToDateKey(value, nights);
       setCheckOut(nextOut);
@@ -184,65 +217,41 @@ export default function AvailabilityResultCard({
   }
 
   function handleSendInfo() {
-    const message =
-      linkType === "DETAILED"
-        ? buildOfferMessage({
-            villaName: result.name,
-            slug: result.slug,
-            checkIn,
-            checkOut,
-            quote,
-            guestName,
-          })
-        : [
-            guestName ? `Merhaba ${guestName},` : "Merhaba,",
-            "",
-            `${result.name} villa bağlantısı:`,
-            buildVillaPublicUrl(result.slug, "", ""),
-          ].join("\n");
-
-    if (deliveryMethod === "WHATSAPP") {
-      if (!guestPhone) {
-        window.alert("Müşteri telefonu gerekli.");
-        return;
-      }
-      const wa = buildWaMeUrl(
-        guestPhone.startsWith("+") ? guestPhone : `+90${guestPhone}`,
-        message
-      );
-      if (wa.ok) {
-        window.open(wa.url, "_blank", "noopener,noreferrer");
-        return;
-      }
-      window.alert(wa.error);
+    setSendNotice(null);
+    if (linkType === "DETAILED" && (!quote?.valid || isQuoting)) {
+      setSendNotice({
+        type: "error",
+        text: "Önce seçilen tarihler için fiyat hesabının tamamlanmasını bekleyin.",
+      });
       return;
     }
 
-    if (deliveryMethod === "EMAIL") {
-      if (!guestEmail) {
-        window.alert("Müşteri e-posta adresi gerekli.");
-        return;
-      }
-      window.location.href = `mailto:${encodeURIComponent(
-        guestEmail
-      )}?subject=${encodeURIComponent(
-        `${result.name} uygunluk teklifi`
-      )}&body=${encodeURIComponent(message)}`;
-      return;
-    }
-
-    if (!guestPhone) {
-      window.alert("Müşteri telefonu gerekli.");
-      return;
-    }
-    window.location.href = `sms:${guestPhone}?body=${encodeURIComponent(
-      message
-    )}`;
+    startSendTransition(async () => {
+      const response = await sendAvailabilityOfferAction({
+        villaId: result.id,
+        channel: deliveryMethod,
+        siteKey,
+        guestName,
+        guestPhone,
+        guestEmail,
+        checkIn,
+        checkOut,
+        adults,
+        children: childGuests,
+        babies,
+        linkType,
+        grandTotal: pricingTotals?.grandTotal ?? quote?.total,
+      });
+      setSendNotice({
+        type: response.success ? "ok" : "error",
+        text: response.message ?? response.error ?? "Gönderim başarısız",
+      });
+    });
   }
 
   function handlePublicPreview() {
     window.open(
-      buildVillaPublicUrl(result.slug, checkIn, checkOut),
+      buildVillaPublicUrl(siteKey, result.slug, checkIn, checkOut, adults),
       "_blank",
       "noopener,noreferrer"
     );
@@ -251,8 +260,8 @@ export default function AvailabilityResultCard({
   function handleCopyLink() {
     const url =
       linkType === "DETAILED"
-        ? buildVillaPublicUrl(result.slug, checkIn, checkOut)
-        : buildVillaPublicUrl(result.slug, "", "");
+        ? buildVillaPublicUrl(siteKey, result.slug, checkIn, checkOut, adults)
+        : buildVillaPublicUrl(siteKey, result.slug, "", "", adults);
     void navigator.clipboard.writeText(url).then(
       () => window.alert("Villa bağlantısı panoya kopyalandı."),
       () => window.alert(url)
@@ -262,7 +271,7 @@ export default function AvailabilityResultCard({
   const firstMonth = result.calendarMonths[0];
   const secondMonth = result.calendarMonths[1];
   const adminHref = `/admin/villalar/${result.id}/duzenle`;
-  const publicHref = villaPublicPath(result.slug);
+  const publicHref = buildVillaPublicUrl(siteKey, result.slug, "", "", adults);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -292,6 +301,9 @@ export default function AvailabilityResultCard({
                   />
                 ) : null}
               </div>
+              <p className="mt-1 max-w-32 truncate text-center text-[10px] font-semibold text-gray-500">
+                Belge No: {result.documentNo.trim() || "—"}
+              </p>
             </div>
 
             <div className="min-w-0 flex-1">
@@ -338,7 +350,7 @@ export default function AvailabilityResultCard({
                   <BedDouble className="h-3.5 w-3.5 text-gray-400" />
                   {result.bedrooms} yatak odası
                 </span>
-                {quote.minStayNights != null && quote.minStayNights > 0 ? (
+                {quote?.minStayNights != null && quote.minStayNights > 0 ? (
                   <span className="inline-flex items-center gap-1">
                     <Moon className="h-3.5 w-3.5 text-gray-400" />
                     min {quote.minStayNights} gece
@@ -348,7 +360,10 @@ export default function AvailabilityResultCard({
 
               {result.startingPrice != null ? (
                 <p className="mt-2 text-sm font-semibold text-violet-700">
-                  {formatPlainPrice(result.startingPrice, quote.currency)}{" "}
+                  {formatPlainPrice(
+                    result.startingPrice,
+                    quote?.currency ?? result.quote.currency
+                  )}{" "}
                   <span className="font-normal text-gray-500">/ gece başlayan</span>
                 </p>
               ) : null}
@@ -396,40 +411,42 @@ export default function AvailabilityResultCard({
             </label>
           </div>
 
-          <div className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-gray-50/70 p-3 text-sm">
+          <div className="mt-4">
             {isQuoting ? (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="mb-2 flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-700">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Fiyat güncelleniyor…
+                Yeni tarihlere göre fiyat hesaplanıyor…
               </div>
             ) : null}
             {quoteError ? (
-              <p className="text-xs text-red-600">{quoteError}</p>
+              <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                {quoteError}
+              </p>
             ) : null}
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-gray-500">K. Ücret</span>
-              <span className="font-semibold text-gray-900">
-                {formatPlainPrice(quote.commissionTotal, quote.currency)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-gray-500">Toplam</span>
-              <span className="font-bold text-gray-900">
-                {formatPlainPrice(quote.total, quote.currency)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-gray-500">Ön Öd. %{quote.prepaymentRate}</span>
-              <span className="font-semibold text-gray-900">
-                {formatPlainPrice(quote.prepaymentAmount, quote.currency)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-gray-500">Giriş Öd.</span>
-              <span className="font-semibold text-gray-900">
-                {formatPlainPrice(quote.checkInPayment, quote.currency)}
-              </span>
-            </div>
+            <ReservationPriceSummary
+              quote={quote}
+              fees={pricingContext?.periodFees}
+              adults={adults}
+              childGuests={childGuests}
+              baseCapacity={pricingContext?.baseCapacity ?? result.guests}
+              checkIn={checkIn}
+              checkOut={checkOut}
+              heatedPools={pricingContext?.heatedPools ?? []}
+              selections={feeSelections}
+              poolHeatingSelections={poolHeatingSelections}
+              onSelectionChange={(key, value) =>
+                setFeeSelections((current) => ({
+                  ...current,
+                  [key]: value,
+                }))
+              }
+              onPoolHeatingChange={(poolId, value) =>
+                setPoolHeatingSelections((current) => ({
+                  ...current,
+                  [poolId]: value,
+                }))
+              }
+            />
           </div>
 
           <div className="mt-3 space-y-2">
@@ -460,16 +477,51 @@ export default function AvailabilityResultCard({
               </option>
               <option value="VILLA_ONLY">Sadece villa linki gönder</option>
             </select>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-semibold text-gray-500">
+                Site Adı
+              </span>
+              <select
+                value={siteKey}
+                onChange={(event) =>
+                  setSiteKey(event.target.value as PublicSiteKey)
+                }
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 outline-none focus:border-violet-300"
+                aria-label="Gönderilecek site"
+              >
+                {PUBLIC_SITE_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {PUBLIC_SITE_META[key].label} ({PUBLIC_SITE_META[key].domain})
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <button
             type="button"
             onClick={handleSendInfo}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-violet-700 hover:to-purple-700"
+            disabled={isSending || isQuoting}
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-violet-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Send className="h-4 w-4" />
-            Bilgi Gönder
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            {isSending ? "Gönderiliyor…" : "Bilgi Gönder"}
           </button>
+          {sendNotice ? (
+            <p
+              className={`mt-2 rounded-lg px-3 py-2 text-xs ${
+                sendNotice.type === "ok"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-red-50 text-red-700"
+              }`}
+            >
+              {sendNotice.text}
+            </p>
+          ) : null}
           <div className="mt-2 flex justify-center gap-3 text-[11px]">
             <button
               type="button"
@@ -488,34 +540,36 @@ export default function AvailabilityResultCard({
           </div>
         </div>
 
-        <div className="p-4">
-          <div className="grid gap-3 lg:grid-cols-2">
-            {firstMonth ? (
-              <PeriodCalendarGrid
-                year={firstMonth.year}
-                month={firstMonth.month}
-                activeDateKeys={activeDateKeys}
-                dayDisplayByDate={dayDisplayByDate}
-                selectedRange={selectedRange}
-                compact
-                showMonthHeader
-                showAdjacentMonths
-                showNextMonthWeekRow={false}
-              />
-            ) : null}
-            {secondMonth ? (
-              <PeriodCalendarGrid
-                year={secondMonth.year}
-                month={secondMonth.month}
-                activeDateKeys={activeDateKeys}
-                dayDisplayByDate={dayDisplayByDate}
-                selectedRange={selectedRange}
-                compact
-                showMonthHeader
-                showAdjacentMonths={false}
-                showNextMonthWeekRow
-              />
-            ) : null}
+        <div className="min-w-0 p-3 sm:p-4">
+          <div className="overflow-x-auto pb-2">
+            <div className="grid min-w-[880px] grid-cols-2 gap-3">
+              {firstMonth ? (
+                <PeriodCalendarGrid
+                  year={firstMonth.year}
+                  month={firstMonth.month}
+                  activeDateKeys={activeDateKeys}
+                  dayDisplayByDate={dayDisplayByDate}
+                  selectedRange={selectedRange}
+                  compact
+                  showMonthHeader
+                  showAdjacentMonths
+                  showNextMonthWeekRow={false}
+                />
+              ) : null}
+              {secondMonth ? (
+                <PeriodCalendarGrid
+                  year={secondMonth.year}
+                  month={secondMonth.month}
+                  activeDateKeys={activeDateKeys}
+                  dayDisplayByDate={dayDisplayByDate}
+                  selectedRange={selectedRange}
+                  compact
+                  showMonthHeader
+                  showAdjacentMonths
+                  showNextMonthWeekRow={false}
+                />
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

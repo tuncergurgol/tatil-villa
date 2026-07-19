@@ -44,7 +44,7 @@ type ReservationPriceSummaryProps = {
   fees?: StayPeriodFees | null;
   pets?: number;
   adults?: number;
-  children?: number;
+  childGuests?: number;
   baseCapacity?: number;
   checkIn?: string | null;
   checkOut?: string | null;
@@ -150,7 +150,7 @@ export default function ReservationPriceSummary({
   fees = null,
   pets = 0,
   adults = 2,
-  children = 0,
+  childGuests = 0,
   baseCapacity = 0,
   checkIn = null,
   checkOut = null,
@@ -191,7 +191,7 @@ export default function ReservationPriceSummary({
   const periodFees = fees ?? emptyFeesFromQuote(quote);
   const overCapacityGuests = resolveOverCapacityGuests(
     adults,
-    children,
+    childGuests,
     baseCapacity
   );
   const extraBedUnit = positiveFee(periodFees.extraBedFee);
@@ -205,7 +205,7 @@ export default function ReservationPriceSummary({
     pets,
     nights,
     adults,
-    children,
+    children: childGuests,
     baseCapacity,
     fees: periodFees,
     selections,

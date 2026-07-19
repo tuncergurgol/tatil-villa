@@ -28,6 +28,10 @@ import {
 import type { PublicExchangeRates } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import type { PeriodCalendarDayDisplay } from "@/components/admin/villas/periods/PeriodCalendarGrid";
+import type {
+  HeatedPoolOption,
+  StayPeriodFees,
+} from "@/lib/stay-period-fees";
 
 export type AvailabilitySearchSort = "recommended" | "price_asc";
 
@@ -58,6 +62,7 @@ export type AvailabilitySearchCalendarDay = PeriodCalendarDayDisplay & {
 export type AvailabilitySearchResultItem = {
   id: string;
   villaId: number | null;
+  documentNo: string;
   slug: string;
   name: string;
   image: string;
@@ -68,6 +73,7 @@ export type AvailabilitySearchResultItem = {
   bedrooms: number;
   facilityCategories: string[];
   amenities: string[];
+  featuredAmenities: string[];
   popular: boolean;
   recommended: boolean;
   startingPrice: number | null;
@@ -75,6 +81,11 @@ export type AvailabilitySearchResultItem = {
   checkIn: string;
   checkOut: string;
   quote: StayQuote;
+  pricingContext?: {
+    periodFees: StayPeriodFees;
+    heatedPools: HeatedPoolOption[];
+    baseCapacity: number;
+  };
   calendarDays: AvailabilitySearchCalendarDay[];
   calendarMonths: { year: number; month: number }[];
 };
@@ -363,27 +374,41 @@ export async function searchAvailability(
     where.amenities = { hasEvery: amenityNames };
   }
 
-  const villas = await prisma.villa.findMany({
-    where,
-    select: {
-      id: true,
-      villaId: true,
-      slug: true,
-      name: true,
-      image: true,
-      images: true,
-      location: true,
-      guests: true,
-      extraCapacity: true,
-      bedrooms: true,
-      pricePerNight: true,
-      facilityCategories: true,
-      amenities: true,
-      popular: true,
-      recommended: true,
-      region: { select: { name: true } },
-    },
-  });
+  const [villas, featuredAmenityRows] = await Promise.all([
+    prisma.villa.findMany({
+      where,
+      select: {
+        id: true,
+        villaId: true,
+        documentNo: true,
+        slug: true,
+        name: true,
+        image: true,
+        images: true,
+        location: true,
+        guests: true,
+        extraCapacity: true,
+        bedrooms: true,
+        pricePerNight: true,
+        facilityCategories: true,
+        amenities: true,
+        popular: true,
+        recommended: true,
+        region: { select: { name: true } },
+      },
+    }),
+    prisma.amenity.findMany({
+      where: {
+        active: true,
+        category: { slug: "one-cikanlar" },
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { name: true },
+    }),
+  ]);
+  const featuredAmenityNames = new Set(
+    featuredAmenityRows.map((amenity) => amenity.name)
+  );
 
   const capacityFiltered = villas.filter((villa) => {
     const totalCapacity = villa.guests + villa.extraCapacity;
@@ -573,6 +598,7 @@ export async function searchAvailability(
     results.push({
       id: villa.id,
       villaId: villa.villaId,
+      documentNo: villa.documentNo,
       slug: villa.slug,
       name: villa.name,
       image: getVillaShowcaseImage(villa),
@@ -583,6 +609,9 @@ export async function searchAvailability(
       bedrooms: villa.bedrooms,
       facilityCategories: villa.facilityCategories,
       amenities: villa.amenities,
+      featuredAmenities: villa.amenities.filter((amenity) =>
+        featuredAmenityNames.has(amenity)
+      ),
       popular: villa.popular,
       recommended: villa.recommended,
       startingPrice: minNightly ?? villa.pricePerNight,

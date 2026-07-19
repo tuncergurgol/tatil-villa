@@ -58,6 +58,9 @@ export async function sendCompanyMail(
     text?: string;
     html?: string;
     bcc?: string;
+    fromEmail?: string;
+    fromName?: string;
+    replyTo?: string;
     attachments?: Attachment[];
   }
 ) {
@@ -66,8 +69,11 @@ export async function sendCompanyMail(
   }
 
   const transport = createMailTransport(settings);
-  const fromName = settings.smtpFromName.trim();
-  const fromEmail = settings.smtpFromEmail.trim() || settings.smtpUser.trim();
+  const fromName = message.fromName?.trim() || settings.smtpFromName.trim();
+  const fromEmail =
+    message.fromEmail?.trim() ||
+    settings.smtpFromEmail.trim() ||
+    settings.smtpUser.trim();
   const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
   const bcc =
     message.bcc?.trim() ||
@@ -76,6 +82,7 @@ export async function sendCompanyMail(
   return transport.sendMail({
     from,
     to: message.to,
+    ...(message.replyTo?.trim() ? { replyTo: message.replyTo.trim() } : {}),
     ...(bcc ? { bcc } : {}),
     subject: message.subject,
     text: message.text,
