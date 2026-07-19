@@ -88,7 +88,12 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
         tursabNo={company.tursabNo}
       />
       <main className="flex-1">{children}</main>
-      <SitePreFooterAccordions faqs={faqs} reviews={reviews} posts={posts} />
+      <SitePreFooterAccordions
+        faqs={faqs}
+        reviews={reviews}
+        posts={posts}
+        brandName={brandName}
+      />
       <Footer
         quickLinks={quickLinks}
         corporateLinks={corporateLinks}

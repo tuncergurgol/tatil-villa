@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BookOpen, ChevronDown, HelpCircle, MessageCircleHeart } from "lucide-react";
 import BlogInspirationSlider from "@/components/blog/BlogInspirationSlider";
+import { buildReviewItemListJsonLd } from "@/lib/review-json-ld";
 
 type FaqItem = {
   id: string;
@@ -95,10 +96,12 @@ export default function SitePreFooterAccordions({
   faqs,
   reviews,
   posts,
+  brandName,
 }: {
   faqs: FaqItem[];
   reviews: ReviewItem[];
   posts: BlogItem[];
+  brandName: string;
 }) {
   const faqJsonLd = {
     "@context": "https://schema.org",
@@ -113,28 +116,10 @@ export default function SitePreFooterAccordions({
     })),
   };
 
-  const reviewJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: "Misafir Yorumları",
-    itemListElement: reviews.map((review, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      item: {
-        "@type": "Review",
-        author: { "@type": "Person", name: review.guestName },
-        reviewBody: review.comment,
-        reviewRating: {
-          "@type": "Rating",
-          ratingValue: review.rating,
-          bestRating: 5,
-        },
-        itemReviewed: review.villa
-          ? { "@type": "LodgingBusiness", name: review.villa.name }
-          : { "@type": "Organization", name: "Tatildeyiz" },
-      },
-    })),
-  };
+  const reviewJsonLd = buildReviewItemListJsonLd({
+    reviews,
+    brandName,
+  });
 
   const blogJsonLd = {
     "@context": "https://schema.org",
@@ -250,19 +235,48 @@ export default function SitePreFooterAccordions({
                 >
                   <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p
-                        className="font-semibold text-gray-900"
+                      <div
                         itemProp="author"
+                        itemScope
+                        itemType="https://schema.org/Person"
                       >
-                        {review.guestName}
-                      </p>
-                      {review.villa ? (
-                        <p className="text-sm text-sky-600/80">
-                          {review.villa.name}
+                        <p className="font-semibold text-gray-900" itemProp="name">
+                          {review.guestName}
                         </p>
-                      ) : null}
+                      </div>
+                      {review.villa ? (
+                        <p
+                          className="text-sm text-sky-600/80"
+                          itemProp="itemReviewed"
+                          itemScope
+                          itemType="https://schema.org/LodgingBusiness"
+                        >
+                          <span itemProp="name">{review.villa.name}</span>
+                        </p>
+                      ) : (
+                        <div
+                          itemProp="itemReviewed"
+                          itemScope
+                          itemType="https://schema.org/Organization"
+                          className="sr-only"
+                        >
+                          <span itemProp="name">{brandName}</span>
+                        </div>
+                      )}
                     </div>
-                    <Stars rating={review.rating} />
+                    <div
+                      itemProp="reviewRating"
+                      itemScope
+                      itemType="https://schema.org/Rating"
+                    >
+                      <Stars rating={review.rating} />
+                      <meta
+                        itemProp="ratingValue"
+                        content={String(review.rating)}
+                      />
+                      <meta itemProp="bestRating" content="5" />
+                      <meta itemProp="worstRating" content="1" />
+                    </div>
                   </div>
                   <p
                     className="mt-3 text-sm leading-relaxed text-gray-600"
@@ -270,7 +284,6 @@ export default function SitePreFooterAccordions({
                   >
                     “{review.comment}”
                   </p>
-                  <meta itemProp="ratingValue" content={String(review.rating)} />
                 </article>
               ))}
               <div className="pt-2 text-center">
