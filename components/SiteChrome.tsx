@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import CallbackFloatingButton from "@/components/CallbackFloatingButton";
+import MobileBottomNavigation from "@/components/MobileBottomNavigation";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
 import SiteTrackingScripts from "@/components/SiteTrackingScripts";
 import {
@@ -115,6 +116,10 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
       />
       <ScrollToTopButton />
       <CallbackFloatingButton />
+      <MobileBottomNavigation
+        phone={phone}
+        whatsapp={company.whatsapp?.trim() || phone}
+      />
     </>
   );
 }

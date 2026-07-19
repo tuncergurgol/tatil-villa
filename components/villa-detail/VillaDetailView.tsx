@@ -159,7 +159,7 @@ export default function VillaDetailView({
       initialCheckOut={initialCheckOut}
       initialAdults={initialAdults}
     >
-    <div className="bg-white">
+    <div className="bg-white" data-villa-detail-page>
       <div className="border-b border-slate-100 bg-slate-50">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1.5 px-4 py-2.5 text-sm text-slate-500 sm:px-6 lg:px-8">
           <Link href="/" className="hover:text-teal-700">

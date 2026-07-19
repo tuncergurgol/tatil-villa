@@ -19,7 +19,8 @@ export default function CallbackFloatingButton() {
     pathname?.startsWith("/rezervasyon-onay");
 
   useEffect(() => {
-    setOpen(false);
+    const timer = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function CallbackFloatingButton() {
 
   return (
     <>
-      <div className="fixed bottom-5 left-5 z-[60] sm:bottom-6 sm:left-6">
+      <div className="fixed bottom-5 left-5 z-[60] hidden sm:block sm:bottom-6 sm:left-6">
         <span
           className="pointer-events-none absolute -inset-2 rounded-full bg-[#e85d04]/25 blur-md"
           aria-hidden
