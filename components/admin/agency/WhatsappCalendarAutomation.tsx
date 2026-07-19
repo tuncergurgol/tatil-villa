@@ -466,7 +466,7 @@ export default function WhatsappCalendarAutomation({
         </h2>
         <p className="mt-2 text-sm text-gray-500">
           WhatsApp grubunu seçin, Group ID otomatik dolsun; ardından villayı seçip
-          eşleştirin. Eşleşmeler aşağıdaki tabloda görünür.
+          eşleştirin. Bağlantı yapılan villalar aşağıda tıklanınca açılır.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <div ref={groupPickerRef} className="relative min-w-[240px] flex-[1.2]">
@@ -652,66 +652,85 @@ export default function WhatsappCalendarAutomation({
             {liveGroups.length > 0 ? ` (${liveGroups.length} grup)` : ""}
           </p>
         )}
-        <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              <tr>
-                <th className="px-4 py-3">WhatsApp Grubu</th>
-                <th className="px-4 py-3">Group ID</th>
-                <th className="px-4 py-3">Villa Adı</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.groups.length > 0 ? (
-                data.groups.map((group) => {
-                  const isMatched = matchedGroupIds.has(
-                    canonicalWhatsappGroupId(group.externalId)
-                  );
-                  return (
-                  <tr
-                    key={group.id}
-                    className={`border-t ${
-                      isMatched
-                        ? "border-emerald-100 bg-emerald-50"
-                        : "border-gray-100 bg-white"
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-medium text-gray-900">{group.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGroup(group.id)}
-                          disabled={isPending}
-                          className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
-                        >
-                          Sil
-                        </button>
-                      </div>
-                    </td>
-                    <td className="break-all px-4 py-3 text-xs text-gray-600">
-                      {group.externalId}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {groupVillaNames.get(
-                        canonicalWhatsappGroupId(group.externalId)
-                      )?.join(", ") ?? (
-                        <span className="text-gray-400">Eşleşme yok</span>
-                      )}
+
+        <details className="group mt-4 overflow-hidden rounded-xl border border-gray-200">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 bg-gray-50 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span className="text-sm font-semibold text-gray-800">
+              Bağlantı Yapılan Villalar
+              <span className="ml-2 font-medium text-gray-500">
+                ({data.groups.length})
+              </span>
+            </span>
+            <span className="text-lg text-gray-400 transition-transform group-open:rotate-180">
+              ⌄
+            </span>
+          </summary>
+          <div className="overflow-hidden border-t border-gray-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-3">WhatsApp Grubu</th>
+                  <th className="px-4 py-3">Group ID</th>
+                  <th className="px-4 py-3">Villa Adı</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.groups.length > 0 ? (
+                  data.groups.map((group) => {
+                    const isMatched = matchedGroupIds.has(
+                      canonicalWhatsappGroupId(group.externalId)
+                    );
+                    return (
+                      <tr
+                        key={group.id}
+                        className={`border-t ${
+                          isMatched
+                            ? "border-emerald-100 bg-emerald-50"
+                            : "border-gray-100 bg-white"
+                        }`}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-medium text-gray-900">
+                              {group.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGroup(group.id)}
+                              disabled={isPending}
+                              className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
+                            >
+                              Sil
+                            </button>
+                          </div>
+                        </td>
+                        <td className="break-all px-4 py-3 text-xs text-gray-600">
+                          {group.externalId}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {groupVillaNames
+                            .get(canonicalWhatsappGroupId(group.externalId))
+                            ?.join(", ") ?? (
+                            <span className="text-gray-400">Eşleşme yok</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-4 py-8 text-center text-sm text-gray-500"
+                    >
+                      Henüz grup tanımlanmadı.
                     </td>
                   </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500">
-                    Henüz grup tanımlanmadı.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </details>
       </section>
 
       <details className="group order-7 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
