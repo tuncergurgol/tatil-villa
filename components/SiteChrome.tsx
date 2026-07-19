@@ -85,6 +85,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
         brandName={brandName}
         logoUrl={site.logoUrl}
         useDefaultLogo={site.useDefaultLogo}
+        siteKey={site.key}
         agencyName={company.agencyName}
         tursabNo={company.tursabNo}
       />

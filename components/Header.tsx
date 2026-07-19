@@ -56,6 +56,7 @@ export default function Header({
   brandName = siteConfig.name,
   logoUrl,
   useDefaultLogo = true,
+  siteKey = "tatildeyiz",
   agencyName = siteConfig.agency,
   tursabNo = siteConfig.tursabNo,
 }: {
@@ -64,6 +65,7 @@ export default function Header({
   brandName?: string;
   logoUrl?: string;
   useDefaultLogo?: boolean;
+  siteKey?: "tatildeyiz" | "balayi-villacisi" | "tatil-villacisi";
   whiteLogoUrl?: string;
   agencyName?: string;
   tursabNo?: string;
@@ -74,19 +76,26 @@ export default function Header({
   const waHref = whatsappHref(rawPhone);
   const logoSrc = logoUrl?.trim() || (useDefaultLogo ? DEFAULT_LOGO : "");
   const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
+  const mobileLogoClass = {
+    tatildeyiz: "h-14 max-w-[165px]",
+    "balayi-villacisi": "h-12 max-w-[84px]",
+    "tatil-villacisi": "h-12 max-w-[190px]",
+  }[siteKey];
 
   return (
     <header className="relative z-50 border-b border-gray-200 bg-white text-gray-900 shadow-sm md:sticky md:top-0">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-3.5 lg:px-8">
-        <Link href="/" className="flex min-w-0 shrink-0 flex-col gap-0.5 leading-tight">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 md:gap-4 md:px-6 md:py-3.5 lg:px-8">
+        <Link
+          href="/"
+          className="flex min-w-0 max-w-[calc(100%-3.25rem)] shrink-0 flex-col gap-0 leading-tight md:max-w-none md:gap-0.5"
+        >
           {logoSrc ? (
             <Image
               src={logoSrc}
               alt={brandName}
               width={504}
               height={130}
-              style={{ width: "auto", height: "4.95rem" }}
-              className="max-w-[396px] object-contain object-left sm:max-w-[504px] sm:[height:5.85rem]"
+              className={`w-auto object-contain object-left md:h-[5.85rem] md:max-w-[504px] ${mobileLogoClass}`}
               priority
             />
           ) : (
@@ -94,7 +103,7 @@ export default function Header({
               {brandName}
             </span>
           )}
-          <span className="max-w-[240px] text-[10px] leading-snug text-gray-500 sm:max-w-none sm:text-[11px]">
+          <span className="max-w-[245px] truncate text-[9px] leading-snug text-gray-500 md:max-w-none md:text-[11px]">
             {agencyLine}
           </span>
         </Link>
