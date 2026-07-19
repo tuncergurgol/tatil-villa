@@ -1,6 +1,24 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { RegionLevel } from "@/lib/region-levels";
+
+/**
+ * Türkçe karakterleri ASCII'ye katlar (I/İ/ı/i → i, ş→s, ğ→g, ü→u, ö→o, ç→c).
+ * Böylece "ışıl" ile "Villa Işıl" eşleşir; Postgres ILIKE'ın Türkçe i sorunu
+ * (noktalı/noktasız i) aşılır. SQL tarafında aynı katlama translate() ile yapılır.
+ */
+const TR_FROM = "İIıiŞşĞğÜüÖöÇç";
+const TR_TO = "iiiissgguuoocc";
+
+function foldTurkishSearch(value: string): string {
+  let result = "";
+  for (const char of value) {
+    const index = TR_FROM.indexOf(char);
+    result += index >= 0 ? TR_TO[index] : char.toLowerCase();
+  }
+  return result;
+}
 
 export type VillaNameSearchResult = {
   id: string;
@@ -47,10 +65,24 @@ export async function searchActiveVillasByName(
   const q = query.trim();
   if (q.length < 1) return [];
 
+  // Türkçe-duyarlı katlama ile eşleşen villa id'lerini bul.
+  const pattern = `%${foldTurkishSearch(q).replace(/[%_\\]/g, "\\$&")}%`;
+  const matches = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT "id"
+    FROM "Villa"
+    WHERE "active" = true
+      AND lower(translate("name", 'İIıŞşĞğÜüÖöÇç', 'iiissgguuoocc'))
+          LIKE ${pattern}
+    LIMIT ${limit}
+  `);
+
+  const matchedIds = matches.map((row) => row.id);
+  if (matchedIds.length === 0) return [];
+
   const villas = await prisma.villa.findMany({
     where: {
       active: true,
-      name: { contains: q, mode: "insensitive" },
+      id: { in: matchedIds },
     },
     select: {
       id: true,
