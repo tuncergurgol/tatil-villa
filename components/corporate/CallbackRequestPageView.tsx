@@ -27,7 +27,7 @@ export default function CallbackRequestPageView() {
         <div className="absolute bottom-0 left-1/3 h-48 w-48 rounded-full bg-[#14919b]/15 blur-3xl" />
       </div>
 
-      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0a3d4a] via-[#0d5c63] to-[#14919b] px-6 py-12 text-white shadow-xl sm:px-10 sm:py-14">
+      <div className="relative hidden overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0a3d4a] via-[#0d5c63] to-[#14919b] px-6 py-12 text-white shadow-xl sm:block sm:px-10 sm:py-14">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.12]"
           style={{
@@ -57,9 +57,9 @@ export default function CallbackRequestPageView() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-8 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="rounded-[1.75rem] border border-[#0d5c63]/12 bg-white/95 px-5 py-7 shadow-[0_20px_50px_-24px_rgba(10,61,74,0.35)] sm:px-8 sm:py-9">
-          <h2 className="text-xl font-bold text-[#0a3d4a]">Bizi arayalım mı?</h2>
+          <h2 className="text-xl font-bold text-[#0a3d4a]">Sizi arayalım</h2>
           <p className="mt-2 text-sm text-[#1a4a5c]/75">
             Bilgilerinizi bırakın; telefonunuzu doğruladıktan sonra talebiniz
             ekibimize düşer.
