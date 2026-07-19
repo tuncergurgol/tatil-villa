@@ -5,7 +5,7 @@ import {
 } from "@/lib/agency-message-render";
 import {
   AGENCY_MESSAGE_TEMPLATE_ROW_1,
-  AGENCY_MESSAGE_TEMPLATE_ROW_2,
+  AGENCY_MESSAGE_TEMPLATE_ROW_201,
 } from "@/lib/agency-message-row-no";
 import { parseBookingDetails } from "@/lib/booking-form-details";
 import {
@@ -21,6 +21,7 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
 const ADMIN_NOTIFY_EMAIL = "info@tatildeyiz.com.tr";
+const ADMIN_NOTIFY_WHATSAPP = "+905337088253";
 
 type NewReservationBooking = {
   id: string;
@@ -87,7 +88,8 @@ async function sendGuestSms(phone: string, message: string, bookingId: string) {
 /**
  * Yeni rezervasyon talebi sonrası:
  * - Mesaj İçeriği 1 → misafire SMS + WhatsApp + Mail
- * - Mesaj İçeriği 2 → info@tatildeyiz.com.tr Mail
+ * - Mesaj İçeriği 201 → info@tatildeyiz.com.tr Mail
+ * - Mesaj İçeriği 201 → +905337088253 WhatsApp
  *
  * Bildirim hataları rezervasyonu bozmaz.
  */
@@ -100,7 +102,7 @@ export async function notifyNewReservationRequest(
         getCompanySettings(),
         getAgencySitesForPicker(),
         getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_1),
-        getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_2),
+        getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_201),
       ]);
 
     const details = parseBookingDetails(booking.details);
@@ -201,6 +203,8 @@ export async function notifyNewReservationRequest(
 
     if (adminTemplate) {
       const mailBody = pickChannelBody(adminTemplate, "email").trim();
+      const waBody = pickChannelBody(adminTemplate, "whatsapp").trim();
+
       if (mailBody) {
         try {
           const message = stripZeroAmountLines(
@@ -217,9 +221,26 @@ export async function notifyNewReservationRequest(
           console.error("[new-reservation-notify] yönetim mail hatası", error);
         }
       }
+
+      if (waBody) {
+        try {
+          const message = appendBookingSiteFooter(
+            stripZeroAmountLines(
+              renderAgencyMessageTemplate(waBody, values)
+            ),
+            siteBrand.siteInfo
+          );
+          await sendGuestWhatsApp(ADMIN_NOTIFY_WHATSAPP, message);
+        } catch (error) {
+          console.error(
+            "[new-reservation-notify] yönetim WhatsApp hatası",
+            error
+          );
+        }
+      }
     } else {
       console.warn(
-        "[new-reservation-notify] Mesaj İçeriği 2 (rowNo=2) bulunamadı"
+        "[new-reservation-notify] Mesaj İçeriği 201 (rowNo=201) bulunamadı"
       );
     }
   } catch (error) {

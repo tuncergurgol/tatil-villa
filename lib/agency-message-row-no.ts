@@ -16,6 +16,8 @@ export function getAgencyMessageRowSortKey(rowNo: number): number {
 
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1 = 11;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_2 = 21;
+/** Yeni rezervasyon talebi yönetim bildirimi (rowNo: 201) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_201 = 201;
 /** Ön ödeme — Banka Havale/Eft (UI: 10.2) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_10_2 = 102;
 /** Ön ödeme — Kredi Kartı/Sanal POS (UI: 10.3) */
