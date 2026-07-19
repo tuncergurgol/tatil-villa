@@ -53,6 +53,8 @@ type ReservationPriceSummaryProps = {
   poolHeatingSelections?: PoolHeatingSelections;
   onSelectionChange?: (key: keyof StayFeeSelections, value: boolean) => void;
   onPoolHeatingChange?: (poolId: string, value: boolean) => void;
+  compactPrimaryRows?: boolean;
+  hideDepositNotice?: boolean;
   className?: string;
 };
 
@@ -61,14 +63,20 @@ function FeeRow({
   amount,
   currency,
   tip,
+  compact = false,
 }: {
   label: string;
   amount: number;
   currency: string;
   tip?: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div
+      className={`flex items-center justify-between gap-2 ${
+        compact ? "text-xs" : ""
+      }`}
+    >
       <span className="inline-flex min-w-0 items-center gap-1.5 text-slate-600">
         <span className="truncate">{label}</span>
         {tip}
@@ -159,6 +167,8 @@ export default function ReservationPriceSummary({
   poolHeatingSelections = {},
   onSelectionChange,
   onPoolHeatingChange,
+  compactPrimaryRows = false,
+  hideDepositNotice = false,
   className = "",
 }: ReservationPriceSummaryProps) {
   if (!quote || quote.nights <= 0) {
@@ -260,7 +270,11 @@ export default function ReservationPriceSummary({
       </p>
 
       <div className="mt-2 space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
+        <div
+          className={`flex items-center justify-between gap-2 ${
+            compactPrimaryRows ? "text-xs" : ""
+          }`}
+        >
           <span className="inline-flex min-w-0 items-center gap-1.5 text-slate-600">
             <span className="truncate">Konaklama ({nights} Gece)</span>
             <PriceInfoTip label="Gecelik fiyat kırılımı">
@@ -289,6 +303,7 @@ export default function ReservationPriceSummary({
             label="Temizlik Bedeli"
             amount={cleaningAmount}
             currency={currency}
+            compact={compactPrimaryRows}
             tip={
               quote.cleaningDayCount != null && quote.cleaningDayCount > 0 ? (
                 <PriceInfoTip label="Temizlik ücreti bilgisi">
@@ -421,9 +436,11 @@ export default function ReservationPriceSummary({
                 {formatMoneyTl(petDamageDeposit, currency)}
               </p>
             ) : null}
-            <p className="text-slate-500">
-              Girişte alınır, hasar yoksa iade edilir. Toplama dahil değildir.
-            </p>
+            {!hideDepositNotice ? (
+              <p className="text-slate-500">
+                Girişte alınır, hasar yoksa iade edilir. Toplama dahil değildir.
+              </p>
+            ) : null}
           </div>
         )}
       </div>

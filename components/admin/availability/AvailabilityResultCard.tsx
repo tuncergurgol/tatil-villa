@@ -4,13 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  BedDouble,
-  ExternalLink,
   Loader2,
-  MapPin,
-  Moon,
   Send,
-  Users,
 } from "lucide-react";
 import {
   resolveAvailabilityStayQuoteAction,
@@ -22,10 +17,7 @@ import PeriodCalendarGrid, {
 import ReservationPriceSummary, {
   getReservationGrandTotal,
 } from "@/components/ReservationPriceSummary";
-import {
-  addDaysToDateKey,
-  formatPlainPrice,
-} from "@/lib/villa-period-calendar";
+import { addDaysToDateKey } from "@/lib/villa-period-calendar";
 import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-search";
 import type { StayQuote } from "@/lib/stay-quote";
 import { villaPublicPath } from "@/lib/villa-public-path";
@@ -270,15 +262,18 @@ export default function AvailabilityResultCard({
 
   const firstMonth = result.calendarMonths[0];
   const secondMonth = result.calendarMonths[1];
-  const adminHref = `/admin/villalar/${result.id}/duzenle`;
   const publicHref = buildVillaPublicUrl(siteKey, result.slug, "", "", adults);
+  const minStayNights =
+    quote?.minStayNights ?? result.quote.minStayNights ?? null;
+  const cleaningDayCount =
+    quote?.cleaningDayCount ?? result.quote.cleaningDayCount ?? null;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="grid gap-0 xl:grid-cols-[minmax(15rem,0.72fr)_minmax(14rem,0.65fr)_minmax(34rem,2fr)]">
         <div className="border-b border-gray-100 p-4 xl:border-b-0 xl:border-r">
-          <div className="flex gap-4">
-            <div className="relative">
+          <div>
+            <div className="relative w-32">
               <label className="absolute left-2 top-2 z-10 inline-flex h-5 w-5 items-center justify-center rounded border border-white/80 bg-white/95 shadow-sm">
                 <input
                   type="checkbox"
@@ -306,66 +301,28 @@ export default function AvailabilityResultCard({
               </p>
             </div>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-                <Link
-                  href={adminHref}
-                  className="text-base font-bold text-gray-900 hover:text-violet-700 hover:underline"
-                >
-                  {result.name}
-                </Link>
-                <Link
-                  href={publicHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 transition hover:bg-gray-50"
-                  title="Public villa sayfası"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Önizleme
-                </Link>
-              </div>
+            <div className="mt-3 min-w-0 space-y-1 text-xs text-gray-600">
+              <Link
+                href={publicHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm font-bold text-gray-900 hover:text-violet-700 hover:underline"
+              >
+                {result.name}
+              </Link>
               {result.villaId != null ? (
-                <p className="mt-0.5 text-xs text-gray-500">
-                  VillaID {result.villaId}
-                </p>
+                <p>VillaID {result.villaId}</p>
               ) : null}
-
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                  {result.regionName}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Users className="h-3.5 w-3.5 text-gray-400" />
-                  {result.guests}
-                  {result.extraCapacity > 0 ? `+${result.extraCapacity}` : ""} kişi
-                  {(adults > 0 || childGuests > 0 || babies > 0) && (
-                    <span className="text-gray-400">
-                      (arama: {adults}+{childGuests}+{babies})
-                    </span>
-                  )}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <BedDouble className="h-3.5 w-3.5 text-gray-400" />
-                  {result.bedrooms} yatak odası
-                </span>
-                {quote?.minStayNights != null && quote.minStayNights > 0 ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Moon className="h-3.5 w-3.5 text-gray-400" />
-                    min {quote.minStayNights} gece
-                  </span>
-                ) : null}
-              </div>
-
-              {result.startingPrice != null ? (
-                <p className="mt-2 text-sm font-semibold text-violet-700">
-                  {formatPlainPrice(
-                    result.startingPrice,
-                    quote?.currency ?? result.quote.currency
-                  )}{" "}
-                  <span className="font-normal text-gray-500">/ gece başlayan</span>
-                </p>
+              {result.location.trim() ? <p>{result.location}</p> : null}
+              <p>{result.regionName}</p>
+              <p>Kişi : {result.guests + result.extraCapacity}</p>
+              <p>Y. Odası : {result.bedrooms}</p>
+              <p>Banyo : {result.bathrooms}</p>
+              {minStayNights != null && minStayNights > 0 ? (
+                <p>Min. Gece: {minStayNights}</p>
+              ) : null}
+              {cleaningDayCount != null && cleaningDayCount > 0 ? (
+                <p>Tem. Gün : {cleaningDayCount}</p>
               ) : null}
             </div>
           </div>
@@ -446,6 +403,8 @@ export default function AvailabilityResultCard({
                   [poolId]: value,
                 }))
               }
+              compactPrimaryRows
+              hideDepositNotice
             />
           </div>
 

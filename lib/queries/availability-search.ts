@@ -71,6 +71,7 @@ export type AvailabilitySearchResultItem = {
   guests: number;
   extraCapacity: number;
   bedrooms: number;
+  bathrooms: number;
   facilityCategories: string[];
   amenities: string[];
   featuredAmenities: string[];
@@ -389,6 +390,7 @@ export async function searchAvailability(
         guests: true,
         extraCapacity: true,
         bedrooms: true,
+        bathrooms: true,
         pricePerNight: true,
         facilityCategories: true,
         amenities: true,
@@ -607,6 +609,7 @@ export async function searchAvailability(
       guests: villa.guests,
       extraCapacity: villa.extraCapacity,
       bedrooms: villa.bedrooms,
+      bathrooms: villa.bathrooms,
       facilityCategories: villa.facilityCategories,
       amenities: villa.amenities,
       featuredAmenities: villa.amenities.filter((amenity) =>
