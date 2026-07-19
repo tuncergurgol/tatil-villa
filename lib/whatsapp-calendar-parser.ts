@@ -168,6 +168,21 @@ function extractDateRange(text: string) {
     if (start && end) return { startDateKey: start, endDateKey: end };
   }
 
+  // "18 agustos 23 aralığı", "18 ağustos 23 arası" → aynı ay içinde 18-23 aralığı.
+  // "aralığı/aralığında/arası" burada tarih aralığı belirtir; Aralık ayı DEĞİLDİR.
+  const sameMonthRangeKeyword = normalized.match(
+    /(\d{1,2})\s+([a-zçğıöşü]+)\s+(\d{1,2})\s+(?:aral[ıi][ğg]\w*|aras[ıi]\w*)/i
+  );
+  if (sameMonthRangeKeyword) {
+    const month = MONTHS[normalizeText(sameMonthRangeKeyword[2])];
+    if (month) {
+      const year = inferYear(month);
+      const start = buildDateKey(year, month, Number(sameMonthRangeKeyword[1]));
+      const end = buildDateKey(year, month, Number(sameMonthRangeKeyword[3]));
+      return { startDateKey: start, endDateKey: end };
+    }
+  }
+
   const monthRange = normalized.match(
     /(\d{1,2})\s*(?:-|–|—|ile|ve|\/)\s*(\d{1,2})\s+([a-zçğıöşü]+)(?:\s+(\d{4}))?/i
   );
