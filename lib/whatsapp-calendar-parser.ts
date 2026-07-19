@@ -25,6 +25,7 @@ const MONTHS: Record<string, number> = {
   mayis: 5,
   mayıs: 5,
   haziran: 6,
+  tem: 7,
   temmuz: 7,
   agustos: 8,
   ağustos: 8,
@@ -42,7 +43,7 @@ const CLOSE_KEYWORDS =
   /\b(kapat\w*|kapal[ıi]\w*|dol(?:u|du|dur)\w*|rezerv\w*|booked|full|kiralan\w*|bloke|blok\w*|tuttu\w*|tutuld\w*)\b/i;
 const OPEN_KEYWORDS =
   /\b(a[cç][ıi]k\w*|a[cç]al[ıi]m|a[cç]t[ıi]k|a[cç][ıi]ld[ıi]|m[üu]sait\w*|bo[sş]\w*|available|serbest\w*|iptal\w*)\b/i;
-const OPTION_KEYWORDS = /\b(opsiyon\w*|option\w*|hold)\b/i;
+const OPTION_KEYWORDS = /\b(ops(?:iyon)?\w*|option\w*|hold)\b/i;
 
 export function normalizeWhatsappCalendarText(value: string) {
   return value
