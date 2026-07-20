@@ -1008,6 +1008,7 @@ export default function BookingDetailModal({
                       if (result.cancelled) {
                         setStatus(BookingStatusEnum.CANCELLED);
                         setOptionExpiresAt(null);
+                        onSaved();
                       }
                     });
                   }}
