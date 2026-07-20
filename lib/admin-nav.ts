@@ -215,6 +215,11 @@ export const adminAgencyNav: NavGroup = {
       icon: "import",
     },
     {
+      label: "Takvim/Fiyat Aktarım",
+      href: "/admin/acente/takvim-fiyat-aktarim",
+      icon: "calendar",
+    },
+    {
       label: "Takvim WhatsApp",
       href: "/admin/acente/evolution-whatsapp",
       icon: "message-circle",
