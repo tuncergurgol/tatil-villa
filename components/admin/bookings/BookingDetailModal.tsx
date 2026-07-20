@@ -112,7 +112,7 @@ interface BookingDetailModalProps {
 const BOOKING_DETAIL_TABS = [
   { id: "rezervasyon", label: "Rezervasyon" },
   { id: "musteri", label: "Müşteri" },
-  { id: "fiyat", label: "Fiyat" },
+  { id: "fiyat", label: "HESAPLAMA" },
   { id: "konfirme", label: "Konfirme" },
   { id: "fatura", label: "Fatura" },
   { id: "odemeler", label: "Ödemeler" },

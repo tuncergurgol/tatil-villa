@@ -371,7 +371,10 @@ export default function BookingPrepaymentSection({
   }
 
   return (
-    <FormSection title="Ön Ödeme">
+    <FormSection
+      title="Ön Ödeme"
+      className="border-emerald-200 bg-emerald-50"
+    >
       {header ? (
         <div className="space-y-3 border-b border-gray-200 pb-3">{header}</div>
       ) : null}

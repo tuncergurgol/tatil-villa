@@ -12,13 +12,17 @@ export const bookingLabelClass =
 export function FormSection({
   title,
   children,
+  className = "",
 }: {
   title: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <fieldset className="rounded-lg border border-gray-300 px-4 pb-4 pt-3">
-      <legend className="px-2 text-sm font-semibold text-gray-800">
+    <fieldset
+      className={`rounded-lg border border-gray-300 px-4 pb-4 pt-3 ${className}`.trim()}
+    >
+      <legend className="bg-inherit px-2 text-sm font-semibold text-gray-800">
         {title}
       </legend>
       <div className="space-y-3">{children}</div>
