@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { isExternalIcalSourceName } from "@/lib/villa-external-sync";
+import { getWhatsappCalendarGroupsForPicker } from "@/lib/queries/whatsapp-calendar";
 
 export type CalendarPriceTransferLinkSlot = {
   slot: 1 | 2 | 3;
@@ -19,17 +20,30 @@ export type CalendarPriceTransferIcalSource = {
   hasError: boolean;
 };
 
+export type CalendarPriceTransferWhatsapp = {
+  groupId: string;
+  groupName: string;
+  differentName: boolean;
+  connected: boolean;
+};
+
 export type CalendarPriceTransferRow = {
   id: string;
   villaId: number | null;
   name: string;
   active: boolean;
+  whatsapp: CalendarPriceTransferWhatsapp;
   ical: CalendarPriceTransferIcalSource | null;
   links: CalendarPriceTransferLinkSlot[];
   lastSyncedAt: Date | null;
   reportMessage: string;
   hasError: boolean;
   isUpdated: boolean;
+};
+
+export type CalendarPriceTransferWhatsappGroupOption = {
+  id: string;
+  name: string;
 };
 
 function messageLooksLikeError(message: string, status?: string): boolean {
@@ -49,48 +63,58 @@ function formatTrDateTime(value: Date | null): string {
   }).format(value);
 }
 
-export async function getCalendarPriceTransferRows(): Promise<
-  CalendarPriceTransferRow[]
-> {
-  const villas = await prisma.villa.findMany({
-    select: {
-      id: true,
-      villaId: true,
-      name: true,
-      active: true,
-      externalSyncUrl1: true,
-      externalSyncUrl2: true,
-      externalSyncUrl3: true,
-      externalSyncLastSyncedAt1: true,
-      externalSyncLastSyncedAt2: true,
-      externalSyncLastSyncedAt3: true,
-      externalSyncLastMessage1: true,
-      externalSyncLastMessage2: true,
-      externalSyncLastMessage3: true,
-      icalSources: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          id: true,
-          name: true,
-          url: true,
-          lastSyncAt: true,
-          lastSyncStatus: true,
-          lastSyncMessage: true,
+export async function getCalendarPriceTransferAdminData(): Promise<{
+  rows: CalendarPriceTransferRow[];
+  whatsappGroups: CalendarPriceTransferWhatsappGroupOption[];
+}> {
+  const [villas, whatsappGroups] = await Promise.all([
+    prisma.villa.findMany({
+      select: {
+        id: true,
+        villaId: true,
+        name: true,
+        active: true,
+        whatsappGroupId: true,
+        whatsappGroupDifferentName: true,
+        externalSyncUrl1: true,
+        externalSyncUrl2: true,
+        externalSyncUrl3: true,
+        externalSyncLastSyncedAt1: true,
+        externalSyncLastSyncedAt2: true,
+        externalSyncLastSyncedAt3: true,
+        externalSyncLastMessage1: true,
+        externalSyncLastMessage2: true,
+        externalSyncLastMessage3: true,
+        icalSources: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            id: true,
+            name: true,
+            url: true,
+            lastSyncAt: true,
+            lastSyncStatus: true,
+            lastSyncMessage: true,
+          },
+        },
+        periodImportLog: {
+          select: {
+            status: true,
+            message: true,
+            succeededAt: true,
+            attemptedAt: true,
+          },
         },
       },
-      periodImportLog: {
-        select: {
-          status: true,
-          message: true,
-          succeededAt: true,
-          attemptedAt: true,
-        },
-      },
-    },
-    orderBy: [{ villaId: "asc" }, { name: "asc" }],
-  });
+      orderBy: [{ villaId: "asc" }, { name: "asc" }],
+    }),
+    getWhatsappCalendarGroupsForPicker(),
+  ]);
 
-  return villas.map((villa) => {
+  const groupNameByExternalId = new Map(
+    whatsappGroups.map((group) => [group.externalId, group.name] as const)
+  );
+
+  const rows = villas.map((villa) => {
     const manualSources = villa.icalSources.filter(
       (source) => !isExternalIcalSourceName(source.name)
     );
@@ -184,11 +208,22 @@ export async function getCalendarPriceTransferRows(): Promise<
     const hasAnySource =
       Boolean(ical?.url.trim()) || links.some((link) => link.url.trim());
 
+    const whatsappGroupId = villa.whatsappGroupId.trim();
+    const whatsapp: CalendarPriceTransferWhatsapp = {
+      groupId: whatsappGroupId,
+      groupName: whatsappGroupId
+        ? groupNameByExternalId.get(whatsappGroupId) || whatsappGroupId
+        : "",
+      differentName: villa.whatsappGroupDifferentName,
+      connected: Boolean(whatsappGroupId),
+    };
+
     return {
       id: villa.id,
       villaId: villa.villaId,
       name: villa.name,
       active: villa.active,
+      whatsapp,
       ical,
       links,
       lastSyncedAt,
@@ -197,4 +232,20 @@ export async function getCalendarPriceTransferRows(): Promise<
       isUpdated: Boolean(lastSyncedAt) && !hasError && hasAnySource,
     };
   });
+
+  return {
+    rows,
+    whatsappGroups: whatsappGroups.map((group) => ({
+      id: group.externalId,
+      name: group.name,
+    })),
+  };
+}
+
+/** @deprecated getCalendarPriceTransferAdminData kullanın */
+export async function getCalendarPriceTransferRows(): Promise<
+  CalendarPriceTransferRow[]
+> {
+  const data = await getCalendarPriceTransferAdminData();
+  return data.rows;
 }

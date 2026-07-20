@@ -11,18 +11,24 @@ import {
 } from "lucide-react";
 import {
   clearCalendarPriceTransferLinkAction,
+  clearCalendarPriceTransferWhatsappAction,
   deletePrimaryVillaIcalSourceAction,
   saveCalendarPriceTransferLinkAction,
+  saveCalendarPriceTransferWhatsappAction,
   syncSelectedVillasCalendarPriceTransferAction,
   syncVillaCalendarPriceTransferAction,
   upsertPrimaryVillaIcalSourceAction,
 } from "@/app/actions/admin/calendar-price-transfer";
-import type { CalendarPriceTransferRow } from "@/lib/queries/calendar-price-transfer";
+import type {
+  CalendarPriceTransferRow,
+  CalendarPriceTransferWhatsappGroupOption,
+} from "@/lib/queries/calendar-price-transfer";
 
 type ListFilter = "all" | "updated" | "not_updated";
 
 type EditorTarget =
   | { kind: "ical"; row: CalendarPriceTransferRow }
+  | { kind: "whatsapp"; row: CalendarPriceTransferRow }
   | { kind: "link"; row: CalendarPriceTransferRow; slot: 1 | 2 | 3 };
 
 const inputClass =
@@ -70,40 +76,67 @@ function LinkOrEmpty({
 
 function ConnectionEditorModal({
   target,
+  whatsappGroups,
   onClose,
   onSaved,
 }: {
   target: EditorTarget;
+  whatsappGroups: CalendarPriceTransferWhatsappGroupOption[];
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
   const isIcal = target.kind === "ical";
+  const isWhatsapp = target.kind === "whatsapp";
   const existingUrl = isIcal
     ? target.row.ical?.url ?? ""
-    : target.row.links.find((l) => l.slot === target.slot)?.url ?? "";
+    : isWhatsapp
+      ? ""
+      : target.row.links.find((l) => l.slot === target.slot)?.url ?? "";
   const [url, setUrl] = useState(existingUrl);
+  const [whatsappGroupId, setWhatsappGroupId] = useState(
+    isWhatsapp ? target.row.whatsapp.groupId : ""
+  );
+  const [differentName, setDifferentName] = useState(
+    isWhatsapp ? target.row.whatsapp.differentName : false
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const hasExisting = Boolean(existingUrl.trim());
+  const hasExisting = isWhatsapp
+    ? target.row.whatsapp.connected
+    : Boolean(existingUrl.trim());
 
   const title = isIcal
     ? `iCal — ${target.row.name}`
-    : `Link ${target.slot} — ${target.row.name}`;
+    : isWhatsapp
+      ? `WhatsApp — ${target.row.name}`
+      : `Link ${target.slot} — ${target.row.name}`;
 
   function handleSave() {
     setError(null);
     startTransition(async () => {
-      const result = isIcal
-        ? await upsertPrimaryVillaIcalSourceAction(
-            target.row.id,
-            url,
-            target.row.ical?.id
-          )
-        : await saveCalendarPriceTransferLinkAction(
-            target.row.id,
-            target.slot,
-            url
-          );
+      let result;
+      if (isIcal) {
+        result = await upsertPrimaryVillaIcalSourceAction(
+          target.row.id,
+          url,
+          target.row.ical?.id
+        );
+      } else if (isWhatsapp) {
+        const selected = whatsappGroups.find(
+          (group) => group.id === whatsappGroupId.trim()
+        );
+        result = await saveCalendarPriceTransferWhatsappAction(target.row.id, {
+          groupId: whatsappGroupId,
+          groupName: selected?.name,
+          differentName,
+        });
+      } else {
+        result = await saveCalendarPriceTransferLinkAction(
+          target.row.id,
+          target.slot,
+          url
+        );
+      }
       if (result.error) {
         setError(result.error);
         return;
@@ -118,15 +151,20 @@ function ConnectionEditorModal({
     if (!window.confirm("Bu bağlantı silinsin mi?")) return;
     setError(null);
     startTransition(async () => {
-      const result = isIcal
-        ? await deletePrimaryVillaIcalSourceAction(
-            target.row.id,
-            target.row.ical!.id
-          )
-        : await clearCalendarPriceTransferLinkAction(
-            target.row.id,
-            target.slot
-          );
+      let result;
+      if (isIcal) {
+        result = await deletePrimaryVillaIcalSourceAction(
+          target.row.id,
+          target.row.ical!.id
+        );
+      } else if (isWhatsapp) {
+        result = await clearCalendarPriceTransferWhatsappAction(target.row.id);
+      } else {
+        result = await clearCalendarPriceTransferLinkAction(
+          target.row.id,
+          target.slot
+        );
+      }
       if (result.error) {
         setError(result.error);
         return;
@@ -155,18 +193,60 @@ function ConnectionEditorModal({
               {error}
             </p>
           ) : null}
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-500">
-              URL
-            </span>
-            <input
-              type="url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://..."
-              className={inputClass}
-            />
-          </label>
+          {isWhatsapp ? (
+            <>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-500">
+                  WhatsApp Grubu
+                </span>
+                <select
+                  value={whatsappGroupId}
+                  onChange={(event) => setWhatsappGroupId(event.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Grup seçin veya aşağıya ID girin</option>
+                  {whatsappGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-500">
+                  Grup ID (manuel)
+                </span>
+                <input
+                  value={whatsappGroupId}
+                  onChange={(event) => setWhatsappGroupId(event.target.value)}
+                  placeholder="120363123456789012@g.us"
+                  className={inputClass}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={differentName}
+                  onChange={(event) => setDifferentName(event.target.checked)}
+                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                />
+                Grupta farklı adı var
+              </label>
+            </>
+          ) : (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-500">
+                URL
+              </span>
+              <input
+                type="url"
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="https://..."
+                className={inputClass}
+              />
+            </label>
+          )}
         </div>
         <div className="flex flex-wrap justify-end gap-2 border-t border-gray-100 px-5 py-4">
           <button
@@ -203,8 +283,10 @@ function ConnectionEditorModal({
 
 export default function CalendarPriceTransferManagement({
   rows,
+  whatsappGroups,
 }: {
   rows: CalendarPriceTransferRow[];
+  whatsappGroups: CalendarPriceTransferWhatsappGroupOption[];
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<ListFilter>("all");
@@ -367,12 +449,13 @@ export default function CalendarPriceTransferManagement({
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[1100px] w-full text-left text-sm">
+          <table className="min-w-[1180px] w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-3 py-3">Seç</th>
                 <th className="px-3 py-3">Villa ID — Villa Adı</th>
                 <th className="px-3 py-3">Durum</th>
+                <th className="px-3 py-3">WhatsApp</th>
                 <th className="px-3 py-3">iCal</th>
                 <th className="px-3 py-3">Link 1</th>
                 <th className="px-3 py-3">Link 2</th>
@@ -411,6 +494,13 @@ export default function CalendarPriceTransferManagement({
                       >
                         {row.active ? "Aktif" : "Pasif"}
                       </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <LinkOrEmpty
+                        label="WhatsApp"
+                        url={row.whatsapp.connected ? "connected" : ""}
+                        onOpen={() => setEditor({ kind: "whatsapp", row })}
+                      />
                     </td>
                     <td className="px-3 py-3">
                       <LinkOrEmpty
@@ -488,7 +578,7 @@ export default function CalendarPriceTransferManagement({
               {filteredRows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Bu filtreye uygun villa bulunamadı.
@@ -503,6 +593,7 @@ export default function CalendarPriceTransferManagement({
       {editor ? (
         <ConnectionEditorModal
           target={editor}
+          whatsappGroups={whatsappGroups}
           onClose={() => setEditor(null)}
           onSaved={(message) => {
             setNotice({ type: "ok", message });

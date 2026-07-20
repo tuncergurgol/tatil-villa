@@ -12,6 +12,7 @@ import {
   type ExternalSyncSlot,
 } from "@/lib/villa-external-sync";
 import { syncVillaIcalSource } from "@/lib/villa-ical-import-service";
+import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 
 export type CalendarPriceTransferActionResult = {
   success?: boolean;
@@ -242,4 +243,66 @@ export async function clearCalendarPriceTransferLinkAction(
   slot: number
 ): Promise<CalendarPriceTransferActionResult> {
   return saveCalendarPriceTransferLinkAction(villaId, slot, "");
+}
+
+export async function saveCalendarPriceTransferWhatsappAction(
+  villaId: string,
+  input: {
+    groupId: string;
+    groupName?: string;
+    differentName?: boolean;
+  }
+): Promise<CalendarPriceTransferActionResult> {
+  await requireAdmin();
+
+  const whatsappGroupId = normalizeWhatsappGroupId(input.groupId.trim());
+  if (!whatsappGroupId) {
+    return { error: "Lütfen bir WhatsApp grubu seçin veya grup ID girin" };
+  }
+
+  const whatsappGroupName = (input.groupName ?? "").trim();
+  const whatsappGroupDifferentName = Boolean(input.differentName);
+
+  await prisma.$transaction(async (tx) => {
+    if (whatsappGroupName) {
+      await tx.whatsappCalendarGroup.upsert({
+        where: { externalId: whatsappGroupId },
+        create: {
+          externalId: whatsappGroupId,
+          name: whatsappGroupName,
+        },
+        update: {
+          name: whatsappGroupName,
+        },
+      });
+    }
+
+    await tx.villa.update({
+      where: { id: villaId },
+      data: {
+        whatsappGroupId,
+        whatsappGroupDifferentName,
+      },
+    });
+  });
+
+  await revalidateTransferPaths(villaId);
+  return { success: true, message: "WhatsApp grubu eşleştirildi" };
+}
+
+export async function clearCalendarPriceTransferWhatsappAction(
+  villaId: string
+): Promise<CalendarPriceTransferActionResult> {
+  await requireAdmin();
+
+  await prisma.villa.update({
+    where: { id: villaId },
+    data: {
+      whatsappGroupId: "",
+      whatsappGroupDifferentName: false,
+    },
+  });
+
+  await revalidateTransferPaths(villaId);
+  return { success: true, message: "WhatsApp eşleştirmesi kaldırıldı" };
 }
