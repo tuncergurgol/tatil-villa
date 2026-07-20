@@ -1522,10 +1522,12 @@ export default function BookingDetailModal({
                           }
                         : {}),
                     }));
+                    onSaved();
                   }}
                   onStatusChanged={(nextStatus, activityLogs) => {
                     setStatus(nextStatus);
                     syncActivityLogs(activityLogs);
+                    onSaved();
                   }}
                   onActivityLogs={syncActivityLogs}
                 />
@@ -2101,6 +2103,7 @@ export default function BookingDetailModal({
             setStatus(BookingStatusEnum.PREPAYMENT);
             setOptionExpiresAt(expiresAt);
             syncActivityLogs(activityLogs);
+            onSaved();
           }}
           bookingId={booking.id}
           prepaymentAmount={details.prepaymentAmount ?? null}
