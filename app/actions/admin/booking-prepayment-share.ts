@@ -37,10 +37,14 @@ import {
   appendBookingSiteFooter,
   resolveBookingSiteBrand,
 } from "@/lib/booking-site-brand";
+import { buildBankTransferWhatsAppParts } from "@/lib/bank-transfer-whatsapp-parts";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNos } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
+import {
+  sendCustomerNotificationWhatsApp,
+  sendCustomerNotificationWhatsAppSequence,
+} from "@/lib/whatsapp-delivery";
 
 const sendPrepaymentInfoSchema = z.object({
   bookingId: z.string().min(1),
@@ -316,10 +320,22 @@ export async function sendBookingPrepaymentInfoAction(
         message,
         siteBrand.siteInfo
       );
-      const wa = await sendCustomerNotificationWhatsApp(
-        phone,
-        whatsappMessage
-      );
+
+      const wa = isBankTransfer
+        ? await sendCustomerNotificationWhatsAppSequence(
+            phone,
+            buildBankTransferWhatsAppParts({
+              summaryMessage: whatsappMessage,
+              companyTitle:
+                templateValues.SIRKETUNVAN || companySettings.companyTitle,
+              iban: templateValues.IBAN || bankAccount?.iban || "",
+              amountText: templateValues.ODENECEKTUTAR || "",
+              guestName: booking.guestName,
+              reservationCode,
+            })
+          )
+        : await sendCustomerNotificationWhatsApp(phone, whatsappMessage);
+
       if (!wa.ok) {
         return {
           success: false,

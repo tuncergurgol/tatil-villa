@@ -58,6 +58,29 @@ export async function sendCustomerNotificationWhatsApp(
   }
 }
 
+/** Birden fazla WhatsApp mesajını sırayla gönderir (kısa gecikme ile). */
+export async function sendCustomerNotificationWhatsAppSequence(
+  phone: string,
+  messages: string[],
+  options?: { delayMs?: number }
+): Promise<WhatsAppSendResult> {
+  const delayMs = options?.delayMs ?? 900;
+  const parts = messages.map((item) => item.trim()).filter(Boolean);
+  if (parts.length === 0) {
+    return { ok: false, error: "Gönderilecek WhatsApp mesajı yok" };
+  }
+
+  for (let index = 0; index < parts.length; index += 1) {
+    const result = await sendCustomerNotificationWhatsApp(phone, parts[index]!);
+    if (!result.ok) return result;
+    if (index < parts.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return { ok: true };
+}
+
 /**
  * Operasyonel WhatsApp (takvim / misafir karşılayan) → Evolution.
  * Örn: villa yetkilisine giriş bilgilendirme paylaşımı.
