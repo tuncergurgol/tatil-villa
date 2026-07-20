@@ -43,6 +43,21 @@ async function downloadOwnerPaymentExcel(
   XLSX.writeFile(workbook, fileName);
 }
 
+function formatOwnerPaymentDateLabel(ymd: string | null | undefined): string {
+  if (!ymd) return "—";
+  const match = ymd.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return ymd;
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
+function resolveLatestPaymentAt(
+  payments: BookingOwnerPaymentRecord[]
+): Date | null {
+  if (payments.length === 0) return null;
+  const latest = payments[payments.length - 1]!.paidAt;
+  return new Date(`${latest}T12:00:00`);
+}
+
 function refreshItemPayments(
   item: OwnerPaymentReportListItem,
   ownerPayments: BookingOwnerPaymentRecord[]
@@ -59,6 +74,7 @@ function refreshItemPayments(
     ownerPayments,
     paidAmount,
     remainingAmount,
+    latestOwnerPaymentAt: resolveLatestPaymentAt(ownerPayments),
     missing,
     exportable: missing.length === 0 && remainingAmount > 0,
   };
@@ -254,7 +270,7 @@ export default function OwnerPaymentReportPage({
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[1280px] w-full text-left text-sm">
+          <table className="min-w-[1380px] w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-3 py-2">Rezervasyon No</th>
@@ -263,6 +279,7 @@ export default function OwnerPaymentReportPage({
                 <th className="px-3 py-2">Alıcı / Ev Sahibi</th>
                 <th className="px-3 py-2">IBAN</th>
                 <th className="px-3 py-2">Konaklama</th>
+                <th className="px-3 py-2">Ödeme Tarihi</th>
                 <th className="px-3 py-2">Ödenecek</th>
                 <th className="px-3 py-2">Ödenen</th>
                 <th className="px-3 py-2">Kalan</th>
@@ -304,6 +321,25 @@ export default function OwnerPaymentReportPage({
                       <td className="px-3 py-2 text-gray-700">
                         <div>{stay.range}</div>
                         <div className="text-xs text-gray-400">{stay.nights}</div>
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {item.ownerPayments.length > 0 ? (
+                          <div>
+                            <div>
+                              {formatOwnerPaymentDateLabel(
+                                item.ownerPayments[item.ownerPayments.length - 1]
+                                  ?.paidAt
+                              )}
+                            </div>
+                            {item.ownerPayments.length > 1 ? (
+                              <div className="text-xs text-gray-400">
+                                {item.ownerPayments.length} ödeme
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-3 py-2 text-gray-700">
                         {formatMoneyPlain(item.ownerPayableAmount)}
@@ -350,7 +386,7 @@ export default function OwnerPaymentReportPage({
               ) : (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Filtrelere uygun onaylı rezervasyon bulunamadı.

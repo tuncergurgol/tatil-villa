@@ -160,6 +160,13 @@ function mapBookingToListItem(
   const ownerPayments = normalizeOwnerPayments(details.ownerPayments);
   const paidAmount = ownerPayments.reduce((sum, row) => sum + row.amount, 0);
   const remainingAmount = Math.max(0, ownerPayableAmount - paidAmount);
+  const latestPaidAt =
+    ownerPayments.length > 0
+      ? ownerPayments[ownerPayments.length - 1]!.paidAt
+      : null;
+  const latestOwnerPaymentAt = latestPaidAt
+    ? new Date(`${latestPaidAt}T12:00:00`)
+    : null;
   const exportInput = toExportInput(booking, remainingAmount);
   const missing = checkOwnerPaymentMissingFields(exportInput);
   const paymentMethod =
@@ -210,6 +217,7 @@ function mapBookingToListItem(
     paidAmount,
     remainingAmount,
     ownerPayments,
+    latestOwnerPaymentAt,
     missing,
     exportable: missing.length === 0,
   };

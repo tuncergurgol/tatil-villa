@@ -29,6 +29,8 @@ export type BookingFilters = {
   checkInEnd: string;
   checkOutStart: string;
   checkOutEnd: string;
+  paymentDateStart: string;
+  paymentDateEnd: string;
 };
 
 export const BOOKING_QUICK_FILTER_OPTIONS: {
@@ -58,6 +60,8 @@ export const emptyBookingFilters = (): BookingFilters => ({
   checkInEnd: "",
   checkOutStart: "",
   checkOutEnd: "",
+  paymentDateStart: "",
+  paymentDateEnd: "",
 });
 
 interface VillaOption {
@@ -129,11 +133,18 @@ function DateFiltersGrid({
       onStart: (value: string) => updateDraft({ checkOutStart: value }),
       onEnd: (value: string) => updateDraft({ checkOutEnd: value }),
     },
+    {
+      label: "Ödeme Tarihi",
+      start: draft.paymentDateStart,
+      end: draft.paymentDateEnd,
+      onStart: (value: string) => updateDraft({ paymentDateStart: value }),
+      onEnd: (value: string) => updateDraft({ paymentDateEnd: value }),
+    },
   ] as const;
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200">
-      <div className="grid grid-cols-[100px_1fr_1fr] gap-2 border-b border-gray-100 bg-gray-50/80 px-3 py-2 text-xs font-semibold text-gray-500">
+      <div className="grid grid-cols-[110px_1fr_1fr] gap-2 border-b border-gray-100 bg-gray-50/80 px-3 py-2 text-xs font-semibold text-gray-500">
         <span />
         <span>Başlangıç</span>
         <span>Bitiş</span>
@@ -141,7 +152,7 @@ function DateFiltersGrid({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="grid grid-cols-[100px_1fr_1fr] items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+          className="grid grid-cols-[110px_1fr_1fr] items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
         >
           <span className="text-sm font-medium text-gray-700">{row.label}</span>
           <input
@@ -175,6 +186,7 @@ export function countActiveBookingFilters(filters: BookingFilters): number {
   if (filters.reservationDateStart || filters.reservationDateEnd) count += 1;
   if (filters.checkInStart || filters.checkInEnd) count += 1;
   if (filters.checkOutStart || filters.checkOutEnd) count += 1;
+  if (filters.paymentDateStart || filters.paymentDateEnd) count += 1;
   return count;
 }
 

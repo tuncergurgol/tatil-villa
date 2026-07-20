@@ -144,6 +144,24 @@ export function filterBookings(
       return false;
     }
 
+    if (filters.paymentDateStart || filters.paymentDateEnd) {
+      // Rezervasyonlar listesinde alan yoksa bu filtreyi yok say.
+      if (booking.latestOwnerPaymentAt !== undefined) {
+        if (!booking.latestOwnerPaymentAt) {
+          return false;
+        }
+        if (
+          !isDateWithinRange(
+            booking.latestOwnerPaymentAt,
+            filters.paymentDateStart,
+            filters.paymentDateEnd
+          )
+        ) {
+          return false;
+        }
+      }
+    }
+
     return true;
   });
 }
