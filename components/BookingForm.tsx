@@ -3,10 +3,12 @@
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Phone,
+  Share2,
 } from "lucide-react";
 import { submitBooking, type BookingActionState } from "@/app/actions/booking";
 import FloatingPanel from "@/components/FloatingPanel";
@@ -39,6 +41,7 @@ import {
   buildStayQuoteDayMap,
   computeStayQuote,
 } from "@/lib/stay-quote";
+import { buildVillaReservationShareText } from "@/lib/villa-reservation-share";
 import {
   getPublicVillaDayVisualStyle,
   resolveVillaDayVisual,
@@ -68,6 +71,7 @@ interface BookingFormProps {
   heatedPools?: HeatedPoolOption[];
   villaSummary: {
     name: string;
+    slug: string;
     code: string;
     image: string;
     guests: number;
@@ -154,6 +158,7 @@ export default function BookingForm({
 }: BookingFormProps) {
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
   const [modalOpen, setModalOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [feeSelections, setFeeSelections] = useState<StayFeeSelections>({});
   const [poolHeatingSelections, setPoolHeatingSelections] =
     useState<PoolHeatingSelections>({});
@@ -458,6 +463,43 @@ export default function BookingForm({
 
   const canOpenModal = Boolean(checkIn && checkOut && quote?.valid);
 
+  async function handleShare() {
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    const text = buildVillaReservationShareText({
+      brandName,
+      villaName: villaSummary.name,
+      slug: villaSummary.slug,
+      origin,
+      checkIn,
+      checkOut,
+      adults: guests.adults,
+      children: guests.children,
+      pets: allowPets ? guests.pets : 0,
+      baseCapacity,
+      quote,
+      fees: periodFees,
+      selections: feeSelections,
+      heatedPools,
+      poolHeatingSelections,
+    });
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: `${brandName} - ${villaSummary.name}`,
+          text,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      /* kullanıcı paylaşımı iptal etti */
+    }
+  }
+
   function handleOpenModal() {
     if (!canOpenModal) return;
     setDatesOpen(false);
@@ -499,34 +541,55 @@ export default function BookingForm({
       className="sticky top-[var(--villa-detail-sticky-below-nav,9rem)] overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-100 to-slate-50 shadow-[0_12px_40px_rgba(15,23,42,0.1)]"
     >
       <div className="border-b border-slate-200/70 bg-white/80 px-3.5 py-2.5">
-        <h3 className="text-base font-bold tracking-tight text-slate-900">
-          Rezervasyon Yap
-        </h3>
-        {!checkIn || !checkOut ? (
-          pricePerNight ? (
-            <p className="mt-0.5 text-xs text-slate-500">
-              Tarih seçerek konaklama bedelini hesaplayın
-            </p>
-          ) : (
-            <p className="mt-0.5 text-xs font-semibold text-amber-600">
-              Tarih Seçiniz
-            </p>
-          )
-        ) : quote?.valid ? (
-          <p className="mt-1 text-[15px] font-bold leading-tight text-slate-900">
-            {quote.nights} Gece
-            <span className="mx-1.5 font-semibold text-slate-400">·</span>
-            Toplam{" "}
-            <span className="text-emerald-600">
-              {(pricingTotals?.grandTotal ?? quote.total).toLocaleString("tr-TR")}{" "}
-              {quote.currency}
-            </span>
-          </p>
-        ) : (
-          <p className="mt-0.5 text-xs text-amber-700">
-            {quote?.invalidReason ?? "Hesaplama için tarih seçin"}
-          </p>
-        )}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold tracking-tight text-slate-900">
+              Rezervasyon Yap
+            </h3>
+            {!checkIn || !checkOut ? (
+              pricePerNight ? (
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Tarih seçerek konaklama bedelini hesaplayın
+                </p>
+              ) : (
+                <p className="mt-0.5 text-xs font-semibold text-amber-600">
+                  Tarih Seçiniz
+                </p>
+              )
+            ) : quote?.valid ? (
+              <p className="mt-1 text-[15px] font-bold leading-tight text-slate-900">
+                {quote.nights} Gece
+                <span className="mx-1.5 font-semibold text-slate-400">·</span>
+                Toplam{" "}
+                <span className="text-emerald-600">
+                  {(pricingTotals?.grandTotal ?? quote.total).toLocaleString(
+                    "tr-TR"
+                  )}{" "}
+                  {quote.currency}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-0.5 text-xs text-amber-700">
+                {quote?.invalidReason ?? "Hesaplama için tarih seçin"}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void handleShare();
+            }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            aria-label="Paylaş"
+          >
+            {shareCopied ? (
+              <Check className="h-3.5 w-3.5 text-teal-600" />
+            ) : (
+              <Share2 className="h-3.5 w-3.5 text-slate-600" />
+            )}
+            {shareCopied ? "Kopyalandı" : "Paylaş"}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-1.5 p-2.5 sm:p-3">

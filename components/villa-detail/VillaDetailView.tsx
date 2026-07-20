@@ -587,6 +587,7 @@ export default function VillaDetailView({
                 }))}
               villaSummary={{
                 name: villa.name,
+                slug: villa.slug,
                 code: villa.villaCode || villa.name,
                 image: villa.image,
                 guests: villa.guests,
