@@ -341,11 +341,18 @@ export async function sendBookingPrepaymentInfoAction(
     Date.now() + data.optionHours * 60 * 60 * 1000
   );
 
+  const existingDetails = parseBookingDetails(booking.details);
+
   await prisma.booking.update({
     where: { id: data.bookingId },
     data: {
       status: BookingStatus.PREPAYMENT,
       optionExpiresAt,
+      details: {
+        ...existingDetails,
+        prepaymentAmount: Math.round(data.prepaymentAmount),
+        importPaymentMethod: normalizeCompanyPaymentType(data.paymentMethod),
+      },
     },
   });
 

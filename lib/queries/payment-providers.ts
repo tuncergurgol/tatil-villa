@@ -25,7 +25,7 @@ export type PaymentProviderItem = {
   fields: PaymentProviderMaskedField[];
 };
 
-function parseFieldDefs(raw: unknown): PaymentProviderFieldDef[] {
+export function parseFieldDefs(raw: unknown): PaymentProviderFieldDef[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((item) => {

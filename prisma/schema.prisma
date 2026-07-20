@@ -836,6 +836,7 @@ model Booking {
   confirmationSentAt DateTime?
   details            Json                @default("{}")
   prepayments        BookingPrepayment[]
+  paymentSessions    BookingPaymentSession[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -859,6 +860,30 @@ model BookingPrepayment {
   updatedAt      DateTime            @updatedAt
 
   @@index([bookingId])
+}
+
+model BookingPaymentSession {
+  id             String   @id @default(cuid())
+  bookingId      String
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  providerSlug   String   @default("iyzico")
+  conversationId String
+  token          String?
+  amount         Int
+  currency       String   @default("TRY")
+  description    String   @default("")
+  status         String   @default("pending")
+  paymentId      String?
+  paidPrice      Int?
+  callbackDomain String   @default("")
+  rawResult      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([conversationId])
+  @@index([token])
+  @@index([status])
 }
 
 model User {
