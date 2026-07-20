@@ -10,6 +10,71 @@ import {
   type IyzicoConfig,
 } from "@/lib/payments/iyzico-client";
 
+export async function testIyzicoProviderConnection(
+  provider: ResolvedIyzicoProvider,
+  callbackOrigin: string
+): Promise<{ ok: boolean; message: string }> {
+  try {
+    const result = await iyzicoCheckoutFormInitialize(provider.config, {
+      conversationId: `test-${Date.now()}`,
+      price: "1.00",
+      paidPrice: "1.00",
+      basketId: "test-basket",
+      callbackUrl: `${callbackOrigin.replace(/\/+$/, "")}/api/payments/iyzico/callback?code=test`,
+      buyer: {
+        id: "test-buyer",
+        name: "Test",
+        surname: "Kullanici",
+        identityNumber: "11111111111",
+        email: "test@example.com",
+        gsmNumber: "+905555555555",
+        registrationAddress: "Türkiye",
+        city: "Istanbul",
+        country: "Turkey",
+        ip: "85.34.78.112",
+      },
+      billingAddress: {
+        contactName: "Test Kullanici",
+        city: "Istanbul",
+        country: "Turkey",
+        address: "Türkiye",
+      },
+      basketItems: [
+        {
+          id: "test-item",
+          name: "iyzico baglanti testi",
+          category1: "Konaklama",
+          itemType: "VIRTUAL",
+          price: "1.00",
+        },
+      ],
+    });
+
+    if (result.status === "success" && result.token) {
+      return {
+        ok: true,
+        message: `iyzico bağlantısı başarılı (${provider.mode === "live" ? "Canlı" : "Test"}).`,
+      };
+    }
+
+    return {
+      ok: false,
+      message:
+        result.errorMessage ||
+        result.errorCode ||
+        "iyzico test isteği başarısız oldu. API anahtarlarını ve modu kontrol edin.",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "iyzico test isteği sırasında hata oluştu.",
+    };
+  }
+}
+
 export type ResolvedIyzicoProvider = {
   id: string;
   slug: string;
@@ -48,6 +113,42 @@ export async function getActiveIyzicoProvider(): Promise<ResolvedIyzicoProvider 
   return mapProvider(provider);
 }
 
+function resolveCredentialValue(
+  credentials: Record<string, string>,
+  fieldDefs: PaymentProviderFieldDef[],
+  kind: "api" | "secret"
+): string {
+  const directKeys =
+    kind === "api"
+      ? ["apiKey", "APIKey", "api_key", "apikey", "publicKey", "public_key"]
+      : ["secretKey", "SecretKey", "secret_key", "secretkey", "privateKey", "private_key"];
+
+  for (const key of directKeys) {
+    const value = credentials[key]?.trim();
+    if (value) return value;
+  }
+
+  for (const field of fieldDefs) {
+    const haystack = `${field.key} ${field.label}`.toLowerCase();
+    const matches =
+      kind === "api"
+        ? /api|anahtar|key|public/.test(haystack) &&
+          !/secret|güvenlik|guvenlik|private/.test(haystack)
+        : /secret|güvenlik|guvenlik|private/.test(haystack);
+
+    if (matches) {
+      const value = credentials[field.key]?.trim();
+      if (value) return value;
+    }
+  }
+
+  const orderedValues = fieldDefs
+    .map((field) => credentials[field.key]?.trim() || "")
+    .filter(Boolean);
+  if (kind === "api") return orderedValues[0] ?? "";
+  return orderedValues[1] ?? orderedValues[0] ?? "";
+}
+
 function mapProvider(provider: {
   id: string;
   slug: string;
@@ -59,22 +160,10 @@ function mapProvider(provider: {
   const fieldDefs: PaymentProviderFieldDef[] = parseFieldDefs(provider.fields);
   const credentials = parseCredentials(provider.credentials);
 
-  const apiKey =
-    credentials.apiKey?.trim() ||
-    credentials.APIKey?.trim() ||
-    credentials.api_key?.trim() ||
-    "";
-  const secretKey =
-    credentials.secretKey?.trim() ||
-    credentials.SecretKey?.trim() ||
-    credentials.secret_key?.trim() ||
-    "";
+  const apiKey = resolveCredentialValue(credentials, fieldDefs, "api");
+  const secretKey = resolveCredentialValue(credentials, fieldDefs, "secret");
 
-  const requiredMissing = fieldDefs
-    .filter((field) => field.required)
-    .some((field) => !credentials[field.key]?.trim());
-
-  if (!apiKey || !secretKey || requiredMissing) {
+  if (!apiKey || !secretKey) {
     return null;
   }
 
@@ -188,40 +277,61 @@ export async function startBookingIyzicoCheckout(input: {
     },
   });
 
-  const initialize = await iyzicoCheckoutFormInitialize(provider.config, {
-    conversationId,
-    price,
-    paidPrice: price,
-    basketId: `booking-${input.reservationCode}`,
-    callbackUrl,
-    buyer: {
-      id: input.bookingId,
-      name,
-      surname,
-      identityNumber: "11111111111",
-      email: input.guestEmail.trim() || "misafir@example.com",
-      gsmNumber: formatIyzicoGsmNumber(input.guestPhone),
-      registrationAddress: "Türkiye",
-      city: "Istanbul",
-      country: "Turkey",
-      ip: input.clientIp || "85.34.78.112",
-    },
-    billingAddress: {
-      contactName: input.guestName.trim() || "Misafir",
-      city: "Istanbul",
-      country: "Turkey",
-      address: "Türkiye",
-    },
-    basketItems: [
-      {
-        id: session.id,
-        name: description,
-        category1: "Konaklama",
-        itemType: "VIRTUAL",
-        price,
+  let initialize;
+  try {
+    initialize = await iyzicoCheckoutFormInitialize(provider.config, {
+      conversationId,
+      price,
+      paidPrice: price,
+      basketId: `booking-${input.reservationCode}`,
+      callbackUrl,
+      buyer: {
+        id: input.bookingId.slice(0, 50),
+        name,
+        surname,
+        identityNumber: "11111111111",
+        email: input.guestEmail.trim() || "misafir@example.com",
+        gsmNumber: formatIyzicoGsmNumber(input.guestPhone),
+        registrationAddress: "Türkiye",
+        city: "Istanbul",
+        country: "Turkey",
+        ip: input.clientIp || "85.34.78.112",
       },
-    ],
-  });
+      billingAddress: {
+        contactName: input.guestName.trim() || "Misafir",
+        city: "Istanbul",
+        country: "Turkey",
+        address: "Türkiye",
+      },
+      basketItems: [
+        {
+          id: session.id.slice(0, 50),
+          name: description.slice(0, 100),
+          category1: "Konaklama",
+          itemType: "VIRTUAL",
+          price,
+        },
+      ],
+    });
+  } catch (error) {
+    await prisma.bookingPaymentSession.update({
+      where: { id: session.id },
+      data: {
+        status: "failure",
+        rawResult: {
+          error:
+            error instanceof Error ? error.message : "iyzico isteği başarısız",
+        },
+      },
+    });
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "iyzico ödeme oturumu başlatılamadı.",
+    };
+  }
 
   if (initialize.status !== "success" || !initialize.token) {
     await prisma.bookingPaymentSession.update({

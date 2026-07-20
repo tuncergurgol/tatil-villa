@@ -46,31 +46,51 @@ export default function IyzicoCheckoutPopup({
   onError,
 }: IyzicoCheckoutPopupProps) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
 
   const startCheckout = async () => {
     if (disabled || loading) return;
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch("/api/payments/iyzico/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: reservationCode }),
       });
-      const data = (await response.json()) as {
-        checkoutFormContent?: string;
-        error?: string;
-      };
+
+      const raw = await response.text();
+      let data: { checkoutFormContent?: string; error?: string } = {};
+      if (raw.trim()) {
+        try {
+          data = JSON.parse(raw) as {
+            checkoutFormContent?: string;
+            error?: string;
+          };
+        } catch {
+          const message =
+            response.status >= 500
+              ? "Ödeme servisi geçici olarak yanıt vermiyor. Lütfen biraz sonra tekrar deneyin."
+              : "Ödeme servisinden geçersiz yanıt alındı.";
+          setError(message);
+          onError?.(message);
+          return;
+        }
+      }
 
       if (!response.ok || !data.checkoutFormContent) {
         const message = data.error || "Ödeme ekranı açılamadı.";
+        setError(message);
         onError?.(message);
         return;
       }
 
       injectCheckoutFormContent(data.checkoutFormContent);
     } catch {
-      onError?.("Ödeme ekranı açılırken bir hata oluştu.");
+      const message = "Ödeme ekranı açılırken bir hata oluştu.";
+      setError(message);
+      onError?.(message);
     } finally {
       setLoading(false);
     }
@@ -101,6 +121,9 @@ export default function IyzicoCheckoutPopup({
           Ödemeyi Tekrar Dene
         </button>
       )}
+      {error ? (
+        <p className="mt-3 text-sm text-red-600">{error}</p>
+      ) : null}
     </>
   );
 }

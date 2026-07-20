@@ -89,19 +89,38 @@ async function iyzicoPost<T>(
     requestBody
   );
 
-  const response = await fetch(`${config.baseUrl}${uriPath}`, {
-    method: "POST",
-    headers: {
-      Authorization: authorization,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: requestBody,
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${config.baseUrl}${uriPath}`, {
+      method: "POST",
+      headers: {
+        Authorization: authorization,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: requestBody,
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `iyzico bağlantı hatası: ${error.message}`
+        : "iyzico API'sine bağlanılamadı."
+    );
+  }
 
-  const json = (await response.json()) as T;
-  return json;
+  const raw = await response.text();
+  if (!raw.trim()) {
+    throw new Error(`iyzico boş yanıt döndü (HTTP ${response.status}).`);
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new Error(
+      `iyzico geçersiz yanıt döndü (HTTP ${response.status}): ${raw.slice(0, 180)}`
+    );
+  }
 }
 
 export async function iyzicoCheckoutFormInitialize(
@@ -117,7 +136,7 @@ export async function iyzicoCheckoutFormInitialize(
     basketId: input.basketId,
     paymentGroup: "PRODUCT",
     callbackUrl: input.callbackUrl,
-    enabledInstallments: input.enabledInstallments ?? [1, 2, 3, 6, 9, 12],
+    enabledInstallments: input.enabledInstallments ?? [2, 3, 6, 9, 12],
     buyer: input.buyer,
     shippingAddress: input.billingAddress,
     billingAddress: input.billingAddress,

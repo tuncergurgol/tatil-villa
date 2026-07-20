@@ -6,6 +6,12 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import type { PaymentProviderFieldDef } from "@/lib/queries/payment-providers";
+import {
+  getActiveIyzicoProvider,
+  testIyzicoProviderConnection,
+} from "@/lib/payments/booking-iyzico-checkout";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 
 export type PaymentProviderActionState = {
   success?: boolean;
@@ -193,9 +199,25 @@ export async function testPaymentProviderConfig(
     };
   }
 
+  if (provider.slug === "iyzico") {
+    const resolved = await getActiveIyzicoProvider();
+    if (!resolved || resolved.id !== provider.id) {
+      return {
+        ok: false,
+        message:
+          "iyzico anahtarları okunamadı. Alan adlarının apiKey / secretKey olduğundan emin olun.",
+      };
+    }
+
+    const company = await getCompanySettings();
+    const callbackOrigin = `https://${sanitizePublicBookingDomain(company.domain)}`;
+    return testIyzicoProviderConnection(resolved, callbackOrigin);
+  }
+
   return {
     ok: true,
-    message: "Yapılandırma eksiksiz görünüyor. (Not: Bu test gerçek bir ödeme sağlayıcı API çağrısı yapmaz, sadece gerekli alanların dolu olduğunu doğrular.)",
+    message:
+      "Yapılandırma eksiksiz görünüyor. (Gerçek API testi yalnızca iyzico için yapılır.)",
   };
 }
 
