@@ -31,10 +31,10 @@ export type AdminBookingListItem = {
   /** Site domain (AgencySite / originDomain / şirket fallback) */
   siteDomain: string;
   /**
-   * Ev sahibi ödemesi sayfası: son ödeme tarihi (yyyy-mm-dd Date).
+   * Ev sahibi ödemeleri raporu: villa sahibine ödeme yapılacak vade tarihi.
    * Diğer listelerde tanımsızdır; ödeme tarihi filtresi yalnızca bu alan varken uygulanır.
    */
-  latestOwnerPaymentAt?: Date | null;
+  ownerPaymentDueAt?: Date | null;
   villa: {
     id: string;
     villaId: number | null;

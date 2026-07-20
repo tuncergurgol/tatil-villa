@@ -146,13 +146,13 @@ export function filterBookings(
 
     if (filters.paymentDateStart || filters.paymentDateEnd) {
       // Rezervasyonlar listesinde alan yoksa bu filtreyi yok say.
-      if (booking.latestOwnerPaymentAt !== undefined) {
-        if (!booking.latestOwnerPaymentAt) {
+      if (booking.ownerPaymentDueAt !== undefined) {
+        if (!booking.ownerPaymentDueAt) {
           return false;
         }
         if (
           !isDateWithinRange(
-            booking.latestOwnerPaymentAt,
+            booking.ownerPaymentDueAt,
             filters.paymentDateStart,
             filters.paymentDateEnd
           )

@@ -8,7 +8,10 @@ import {
 } from "@/lib/booking-form-details";
 import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 import { getOwnerDisplayName } from "@/lib/btrans-report";
-import { computeOwnerPayableAmount } from "@/lib/owner-payment-schedule";
+import {
+  computeOwnerPayableAmount,
+  computeOwnerPaymentDueDate,
+} from "@/lib/owner-payment-schedule";
 import {
   OWNER_PAYMENT_EXCEL_HEADERS,
   buildOwnerPaymentExcelRow,
@@ -27,6 +30,8 @@ export type OwnerPaymentReportListItem = AdminBookingListItem & {
   ownerPayableAmount: number;
   paidAmount: number;
   remainingAmount: number;
+  /** yyyy-mm-dd — formdaki «Villa Sahibine Ödeme Yapılacak Tarih» */
+  ownerPaymentDueDate: string;
   ownerPayments: ReturnType<typeof normalizeOwnerPayments>;
   missing: string[];
   exportable: boolean;
@@ -47,6 +52,7 @@ const ownerPaymentBookingSelect = {
   totalPrice: true,
   status: true,
   createdAt: true,
+  confirmationSentAt: true,
   optionExpiresAt: true,
   details: true,
   villa: {
@@ -57,6 +63,9 @@ const ownerPaymentBookingSelect = {
       name: true,
       originalName: true,
       documentNo: true,
+      prepaymentPaymentType: {
+        select: { name: true },
+      },
       owner: {
         select: {
           type: true,
@@ -87,6 +96,7 @@ type OwnerPaymentBookingRecord = {
   totalPrice: number | null;
   status: AdminBookingListItem["status"];
   createdAt: Date;
+  confirmationSentAt: Date | null;
   optionExpiresAt: Date | null;
   details: unknown;
   villa: {
@@ -96,6 +106,7 @@ type OwnerPaymentBookingRecord = {
     name: string;
     originalName: string;
     documentNo: string;
+    prepaymentPaymentType: { name: string } | null;
     owner: {
       type: "GERCEK_KISI" | "TUZEL_KISI";
       name: string;
@@ -160,12 +171,21 @@ function mapBookingToListItem(
   const ownerPayments = normalizeOwnerPayments(details.ownerPayments);
   const paidAmount = ownerPayments.reduce((sum, row) => sum + row.amount, 0);
   const remainingAmount = Math.max(0, ownerPayableAmount - paidAmount);
-  const latestPaidAt =
-    ownerPayments.length > 0
-      ? ownerPayments[ownerPayments.length - 1]!.paidAt
-      : null;
-  const latestOwnerPaymentAt = latestPaidAt
-    ? new Date(`${latestPaidAt}T12:00:00`)
+  const paymentTypeName =
+    booking.villa.prepaymentPaymentType?.name?.trim() ||
+    details.ownerPaymentTerm?.trim() ||
+    "";
+  const ownerPaymentDueDate =
+    computeOwnerPaymentDueDate({
+      paymentTypeName,
+      confirmationDate: booking.confirmationSentAt,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+    }) ||
+    (details.ownerPaymentDueDate ?? "").trim() ||
+    "";
+  const ownerPaymentDueAt = ownerPaymentDueDate
+    ? new Date(`${ownerPaymentDueDate}T12:00:00`)
     : null;
   const exportInput = toExportInput(booking, remainingAmount);
   const missing = checkOwnerPaymentMissingFields(exportInput);
@@ -217,7 +237,8 @@ function mapBookingToListItem(
     paidAmount,
     remainingAmount,
     ownerPayments,
-    latestOwnerPaymentAt,
+    ownerPaymentDueDate,
+    ownerPaymentDueAt,
     missing,
     exportable: missing.length === 0,
   };

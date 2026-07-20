@@ -50,14 +50,6 @@ function formatOwnerPaymentDateLabel(ymd: string | null | undefined): string {
   return `${match[3]}.${match[2]}.${match[1]}`;
 }
 
-function resolveLatestPaymentAt(
-  payments: BookingOwnerPaymentRecord[]
-): Date | null {
-  if (payments.length === 0) return null;
-  const latest = payments[payments.length - 1]!.paidAt;
-  return new Date(`${latest}T12:00:00`);
-}
-
 function refreshItemPayments(
   item: OwnerPaymentReportListItem,
   ownerPayments: BookingOwnerPaymentRecord[]
@@ -74,7 +66,6 @@ function refreshItemPayments(
     ownerPayments,
     paidAmount,
     remainingAmount,
-    latestOwnerPaymentAt: resolveLatestPaymentAt(ownerPayments),
     missing,
     exportable: missing.length === 0 && remainingAmount > 0,
   };
@@ -323,23 +314,7 @@ export default function OwnerPaymentReportPage({
                         <div className="text-xs text-gray-400">{stay.nights}</div>
                       </td>
                       <td className="px-3 py-2 text-gray-700">
-                        {item.ownerPayments.length > 0 ? (
-                          <div>
-                            <div>
-                              {formatOwnerPaymentDateLabel(
-                                item.ownerPayments[item.ownerPayments.length - 1]
-                                  ?.paidAt
-                              )}
-                            </div>
-                            {item.ownerPayments.length > 1 ? (
-                              <div className="text-xs text-gray-400">
-                                {item.ownerPayments.length} ödeme
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : (
-                          "—"
-                        )}
+                        {formatOwnerPaymentDateLabel(item.ownerPaymentDueDate)}
                       </td>
                       <td className="px-3 py-2 text-gray-700">
                         {formatMoneyPlain(item.ownerPayableAmount)}
