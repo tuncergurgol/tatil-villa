@@ -28,6 +28,7 @@ import {
   formatGuestCounts,
   formatMoneyPlain,
   formatStaySummary,
+  formatBookingDateTime,
   resolveBookingPrepaymentAmount,
   resolvePaymentMethodLabel,
 } from "@/lib/booking-display";
@@ -57,6 +58,11 @@ function StatusButton({
   const showCountdown =
     booking.status === BookingStatus.PREPAYMENT &&
     Boolean(booking.optionExpiresAt);
+  const createdAtLabel = formatBookingDateTime(booking.createdAt);
+  const confirmedAtLabel =
+    booking.status === BookingStatus.CONFIRMED
+      ? formatBookingDateTime(booking.confirmedAt)
+      : null;
 
   return (
     <div className="flex flex-col items-start gap-1.5">
@@ -71,6 +77,20 @@ function StatusButton({
       >
         {meta.label}
       </button>
+      {createdAtLabel ? (
+        <p className="text-[11px] leading-tight text-gray-500">
+          <span className="font-medium text-gray-600">Oluşturma</span>
+          <br />
+          {createdAtLabel}
+        </p>
+      ) : null}
+      {confirmedAtLabel ? (
+        <p className="text-[11px] leading-tight text-gray-500">
+          <span className="font-medium text-gray-600">Onay</span>
+          <br />
+          {confirmedAtLabel}
+        </p>
+      ) : null}
       {showCountdown ? (
         <OptionCountdown
           expiresAt={booking.optionExpiresAt}

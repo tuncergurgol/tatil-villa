@@ -209,6 +209,7 @@ function mapBookingToListItem(
     totalPrice: booking.totalPrice,
     status: booking.status,
     createdAt: booking.createdAt,
+    confirmedAt: null,
     optionExpiresAt: booking.optionExpiresAt,
     prepaymentAmount,
     paymentMethod,

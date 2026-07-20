@@ -19,6 +19,8 @@ export type AdminBookingListItem = {
   totalPrice: number | null;
   status: BookingStatus;
   createdAt: Date;
+  /** CONFIRMED'a geçiş zamanı (activity log); eski aktarımlarda null olabilir */
+  confirmedAt: Date | null;
   optionExpiresAt: Date | null;
   /** details.prepaymentAmount — talep/formdan gelen gerçek ön ödeme */
   prepaymentAmount: number | null;
@@ -138,6 +140,22 @@ export function formatMoneyInputValue(amount: number): string {
   return value.toLocaleString("tr-TR", {
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
+  });
+}
+
+/** Liste / durum sütunu için tarih-saat (boşsa null) */
+export function formatBookingDateTime(
+  value: Date | string | null | undefined
+): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 

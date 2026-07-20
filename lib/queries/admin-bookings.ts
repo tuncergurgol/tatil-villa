@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { AdminBookingListItem } from "@/lib/booking-display";
+import { normalizeActivityLogs } from "@/lib/booking-activity-log-core";
 import {
   normalizeBookingSiteInfo,
   parseBookingDetails,
@@ -10,6 +11,17 @@ import {
   resolveDomainFromSiteMap,
 } from "@/lib/booking-site-brand";
 import { cancelExpiredPrepaymentBookings } from "@/lib/queries/bookings";
+
+function resolveConfirmedAt(details: unknown): Date | null {
+  const logs = normalizeActivityLogs(parseBookingDetails(details).activityLogs);
+  const confirmationLogs = logs.filter(
+    (log) => log.action === "status_changed" && log.meta?.to === "CONFIRMED"
+  );
+  if (confirmationLogs.length === 0) return null;
+  const latest = confirmationLogs[confirmationLogs.length - 1];
+  const at = new Date(latest!.at);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
 
 export async function getAdminBookingListData() {
   await cancelExpiredPrepaymentBookings();
@@ -94,6 +106,7 @@ export async function getAdminBookingListData() {
       totalPrice: booking.totalPrice,
       status: booking.status,
       createdAt: booking.createdAt,
+      confirmedAt: resolveConfirmedAt(booking.details),
       optionExpiresAt: booking.optionExpiresAt,
       prepaymentAmount,
       paymentMethod,
