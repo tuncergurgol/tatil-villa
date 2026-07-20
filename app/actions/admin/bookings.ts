@@ -76,7 +76,7 @@ const adminBookingSchema = z.object({
     .string()
     .min(1, "Telefon gerekli")
     .transform((value) => normalizeStoredTurkishPhone(value))
-    .refine((value) => value.length >= 12, "Geçerli telefon girin"),
+    .refine((value) => /^\+[1-9]\d{7,14}$/.test(value), "Geçerli telefon girin"),
   grossPrice: optionalMoney,
   ownerDiscountRate: z.coerce.number().min(0).max(100).optional().default(0),
   ownerDiscountAmount: optionalMoney,

@@ -15,6 +15,7 @@ import type {
   CallbackPreferredDay,
   CallbackPreferredTime,
 } from "@prisma/client";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 
 const initialState: CallbackRequestActionState = {};
 
@@ -223,19 +224,13 @@ export default function CallbackRequestFormPublic({
       <input type="hidden" name="preferredDay" value={preferredDay} />
       <input type="hidden" name="preferredTime" value={preferredTime} />
 
-      <label className="block">
-        <span className="text-sm font-medium text-[#0f2f3a]">
-          Telefon numaranız
-        </span>
-        <input
-          name="phone"
-          type="tel"
-          required
-          autoComplete="tel"
-          placeholder="05xx xxx xx xx"
-          className={fieldClass}
-        />
-      </label>
+      <TurkishPhoneField
+        name="phone"
+        label="Telefon numaranız"
+        required
+        focusPalette="teal"
+        className="[&_div.relative]:mt-1.5"
+      />
 
       <label className="block">
         <span className="text-sm font-medium text-[#0f2f3a]">Adınız</span>

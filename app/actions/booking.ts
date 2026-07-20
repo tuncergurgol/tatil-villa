@@ -40,7 +40,7 @@ const bookingSchema = z.object({
     .string()
     .min(1, "Geçerli telefon girin")
     .transform((value) => normalizeStoredTurkishPhone(value))
-    .refine((value) => value.length >= 12, "Geçerli telefon girin"),
+    .refine((value) => /^\+[1-9]\d{7,14}$/.test(value), "Geçerli telefon girin"),
   paymentMethod: z.enum(["card", "transfer"]).default("transfer"),
   paymentAmount: z.enum(["prepayment", "full"]).default("prepayment"),
   feeSelections: z.string().optional(),

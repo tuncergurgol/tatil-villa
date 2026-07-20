@@ -6,6 +6,7 @@ import {
   sendContactMessageAction,
   type ContactActionState,
 } from "@/app/actions/contact";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 
 const initialState: ContactActionState = {};
 
@@ -79,12 +80,10 @@ export default function ContactForm({ brandName }: ContactFormProps) {
         autoComplete="email"
       />
 
-      <input
+      <TurkishPhoneField
         name="phone"
-        type="tel"
-        placeholder="Telefon Numaranız"
-        className={inputClass}
-        autoComplete="tel"
+        label="Telefon Numaranız"
+        focusPalette="teal"
       />
 
       <textarea

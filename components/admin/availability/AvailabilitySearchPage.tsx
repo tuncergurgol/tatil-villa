@@ -34,7 +34,7 @@ import {
   todayDate,
 } from "@/lib/villa-period-calendar";
 import { countNightsBetween } from "@/lib/villa-period-selection";
-import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
+import { isValidStoredPhoneE164 } from "@/lib/phone-utils";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import {
   PUBLIC_SITE_KEYS,
@@ -150,8 +150,9 @@ export default function AvailabilitySearchPage({
   }, [isPending]);
 
   async function handlePhoneLookup(rawPhone: string) {
-    const digits = normalizeTurkishPhoneDigits(rawPhone);
-    if (digits.length < 10) return;
+    if (!isValidStoredPhoneE164(rawPhone) && rawPhone.replace(/\D/g, "").length < 10) {
+      return;
+    }
 
     setIsLookingUpPhone(true);
     try {
@@ -179,7 +180,7 @@ export default function AvailabilitySearchPage({
 
   function validateForm() {
     const nextErrors: Record<string, string> = {};
-    if (!normalizeTurkishPhoneDigits(phone)) {
+    if (!isValidStoredPhoneE164(phone)) {
       nextErrors.phone = "Telefon numarası zorunlu";
     }
     if (!guestName.trim()) {
@@ -205,7 +206,7 @@ export default function AvailabilitySearchPage({
 
     startTransition(async () => {
       const response = await searchAvailabilityAction({
-        phone: `+90${normalizeTurkishPhoneDigits(phone)}`,
+        phone,
         guestName: guestName.trim(),
         guestEmail: guestEmail.trim() || undefined,
         contactChannelId,
@@ -696,7 +697,7 @@ export default function AvailabilitySearchPage({
                 result={result}
                 selected={selectedIds.includes(result.id)}
                 onToggleSelect={toggleSelect}
-                guestPhone={`+90${normalizeTurkishPhoneDigits(phone)}`}
+                guestPhone={phone}
                 guestName={guestName.trim()}
                 guestEmail={guestEmail.trim()}
                 adults={selectedGuestCount}
