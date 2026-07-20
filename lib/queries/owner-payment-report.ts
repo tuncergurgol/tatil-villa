@@ -27,6 +27,7 @@ export type OwnerPaymentReportListItem = AdminBookingListItem & {
   ownerPayableAmount: number;
   paidAmount: number;
   remainingAmount: number;
+  ownerPayments: ReturnType<typeof normalizeOwnerPayments>;
   missing: string[];
   exportable: boolean;
 };
@@ -156,10 +157,8 @@ function mapBookingToListItem(
     prepaymentAmount,
     commissionAmount
   );
-  const paidAmount = normalizeOwnerPayments(details.ownerPayments).reduce(
-    (sum, row) => sum + row.amount,
-    0
-  );
+  const ownerPayments = normalizeOwnerPayments(details.ownerPayments);
+  const paidAmount = ownerPayments.reduce((sum, row) => sum + row.amount, 0);
   const remainingAmount = Math.max(0, ownerPayableAmount - paidAmount);
   const exportInput = toExportInput(booking, remainingAmount);
   const missing = checkOwnerPaymentMissingFields(exportInput);
@@ -209,6 +208,7 @@ function mapBookingToListItem(
     ownerPayableAmount,
     paidAmount,
     remainingAmount,
+    ownerPayments,
     missing,
     exportable: missing.length === 0,
   };
@@ -234,9 +234,9 @@ export async function getOwnerPaymentReportListData() {
     logoUrl: companySettings.logoUrl,
   };
 
-  const items = bookings.map((booking) =>
-    mapBookingToListItem(booking, brandFallback)
-  );
+  const items = bookings
+    .map((booking) => mapBookingToListItem(booking, brandFallback))
+    .filter((item) => item.ownerPayableAmount > 0);
 
   const missingIbanCount = items.filter((item) =>
     item.missing.some((field) => field.toLowerCase().includes("iban"))

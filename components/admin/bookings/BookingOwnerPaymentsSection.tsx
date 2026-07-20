@@ -26,6 +26,8 @@ type BookingOwnerPaymentsSectionProps = {
   bookingId: string;
   payments: BookingOwnerPaymentRecord[];
   ownerPayableAmount: number;
+  /** Açılışta boş ödeme formu göster */
+  startWithDraft?: boolean;
   onChange: (
     payments: BookingOwnerPaymentRecord[],
     activityLogs: BookingActivityLogEntry[]
@@ -50,9 +52,21 @@ export default function BookingOwnerPaymentsSection({
   bookingId,
   payments,
   ownerPayableAmount,
+  startWithDraft = false,
   onChange,
 }: BookingOwnerPaymentsSectionProps) {
-  const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [drafts, setDrafts] = useState<DraftRow[]>(() =>
+    startWithDraft
+      ? [
+          {
+            id: crypto.randomUUID(),
+            paidAt: "",
+            amount: "",
+            editingId: null,
+          },
+        ]
+      : []
+  );
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);

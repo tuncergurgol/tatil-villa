@@ -102,6 +102,7 @@ async function saveOwnerPayments(
   });
 
   revalidatePath("/admin/rezervasyonlar");
+  revalidatePath("/admin/raporlar/ev-sahibi-odemeleri");
   return { ownerPayments, activityLogs };
 }
 
