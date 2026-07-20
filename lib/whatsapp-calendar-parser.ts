@@ -43,7 +43,7 @@ const MONTHS: Record<string, number> = {
 
 // Kökleri baz alır; Türkçe çekimleri (kapatalım, kapattık, açalım, doldu...) yakalar.
 const CLOSE_KEYWORDS =
-  /\b(kapat\w*|kapal[ıi]\w*|dol(?:u|du|dur)\w*|rezerv\w*|booked|full|kira(?:ya|lan\w*|land[ıi]|landik)?|bloke|blok\w*|tuttu\w*|tutuld\w*)\b/i;
+  /\b(kapat\w*|kapal[ıi]\w*|dol(?:u|du|dur)\w*|rezerv\w*|booked|full|kira(?:ya|lan\w*|land[ıi]|landik)?|sat[ıi]l\w*|bloke|blok\w*|tuttu\w*|tutuld\w*)\b/i;
 const OPEN_KEYWORDS =
   /\b(a[cç][ıi]k\w*|a[cç]al[ıi]m|a[cç]t[ıi]k|a[cç][ıi]ld[ıi]|m[üu]sait\w*|bo[sş]\w*|available|serbest\w*|iptal\w*)\b/i;
 const OPTION_KEYWORDS = /\b(ops(?:iyon)?\w*|option\w*|hold)\b/i;
@@ -131,6 +131,38 @@ function parseIsoDate(parts: { day: number; month: number; year?: number }) {
   return buildDateKey(year, parts.month, parts.day);
 }
 
+/**
+ * OCR / yazım: "2 1 Ağustos" → "21 Ağustos".
+ * "7 10 ağustos" bozulmaz (ikinci rakam iki haneli).
+ */
+function joinSpacedDayDigits(text: string) {
+  return text.replace(/\b(\d)\s+(\d)(?!\d)(?=\s+[a-z]+)/gi, (full, a, b) => {
+    const day = Number(a) * 10 + Number(b);
+    if (day >= 10 && day <= 31) return String(day);
+    return full;
+  });
+}
+
+function rangeFromSameMonthDays(options: {
+  startDay: number;
+  endDay: number;
+  month: number;
+  year?: number;
+}) {
+  const endYear = options.year ?? inferYear(options.month);
+  const crossesMonth = options.startDay > options.endDay;
+  const startMonth = crossesMonth
+    ? options.month === 1
+      ? 12
+      : options.month - 1
+    : options.month;
+  const startYear = crossesMonth && options.month === 1 ? endYear - 1 : endYear;
+  return {
+    startDateKey: buildDateKey(startYear, startMonth, options.startDay),
+    endDateKey: buildDateKey(endYear, options.month, options.endDay),
+  };
+}
+
 function parseDateToken(token: string, fallbackMonth?: number, fallbackYear?: number) {
   const trimmed = token.trim();
 
@@ -150,7 +182,7 @@ function parseDateToken(token: string, fallbackMonth?: number, fallbackYear?: nu
     return buildDateKey(year, fallbackMonth, Number(dayOnly[1]));
   }
 
-  const monthName = trimmed.match(/^(\d{1,2})\s+([a-zçğıöşü]+)$/i);
+  const monthName = trimmed.match(/^(\d{1,2})\s+([a-z]+)$/i);
   if (monthName) {
     const month = MONTHS[normalizeText(monthName[2])];
     if (!month) return null;
@@ -160,8 +192,76 @@ function parseDateToken(token: string, fallbackMonth?: number, fallbackYear?: nu
   return null;
 }
 
-function extractDateRange(text: string) {
-  const normalized = text.replace(/\s+/g, " ").trim();
+export function extractDateRange(text: string) {
+  const normalized = joinSpacedDayDigits(
+    normalizeText(text.replace(/\s+/g, " ").trim())
+  );
+
+  // "Giriş Tarihi: 21 Ağustos 2026 ... Çıkış Tarihi: 24 Ağustos 2026"
+  const checkInOutLabeled = normalized.match(
+    /giris\s*(?:tarihi)?\s*:?\s*(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?[\s\S]{0,120}?cikis\s*(?:tarihi)?\s*:?\s*(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?/i
+  );
+  if (checkInOutLabeled) {
+    const startMonth = MONTHS[checkInOutLabeled[2]];
+    const endMonth = MONTHS[checkInOutLabeled[5]];
+    if (startMonth && endMonth) {
+      const startYear = checkInOutLabeled[3]
+        ? Number(checkInOutLabeled[3])
+        : inferYear(startMonth);
+      const endYear = checkInOutLabeled[6]
+        ? Number(checkInOutLabeled[6])
+        : inferYear(endMonth);
+      return {
+        startDateKey: buildDateKey(
+          startYear,
+          startMonth,
+          Number(checkInOutLabeled[1])
+        ),
+        endDateKey: buildDateKey(endYear, endMonth, Number(checkInOutLabeled[4])),
+      };
+    }
+  }
+
+  // "16 agustos giriş 20 agustos çıkış"
+  const checkInOutInline = normalized.match(
+    /(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\s+giris\b[\s\S]{0,40}?(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\s+cikis\b/i
+  );
+  if (checkInOutInline) {
+    const startMonth = MONTHS[checkInOutInline[2]];
+    const endMonth = MONTHS[checkInOutInline[5]];
+    if (startMonth && endMonth) {
+      const startYear = checkInOutInline[3]
+        ? Number(checkInOutInline[3])
+        : inferYear(startMonth);
+      const endYear = checkInOutInline[6]
+        ? Number(checkInOutInline[6])
+        : inferYear(endMonth);
+      return {
+        startDateKey: buildDateKey(
+          startYear,
+          startMonth,
+          Number(checkInOutInline[1])
+        ),
+        endDateKey: buildDateKey(endYear, endMonth, Number(checkInOutInline[4])),
+      };
+    }
+  }
+
+  // "Ağustos 8/15", "agustos 8-15 doldu"
+  const monthFirstRange = normalized.match(
+    /\b([a-z]+)\s+(\d{1,2})\s*(?:-|–|—|ile|ve|\/)\s*(\d{1,2})(?:\s+(\d{4}))?\b/i
+  );
+  if (monthFirstRange) {
+    const month = MONTHS[monthFirstRange[1]];
+    if (month) {
+      return rangeFromSameMonthDays({
+        startDay: Number(monthFirstRange[2]),
+        endDay: Number(monthFirstRange[3]),
+        month,
+        year: monthFirstRange[4] ? Number(monthFirstRange[4]) : undefined,
+      });
+    }
+  }
 
   const betweenIso = normalized.match(
     /(\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)\s*(?:-|–|—|ile|ve|\/)\s*(\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)/i
@@ -175,50 +275,59 @@ function extractDateRange(text: string) {
   // "18 agustos 23 aralığı", "18 ağustos 23 arası" → aynı ay içinde 18-23 aralığı.
   // "aralığı/aralığında/arası" burada tarih aralığı belirtir; Aralık ayı DEĞİLDİR.
   const sameMonthRangeKeyword = normalized.match(
-    /(\d{1,2})\s+([a-zçğıöşü]+)\s+(\d{1,2})\s+(?:aral[ıi][ğg]\w*|aras[ıi]\w*)/i
+    /(\d{1,2})\s+([a-z]+)\s+(\d{1,2})\s+(?:aralig\w*|arasi\w*)/i
   );
   if (sameMonthRangeKeyword) {
-    const month = MONTHS[normalizeText(sameMonthRangeKeyword[2])];
+    const month = MONTHS[sameMonthRangeKeyword[2]];
     if (month) {
-      const year = inferYear(month);
-      const start = buildDateKey(year, month, Number(sameMonthRangeKeyword[1]));
-      const end = buildDateKey(year, month, Number(sameMonthRangeKeyword[3]));
-      return { startDateKey: start, endDateKey: end };
+      return rangeFromSameMonthDays({
+        startDay: Number(sameMonthRangeKeyword[1]),
+        endDay: Number(sameMonthRangeKeyword[3]),
+        month,
+      });
     }
   }
 
   // "6-12 eylül", "6/12 eylül", "6/12/ eylül", "10 ..16 ağustos".
   const monthRange = normalized.match(
-    /(\d{1,2})\s*(?:-|–|—|ile|ve|\/|\.{2,})\s*(\d{1,2})(?:\s*[\/.-]\s*|\s+)([a-zçğıöşü]+)(?:\s+(\d{4}))?/i
+    /(\d{1,2})\s*(?:-|–|—|ile|ve|\/|\.{2,})\s*(\d{1,2})(?:\s*[\/.-]\s*|\s+)([a-z]+)(?:\s+(\d{4}))?/i
   );
   if (monthRange) {
-    const month = MONTHS[normalizeText(monthRange[3])];
+    const month = MONTHS[monthRange[3]];
     if (month) {
-      const endYear = monthRange[4]
-        ? Number(monthRange[4])
-        : inferYear(month);
-      const startDay = Number(monthRange[1]);
-      const endDay = Number(monthRange[2]);
+      return rangeFromSameMonthDays({
+        startDay: Number(monthRange[1]),
+        endDay: Number(monthRange[2]),
+        month,
+        year: monthRange[4] ? Number(monthRange[4]) : undefined,
+      });
+    }
+  }
 
-      // "26-2 Ağustos" gibi azalan gün aralıklarında ay adı bitiş
-      // tarihine aittir: başlangıç bir önceki ay olarak yorumlanır.
-      const crossesMonth = startDay > endDay;
-      const startMonth = crossesMonth ? (month === 1 ? 12 : month - 1) : month;
-      const startYear = crossesMonth && month === 1 ? endYear - 1 : endYear;
-      const start = buildDateKey(startYear, startMonth, startDay);
-      const end = buildDateKey(endYear, month, endDay);
-      return { startDateKey: start, endDateKey: end };
+  // "7 10 ağustos", "15 20 temmuz" (tire/slash yok, boşlukla iki gün)
+  const spacedDayMonthRange = normalized.match(
+    /\b(\d{1,2})\s+(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\b/i
+  );
+  if (spacedDayMonthRange) {
+    const month = MONTHS[spacedDayMonthRange[3]];
+    if (month) {
+      return rangeFromSameMonthDays({
+        startDay: Number(spacedDayMonthRange[1]),
+        endDay: Number(spacedDayMonthRange[2]),
+        month,
+        year: spacedDayMonthRange[4] ? Number(spacedDayMonthRange[4]) : undefined,
+      });
     }
   }
 
   // İki tam tarih: "21 temmuz 22 temmuz", "21 temmuz - 22 temmuz",
   // "30 temmuz 2 ağustos" (tire opsiyonel, aylar farklı olabilir).
   const twoMonthDay = normalized.match(
-    /(\d{1,2})\s+([a-zçğıöşü]+)\s*(?:-|–|—|ile|ve|\/)?\s*(\d{1,2})\s+([a-zçğıöşü]+)(?:\s+(\d{4}))?/i
+    /(\d{1,2})\s+([a-z]+)\s*(?:-|–|—|ile|ve|\/)?\s*(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?/i
   );
   if (twoMonthDay) {
-    const startMonth = MONTHS[normalizeText(twoMonthDay[2])];
-    const endMonth = MONTHS[normalizeText(twoMonthDay[4])];
+    const startMonth = MONTHS[twoMonthDay[2]];
+    const endMonth = MONTHS[twoMonthDay[4]];
     if (startMonth && endMonth) {
       const explicitYear = twoMonthDay[5] ? Number(twoMonthDay[5]) : undefined;
       const startYear = explicitYear ?? inferYear(startMonth);
@@ -230,10 +339,10 @@ function extractDateRange(text: string) {
   }
 
   const singleMonthDay = normalized.match(
-    /\b(\d{1,2})\s+([a-zçğıöşü]+)(?:\s+(\d{4}))?\b/i
+    /\b(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\b/i
   );
   if (singleMonthDay) {
-    const month = MONTHS[normalizeText(singleMonthDay[2])];
+    const month = MONTHS[singleMonthDay[2]];
     if (month) {
       const year = singleMonthDay[3]
         ? Number(singleMonthDay[3])
@@ -287,15 +396,18 @@ export function parseWhatsappCalendarMessage(
         ? "Kapat"
         : "Opsiyon";
 
-  const dateSource = `${body} ${contextBody ?? ""}`;
+  const dateSource = normalizeText(`${body} ${contextBody ?? ""}`);
 
   return {
     intent: detected.intent,
     startDateKey: start,
     endDateKey: end,
-    confidence: /(\d{1,2}[./-]\d{1,2}|\d{1,2}\s*-\s*\d{1,2})/.test(dateSource)
-      ? "high"
-      : "low",
+    confidence:
+      /(\d{1,2}[./-]\d{1,2}|\d{1,2}\s*[-–—\/]\s*\d{1,2}|giris|cikis)/.test(
+        dateSource
+      )
+        ? "high"
+        : "low",
     summary: `${intentLabel}: ${start} → ${end}`,
     matchedPhrase: detected.matchedPhrase,
   };
@@ -317,3 +429,38 @@ export const WHATSAPP_CALENDAR_INTENT_LABELS: Record<
   OPEN: "Aç (Müsait)",
   OPTION: "Opsiyon",
 };
+
+/** Admin UI ve seed için bilinen örnek mesaj kalıpları */
+export const WHATSAPP_CALENDAR_MESSAGE_EXAMPLES: Array<{
+  phrase: string;
+  intent: WhatsappCalendarIntent;
+  sample: string;
+}> = [
+  {
+    phrase: "doldu",
+    intent: "CLOSE",
+    sample: "Ağustos 8/15 doldu",
+  },
+  {
+    phrase: "satılmıştır",
+    intent: "CLOSE",
+    sample: "7 10 ağustos satılmıştır",
+  },
+  {
+    phrase: "kapatıldı",
+    intent: "CLOSE",
+    sample:
+      "Giriş Tarihi: 2 1 Ağustos 2026 Cuma - Saat: 21:00 Çıkış Tarihi: 2 4 Ağustos 2026 Pazartesi - Saat: 12:00 Konaklama Süresi: 3 Gece / 4 Gün Villa Karya kapatıldı",
+  },
+  {
+    phrase: "kapatabilir misiniz",
+    intent: "CLOSE",
+    sample:
+      "SN grup üyeleri 16 agustos giriş 20 agustos çıkış rezervasyon yapılmistir. Kapatabilir misiniz? Lütfen",
+  },
+  {
+    phrase: "rezervasyon yapılmıştır",
+    intent: "CLOSE",
+    sample: "16 agustos giriş 20 agustos çıkış rezervasyon yapılmıştır",
+  },
+];

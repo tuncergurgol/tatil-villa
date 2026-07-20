@@ -776,7 +776,23 @@ export default function WhatsappCalendarAutomation({
           Örnek: ifade <code>kapatalım</code> + işlem <strong>Kapat</strong> → mesaj{" "}
           <code>19-20 temmuz kapatalım</code> takvimde o günleri dolu yapar. Tarih kısmını
           sistem mesajdan otomatik okur; buraya yalnızca anahtar ifadeyi yazın.
-        </p>
+          </p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-gray-500">
+            <li>
+              <code>Ağustos 8/15 doldu</code> → 8–15 Ağustos Kapat
+            </li>
+            <li>
+              <code>7 10 ağustos satılmıştır</code> → 7–10 Ağustos Kapat
+            </li>
+            <li>
+              <code>Giriş Tarihi: 21 Ağustos … Çıkış Tarihi: 24 Ağustos … kapatıldı</code> →
+              21–24 Ağustos Kapat
+            </li>
+            <li>
+              <code>16 agustos giriş 20 agustos çıkış … kapatabilir misiniz</code> → 16–20
+              Ağustos Kapat
+            </li>
+          </ul>
           <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="min-w-[220px] flex-[1.4]">
             <span className="mb-1 block text-xs font-medium text-gray-500">
@@ -886,9 +902,10 @@ export default function WhatsappCalendarAutomation({
         <div className="border-t border-gray-100 p-5">
           <p className="text-sm text-gray-500">
           Takvime uygulamadan önce sistemin mesajı nasıl okuduğunu deneyin. Örnek:{" "}
-          <code>15-20 Temmuz dolu</code>, <code>01.08-05.08 açık</code>,{" "}
-          <code>10-12 Ağustos opsiyon</code>
-        </p>
+          <code>15-20 Temmuz dolu</code>, <code>Ağustos 8/15 doldu</code>,{" "}
+          <code>7 10 ağustos satılmıştır</code>,{" "}
+          <code>16 agustos giriş 20 agustos çıkış kapatabilir misiniz</code>
+          </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="min-w-[280px] flex-1">
             <span className="mb-1 block text-xs font-medium text-gray-500">Örnek Mesaj</span>
