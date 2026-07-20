@@ -449,11 +449,12 @@ export default function CalendarPriceTransferManagement({
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[1180px] w-full text-left text-sm">
+          <table className="min-w-[1280px] w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-3 py-3">Seç</th>
                 <th className="px-3 py-3">Villa ID — Villa Adı</th>
+                <th className="px-3 py-3">Villa Orijinal Adı</th>
                 <th className="px-3 py-3">Durum</th>
                 <th className="px-3 py-3">WhatsApp</th>
                 <th className="px-3 py-3">iCal</th>
@@ -483,6 +484,9 @@ export default function CalendarPriceTransferManagement({
                       <div className="font-semibold text-gray-900">
                         {row.villaId != null ? row.villaId : "—"} — {row.name}
                       </div>
+                    </td>
+                    <td className="px-3 py-3 text-gray-700">
+                      {row.originalName || "—"}
                     </td>
                     <td className="px-3 py-3">
                       <span
@@ -578,7 +582,7 @@ export default function CalendarPriceTransferManagement({
               {filteredRows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Bu filtreye uygun villa bulunamadı.
