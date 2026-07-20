@@ -31,6 +31,7 @@ const defaultQuickLinks = [
   { href: "/villalar?filter=deal", label: "Fırsat Villalar" },
   { href: "/#bolgeler", label: "Popüler Bölgeler" },
   { href: "/#seyahat-macerasi", label: "Hizmetler" },
+  { href: "/rezervasyon-dogrulama", label: "Rezervasyon Doğrulama" },
 ];
 
 export default async function SiteChrome({ children }: { children: React.ReactNode }) {

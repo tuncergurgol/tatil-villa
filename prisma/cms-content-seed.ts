@@ -103,6 +103,11 @@ export const defaultMenuSeeds = {
       { label: "Fırsat Villalar", href: "/villalar?filter=deal", sortOrder: 2 },
       { label: "Misafir Yorumları", href: "/yorumlar", sortOrder: 3 },
       { label: "Sık Sorulan Sorular", href: "/sik-sorulan-sorular", sortOrder: 4 },
+      {
+        label: "Rezervasyon Doğrulama",
+        href: "/rezervasyon-dogrulama",
+        sortOrder: 5,
+      },
     ],
   },
 };

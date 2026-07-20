@@ -13,8 +13,9 @@ export type OtpDeliveryResult = {
   error?: string;
 };
 
-function buildOtpMessage(code: string): string {
-  return `Tatildeyiz doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir. Kimseyle paylaşmayın.`;
+function buildOtpMessage(code: string, brandName?: string): string {
+  const brand = brandName?.trim() || "Tatildeyiz";
+  return `${brand} doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir. Kimseyle paylaşmayın.`;
 }
 
 async function sendOtpViaWhatsApp(
@@ -41,7 +42,8 @@ async function sendOtpViaWhatsApp(
 export async function deliverOtpCode(
   phoneRaw: string,
   code: string,
-  purpose: string
+  purpose: string,
+  options?: { brandName?: string }
 ): Promise<OtpDeliveryResult> {
   const e164 = normalizePhoneToE164(phoneRaw);
   if (!e164 || !isValidTurkishMobileE164(e164)) {
@@ -52,7 +54,7 @@ export async function deliverOtpCode(
     };
   }
 
-  const message = buildOtpMessage(code);
+  const message = buildOtpMessage(code, options?.brandName);
   const smsEnabled = await isSmsOtpEnabled();
 
   if (smsEnabled) {

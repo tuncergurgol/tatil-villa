@@ -2,6 +2,7 @@ import { randomInt } from "crypto";
 import { prisma } from "@/lib/db";
 
 export const CALLBACK_OTP_PURPOSE = "callback_request" as const;
+export const BOOKING_GUEST_LOGIN_OTP_PURPOSE = "booking_guest_login" as const;
 export const OTP_TTL_MS = 10 * 60 * 1000;
 export const OTP_CODE_LENGTH = 5;
 
@@ -11,6 +12,12 @@ export type CallbackRequestOtpPayload = {
   note: string;
   preferredDay: "TODAY" | "TOMORROW" | "THIS_WEEK" | "ANY";
   preferredTime: "ASAP" | "MORNING" | "AFTERNOON" | "EVENING";
+};
+
+export type BookingGuestLoginOtpPayload = {
+  bookingId: string;
+  email: string;
+  reservationCode: string;
 };
 
 function generateFiveDigitCode(): string {

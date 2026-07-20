@@ -34,6 +34,7 @@ const defaultQuickLinks: FooterLink[] = [
   { href: "/villalar?filter=deal", label: "Fırsat Villalar" },
   { href: "/#bolgeler", label: "Popüler Bölgeler" },
   { href: "/#seyahat-macerasi", label: "Hizmetler" },
+  { href: "/rezervasyon-dogrulama", label: "Rezervasyon Doğrulama" },
 ];
 
 const DEFAULT_LOGO = "/uploads/company/logo-1783080885848.svg";
