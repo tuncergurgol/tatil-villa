@@ -134,7 +134,7 @@ function DateFiltersGrid({
       onEnd: (value: string) => updateDraft({ checkOutEnd: value }),
     },
     {
-      label: "Ödeme Tarihi",
+      label: "Ödeme Yapılacak Tarih",
       start: draft.paymentDateStart,
       end: draft.paymentDateEnd,
       onStart: (value: string) => updateDraft({ paymentDateStart: value }),
@@ -144,7 +144,7 @@ function DateFiltersGrid({
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200">
-      <div className="grid grid-cols-[110px_1fr_1fr] gap-2 border-b border-gray-100 bg-gray-50/80 px-3 py-2 text-xs font-semibold text-gray-500">
+      <div className="grid grid-cols-[150px_1fr_1fr] gap-2 border-b border-gray-100 bg-gray-50/80 px-3 py-2 text-xs font-semibold text-gray-500">
         <span />
         <span>Başlangıç</span>
         <span>Bitiş</span>
@@ -152,7 +152,7 @@ function DateFiltersGrid({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="grid grid-cols-[110px_1fr_1fr] items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+          className="grid grid-cols-[150px_1fr_1fr] items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
         >
           <span className="text-sm font-medium text-gray-700">{row.label}</span>
           <input

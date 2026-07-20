@@ -279,7 +279,7 @@ export default function OwnerPaymentReportPage({
                 <th className="px-3 py-2">Alıcı / Ev Sahibi</th>
                 <th className="px-3 py-2">IBAN</th>
                 <th className="px-3 py-2">Konaklama</th>
-                <th className="px-3 py-2">Ödeme Tarihi</th>
+                <th className="px-3 py-2">Ödeme Yapılacak Tarih</th>
                 <th className="px-3 py-2">Ödenecek</th>
                 <th className="px-3 py-2">Ödenen</th>
                 <th className="px-3 py-2">Kalan</th>
