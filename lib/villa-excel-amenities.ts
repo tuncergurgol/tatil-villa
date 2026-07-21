@@ -67,6 +67,30 @@ export const EXCEL_FACILITY_TO_MASTER: Record<string, string> = {
   "Çocuk Oyun Parkı olan Villalar": "Çocuk Oyun Parkı olan Villalar",
 };
 
+/** Villa Öne Çıkan Özellikler Excel sütunu -> Öne Çıkanlar amenity adı */
+export const EXCEL_FEATURED_TO_AMENITY: Record<string, string> = {
+  "Evcil Hayvan İzinli (Pati Dostu)": "Evcil Hayvan İzinli",
+  "Infinity (Sonsuzluk) Havuzlu": "Infinity Havuz",
+  "Isıtmalı Havuzlu": "Isıtmalı Havuz",
+  "Kapalı Havuzlu": "Kapalı Havuz",
+  "Merkezi Konum": "Merkeze Yakın",
+  "Oyun Grupları":
+    "Oyun Grupları (Masa Tenisi, Bilardo, Langırt) olan Villalar",
+  "Plaja Yakın": "Denize Yakın",
+  "Sinema Odası Olan": "Sinema Odası Olanlar",
+};
+
+/** Öne çıkan özellikler Excel'inde atlanan sütunlar (başka kategori / DB'de yok) */
+export const EXCEL_FEATURED_SKIP = new Set([
+  "Çocuk Oyun Grupları",
+  "Etkinlik Yapılabilir",
+  "Geniş Aileler",
+  "Ortak Havuzlu",
+  "Spor Aletleri (GYM) Olan",
+  "Yemek Hizmeti",
+  "Yerden Isıtma",
+]);
+
 /** Bu Excel sütunları atlanır (master tabloda karşılığı yok / tekrar eden) */
 export const EXCEL_AMENITY_SKIP = new Set([
   "Özel banyo",
