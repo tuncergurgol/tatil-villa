@@ -3,7 +3,7 @@
 import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useRef } from "react";
 
-const IDLE_MS = 15 * 60 * 1000;
+const IDLE_MS = 60 * 60 * 1000;
 const ACTIVITY_EVENTS = [
   "mousedown",
   "mousemove",

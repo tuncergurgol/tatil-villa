@@ -8,7 +8,7 @@ export default async function AdminLoginPage({ searchParams }: Props) {
   const params = await searchParams;
   const idleMessage =
     params.reason === "idle"
-      ? "15 dakika işlem yapılmadığı için oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın."
+      ? "1 saat işlem yapılmadığı için oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın."
       : undefined;
 
   return (
