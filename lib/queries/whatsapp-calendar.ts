@@ -2,7 +2,8 @@ import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export async function getWhatsappCalendarAdminData() {
-  const [settings, groups, messages, villas, phraseRules] = await Promise.all([
+  const [settings, groups, messages, villas, phraseRules, dateTrainingRules] =
+    await Promise.all([
     getCompanySettings(),
     prisma.whatsappCalendarGroup.findMany({
       where: { active: true },

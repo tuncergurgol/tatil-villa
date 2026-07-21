@@ -996,7 +996,7 @@ export default function WhatsappCalendarAutomation({
               </thead>
               <tbody>
                 {data.dateTrainingRules.length > 0 ? (
-                  data.dateTrainingRules.map((rule) => (
+                  data.dateTrainingRules.map((rule: WhatsappCalendarAdminData["dateTrainingRules"][number]) => (
                     <tr key={rule.id} className="border-t border-gray-100">
                       <td className="px-4 py-3 font-medium text-gray-900">
                         {formatDateTrainingLine(rule)}
