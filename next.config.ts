@@ -43,6 +43,18 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/tur",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "frame-src 'self' https://whitelabel.tursabrota.com https://*.tursabrota.com",
+              "child-src 'self' https://whitelabel.tursabrota.com https://*.tursabrota.com",
+            ].join("; "),
+          },
+        ],
+      },
     ];
   },
   async redirects() {
