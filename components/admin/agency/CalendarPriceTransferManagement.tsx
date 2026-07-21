@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -289,6 +289,8 @@ export default function CalendarPriceTransferManagement({
   whatsappGroups: CalendarPriceTransferWhatsappGroupOption[];
 }) {
   const router = useRouter();
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<ListFilter>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [busyVillaId, setBusyVillaId] = useState<string | null>(null);
@@ -368,103 +370,128 @@ export default function CalendarPriceTransferManagement({
     });
   }
 
+  function syncHorizontalScroll(source: "header" | "body") {
+    const header = headerScrollRef.current;
+    const body = bodyScrollRef.current;
+    if (!header || !body) return;
+    if (source === "header") body.scrollLeft = header.scrollLeft;
+    else header.scrollLeft = body.scrollLeft;
+  }
+
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Takvim/Fiyat Aktarım Yönetimi
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Villa tanımındaki iCal ve Link 1–3 bağlantılarından takvim ile
-            periyot fiyatlarını güncelleyin.
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={isPending || selectedIds.size === 0}
-          onClick={handleSyncSelected}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {isPending && !busyVillaId ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
-          Seçilenleri Güncelle ({selectedIds.size})
-        </button>
-      </div>
-
-      {notice ? (
-        <div
-          className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm ${
-            notice.type === "ok"
-              ? "bg-emerald-50 text-emerald-800"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {notice.type === "ok" ? (
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          ) : (
-            <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          )}
-          <span>{notice.message}</span>
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="mr-2 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700">
-          <input
-            type="checkbox"
-            checked={allFilteredSelected}
-            onChange={toggleSelectAll}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600"
-          />
-          Tümünü Seç
-        </label>
-        {(
-          [
-            { id: "all", label: `Tümü (${rows.length})` },
-            { id: "updated", label: `Güncellenenler (${updatedCount})` },
-            {
-              id: "not_updated",
-              label: `Güncellenmeyenler (${notUpdatedCount})`,
-            },
-          ] as const
-        ).map((item) => (
+    <div className="space-y-0">
+      <div className="sticky top-0 z-30 -mx-6 space-y-5 bg-[#eef0f3] px-6 pb-3 pt-0 lg:-mx-8 lg:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Takvim/Fiyat Aktarım Yönetimi
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Villa tanımındaki iCal ve Link 1–3 bağlantılarından takvim ile
+              periyot fiyatlarını güncelleyin.
+            </p>
+          </div>
           <button
-            key={item.id}
             type="button"
-            onClick={() => setFilter(item.id)}
-            className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
-              filter === item.id
-                ? "bg-slate-900 text-white"
-                : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+            disabled={isPending || selectedIds.size === 0}
+            onClick={handleSyncSelected}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {isPending && !busyVillaId ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Seçilenleri Güncelle ({selectedIds.size})
+          </button>
+        </div>
+
+        {notice ? (
+          <div
+            className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm ${
+              notice.type === "ok"
+                ? "bg-emerald-50 text-emerald-800"
+                : "bg-red-50 text-red-700"
             }`}
           >
-            {item.label}
-          </button>
-        ))}
+            {notice.type === "ok" ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <span>{notice.message}</span>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="mr-2 inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700">
+            <input
+              type="checkbox"
+              checked={allFilteredSelected}
+              onChange={toggleSelectAll}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+            />
+            Tümünü Seç
+          </label>
+          {(
+            [
+              { id: "all", label: `Tümü (${rows.length})` },
+              { id: "updated", label: `Güncellenenler (${updatedCount})` },
+              {
+                id: "not_updated",
+                label: `Güncellenmeyenler (${notUpdatedCount})`,
+              },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setFilter(item.id)}
+              className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
+                filter === item.id
+                  ? "bg-slate-900 text-white"
+                  : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="overflow-hidden rounded-t-2xl border border-b-0 border-gray-200 bg-white shadow-sm">
+          <div
+            ref={headerScrollRef}
+            onScroll={() => syncHorizontalScroll("header")}
+            className="overflow-x-auto"
+          >
+            <table className="min-w-[1280px] w-full text-left text-sm">
+              <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-3 py-3">Seç</th>
+                  <th className="px-3 py-3">Villa ID — Villa Adı</th>
+                  <th className="px-3 py-3">Villa Orijinal Adı</th>
+                  <th className="px-3 py-3">Durum</th>
+                  <th className="px-3 py-3">WhatsApp</th>
+                  <th className="px-3 py-3">iCal</th>
+                  <th className="px-3 py-3">Link 1</th>
+                  <th className="px-3 py-3">Link 2</th>
+                  <th className="px-3 py-3">Link 3</th>
+                  <th className="px-3 py-3">Güncelle</th>
+                  <th className="px-3 py-3">Rapor</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="overflow-hidden rounded-b-2xl border border-gray-200 bg-white shadow-sm">
+        <div
+          ref={bodyScrollRef}
+          onScroll={() => syncHorizontalScroll("body")}
+          className="overflow-x-auto"
+        >
           <table className="min-w-[1280px] w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              <tr>
-                <th className="px-3 py-3">Seç</th>
-                <th className="px-3 py-3">Villa ID — Villa Adı</th>
-                <th className="px-3 py-3">Villa Orijinal Adı</th>
-                <th className="px-3 py-3">Durum</th>
-                <th className="px-3 py-3">WhatsApp</th>
-                <th className="px-3 py-3">iCal</th>
-                <th className="px-3 py-3">Link 1</th>
-                <th className="px-3 py-3">Link 2</th>
-                <th className="px-3 py-3">Link 3</th>
-                <th className="px-3 py-3">Güncelle</th>
-                <th className="px-3 py-3">Rapor</th>
-              </tr>
-            </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredRows.map((row) => {
                 const link1 = row.links.find((l) => l.slot === 1);
