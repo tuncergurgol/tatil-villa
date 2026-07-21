@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  Download,
   Loader2,
   RefreshCw,
   X,
@@ -23,6 +24,13 @@ import type {
   CalendarPriceTransferRow,
   CalendarPriceTransferWhatsappGroupOption,
 } from "@/lib/queries/calendar-price-transfer";
+import {
+  applyCalendarPriceTransferColumnFilters,
+  countActiveCalendarPriceTransferFilters,
+  downloadCalendarPriceTransferExcel,
+  emptyCalendarPriceTransferColumnFilters,
+  type CalendarPriceTransferColumnFilters,
+} from "@/lib/calendar-price-transfer-filters";
 
 type ListFilter = "all" | "updated" | "not_updated";
 
@@ -33,6 +41,33 @@ type EditorTarget =
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-3.5 py-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100";
+
+const filterInputClass =
+  "w-full min-w-[84px] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-medium normal-case tracking-normal text-gray-700 outline-none focus:border-indigo-300 focus:ring-1 focus:ring-indigo-100";
+
+function ColumnFilterSelect<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: Array<{ value: T; label: string }>;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value as T)}
+      className={filterInputClass}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function formatDateTime(value: Date | null) {
   if (!value) return "—";
@@ -292,6 +327,11 @@ export default function CalendarPriceTransferManagement({
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<ListFilter>("all");
+  const [columnFilters, setColumnFilters] =
+    useState<CalendarPriceTransferColumnFilters>(
+      emptyCalendarPriceTransferColumnFilters
+    );
+  const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [busyVillaId, setBusyVillaId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorTarget | null>(null);
@@ -305,10 +345,167 @@ export default function CalendarPriceTransferManagement({
   const notUpdatedCount = rows.length - updatedCount;
 
   const filteredRows = useMemo(() => {
-    if (filter === "updated") return rows.filter((row) => row.isUpdated);
-    if (filter === "not_updated") return rows.filter((row) => !row.isUpdated);
-    return rows;
-  }, [filter, rows]);
+    let next = rows;
+    if (filter === "updated") next = next.filter((row) => row.isUpdated);
+    if (filter === "not_updated") next = next.filter((row) => !row.isUpdated);
+    return applyCalendarPriceTransferColumnFilters(next, columnFilters);
+  }, [columnFilters, filter, rows]);
+
+  const activeColumnFilterCount = countActiveCalendarPriceTransferFilters(
+    columnFilters
+  );
+
+  function updateColumnFilter<K extends keyof CalendarPriceTransferColumnFilters>(
+    key: K,
+    value: CalendarPriceTransferColumnFilters[K]
+  ) {
+    setColumnFilters((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function clearColumnFilters() {
+    setColumnFilters(emptyCalendarPriceTransferColumnFilters);
+  }
+
+  async function handleExportExcel() {
+    if (filteredRows.length === 0) {
+      setNotice({ type: "error", message: "Dışa aktarılacak kayıt bulunamadı." });
+      return;
+    }
+    setIsExporting(true);
+    try {
+      await downloadCalendarPriceTransferExcel(filteredRows);
+      setNotice({
+        type: "ok",
+        message: `${filteredRows.length} villa Excel raporuna aktarıldı.`,
+      });
+    } catch {
+      setNotice({
+        type: "error",
+        message: "Excel raporu oluşturulamadı.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  function renderColumnFilterRow() {
+    return (
+      <tr className="border-t border-gray-200 bg-white">
+        <th className="px-3 py-2" />
+        <th className="px-3 py-2">
+          <input
+            type="text"
+            value={columnFilters.villaSearch}
+            onChange={(event) =>
+              updateColumnFilter("villaSearch", event.target.value)
+            }
+            placeholder="ID / ad ara"
+            className={filterInputClass}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <input
+            type="text"
+            value={columnFilters.originalNameSearch}
+            onChange={(event) =>
+              updateColumnFilter("originalNameSearch", event.target.value)
+            }
+            placeholder="Orijinal ad ara"
+            className={filterInputClass}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.status}
+            onChange={(value) => updateColumnFilter("status", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "active", label: "Aktif" },
+              { value: "passive", label: "Pasif" },
+            ]}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.whatsapp}
+            onChange={(value) => updateColumnFilter("whatsapp", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "yes", label: "Bağlı" },
+              { value: "no", label: "Bağlı değil" },
+            ]}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.ical}
+            onChange={(value) => updateColumnFilter("ical", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "yes", label: "Tanımlı" },
+              { value: "no", label: "Tanımsız" },
+            ]}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.link1}
+            onChange={(value) => updateColumnFilter("link1", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "yes", label: "Tanımlı" },
+              { value: "no", label: "Tanımsız" },
+            ]}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.link2}
+            onChange={(value) => updateColumnFilter("link2", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "yes", label: "Tanımlı" },
+              { value: "no", label: "Tanımsız" },
+            ]}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.link3}
+            onChange={(value) => updateColumnFilter("link3", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "yes", label: "Tanımlı" },
+              { value: "no", label: "Tanımsız" },
+            ]}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.syncable}
+            onChange={(value) => updateColumnFilter("syncable", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "yes", label: "Kaynak var" },
+              { value: "no", label: "Kaynak yok" },
+            ]}
+          />
+        </th>
+        <th className="px-3 py-2">
+          <ColumnFilterSelect
+            value={columnFilters.report}
+            onChange={(value) => updateColumnFilter("report", value)}
+            options={[
+              { value: "all", label: "Tümü" },
+              { value: "error", label: "Hata" },
+              { value: "updated", label: "Güncellendi" },
+              { value: "not_updated", label: "Güncellenmedi" },
+            ]}
+          />
+        </th>
+      </tr>
+    );
+  }
 
   const allFilteredSelected =
     filteredRows.length > 0 &&
@@ -391,19 +588,34 @@ export default function CalendarPriceTransferManagement({
               periyot fiyatlarını güncelleyin.
             </p>
           </div>
-          <button
-            type="button"
-            disabled={isPending || selectedIds.size === 0}
-            onClick={handleSyncSelected}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {isPending && !busyVillaId ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            Seçilenleri Güncelle ({selectedIds.size})
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={isPending || selectedIds.size === 0}
+              onClick={handleSyncSelected}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {isPending && !busyVillaId ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Seçilenleri Güncelle ({selectedIds.size})
+            </button>
+            <button
+              type="button"
+              disabled={isExporting || filteredRows.length === 0}
+              onClick={handleExportExcel}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Excel İndir ({filteredRows.length})
+            </button>
+          </div>
         </div>
 
         {notice ? (
@@ -456,6 +668,18 @@ export default function CalendarPriceTransferManagement({
               {item.label}
             </button>
           ))}
+          {activeColumnFilterCount > 0 ? (
+            <button
+              type="button"
+              onClick={clearColumnFilters}
+              className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
+            >
+              Sütun filtrelerini temizle ({activeColumnFilterCount})
+            </button>
+          ) : null}
+          <span className="text-sm text-gray-500">
+            Listelenen: {filteredRows.length}
+          </span>
         </div>
 
         <div className="overflow-hidden rounded-t-2xl border border-b-0 border-gray-200 bg-white shadow-sm">
@@ -479,6 +703,7 @@ export default function CalendarPriceTransferManagement({
                   <th className="px-3 py-3">Güncelle</th>
                   <th className="px-3 py-3">Rapor</th>
                 </tr>
+                {renderColumnFilterRow()}
               </thead>
             </table>
           </div>
