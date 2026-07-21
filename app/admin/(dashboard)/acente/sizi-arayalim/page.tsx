@@ -1,4 +1,5 @@
 import CallbackRequestManagement from "@/components/admin/callback-requests/CallbackRequestManagement";
+import { parseCallbackListFilterFromUrl } from "@/lib/booking-filter-url";
 import { requireAdmin } from "@/lib/auth-helpers";
 import {
   getAllCallbackRequests,
@@ -7,12 +8,24 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function SiziArayalimPage() {
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function SiziArayalimPage({ searchParams }: Props) {
   await requireAdmin();
-  const [items, counts] = await Promise.all([
+  const params = await searchParams;
+  const [items, counts, initialListFilter] = await Promise.all([
     getAllCallbackRequests(),
     getCallbackRequestCounts(),
+    Promise.resolve(parseCallbackListFilterFromUrl(params)),
   ]);
 
-  return <CallbackRequestManagement items={items} counts={counts} />;
+  return (
+    <CallbackRequestManagement
+      items={items}
+      counts={counts}
+      initialListFilter={initialListFilter}
+    />
+  );
 }

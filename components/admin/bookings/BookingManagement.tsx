@@ -43,6 +43,7 @@ interface BookingManagementProps {
   bookings: AdminBookingListItem[];
   villas: VillaOption[];
   siteDomain: string;
+  initialFilters?: BookingFilters;
 }
 
 function StatusButton({
@@ -132,10 +133,13 @@ export default function BookingManagement({
   bookings,
   villas,
   siteDomain,
+  initialFilters,
 }: BookingManagementProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [filters, setFilters] = useState<BookingFilters>(emptyBookingFilters());
+  const [filters, setFilters] = useState<BookingFilters>(
+    initialFilters ?? emptyBookingFilters()
+  );
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [viewBookingId, setViewBookingId] = useState<string | null>(null);
@@ -149,6 +153,12 @@ export default function BookingManagement({
     () => filterBookings(bookings, filters),
     [bookings, filters]
   );
+
+  useEffect(() => {
+    if (initialFilters) {
+      setFilters(initialFilters);
+    }
+  }, [initialFilters]);
 
   useEffect(() => {
     setPage(1);

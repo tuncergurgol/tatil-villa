@@ -11,6 +11,7 @@ import {
   CALLBACK_TIME_LABELS,
 } from "@/lib/callback-request-labels";
 import type { CallbackRequestItem } from "@/lib/queries/callback-requests";
+import type { CallbackListFilter } from "@/lib/booking-filter-url";
 import { includesSearchText } from "@/lib/search-text";
 
 type StatusFilter =
@@ -30,6 +31,7 @@ interface Props {
     contacted: number;
     closed: number;
   };
+  initialListFilter?: CallbackListFilter;
 }
 
 function formatDateTime(value: Date | string) {
@@ -51,10 +53,19 @@ function formatSiteHint(item: CallbackRequestItem): string | null {
   return domain || null;
 }
 
-export default function CallbackRequestManagement({ items, counts }: Props) {
+export default function CallbackRequestManagement({
+  items,
+  counts,
+  initialListFilter = "all",
+}: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
+    initialListFilter === "unanswered" ? "VERIFIED" : "all"
+  );
+  const [onlyUnanswered, setOnlyUnanswered] = useState(
+    initialListFilter === "unanswered"
+  );
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -67,11 +78,12 @@ export default function CallbackRequestManagement({ items, counts }: Props) {
         includesSearchText(item.note, search) ||
         includesSearchText(item.sourceSite, search) ||
         includesSearchText(item.sourceDomain, search);
-      const matchesStatus =
-        statusFilter === "all" || item.status === statusFilter;
+      const matchesStatus = onlyUnanswered
+        ? item.status === "VERIFIED" || item.status === "NEW"
+        : statusFilter === "all" || item.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
-  }, [items, search, statusFilter]);
+  }, [items, search, statusFilter, onlyUnanswered]);
 
   function handleDelete(item: CallbackRequestItem) {
     if (!window.confirm(`"${item.name}" talebi silinsin mi?`)) return;
@@ -123,11 +135,21 @@ export default function CallbackRequestManagement({ items, counts }: Props) {
               />
             </div>
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              value={onlyUnanswered ? "unanswered" : statusFilter}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "unanswered") {
+                  setOnlyUnanswered(true);
+                  setStatusFilter("all");
+                  return;
+                }
+                setOnlyUnanswered(false);
+                setStatusFilter(value as StatusFilter);
+              }}
               className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
             >
               <option value="all">Tüm durumlar</option>
+              <option value="unanswered">Yanıtlanmayan (Yeni + Doğrulandı)</option>
               <option value="VERIFIED">Doğrulandı</option>
               <option value="NEW">Yeni</option>
               <option value="CONTACTED">Arandı</option>
