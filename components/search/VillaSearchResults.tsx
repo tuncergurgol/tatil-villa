@@ -1,45 +1,53 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import VillaResultCard from "@/components/search/VillaResultCard";
+import {
+  buildVillaSearchHref,
+} from "@/lib/villa-search-params";
 import type { Villa } from "@/lib/types";
 
 interface VillaSearchResultsProps {
   villas: Villa[];
   totalCount: number;
-  displayedCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
   titleLabel: string;
   nights: number;
   currentParams: Record<string, string | undefined>;
   sort: string;
 }
 
-function buildHref(
-  current: Record<string, string | undefined>,
-  patch: Record<string, string | null>
-) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(current)) {
-    if (value) params.set(key, value);
-  }
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === null || value === "") params.delete(key);
-    else params.set(key, value);
-  }
-  const qs = params.toString();
-  return qs ? `/villalar?${qs}` : "/villalar";
-}
-
 export default function VillaSearchResults({
   villas,
   totalCount,
-  displayedCount,
+  page,
+  pageSize,
+  totalPages,
   titleLabel,
   nights,
   currentParams,
   sort,
 }: VillaSearchResultsProps) {
   const router = useRouter();
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, totalCount);
+
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
+    .filter((pageNumber) => {
+      if (totalPages <= 7) return true;
+      if (pageNumber === 1 || pageNumber === totalPages) return true;
+      return Math.abs(pageNumber - page) <= 1;
+    })
+    .reduce<number[]>((acc, pageNumber, index, list) => {
+      if (index > 0 && pageNumber - list[index - 1] > 1) {
+        acc.push(-1);
+      }
+      acc.push(pageNumber);
+      return acc;
+    }, []);
 
   return (
     <div className="min-w-0 flex-1">
@@ -50,25 +58,17 @@ export default function VillaSearchResults({
         </h1>
         <p className="mt-1 text-sm text-sky-600">
           Fiyat ve İndirimler / En İyi Fiyat Garantisi
-          {displayedCount < totalCount ? (
+          {totalCount > 0 ? (
             <span className="text-gray-500">
               {" "}
-              · İlk {displayedCount} sonuç gösteriliyor
+              ·{" "}
+              {totalCount > pageSize && page === 1
+                ? `İlk ${pageSize} sonuç gösteriliyor`
+                : `${rangeStart}–${rangeEnd} arası gösteriliyor`}
+              {totalPages > 1 ? ` (sayfa ${page}/${totalPages})` : ""}
             </span>
           ) : null}
         </p>
-      </div>
-
-      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-sky-900">
-          Üye indirimlerinden yararlanmak için giriş yapabilirsiniz.
-        </p>
-        <a
-          href="/admin/login"
-          className="inline-flex shrink-0 rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600"
-        >
-          Giriş Yap
-        </a>
       </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -88,7 +88,12 @@ export default function VillaSearchResults({
         <select
           value={sort}
           onChange={(e) =>
-            router.push(buildHref(currentParams, { sort: e.target.value }))
+            router.push(
+              buildVillaSearchHref(currentParams, {
+                sort: e.target.value,
+                page: null,
+              })
+            )
           }
           className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 outline-none focus:border-sky-400"
         >
@@ -114,11 +119,67 @@ export default function VillaSearchResults({
           </a>
         </div>
       ) : (
-        <div className="space-y-4">
-          {villas.map((villa) => (
-            <VillaResultCard key={villa.id} villa={villa} nights={nights} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-4">
+            {villas.map((villa) => (
+              <VillaResultCard key={villa.id} villa={villa} nights={nights} />
+            ))}
+          </div>
+
+          {totalPages > 1 ? (
+            <nav
+              className="mt-8 flex flex-wrap items-center justify-center gap-2"
+              aria-label="Sayfalama"
+            >
+              {page > 1 ? (
+                <Link
+                  href={buildVillaSearchHref(currentParams, {
+                    page: String(page - 1),
+                  })}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Önceki
+                </Link>
+              ) : null}
+
+              {pageNumbers.map((pageNumber) =>
+                pageNumber === -1 ? (
+                  <span
+                    key={`gap-before-${pageNumber}-${pageNumbers.indexOf(pageNumber)}`}
+                    className="px-1 text-sm text-gray-400"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <Link
+                    key={pageNumber}
+                    href={buildVillaSearchHref(currentParams, {
+                      page: String(pageNumber),
+                    })}
+                    className={`min-w-10 rounded-xl px-3 py-2 text-center text-sm font-semibold ${
+                      pageNumber === page
+                        ? "bg-sky-600 text-white"
+                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {pageNumber}
+                  </Link>
+                )
+              )}
+
+              {page < totalPages ? (
+                <Link
+                  href={buildVillaSearchHref(currentParams, {
+                    page: String(page + 1),
+                  })}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Sonraki
+                </Link>
+              ) : null}
+            </nav>
+          ) : null}
+        </>
       )}
     </div>
   );

@@ -14,6 +14,10 @@ import {
 } from "@/lib/queries/villas";
 import { prisma } from "@/lib/db";
 import { countNightsBetween } from "@/lib/villa-period-selection";
+import {
+  parseVillaSearchPage,
+  VILLA_SEARCH_PAGE_SIZE,
+} from "@/lib/villa-search-params";
 
 export const metadata: Metadata = {
   title: "Villalar",
@@ -38,12 +42,11 @@ interface PageProps {
     category?: string;
     q?: string;
     sort?: string;
+    page?: string;
   }>;
 }
 
 export const dynamic = "force-dynamic";
-
-const SEARCH_RESULT_LIMIT = 48;
 
 async function getSearchAmenityOptions() {
   const [searchAmenities, villas] = await Promise.all([
@@ -98,6 +101,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
   const maxPrice = params.maxPrice ? Number(params.maxPrice) : undefined;
   const adults = params.adults ? parseInt(params.adults, 10) : undefined;
   const sort = params.sort || (params.region ? "random" : "recommended");
+  const page = parseVillaSearchPage(params.page);
 
   const [
     searchRegions,
@@ -128,11 +132,12 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       maxPrice: Number.isFinite(maxPrice) ? maxPrice : undefined,
       amenities: amenityList,
       sort,
-      limit: idList.length > 0 ? Math.max(idList.length, SEARCH_RESULT_LIMIT) : SEARCH_RESULT_LIMIT,
+      page,
+      pageSize: VILLA_SEARCH_PAGE_SIZE,
     }),
   ]);
 
-  const { villas, totalCount } = villaSearch;
+  const { villas, totalCount, totalPages, pageSize } = villaSearch;
 
   const nights =
     params.checkIn && params.checkOut
@@ -174,6 +179,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     maxPrice: params.maxPrice,
     amenities: params.amenities,
     sort: params.sort,
+    page: params.page,
   };
 
   return (
@@ -208,7 +214,9 @@ export default async function VillalarPage({ searchParams }: PageProps) {
           <VillaSearchResults
             villas={villas}
             totalCount={totalCount}
-            displayedCount={villas.length}
+            page={page}
+            pageSize={pageSize}
+            totalPages={totalPages}
             titleLabel={titleLabel}
             nights={nights}
             currentParams={currentParams}

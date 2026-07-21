@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ChevronDown, Map as MapIcon } from "lucide-react";
 import type { Region } from "@/lib/types";
+import { buildVillaSearchHref } from "@/lib/villa-search-params";
 
 interface FilterAmenity {
   name: string;
@@ -62,16 +63,11 @@ function buildHref(
   current: Record<string, string | undefined>,
   patch: Record<string, string | null>
 ) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(current)) {
-    if (value) params.set(key, value);
-  }
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === null || value === "") params.delete(key);
-    else params.set(key, value);
-  }
-  const qs = params.toString();
-  return qs ? `/villalar?${qs}` : "/villalar";
+  const shouldResetPage = Object.keys(patch).some((key) => key !== "page");
+  return buildVillaSearchHref(current, {
+    ...patch,
+    ...(shouldResetPage && !("page" in patch) ? { page: null } : {}),
+  });
 }
 
 function CheckboxRow({

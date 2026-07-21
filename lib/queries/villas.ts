@@ -18,6 +18,7 @@ import { mapDbPeriodDayToQuoteInput } from "@/lib/queries/villa-stay-quote";
 import { offsetDateKey } from "@/lib/villa-period-selection";
 import { convertCurrencyAmount } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
+import { VILLA_SEARCH_PAGE_SIZE } from "@/lib/villa-search-params";
 
 export interface VillaFilters {
   filter?: string;
@@ -34,6 +35,8 @@ export interface VillaFilters {
   maxPrice?: number;
   amenities?: string[];
   sort?: string;
+  page?: number;
+  pageSize?: number;
   limit?: number;
 }
 
@@ -52,9 +55,9 @@ const regionSelect = {
 
 function getVillaOrderBy(filter?: string, sort?: string) {
   if (sort === "random") return undefined;
-  if (sort === "price_asc") return { pricePerNight: "asc" as const };
-  if (sort === "price_desc") return { pricePerNight: "desc" as const };
-  if (sort === "guests") return { guests: "desc" as const };
+  if (sort === "price_asc" || sort === "price_desc" || sort === "guests") {
+    return undefined;
+  }
   if (sort === "recommended" || filter === "recommended") {
     return { recommendedSortOrder: "asc" as const };
   }
@@ -69,6 +72,41 @@ function shuffleInPlace<T>(items: T[]): T[] {
     [items[i], items[j]] = [items[j], items[i]];
   }
   return items;
+}
+
+function villaSortPrice(villa: {
+  minNightlyPrice: number | null;
+  pricePerNight: number | null;
+  stayTotal?: number | null;
+}) {
+  if (villa.stayTotal != null) return villa.stayTotal;
+  return villa.minNightlyPrice ?? villa.pricePerNight ?? Number.POSITIVE_INFINITY;
+}
+
+function applyVillaSearchSort(
+  result: NonNullable<ReturnType<typeof mapVilla>>[],
+  filters: VillaFilters
+) {
+  if (filters.ids && filters.ids.length > 0) return result;
+
+  const sort = filters.sort;
+  if (sort === "price_asc") {
+    result.sort((a, b) => villaSortPrice(a) - villaSortPrice(b));
+  } else if (sort === "price_desc") {
+    result.sort(
+      (a, b) =>
+        (villaSortPrice(b) === Number.POSITIVE_INFINITY
+          ? 0
+          : villaSortPrice(b)) -
+        (villaSortPrice(a) === Number.POSITIVE_INFINITY
+          ? 0
+          : villaSortPrice(a))
+    );
+  } else if (sort === "guests") {
+    result.sort((a, b) => b.guests - a.guests);
+  }
+
+  return result;
 }
 
 export type VillaWithRegion = Awaited<ReturnType<typeof getVillaBySlug>>;
@@ -281,16 +319,6 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
         return true;
       });
     }
-
-    if (filters.sort === "price_asc") {
-      result.sort(
-        (a, b) => (a.stayTotal ?? Number.POSITIVE_INFINITY) - (b.stayTotal ?? Number.POSITIVE_INFINITY)
-      );
-    } else if (filters.sort === "price_desc") {
-      result.sort(
-        (a, b) => (b.stayTotal ?? 0) - (a.stayTotal ?? 0)
-      );
-    }
   }
 
   if (filters.adults) {
@@ -302,6 +330,8 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
     result.sort(
       (left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0)
     );
+  } else {
+    applyVillaSearchSort(result, filters);
   }
 
   const totalCount = result.length;
@@ -310,11 +340,22 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
     shuffleInPlace(result);
   }
 
-  if (filters.limit) {
-    result = result.slice(0, filters.limit);
-  }
+  const page = Math.max(1, filters.page ?? 1);
+  const isIdList = Boolean(filters.ids?.length);
+  const pageSize = isIdList
+    ? Math.max(filters.ids!.length, VILLA_SEARCH_PAGE_SIZE)
+    : filters.pageSize ?? VILLA_SEARCH_PAGE_SIZE;
+  const offset = (page - 1) * pageSize;
+  result = result.slice(offset, offset + pageSize);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  return { villas: result, totalCount };
+  return {
+    villas: result,
+    totalCount,
+    page,
+    pageSize,
+    totalPages,
+  };
 }
 
 export async function getVillaBySlug(slug: string) {
