@@ -28,7 +28,7 @@ function isAdminHostAllowed(host: string): boolean {
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
-  const isLoginPage = req.nextUrl.pathname === "/admin/login";
+  const isLoginArea = req.nextUrl.pathname.startsWith("/admin/login");
   const host = req.headers.get("host") || req.nextUrl.host;
 
   // Public site hostlarında admin paneli açma
@@ -36,11 +36,11 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", req.nextUrl));
   }
 
-  if (isAdminRoute && !isLoginPage && !isLoggedIn) {
+  if (isAdminRoute && !isLoginArea && !isLoggedIn) {
     return NextResponse.redirect(new URL("/admin/login", req.nextUrl));
   }
 
-  if (isLoginPage && isLoggedIn) {
+  if (isLoginArea && isLoggedIn) {
     return NextResponse.redirect(new URL("/admin", req.nextUrl));
   }
 
