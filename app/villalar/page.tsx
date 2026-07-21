@@ -8,7 +8,7 @@ import {
   getRegionsWithCount,
 } from "@/lib/queries/regions";
 import {
-  getVillas,
+  getVillaSearchResults,
   getSearchCategoryOptions,
   getSearchFacilityCategoryOptions,
 } from "@/lib/queries/villas";
@@ -106,7 +106,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     categoryOptions,
     facilityOptions,
     amenityOptions,
-    villas,
+    villaSearch,
   ] = await Promise.all([
     getHeroSearchRegions(),
     getRegionsWithCount(),
@@ -114,7 +114,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     getSearchCategoryOptions(),
     getSearchFacilityCategoryOptions(),
     getSearchAmenityOptions(),
-    getVillas({
+    getVillaSearchResults({
       filter: params.filter,
       region: params.region,
       category: params.category,
@@ -131,6 +131,8 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       limit: idList.length > 0 ? Math.max(idList.length, SEARCH_RESULT_LIMIT) : SEARCH_RESULT_LIMIT,
     }),
   ]);
+
+  const { villas, totalCount } = villaSearch;
 
   const nights =
     params.checkIn && params.checkOut
@@ -205,7 +207,8 @@ export default async function VillalarPage({ searchParams }: PageProps) {
           />
           <VillaSearchResults
             villas={villas}
-            totalCount={villas.length}
+            totalCount={totalCount}
+            displayedCount={villas.length}
             titleLabel={titleLabel}
             nights={nights}
             currentParams={currentParams}

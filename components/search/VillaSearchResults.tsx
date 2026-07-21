@@ -7,6 +7,7 @@ import type { Villa } from "@/lib/types";
 interface VillaSearchResultsProps {
   villas: Villa[];
   totalCount: number;
+  displayedCount: number;
   titleLabel: string;
   nights: number;
   currentParams: Record<string, string | undefined>;
@@ -32,6 +33,7 @@ function buildHref(
 export default function VillaSearchResults({
   villas,
   totalCount,
+  displayedCount,
   titleLabel,
   nights,
   currentParams,
@@ -48,6 +50,12 @@ export default function VillaSearchResults({
         </h1>
         <p className="mt-1 text-sm text-sky-600">
           Fiyat ve İndirimler / En İyi Fiyat Garantisi
+          {displayedCount < totalCount ? (
+            <span className="text-gray-500">
+              {" "}
+              · İlk {displayedCount} sonuç gösteriliyor
+            </span>
+          ) : null}
         </p>
       </div>
 

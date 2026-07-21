@@ -140,6 +140,11 @@ function mapVilla(
 }
 
 export async function getVillas(filters: VillaFilters = {}) {
+  const { villas } = await getVillaSearchResults(filters);
+  return villas;
+}
+
+export async function getVillaSearchResults(filters: VillaFilters = {}) {
   const where: Record<string, unknown> = { active: true };
 
   if (filters.ids && filters.ids.length > 0) {
@@ -217,7 +222,6 @@ export async function getVillas(filters: VillaFilters = {}) {
       region: { select: regionSelect },
     },
     ...(orderBy ? { orderBy } : {}),
-    ...(!isRandom && filters.limit ? { take: filters.limit } : {}),
   });
 
   let result = villas.map((v) =>
@@ -300,12 +304,17 @@ export async function getVillas(filters: VillaFilters = {}) {
     );
   }
 
+  const totalCount = result.length;
+
   if (isRandom) {
     shuffleInPlace(result);
-    if (filters.limit) result = result.slice(0, filters.limit);
   }
 
-  return result;
+  if (filters.limit) {
+    result = result.slice(0, filters.limit);
+  }
+
+  return { villas: result, totalCount };
 }
 
 export async function getVillaBySlug(slug: string) {
