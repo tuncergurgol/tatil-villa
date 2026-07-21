@@ -10,6 +10,7 @@ import {
   mapIntentToOccupancyMode,
   parseWhatsappCalendarMessage,
 } from "@/lib/whatsapp-calendar-parser";
+import { parseWhatsappCalendarDateTrainingLine } from "@/lib/whatsapp-calendar-date-training";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
@@ -41,6 +42,28 @@ export type ListEvolutionGroupsResult = {
 function revalidateWhatsappCalendarPaths() {
   revalidatePath("/admin/acente/evolution-whatsapp");
   revalidatePath("/admin/villalar");
+}
+
+async function loadWhatsappCalendarParserRules() {
+  const [phraseRules, dateTrainingRules] = await Promise.all([
+    prisma.whatsappCalendarPhraseRule.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { phrase: true, intent: true },
+    }),
+    prisma.whatsappCalendarDateTraining.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: {
+        samplePattern: true,
+        startDateKey: true,
+        endDateKey: true,
+        active: true,
+      },
+    }),
+  ]);
+
+  return { phraseRules, dateTrainingRules };
 }
 
 const groupSchema = z.object({
@@ -259,13 +282,15 @@ export async function testWhatsappCalendarParserAction(
 ): Promise<WhatsappCalendarActionState> {
   await requireAdmin();
 
-  const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
-    where: { active: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { phrase: true, intent: true },
-  });
+  const { phraseRules, dateTrainingRules } =
+    await loadWhatsappCalendarParserRules();
 
-  const parsed = parseWhatsappCalendarMessage(sampleText, phraseRules);
+  const parsed = parseWhatsappCalendarMessage(
+    sampleText,
+    phraseRules,
+    undefined,
+    dateTrainingRules
+  );
   if (!parsed) {
     return { error: "Mesajdan takvim komutu çıkarılamadı" };
   }
@@ -286,13 +311,15 @@ export async function applyWhatsappCalendarParserTestAction(
 ): Promise<WhatsappCalendarActionState> {
   await requireAdmin();
 
-  const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
-    where: { active: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { phrase: true, intent: true },
-  });
+  const { phraseRules, dateTrainingRules } =
+    await loadWhatsappCalendarParserRules();
 
-  const parsed = parseWhatsappCalendarMessage(sampleText, phraseRules);
+  const parsed = parseWhatsappCalendarMessage(
+    sampleText,
+    phraseRules,
+    undefined,
+    dateTrainingRules
+  );
   if (!parsed) {
     return { error: "Mesajdan takvim komutu çıkarılamadı" };
   }
@@ -385,6 +412,71 @@ export async function toggleWhatsappCalendarPhraseRule(
   }
 }
 
+export async function createWhatsappCalendarDateTrainingAction(
+  rawLine: string
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  const parsed = parseWhatsappCalendarDateTrainingLine(rawLine);
+  if ("error" in parsed) {
+    return { error: parsed.error };
+  }
+
+  const maxSort = await prisma.whatsappCalendarDateTraining.aggregate({
+    _max: { sortOrder: true },
+  });
+
+  try {
+    await prisma.whatsappCalendarDateTraining.create({
+      data: {
+        samplePattern: parsed.samplePattern,
+        startDateKey: parsed.startDateKey,
+        endDateKey: parsed.endDateKey,
+        sortOrder: (maxSort._max.sortOrder ?? 0) + 10,
+      },
+    });
+    revalidateWhatsappCalendarPaths();
+    return { success: true, message: "Tarih öğrenme örneği eklendi" };
+  } catch {
+    return { error: "Bu örnek zaten kayıtlı" };
+  }
+}
+
+export async function deleteWhatsappCalendarDateTrainingAction(
+  id: string
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  try {
+    await prisma.whatsappCalendarDateTraining.delete({ where: { id } });
+    revalidateWhatsappCalendarPaths();
+    return { success: true, message: "Tarih öğrenme örneği silindi" };
+  } catch {
+    return { error: "Örnek silinemedi" };
+  }
+}
+
+export async function toggleWhatsappCalendarDateTrainingAction(
+  id: string,
+  active: boolean
+): Promise<WhatsappCalendarActionState> {
+  await requireAdmin();
+
+  try {
+    await prisma.whatsappCalendarDateTraining.update({
+      where: { id },
+      data: { active },
+    });
+    revalidateWhatsappCalendarPaths();
+    return {
+      success: true,
+      message: active ? "Örnek etkinleştirildi" : "Örnek pasifleştirildi",
+    };
+  } catch {
+    return { error: "Durum güncellenemedi" };
+  }
+}
+
 export async function retryWhatsappCalendarMessageAction(
   messageId: string
 ): Promise<WhatsappCalendarActionState> {
@@ -412,11 +504,8 @@ export async function retryWhatsappCalendarMessageAction(
   const groupId = normalizeWhatsappGroupId(message.groupExternalId);
   const linkedVillas = await findVillasByWhatsappGroupId(groupId);
 
-  const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
-    where: { active: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { phrase: true, intent: true },
-  });
+  const { phraseRules, dateTrainingRules } =
+    await loadWhatsappCalendarParserRules();
 
   // Tarih yoksa aynı gruptaki önceki mesajdan tarih bağlamı al.
   const recentContext = await prisma.whatsappCalendarMessage.findFirst({
@@ -432,7 +521,8 @@ export async function retryWhatsappCalendarMessageAction(
   const parsed = parseWhatsappCalendarMessage(
     message.body,
     phraseRules,
-    recentContext?.body
+    recentContext?.body,
+    dateTrainingRules
   );
 
   const targetVillas = resolveWhatsappCalendarTargetVillas(

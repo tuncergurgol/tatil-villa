@@ -34,6 +34,9 @@ export async function getWhatsappCalendarAdminData() {
     prisma.whatsappCalendarPhraseRule.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     }),
+    prisma.whatsappCalendarDateTraining.findMany({
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
   ]);
 
   const mappedVillas = villas.filter(
@@ -58,6 +61,7 @@ export async function getWhatsappCalendarAdminData() {
     villas,
     mappedVillas,
     phraseRules,
+    dateTrainingRules,
   };
 }
 
@@ -78,5 +82,18 @@ export async function getActiveWhatsappCalendarPhraseRules() {
     where: { active: true },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: { phrase: true, intent: true },
+  });
+}
+
+export async function getActiveWhatsappCalendarDateTraining() {
+  return prisma.whatsappCalendarDateTraining.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: {
+      samplePattern: true,
+      startDateKey: true,
+      endDateKey: true,
+      active: true,
+    },
   });
 }

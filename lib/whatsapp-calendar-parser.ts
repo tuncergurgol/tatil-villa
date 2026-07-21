@@ -1,3 +1,4 @@
+import { matchDateTrainingRule } from "@/lib/whatsapp-calendar-date-training";
 import { compareDates, parseDateKey, toDateKey } from "@/lib/villa-period-calendar";
 
 export type WhatsappCalendarIntent = "OPEN" | "CLOSE" | "OPTION";
@@ -5,6 +6,13 @@ export type WhatsappCalendarIntent = "OPEN" | "CLOSE" | "OPTION";
 export type WhatsappCalendarPhraseRuleInput = {
   phrase: string;
   intent: WhatsappCalendarIntent;
+};
+
+export type WhatsappCalendarDateTrainingRule = {
+  samplePattern: string;
+  startDateKey: string;
+  endDateKey: string;
+  active?: boolean;
 };
 
 export type ParsedWhatsappCalendarMessage = {
@@ -40,6 +48,28 @@ const MONTHS: Record<string, number> = {
   aralik: 12,
   aralık: 12,
 };
+
+function resolveMonthName(token: string): number | null {
+  const normalized = normalizeText(token);
+  if (!normalized) return null;
+  if (MONTHS[normalized]) return MONTHS[normalized];
+
+  // Yaygın yazım hataları: ağaustos → agaustos, agauustos
+  if (/^ag+a*u*stos$/.test(normalized)) return 8;
+  if (/^tem+m*u*z$/.test(normalized)) return 7;
+  if (/^eyl+u*l$/.test(normalized)) return 9;
+  if (/^ek+i*m$/.test(normalized)) return 10;
+  if (/^kas+i*m$/.test(normalized)) return 11;
+  if (/^ara+l+i*k$/.test(normalized)) return 12;
+  if (/^sub+a*t$/.test(normalized)) return 2;
+  if (/^may+i*s$/.test(normalized)) return 5;
+  if (/^haz+i*ran$/.test(normalized)) return 6;
+  if (/^nis+a*n$/.test(normalized)) return 4;
+  if (/^mar+t$/.test(normalized)) return 3;
+  if (/^oca+k$/.test(normalized)) return 1;
+
+  return null;
+}
 
 // Kökleri baz alır; Türkçe çekimleri (kapatalım, kapattık, açalım, doldu...) yakalar.
 const CLOSE_KEYWORDS =
@@ -184,7 +214,7 @@ function parseDateToken(token: string, fallbackMonth?: number, fallbackYear?: nu
 
   const monthName = trimmed.match(/^(\d{1,2})\s+([a-z]+)$/i);
   if (monthName) {
-    const month = MONTHS[normalizeText(monthName[2])];
+    const month = resolveMonthName(monthName[2]);
     if (!month) return null;
     return parseIsoDate({ day: Number(monthName[1]), month });
   }
@@ -192,7 +222,18 @@ function parseDateToken(token: string, fallbackMonth?: number, fallbackYear?: nu
   return null;
 }
 
-export function extractDateRange(text: string) {
+export function extractDateRange(
+  text: string,
+  dateTrainingRules?: WhatsappCalendarDateTrainingRule[]
+) {
+  const trained = matchDateTrainingRule(text, dateTrainingRules);
+  if (trained) {
+    return {
+      startDateKey: trained.startDateKey,
+      endDateKey: trained.endDateKey,
+    };
+  }
+
   const normalized = joinSpacedDayDigits(
     normalizeText(text.replace(/\s+/g, " ").trim())
   );
@@ -202,8 +243,8 @@ export function extractDateRange(text: string) {
     /giris\s*(?:tarihi)?\s*:?\s*(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?[\s\S]{0,120}?cikis\s*(?:tarihi)?\s*:?\s*(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?/i
   );
   if (checkInOutLabeled) {
-    const startMonth = MONTHS[checkInOutLabeled[2]];
-    const endMonth = MONTHS[checkInOutLabeled[5]];
+    const startMonth = resolveMonthName(checkInOutLabeled[2]);
+    const endMonth = resolveMonthName(checkInOutLabeled[5]);
     if (startMonth && endMonth) {
       const startYear = checkInOutLabeled[3]
         ? Number(checkInOutLabeled[3])
@@ -227,8 +268,8 @@ export function extractDateRange(text: string) {
     /(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\s+giris\b[\s\S]{0,40}?(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\s+cikis\b/i
   );
   if (checkInOutInline) {
-    const startMonth = MONTHS[checkInOutInline[2]];
-    const endMonth = MONTHS[checkInOutInline[5]];
+    const startMonth = resolveMonthName(checkInOutInline[2]);
+    const endMonth = resolveMonthName(checkInOutInline[5]);
     if (startMonth && endMonth) {
       const startYear = checkInOutInline[3]
         ? Number(checkInOutInline[3])
@@ -252,7 +293,7 @@ export function extractDateRange(text: string) {
     /\b([a-z]+)\s+(\d{1,2})\s*(?:-|–|—|ile|ve|\/)\s*(\d{1,2})(?:\s+(\d{4}))?\b/i
   );
   if (monthFirstRange) {
-    const month = MONTHS[monthFirstRange[1]];
+    const month = resolveMonthName(monthFirstRange[1]);
     if (month) {
       return rangeFromSameMonthDays({
         startDay: Number(monthFirstRange[2]),
@@ -278,7 +319,7 @@ export function extractDateRange(text: string) {
     /(\d{1,2})\s+([a-z]+)\s+(\d{1,2})\s+(?:aralig\w*|arasi\w*)/i
   );
   if (sameMonthRangeKeyword) {
-    const month = MONTHS[sameMonthRangeKeyword[2]];
+    const month = resolveMonthName(sameMonthRangeKeyword[2]);
     if (month) {
       return rangeFromSameMonthDays({
         startDay: Number(sameMonthRangeKeyword[1]),
@@ -293,7 +334,7 @@ export function extractDateRange(text: string) {
     /(\d{1,2})\s*(?:-|–|—|ile|ve|\/|\.{2,})\s*(\d{1,2})(?:\s*[\/.-]\s*|\s+)([a-z]+)(?:\s+(\d{4}))?/i
   );
   if (monthRange) {
-    const month = MONTHS[monthRange[3]];
+    const month = resolveMonthName(monthRange[3]);
     if (month) {
       return rangeFromSameMonthDays({
         startDay: Number(monthRange[1]),
@@ -309,7 +350,7 @@ export function extractDateRange(text: string) {
     /\b(\d{1,2})\s+(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\b/i
   );
   if (spacedDayMonthRange) {
-    const month = MONTHS[spacedDayMonthRange[3]];
+    const month = resolveMonthName(spacedDayMonthRange[3]);
     if (month) {
       return rangeFromSameMonthDays({
         startDay: Number(spacedDayMonthRange[1]),
@@ -326,8 +367,8 @@ export function extractDateRange(text: string) {
     /(\d{1,2})\s+([a-z]+)\s*(?:-|–|—|ile|ve|\/)?\s*(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?/i
   );
   if (twoMonthDay) {
-    const startMonth = MONTHS[twoMonthDay[2]];
-    const endMonth = MONTHS[twoMonthDay[4]];
+    const startMonth = resolveMonthName(twoMonthDay[2]);
+    const endMonth = resolveMonthName(twoMonthDay[4]);
     if (startMonth && endMonth) {
       const explicitYear = twoMonthDay[5] ? Number(twoMonthDay[5]) : undefined;
       const startYear = explicitYear ?? inferYear(startMonth);
@@ -342,7 +383,7 @@ export function extractDateRange(text: string) {
     /\b(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\b/i
   );
   if (singleMonthDay) {
-    const month = MONTHS[singleMonthDay[2]];
+    const month = resolveMonthName(singleMonthDay[2]);
     if (month) {
       const year = singleMonthDay[3]
         ? Number(singleMonthDay[3])
@@ -368,7 +409,8 @@ export function extractDateRange(text: string) {
 export function parseWhatsappCalendarMessage(
   rawBody: string,
   rules?: WhatsappCalendarPhraseRuleInput[],
-  contextBody?: string
+  contextBody?: string,
+  dateTrainingRules?: WhatsappCalendarDateTrainingRule[]
 ): ParsedWhatsappCalendarMessage | null {
   const body = rawBody.trim();
   if (!body) return null;
@@ -377,8 +419,10 @@ export function parseWhatsappCalendarMessage(
   if (!detected) return null;
 
   const range =
-    extractDateRange(body) ??
-    (contextBody?.trim() ? extractDateRange(contextBody.trim()) : null);
+    extractDateRange(body, dateTrainingRules) ??
+    (contextBody?.trim()
+      ? extractDateRange(contextBody.trim(), dateTrainingRules)
+      : null);
   if (!range) return null;
 
   const { start, end } = range.startDateKey <= range.endDateKey

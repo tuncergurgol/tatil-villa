@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } f
 import { useRouter } from "next/navigation";
 import {
   createWhatsappCalendarGroup,
+  createWhatsappCalendarDateTrainingAction,
   createWhatsappCalendarPhraseRule,
+  deleteWhatsappCalendarDateTrainingAction,
   deleteWhatsappCalendarGroup,
   deleteWhatsappCalendarPhraseRule,
   generateWhatsappCalendarWebhookSecretAction,
@@ -12,8 +14,10 @@ import {
   retryWhatsappCalendarMessageAction,
   saveWhatsappCalendarSettings,
   testWhatsappCalendarParserAction,
+  toggleWhatsappCalendarDateTrainingAction,
   toggleWhatsappCalendarPhraseRule,
 } from "@/app/actions/admin/whatsapp-calendar";
+import { formatDateTrainingLine } from "@/lib/whatsapp-calendar-date-training";
 import type { WhatsappCalendarAdminData } from "@/lib/queries/whatsapp-calendar";
 import type { EvolutionWhatsappGroup } from "@/lib/evolution-client";
 import { includesSearchText } from "@/lib/search-text";
@@ -85,6 +89,9 @@ export default function WhatsappCalendarAutomation({
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const [sampleText, setSampleText] = useState("15-20 Temmuz dolu");
   const [phraseText, setPhraseText] = useState("");
+  const [dateTrainingLine, setDateTrainingLine] = useState(
+    "1-8 ağaustos ==> 01.08.2026 - 08.08.2026"
+  );
   const [phraseIntent, setPhraseIntent] =
     useState<WhatsappCalendarPhraseIntent>("CLOSE");
   const [notice, setNotice] = useState<{ type: "ok" | "error"; message: string } | null>(
@@ -336,6 +343,47 @@ export default function WhatsappCalendarAutomation({
   function handleTogglePhraseRule(id: string, active: boolean) {
     startTransition(async () => {
       const result = await toggleWhatsappCalendarPhraseRule(id, active);
+      setNotice({
+        type: result.success ? "ok" : "error",
+        message: result.message ?? result.error ?? "Güncellenemedi",
+      });
+      if (result.success) router.refresh();
+    });
+  }
+
+  function handleCreateDateTraining() {
+    setNotice(null);
+    startTransition(async () => {
+      const result = await createWhatsappCalendarDateTrainingAction(
+        dateTrainingLine.trim()
+      );
+      if (result.error) {
+        setNotice({ type: "error", message: result.error });
+        return;
+      }
+      setNotice({
+        type: "ok",
+        message: result.message ?? "Tarih öğrenme örneği eklendi",
+      });
+      router.refresh();
+    });
+  }
+
+  function handleDeleteDateTraining(id: string) {
+    if (!window.confirm("Bu tarih öğrenme örneği silinsin mi?")) return;
+    startTransition(async () => {
+      const result = await deleteWhatsappCalendarDateTrainingAction(id);
+      setNotice({
+        type: result.success ? "ok" : "error",
+        message: result.message ?? result.error ?? "Silinemedi",
+      });
+      if (result.success) router.refresh();
+    });
+  }
+
+  function handleToggleDateTraining(id: string, active: boolean) {
+    startTransition(async () => {
+      const result = await toggleWhatsappCalendarDateTrainingAction(id, active);
       setNotice({
         type: result.success ? "ok" : "error",
         message: result.message ?? result.error ?? "Güncellenemedi",
@@ -892,6 +940,116 @@ export default function WhatsappCalendarAutomation({
         </div>
       </details>
 
+      <details className="group order-[68] overflow-hidden rounded-2xl border border-violet-200 bg-white xl:col-span-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 bg-violet-50/60 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="text-sm font-semibold text-violet-900">
+            Tarih Öğrenme (Yapay Zeka)
+          </span>
+          <span className="text-lg text-violet-400 transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <div className="border-t border-violet-100 p-5">
+          <p className="text-sm text-gray-600">
+            Mesajdaki tarih ifadesinin nasıl okunacağını sisteme öğretin. Gelen
+            mesajda örnek metin geçtiğinde belirttiğiniz tarih aralığı
+            kullanılır. Ayrıca yaygın yazım hataları (ör.{" "}
+            <code>ağaustos</code>) otomatik düzeltilir.
+          </p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-gray-500">
+            <li>
+              <code>1-8 ağaustos ==&gt; 01.08.2026 - 08.08.2026</code>
+            </li>
+            <li>
+              <code>7 10 ağustos ==&gt; 07.08.2026 - 10.08.2026</code>
+            </li>
+          </ul>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <label className="min-w-[280px] flex-1">
+              <span className="mb-1 block text-xs font-medium text-gray-500">
+                Öğrenme satırı
+              </span>
+              <input
+                value={dateTrainingLine}
+                onChange={(event) => setDateTrainingLine(event.target.value)}
+                placeholder="1-8 ağaustos ==> 01.08.2026 - 08.08.2026"
+                className={inputClass}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleCreateDateTraining}
+              disabled={isPending || !dateTrainingLine.trim()}
+              className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+            >
+              Örnek Ekle
+            </button>
+          </div>
+          <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-3">Öğrenme Satırı</th>
+                  <th className="px-4 py-3">Durum</th>
+                  <th className="px-4 py-3 text-right">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.dateTrainingRules.length > 0 ? (
+                  data.dateTrainingRules.map((rule) => (
+                    <tr key={rule.id} className="border-t border-gray-100">
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {formatDateTrainingLine(rule)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            rule.active
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {rule.active ? "Aktif" : "Pasif"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleToggleDateTraining(rule.id, !rule.active)
+                          }
+                          disabled={isPending}
+                          className="mr-3 text-xs font-semibold text-violet-700 hover:text-violet-800 disabled:opacity-60"
+                        >
+                          {rule.active ? "Pasifleştir" : "Aktifleştir"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDateTraining(rule.id)}
+                          disabled={isPending}
+                          className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-60"
+                        >
+                          Sil
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-4 py-8 text-center text-sm text-gray-500"
+                    >
+                      Henüz tarih öğrenme örneği yok. Yukarıdan ekleyin.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
       <details className="group order-6 overflow-hidden rounded-2xl border border-gray-200 bg-white xl:col-span-3">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
           <span className="text-sm font-semibold text-gray-800">Mesaj Testi</span>
@@ -904,6 +1062,7 @@ export default function WhatsappCalendarAutomation({
           Takvime uygulamadan önce sistemin mesajı nasıl okuduğunu deneyin. Örnek:{" "}
           <code>15-20 Temmuz dolu</code>, <code>Ağustos 8/15 doldu</code>,{" "}
           <code>7 10 ağustos satılmıştır</code>,{" "}
+          <code>1-8 ağaustos dolu</code>,{" "}
           <code>16 agustos giriş 20 agustos çıkış kapatabilir misiniz</code>
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">

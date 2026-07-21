@@ -213,6 +213,16 @@ export async function processWhatsappCalendarWebhook(
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: { phrase: true, intent: true },
   });
+  const dateTrainingRules = await prisma.whatsappCalendarDateTraining.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: {
+      samplePattern: true,
+      startDateKey: true,
+      endDateKey: true,
+      active: true,
+    },
+  });
 
   // Tarih yoksa önce alıntı metni, yoksa aynı gruptaki son opsiyon/kapama mesajı.
   let contextForDates = normalized.quotedBody;
@@ -223,7 +233,8 @@ export async function processWhatsappCalendarWebhook(
   const parsed = parseWhatsappCalendarMessage(
     normalized.body,
     phraseRules,
-    contextForDates || undefined
+    contextForDates || undefined,
+    dateTrainingRules
   );
 
   if (targetVillas.length === 0) {

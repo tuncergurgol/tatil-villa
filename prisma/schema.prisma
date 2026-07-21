@@ -463,6 +463,20 @@ model WhatsappCalendarPhraseRule {
   @@index([active, sortOrder])
 }
 
+model WhatsappCalendarDateTraining {
+  id            String   @id @default(cuid())
+  samplePattern String
+  startDateKey  String
+  endDateKey    String
+  active        Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([samplePattern, startDateKey, endDateKey])
+  @@index([active, sortOrder])
+}
+
 model VillaPricePeriod {
   id                            String                  @id @default(cuid())
   villaId                       String
