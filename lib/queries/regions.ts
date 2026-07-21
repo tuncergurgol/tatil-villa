@@ -1,10 +1,10 @@
+import { RegionLevel } from "@/lib/region-levels";
 import { prisma } from "@/lib/db";
 import {
   buildRegionTree,
   type RegionFlat,
   type RegionTreeNode,
 } from "@/lib/regions-tree";
-import { RegionLevel } from "@/lib/region-levels";
 import {
   collectDescendantIds,
   getAllRegionNodes,
@@ -98,17 +98,17 @@ export async function getAdminRegionData() {
   };
 }
 
-export async function getRegionsWithCount() {
-  const [ilceRegions, nodes, villaGroups] = await Promise.all([
-    prisma.region.findMany({
-      where: {
-        active: true,
-        published: true,
-        level: RegionLevel.ILCE,
-        showOnHome: true,
-      },
-      orderBy: { name: "asc" },
-    }),
+type RegionWithVillaCount = {
+  id: string;
+  slug: string;
+  name: string;
+  image: string;
+  level: RegionLevel;
+  villaCount: number;
+};
+
+async function getRegionVillaCountMaps() {
+  const [nodes, villaGroups] = await Promise.all([
     getAllRegionNodes(),
     prisma.villa.groupBy({
       by: ["regionId"],
@@ -121,7 +121,21 @@ export async function getRegionsWithCount() {
     villaGroups.map((row) => [row.regionId, row._count._all])
   );
 
-  return ilceRegions
+  return { nodes, villaCountByRegion };
+}
+
+function mapRegionsWithDescendantVillaCounts(
+  candidates: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    image: string;
+    level: RegionLevel;
+  }>,
+  nodes: Awaited<ReturnType<typeof getAllRegionNodes>>,
+  villaCountByRegion: Map<string, number>
+): RegionWithVillaCount[] {
+  return candidates
     .map((region) => {
       const descendantIds = collectDescendantIds(region.id, nodes);
       const villaCount = descendantIds.reduce(
@@ -134,10 +148,48 @@ export async function getRegionsWithCount() {
         slug: region.slug,
         name: region.name,
         image: region.image,
+        level: region.level,
         villaCount,
       };
     })
-    .sort((a, b) => b.villaCount - a.villaCount || a.name.localeCompare(b.name, "tr"));
+    .filter((region) => region.villaCount > 0);
+}
+
+export async function getRegionsWithCount() {
+  const [{ nodes, villaCountByRegion }, candidates] = await Promise.all([
+    getRegionVillaCountMaps(),
+    prisma.region.findMany({
+      where: {
+        active: true,
+        published: true,
+        OR: [
+          { level: RegionLevel.IL, showInSearch: true },
+          { level: RegionLevel.ILCE, showOnHome: true },
+        ],
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        image: true,
+        level: true,
+        sortOrder: true,
+      },
+      orderBy: [{ level: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+    }),
+  ]);
+
+  return mapRegionsWithDescendantVillaCounts(candidates, nodes, villaCountByRegion).sort(
+    (a, b) => {
+      const aIsIl = a.level === RegionLevel.IL;
+      const bIsIl = b.level === RegionLevel.IL;
+      if (aIsIl !== bIsIl) return aIsIl ? -1 : 1;
+      return (
+        b.villaCount - a.villaCount ||
+        a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
+      );
+    }
+  );
 }
 
 export async function getRegionBySlug(slug: string) {
@@ -204,16 +256,23 @@ export async function getHeroSearchRegions() {
     where: {
       active: true,
       published: true,
-      level: RegionLevel.ILCE,
+      OR: [
+        { level: RegionLevel.IL, showInSearch: true },
+        { level: RegionLevel.ILCE },
+      ],
     },
-    select: { slug: true, name: true, sortOrder: true },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { slug: true, name: true, level: true, sortOrder: true },
+    orderBy: [{ level: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
   });
 
   return regions.map((region) => ({
     slug: region.slug,
     name: region.name,
-    label: `${region.name} Kiralık Villa`,
+    level: region.level,
+    label:
+      region.level === RegionLevel.IL
+        ? `${region.name} (İl)`
+        : `${region.name} Kiralık Villa`,
   }));
 }
 

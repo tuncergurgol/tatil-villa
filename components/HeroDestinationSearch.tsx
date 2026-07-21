@@ -124,7 +124,7 @@ export default function HeroDestinationSearch({
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setOpen(true)}
-            placeholder="Bölge veya ilçe ara..."
+            placeholder="İl, bölge veya ilçe ara..."
             className="mt-1 w-full bg-transparent text-sm font-semibold leading-tight text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
             autoComplete="off"
           />

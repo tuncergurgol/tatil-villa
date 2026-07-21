@@ -35,6 +35,7 @@ export interface Region {
   name: string;
   image: string;
   villaCount: number;
+  level?: "IL" | "ILCE" | "MAHALLE";
 }
 
 export interface Campaign {
@@ -57,4 +58,5 @@ export interface HeroSearchRegionOption {
   slug: string;
   name: string;
   label: string;
+  level?: "IL" | "ILCE" | "MAHALLE";
 }
