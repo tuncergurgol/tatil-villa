@@ -15,10 +15,17 @@ type Props = {
 export default async function SiziArayalimPage({ searchParams }: Props) {
   await requireAdmin();
   const params = await searchParams;
-  const [items, counts, initialListFilter] = await Promise.all([
+  const initialListFilter = parseCallbackListFilterFromUrl(params);
+  const listFilterKey =
+    typeof params.durum === "string"
+      ? params.durum
+      : Array.isArray(params.durum)
+        ? (params.durum[0] ?? "")
+        : "";
+
+  const [items, counts] = await Promise.all([
     getAllCallbackRequests(),
     getCallbackRequestCounts(),
-    Promise.resolve(parseCallbackListFilterFromUrl(params)),
   ]);
 
   return (
@@ -26,6 +33,7 @@ export default async function SiziArayalimPage({ searchParams }: Props) {
       items={items}
       counts={counts}
       initialListFilter={initialListFilter}
+      listFilterKey={listFilterKey}
     />
   );
 }

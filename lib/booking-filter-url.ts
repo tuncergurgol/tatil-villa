@@ -30,6 +30,9 @@ export function parseBookingFiltersFromUrl(
   }
   if (quickRaw && VALID_QUICK.has(quickRaw)) {
     filters.quickFilter = quickRaw as BookingQuickFilter;
+    if (!filters.status) {
+      filters.status = BookingStatus.CONFIRMED;
+    }
   }
 
   return filters;

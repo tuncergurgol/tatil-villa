@@ -44,6 +44,7 @@ interface BookingManagementProps {
   villas: VillaOption[];
   siteDomain: string;
   initialFilters?: BookingFilters;
+  filtersKey?: string;
 }
 
 function StatusButton({
@@ -134,6 +135,7 @@ export default function BookingManagement({
   villas,
   siteDomain,
   initialFilters,
+  filtersKey = "",
 }: BookingManagementProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -155,10 +157,9 @@ export default function BookingManagement({
   );
 
   useEffect(() => {
-    if (initialFilters) {
-      setFilters(initialFilters);
-    }
-  }, [initialFilters]);
+    setFilters(initialFilters ?? emptyBookingFilters());
+    setPage(1);
+  }, [filtersKey, initialFilters]);
 
   useEffect(() => {
     setPage(1);

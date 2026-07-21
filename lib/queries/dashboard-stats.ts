@@ -1,7 +1,7 @@
 import "server-only";
 
 import { BookingStatus } from "@prisma/client";
-import { addDays, startOfDay } from "@/lib/booking-calendar-days";
+import { resolveQuickFilterPrismaDate } from "@/lib/booking-calendar-days";
 import { prisma } from "@/lib/db";
 
 export type DashboardBookingStatusStats = {
@@ -40,7 +40,6 @@ export async function getDashboardBookingStatusStats(): Promise<DashboardBooking
 }
 
 export async function getDashboardBookingQuickStats(): Promise<DashboardBookingQuickStats> {
-  const today = startOfDay(new Date());
   const confirmed = BookingStatus.CONFIRMED;
 
   const [
@@ -52,22 +51,40 @@ export async function getDashboardBookingQuickStats(): Promise<DashboardBookingQ
     checkOutToday,
   ] = await Promise.all([
     prisma.booking.count({
-      where: { status: confirmed, checkIn: addDays(today, 2) },
+      where: {
+        status: confirmed,
+        checkIn: resolveQuickFilterPrismaDate("check_in_2_days"),
+      },
     }),
     prisma.booking.count({
-      where: { status: confirmed, checkIn: addDays(today, 1) },
+      where: {
+        status: confirmed,
+        checkIn: resolveQuickFilterPrismaDate("check_in_1_day"),
+      },
     }),
     prisma.booking.count({
-      where: { status: confirmed, checkIn: today },
+      where: {
+        status: confirmed,
+        checkIn: resolveQuickFilterPrismaDate("check_in_today"),
+      },
     }),
     prisma.booking.count({
-      where: { status: confirmed, checkOut: addDays(today, 2) },
+      where: {
+        status: confirmed,
+        checkOut: resolveQuickFilterPrismaDate("check_out_2_days"),
+      },
     }),
     prisma.booking.count({
-      where: { status: confirmed, checkOut: addDays(today, 1) },
+      where: {
+        status: confirmed,
+        checkOut: resolveQuickFilterPrismaDate("check_out_1_day"),
+      },
     }),
     prisma.booking.count({
-      where: { status: confirmed, checkOut: today },
+      where: {
+        status: confirmed,
+        checkOut: resolveQuickFilterPrismaDate("check_out_today"),
+      },
     }),
   ]);
 

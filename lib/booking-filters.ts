@@ -1,36 +1,8 @@
 import type { BookingFilters } from "@/lib/booking-filter-types";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import { formatBookingReservationNo } from "@/lib/booking-display";
-import { addDays, isSameCalendarDay, startOfDay } from "@/lib/booking-calendar-days";
+import { matchesBookingQuickFilter } from "@/lib/booking-calendar-days";
 import { includesSearchText } from "@/lib/search-text";
-import { BookingStatus } from "@prisma/client";
-
-function matchesQuickFilter(
-  booking: AdminBookingListItem,
-  quickFilter: BookingFilters["quickFilter"]
-): boolean {
-  if (!quickFilter) return true;
-  if (booking.status !== BookingStatus.CONFIRMED) return false;
-
-  const today = startOfDay(new Date());
-
-  switch (quickFilter) {
-    case "check_in_today":
-      return isSameCalendarDay(booking.checkIn, today);
-    case "check_in_1_day":
-      return isSameCalendarDay(booking.checkIn, addDays(today, 1));
-    case "check_in_2_days":
-      return isSameCalendarDay(booking.checkIn, addDays(today, 2));
-    case "check_out_today":
-      return isSameCalendarDay(booking.checkOut, today);
-    case "check_out_1_day":
-      return isSameCalendarDay(booking.checkOut, addDays(today, 1));
-    case "check_out_2_days":
-      return isSameCalendarDay(booking.checkOut, addDays(today, 2));
-    default:
-      return true;
-  }
-}
 
 function isDateWithinRange(
   date: Date,
@@ -57,7 +29,7 @@ export function filterBookings(
       return false;
     }
 
-    if (!matchesQuickFilter(booking, filters.quickFilter)) {
+    if (!matchesBookingQuickFilter(booking, filters.quickFilter)) {
       return false;
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Phone, Plus, Search, Trash2 } from "lucide-react";
 import { deleteCallbackRequest } from "@/app/actions/admin/callback-requests";
@@ -32,6 +32,7 @@ interface Props {
     closed: number;
   };
   initialListFilter?: CallbackListFilter;
+  listFilterKey?: string;
 }
 
 function formatDateTime(value: Date | string) {
@@ -57,6 +58,7 @@ export default function CallbackRequestManagement({
   items,
   counts,
   initialListFilter = "all",
+  listFilterKey = "",
 }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -69,6 +71,12 @@ export default function CallbackRequestManagement({
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const unanswered = initialListFilter === "unanswered";
+    setOnlyUnanswered(unanswered);
+    setStatusFilter(unanswered ? "VERIFIED" : "all");
+  }, [listFilterKey, initialListFilter]);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {

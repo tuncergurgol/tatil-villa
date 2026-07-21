@@ -10,10 +10,10 @@ type Props = {
 
 export default async function AdminBookingsPage({ searchParams }: Props) {
   const params = await searchParams;
-  const [data, initialFilters] = await Promise.all([
-    getAdminBookingListData(),
-    Promise.resolve(parseBookingFiltersFromUrl(params)),
-  ]);
+  const initialFilters = parseBookingFiltersFromUrl(params);
+  const filtersKey = JSON.stringify(params);
+
+  const [data] = await Promise.all([getAdminBookingListData()]);
 
   return (
     <BookingManagement
@@ -21,6 +21,7 @@ export default async function AdminBookingsPage({ searchParams }: Props) {
       villas={data.villas}
       siteDomain={data.siteDomain}
       initialFilters={initialFilters}
+      filtersKey={filtersKey}
     />
   );
 }
