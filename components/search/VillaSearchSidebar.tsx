@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ChevronDown, Map as MapIcon } from "lucide-react";
 import type { Region } from "@/lib/types";
-import { RegionLevel } from "@/lib/region-levels";
 import { buildVillaSearchHref } from "@/lib/villa-search-params";
 
 interface FilterAmenity {
@@ -99,12 +98,6 @@ function CheckboxRow({
   );
 }
 
-function regionFilterLabel(region: Region) {
-  if (region.level === RegionLevel.IL) return region.name;
-  if (region.level === RegionLevel.ILCE) return `${region.name} (İlçe)`;
-  return region.name;
-}
-
 export default function VillaSearchSidebar({
   regions,
   categories,
@@ -142,15 +135,11 @@ export default function VillaSearchSidebar({
     () =>
       [...regions]
         .filter((region) => region.villaCount > 0)
-        .sort((a, b) => {
-          const aIsIl = a.level === RegionLevel.IL;
-          const bIsIl = b.level === RegionLevel.IL;
-          if (aIsIl !== bIsIl) return aIsIl ? -1 : 1;
-          return (
+        .sort(
+          (a, b) =>
             b.villaCount - a.villaCount ||
             a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
-          );
-        }),
+        ),
     [regions]
   );
 
@@ -275,7 +264,7 @@ export default function VillaSearchSidebar({
                   >
                     <CheckboxRow
                       active={active}
-                      label={regionFilterLabel(region)}
+                      label={region.name}
                       count={region.villaCount}
                     />
                   </Link>

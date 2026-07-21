@@ -180,15 +180,9 @@ export async function getRegionsWithCount() {
   ]);
 
   return mapRegionsWithDescendantVillaCounts(candidates, nodes, villaCountByRegion).sort(
-    (a, b) => {
-      const aIsIl = a.level === RegionLevel.IL;
-      const bIsIl = b.level === RegionLevel.IL;
-      if (aIsIl !== bIsIl) return aIsIl ? -1 : 1;
-      return (
-        b.villaCount - a.villaCount ||
-        a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
-      );
-    }
+    (a, b) =>
+      b.villaCount - a.villaCount ||
+      a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
   );
 }
 
@@ -269,10 +263,7 @@ export async function getHeroSearchRegions() {
     slug: region.slug,
     name: region.name,
     level: region.level,
-    label:
-      region.level === RegionLevel.IL
-        ? `${region.name} (İl)`
-        : `${region.name} Kiralık Villa`,
+    label: `${region.name} Kiralık Villa`,
   }));
 }
 
