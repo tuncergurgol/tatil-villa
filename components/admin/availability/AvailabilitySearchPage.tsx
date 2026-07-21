@@ -45,10 +45,10 @@ import {
 const NIGHT_OPTIONS = Array.from({ length: 30 }, (_, index) => index + 1);
 
 const inputClass =
-  "mt-1 w-full rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm font-medium text-gray-900 outline-none transition focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100";
+  "mt-1 w-full min-w-0 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-base sm:text-sm font-medium text-gray-900 outline-none transition focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100";
 
 const compactInputClass =
-  "mt-1 w-full rounded-lg border border-gray-200 bg-gray-50/80 px-2.5 py-1.5 text-sm font-medium text-gray-900 outline-none transition focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100";
+  "mt-1 w-full min-w-0 rounded-lg border border-gray-200 bg-gray-50/80 px-2.5 py-1.5 text-base sm:text-sm font-medium text-gray-900 outline-none transition focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100";
 
 const labelClass = "text-[11px] font-medium text-gray-500";
 
@@ -307,18 +307,19 @@ export default function AvailabilitySearchPage({
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] w-full flex-col gap-3">
-      <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 rounded-t-xl border-b border-gray-100 px-3 py-2">
+    <div className="flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-full flex-col gap-3">
+      <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-2 rounded-t-xl border-b border-gray-100 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <div className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-900">
             <Search className="h-4 w-4 text-gray-500" />
             Uygunluk Ara
           </div>
-          <p className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-[11px] text-gray-500">
+          <p className="hidden min-w-0 flex-1 items-center gap-1.5 text-[11px] text-gray-500 lg:inline-flex">
             <Info className="h-3.5 w-3.5 shrink-0" />
             Tüm bilgileri doğru girdiğinizden emin olun. Aramalar yol ve
             istatistikler için loglanır.
           </p>
+          <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setAutoCollapse((value) => !value)}
@@ -357,12 +358,13 @@ export default function AvailabilitySearchPage({
               </>
             )}
           </button>
+          </div>
         </div>
 
         {panelOpen ? (
           <div className="space-y-3 p-3">
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-12">
-              <div className="xl:col-span-3">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-12">
+              <div className="min-w-0 xl:col-span-3">
                 <TurkishPhoneField
                   label="Telefon *"
                   value={phone}
@@ -379,7 +381,7 @@ export default function AvailabilitySearchPage({
                 />
               </div>
 
-              <label className="block xl:col-span-3">
+              <label className="block min-w-0 xl:col-span-3">
                 <span className={labelClass}>
                   Ad Soyad <span className="text-red-500">*</span>
                 </span>
@@ -394,7 +396,7 @@ export default function AvailabilitySearchPage({
                 ) : null}
               </label>
 
-              <label className="block xl:col-span-4">
+              <label className="block min-w-0 xl:col-span-4">
                 <span className={labelClass}>E-posta</span>
                 <input
                   type="email"
@@ -405,7 +407,7 @@ export default function AvailabilitySearchPage({
                 />
               </label>
 
-              <label className="block xl:col-span-2">
+              <label className="block min-w-0 xl:col-span-2">
                 <span className={labelClass}>
                   Kanal <span className="text-red-500">*</span>
                 </span>
@@ -429,8 +431,8 @@ export default function AvailabilitySearchPage({
               </label>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-12">
-              <label className="col-span-2 block lg:col-span-7">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-12">
+              <label className="block min-w-0 sm:col-span-2 lg:col-span-7">
                 <span className={`${labelClass} font-bold text-sky-600`}>
                   <span className="text-amber-500">*</span> TARİH
                 </span>
@@ -444,7 +446,7 @@ export default function AvailabilitySearchPage({
                 ) : null}
               </label>
 
-              <label className="block lg:col-span-2">
+              <label className="block min-w-0 lg:col-span-2">
                 <span className={labelClass}>Gece Sayısı</span>
                 <select
                   value={nightCount}
@@ -461,7 +463,7 @@ export default function AvailabilitySearchPage({
                 </select>
               </label>
 
-              <label className="block lg:col-span-3">
+              <label className="block min-w-0 sm:col-span-2 lg:col-span-3">
                 <span className={labelClass}>Site Adı</span>
                 <select
                   value={siteKey}
@@ -479,8 +481,8 @@ export default function AvailabilitySearchPage({
               </label>
             </div>
 
-            <div className="grid gap-2 xl:grid-cols-3">
-              <div>
+            <div className="grid grid-cols-1 gap-2 xl:grid-cols-3">
+              <div className="min-w-0">
                 <div className={`${labelClass} mb-1`}>Bölge</div>
                 <RegionTreePanel
                   tree={pageData.regionTree}
@@ -488,7 +490,7 @@ export default function AvailabilitySearchPage({
                   onChange={setRegionSlugs}
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className={`${labelClass} mb-1`}>Özellik</div>
                 <AmenityMultiSelect
                   options={pageData.amenities}
@@ -496,7 +498,7 @@ export default function AvailabilitySearchPage({
                   onChange={setAmenityNames}
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className={`${labelClass} mb-1`}>Kişi</div>
                 <GuestCountMultiSelect
                   selectedCounts={guestCounts}
@@ -555,7 +557,7 @@ export default function AvailabilitySearchPage({
                 type="button"
                 onClick={handleSearch}
                 disabled={isPending}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70 sm:ml-auto sm:w-auto"
               >
                 {isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

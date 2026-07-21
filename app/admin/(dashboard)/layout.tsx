@@ -12,7 +12,9 @@ export default function AdminDashboardLayout({
     <div className="flex min-h-screen bg-[#eef0f3]">
       <AdminIdleLogout />
       <AdminSidebar />
-      <div className="min-w-0 flex-1 overflow-auto p-6 lg:p-8">{children}</div>
+      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-6 lg:p-8">
+        {children}
+      </div>
     </div>
   );
 }

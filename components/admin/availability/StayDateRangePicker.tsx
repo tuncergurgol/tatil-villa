@@ -189,17 +189,17 @@ export default function StayDateRangePicker({
   }
 
   return (
-    <div ref={rootRef} className={`relative ${className}`}>
+    <div ref={rootRef} className={`relative min-w-0 ${className}`}>
       <button
         type="button"
         onClick={openCalendar}
-        className={`mt-1 grid w-full grid-cols-2 overflow-hidden rounded-lg border bg-gray-50/80 text-left text-sm font-medium text-gray-900 outline-none transition hover:bg-white focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100 ${
+        className={`mt-1 flex w-full flex-col overflow-hidden rounded-lg border bg-gray-50/80 text-left text-sm font-medium text-gray-900 outline-none transition hover:bg-white focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100 sm:grid sm:grid-cols-2 ${
           open ? "border-violet-300 ring-2 ring-violet-100" : "border-gray-200"
         }`}
       >
-        <span className="flex items-center gap-2 border-r border-gray-200 px-3 py-2">
+        <span className="flex items-center gap-2 border-b border-gray-200 px-3 py-2.5 sm:border-b-0 sm:border-r sm:py-2">
           <Calendar className="h-4 w-4 shrink-0 text-violet-500" />
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1">
             <span className="block text-[10px] font-medium uppercase tracking-wide text-gray-500">
               Giriş
             </span>
@@ -208,9 +208,9 @@ export default function StayDateRangePicker({
             </span>
           </span>
         </span>
-        <span className="flex items-center gap-2 px-3 py-2">
+        <span className="flex items-center gap-2 px-3 py-2.5 sm:py-2">
           <Calendar className="h-4 w-4 shrink-0 text-violet-500" />
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1">
             <span className="block text-[10px] font-medium uppercase tracking-wide text-gray-500">
               Çıkış
             </span>
@@ -224,7 +224,18 @@ export default function StayDateRangePicker({
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-full z-50 mt-1 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
+        <>
+          <button
+            type="button"
+            aria-label="Takvimi kapat"
+            className="fixed inset-0 z-40 bg-black/20 sm:hidden"
+            onClick={() => {
+              setOpen(false);
+              setPendingStart(null);
+              setHoverDate(null);
+            }}
+          />
+          <div className="fixed inset-x-3 top-[12%] z-50 max-h-[76vh] overflow-y-auto rounded-xl border border-gray-200 bg-white p-3 shadow-lg sm:absolute sm:inset-x-auto sm:left-0 sm:top-full sm:mt-1 sm:max-h-none sm:w-max">
           <div className="mb-2 flex items-center justify-between">
             <button
               type="button"
@@ -256,14 +267,17 @@ export default function StayDateRangePicker({
           </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
             {renderMonth(viewYear, viewMonth)}
-            {renderMonth(rightYear, rightMonth)}
+            <div className="hidden sm:block">
+              {renderMonth(rightYear, rightMonth)}
+            </div>
           </div>
           {pendingStart ? (
             <p className="mt-3 text-center text-[11px] text-gray-500">
               Çıkış tarihini seçin
             </p>
           ) : null}
-        </div>
+          </div>
+        </>
       ) : null}
     </div>
   );
