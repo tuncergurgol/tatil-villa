@@ -4,7 +4,7 @@ import {
   emptyBookingFilters,
   type BookingFilters,
   type BookingQuickFilter,
-} from "@/components/admin/bookings/BookingFilterModal";
+} from "@/lib/booking-filter-types";
 
 const VALID_STATUSES = new Set<string>(Object.values(BookingStatus));
 const VALID_QUICK = new Set<string>(

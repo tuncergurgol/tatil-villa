@@ -1,4 +1,4 @@
-import type { BookingFilters } from "@/components/admin/bookings/BookingFilterModal";
+import type { BookingFilters } from "@/lib/booking-filter-types";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import { formatBookingReservationNo } from "@/lib/booking-display";
 import { addDays, isSameCalendarDay, startOfDay } from "@/lib/booking-calendar-days";
