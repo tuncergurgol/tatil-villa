@@ -9,6 +9,9 @@ import type {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { deliverOtpCode } from "@/lib/otp-delivery";
+import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
@@ -83,12 +86,17 @@ export async function submitCallbackRequestAction(
     return { error: "Geçerli bir cep telefonu girin (05xx…)" };
   }
 
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+
   const payload: CallbackRequestOtpPayload = {
     name: parsed.data.name,
     phone: e164,
     note: parsed.data.note ?? "",
     preferredDay: parsed.data.preferredDay,
     preferredTime: parsed.data.preferredTime,
+    sourceSite: site.brandName,
+    sourceDomain: site.domain,
   };
 
   await invalidateActiveOtps(e164, CALLBACK_OTP_PURPOSE);
@@ -200,6 +208,15 @@ export async function verifyCallbackRequestOtpAction(
   }
 
   const now = new Date();
+  let createdRecord: {
+    name: string;
+    phone: string;
+    note: string;
+    preferredDay: CallbackPreferredDay;
+    preferredTime: CallbackPreferredTime;
+    sourceSite: string;
+    sourceDomain: string;
+  } | null = null;
 
   await prisma.$transaction(async (tx) => {
     await tx.verificationCode.update({
@@ -207,18 +224,25 @@ export async function verifyCallbackRequestOtpAction(
       data: { usedAt: now },
     });
 
-    await tx.callbackRequest.create({
+    const item = await tx.callbackRequest.create({
       data: {
         name: payload.name,
         phone: payload.phone,
         note: payload.note ?? "",
         preferredDay: payload.preferredDay as CallbackPreferredDay,
         preferredTime: payload.preferredTime as CallbackPreferredTime,
+        sourceSite: payload.sourceSite ?? "",
+        sourceDomain: payload.sourceDomain ?? "",
         status: "VERIFIED",
         verifiedAt: now,
       },
     });
+    createdRecord = item;
   });
+
+  if (createdRecord) {
+    await notifyNewCallbackRequest(createdRecord);
+  }
 
   revalidatePath("/admin/acente/sizi-arayalim");
   revalidatePath("/sizi-arayalim");

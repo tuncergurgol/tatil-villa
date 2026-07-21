@@ -15,6 +15,8 @@ export type CallbackRequestOtpPayload = {
   note: string;
   preferredDay: "TODAY" | "TOMORROW" | "THIS_WEEK" | "ANY";
   preferredTime: "ASAP" | "MORNING" | "AFTERNOON" | "EVENING";
+  sourceSite: string;
+  sourceDomain: string;
 };
 
 export type BookingGuestLoginOtpPayload = {

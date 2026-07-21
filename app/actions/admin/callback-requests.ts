@@ -9,6 +9,7 @@ import type {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
 
 const DAYS: CallbackPreferredDay[] = [
   "TODAY",
@@ -76,9 +77,23 @@ export async function createCallbackRequestAdmin(
       preferredTime: parseTime(formData.get("preferredTime")),
       status,
       adminNote: String(formData.get("adminNote") ?? "").trim(),
+      sourceSite: "Manuel Kayıt",
+      sourceDomain: "",
       verifiedAt: status === "PENDING" ? null : new Date(),
     },
   });
+
+  if (status !== "PENDING") {
+    await notifyNewCallbackRequest({
+      name: item.name,
+      phone: item.phone,
+      note: item.note,
+      preferredDay: item.preferredDay,
+      preferredTime: item.preferredTime,
+      sourceSite: item.sourceSite,
+      sourceDomain: item.sourceDomain,
+    });
+  }
 
   revalidateCallbackPaths(item.id);
   redirect(`/admin/acente/sizi-arayalim/${item.id}`);

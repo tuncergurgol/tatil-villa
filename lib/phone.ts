@@ -40,3 +40,8 @@ export function toWhatsAppRecipient(e164: string): string {
 export function isValidTurkishMobileE164(e164: string): boolean {
   return /^\+905\d{9}$/.test(e164);
 }
+
+/** Cep veya sabit hat (+90 + 10 hane) — operasyonel WhatsApp için */
+export function isValidTurkishPhoneE164(e164: string): boolean {
+  return /^\+90\d{10}$/.test(e164);
+}

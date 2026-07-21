@@ -39,6 +39,18 @@ function formatDateTime(value: Date | string) {
   }).format(new Date(value));
 }
 
+function formatSiteLabel(item: CallbackRequestItem): string {
+  const site = item.sourceSite?.trim() ?? "";
+  const domain = item.sourceDomain?.trim() ?? "";
+  if (site) return site;
+  return domain || "—";
+}
+
+function formatSiteHint(item: CallbackRequestItem): string | null {
+  const domain = item.sourceDomain?.trim() ?? "";
+  return domain || null;
+}
+
 export default function CallbackRequestManagement({ items, counts }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -52,7 +64,9 @@ export default function CallbackRequestManagement({ items, counts }: Props) {
       const matchesQuery =
         includesSearchText(item.name, search) ||
         includesSearchText(item.phone, search) ||
-        includesSearchText(item.note, search);
+        includesSearchText(item.note, search) ||
+        includesSearchText(item.sourceSite, search) ||
+        includesSearchText(item.sourceDomain, search);
       const matchesStatus =
         statusFilter === "all" || item.status === statusFilter;
       return matchesQuery && matchesStatus;
@@ -130,10 +144,11 @@ export default function CallbackRequestManagement({ items, counts }: Props) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full min-w-[1200px] text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="w-40 px-4 py-3">Tarih</th>
+                <th className="min-w-[120px] px-4 py-3">Site</th>
                 <th className="min-w-[140px] px-4 py-3">Ad</th>
                 <th className="w-40 px-4 py-3">Telefon</th>
                 <th className="w-32 px-4 py-3">Gün</th>
@@ -149,6 +164,16 @@ export default function CallbackRequestManagement({ items, counts }: Props) {
                   <tr key={item.id} className="border-t border-gray-100">
                     <td className="px-4 py-3 text-gray-600">
                       {formatDateTime(item.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">
+                      <div className="font-medium text-gray-900">
+                        {formatSiteLabel(item)}
+                      </div>
+                      {formatSiteHint(item) ? (
+                        <div className="text-xs text-gray-500">
+                          {formatSiteHint(item)}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {item.name}
@@ -205,7 +230,7 @@ export default function CallbackRequestManagement({ items, counts }: Props) {
               ) : (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Henüz geri arama talebi yok.

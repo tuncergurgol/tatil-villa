@@ -169,6 +169,11 @@ export const adminNavSections: NavSection[] = [
         href: "/admin/musteri-yonetimi",
         icon: "user",
       },
+      {
+        label: "Sizi Arayalım",
+        href: "/admin/acente/sizi-arayalim",
+        icon: "phone",
+      },
     ],
   },
   {
@@ -240,11 +245,6 @@ export const adminAgencyNav: NavGroup = {
       label: "Kampanyalar",
       href: "/admin/acente/kampanyalar",
       icon: "megaphone",
-    },
-    {
-      label: "Sizi Arayalım",
-      href: "/admin/acente/sizi-arayalim",
-      icon: "phone",
     },
     {
       label: "Güvenlik & Log",

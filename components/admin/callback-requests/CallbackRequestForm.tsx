@@ -47,6 +47,18 @@ export default function CallbackRequestForm({ item }: Props) {
         action={action}
         className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
       >
+        {isEdit && (item?.sourceSite || item?.sourceDomain) ? (
+          <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            <p className="font-semibold">Kaynak site</p>
+            <p className="mt-1">
+              {item?.sourceSite || "—"}
+              {item?.sourceDomain ? (
+                <span className="text-sky-700"> · {item.sourceDomain}</span>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="text-xs font-medium text-gray-500">Ad</span>

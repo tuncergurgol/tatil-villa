@@ -1171,6 +1171,8 @@ model CallbackRequest {
   preferredTime CallbackPreferredTime  @default(ASAP)
   status        CallbackRequestStatus  @default(PENDING)
   adminNote     String                 @default("")
+  sourceSite    String                 @default("")
+  sourceDomain  String                 @default("")
   verifiedAt    DateTime?
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
