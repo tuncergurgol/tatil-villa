@@ -61,6 +61,10 @@ export const EXCEL_FACILITY_TO_MASTER: Record<string, string> = {
   "Türk Hamamı olan Villalar": "Sauna ve Hamamlı Villalar",
   "Sinema Odası Olanlar": "Sinema Odası Olanlar",
   "Spor Aletleri (GYM) olan villalar": "Spor Aletleri (GYM) olan villalar",
+  "Evcil Hayvan İzinli Villalar": "Köpek Kabul Eden Villalar",
+  "Oyun Grupları (Masa Tenisi, Bilardo, Langırt) olan Villalar":
+    "Eğlence ve Aktivite İmkanlı Villalar",
+  "Çocuk Oyun Parkı olan Villalar": "Çocuk Oyun Parkı olan Villalar",
 };
 
 /** Bu Excel sütunları atlanır (master tabloda karşılığı yok / tekrar eden) */
