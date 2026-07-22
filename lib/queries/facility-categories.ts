@@ -5,6 +5,8 @@ import {
   buildDreamFacilitySearchHref,
   type HomeDreamCategoryCard,
 } from "@/lib/home-dream-categories";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 export async function getFacilityCategoryAdminData() {
   const categories = await prisma.facilityCategory.findMany({
@@ -58,7 +60,9 @@ export type FacilityCategoryOption = Awaited<
  * Anasayfa hayal / stil kartları — Ev Kategorileri ile eşleşir.
  * Kategori yoksa veya villada henüz atanmamışsa amenity fallback kullanılır.
  */
-export async function getHomeDreamCategories(): Promise<HomeDreamCategoryCard[]> {
+export async function getHomeDreamCategories(
+  siteKey?: PublicSiteKey
+): Promise<HomeDreamCategoryCard[]> {
   const slugs = HOME_DREAM_CATEGORY_CARDS.map((card) => card.facilitySlug);
   const [categories, villas] = await Promise.all([
     prisma.facilityCategory.findMany({
@@ -70,7 +74,7 @@ export async function getHomeDreamCategories(): Promise<HomeDreamCategoryCard[]>
       },
     }),
     prisma.villa.findMany({
-      where: { active: true },
+      where: withPublicSiteVillaFilter({ active: true }, siteKey),
       select: { facilityCategories: true },
     }),
   ]);

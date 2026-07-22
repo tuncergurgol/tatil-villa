@@ -34,12 +34,10 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const [villa, company] = await Promise.all([
-    getVillaDetailBySlug(slug),
-    getCompanySettings(),
-  ]);
-  if (!villa) return { title: "Villa Bulunamadı" };
+  const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
+  const villa = await getVillaDetailBySlug(slug, site.key);
+  if (!villa) return { title: "Villa Bulunamadı" };
   return buildVillaDetailMetadata(villa, site);
 }
 
@@ -52,10 +50,12 @@ export default async function VillaDetailPage({
   const stayDates = resolveVillaStayDatesFromSearchParams(query);
   const initialAdults = resolveVillaStayAdultsFromSearchParams(query, 2);
 
-  const [villa, faqs, company, exchangeRates] = await Promise.all([
-    getVillaDetailBySlug(slug),
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+
+  const [villa, faqs, exchangeRates] = await Promise.all([
+    getVillaDetailBySlug(slug, site.key),
     getActiveFaqsForPublic(),
-    getCompanySettings(),
     getPublicExchangeRates(),
   ]);
 
@@ -65,7 +65,8 @@ export default async function VillaDetailPage({
     villa.id,
     villa.regionId,
     villa.guests,
-    10
+    10,
+    site.key
   );
 
   const detailFaqs = faqs
@@ -79,7 +80,6 @@ export default async function VillaDetailPage({
     })
     .slice(0, 10);
 
-  const site = await getPublicSiteProfile(company);
   const origin = `https://${site.domain
     .trim()
     .replace(/^https?:\/\//i, "")

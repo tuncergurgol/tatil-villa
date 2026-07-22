@@ -13,6 +13,10 @@ import {
   getSearchFacilityCategoryOptions,
 } from "@/lib/queries/villas";
 import { prisma } from "@/lib/db";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 import { countNightsBetween } from "@/lib/villa-period-selection";
 import {
   parseVillaSearchPage,
@@ -48,7 +52,8 @@ interface PageProps {
 
 export const dynamic = "force-dynamic";
 
-async function getSearchAmenityOptions() {
+async function getSearchAmenityOptions(siteKey?: PublicSiteKey) {
+  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
   const [searchAmenities, villas] = await Promise.all([
     prisma.amenity.findMany({
       where: { active: true, showInSearch: true },
@@ -56,7 +61,7 @@ async function getSearchAmenityOptions() {
       orderBy: { name: "asc" },
     }),
     prisma.villa.findMany({
-      where: { active: true },
+      where: villaWhere,
       select: { amenities: true },
     }),
   ]);
@@ -84,6 +89,8 @@ async function getSearchAmenityOptions() {
 
 export default async function VillalarPage({ searchParams }: PageProps) {
   const params = await searchParams;
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
   const amenityList = (params.amenities ?? "")
     .split(",")
     .map((item) => item.trim())
@@ -113,11 +120,11 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     villaSearch,
   ] = await Promise.all([
     getHeroSearchRegions(),
-    getRegionsWithCount(),
-    params.region ? getRegionBySlug(params.region) : null,
-    getSearchCategoryOptions(),
-    getSearchFacilityCategoryOptions(),
-    getSearchAmenityOptions(),
+    getRegionsWithCount(site.key),
+    params.region ? getRegionBySlug(params.region, site.key) : null,
+    getSearchCategoryOptions(site.key),
+    getSearchFacilityCategoryOptions(site.key),
+    getSearchAmenityOptions(site.key),
     getVillaSearchResults({
       filter: params.filter,
       region: params.region,
@@ -134,6 +141,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       sort,
       page,
       pageSize: VILLA_SEARCH_PAGE_SIZE,
+      siteKey: site.key,
     }),
   ]);
 

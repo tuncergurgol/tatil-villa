@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 function canonicalOrigin(domain: string): string {
   const cleaned = domain
@@ -39,7 +40,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const [villas, blogPosts, corporatePages, tours] = await Promise.all([
     prisma.villa.findMany({
-      where: { active: true, showInSearch: true },
+      where: withPublicSiteVillaFilter(
+        { active: true, showInSearch: true },
+        site.key
+      ),
       select: { slug: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
     }),

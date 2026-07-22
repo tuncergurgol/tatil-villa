@@ -6,6 +6,11 @@ import { getVillaPeriodPriceRanges } from "@/lib/queries/villas";
 import { RegionLevel } from "@/lib/region-levels";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { approximateVillaCoords } from "@/lib/villa-approximate-location";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import {
+  isVillaVisibleOnPublicSite,
+  withPublicSiteVillaFilter,
+} from "@/lib/public-villa-site-filter";
 
 function startOfTodayUtc() {
   const now = new Date();
@@ -27,7 +32,10 @@ function formatDistanceKm(km: number) {
   return `${rounded} Km`;
 }
 
-export async function getVillaDetailBySlug(slug: string) {
+export async function getVillaDetailBySlug(
+  slug: string,
+  siteKey?: PublicSiteKey
+) {
   const villa = await prisma.villa.findUnique({
     where: { slug },
     include: {
@@ -100,6 +108,7 @@ export async function getVillaDetailBySlug(slug: string) {
   });
 
   if (!villa || !villa.active) return null;
+  if (siteKey && !isVillaVisibleOnPublicSite(villa, siteKey)) return null;
 
   const fromDate = startOfTodayUtc();
   const toDate = addMonthsUtc(fromDate, 4);
@@ -591,7 +600,8 @@ export async function getSimilarVillas(
   villaId: string,
   regionId: string,
   guests: number,
-  limit = 10
+  limit = 10,
+  siteKey?: PublicSiteKey
 ): Promise<SimilarVillaCard[]> {
   const tiers = await resolveSimilarRegionTiers(regionId);
   const guestTargets = guestCapacityTargets(guests);
@@ -629,12 +639,15 @@ export async function getSimilarVillas(
 
     const remaining = limit - rowsDraft.length;
     const rows = await prisma.villa.findMany({
-      where: {
-        active: true,
-        id: { notIn: Array.from(seen) },
-        regionId: { in: regionIds },
-        guests: { in: guestTargets },
-      },
+      where: withPublicSiteVillaFilter(
+        {
+          active: true,
+          id: { notIn: Array.from(seen) },
+          regionId: { in: regionIds },
+          guests: { in: guestTargets },
+        },
+        siteKey
+      ),
       orderBy: [{ popular: "desc" }, { updatedAt: "desc" }],
       take: Math.max(remaining * 3, remaining),
       select: SIMILAR_VILLA_SELECT,

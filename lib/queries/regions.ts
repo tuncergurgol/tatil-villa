@@ -9,6 +9,8 @@ import {
   collectDescendantIds,
   getAllRegionNodes,
 } from "@/lib/queries/region-tree";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 const regionSelect = {
   id: true,
@@ -107,12 +109,12 @@ type RegionWithVillaCount = {
   villaCount: number;
 };
 
-async function getRegionVillaCountMaps() {
+async function getRegionVillaCountMaps(siteKey?: PublicSiteKey) {
   const [nodes, villaGroups] = await Promise.all([
     getAllRegionNodes(),
     prisma.villa.groupBy({
       by: ["regionId"],
-      where: { active: true },
+      where: withPublicSiteVillaFilter({ active: true }, siteKey),
       _count: { _all: true },
     }),
   ]);
@@ -155,9 +157,9 @@ function mapRegionsWithDescendantVillaCounts(
     .filter((region) => region.villaCount > 0);
 }
 
-export async function getRegionsWithCount() {
+export async function getRegionsWithCount(siteKey?: PublicSiteKey) {
   const [{ nodes, villaCountByRegion }, candidates] = await Promise.all([
-    getRegionVillaCountMaps(),
+    getRegionVillaCountMaps(siteKey),
     prisma.region.findMany({
       where: {
         active: true,
@@ -186,11 +188,12 @@ export async function getRegionsWithCount() {
   );
 }
 
-export async function getRegionBySlug(slug: string) {
+export async function getRegionBySlug(slug: string, siteKey?: PublicSiteKey) {
+  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
   const region = await prisma.region.findUnique({
     where: { slug },
     include: {
-      _count: { select: { villas: { where: { active: true } } } },
+      _count: { select: { villas: { where: villaWhere } } },
       parent: { include: { parent: true } },
     },
   });
@@ -275,7 +278,8 @@ export async function getAllRegions() {
 }
 
 /** Footer: görünür İl/İlçe (aktif villa > 0) + SEO için gizli linkler */
-export async function getFooterRegionLinks() {
+export async function getFooterRegionLinks(siteKey?: PublicSiteKey) {
+  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
   const [candidates, mahalles, nodes, villaGroups] = await Promise.all([
     prisma.region.findMany({
       where: {
@@ -307,7 +311,7 @@ export async function getFooterRegionLinks() {
     getAllRegionNodes(),
     prisma.villa.groupBy({
       by: ["regionId"],
-      where: { active: true },
+      where: villaWhere,
       _count: { _all: true },
     }),
   ]);

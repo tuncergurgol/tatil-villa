@@ -1,4 +1,5 @@
 import type { VillaCategory } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { BOOKING_BLOCKING_STATUSES } from "@/lib/booking-status";
 import { getVillaShowcaseImage } from "@/lib/villa-gallery";
@@ -19,6 +20,8 @@ import { offsetDateKey } from "@/lib/villa-period-selection";
 import { convertCurrencyAmount } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import { VILLA_SEARCH_PAGE_SIZE } from "@/lib/villa-search-params";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 export interface VillaFilters {
   filter?: string;
@@ -38,6 +41,7 @@ export interface VillaFilters {
   page?: number;
   pageSize?: number;
   limit?: number;
+  siteKey?: PublicSiteKey;
 }
 
 const HOME_SHOWCASE_LIMIT = 12;
@@ -183,34 +187,34 @@ export async function getVillas(filters: VillaFilters = {}) {
 }
 
 export async function getVillaSearchResults(filters: VillaFilters = {}) {
-  const where: Record<string, unknown> = { active: true };
+  const baseWhere: Prisma.VillaWhereInput = { active: true };
 
   if (filters.ids && filters.ids.length > 0) {
-    where.id = { in: filters.ids };
+    baseWhere.id = { in: filters.ids };
   }
 
-  if (filters.filter === "popular") where.popular = true;
-  if (filters.filter === "deal") where.deal = true;
-  if (filters.filter === "recommended") where.recommended = true;
+  if (filters.filter === "popular") baseWhere.popular = true;
+  if (filters.filter === "deal") baseWhere.deal = true;
+  if (filters.filter === "recommended") baseWhere.recommended = true;
   if (
     filters.category === "villa" ||
     filters.category === "apart" ||
     filters.category === "suit_daire"
   ) {
-    where.category = filters.category;
+    baseWhere.category = filters.category;
   }
   if (filters.region) {
     const regionIds = await getRegionIdsForFilter(filters.region);
     if (regionIds?.length) {
-      where.regionId = { in: regionIds };
+      baseWhere.regionId = { in: regionIds };
     } else {
-      where.region = { slug: filters.region };
+      baseWhere.region = { slug: filters.region };
     }
   }
 
   const query = filters.q?.trim();
   if (query) {
-    where.OR = [
+    baseWhere.OR = [
       { name: { contains: query, mode: "insensitive" } },
       { originalName: { contains: query, mode: "insensitive" } },
       { location: { contains: query, mode: "insensitive" } },
@@ -218,11 +222,11 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
   }
 
   if (filters.amenities && filters.amenities.length > 0) {
-    where.amenities = { hasEvery: filters.amenities };
+    baseWhere.amenities = { hasEvery: filters.amenities };
   }
 
   if (filters.facilities && filters.facilities.length > 0) {
-    where.facilityCategories = { hasEvery: filters.facilities };
+    baseWhere.facilityCategories = { hasEvery: filters.facilities };
   }
 
   if (
@@ -230,11 +234,13 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
     !filters.checkOut &&
     (filters.minPrice != null || filters.maxPrice != null)
   ) {
-    where.pricePerNight = {
+    baseWhere.pricePerNight = {
       ...(filters.minPrice != null ? { gte: filters.minPrice } : {}),
       ...(filters.maxPrice != null ? { lte: filters.maxPrice } : {}),
     };
   }
+
+  const where = withPublicSiteVillaFilter(baseWhere, filters.siteKey);
 
   const isRandom = filters.sort === "random";
   const orderBy = getVillaOrderBy(filters.filter, filters.sort);
@@ -370,16 +376,25 @@ export async function getVillaBySlug(slug: string) {
   return mapVilla(villa);
 }
 
-export async function getPopularVillas(limit = HOME_SHOWCASE_LIMIT) {
-  return getVillas({ filter: "popular", limit });
+export async function getPopularVillas(
+  limit = HOME_SHOWCASE_LIMIT,
+  siteKey?: PublicSiteKey
+) {
+  return getVillas({ filter: "popular", limit, siteKey });
 }
 
-export async function getDealVillas(limit = HOME_SHOWCASE_LIMIT) {
-  return getVillas({ filter: "deal", limit });
+export async function getDealVillas(
+  limit = HOME_SHOWCASE_LIMIT,
+  siteKey?: PublicSiteKey
+) {
+  return getVillas({ filter: "deal", limit, siteKey });
 }
 
-export async function getRecommendedVillas(limit = HOME_SHOWCASE_LIMIT) {
-  return getVillas({ filter: "recommended", limit });
+export async function getRecommendedVillas(
+  limit = HOME_SHOWCASE_LIMIT,
+  siteKey?: PublicSiteKey
+) {
+  return getVillas({ filter: "recommended", limit, siteKey });
 }
 
 export async function getVillaCount() {
@@ -562,10 +577,10 @@ async function resolvePublicSearchStay(
   return { availableIds, quotes };
 }
 
-export async function getSearchCategoryOptions() {
+export async function getSearchCategoryOptions(siteKey?: PublicSiteKey) {
   const groups = await prisma.villa.groupBy({
     by: ["category"],
-    where: { active: true },
+    where: withPublicSiteVillaFilter({ active: true }, siteKey),
     _count: { _all: true },
   });
 
@@ -581,14 +596,15 @@ export async function getSearchCategoryOptions() {
 }
 
 /** Admin panelindeki Ev Kategorileri — arama filtresi için alfabetik. */
-export async function getSearchFacilityCategoryOptions() {
+export async function getSearchFacilityCategoryOptions(siteKey?: PublicSiteKey) {
+  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
   const [categories, villas] = await Promise.all([
     prisma.facilityCategory.findMany({
       select: { name: true },
       orderBy: { name: "asc" },
     }),
     prisma.villa.findMany({
-      where: { active: true },
+      where: villaWhere,
       select: { facilityCategories: true },
     }),
   ]);

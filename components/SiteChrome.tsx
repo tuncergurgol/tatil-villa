@@ -35,11 +35,13 @@ const defaultQuickLinks = [
 ];
 
 export default async function SiteChrome({ children }: { children: React.ReactNode }) {
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+
   const [
     headerMenu,
     quickMenu,
     corporatePages,
-    company,
     footerRegions,
     faqs,
     reviews,
@@ -48,13 +50,11 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     getSiteMenuItemsForPublic("header"),
     getSiteMenuItemsForPublic("footer-quick"),
     getFooterCorporatePages(),
-    getCompanySettings(),
-    getFooterRegionLinks(),
+    getFooterRegionLinks(site.key),
     getActiveFaqsForPublic({ limit: 18 }),
     getApprovedReviewsForPublic(6),
     getPublishedBlogPosts({ limit: 6 }),
   ]);
-  const site = await getPublicSiteProfile(company);
   const tracking = await getPublicSiteTracking(site.key);
 
   const headerLinks =

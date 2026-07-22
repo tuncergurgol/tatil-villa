@@ -105,3 +105,14 @@ export async function getPublicSiteProfile(
 ): Promise<PublicSiteProfile> {
   return resolvePublicSiteProfile(company, await getRequestHostname());
 }
+
+export function resolvePublicSiteKey(hostname: string): PublicSiteProfile["key"] {
+  return (
+    BRANDED_SITE_BY_HOST.get(normalizeRequestHostname(hostname))?.key ??
+    "tatildeyiz"
+  );
+}
+
+export async function getRequestPublicSiteKey(): Promise<PublicSiteProfile["key"]> {
+  return resolvePublicSiteKey(await getRequestHostname());
+}

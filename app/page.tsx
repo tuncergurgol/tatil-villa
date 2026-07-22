@@ -19,6 +19,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+
   const [
     popular,
     deals,
@@ -27,18 +30,15 @@ export default async function HomePage() {
     campaigns,
     searchRegions,
     dreamCards,
-    company,
   ] = await Promise.all([
-    getPopularVillas(),
-    getDealVillas(),
-    getRecommendedVillas(),
-    getRegionsWithCount(),
+    getPopularVillas(undefined, site.key),
+    getDealVillas(undefined, site.key),
+    getRecommendedVillas(undefined, site.key),
+    getRegionsWithCount(site.key),
     getCampaigns(),
     getHeroSearchRegions(),
-    getHomeDreamCategories(),
-    getCompanySettings(),
+    getHomeDreamCategories(site.key),
   ]);
-  const site = await getPublicSiteProfile(company);
 
   return (
     <>

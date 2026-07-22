@@ -2,6 +2,11 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { RegionLevel } from "@/lib/region-levels";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import {
+  publicSiteRequiresTourismDocument,
+  withPublicSiteVillaFilter,
+} from "@/lib/public-villa-site-filter";
 
 /**
  * Türkçe karakterleri ASCII'ye katlar (I/İ/ı/i → i, ş→s, ğ→g, ü→u, ö→o, ç→c).
@@ -60,30 +65,51 @@ function buildRegionLabel(region: {
 
 export async function searchActiveVillasByName(
   query: string,
-  limit = 12
+  limit = 12,
+  siteKey?: PublicSiteKey
 ): Promise<VillaNameSearchResult[]> {
   const q = query.trim();
   if (q.length < 1) return [];
 
+  const requiresDocument = Boolean(
+    siteKey && publicSiteRequiresTourismDocument(siteKey)
+  );
+
   // Türkçe-duyarlı katlama ile eşleşen villa id'lerini bul.
   const pattern = `%${foldTurkishSearch(q).replace(/[%_\\]/g, "\\$&")}%`;
-  const matches = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-    SELECT "id"
-    FROM "Villa"
-    WHERE "active" = true
-      AND lower(translate("name", 'İIıŞşĞğÜüÖöÇç', 'iiissgguuoocc'))
-          LIKE ${pattern}
-    LIMIT ${limit}
-  `);
+  const matches = requiresDocument
+    ? await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT "id"
+        FROM "Villa"
+        WHERE "active" = true
+          AND (
+            "documentNo" <> ''
+            OR "documentType" IS NOT NULL
+          )
+          AND lower(translate("name", 'İIıŞşĞğÜüÖöÇç', 'iiissgguuoocc'))
+              LIKE ${pattern}
+        LIMIT ${limit}
+      `)
+    : await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT "id"
+        FROM "Villa"
+        WHERE "active" = true
+          AND lower(translate("name", 'İIıŞşĞğÜüÖöÇç', 'iiissgguuoocc'))
+              LIKE ${pattern}
+        LIMIT ${limit}
+      `);
 
   const matchedIds = matches.map((row) => row.id);
   if (matchedIds.length === 0) return [];
 
   const villas = await prisma.villa.findMany({
-    where: {
-      active: true,
-      id: { in: matchedIds },
-    },
+    where: withPublicSiteVillaFilter(
+      {
+        active: true,
+        id: { in: matchedIds },
+      },
+      siteKey
+    ),
     select: {
       id: true,
       slug: true,
