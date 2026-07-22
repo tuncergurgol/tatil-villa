@@ -145,13 +145,14 @@ function villaScalarsForClone(
 }
 
 function periodScalars(
-  period: VillaPricePeriod
+  period: VillaPricePeriod & { days?: VillaPricePeriodDay[] }
 ): Omit<Prisma.VillaPricePeriodCreateWithoutVillaInput, "days"> {
   const {
     id: _id,
     villaId: _villaId,
     createdAt: _createdAt,
     updatedAt: _updatedAt,
+    days: _days,
     ...data
   } = period;
   return data;
@@ -191,12 +192,15 @@ function roomScalars(
   return data;
 }
 
-function poolScalars(pool: VillaPool): Prisma.VillaPoolCreateWithoutVillaInput {
+function poolScalars(
+  pool: VillaPool & { periods?: VillaPoolPeriod[] }
+): Prisma.VillaPoolCreateWithoutVillaInput {
   const {
     id: _id,
     villaId: _villaId,
     createdAt: _createdAt,
     updatedAt: _updatedAt,
+    periods: _periods,
     ...data
   } = pool;
   return data;
