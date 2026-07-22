@@ -4,7 +4,7 @@ import type { CompanySettings } from "@prisma/client";
 import {
   getHomeVillaSectionConfigs,
   type HomeVillaSectionKey,
-} from "@/lib/homepage-villa-sections";
+} from "@/lib/homepage-villa-sections-config";
 
 const SECTION_META: Record<
   HomeVillaSectionKey,
