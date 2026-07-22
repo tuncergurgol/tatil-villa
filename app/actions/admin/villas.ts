@@ -16,6 +16,7 @@ import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
+import { cloneVilla } from "@/lib/villa-clone";
 
 function parseBool(value: FormDataEntryValue | null) {
   return value === "true" || value === "on";
@@ -500,4 +501,32 @@ export async function deleteVilla(id: string) {
   await prisma.villa.delete({ where: { id } });
   revalidatePath("/admin/villalar");
   revalidatePath("/villalar");
+}
+
+export type CopyVillaResult =
+  | { success: true; editPath: string; name: string }
+  | { success: false; error: string };
+
+export async function copyVilla(id: string): Promise<CopyVillaResult> {
+  try {
+    await requireAdmin();
+
+    const created = await cloneVilla(id);
+
+    revalidatePath("/admin/villalar");
+    revalidatePath("/villalar");
+    await revalidateVillaEditPage(created.id);
+
+    return {
+      success: true,
+      editPath: villaAdminEditPath(created),
+      name: created.name,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Villa kopyalanamadı",
+    };
+  }
 }

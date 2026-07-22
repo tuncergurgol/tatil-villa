@@ -16,7 +16,7 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
-import { deleteVilla } from "@/app/actions/admin/villas";
+import { copyVilla, deleteVilla } from "@/app/actions/admin/villas";
 import { includesSearchText } from "@/lib/search-text";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import { villaAdminEditPath, villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
@@ -86,16 +86,21 @@ function ActionButton({
 function VillaRowMenu({
   villa,
   onDelete,
+  onCopy,
   isPending,
   listQuery,
+  open,
+  onOpenChange,
 }: {
   villa: AdminVillaListItem;
   onDelete: (id: string, name: string) => void;
+  onCopy: (id: string, name: string) => void;
   isPending: boolean;
   listQuery: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
   const hizliFiyatPath = appendVillaListQuery(
     villaAdminHizliFiyatPath(villa),
     listQuery
@@ -106,13 +111,13 @@ function VillaRowMenu({
 
     function handlePointerDown(event: MouseEvent) {
       if (!menuRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+        onOpenChange(false);
       }
     }
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
+  }, [open, onOpenChange]);
 
   const items = [
     {
@@ -127,7 +132,7 @@ function VillaRowMenu({
     },
     {
       label: "Kopyala",
-      onClick: () => window.alert("Villa kopyalama yakında eklenecek."),
+      onClick: () => onCopy(villa.id, villa.name),
       icon: Copy,
     },
     {
@@ -144,7 +149,7 @@ function VillaRowMenu({
         type="button"
         onClick={(event) => {
           event.stopPropagation();
-          setOpen((prev) => !prev);
+          onOpenChange(!open);
         }}
         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
       >
@@ -166,7 +171,7 @@ function VillaRowMenu({
                 <a
                   key={item.label}
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => onOpenChange(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   {content}
@@ -178,9 +183,9 @@ function VillaRowMenu({
               <button
                 key={item.label}
                 type="button"
-                disabled={isPending && item.danger}
+                disabled={isPending && (item.danger || item.label === "Kopyala")}
                 onClick={() => {
-                  setOpen(false);
+                  onOpenChange(false);
                   item.onClick?.();
                 }}
                 className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
@@ -221,6 +226,7 @@ export default function VillaManagement({
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [openMenuVillaId, setOpenMenuVillaId] = useState<string | null>(null);
 
   useEffect(() => {
     setSearch(filters.q);
@@ -279,6 +285,27 @@ export default function VillaManagement({
       return matchesQuery && matchesRegion && matchesType && matchesStatus;
     });
   }, [villas, search, filters]);
+
+  function handleCopy(id: string, name: string) {
+    if (
+      !window.confirm(
+        `"${name}" villasının bir kopyası oluşturulsun mu?\n\nFotoğraflar, belge bilgileri, fiyatlar ve özellikler kopyalanır; takvimdeki dolu günler aktarılmaz.`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await copyVilla(id);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      router.push(result.editPath);
+      router.refresh();
+    });
+  }
 
   function handleDelete(id: string, name: string) {
     if (!window.confirm(`"${name}" silinsin mi?`)) return;
@@ -389,7 +416,9 @@ export default function VillaManagement({
               return (
                 <div
                   key={villa.id}
-                  className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
+                  className={`flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between ${
+                    openMenuVillaId === villa.id ? "relative z-30" : ""
+                  }`}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
@@ -430,7 +459,7 @@ export default function VillaManagement({
                     </div>
                   </div>
 
-                  <div className="relative z-10 flex flex-wrap items-center gap-2 lg:justify-end">
+                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     <ActionButton
                       href={appendVillaListQuery(
                         villaAdminEditPath(villa),
@@ -474,8 +503,13 @@ export default function VillaManagement({
                     <VillaRowMenu
                       villa={villa}
                       onDelete={handleDelete}
+                      onCopy={handleCopy}
                       isPending={isPending}
                       listQuery={listQuery}
+                      open={openMenuVillaId === villa.id}
+                      onOpenChange={(nextOpen) =>
+                        setOpenMenuVillaId(nextOpen ? villa.id : null)
+                      }
                     />
                   </div>
                 </div>
