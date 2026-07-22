@@ -30,6 +30,8 @@ function TabPanel({
 type FaqItem = React.ComponentProps<typeof FaqManagement>["items"][number];
 type BlogCategory = React.ComponentProps<typeof BlogManagement>["categories"][number];
 type BlogPost = React.ComponentProps<typeof BlogManagement>["posts"][number];
+type BlogAiSettings = React.ComponentProps<typeof BlogManagement>["blogAiSettings"];
+type BlogAiTopic = React.ComponentProps<typeof BlogManagement>["blogAiTopics"][number];
 type Review = React.ComponentProps<typeof ReviewManagement>["reviews"][number];
 type CmsPage = React.ComponentProps<typeof CorporatePageManagement>["pages"][number];
 type SiteMenu = React.ComponentProps<typeof MenuManagement>["menus"][number];
@@ -41,6 +43,8 @@ interface ContentManagementProps {
   faqs: FaqItem[];
   blogCategories: BlogCategory[];
   blogPosts: BlogPost[];
+  blogAiSettings: BlogAiSettings;
+  blogAiTopics: BlogAiTopic[];
   reviews: Review[];
   pages: CmsPage[];
   menus: SiteMenu[];
@@ -53,6 +57,8 @@ export default function ContentManagement({
   faqs,
   blogCategories,
   blogPosts,
+  blogAiSettings,
+  blogAiTopics,
   reviews,
   pages,
   menus,
@@ -167,7 +173,12 @@ export default function ContentManagement({
             <FaqManagement items={faqs} />
           </TabPanel>
           <TabPanel active={activeModule === "blog"}>
-            <BlogManagement categories={blogCategories} posts={blogPosts} />
+            <BlogManagement
+              categories={blogCategories}
+              posts={blogPosts}
+              blogAiSettings={blogAiSettings}
+              blogAiTopics={blogAiTopics}
+            />
           </TabPanel>
           <TabPanel active={activeModule === "yorumlar"}>
             <ReviewManagement reviews={reviews} />

@@ -7,6 +7,10 @@ import {
   getAllReviewsForAdmin,
   getCmsContentTabsForAdmin,
 } from "@/lib/queries/cms-content";
+import {
+  getBlogAiSettingsForAdmin,
+  getBlogAiTopicsForAdmin,
+} from "@/lib/queries/blog-ai";
 import { getAllSiteMenusForAdmin } from "@/lib/queries/site-menus";
 import { getAllCampaigns } from "@/lib/queries/campaigns";
 
@@ -33,6 +37,8 @@ export default async function ContentHubPage({
     faqs,
     blogCategories,
     blogPosts,
+    blogAiSettings,
+    blogAiTopics,
     reviews,
     pages,
     menus,
@@ -43,6 +49,20 @@ export default async function ContentHubPage({
       ? getAllBlogCategoriesForAdmin()
       : Promise.resolve([]),
     activeModule === "blog" ? getAllBlogPostsForAdmin() : Promise.resolve([]),
+    activeModule === "blog"
+      ? getBlogAiSettingsForAdmin()
+      : Promise.resolve({
+          id: "default",
+          enabled: false,
+          frequency: "WEEKLY" as const,
+          defaultCategoryId: null,
+          autoPublish: true,
+          lastGeneratedAt: null,
+          nextRunAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+    activeModule === "blog" ? getBlogAiTopicsForAdmin() : Promise.resolve([]),
     activeModule === "yorumlar" ? getAllReviewsForAdmin() : Promise.resolve([]),
     activeModule === "kurumsal" ? getAllCmsPagesForAdmin() : Promise.resolve([]),
     activeModule === "menuler" ? getAllSiteMenusForAdmin() : Promise.resolve([]),
@@ -56,6 +76,8 @@ export default async function ContentHubPage({
       faqs={faqs}
       blogCategories={blogCategories}
       blogPosts={blogPosts}
+      blogAiSettings={blogAiSettings}
+      blogAiTopics={blogAiTopics}
       reviews={reviews}
       pages={pages}
       menus={menus}

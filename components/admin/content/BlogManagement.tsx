@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { Bot, FileText, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import {
   deleteBlogPostAction,
   getBlogPostForEditAction,
@@ -11,6 +11,7 @@ import {
   saveBlogPostAction,
 } from "@/app/actions/admin/cms-content";
 import RichTextEditor from "@/components/admin/villas/RichTextEditor";
+import BlogAiPanel from "@/components/admin/content/BlogAiPanel";
 import {
   CmsField,
   CmsFormSection,
@@ -44,9 +45,14 @@ type Post = {
 
 type EditorPost = Post & { content: string };
 
+type BlogAiSettings = React.ComponentProps<typeof BlogAiPanel>["settings"];
+type BlogAiTopic = React.ComponentProps<typeof BlogAiPanel>["topics"][number];
+
 type EditorState =
   | { mode: "create" }
   | { mode: "edit"; post: EditorPost };
+
+type BlogView = "posts" | "ai";
 
 function toDatetimeLocalValue(value: Date | string | null | undefined) {
   if (!value) return "";
@@ -75,11 +81,16 @@ const emptyPost = {
 export default function BlogManagement({
   categories,
   posts,
+  blogAiSettings,
+  blogAiTopics,
 }: {
   categories: Category[];
   posts: Post[];
+  blogAiSettings: BlogAiSettings;
+  blogAiTopics: BlogAiTopic[];
 }) {
   const router = useRouter();
+  const [activeView, setActiveView] = useState<BlogView>("posts");
   const [isPending, startTransition] = useTransition();
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +159,41 @@ export default function BlogManagement({
     editor?.mode === "edit" ? editor.post : { id: "", ...emptyPost };
 
   return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveView("posts")}
+          className={`inline-flex cursor-pointer items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition ${
+            activeView === "posts"
+              ? "border-teal-600 text-teal-700"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <FileText className="h-4 w-4" />
+          Blog Yazıları
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveView("ai")}
+          className={`inline-flex cursor-pointer items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition ${
+            activeView === "ai"
+              ? "border-violet-600 text-violet-700"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <Bot className="h-4 w-4" />
+          Yapay Zeka Blog
+        </button>
+      </div>
+
+      {activeView === "ai" ? (
+        <BlogAiPanel
+          settings={blogAiSettings}
+          topics={blogAiTopics}
+          categories={categories}
+        />
+      ) : (
     <div className="space-y-8">
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-gray-800">Blog Kategorileri</h2>
@@ -479,6 +525,8 @@ export default function BlogManagement({
             document.body
           )
         : null}
+    </div>
+      )}
     </div>
   );
 }
