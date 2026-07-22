@@ -1,4 +1,4 @@
-import type { VillaCategory } from "@prisma/client";
+import type { VillaCategory, VillaDayOccupancy } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { BOOKING_BLOCKING_STATUSES } from "@/lib/booking-status";
@@ -16,6 +16,7 @@ import {
   dbDateToDateKey,
 } from "@/lib/villa-period-calendar";
 import { mapDbPeriodDayToQuoteInput } from "@/lib/queries/villa-stay-quote";
+import { isOccupancyNightBlocked } from "@/lib/booking-calendar-selection";
 import { offsetDateKey } from "@/lib/villa-period-selection";
 import { convertCurrencyAmount } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
@@ -477,13 +478,20 @@ async function resolvePublicSearchStay(
   const nightKeys = getStayNightKeys(checkInKey, checkOutKey);
   if (nightKeys.length === 0) return { availableIds, quotes };
 
-  const nightDates = nightKeys.map((key) => dateKeyToDbDate(key));
+  const calendarDateKeys = Array.from(
+    new Set([
+      offsetDateKey(checkInKey, -1),
+      ...nightKeys,
+      checkOutKey,
+    ])
+  );
+  const calendarDates = calendarDateKeys.map((key) => dateKeyToDbDate(key));
 
   const [periodDays, blockingBookings, exchangeRates] = await Promise.all([
     prisma.villaPricePeriodDay.findMany({
       where: {
         villaId: { in: villaIds },
-        date: { in: nightDates },
+        date: { in: calendarDates },
       },
       select: {
         villaId: true,
@@ -549,10 +557,13 @@ async function resolvePublicSearchStay(
 
     let available = false;
     if (allNightsOnCalendar) {
-      available = nightKeys.every((key) => {
-        const status = daysByDateKey.get(key)?.occupancyStatus;
-        return status !== "BOOKED" && status !== "OPTION";
-      });
+      const occupancyMap = new Map<string, VillaDayOccupancy>();
+      for (const [key, day] of daysByDateKey) {
+        occupancyMap.set(key, day.occupancyStatus);
+      }
+      available = nightKeys.every(
+        (key) => !isOccupancyNightBlocked(occupancyMap, key)
+      );
     } else {
       const bookings = bookingsByVilla.get(villaId) ?? [];
       available = !bookings.some(

@@ -11,7 +11,7 @@ import {
 import {
   getPublicVillaDayVisualStyle,
   PUBLIC_VILLA_DAY_VISUAL_LEGEND,
-  resolveVillaDayVisual,
+  resolveVillaDayVisualFromMap,
 } from "@/lib/villa-period-day-visual";
 import { compareDates, parseDateKey, todayDate } from "@/lib/villa-period-calendar";
 import { isDateKeyInRange, offsetDateKey } from "@/lib/villa-period-selection";
@@ -133,10 +133,7 @@ function MonthGrid({
 
           const dateKey = cell.dateKey;
           const isPast = compareDates(parseDateKey(dateKey), today) < 0;
-          const current = occupancyMap.get(dateKey) ?? "EMPTY";
-          const prev = occupancyMap.get(offsetDateKey(dateKey, -1));
-          const next = occupancyMap.get(offsetDateKey(dateKey, 1));
-          const kind = resolveVillaDayVisual(current, prev, next);
+          const kind = resolveVillaDayVisualFromMap(dateKey, occupancyMap);
           const visual = getPublicVillaDayVisualStyle(kind);
           const hasDayData = Boolean(cell.data);
           const priceTl =

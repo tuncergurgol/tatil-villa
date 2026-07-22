@@ -75,7 +75,7 @@ function hasDiscount(display: PeriodCalendarDayDisplay): boolean {
 
 function getNeighborOccupancy(
   dateKey: string,
-  offset: -1 | 1,
+  offset: -2 | -1 | 1,
   dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>
 ): VillaDayOccupancy | undefined {
   const date = parseDateKey(dateKey);
@@ -148,7 +148,8 @@ function CalendarDayCell({
     ? resolveVillaDayVisual(
         display.occupancyStatus,
         getNeighborOccupancy(dateKey, -1, dayDisplayByDate),
-        getNeighborOccupancy(dateKey, 1, dayDisplayByDate)
+        getNeighborOccupancy(dateKey, 1, dayDisplayByDate),
+        getNeighborOccupancy(dateKey, -2, dayDisplayByDate)
       )
     : "empty";
 

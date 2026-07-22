@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { VillaDayOccupancy } from "@prisma/client";
+import { offsetDateKey } from "@/lib/villa-period-selection";
 
 export type VillaDayVisualKind =
   | "empty"
@@ -36,6 +37,21 @@ function normalizeOccupancy(
   return value;
 }
 
+function isBlockingOccupancy(value?: VillaDayOccupancy): boolean {
+  const status = normalizeOccupancy(value);
+  return status === "BOOKED" || status === "OPTION";
+}
+
+/** İki dolu blok arasındaki boş gün (kaynak: yazlikvillaci giriscikis). */
+export function isTurnoverOccupancyDay(
+  current?: VillaDayOccupancy,
+  prev?: VillaDayOccupancy,
+  next?: VillaDayOccupancy
+): boolean {
+  if (normalizeOccupancy(current) !== "EMPTY") return false;
+  return isBlockingOccupancy(prev) && isBlockingOccupancy(next);
+}
+
 /**
  * Referans takvimdeki "/" ayrım çizgisi (sol alt köşeden sağ üst köşeye).
  * Sol üst üçgen (topLeft) ile sağ alt üçgen (bottomRight) ayrılır.
@@ -56,18 +72,30 @@ function turnoverDiagonal(bottomRight: string, topLeft: string) {
 export function resolveVillaDayVisual(
   current?: VillaDayOccupancy,
   prev?: VillaDayOccupancy,
-  next?: VillaDayOccupancy
+  next?: VillaDayOccupancy,
+  prevPrev?: VillaDayOccupancy
 ): VillaDayVisualKind {
   const currentStatus = normalizeOccupancy(current);
   const prevStatus = normalizeOccupancy(prev);
   const nextStatus = normalizeOccupancy(next);
+  const prevPrevStatus = normalizeOccupancy(prevPrev);
 
   // Rezervasyon geceleri: check-in günü dahil, check-out sabahı hariç.
   // Çıkış görseli konaklanan son gecenin ertesindeki BOŞ günde gösterilir.
-  // İki dolu blok arasındaki boş gece (örn. 8 boş, 7 ve 9 dolu) turnover değildir;
-  // yalnızca önceki konaklamanın çıkışı gösterilir. Aynı gün çıkış+giriş,
-  // yeni konaklamanın ilk BOOKED/OPTION gününde temsil edilir.
+  // Aynı gün çıkış+giriş: iki dolu blok arasındaki BOŞ günde (giriscikis) gösterilir.
   if (currentStatus === "EMPTY") {
+    if (isTurnoverOccupancyDay(current, prev, next)) {
+      if (prevStatus === "OPTION" && nextStatus === "OPTION") {
+        return "turnover_booked";
+      }
+      if (prevStatus === "BOOKED" && nextStatus === "OPTION") {
+        return "booked_out_option_in";
+      }
+      if (prevStatus === "OPTION" && nextStatus === "BOOKED") {
+        return "option_out_booked_in";
+      }
+      return "turnover_booked";
+    }
     if (prevStatus === "BOOKED") return "check_out";
     if (prevStatus === "OPTION") return "option_check_out";
     return "empty";
@@ -75,18 +103,38 @@ export function resolveVillaDayVisual(
 
   if (currentStatus === "BOOKED") {
     if (prevStatus === "OPTION") return "option_out_booked_in";
-    if (prevStatus === "EMPTY") return "check_in";
+    if (prevStatus === "EMPTY") {
+      if (isBlockingOccupancy(prevPrev)) return "full";
+      return "check_in";
+    }
     return "full";
   }
 
   if (currentStatus === "OPTION") {
     if (prevStatus === "BOOKED") return "booked_out_option_in";
     if (prevStatus === "EMPTY" && nextStatus === "EMPTY") return "option_full";
-    if (prevStatus === "EMPTY") return "option_check_in";
+    if (prevStatus === "EMPTY") {
+      if (prevPrevStatus === "BOOKED" || prevPrevStatus === "OPTION") {
+        return "option_full";
+      }
+      return "option_check_in";
+    }
     return "option_full";
   }
 
   return "empty";
+}
+
+export function resolveVillaDayVisualFromMap(
+  dateKey: string,
+  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>
+): VillaDayVisualKind {
+  return resolveVillaDayVisual(
+    occupancyMap.get(dateKey),
+    occupancyMap.get(offsetDateKey(dateKey, -1)),
+    occupancyMap.get(offsetDateKey(dateKey, 1)),
+    occupancyMap.get(offsetDateKey(dateKey, -2))
+  );
 }
 
 export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {

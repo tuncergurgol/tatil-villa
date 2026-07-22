@@ -10,7 +10,7 @@ import {
 } from "@/lib/booking-calendar-selection";
 import {
   getPublicVillaDayVisualStyle,
-  resolveVillaDayVisual,
+  resolveVillaDayVisualFromMap,
 } from "@/lib/villa-period-day-visual";
 import {
   buildMonthGrid,
@@ -192,10 +192,7 @@ export default function OccupancyStayDateRangePicker({
           {cells.map((cell, index) => {
             const dateKey = toDateKey(cell.date);
             const isPast = compareDates(cell.date, today) < 0;
-            const current = occupancyMap.get(dateKey) ?? "EMPTY";
-            const prev = occupancyMap.get(offsetDateKey(dateKey, -1));
-            const next = occupancyMap.get(offsetDateKey(dateKey, 1));
-            const kind = resolveVillaDayVisual(current, prev, next);
+            const kind = resolveVillaDayVisualFromMap(dateKey, occupancyMap);
             const visual = getPublicVillaDayVisualStyle(kind);
             const canClick = canSelectStayDay({
               dateKey,

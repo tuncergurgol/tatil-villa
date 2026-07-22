@@ -1,6 +1,7 @@
 import type { VillaDayOccupancy } from "@prisma/client";
 import { compareDates, parseDateKey } from "@/lib/villa-period-calendar";
 import { offsetDateKey } from "@/lib/villa-period-selection";
+import { isTurnoverOccupancyDay } from "@/lib/villa-period-day-visual";
 
 /** Yarım-açık konaklama: [checkIn, checkOut) */
 export type AllowStayRange = {
@@ -25,6 +26,25 @@ export function isNightInAllowStay(
 
 /**
  * BOOKED/OPTION gece kapalıdır.
+ * Giriş+çıkış günü (iki dolu blok arası EMPTY) yeni misafirin gecesidir → kapalı.
+ */
+export function isOccupancyNightBlocked(
+  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>,
+  dateKey: string,
+  allowStay?: AllowStayRange | null
+): boolean {
+  if (isNightInAllowStay(dateKey, allowStay)) return false;
+  const status = occupancyMap.get(dateKey) ?? "EMPTY";
+  if (status === "BOOKED" || status === "OPTION") return true;
+  return isTurnoverOccupancyDay(
+    status,
+    occupancyMap.get(offsetDateKey(dateKey, -1)),
+    occupancyMap.get(offsetDateKey(dateKey, 1))
+  );
+}
+
+/**
+ * BOOKED/OPTION gece kapalıdır.
  * Admin edit: allowStay ile kendi rezervasyon geceleri seçilebilir kalır
  * (görünüm yine BOOKED/OPTION; engel sadece seçim için kalkar).
  */
@@ -33,9 +53,7 @@ export function isNightBlocked(
   dateKey: string,
   allowStay?: AllowStayRange | null
 ) {
-  if (isNightInAllowStay(dateKey, allowStay)) return false;
-  const status = occupancyMap.get(dateKey) ?? "EMPTY";
-  return status === "BOOKED" || status === "OPTION";
+  return isOccupancyNightBlocked(occupancyMap, dateKey, allowStay);
 }
 
 /** checkIn dahil, checkOut hariç geceler dolu mu? */

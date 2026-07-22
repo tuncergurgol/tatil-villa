@@ -1668,6 +1668,16 @@ export function parseYazlikvillaciOccupancy(
         inner.match(/title=["']([^"']+)["']/i)?.[1] ?? ""
       ).toLocaleLowerCase("tr-TR");
 
+      const isTurnoverDay =
+        /\bgiriscikis\b/.test(attrs) ||
+        title.includes("giriş çıkış") ||
+        title.includes("giris cikis");
+
+      if (isTurnoverDay) {
+        // Aynı gün çıkış+giriş: EMPTY kalır; görsel/engel iki dolu blok arası mantığıyla çözülür.
+        continue;
+      }
+
       const isBooked =
         (/\bbooked\b/.test(attrs) && !/\bbooked_half/.test(attrs)) ||
         title.includes("dolu");

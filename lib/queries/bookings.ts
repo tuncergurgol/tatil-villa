@@ -1,6 +1,7 @@
 import { BookingStatus, Prisma, StayStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { BOOKING_BLOCKING_STATUSES } from "@/lib/booking-status";
+import { isOccupancyNightBlocked } from "@/lib/booking-calendar-selection";
 import { withAllocatedBookingNumber } from "@/lib/booking-number";
 import { upsertCustomerFromBooking } from "@/lib/customer-from-booking";
 import {
@@ -60,10 +61,18 @@ export async function isVillaAvailable(
     }
   }
 
+  const calendarKeys = Array.from(
+    new Set([
+      offsetDateKey(checkInKey, -1),
+      ...nightKeys,
+      checkOutKey,
+    ])
+  );
+
   const periodDays = await prisma.villaPricePeriodDay.findMany({
     where: {
       villaId,
-      date: { in: nightKeys.map((key) => dateKeyToDbDate(key)) },
+      date: { in: calendarKeys.map((key) => dateKeyToDbDate(key)) },
     },
     select: { date: true, occupancyStatus: true },
   });
@@ -77,18 +86,13 @@ export async function isVillaAvailable(
   );
 
   if (allNightsOnCalendar) {
+    const excludedAllowStay = excludedStay
+      ? { checkIn: excludedStay.checkIn, checkOut: excludedStay.checkOut }
+      : null;
     for (const nightKey of nightKeys) {
-      const status = occupancyByKey.get(nightKey);
-      if (status !== "BOOKED" && status !== "OPTION") continue;
-      // Düzenlenen rezervasyonun kendi [in,out) geceleri engel sayılmaz
-      if (
-        excludedStay &&
-        nightKey >= excludedStay.checkIn &&
-        nightKey < excludedStay.checkOut
-      ) {
-        continue;
+      if (isOccupancyNightBlocked(occupancyByKey, nightKey, excludedAllowStay)) {
+        return false;
       }
-      return false;
     }
     return true;
   }
