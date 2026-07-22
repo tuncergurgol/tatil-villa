@@ -98,6 +98,7 @@ export default function VillaOwnerFormModal({
   const [country, setCountry] = useState(owner?.country || "Türkiye");
   const [active, setActive] = useState(owner?.active ?? true);
   const [tcKimlikNo, setTcKimlikNo] = useState(owner?.tcKimlikNo ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [state, formAction, pending] = useActionState<
     VillaOwnerActionState,
@@ -121,10 +122,23 @@ export default function VillaOwnerFormModal({
 
   if (!mounted) return null;
 
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (!tcAcceptable) {
+      event.preventDefault();
+      if (tcRequired && !tcKimlikNo.trim()) {
+        setClientError("TC Kimlik No gerekli");
+        return;
+      }
+      setClientError("Geçerli bir TC Kimlik No girin");
+      return;
+    }
+    setClientError(null);
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-lg font-bold text-gray-900">
             {isEdit ? "Villa Sahibini Düzenle" : "Yeni Villa Sahibi"}
           </h2>
@@ -139,17 +153,16 @@ export default function VillaOwnerFormModal({
 
         <form
           action={formAction}
-          className="space-y-5 p-6"
-          onSubmit={(event) => {
-            if (!tcAcceptable) event.preventDefault();
-          }}
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={handleSubmit}
         >
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
           {owner && <input type="hidden" name="id" value={owner.id} />}
           <input type="hidden" name="type" value={ownerType} />
 
-          {state.error && (
+          {(clientError || state.error) && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {state.error}
+              {clientError ?? state.error}
             </div>
           )}
 
@@ -228,10 +241,13 @@ export default function VillaOwnerFormModal({
 
           {ownerType === VillaOwnerType.GERCEK_KISI ? (
             <TcKimlikInput
-              label="TC Kimlik No"
+              label="TC Kimlik No *"
               name="tcKimlikNo"
               value={tcKimlikNo}
-              onChange={setTcKimlikNo}
+              onChange={(value) => {
+                setTcKimlikNo(value);
+                if (clientError) setClientError(null);
+              }}
               required
               placeholder="11 haneli TC kimlik no"
             />
@@ -317,8 +333,9 @@ export default function VillaOwnerFormModal({
               </span>
             </p>
           )}
+          </div>
 
-          <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
             <button
               type="button"
               onClick={onClose}
@@ -328,7 +345,7 @@ export default function VillaOwnerFormModal({
             </button>
             <button
               type="submit"
-              disabled={pending || !tcAcceptable}
+              disabled={pending}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
               {pending ? "Kaydediliyor..." : "Kaydet"}

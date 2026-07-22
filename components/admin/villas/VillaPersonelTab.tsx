@@ -110,19 +110,31 @@ export default function VillaPersonelTab({
   }
 
   function handleSaveOwner() {
-    if (!selectedOwnerId) {
-      setOwnerError("Lütfen bir villa sahibi seçin");
+    const ownerId =
+      selectedOwnerId ||
+      (filteredOwners.length === 1 ? filteredOwners[0].id : "");
+
+    if (!ownerId) {
+      setOwnerError(
+        search.trim()
+          ? "Arama sonuçlarından bir villa sahibi seçin"
+          : "Lütfen listeden bir villa sahibi seçin"
+      );
       return;
+    }
+
+    if (!selectedOwnerId) {
+      setSelectedOwnerId(ownerId);
     }
 
     setOwnerError(null);
     startSaveOwner(async () => {
-      const result = await assignVillaOwner(villa.id, selectedOwnerId);
+      const result = await assignVillaOwner(villa.id, ownerId);
       if (result.error) {
         setOwnerError(result.error);
         return;
       }
-      setSavedOwnerId(selectedOwnerId);
+      setSavedOwnerId(ownerId);
       setIsSelectingOwner(false);
       router.refresh();
     });
@@ -227,11 +239,17 @@ export default function VillaPersonelTab({
               </p>
             ) : null}
 
+            {!selectedOwnerId && filteredOwners.length > 1 ? (
+              <p className="text-xs text-amber-700">
+                Kaydetmek için listeden bir villa sahibi seçin.
+              </p>
+            ) : null}
+
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={handleSaveOwner}
-                disabled={isSavingOwner || !selectedOwnerId}
+                disabled={isSavingOwner}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSavingOwner ? "Kaydediliyor..." : "Kaydet"}
