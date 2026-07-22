@@ -192,6 +192,7 @@ export default function OccupancyStayDateRangePicker({
           {cells.map((cell, index) => {
             const dateKey = toDateKey(cell.date);
             const isPast = compareDates(cell.date, today) < 0;
+            const current = occupancyMap.get(dateKey) ?? "EMPTY";
             const kind = resolveVillaDayVisualFromMap(dateKey, occupancyMap);
             const visual = getPublicVillaDayVisualStyle(kind);
             const canClick = canSelectStayDay({
