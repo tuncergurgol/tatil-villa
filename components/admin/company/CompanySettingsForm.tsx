@@ -39,6 +39,7 @@ import PaymentProviderManagement from "@/components/admin/company/PaymentProvide
 import MailSettingsFields from "@/components/admin/company/MailSettingsFields";
 import WhatsAppSettingsFields from "@/components/admin/company/WhatsAppSettingsFields";
 import ThemeColorPalette from "@/components/admin/company/ThemeColorPalette";
+import HomeVillaSectionsFields from "@/components/admin/company/HomeVillaSectionsFields";
 import type { PrepaymentPaymentTypeItem } from "@/lib/queries/prepayment-payment-types";
 import type { CustomerContactChannelItem } from "@/lib/queries/customer-contact-channels";
 import type { CompanyBankAccountItem } from "@/lib/queries/company-bank-accounts";
@@ -375,14 +376,17 @@ export default function CompanySettingsForm({
           </TabPanel>
 
           <TabPanel active={activeTab === "tema"}>
-            <ThemeColorPalette
-              initialColors={{
-                primaryColor: settings.primaryColor,
-                secondaryColor: settings.secondaryColor,
-                accentColor: settings.accentColor,
-                surfaceColor: settings.surfaceColor,
-              }}
-            />
+            <div className="space-y-8">
+              <ThemeColorPalette
+                initialColors={{
+                  primaryColor: settings.primaryColor,
+                  secondaryColor: settings.secondaryColor,
+                  accentColor: settings.accentColor,
+                  surfaceColor: settings.surfaceColor,
+                }}
+              />
+              <HomeVillaSectionsFields settings={settings} />
+            </div>
           </TabPanel>
 
           <TabPanel active={activeTab === "logo"}>

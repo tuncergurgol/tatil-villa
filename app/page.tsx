@@ -11,10 +11,9 @@ import { getHomeDreamCategories } from "@/lib/queries/facility-categories";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
-  getDealVillas,
-  getPopularVillas,
-  getRecommendedVillas,
-} from "@/lib/queries/villas";
+  getHomeVillaSectionsWithData,
+  HOME_VILLA_SECTION_SUBTITLES,
+} from "@/lib/homepage-villa-sections";
 
 export const dynamic = "force-dynamic";
 
@@ -22,23 +21,14 @@ export default async function HomePage() {
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
 
-  const [
-    popular,
-    deals,
-    recommended,
-    regions,
-    campaigns,
-    searchRegions,
-    dreamCards,
-  ] = await Promise.all([
-    getPopularVillas(undefined, site.key),
-    getDealVillas(undefined, site.key),
-    getRecommendedVillas(undefined, site.key),
-    getRegionsWithCount(site.key),
-    getCampaigns(),
-    getHeroSearchRegions(),
-    getHomeDreamCategories(site.key),
-  ]);
+  const [homeVillaSections, regions, campaigns, searchRegions, dreamCards] =
+    await Promise.all([
+      getHomeVillaSectionsWithData(company, site.key),
+      getRegionsWithCount(site.key),
+      getCampaigns(),
+      getHeroSearchRegions(),
+      getHomeDreamCategories(site.key),
+    ]);
 
   return (
     <>
@@ -69,28 +59,26 @@ export default async function HomePage() {
 
       <CampaignBanner campaigns={campaigns} />
 
-      <VillaSection
-        title="Popüler Villalar"
-        subtitle="Sizin için seçtiklerimiz."
-        villas={popular}
-        viewAllHref="/villalar?filter=popular"
-      />
+      {homeVillaSections.map((section) => {
+        const content = (
+          <VillaSection
+            title={section.title}
+            subtitle={HOME_VILLA_SECTION_SUBTITLES[section.key]}
+            villas={section.villas}
+            viewAllHref={`/villalar?filter=${section.key}`}
+          />
+        );
 
-      <div className="bg-gray-50">
-        <VillaSection
-          title="Fırsat Villalar"
-          subtitle="En uygun fiyatlarla tatilin keyfini çıkarın."
-          villas={deals}
-          viewAllHref="/villalar?filter=deal"
-        />
-      </div>
+        if (section.key === "deal") {
+          return (
+            <div key={section.key} className="bg-gray-50">
+              {content}
+            </div>
+          );
+        }
 
-      <VillaSection
-        title="Önerilen Villalar"
-        subtitle="En çok tercih edilen villalar."
-        villas={recommended}
-        viewAllHref="/villalar?filter=recommended"
-      />
+        return <div key={section.key}>{content}</div>;
+      })}
 
       <DreamVacationSection cards={dreamCards} />
 

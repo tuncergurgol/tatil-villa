@@ -83,6 +83,15 @@ export const DEFAULT_COMPANY_SETTINGS = {
   smsOtpEnabled: false,
   biletallEnabled: true,
   biletallPortalSlug: "tatildeyizcomtr",
+  homePopularTitle: "Popüler Villalar",
+  homePopularActive: true,
+  homePopularSortMode: "showcase",
+  homeDealTitle: "Fırsat Villalar",
+  homeDealActive: true,
+  homeDealSortMode: "showcase",
+  homeRecommendedTitle: "Önerilen Villalar",
+  homeRecommendedActive: true,
+  homeRecommendedSortMode: "showcase",
 };
 
 export async function getCompanySettings() {

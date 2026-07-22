@@ -997,6 +997,15 @@ model CompanySettings {
   biletallEnabled             Boolean @default(true)
   biletallPortalSlug          String  @default("tatildeyizcomtr")
   smsOtpEnabled               Boolean @default(false)
+  homePopularTitle            String  @default("Popüler Villalar")
+  homePopularActive           Boolean @default(true)
+  homePopularSortMode         String  @default("showcase")
+  homeDealTitle               String  @default("Fırsat Villalar")
+  homeDealActive              Boolean @default(true)
+  homeDealSortMode            String  @default("showcase")
+  homeRecommendedTitle        String  @default("Önerilen Villalar")
+  homeRecommendedActive       Boolean @default(true)
+  homeRecommendedSortMode     String  @default("showcase")
 
   updatedAt DateTime @updatedAt
 }

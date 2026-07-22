@@ -74,6 +74,15 @@ const companySettingsSchema = z.object({
   smtpFromEmail: z.string(),
   smtpFromName: z.string(),
   smtpEnabled: z.coerce.boolean(),
+  homePopularTitle: z.string(),
+  homePopularActive: z.coerce.boolean(),
+  homePopularSortMode: z.enum(["showcase", "random"]),
+  homeDealTitle: z.string(),
+  homeDealActive: z.coerce.boolean(),
+  homeDealSortMode: z.enum(["showcase", "random"]),
+  homeRecommendedTitle: z.string(),
+  homeRecommendedActive: z.coerce.boolean(),
+  homeRecommendedSortMode: z.enum(["showcase", "random"]),
 });
 
 function readTrackingFields(
@@ -161,6 +170,15 @@ export async function saveCompanySettings(
     smtpFromEmail: formData.get("smtpFromEmail"),
     smtpFromName: formData.get("smtpFromName"),
     smtpEnabled: formData.get("smtpEnabled") === "on",
+    homePopularTitle: formData.get("homePopularTitle"),
+    homePopularActive: formData.get("homePopularActive") === "on",
+    homePopularSortMode: formData.get("homePopularSortMode"),
+    homeDealTitle: formData.get("homeDealTitle"),
+    homeDealActive: formData.get("homeDealActive") === "on",
+    homeDealSortMode: formData.get("homeDealSortMode"),
+    homeRecommendedTitle: formData.get("homeRecommendedTitle"),
+    homeRecommendedActive: formData.get("homeRecommendedActive") === "on",
+    homeRecommendedSortMode: formData.get("homeRecommendedSortMode"),
   });
 
   if (!parsed.success) {
