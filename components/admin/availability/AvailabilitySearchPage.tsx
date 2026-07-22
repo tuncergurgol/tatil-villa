@@ -308,7 +308,7 @@ export default function AvailabilitySearchPage({
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-full flex-col gap-3">
-      <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <section className="min-w-0 rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-col gap-2 rounded-t-xl border-b border-gray-100 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <div className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-900">
             <Search className="h-4 w-4 text-gray-500" />
@@ -362,7 +362,7 @@ export default function AvailabilitySearchPage({
         </div>
 
         {panelOpen ? (
-          <div className="space-y-3 p-3">
+          <div className="space-y-3 overflow-visible p-3">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-12">
               <div className="min-w-0 xl:col-span-3">
                 <TurkishPhoneField
@@ -481,8 +481,8 @@ export default function AvailabilitySearchPage({
               </label>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 xl:grid-cols-3">
-              <div className="min-w-0">
+            <div className="relative z-30 grid grid-cols-1 gap-2 xl:grid-cols-3">
+              <div className="relative min-w-0">
                 <div className={`${labelClass} mb-1`}>Bölge</div>
                 <RegionTreePanel
                   tree={pageData.regionTree}
@@ -490,7 +490,7 @@ export default function AvailabilitySearchPage({
                   onChange={setRegionSlugs}
                 />
               </div>
-              <div className="min-w-0">
+              <div className="relative min-w-0">
                 <div className={`${labelClass} mb-1`}>Özellik</div>
                 <AmenityMultiSelect
                   options={pageData.amenities}
@@ -498,7 +498,7 @@ export default function AvailabilitySearchPage({
                   onChange={setAmenityNames}
                 />
               </div>
-              <div className="min-w-0">
+              <div className="relative min-w-0">
                 <div className={`${labelClass} mb-1`}>Kişi</div>
                 <GuestCountMultiSelect
                   selectedCounts={guestCounts}

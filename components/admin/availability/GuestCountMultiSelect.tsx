@@ -37,7 +37,7 @@ export default function GuestCountMultiSelect({
         </span>
         <ChevronDown className="h-3.5 w-3.5 text-gray-400 transition group-open:rotate-180" />
       </summary>
-      <div className="absolute left-0 right-0 top-full z-30 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:left-auto sm:right-0 sm:w-64">
+      <div className="absolute left-0 right-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:left-auto sm:right-0 sm:w-64">
         <div className="flex items-center justify-between border-b border-gray-100 px-2 py-2">
           <span className="text-xs font-semibold text-gray-800">Kişi kapasitesi</span>
           {selectedCounts.length > 0 ? (

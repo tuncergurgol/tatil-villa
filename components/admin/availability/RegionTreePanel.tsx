@@ -166,7 +166,7 @@ export default function RegionTreePanel({
         </span>
         <ChevronDown className="h-3.5 w-3.5 text-gray-400 transition group-open:rotate-180" />
       </summary>
-      <div className="absolute left-0 right-0 top-full z-30 mt-1 w-full max-w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:min-w-72">
+      <div className="absolute left-0 right-0 top-full z-50 mt-1 w-full max-w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:min-w-72">
         <div className="flex items-center gap-1.5 border-b border-gray-100 p-2">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50/80 px-2 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
