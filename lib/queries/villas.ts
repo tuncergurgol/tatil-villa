@@ -165,7 +165,7 @@ function mapVilla(
     pricePerNight: villa.pricePerNight,
     minNightlyPrice: null as number | null,
     maxNightlyPrice: null as number | null,
-    /** Tarih seçili aramada konaklama bedeli (gecelik toplam) */
+    /** Tarih seçili aramada rezervasyon toplamı (konaklama + temizlik) */
     stayTotal: null as number | null,
     image: getVillaShowcaseImage(villa),
     images: villa.images,
@@ -308,7 +308,7 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
         if (!quote || !quote.valid || quote.nights <= 0) return null;
         return {
           ...villa,
-          stayTotal: quote.accommodationTotal,
+          stayTotal: quote.total,
           pricePerNight: Math.round(
             quote.accommodationTotal / quote.nights
           ),
@@ -451,7 +451,7 @@ export async function getVillaPeriodPriceRanges(
 
 /**
  * Public arama: takvim occupancy (BOOKED/OPTION) + eksik günde Booking fallback.
- * Fiyat: seçili gecelerin computeStayQuote konaklama toplamı.
+ * Fiyat: seçili gecelerin computeStayQuote toplamı (konaklama + temizlik).
  * Detay sayfası / isVillaAvailable ile aynı kaynak.
  */
 async function resolvePublicSearchStay(
@@ -462,13 +462,13 @@ async function resolvePublicSearchStay(
   availableIds: Set<string>;
   quotes: Map<
     string,
-    { valid: boolean; nights: number; accommodationTotal: number }
+    { valid: boolean; nights: number; accommodationTotal: number; total: number }
   >;
 }> {
   const availableIds = new Set<string>();
   const quotes = new Map<
     string,
-    { valid: boolean; nights: number; accommodationTotal: number }
+    { valid: boolean; nights: number; accommodationTotal: number; total: number }
   >();
 
   if (villaIds.length === 0) return { availableIds, quotes };
@@ -571,6 +571,7 @@ async function resolvePublicSearchStay(
       valid: true,
       nights: quote.nights,
       accommodationTotal: quote.accommodationTotal,
+      total: quote.total,
     });
   }
 

@@ -21,7 +21,7 @@ export default function VillaResultCard({
   villa,
   nights = 0,
 }: VillaResultCardProps) {
-  const total =
+  const reservationTotal =
     nights > 0 && villa.stayTotal != null && villa.stayTotal > 0
       ? villa.stayTotal
       : villa.pricePerNight && nights > 0
@@ -29,9 +29,10 @@ export default function VillaResultCard({
         : null;
 
   const nightlyAverage =
-    total != null && nights > 0
-      ? Math.round(total / nights)
-      : villa.pricePerNight;
+    villa.pricePerNight ??
+    (reservationTotal != null && nights > 0
+      ? Math.round(reservationTotal / nights)
+      : null);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md">
@@ -108,14 +109,21 @@ export default function VillaResultCard({
             )}
 
             <div className="mt-2 text-left sm:mt-auto sm:text-right">
-              {total !== null ? (
+              {reservationTotal !== null ? (
                 <>
+                  {nights > 0 ? (
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                      Rezervasyon Toplamı
+                    </p>
+                  ) : null}
                   <p className="text-xl font-bold text-gray-900">
-                    {formatPrice(total)}
+                    {formatPrice(reservationTotal)}
                   </p>
-                  <p className="mt-0.5 text-sm text-gray-500">
-                    {formatPrice(nightlyAverage!)} / Gece
-                  </p>
+                  {nightlyAverage != null ? (
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      {formatPrice(nightlyAverage)} / Gece
+                    </p>
+                  ) : null}
                 </>
               ) : villa.minNightlyPrice != null &&
                 villa.maxNightlyPrice != null ? (
