@@ -118,7 +118,7 @@ export default function HeaderVillaSearch({
           aria-autocomplete="list"
           aria-controls={listId}
           aria-expanded={open}
-          className="w-full rounded-full border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100"
+          className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-base text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 sm:text-sm"
           autoComplete="off"
         />
       </form>
@@ -126,7 +126,7 @@ export default function HeaderVillaSearch({
       {open && query.trim().length > 0 ? (
         <div
           id={listId}
-          className="absolute right-0 top-[calc(100%+6px)] z-[220] w-[min(28rem,calc(100vw-1.5rem))] max-h-96 overflow-y-auto rounded-2xl border border-gray-100 bg-white py-1 shadow-2xl"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[220] max-h-96 w-full overflow-y-auto rounded-2xl border border-gray-100 bg-white py-1 shadow-2xl sm:left-auto sm:right-0 sm:w-[min(28rem,calc(100vw-1.5rem))]"
         >
           {loading && results.length === 0 ? (
             <p className="px-4 py-3 text-sm text-gray-500">Aranıyor...</p>

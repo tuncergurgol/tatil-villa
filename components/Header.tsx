@@ -83,7 +83,7 @@ export default function Header({
   }[siteKey];
 
   return (
-    <header className="relative z-50 border-b border-gray-200 bg-white text-gray-900 shadow-sm md:sticky md:top-0">
+    <header className="relative z-50 border-b border-gray-200 bg-white text-gray-900 shadow-sm sticky top-0">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 md:gap-4 md:px-6 md:py-3.5 lg:px-8">
         <Link
           href="/"
@@ -144,9 +144,15 @@ export default function Header({
         </button>
       </div>
 
+      <div className="border-t border-gray-100 px-4 pb-3 pt-2 md:hidden">
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-sky-600">
+          Villa Ara
+        </p>
+        <HeaderVillaSearch className="w-full" />
+      </div>
+
       {mobileOpen && (
         <div className="border-t border-gray-100 px-4 py-4 md:hidden">
-          <HeaderVillaSearch className="mb-3 w-full" />
           <nav className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <Link
