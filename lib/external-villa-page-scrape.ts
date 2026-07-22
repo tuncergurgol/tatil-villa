@@ -6,6 +6,7 @@
  * - heryervillam.com (HTML fiyat tablosu + takvim)
  * - villavillam.com.tr (NEXT_DATA id + api.villavillam.com.tr PriceList/Availability)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
+ * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
  * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
@@ -34,7 +35,8 @@ export type ScrapedVillaPage = {
     | "html_periods"
     | "heryervillam"
     | "villavillam"
-    | "villakalkan";
+    | "villakalkan"
+    | "yazlikvillaci";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -1506,6 +1508,228 @@ export function scrapeVillakalkanFromHtml(
   };
 }
 
+function looksLikeYazlikvillaci(pageUrl: string, html: string): boolean {
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  if (host.includes("yazlikvillaci")) return true;
+  return (
+    html.includes("pricingTable2") &&
+    (html.includes("property/re_calculate") ||
+      html.includes("'/calendar'") ||
+      html.includes('"/calendar"') ||
+      html.includes("load(window.location.href + '/calendar')"))
+  );
+}
+
+function buildYazlikvillaciCalendarUrl(pageUrl: string): string {
+  const parsed = new URL(pageUrl.trim());
+  const path = parsed.pathname.replace(/\/$/, "");
+  return `${parsed.origin}${path}/calendar`;
+}
+
+function unixTimestampToDateKey(ts: number): string | null {
+  if (!Number.isFinite(ts) || ts <= 0) return null;
+  const date = new Date(ts * 1000);
+  if (Number.isNaN(date.getTime())) return null;
+  return toDateKey(startOfDay(date));
+}
+
+function parseYazlikvillaciMoney(raw: string): number {
+  const digits = raw.replace(/[^\d]/g, "");
+  if (!digits) return NaN;
+  return Number(digits);
+}
+
+function parseYazlikvillaciCalendarMonth(
+  raw: string
+): { year: number; month: number } | null {
+  const match = raw
+    .trim()
+    .match(/^([A-Za-zÇĞİÖŞÜçğıöşü]+)\s+(\d{4})$/u);
+  if (!match) return null;
+  const month = TURKISH_MONTHS[match[1]!.toLocaleLowerCase("tr-TR")];
+  const year = Number(match[2]);
+  if (!month || !Number.isFinite(year)) return null;
+  return { year, month };
+}
+
+/** yazlikvillaci.com.tr — #villaPrices pricingTable2 kartları */
+export function parseYazlikvillaciPeriods(
+  html: string
+): MappedVillaPricePeriod[] {
+  const deposit = extractDamageDeposit(html);
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+
+  const chunks = html.split('class="pricingTable2');
+  for (let index = 1; index < chunks.length; index += 1) {
+    const block = `class="pricingTable2${chunks[index]}`;
+    const text = stripTags(block);
+
+    const rangeMatch = text.match(
+      /(\d{1,2}\s+[A-Za-zÇĞİÖŞÜçğıöşü]+\s+\d{4})\s*[-–—]\s*(\d{1,2}\s+[A-Za-zÇĞİÖŞÜçğıöşü]+\s+\d{4})/u
+    );
+    if (!rangeMatch) continue;
+
+    const range = parseTurkishDateRange(
+      `${rangeMatch[1]} - ${rangeMatch[2]}`
+    );
+    if (!range) continue;
+
+    const nightlyMatch = block.match(
+      /price-value1[\s\S]*?₺\s*([\d.,]+)[\s\S]*?\/Gecelik/i
+    );
+    if (!nightlyMatch) continue;
+    const nightlyPrice = parseYazlikvillaciMoney(nightlyMatch[1]!);
+    if (!Number.isFinite(nightlyPrice) || nightlyPrice <= 0) continue;
+
+    const weeklyMatch = block.match(
+      /price-value1[\s\S]*?₺\s*([\d.,]+)[\s\S]*?\/Haftalık/i
+    );
+    const weeklyPrice = weeklyMatch
+      ? parseYazlikvillaciMoney(weeklyMatch[1]!)
+      : null;
+
+    const minStayMatch = text.match(
+      /Minimum\s*Kiralama:\s*(\d+)\s*Gece/i
+    );
+    const minStayNights = minStayMatch ? Number(minStayMatch[1]) : null;
+
+    const key = `${toDateKey(range.start)}_${toDateKey(range.end)}_${nightlyPrice}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate: range.start,
+        endDate: range.end,
+        nightlyPrice,
+        weeklyPrice:
+          weeklyPrice != null && Number.isFinite(weeklyPrice) && weeklyPrice > 0
+            ? weeklyPrice
+            : null,
+        currency: "TL",
+        minStayNights,
+        damageDeposit: deposit.amount,
+        damageDepositCurrency: deposit.currency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+/** yazlikvillaci /calendar fragment — Dolu günler + günlük fiyatlar */
+export function parseYazlikvillaciOccupancy(
+  calendarHtml: string
+): Map<string, VillaDayOccupancy> {
+  const occupancy = new Map<string, VillaDayOccupancy>();
+  const boxes = calendarHtml.split(/<div class="calendarBox"/i);
+
+  for (let boxIndex = 1; boxIndex < boxes.length; boxIndex += 1) {
+    const block = boxes[boxIndex] ?? "";
+    const headerMatch = block.match(/<h4>([^<]+)<\/h4>/i);
+    if (!headerMatch) continue;
+    const monthCtx = parseYazlikvillaciCalendarMonth(headerMatch[1]!);
+    if (!monthCtx) continue;
+
+    const cellRe = /<li\b([^>]*)>([\s\S]*?)<\/li>/gi;
+    let match: RegExpExecArray | null;
+
+    while ((match = cellRe.exec(block)) !== null) {
+      const attrs = match[1] ?? "";
+      const inner = match[2] ?? "";
+
+      if (
+        /\bempty\b/.test(attrs) ||
+        /\bdayname\b/.test(attrs) ||
+        /\blastday\b/.test(attrs) ||
+        /\bclosedays\b/.test(attrs)
+      ) {
+        continue;
+      }
+
+      const idMatch = attrs.match(/\bid=["'](\d+)["']/i);
+      let dateKey: string | null = null;
+      if (idMatch) {
+        dateKey = unixTimestampToDateKey(Number(idMatch[1]));
+      } else {
+        const dayMatch =
+          inner.match(/>(\d{1,2})<br/i) ?? inner.match(/>(\d{1,2})</);
+        const day = dayMatch ? Number(dayMatch[1]) : NaN;
+        if (Number.isFinite(day) && day >= 1 && day <= 31) {
+          dateKey = `${monthCtx.year}-${String(monthCtx.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+      }
+      if (!dateKey) continue;
+
+      const title = (
+        inner.match(/title=["']([^"']+)["']/i)?.[1] ?? ""
+      ).toLocaleLowerCase("tr-TR");
+
+      const isBooked =
+        (/\bbooked\b/.test(attrs) && !/\bbooked_half/.test(attrs)) ||
+        title.includes("dolu");
+
+      if (isBooked) {
+        occupancy.set(dateKey, "BOOKED");
+      }
+    }
+  }
+
+  return occupancy;
+}
+
+async function scrapeYazlikvillaciFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeYazlikvillaci(pageUrl, html)) return null;
+
+  const periods = parseYazlikvillaciPeriods(html);
+  let occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+
+  try {
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    const calendarHtml = await fetchText(buildYazlikvillaciCalendarUrl(pageUrl), {
+      referer: pageUrl,
+    });
+    occupancyByDateKey = parseYazlikvillaciOccupancy(calendarHtml);
+  } catch (error) {
+    warnings.push(
+      error instanceof Error
+        ? `Yazlık Villacı takvim alınamadı: ${error.message}`
+        : "Yazlık Villacı takvim alınamadı"
+    );
+  }
+
+  if (periods.length === 0) {
+    if (occupancyByDateKey.size > 0) {
+      warnings.push(
+        "Yazlık Villacı takvimi okundu ancak fiyat kartları bulunamadı"
+      );
+    }
+    return null;
+  }
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "Yazlık Villacı fiyatları alındı; müsaitlik takvimi boş veya okunamadı"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "yazlikvillaci",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 /**
  * Public villa sayfasını çeker ve periyot + occupancy döner.
  * dry-run / sync aynı path.
@@ -1530,6 +1754,13 @@ export async function scrapeExternalVillaPage(
 
   const heryer = scrapeHeryervillamFromHtml(parsed.toString(), html, warnings);
   if (heryer) return heryer;
+
+  const yazlikvillaci = await scrapeYazlikvillaciFromPage(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (yazlikvillaci) return yazlikvillaci;
 
   const villavillam = await scrapeVillavillamFromPage(
     parsed.toString(),
@@ -1578,6 +1809,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villakalkan.com.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villakalkan.com.tr, yazlikvillaci.com.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
