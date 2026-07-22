@@ -4,7 +4,7 @@ import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 
-function resolveMetadataBase(domain: string): URL {
+export function resolveMetadataBase(domain: string): URL {
   const cleaned = domain
     .trim()
     .replace(/^https?:\/\//i, "")
@@ -12,7 +12,7 @@ function resolveMetadataBase(domain: string): URL {
   return new URL(`https://${cleaned || "www.tatildeyiz.com.tr"}`);
 }
 
-function absoluteAssetUrl(base: URL, assetPath: string): string {
+export function absoluteAssetUrl(base: URL, assetPath: string): string {
   if (!assetPath) return "";
   if (/^https?:\/\//i.test(assetPath)) return assetPath;
   return new URL(assetPath.startsWith("/") ? assetPath : `/${assetPath}`, base)

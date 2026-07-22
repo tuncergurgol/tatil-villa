@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
-import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
-import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
   getSimilarVillas,
   getVillaDetailBySlug,
 } from "@/lib/queries/villa-detail";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { buildVillaDetailMetadata } from "@/lib/villa-page-metadata";
 import { buildVillaLodgingJsonLd } from "@/lib/villa-json-ld";
 import {
   resolveVillaStayAdultsFromSearchParams,
@@ -33,23 +34,13 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const villa = await getVillaDetailBySlug(slug);
+  const [villa, company] = await Promise.all([
+    getVillaDetailBySlug(slug),
+    getCompanySettings(),
+  ]);
   if (!villa) return { title: "Villa Bulunamadı" };
-  return {
-    title: villa.seoTitle || villa.name,
-    description:
-      villa.seoDescription ||
-      villa.description.replace(/<[^>]*>/g, " ").trim(),
-    keywords: villa.seoKeywords
-      ? villa.seoKeywords
-          .split(",")
-          .map((keyword) => keyword.trim())
-          .filter(Boolean)
-      : undefined,
-    alternates: {
-      canonical: `/${villa.slug}`,
-    },
-  };
+  const site = await getPublicSiteProfile(company);
+  return buildVillaDetailMetadata(villa, site);
 }
 
 export default async function VillaDetailPage({
