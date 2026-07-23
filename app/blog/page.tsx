@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import BlogInspirationSlider from "@/components/blog/BlogInspirationSlider";
-import { getPublishedBlogPosts } from "@/lib/queries/cms-content";
+import {
+  getBlogCategoriesForPublic,
+  getPublishedBlogPosts,
+} from "@/lib/queries/cms-content";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +13,18 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogIndexPage() {
-  const posts = await getPublishedBlogPosts();
+  const [posts, blogCategoryRows] = await Promise.all([
+    getPublishedBlogPosts(),
+    getBlogCategoriesForPublic(),
+  ]);
+
+  const blogCategories = blogCategoryRows
+    .filter((category) => category._count.posts > 0)
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+    }));
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f3faff_0%,#fff8fb_50%,#ffffff_100%)]">
@@ -20,6 +34,7 @@ export default async function BlogIndexPage() {
       />
       <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <BlogInspirationSlider
+          categories={blogCategories}
           posts={posts.map((post) => ({
             id: post.id,
             slug: post.slug,
@@ -27,6 +42,7 @@ export default async function BlogIndexPage() {
             excerpt: post.excerpt,
             coverImage: post.coverImage,
             categoryName: post.category?.name ?? null,
+            categorySlug: post.category?.slug ?? null,
           }))}
         />
       </div>

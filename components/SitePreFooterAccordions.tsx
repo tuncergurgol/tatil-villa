@@ -27,7 +27,13 @@ type BlogItem = {
   excerpt: string;
   coverImage: string;
   publishedAt: Date | null;
-  category: { name: string } | null;
+  category: { name: string; slug: string } | null;
+};
+
+type BlogCategoryItem = {
+  id: string;
+  name: string;
+  slug: string;
 };
 
 const faqCategoryLabels: Record<string, string> = {
@@ -96,11 +102,13 @@ export default function SitePreFooterAccordions({
   faqs,
   reviews,
   posts,
+  blogCategories,
   brandName,
 }: {
   faqs: FaqItem[];
   reviews: ReviewItem[];
   posts: BlogItem[];
+  blogCategories: BlogCategoryItem[];
   brandName: string;
 }) {
   const faqJsonLd = {
@@ -298,23 +306,45 @@ export default function SitePreFooterAccordions({
           )}
         </AccordionSection>
 
-        <AccordionSection
+        <details
           id="blog"
-          title="Blog"
-          subtitle="Tatil rehberi, bölge önerileri ve villa ipuçları"
-          icon={BookOpen}
+          className="group mx-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-sky-100/80 bg-[linear-gradient(135deg,#eef9ff_0%,#fff7fb_48%,#ffffff_100%)] shadow-[0_8px_30px_rgba(14,165,233,0.06)] open:shadow-[0_12px_40px_rgba(14,165,233,0.1)] transition"
         >
-          <BlogInspirationSlider
-            posts={posts.map((post) => ({
-              id: post.id,
-              slug: post.slug,
-              title: post.title,
-              excerpt: post.excerpt,
-              coverImage: post.coverImage,
-              categoryName: post.category?.name ?? null,
-            }))}
-          />
-        </AccordionSection>
+          <summary className="flex cursor-pointer list-none flex-col items-center gap-3 px-6 py-8 text-center sm:px-10 [&::-webkit-details-marker]:hidden">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 text-sky-600 ring-1 ring-sky-100">
+              <BookOpen className="h-5 w-5" />
+            </span>
+            <span className="flex flex-col items-center gap-2">
+              <h2 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+                Blog
+              </h2>
+              <span className="h-1 w-10 rounded-full bg-sky-500" />
+              <p className="max-w-md text-sm text-gray-500">
+                Tatil rehberi, bölge önerileri ve villa ipuçları
+              </p>
+            </span>
+            <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-white/80 px-3 py-1 text-xs font-medium text-sky-700">
+              Detayları gör
+              <ChevronDown className="h-3.5 w-3.5 transition duration-300 group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="border-t border-sky-100/80 px-5 pb-8 pt-2 sm:px-8">
+            <BlogInspirationSlider
+              embedded
+              showHeader={false}
+              categories={blogCategories}
+              posts={posts.map((post) => ({
+                id: post.id,
+                slug: post.slug,
+                title: post.title,
+                excerpt: post.excerpt,
+                coverImage: post.coverImage,
+                categoryName: post.category?.name ?? null,
+                categorySlug: post.category?.slug ?? null,
+              }))}
+            />
+          </div>
+        </details>
       </div>
     </section>
   );

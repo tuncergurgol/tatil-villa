@@ -10,6 +10,7 @@ import {
   getFooterCorporatePages,
   getActiveFaqsForPublic,
   getApprovedReviewsForPublic,
+  getBlogCategoriesForPublic,
   getPublishedBlogPosts,
 } from "@/lib/queries/cms-content";
 import { getSiteMenuItemsForPublic } from "@/lib/queries/site-menus";
@@ -46,6 +47,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     faqs,
     reviews,
     posts,
+    blogCategoryRows,
   ] = await Promise.all([
     getSiteMenuItemsForPublic("header"),
     getSiteMenuItemsForPublic("footer-quick"),
@@ -53,8 +55,16 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     getFooterRegionLinks(site.key),
     getActiveFaqsForPublic({ limit: 18 }),
     getApprovedReviewsForPublic(6),
-    getPublishedBlogPosts({ limit: 6 }),
+    getPublishedBlogPosts({ limit: 24 }),
+    getBlogCategoriesForPublic(),
   ]);
+  const blogCategories = blogCategoryRows
+    .filter((category) => category._count.posts > 0)
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+    }));
   const tracking = await getPublicSiteTracking(site.key);
 
   const headerLinks =
@@ -97,6 +107,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
         faqs={faqs}
         reviews={reviews}
         posts={posts}
+        blogCategories={blogCategories}
         brandName={brandName}
       />
       <Footer
