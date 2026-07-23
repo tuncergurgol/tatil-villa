@@ -1,5 +1,9 @@
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
 import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
+import {
+  isValidTurkishMobileE164,
+  normalizePhoneToE164,
+} from "@/lib/phone";
 
 export type AssistantFlowStep =
   | "awaiting_name"
@@ -7,6 +11,7 @@ export type AssistantFlowStep =
   | "awaiting_guests"
   | "awaiting_region"
   | "awaiting_amenities"
+  | "awaiting_phone"
   | "ready";
 
 const GREETINGS = new Set([
@@ -100,6 +105,7 @@ export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep 
   if (!state.adults) return "awaiting_guests";
   if (!state.regionSlugs?.length) return "awaiting_region";
   if (!state.amenitiesCollected) return "awaiting_amenities";
+  if (!state.phoneCollected || !state.guestPhone?.trim()) return "awaiting_phone";
   return "ready";
 }
 
@@ -238,9 +244,9 @@ export function extractStayDates(text: string): {
     ? Number(explicitYearMatch[1])
     : undefined;
 
-  // 3-7 eylül / 3 - 7 Eylül 2026
+  // 3/7 eylül / 3 - 7 eylül / 3-7 eylül
   const sharedMonth = normalized.match(
-    /^(\d{1,2})\s*-\s*(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)(?:\s+(20\d{2}))?$/u
+    /^(\d{1,2})\s*(?:\/|-)\s*(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)(?:\s+(20\d{2}))?$/u
   );
   if (sharedMonth) {
     const month = normalizeMonthName(sharedMonth[3]);
@@ -331,6 +337,26 @@ export function extractRegionSlugs(text: string): string[] {
   return slug.length >= 2 ? [slug] : [];
 }
 
+export function extractGuestPhone(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const candidates =
+    trimmed.match(
+      /(?:\+90|0)?[\s-]?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}/g
+    ) ?? trimmed.match(/\b5\d{9}\b/g);
+
+  for (const candidate of candidates ?? []) {
+    const e164 = normalizePhoneToE164(candidate);
+    if (isValidTurkishMobileE164(e164)) return e164;
+  }
+
+  const e164 = normalizePhoneToE164(trimmed);
+  if (isValidTurkishMobileE164(e164)) return e164;
+
+  return null;
+}
+
 export function extractAmenityNames(text: string): string[] {
   const lower = text.toLocaleLowerCase("tr-TR").trim();
   if (
@@ -375,38 +401,33 @@ export function buildFlowReply(
         ? `Merhaba ${name}, hangi tarihlerde konaklamak istiyorsunuz?`
         : "Hangi tarihlerde konaklamak istiyorsunuz?";
     case "awaiting_guests":
-      return name
-        ? `Teşekkürler ${name}, kaç kişilik bir yer arıyorsunuz?`
-        : "Kaç kişilik bir yer arıyorsunuz?";
+      return "Kaç kişilik bir yer arıyorsunuz?";
     case "awaiting_region":
       return "Hangi bölgede tatil yapmak istersiniz?";
     case "awaiting_amenities":
       return "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?";
+    case "awaiting_phone":
+      return "Size villa seçeneklerini WhatsApp üzerinden iletebilmem için WhatsApp numaranızı yazar mısınız?";
     default:
       return "Bir dakika, size uygun villaları arıyorum...";
   }
 }
 
 function buildDatesAckReply(state: AssistantSearchState) {
-  const name = state.guestName?.trim();
   const range = formatDateRangeDisplay(state.checkIn!, state.checkOut!);
-  return name
-    ? `Teşekkürler ${name}, ${range} tarihlerini not aldım. Kaç kişilik bir yer arıyorsunuz?`
-    : `${range} tarihlerini not aldım. Kaç kişilik bir yer arıyorsunuz?`;
+  return `${range} tarihlerini not aldım. Kaç kişilik bir yer arıyorsunuz?`;
 }
 
 function buildGuestsAckReply(state: AssistantSearchState) {
-  const name = state.guestName?.trim();
-  return name
-    ? `Teşekkürler ${name}, ${state.adults} kişi için not aldım. Hangi bölgede tatil yapmak istersiniz?`
-    : `${state.adults} kişi için not aldım. Hangi bölgede tatil yapmak istersiniz?`;
+  return `${state.adults} kişi için not aldım. Hangi bölgede tatil yapmak istersiniz?`;
 }
 
-function buildRegionAckReply(state: AssistantSearchState) {
-  const name = state.guestName?.trim();
-  return name
-    ? `Teşekkürler ${name}. Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?`
-    : "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?";
+function buildRegionAckReply() {
+  return "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?";
+}
+
+function buildAmenitiesAckReply() {
+  return "Tercihlerinizi not aldım. Size villa seçeneklerini WhatsApp üzerinden iletebilmem için WhatsApp numaranızı yazar mısınız?";
 }
 
 function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
@@ -417,16 +438,16 @@ function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
       return "Adınızı yazar mısınız? (Örneğin: Ahmet)";
     case "awaiting_dates":
       return name
-        ? `${name}, tarihi tam anlayamadım. Örneğin: 3-7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?`
-        : "Tarihi tam anlayamadım. Örneğin: 3-7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?";
+        ? `${name}, tarihi tam anlayamadım. Örneğin: 3/7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?`
+        : "Tarihi tam anlayamadım. Örneğin: 3/7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?";
     case "awaiting_guests":
-      return name
-        ? `${name}, kaç kişi konaklayacaksınız? (Örneğin: 4)`
-        : "Kaç kişi konaklayacaksınız? (Örneğin: 4)";
+      return "Kaç kişi konaklayacaksınız? (Örneğin: 4)";
     case "awaiting_region":
       return "Hangi bölgede tatil yapmak istersiniz? (Örneğin: Kalkan, Fethiye, Kaş)";
     case "awaiting_amenities":
       return "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz? (İstemiyorsanız 'fark etmez' yazabilirsiniz.)";
+    case "awaiting_phone":
+      return "WhatsApp numaranızı yazar mısınız? (Örneğin: 0532 123 45 67)";
     default:
       return buildFlowReply(step, state);
   }
@@ -485,7 +506,7 @@ function tryParseStep(
     const nextState: AssistantSearchState = { ...state, regionSlugs };
     return {
       handled: true,
-      reply: buildRegionAckReply(nextState),
+      reply: buildRegionAckReply(),
       state: nextState,
       readyToSearch: false,
     };
@@ -499,6 +520,22 @@ function tryParseStep(
       ...state,
       amenityNames,
       amenitiesCollected: true,
+    };
+    return {
+      handled: true,
+      reply: buildAmenitiesAckReply(),
+      state: nextState,
+      readyToSearch: false,
+    };
+  }
+
+  if (step === "awaiting_phone") {
+    const guestPhone = extractGuestPhone(userText);
+    if (!guestPhone) return null;
+    const nextState: AssistantSearchState = {
+      ...state,
+      guestPhone,
+      phoneCollected: true,
     };
     return {
       handled: true,

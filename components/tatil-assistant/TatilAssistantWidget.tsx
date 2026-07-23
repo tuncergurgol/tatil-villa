@@ -55,6 +55,25 @@ function BeeMascot({ className = "" }: { className?: string }) {
   );
 }
 
+function linkifyText(text: string) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((part, index) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={`link-${index}`}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium underline underline-offset-2"
+      >
+        {part}
+      </a>
+    ) : (
+      <span key={`text-${index}`}>{part}</span>
+    )
+  );
+}
+
 export default function TatilAssistantWidget({
   welcomeMessage,
 }: TatilAssistantWidgetProps) {
@@ -67,6 +86,7 @@ export default function TatilAssistantWidget({
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [villas, setVillas] = useState<VillaResult[]>([]);
+  const [shareUrl, setShareUrl] = useState<string | undefined>();
   const [wiggle, setWiggle] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +131,7 @@ export default function TatilAssistantWidget({
         conversationId?: string;
         reply?: string;
         villas?: VillaResult[];
+        shareUrl?: string;
         error?: string;
       };
 
@@ -119,7 +140,13 @@ export default function TatilAssistantWidget({
       }
 
       if (data.conversationId) setConversationId(data.conversationId);
-      if (data.villas?.length) setVillas(data.villas);
+      if (data.shareUrl) {
+        setShareUrl(data.shareUrl);
+        setVillas([]);
+      } else if (data.villas?.length) {
+        setVillas(data.villas);
+        setShareUrl(undefined);
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -208,10 +235,25 @@ export default function TatilAssistantWidget({
                         : "bg-gray-100 text-gray-800"
                     }`}
                   >
-                    {msg.content}
+                    {linkifyText(msg.content)}
                   </div>
                 </div>
               ))}
+
+              {shareUrl ? (
+                <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-800">
+                    Villa teklifiniz
+                  </p>
+                  <Link
+                    href={shareUrl}
+                    target="_blank"
+                    className="inline-flex rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
+                  >
+                    Teklif linkini aç
+                  </Link>
+                </div>
+              ) : null}
 
               {villas.length > 0 ? (
                 <div className="space-y-2 rounded-2xl border border-amber-100 bg-amber-50/50 p-3">

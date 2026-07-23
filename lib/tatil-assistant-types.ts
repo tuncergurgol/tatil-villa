@@ -9,4 +9,5 @@ export type AssistantSearchState = {
   regionSlugs?: string[];
   amenityNames?: string[];
   amenitiesCollected?: boolean;
+  phoneCollected?: boolean;
 };
