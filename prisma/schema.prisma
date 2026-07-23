@@ -996,6 +996,8 @@ model CompanySettings {
   evolutionInstanceName       String  @default("tatil-villa")
   biletallEnabled             Boolean @default(true)
   biletallPortalSlug          String  @default("tatildeyizcomtr")
+  biletallUsername            String  @default("")
+  biletallPassword            String  @default("")
   smsOtpEnabled               Boolean @default(false)
   homePopularTitle            String  @default("Popüler Villalar")
   homePopularActive           Boolean @default(true)

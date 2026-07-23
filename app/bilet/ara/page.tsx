@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import BiletallIframe from "@/components/bilet/BiletallIframe";
 import BiletShell from "@/components/bilet/BiletShell";
-import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getBiletallPageContext } from "@/lib/biletall-page";
 
 export const metadata: Metadata = {
   title: "Bilet Ara",
@@ -11,16 +12,24 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BiletAraPage() {
-  const settings = await getCompanySettings();
+  const { enabled, portalSlug, credentials } = await getBiletallPageContext();
+  if (!enabled) redirect("/ucak-otobus");
 
   return (
     <BiletShell
       title="Bilet Ara"
       description="Uçak veya otobüs seferlerini arayın, uygun bileti bulun."
     >
+      {!credentials.username || !credentials.password ? (
+        <p className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Bilet arama şu an yapılandırılıyor. Kısa süre içinde tekrar deneyin veya
+          müşteri hizmetlerimizle iletişime geçin.
+        </p>
+      ) : null}
       <BiletallIframe
         kind="ara"
-        portalSlug={settings.biletallPortalSlug}
+        portalSlug={portalSlug}
+        credentials={credentials}
         title="Biletall — Bilet Ara"
       />
     </BiletShell>

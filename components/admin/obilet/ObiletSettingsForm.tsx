@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { KeyRound } from "lucide-react";
 import {
   saveBiletallSettings,
   type BiletallSettingsActionState,
 } from "@/app/actions/admin/biletall-settings";
+import BiletallCredentialsModal from "@/components/admin/obilet/BiletallCredentialsModal";
 import { getBiletallAdminLinks } from "@/lib/biletall";
 
 const inputClass =
@@ -16,17 +18,24 @@ const initialState: BiletallSettingsActionState = {};
 type ObiletSettingsFormProps = {
   biletallEnabled: boolean;
   biletallPortalSlug: string;
+  biletallUsername: string;
+  biletallHasPassword: boolean;
 };
 
 export default function ObiletSettingsForm({
   biletallEnabled,
   biletallPortalSlug,
+  biletallUsername,
+  biletallHasPassword,
 }: ObiletSettingsFormProps) {
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
     saveBiletallSettings,
     initialState
   );
-  const links = getBiletallAdminLinks(biletallPortalSlug);
+  const links = getBiletallAdminLinks(biletallPortalSlug, {
+    username: biletallUsername,
+  });
 
   return (
     <div className="space-y-6">
@@ -39,6 +48,10 @@ export default function ObiletSettingsForm({
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-gray-600">
           Biletall iframe portal ayarları. Public sayfalar{" "}
+          <code className="rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-800">
+            /ucak-otobus
+          </code>
+          ,{" "}
           <code className="rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-800">
             /bilet/ara
           </code>
@@ -58,11 +71,29 @@ export default function ObiletSettingsForm({
         action={formAction}
         className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
       >
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Portal ayarları</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            CRM Biletall entegrasyonundaki portal slug ile aynı olmalıdır.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Portal ayarları</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              CRM Biletall entegrasyonundaki portal slug ile aynı olmalıdır.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCredentialsOpen(true)}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+          >
+            <KeyRound className="h-4 w-4" />
+            Biletall giriş bilgileri
+          </button>
+        </div>
+
+        <div className="rounded-xl border border-gray-100 bg-slate-50/80 px-4 py-3 text-sm text-gray-600">
+          <span className="font-medium text-gray-800">Kullanıcı adı:</span>{" "}
+          {biletallUsername || "Tanımlı değil"}
+          <span className="mx-2 text-gray-300">|</span>
+          <span className="font-medium text-gray-800">Şifre:</span>{" "}
+          {biletallHasPassword ? "Kayıtlı" : "Tanımlı değil"}
         </div>
 
         <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3">
@@ -95,7 +126,7 @@ export default function ObiletSettingsForm({
           <p className="mt-1.5 text-xs text-gray-500">
             Örnek iframe host:{" "}
             <span className="font-mono text-gray-700">
-              iframe.biletall.com/portals/{"{slug}"}/UI/...
+              iframe.biletall.com/portals/{"{slug}"}/v2/...
             </span>
           </p>
         </div>
@@ -163,10 +194,17 @@ export default function ObiletSettingsForm({
           >
             crm.tatildeyiz.com.tr/entegrasyonlar/biletall
           </a>
-          . API key / kullanıcı bilgileri Biletall hesabınızda tutulur; bu
-          panel portal slug ve public iframe route’larını yönetir.
+          . Portal slug burada yönetilir; kullanıcı adı ve şifre bu panelden
+          kaydedilir ve iframe oturumunda kullanılır.
         </p>
       </section>
+
+      <BiletallCredentialsModal
+        open={credentialsOpen}
+        username={biletallUsername}
+        hasPassword={biletallHasPassword}
+        onClose={() => setCredentialsOpen(false)}
+      />
     </div>
   );
 }

@@ -83,6 +83,8 @@ export const DEFAULT_COMPANY_SETTINGS = {
   smsOtpEnabled: false,
   biletallEnabled: true,
   biletallPortalSlug: "tatildeyizcomtr",
+  biletallUsername: "",
+  biletallPassword: "",
   homePopularTitle: "Popüler Villalar",
   homePopularActive: true,
   homePopularSortMode: "showcase",

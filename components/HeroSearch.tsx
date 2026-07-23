@@ -23,7 +23,7 @@ import type { GuestCounts, HeroSearchRegionOption } from "@/lib/types";
 const SEARCH_TABS = [
   { id: "villa", label: "Villa", icon: Home },
   { id: "tur", label: "Tur", icon: Map, href: "/tur" },
-  { id: "ucak-otobus", label: "Uçak/Otobüs", icon: Plane },
+  { id: "ucak-otobus", label: "Uçak/Otobüs", icon: Plane, href: "/ucak-otobus" },
   { id: "transfer", label: "Transfer", icon: Bus },
   { id: "arac", label: "Araç Kiralama", icon: Car },
   {

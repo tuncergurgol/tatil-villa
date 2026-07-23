@@ -1,5 +1,6 @@
 export const BILETALL_IFRAME_HOST = "https://iframe.biletall.com";
 export const BILETALL_DEFAULT_PORTAL_SLUG = "tatildeyizcomtr";
+export const BILETALL_IFRAME_VERSION = "v2";
 
 export const BILET_PUBLIC_ROUTES = {
   ara: "/bilet/ara",
@@ -9,25 +10,30 @@ export const BILET_PUBLIC_ROUTES = {
 
 export type BiletallIframeKind = "ara" | "satinal" | "sonuc";
 
+export type BiletallCredentials = {
+  username?: string | null;
+  password?: string | null;
+};
+
 const IFRAME_PAGES: Record<
   BiletallIframeKind,
   { file: string; id: string; scrolling: "no" | "auto"; height: number }
 > = {
   ara: {
     file: "Arama.aspx",
-    id: "AramaIframe_v102",
+    id: "AramaIframe_v2",
     scrolling: "no",
     height: 350,
   },
   satinal: {
     file: "Islem.aspx",
-    id: "IslemIframe_v102",
+    id: "IslemIframe_v2",
     scrolling: "auto",
     height: 1600,
   },
   sonuc: {
-    file: "BiletGosterim.aspx",
-    id: "BiletGosterim_v102",
+    file: "BiletGoster.aspx",
+    id: "BiletGosterIframe_v2",
     scrolling: "auto",
     height: 670,
   },
@@ -40,42 +46,52 @@ export function normalizeBiletallPortalSlug(slug?: string | null) {
 
 export function buildBiletallIframeSrc(
   kind: BiletallIframeKind,
-  portalSlug?: string | null
+  portalSlug?: string | null,
+  credentials?: BiletallCredentials
 ) {
   const slug = normalizeBiletallPortalSlug(portalSlug);
   const page = IFRAME_PAGES[kind];
   const params = new URLSearchParams({
     AramaUrl: "bilet/ara",
     IslemUrl: "bilet/satinal",
-    BiletGosterimUrl: "bilet/sonuc",
+    BiletGosterUrl: "bilet/sonuc",
   });
-  return `${BILETALL_IFRAME_HOST}/portals/${slug}/UI/${page.file}?${params.toString()}`;
+
+  const username = credentials?.username?.trim();
+  const password = credentials?.password?.trim();
+  if (username) params.set("KullaniciAdi", username);
+  if (password) params.set("Sifre", password);
+
+  return `${BILETALL_IFRAME_HOST}/portals/${slug}/${BILETALL_IFRAME_VERSION}/${page.file}?${params.toString()}`;
 }
 
 export function getBiletallIframeMeta(kind: BiletallIframeKind) {
   return IFRAME_PAGES[kind];
 }
 
-export function getBiletallAdminLinks(portalSlug?: string | null) {
+export function getBiletallAdminLinks(
+  portalSlug?: string | null,
+  credentials?: BiletallCredentials
+) {
   const slug = normalizeBiletallPortalSlug(portalSlug);
   return [
     {
       kind: "ara" as const,
       label: "Bilet Ara",
       publicPath: BILET_PUBLIC_ROUTES.ara,
-      iframeSrc: buildBiletallIframeSrc("ara", slug),
+      iframeSrc: buildBiletallIframeSrc("ara", slug, credentials),
     },
     {
       kind: "satinal" as const,
       label: "Bilet Satın Al",
       publicPath: BILET_PUBLIC_ROUTES.satinal,
-      iframeSrc: buildBiletallIframeSrc("satinal", slug),
+      iframeSrc: buildBiletallIframeSrc("satinal", slug, credentials),
     },
     {
       kind: "sonuc" as const,
       label: "Bilet Sonuç / PNR",
       publicPath: BILET_PUBLIC_ROUTES.sonuc,
-      iframeSrc: buildBiletallIframeSrc("sonuc", slug),
+      iframeSrc: buildBiletallIframeSrc("sonuc", slug, credentials),
     },
   ];
 }

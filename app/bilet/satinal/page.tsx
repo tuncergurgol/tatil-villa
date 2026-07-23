@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import BiletallIframe from "@/components/bilet/BiletallIframe";
 import BiletShell from "@/components/bilet/BiletShell";
-import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getBiletallPageContext } from "@/lib/biletall-page";
 
 export const metadata: Metadata = {
   title: "Bilet Satın Al",
@@ -11,7 +12,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BiletSatinalPage() {
-  const settings = await getCompanySettings();
+  const { enabled, portalSlug, credentials } = await getBiletallPageContext();
+  if (!enabled) redirect("/ucak-otobus");
 
   return (
     <BiletShell
@@ -20,7 +22,8 @@ export default async function BiletSatinalPage() {
     >
       <BiletallIframe
         kind="satinal"
-        portalSlug={settings.biletallPortalSlug}
+        portalSlug={portalSlug}
+        credentials={credentials}
         title="Biletall — Bilet Satın Al"
       />
     </BiletShell>

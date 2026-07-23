@@ -62,3 +62,57 @@ export async function saveBiletallSettings(
 
   return { success: true };
 }
+
+const credentialsSchema = z.object({
+  biletallUsername: z.string().trim().max(200),
+  biletallPassword: z.string().max(200),
+  clearPassword: z.coerce.boolean().optional(),
+});
+
+export async function saveBiletallCredentials(
+  _prev: BiletallSettingsActionState,
+  formData: FormData
+): Promise<BiletallSettingsActionState> {
+  await requireAdmin();
+
+  const parsed = credentialsSchema.safeParse({
+    biletallUsername: String(formData.get("biletallUsername") ?? ""),
+    biletallPassword: String(formData.get("biletallPassword") ?? ""),
+    clearPassword: formData.get("clearPassword") === "on",
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form" };
+  }
+
+  const update: {
+    biletallUsername: string;
+    biletallPassword?: string;
+  } = {
+    biletallUsername: parsed.data.biletallUsername,
+  };
+
+  if (parsed.data.clearPassword) {
+    update.biletallPassword = "";
+  } else if (parsed.data.biletallPassword.trim()) {
+    update.biletallPassword = parsed.data.biletallPassword;
+  }
+
+  await prisma.companySettings.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      ...DEFAULT_COMPANY_SETTINGS,
+      ...update,
+    },
+    update,
+  });
+
+  revalidatePath("/admin/obilet");
+  revalidatePath("/ucak-otobus");
+  revalidatePath("/bilet/ara");
+  revalidatePath("/bilet/satinal");
+  revalidatePath("/bilet/sonuc");
+
+  return { success: true };
+}

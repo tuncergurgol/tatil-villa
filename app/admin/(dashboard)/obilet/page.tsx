@@ -15,6 +15,8 @@ export default async function ObiletPage() {
       biletallPortalSlug={
         settings.biletallPortalSlug?.trim() || BILETALL_DEFAULT_PORTAL_SLUG
       }
+      biletallUsername={settings.biletallUsername?.trim() ?? ""}
+      biletallHasPassword={Boolean(settings.biletallPassword?.trim())}
     />
   );
 }
