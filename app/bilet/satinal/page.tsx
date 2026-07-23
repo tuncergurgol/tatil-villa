@@ -20,6 +20,7 @@ export default async function BiletSatinalPage() {
     <BiletShell
       title="Bilet Satın Al"
       description="Yolcu bilgilerinizi girin ve ödemeyi güvenle tamamlayın."
+      activeKind="satinal"
     >
       <BiletallIframe
         kind="satinal"

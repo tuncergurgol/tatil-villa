@@ -20,6 +20,7 @@ export default async function BiletSonucPage() {
     <BiletShell
       title="Bilet Sonuç / PNR"
       description="PNR numaranızla rezervasyonunuzu görüntüleyin ve e-biletinizi indirin."
+      activeKind="sonuc"
     >
       <BiletallIframe
         kind="sonuc"

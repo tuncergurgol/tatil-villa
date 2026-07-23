@@ -37,7 +37,7 @@ const IFRAME_PAGES: Record<
     file: "Arama.aspx",
     id: "AramaIframe_v102",
     scrolling: "no",
-    height: 350,
+    height: 400,
   },
   satinal: {
     file: "Islem.aspx",
