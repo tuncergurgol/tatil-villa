@@ -12,18 +12,15 @@ import {
   formatAssistantVillasForWhatsApp,
 } from "@/lib/tatil-assistant-format";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
+import {
+  buildFlowReply,
+  resolveFlowStep,
+  tryAdvanceFlow,
+} from "@/lib/tatil-assistant-flow";
 
-export type AssistantSearchState = {
-  guestName?: string;
-  guestPhone?: string;
-  guestEmail?: string;
-  checkIn?: string;
-  checkOut?: string;
-  adults?: number;
-  children?: number;
-  regionSlugs?: string[];
-  amenityNames?: string[];
-};
+import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
+
+export type { AssistantSearchState } from "@/lib/tatil-assistant-types";
 
 type OpenAiToolCall = {
   id: string;
@@ -107,12 +104,14 @@ Görevin: öncelikle konaklama / villa kiralama taleplerinde misafire rehberlik 
 
 Karşılama mesajı: ${welcomeMessage}
 
-Sırayla toplaman gereken bilgiler:
+Sırayla toplaman gereken bilgiler (her adımda yalnızca bir sonraki soruyu sor):
 1. Misafirin adı
-2. Konaklama tarihleri (giriş-çıkış)
-3. Kişi sayısı
+2. Konaklama tarihleri — ad öğrenildikten sonra mutlaka "Merhaba {ad}, hangi tarihlerde konaklamak istiyorsunuz?" formatında sor
+3. Kişi sayısı — "Teşekkürler {ad}, kaç kişilik bir yer arıyorsunuz?"
 4. Bölge tercihi
 5. İstenen villa özellikleri
+
+Önemli: İsim alındığında hemen 2. soruya geç; ismi cevabında kullan.
 
 Kurallar (Öğrenme):
 ${rulesBlock}
@@ -285,6 +284,89 @@ export async function processAssistantMessage(
     },
   });
 
+  let searchState = (conversation.searchState ?? {}) as AssistantSearchState;
+  const flowAdvance = tryAdvanceFlow(userText, searchState);
+
+  if (flowAdvance.handled) {
+    searchState = flowAdvance.state;
+    let searchResults: AvailabilitySearchResultItem[] = [];
+    let reply = flowAdvance.reply;
+
+    if (flowAdvance.readyToSearch && searchState.checkIn && searchState.checkOut && searchState.adults) {
+      searchResults = await runVillaSearch({
+        checkIn: searchState.checkIn,
+        checkOut: searchState.checkOut,
+        adults: searchState.adults,
+        regionSlugs: searchState.regionSlugs,
+        amenityNames: searchState.amenityNames,
+        flexibleDate: true,
+      });
+
+      const name = searchState.guestName?.trim();
+      if (searchResults.length > 0) {
+        reply = name
+          ? `${name}, size uygun ${searchResults.length} villa buldum. Seçenekleri aşağıda paylaşıyorum.`
+          : `Size uygun ${searchResults.length} villa buldum. Seçenekleri aşağıda paylaşıyorum.`;
+      } else {
+        reply = name
+          ? `${name}, bu kriterlerle uygun villa bulamadım. Tarih veya bölgeyi değiştirmek ister misiniz?`
+          : "Bu kriterlerle uygun villa bulamadım. Tarih veya bölgeyi değiştirmek ister misiniz?";
+      }
+    }
+
+    let whatsappSent = false;
+    const phone =
+      searchState.guestPhone?.trim() ||
+      conversation.guestPhone?.trim() ||
+      input.guestPhone?.trim();
+
+    if (searchResults.length > 0 && phone) {
+      try {
+        await sendAssistantWhatsAppMessage(
+          phone,
+          formatAssistantVillasForWhatsApp(
+            searchResults,
+            context.publicDomain,
+            searchState.guestName ?? conversation.guestName
+          )
+        );
+        whatsappSent = true;
+      } catch {
+        whatsappSent = false;
+      }
+    }
+
+    await prisma.tatilAssistantConversation.update({
+      where: { id: conversation.id },
+      data: {
+        guestName: searchState.guestName ?? conversation.guestName,
+        guestPhone: phone ?? conversation.guestPhone,
+        searchState,
+      },
+    });
+
+    await prisma.tatilAssistantMessage.create({
+      data: {
+        conversationId: conversation.id,
+        role: "assistant",
+        content: reply,
+        metadata: searchResults.length
+          ? { villaCount: searchResults.length, whatsappSent, flowStep: resolveFlowStep(searchState) }
+          : { flowStep: resolveFlowStep(searchState) },
+      },
+    });
+
+    return {
+      conversationId: conversation.id,
+      reply,
+      villas:
+        searchResults.length > 0
+          ? formatAssistantVillasForChat(searchResults, context.publicDomain)
+          : undefined,
+      whatsappSent,
+    };
+  }
+
   const systemPrompt = buildSystemPrompt(
     context.welcomeMessage,
     context.rules,
@@ -301,7 +383,7 @@ export async function processAssistantMessage(
 
   let aiResult = await callOpenAi(systemPrompt, history);
   let searchResults: AvailabilitySearchResultItem[] = [];
-  let searchState = (conversation.searchState ?? {}) as AssistantSearchState;
+  searchState = (conversation.searchState ?? {}) as AssistantSearchState;
 
   if (aiResult.toolCalls.length > 0) {
     const toolMessages: { role: string; content: string; tool_call_id?: string }[] =

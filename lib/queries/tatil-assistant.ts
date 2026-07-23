@@ -8,7 +8,7 @@ export const DEFAULT_ASSISTANT_RULES = [
   {
     title: "Karşılama ve isim",
     content:
-      "Misafiri sıcak karşıla. İlk soru: adını öğren. Samimi ama profesyonel ol; kısa cümleler kullan.",
+      "Misafirin adını öğrendikten sonra hemen 2. soruya geç. Örnek: \"Merhaba Ahmet, hangi tarihlerde konaklamak istiyorsunuz?\" Adı her cevapta kullan.",
     sortOrder: 1,
   },
   {
@@ -42,9 +42,8 @@ export const DEFAULT_ASSISTANT_EXAMPLES = [
     title: "Karşılama",
     examples: [
       {
-        question: "Merhaba",
-        answer:
-          "Merhaba! Ben Tatil Asistanınız YumYum 🐝 Size villa kiralama konusunda yardımcı olabilirim. Hitap edebilmem için adınızı öğrenebilir miyim?",
+        question: "Ahmet",
+        answer: "Merhaba Ahmet, hangi tarihlerde konaklamak istiyorsunuz?",
       },
     ],
   },
@@ -124,16 +123,14 @@ export async function getTatilAssistantAdminData() {
     enabled: settings.tatilAssistantEnabled ?? true,
     welcomeMessage:
       settings.assistantWelcomeMessage?.trim() || DEFAULT_ASSISTANT_WELCOME,
-    assistantWahaBaseUrl:
-      settings.assistantWahaBaseUrl?.trim() ||
-      process.env.WAHA_BASE_URL?.trim() ||
-      "http://localhost:3001",
-    assistantWahaApiKey:
-      settings.assistantWahaApiKey?.trim() ||
-      process.env.WAHA_API_KEY?.trim() ||
-      "",
-    assistantWahaSessionName:
-      settings.assistantWahaSessionName?.trim() || "tatil-asistani",
+    ...(() => {
+      const waha = getAssistantWahaConfig(settings);
+      return {
+        assistantWahaBaseUrl: waha.baseUrl,
+        assistantWahaApiKey: waha.apiKey,
+        assistantWahaSessionName: waha.sessionName,
+      };
+    })(),
     assistantWebhookSecret: settings.assistantWebhookSecret?.trim() || "",
     defaultPairingPhone: "905496180108",
     topics,
@@ -172,18 +169,7 @@ export async function getTatilAssistantRuntimeContext() {
     publicDomain: settings.domain,
     topics,
     rules,
-    waha: {
-      baseUrl:
-        settings.assistantWahaBaseUrl?.trim() ||
-        process.env.WAHA_BASE_URL?.trim() ||
-        "http://localhost:3001",
-      apiKey:
-        settings.assistantWahaApiKey?.trim() ||
-        process.env.WAHA_API_KEY?.trim() ||
-        "",
-      sessionName:
-        settings.assistantWahaSessionName?.trim() || "tatil-asistani",
-    },
+    waha: getAssistantWahaConfig(settings),
   };
 }
 
