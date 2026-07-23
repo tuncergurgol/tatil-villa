@@ -5,7 +5,6 @@ import path from "path";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { getCompanySettings } from "@/lib/queries/company-settings";
 import { processGalleryImageToWebp } from "@/lib/process-gallery-image";
 import { importVillaGalleryFromTatildeyiz } from "@/lib/tatildeyiz-gallery-import-runner";
 import {
@@ -39,31 +38,17 @@ async function revalidateVillaGallery(villaId: string, slug?: string) {
   revalidatePath("/villalar");
 }
 
-function getSiteName(brandName: string, agencyName: string) {
-  const brand = brandName.replace(/^www\./, "").trim();
-  if (brand) {
-    return brand.split(".")[0].replace(/^\w/, (c) => c.toUpperCase());
-  }
-  return agencyName.trim() || "Tatildeyiz";
-}
-
 async function getVillaGalleryContext(villaId: string) {
-  const [villa, settings] = await Promise.all([
-    prisma.villa.findUnique({
-      where: { id: villaId },
-      select: { id: true, name: true, slug: true, images: true, image: true },
-    }),
-    getCompanySettings(),
-  ]);
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { id: true, name: true, slug: true, images: true, image: true },
+  });
 
   if (!villa) {
     throw new Error("Villa bulunamadı");
   }
 
-  return {
-    villa,
-    siteName: getSiteName(settings.brandName, settings.agencyName),
-  };
+  return { villa };
 }
 
 function normalizeGalleryImages(images: string[], coverImage: string) {
@@ -114,7 +99,7 @@ export async function uploadVillaGalleryImages(
   }
 
   try {
-    const { villa, siteName } = await getVillaGalleryContext(villaId);
+    const { villa } = await getVillaGalleryContext(villaId);
     const currentImages = normalizeGalleryImages(villa.images, villa.image);
     const uploadDir = path.join(process.cwd(), "public", "uploads", "villas", villaId);
     await mkdir(uploadDir, { recursive: true });
@@ -132,7 +117,7 @@ export async function uploadVillaGalleryImages(
         return { error: "Dosya boyutu 10 MB'dan küçük olmalıdır" };
       }
 
-      const fileName = buildSeoGalleryFileName(siteName, villa.name, sequence);
+      const fileName = buildSeoGalleryFileName(villa.name, sequence);
       const outputPath = path.join(uploadDir, fileName);
       const sourceBuffer = Buffer.from(await file.arrayBuffer());
       const webpBuffer = await processGalleryImageToWebp(sourceBuffer);
@@ -147,8 +132,12 @@ export async function uploadVillaGalleryImages(
     await revalidateVillaGallery(villaId, villa.slug);
 
     return { success: true, urls: uploadedUrls };
-  } catch {
-    return { error: "Görseller yüklenirken bir hata oluştu" };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Görseller yüklenirken bir hata oluştu";
+    return { error: message };
   }
 }
 
@@ -257,9 +246,8 @@ export async function importVillaGalleryFromTatildeyizAction(
   await requireAdmin();
 
   try {
-    const { villa, siteName } = await getVillaGalleryContext(villaId);
+    const { villa } = await getVillaGalleryContext(villaId);
     const result = await importVillaGalleryFromTatildeyiz(villa.id, {
-      siteName,
       force: true,
     });
 

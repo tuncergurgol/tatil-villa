@@ -48,11 +48,10 @@ async function downloadImage(url: string) {
 export async function importVillaGalleryFromTatildeyiz(
   villaId: string,
   options: {
-    siteName: string;
     force?: boolean;
     delayMs?: number;
     dryRun?: boolean;
-  }
+  } = {}
 ): Promise<VillaGalleryImportResult> {
   const force = options.force ?? true;
   const dryRun = options.dryRun ?? false;
@@ -120,11 +119,7 @@ export async function importVillaGalleryFromTatildeyiz(
   for (let index = 0; index < sourceUrls.length; index += 1) {
     const sourceUrl = sourceUrls[index]!;
     const sequence = index + 1;
-    const fileName = buildSeoGalleryFileName(
-      options.siteName,
-      villa.name,
-      sequence
-    );
+    const fileName = buildSeoGalleryFileName(villa.name, sequence);
     const outputPath = path.join(uploadDir, fileName);
 
     await sleep(delayMs);

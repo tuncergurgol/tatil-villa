@@ -1,3 +1,5 @@
+export const VILLA_GALLERY_SITE_NAME = "Tatildeyiz";
+
 export function sanitizeGalleryNamePart(value: string) {
   return value
     .replace(/[<>:"/\\|?*]/g, "")
@@ -5,23 +7,18 @@ export function sanitizeGalleryNamePart(value: string) {
     .trim();
 }
 
-export function buildSeoGalleryFileName(
-  siteName: string,
-  villaName: string,
-  sequence: number
-) {
-  const site = sanitizeGalleryNamePart(siteName) || "Site";
+export function buildSeoGalleryFileName(villaName: string, sequence: number) {
   const villa = sanitizeGalleryNamePart(villaName) || "Villa";
-  return `${site} - ${villa} - ${sequence}.webp`;
+  return `${VILLA_GALLERY_SITE_NAME} - ${villa} - ${sequence}.webp`;
 }
 
-/** @deprecated Yeni yüklemeler için buildSeoGalleryFileName kullanın */
+/** @deprecated buildSeoGalleryFileName(villaName, sequence) kullanın */
 export function buildVillaGalleryFileName(
-  siteName: string,
+  _siteName: string,
   villaName: string,
   sequence: number
 ) {
-  return buildSeoGalleryFileName(siteName, villaName, sequence);
+  return buildSeoGalleryFileName(villaName, sequence);
 }
 
 export function extractGallerySequence(url: string) {

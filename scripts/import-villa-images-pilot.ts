@@ -134,7 +134,7 @@ async function importVillaImages(options: {
   for (let index = 0; index < selectedUrls.length; index += 1) {
     const sourceUrl = selectedUrls[index];
     const sequence = index + 1;
-    const fileName = buildSeoGalleryFileName(SITE_NAME, villa.name, sequence);
+    const fileName = buildSeoGalleryFileName(villa.name, sequence);
     const outputPath = path.join(uploadDir, fileName);
 
     await sleep(REQUEST_DELAY_MS);

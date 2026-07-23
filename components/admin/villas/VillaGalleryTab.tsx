@@ -269,7 +269,7 @@ export default function VillaGalleryTab({
           {busy ? "Yükleniyor..." : "Yükle"}
         </button>
         <span className="text-xs text-gray-500">
-          JPG, PNG, WEBP — filigransız WEBP olarak kaydedilir
+          JPG, PNG, WEBP — 100 KB altında WebP olarak kaydedilir (Tatildeyiz - Villa Adı - 1.webp)
         </span>
       </div>
 

@@ -208,7 +208,6 @@ async function main() {
 
     try {
       const gallery = await importVillaGalleryFromTatildeyiz(row.id, {
-        siteName: SITE_NAME,
         force: true,
         dryRun,
         delayMs: REQUEST_DELAY_MS,
