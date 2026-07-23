@@ -3,6 +3,15 @@ import { readFileSync } from "fs";
 export const DEFAULT_VILLA_REVIEWS_CSV_PATH =
   "c:/Users/BARAN/Downloads/villa-yorumlar.csv";
 
+/** Eski sistem villa ID düzeltmeleri (CSV fldUrunID -> Villa.villaId) */
+export const LEGACY_VILLA_ID_OVERRIDES: Record<number, number> = {
+  946: 2047,
+};
+
+export function resolveLegacyVillaId(legacyVillaId: number): number {
+  return LEGACY_VILLA_ID_OVERRIDES[legacyVillaId] ?? legacyVillaId;
+}
+
 export type VillaReviewCsvRow = {
   rowNumber: number;
   legacyVillaId: number;

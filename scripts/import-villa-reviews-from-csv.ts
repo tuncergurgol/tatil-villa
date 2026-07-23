@@ -13,6 +13,7 @@ import {
   DEFAULT_VILLA_REVIEWS_CSV_PATH,
   formatStayMonth,
   readVillaReviewRowsFromCsv,
+  resolveLegacyVillaId,
   type VillaReviewCsvRow,
 } from "../lib/villa-reviews-csv-import";
 
@@ -139,7 +140,8 @@ async function main() {
   const successes: ImportSuccess[] = [];
 
   for (const row of parsed.rows) {
-    const villa = villaByLegacyId.get(row.legacyVillaId);
+    const resolvedLegacyVillaId = resolveLegacyVillaId(row.legacyVillaId);
+    const villa = villaByLegacyId.get(resolvedLegacyVillaId);
     if (!villa) {
       stats.villaNotFound += 1;
       errors.push({
@@ -147,7 +149,10 @@ async function main() {
         legacyVillaId: row.legacyVillaId,
         villaName: row.villaName,
         guestName: row.guestName,
-        reason: "Villa bulunamadı (fldUrunID eşleşmedi)",
+        reason:
+          resolvedLegacyVillaId !== row.legacyVillaId
+            ? `Villa bulunamadı (fldUrunID ${row.legacyVillaId} -> ${resolvedLegacyVillaId} eşleşmedi)`
+            : "Villa bulunamadı (fldUrunID eşleşmedi)",
       });
       continue;
     }
