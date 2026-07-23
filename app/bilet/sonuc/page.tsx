@@ -21,7 +21,7 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
   const params = await searchParams;
   const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
     await getBiletallPageContext();
-  if (!enabled) redirect("/ucak-otobus");
+  if (!enabled) redirect("/");
 
   const hasResultContext = hasBiletallResultContext(params);
 

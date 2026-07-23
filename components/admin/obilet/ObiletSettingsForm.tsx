@@ -50,10 +50,6 @@ export default function ObiletSettingsForm({
         <p className="mt-2 max-w-3xl text-sm text-gray-600">
           Biletall iframe portal ayarları. Public sayfalar{" "}
           <code className="rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-800">
-            /ucak-otobus
-          </code>
-          ,{" "}
-          <code className="rounded bg-sky-50 px-1.5 py-0.5 text-xs text-sky-800">
             /bilet/ara
           </code>
           ,{" "}

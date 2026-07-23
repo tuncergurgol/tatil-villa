@@ -27,7 +27,7 @@ const SERVICES = [
     icon: Map,
   },
   {
-    href: "/ucak-otobus",
+    href: "/bilet/ara",
     label: "Uçak / Otobüs",
     description: "Ulaşım planınızı tamamlayın",
     icon: Plane,

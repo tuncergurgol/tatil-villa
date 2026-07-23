@@ -34,7 +34,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/turlar",
     "/vip-transfer",
     "/arac-kiralama",
-    "/ucak-otobus",
+    "/bilet/ara",
+    "/bilet/satinal",
+    "/bilet/sonuc",
     "/feribot",
   ];
 

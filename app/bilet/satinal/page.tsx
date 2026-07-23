@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function BiletSatinalPage() {
   const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
     await getBiletallPageContext();
-  if (!enabled) redirect("/ucak-otobus");
+  if (!enabled) redirect("/");
 
   return (
     <BiletShell

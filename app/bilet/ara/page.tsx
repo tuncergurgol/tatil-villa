@@ -5,8 +5,9 @@ import BiletShell from "@/components/bilet/BiletShell";
 import { getBiletallPageContext } from "@/lib/biletall-page";
 
 export const metadata: Metadata = {
-  title: "Bilet Ara",
-  description: "Uçak ve otobüs bileti ara — Biletall entegrasyonu.",
+  title: "Uçak / Otobüs Bileti Ara",
+  description:
+    "Uçak ve otobüs bileti ara, karşılaştır ve güvenle satın al — Tatildeyiz.",
 };
 
 export const dynamic = "force-dynamic";
@@ -14,18 +15,19 @@ export const dynamic = "force-dynamic";
 export default async function BiletAraPage() {
   const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
     await getBiletallPageContext();
-  if (!enabled) redirect("/ucak-otobus");
+  if (!enabled) redirect("/");
 
   return (
     <BiletShell
-      title="Bilet Ara"
-      description="Uçak veya otobüs seferlerini arayın, uygun bileti bulun."
+      title="Uçak / Otobüs Bileti Ara"
+      description="Uçak veya otobüs seferlerini arayın, uygun bileti bulun ve güvenle satın alın."
       activeKind="ara"
       homeUrl={publicHomeUrl}
+      size="large"
     >
-      <div className="flex w-full max-w-md flex-col items-center gap-4">
+      <div className="flex w-full max-w-xl flex-col items-center gap-5">
         {!credentials.username || !credentials.password ? (
-          <p className="w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="w-full rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-base text-amber-900 sm:text-lg">
             Bilet arama şu an yapılandırılıyor. Kısa süre içinde tekrar deneyin veya
             müşteri hizmetlerimizle iletişime geçin.
           </p>
@@ -37,6 +39,7 @@ export default async function BiletAraPage() {
           routes={routes}
           publicOrigin={publicOrigin}
           title="Biletall — Bilet Ara"
+          enlarged
         />
       </div>
     </BiletShell>

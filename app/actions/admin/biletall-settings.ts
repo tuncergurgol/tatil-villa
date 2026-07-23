@@ -24,7 +24,7 @@ export type BiletallSettingsActionState = {
 
 function revalidateBiletallPaths(routes: BiletallRouteRecord[]) {
   revalidatePath("/admin/obilet");
-  revalidatePath("/ucak-otobus");
+  revalidatePath("/bilet/ara");
   for (const route of routes) {
     revalidatePath(route.publicPath);
   }

@@ -14,6 +14,7 @@ type BiletallIframeProps = {
   routes?: BiletallRouteRecord[];
   publicOrigin?: string;
   title: string;
+  enlarged?: boolean;
 };
 
 const FRAME_LAYOUT: Record<
@@ -25,6 +26,8 @@ const FRAME_LAYOUT: Record<
   sonuc: { maxWidth: "64rem", height: 670 },
 };
 
+const ENLARGED_ARA_LAYOUT = { maxWidth: "36rem", height: 480 };
+
 export default function BiletallIframe({
   kind,
   portalSlug,
@@ -32,9 +35,11 @@ export default function BiletallIframe({
   routes,
   publicOrigin,
   title,
+  enlarged = false,
 }: BiletallIframeProps) {
   const meta = getBiletallIframeMeta(kind);
-  const layout = FRAME_LAYOUT[kind];
+  const layout =
+    enlarged && kind === "ara" ? { ...FRAME_LAYOUT.ara, ...ENLARGED_ARA_LAYOUT } : FRAME_LAYOUT[kind];
   const src = resolveBiletallIframeSrc(
     kind,
     portalSlug,
@@ -49,12 +54,24 @@ export default function BiletallIframe({
       style={{ maxWidth: layout.maxWidth }}
     >
       {layout.compact ? (
-        <div className="flex items-center justify-center gap-2 border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-4 py-3">
-          <Plane className="size-4 text-sky-600" strokeWidth={2.2} aria-hidden />
-          <span className="text-xs font-semibold tracking-wide text-slate-600 sm:text-sm">
+        <div
+          className={`flex items-center justify-center gap-2.5 border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-4 ${enlarged ? "py-4" : "py-3"}`}
+        >
+          <Plane
+            className={enlarged ? "size-5 text-sky-600" : "size-4 text-sky-600"}
+            strokeWidth={2.2}
+            aria-hidden
+          />
+          <span
+            className={`font-semibold tracking-wide text-slate-600 ${enlarged ? "text-sm sm:text-base" : "text-xs sm:text-sm"}`}
+          >
             Uçak &amp; Otobüs bileti ara
           </span>
-          <Bus className="size-4 text-orange-500" strokeWidth={2.2} aria-hidden />
+          <Bus
+            className={enlarged ? "size-5 text-orange-500" : "size-4 text-orange-500"}
+            strokeWidth={2.2}
+            aria-hidden
+          />
         </div>
       ) : null}
 
@@ -69,6 +86,7 @@ export default function BiletallIframe({
           width: "100%",
           minHeight: layout.height,
           height: `${layout.height}px`,
+          ...(enlarged ? { zoom: 1.12 } : {}),
         }}
         allow="payment *"
         referrerPolicy="no-referrer-when-downgrade"

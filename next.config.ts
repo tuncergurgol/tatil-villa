@@ -65,6 +65,11 @@ const nextConfig: NextConfig = {
         destination: "/:slug",
         permanent: true,
       },
+      {
+        source: "/ucak-otobus",
+        destination: "/bilet/ara",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {
