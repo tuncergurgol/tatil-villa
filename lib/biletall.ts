@@ -3,10 +3,11 @@ import {
   getBiletallCallbacks,
   type BiletallRouteRecord,
 } from "@/lib/biletall-routes";
+import { sanitizeBiletallIframeSrc } from "@/lib/biletall-iframe-src";
 
 export const BILETALL_IFRAME_HOST = "https://iframe.biletall.com";
 export const BILETALL_DEFAULT_PORTAL_SLUG = "tatildeyizcomtr";
-export const BILETALL_IFRAME_VERSION = "v2";
+export const BILETALL_IFRAME_VERSION = "UI";
 
 export const BILET_PUBLIC_ROUTES = {
   ara: "/bilet/ara",
@@ -27,19 +28,19 @@ const IFRAME_PAGES: Record<
 > = {
   ara: {
     file: "Arama.aspx",
-    id: "AramaIframe_v2",
+    id: "AramaIframe_v102",
     scrolling: "no",
     height: 350,
   },
   satinal: {
     file: "Islem.aspx",
-    id: "IslemIframe_v2",
+    id: "IslemIframe_v102",
     scrolling: "auto",
     height: 1600,
   },
   sonuc: {
-    file: "BiletGoster.aspx",
-    id: "BiletGosterIframe_v2",
+    file: "BiletGosterim.aspx",
+    id: "BiletGosterim_v102",
     scrolling: "auto",
     height: 670,
   },
@@ -57,7 +58,7 @@ export function resolveBiletallIframeSrc(
   routes: BiletallRouteRecord[] = DEFAULT_BILETALL_ROUTES
 ) {
   const route = routes.find((item) => item.kind === kind);
-  const custom = route?.customIframeSrc?.trim();
+  const custom = sanitizeBiletallIframeSrc(route?.customIframeSrc);
   if (custom) return custom;
   return buildBiletallIframeSrc(kind, portalSlug, credentials, routes);
 }

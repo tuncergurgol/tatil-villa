@@ -9,11 +9,18 @@ import {
   saveBiletallRoute,
 } from "@/app/actions/admin/biletall-settings";
 import { buildBiletallIframeSrc, getBiletallAdminLinks } from "@/lib/biletall";
+import { sanitizeBiletallIframeSrc } from "@/lib/biletall-iframe-src";
 import {
   DEFAULT_BILETALL_ROUTES,
   isDefaultBiletallRoute,
   type BiletallRouteRecord,
 } from "@/lib/biletall-routes";
+
+function extractIframeSrcFromHtml(input: string) {
+  const trimmed = input.trim();
+  const match = trimmed.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+  return match?.[1]?.trim() || trimmed;
+}
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100";
@@ -51,7 +58,7 @@ function RouteEditForm({
   const [publicPath, setPublicPath] = useState(routeRecord.publicPath);
   const [callbackPath, setCallbackPath] = useState(routeRecord.callbackPath);
   const [iframeSrc, setIframeSrc] = useState(
-    routeRecord.customIframeSrc?.trim() || item.iframeSrc
+    sanitizeBiletallIframeSrc(routeRecord.customIframeSrc) || item.iframeSrc
   );
   const [iframeManual, setIframeManual] = useState(
     Boolean(routeRecord.customIframeSrc?.trim())
@@ -93,9 +100,12 @@ function RouteEditForm({
     formData.set("label", label);
     formData.set("publicPath", publicPath);
     formData.set("callbackPath", callbackPath);
+    const sanitizedIframeSrc = sanitizeBiletallIframeSrc(iframeSrc);
     formData.set(
       "customIframeSrc",
-      iframeSrc.trim() !== computedIframeSrc.trim() ? iframeSrc.trim() : ""
+      sanitizedIframeSrc && sanitizedIframeSrc !== computedIframeSrc
+        ? sanitizedIframeSrc
+        : ""
     );
 
     const result = await saveBiletallRoute({}, formData);
@@ -162,8 +172,18 @@ function RouteEditForm({
           name="customIframeSrc"
           value={iframeSrc}
           onChange={(event) => {
+            const next = extractIframeSrcFromHtml(event.target.value);
             setIframeManual(true);
-            setIframeSrc(event.target.value);
+            setIframeSrc(next);
+          }}
+          onPaste={(event) => {
+            const pasted = event.clipboardData.getData("text");
+            const extracted = sanitizeBiletallIframeSrc(pasted);
+            if (extracted && pasted.includes("<iframe")) {
+              event.preventDefault();
+              setIframeManual(true);
+              setIframeSrc(extracted);
+            }
           }}
           rows={3}
           spellCheck={false}
@@ -171,8 +191,8 @@ function RouteEditForm({
           placeholder="https://iframe.biletall.com/..."
         />
         <p className="mt-1.5 text-xs text-gray-500">
-          Bu alana doğrudan yazabilirsiniz. Path alanlarını değiştirdiğinizde
-          URL otomatik güncellenir; elle düzenlediyseniz korunur.
+          Biletall panelinden kopyaladığınız tam iframe kodunu da yapıştırabilirsiniz;
+          sistem otomatik olarak src adresini ayıklar.
         </p>
         {iframeManual ? (
           <button

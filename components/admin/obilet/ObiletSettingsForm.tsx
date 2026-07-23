@@ -125,7 +125,7 @@ export default function ObiletSettingsForm({
           <p className="mt-1.5 text-xs text-gray-500">
             Örnek iframe host:{" "}
             <span className="font-mono text-gray-700">
-              iframe.biletall.com/portals/{"{slug}"}/v2/...
+              iframe.biletall.com/portals/{"{slug}"}/UI/...
             </span>
           </p>
         </div>

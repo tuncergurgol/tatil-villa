@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value: [
+              "frame-ancestors 'self' https://iframe.biletall.com https://*.biletall.com",
               "frame-src 'self' https://iframe.biletall.com https://*.biletall.com",
               "child-src 'self' https://iframe.biletall.com https://*.biletall.com",
             ].join("; "),

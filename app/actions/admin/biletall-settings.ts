@@ -13,6 +13,9 @@ import {
   serializeBiletallRoutes,
   type BiletallRouteRecord,
 } from "@/lib/biletall-routes";
+import {
+  sanitizeBiletallIframeSrc,
+} from "@/lib/biletall-iframe-src";
 
 export type BiletallSettingsActionState = {
   success?: boolean;
@@ -35,7 +38,17 @@ async function loadBiletallRoutes(): Promise<BiletallRouteRecord[]> {
     where: { id: "default" },
     select: { biletallRoutesJson: true },
   });
-  return parseBiletallRoutesJson(settings?.biletallRoutesJson);
+  const routes = parseBiletallRoutesJson(settings?.biletallRoutesJson);
+  const cleaned = routes.map((route) => normalizeBiletallRouteRecord(route));
+  const hasInvalidCustom = routes.some(
+    (route, index) =>
+      (route.customIframeSrc?.trim() ?? "") !==
+      (cleaned[index]?.customIframeSrc ?? "")
+  );
+  if (hasInvalidCustom) {
+    await persistBiletallRoutes(cleaned);
+  }
+  return cleaned;
 }
 
 async function persistBiletallRoutes(routes: BiletallRouteRecord[]) {
@@ -158,7 +171,7 @@ const routeSchema = z.object({
     .trim()
     .min(2, "Callback path gerekli")
     .regex(/^[a-z0-9/_-]+$/i, "Callback path geçersiz"),
-  customIframeSrc: z.string().trim().max(2000).optional(),
+  customIframeSrc: z.string().trim().max(4000).optional(),
 });
 
 export async function saveBiletallRoute(
@@ -179,6 +192,17 @@ export async function saveBiletallRoute(
     return { error: parsed.error.issues[0]?.message ?? "Geçersiz form" };
   }
 
+  const customIframeSrc = sanitizeBiletallIframeSrc(
+    String(formData.get("customIframeSrc") ?? "")
+  );
+  const rawIframeInput = String(formData.get("customIframeSrc") ?? "").trim();
+  if (rawIframeInput && !customIframeSrc) {
+    return {
+      error:
+        "Iframe URL geçersiz. Biletall'dan yalnızca src adresini veya tam iframe kodunu yapıştırın.",
+    };
+  }
+
   const routes = await loadBiletallRoutes();
   const next = routes.map((route) =>
     route.kind === parsed.data.kind
@@ -187,7 +211,7 @@ export async function saveBiletallRoute(
           label: parsed.data.label,
           publicPath: parsed.data.publicPath,
           callbackPath: parsed.data.callbackPath,
-          customIframeSrc: parsed.data.customIframeSrc,
+          customIframeSrc,
         })
       : route
   );

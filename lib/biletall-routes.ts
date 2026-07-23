@@ -1,4 +1,5 @@
 import type { BiletallIframeKind } from "@/lib/biletall";
+import { sanitizeBiletallIframeSrc } from "@/lib/biletall-iframe-src";
 
 export type BiletallRouteRecord = {
   kind: BiletallIframeKind;
@@ -13,19 +14,19 @@ export const DEFAULT_BILETALL_ROUTES: BiletallRouteRecord[] = [
     kind: "ara",
     label: "Bilet Ara",
     publicPath: "/bilet/ara",
-    callbackPath: "bilet/ara",
+    callbackPath: "/bilet/ara",
   },
   {
     kind: "satinal",
     label: "Bilet Satın Al",
     publicPath: "/bilet/satinal",
-    callbackPath: "bilet/satinal",
+    callbackPath: "/bilet/satinal",
   },
   {
     kind: "sonuc",
     label: "Bilet Sonuç / PNR",
     publicPath: "/bilet/sonuc",
-    callbackPath: "bilet/sonuc",
+    callbackPath: "/bilet/sonuc",
   },
 ];
 
@@ -38,7 +39,9 @@ function normalizePublicPath(path: string) {
 }
 
 function normalizeCallbackPath(path: string) {
-  return path.trim().replace(/^\/+/, "");
+  const trimmed = path.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }
 
 export function normalizeBiletallRouteRecord(
@@ -57,7 +60,7 @@ export function normalizeBiletallRouteRecord(
     callbackPath:
       normalizeCallbackPath(record.callbackPath ?? fallback.callbackPath) ||
       fallback.callbackPath,
-    customIframeSrc: record.customIframeSrc?.trim() || "",
+    customIframeSrc: sanitizeBiletallIframeSrc(record.customIframeSrc),
   };
 }
 
@@ -104,7 +107,7 @@ export function getBiletallCallbacks(routes: BiletallRouteRecord[]) {
   return {
     AramaUrl: ara.callbackPath,
     IslemUrl: satinal.callbackPath,
-    BiletGosterUrl: sonuc.callbackPath,
+    BiletGosterimUrl: sonuc.callbackPath,
   };
 }
 
