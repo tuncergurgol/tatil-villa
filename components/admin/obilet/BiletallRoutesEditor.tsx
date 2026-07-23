@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   deleteBiletallRoute,
   saveBiletallRoute,
 } from "@/app/actions/admin/biletall-settings";
-import { getBiletallAdminLinks } from "@/lib/biletall";
+import { buildBiletallIframeSrc, getBiletallAdminLinks } from "@/lib/biletall";
 import {
   DEFAULT_BILETALL_ROUTES,
   isDefaultBiletallRoute,
@@ -24,6 +24,190 @@ type BiletallRoutesEditorProps = {
   username: string;
 };
 
+type RouteEditFormProps = {
+  item: ReturnType<typeof getBiletallAdminLinks>[number];
+  routeRecord: BiletallRouteRecord;
+  routes: BiletallRouteRecord[];
+  portalSlug: string;
+  username: string;
+  isPending: boolean;
+  onCancel: () => void;
+  onSaved: () => void;
+  onError: (message: string) => void;
+};
+
+function RouteEditForm({
+  item,
+  routeRecord,
+  routes,
+  portalSlug,
+  username,
+  isPending,
+  onCancel,
+  onSaved,
+  onError,
+}: RouteEditFormProps) {
+  const [label, setLabel] = useState(routeRecord.label);
+  const [publicPath, setPublicPath] = useState(routeRecord.publicPath);
+  const [callbackPath, setCallbackPath] = useState(routeRecord.callbackPath);
+  const [iframeSrc, setIframeSrc] = useState(
+    routeRecord.customIframeSrc?.trim() || item.iframeSrc
+  );
+  const [iframeManual, setIframeManual] = useState(
+    Boolean(routeRecord.customIframeSrc?.trim())
+  );
+
+  const draftRoutes = useMemo(
+    () =>
+      routes.map((route) =>
+        route.kind === item.kind
+          ? { ...route, label, publicPath, callbackPath }
+          : route
+      ),
+    [routes, item.kind, label, publicPath, callbackPath]
+  );
+
+  const computedIframeSrc = useMemo(
+    () =>
+      buildBiletallIframeSrc(
+        item.kind,
+        portalSlug,
+        { username },
+        draftRoutes
+      ),
+    [item.kind, portalSlug, username, draftRoutes]
+  );
+
+  useEffect(() => {
+    if (!iframeManual) {
+      setIframeSrc(computedIframeSrc);
+    }
+  }, [computedIframeSrc, iframeManual]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onError("");
+
+    const formData = new FormData();
+    formData.set("kind", item.kind);
+    formData.set("label", label);
+    formData.set("publicPath", publicPath);
+    formData.set("callbackPath", callbackPath);
+    formData.set(
+      "customIframeSrc",
+      iframeSrc.trim() !== computedIframeSrc.trim() ? iframeSrc.trim() : ""
+    );
+
+    const result = await saveBiletallRoute({}, formData);
+    if (result.error) {
+      onError(result.error);
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block sm:col-span-2">
+          <span className="mb-1 block text-xs font-medium text-gray-500">
+            Başlık
+          </span>
+          <input
+            name="label"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            className={inputClass}
+            autoComplete="off"
+            required
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-500">
+            Public path
+          </span>
+          <input
+            name="publicPath"
+            value={publicPath}
+            onChange={(event) => setPublicPath(event.target.value)}
+            className={inputClass}
+            placeholder="/bilet/ara"
+            autoComplete="off"
+            required
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-500">
+            Biletall callback path
+          </span>
+          <input
+            name="callbackPath"
+            value={callbackPath}
+            onChange={(event) => setCallbackPath(event.target.value)}
+            className={inputClass}
+            placeholder="bilet/ara"
+            autoComplete="off"
+            required
+          />
+        </label>
+      </div>
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-gray-500">
+          Iframe URL
+        </span>
+        <textarea
+          name="customIframeSrc"
+          value={iframeSrc}
+          onChange={(event) => {
+            setIframeManual(true);
+            setIframeSrc(event.target.value);
+          }}
+          rows={3}
+          spellCheck={false}
+          className={`${inputClass} font-mono text-xs leading-relaxed`}
+          placeholder="https://iframe.biletall.com/..."
+        />
+        <p className="mt-1.5 text-xs text-gray-500">
+          Bu alana doğrudan yazabilirsiniz. Path alanlarını değiştirdiğinizde
+          URL otomatik güncellenir; elle düzenlediyseniz korunur.
+        </p>
+        {iframeManual ? (
+          <button
+            type="button"
+            onClick={() => {
+              setIframeManual(false);
+              setIframeSrc(computedIframeSrc);
+            }}
+            className="mt-2 text-xs font-semibold text-sky-700 hover:text-sky-900"
+          >
+            Otomatik URL&apos;ye dön
+          </button>
+        ) : null}
+      </label>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+        >
+          {isPending ? "Kaydediliyor…" : "Kaydet"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+        >
+          Vazgeç
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function BiletallRoutesEditor({
   routes,
   portalSlug,
@@ -36,24 +220,9 @@ export default function BiletallRoutesEditor({
 
   const links = getBiletallAdminLinks(portalSlug, { username }, routes);
 
-  function handleSave(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      const result = await saveBiletallRoute({}, formData);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      setEditingKind(null);
-      router.refresh();
-    });
-  }
-
   function handleDelete(kind: BiletallRouteRecord["kind"], label: string) {
     if (
-      !window.confirm(
-        `"${label}" kaydı varsayılan değerlere sıfırlansın mı?`
-      )
+      !window.confirm(`"${label}" kaydı varsayılan değerlere sıfırlansın mı?`)
     ) {
       return;
     }
@@ -76,8 +245,8 @@ export default function BiletallRoutesEditor({
         Public route & iframe URL&apos;leri
       </h2>
       <p className="mt-1 text-sm text-gray-500">
-        Biletall callback parametreleri site içi path&apos;lerle eşleşir. Her
-        kaydı düzenleyebilir veya varsayılana sıfırlayabilirsiniz.
+        Biletall callback parametreleri site içi path&apos;lerle eşleşir. Iframe
+        URL satırına doğrudan yazabilirsiniz.
       </p>
 
       {error ? (
@@ -100,70 +269,20 @@ export default function BiletallRoutesEditor({
               className="rounded-xl border border-gray-100 bg-slate-50/80 p-4"
             >
               {isEditing ? (
-                <form action={handleSave} className="space-y-3">
-                  <input type="hidden" name="kind" value={item.kind} />
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block sm:col-span-2">
-                      <span className="mb-1 block text-xs font-medium text-gray-500">
-                        Başlık
-                      </span>
-                      <input
-                        name="label"
-                        defaultValue={item.label}
-                        className={inputClass}
-                        required
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-gray-500">
-                        Public path
-                      </span>
-                      <input
-                        name="publicPath"
-                        defaultValue={item.publicPath}
-                        className={inputClass}
-                        placeholder="/bilet/ara"
-                        required
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-gray-500">
-                        Biletall callback path
-                      </span>
-                      <input
-                        name="callbackPath"
-                        defaultValue={item.callbackPath}
-                        className={inputClass}
-                        placeholder="bilet/ara"
-                        required
-                      />
-                    </label>
-                  </div>
-
-                  <p className="break-all font-mono text-xs leading-relaxed text-gray-500">
-                    {item.iframeSrc}
-                  </p>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="submit"
-                      disabled={isPending}
-                      className="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
-                    >
-                      {isPending ? "Kaydediliyor…" : "Kaydet"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingKind(null)}
-                      className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                    >
-                      Vazgeç
-                    </button>
-                  </div>
-                </form>
+                <RouteEditForm
+                  item={item}
+                  routeRecord={routeRecord}
+                  routes={routes}
+                  portalSlug={portalSlug}
+                  username={username}
+                  isPending={isPending}
+                  onCancel={() => setEditingKind(null)}
+                  onSaved={() => {
+                    setEditingKind(null);
+                    router.refresh();
+                  }}
+                  onError={setError}
+                />
               ) : (
                 <>
                   <div className="flex flex-wrap items-start justify-between gap-3">

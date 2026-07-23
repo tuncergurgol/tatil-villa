@@ -50,6 +50,18 @@ export function normalizeBiletallPortalSlug(slug?: string | null) {
   return trimmed || BILETALL_DEFAULT_PORTAL_SLUG;
 }
 
+export function resolveBiletallIframeSrc(
+  kind: BiletallIframeKind,
+  portalSlug?: string | null,
+  credentials?: BiletallCredentials,
+  routes: BiletallRouteRecord[] = DEFAULT_BILETALL_ROUTES
+) {
+  const route = routes.find((item) => item.kind === kind);
+  const custom = route?.customIframeSrc?.trim();
+  if (custom) return custom;
+  return buildBiletallIframeSrc(kind, portalSlug, credentials, routes);
+}
+
 export function buildBiletallIframeSrc(
   kind: BiletallIframeKind,
   portalSlug?: string | null,
@@ -84,6 +96,7 @@ export function getBiletallAdminLinks(
     label: route.label,
     publicPath: route.publicPath,
     callbackPath: route.callbackPath,
-    iframeSrc: buildBiletallIframeSrc(route.kind, slug, credentials, routes),
+    customIframeSrc: route.customIframeSrc,
+    iframeSrc: resolveBiletallIframeSrc(route.kind, slug, credentials, routes),
   }));
 }

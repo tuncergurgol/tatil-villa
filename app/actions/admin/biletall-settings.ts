@@ -158,6 +158,7 @@ const routeSchema = z.object({
     .trim()
     .min(2, "Callback path gerekli")
     .regex(/^[a-z0-9/_-]+$/i, "Callback path geçersiz"),
+  customIframeSrc: z.string().trim().max(2000).optional(),
 });
 
 export async function saveBiletallRoute(
@@ -171,6 +172,7 @@ export async function saveBiletallRoute(
     label: String(formData.get("label") ?? ""),
     publicPath: String(formData.get("publicPath") ?? ""),
     callbackPath: String(formData.get("callbackPath") ?? ""),
+    customIframeSrc: String(formData.get("customIframeSrc") ?? ""),
   });
 
   if (!parsed.success) {
@@ -185,6 +187,7 @@ export async function saveBiletallRoute(
           label: parsed.data.label,
           publicPath: parsed.data.publicPath,
           callbackPath: parsed.data.callbackPath,
+          customIframeSrc: parsed.data.customIframeSrc,
         })
       : route
   );

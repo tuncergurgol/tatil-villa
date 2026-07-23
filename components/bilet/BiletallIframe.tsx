@@ -1,6 +1,6 @@
 import {
-  buildBiletallIframeSrc,
   getBiletallIframeMeta,
+  resolveBiletallIframeSrc,
   type BiletallCredentials,
   type BiletallIframeKind,
 } from "@/lib/biletall";
@@ -22,7 +22,7 @@ export default function BiletallIframe({
   title,
 }: BiletallIframeProps) {
   const meta = getBiletallIframeMeta(kind);
-  const src = buildBiletallIframeSrc(kind, portalSlug, credentials, routes);
+  const src = resolveBiletallIframeSrc(kind, portalSlug, credentials, routes);
 
   return (
     <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

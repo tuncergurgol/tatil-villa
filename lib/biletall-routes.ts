@@ -5,6 +5,7 @@ export type BiletallRouteRecord = {
   label: string;
   publicPath: string;
   callbackPath: string;
+  customIframeSrc?: string;
 };
 
 export const DEFAULT_BILETALL_ROUTES: BiletallRouteRecord[] = [
@@ -56,6 +57,7 @@ export function normalizeBiletallRouteRecord(
     callbackPath:
       normalizeCallbackPath(record.callbackPath ?? fallback.callbackPath) ||
       fallback.callbackPath,
+    customIframeSrc: record.customIframeSrc?.trim() || "",
   };
 }
 
@@ -122,6 +124,7 @@ export function isDefaultBiletallRoute(record: BiletallRouteRecord) {
   return (
     record.label === fallback.label &&
     record.publicPath === fallback.publicPath &&
-    record.callbackPath === fallback.callbackPath
+    record.callbackPath === fallback.callbackPath &&
+    !record.customIframeSrc?.trim()
   );
 }
