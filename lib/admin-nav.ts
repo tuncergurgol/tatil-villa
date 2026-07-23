@@ -22,7 +22,8 @@ export type AdminNavIcon =
   | "newspaper"
   | "chart"
   | "megaphone"
-  | "phone";
+  | "phone"
+  | "bot";
 
 export interface NavLink {
   label: string;
@@ -233,6 +234,11 @@ export const adminAgencyNav: NavGroup = {
       label: "Bildirim WhatsApp",
       href: "/admin/acente/bildirim-whatsapp",
       icon: "message-circle",
+    },
+    {
+      label: "Tatil Asistanı",
+      href: "/admin/acente/tatil-asistani",
+      icon: "bot",
     },
     {
       label: "Mesaj İçeriği",

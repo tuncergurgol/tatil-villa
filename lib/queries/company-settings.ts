@@ -95,6 +95,12 @@ export const DEFAULT_COMPANY_SETTINGS = {
   homeRecommendedTitle: "Önerilen Villalar",
   homeRecommendedActive: true,
   homeRecommendedSortMode: "showcase",
+  tatilAssistantEnabled: true,
+  assistantWahaBaseUrl: "http://localhost:3001",
+  assistantWahaApiKey: "",
+  assistantWahaSessionName: "tatil-asistani",
+  assistantWebhookSecret: "",
+  assistantWelcomeMessage: "",
 };
 
 export async function getCompanySettings() {

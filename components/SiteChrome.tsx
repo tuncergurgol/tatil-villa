@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
+import TatilAssistantWidgetLoader from "@/components/tatil-assistant/TatilAssistantWidgetLoader";
 import CallbackFloatingButton from "@/components/CallbackFloatingButton";
 import MobileBottomNavigation from "@/components/MobileBottomNavigation";
 import PublicContentProtection from "@/components/PublicContentProtection";
@@ -130,6 +131,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
         }}
       />
       <ScrollToTopButton />
+      <TatilAssistantWidgetLoader />
       <CallbackFloatingButton />
       <MobileBottomNavigation
         phone={phone}

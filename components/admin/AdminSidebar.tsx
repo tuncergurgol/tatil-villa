@@ -16,6 +16,7 @@ import { createPortal } from "react-dom";
 import {
   BarChart3,
   BedDouble,
+  Bot,
   Building2,
   Bus,
   CalendarCheck,
@@ -76,6 +77,7 @@ const iconMap: Record<AdminNavIcon, LucideIcon> = {
   chart: BarChart3,
   megaphone: Megaphone,
   phone: Phone,
+  bot: Bot,
 };
 
 function NavIcon({
