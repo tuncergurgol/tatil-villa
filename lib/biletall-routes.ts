@@ -41,7 +41,8 @@ function normalizePublicPath(path: string) {
 function normalizeCallbackPath(path: string) {
   const trimmed = path.trim();
   if (!trimmed) return "";
-  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  const withSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withSlash.replace(/\s+/g, "");
 }
 
 export function normalizeBiletallRouteRecord(
