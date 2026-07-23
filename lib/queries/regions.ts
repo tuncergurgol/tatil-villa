@@ -157,17 +157,30 @@ function mapRegionsWithDescendantVillaCounts(
     .filter((region) => region.villaCount > 0);
 }
 
-export async function getRegionsWithCount(siteKey?: PublicSiteKey) {
+export async function getRegionsWithCount(
+  siteKey?: PublicSiteKey,
+  options?: { mode?: "home" | "search" }
+) {
+  const mode = options?.mode ?? "home";
+
+  const visibilityFilter =
+    mode === "home"
+      ? {
+          showOnHome: true,
+          level: { in: [RegionLevel.IL, RegionLevel.ILCE] },
+        }
+      : {
+          showInSearch: true,
+          level: { in: [RegionLevel.IL, RegionLevel.ILCE] },
+        };
+
   const [{ nodes, villaCountByRegion }, candidates] = await Promise.all([
     getRegionVillaCountMaps(siteKey),
     prisma.region.findMany({
       where: {
         active: true,
         published: true,
-        OR: [
-          { level: RegionLevel.IL, showInSearch: true },
-          { level: RegionLevel.ILCE, showOnHome: true },
-        ],
+        ...visibilityFilter,
       },
       select: {
         id: true,

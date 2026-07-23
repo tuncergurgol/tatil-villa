@@ -24,7 +24,7 @@ export default async function HomePage() {
   const [homeVillaSections, regions, campaigns, searchRegions, dreamCards] =
     await Promise.all([
       getHomeVillaSectionsWithData(company, site.key),
-      getRegionsWithCount(site.key),
+      getRegionsWithCount(site.key, { mode: "home" }),
       getCampaigns(),
       getHeroSearchRegions(),
       getHomeDreamCategories(site.key),

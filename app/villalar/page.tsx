@@ -120,7 +120,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     villaSearch,
   ] = await Promise.all([
     getHeroSearchRegions(),
-    getRegionsWithCount(site.key),
+    getRegionsWithCount(site.key, { mode: "search" }),
     params.region ? getRegionBySlug(params.region, site.key) : null,
     getSearchCategoryOptions(site.key),
     getSearchFacilityCategoryOptions(site.key),
