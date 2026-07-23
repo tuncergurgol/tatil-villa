@@ -1,14 +1,37 @@
 import type { BiletallCredentials, BiletallIframeKind } from "@/lib/biletall";
+import {
+  resolveBiletallPublicOrigin,
+  toBiletallCallbackUrl,
+} from "@/lib/biletall-callbacks";
 
 export const BILETALL_PORTAL_SLUG = "tatildeyizcomtr";
 
-export const BILETALL_CALLBACK_QUERY =
-  "AramaUrl=/bilet/ara&IslemUrl=/bilet/satinal&BiletGosterimUrl=/bilet/sonuc";
+function buildDefaultCallbacks(publicOrigin = resolveBiletallPublicOrigin()) {
+  return {
+    AramaUrl: toBiletallCallbackUrl("/bilet/ara", publicOrigin),
+    IslemUrl: toBiletallCallbackUrl("/bilet/satinal", publicOrigin),
+    BiletGosterimUrl: toBiletallCallbackUrl("/bilet/sonuc", publicOrigin),
+  };
+}
+
+export function buildBiletallDefaultIframeSrc(
+  kind: BiletallIframeKind,
+  publicOrigin = resolveBiletallPublicOrigin()
+) {
+  const fileByKind: Record<BiletallIframeKind, string> = {
+    ara: "Arama.aspx",
+    satinal: "Islem.aspx",
+    sonuc: "BiletGosterim.aspx",
+  };
+
+  const query = new URLSearchParams(buildDefaultCallbacks(publicOrigin)).toString();
+  return `https://iframe.biletall.com/portals/${BILETALL_PORTAL_SLUG}/UI/${fileByKind[kind]}?${query}`;
+}
 
 export const BILETALL_DEFAULT_IFRAME_SRC: Record<BiletallIframeKind, string> = {
-  ara: `https://iframe.biletall.com/portals/${BILETALL_PORTAL_SLUG}/UI/Arama.aspx?${BILETALL_CALLBACK_QUERY}`,
-  satinal: `https://iframe.biletall.com/portals/${BILETALL_PORTAL_SLUG}/UI/Islem.aspx?${BILETALL_CALLBACK_QUERY}`,
-  sonuc: `https://iframe.biletall.com/portals/${BILETALL_PORTAL_SLUG}/UI/BiletGosterim.aspx?${BILETALL_CALLBACK_QUERY}`,
+  ara: buildBiletallDefaultIframeSrc("ara"),
+  satinal: buildBiletallDefaultIframeSrc("satinal"),
+  sonuc: buildBiletallDefaultIframeSrc("sonuc"),
 };
 
 const BILETALL_IFRAME_SRC_PATTERN =
@@ -80,3 +103,5 @@ export function appendBiletallCredentialsToSrc(
 export function isValidBiletallIframeSrc(input?: string | null) {
   return Boolean(sanitizeBiletallIframeSrc(input));
 }
+
+export { resolveBiletallPublicOrigin } from "@/lib/biletall-callbacks";

@@ -21,6 +21,7 @@ type ObiletSettingsFormProps = {
   biletallUsername: string;
   biletallHasPassword: boolean;
   biletallRoutes: BiletallRouteRecord[];
+  publicOrigin: string;
 };
 
 export default function ObiletSettingsForm({
@@ -29,6 +30,7 @@ export default function ObiletSettingsForm({
   biletallUsername,
   biletallHasPassword,
   biletallRoutes,
+  publicOrigin,
 }: ObiletSettingsFormProps) {
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
@@ -154,6 +156,7 @@ export default function ObiletSettingsForm({
         routes={biletallRoutes}
         portalSlug={biletallPortalSlug}
         username={biletallUsername}
+        publicOrigin={publicOrigin}
       />
 
       <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-6">

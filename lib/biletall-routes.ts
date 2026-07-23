@@ -1,6 +1,11 @@
 import type { BiletallIframeKind } from "@/lib/biletall";
 import {
+  resolveBiletallPublicOrigin,
+  toBiletallCallbackUrl,
+} from "@/lib/biletall-callbacks";
+import {
   BILETALL_DEFAULT_IFRAME_SRC,
+  buildBiletallDefaultIframeSrc,
   sanitizeBiletallIframeSrc,
 } from "@/lib/biletall-iframe-src";
 
@@ -52,7 +57,8 @@ function normalizeCallbackPath(path: string) {
 }
 
 export function normalizeBiletallRouteRecord(
-  record: Partial<BiletallRouteRecord> & { kind: BiletallIframeKind }
+  record: Partial<BiletallRouteRecord> & { kind: BiletallIframeKind },
+  publicOrigin = resolveBiletallPublicOrigin()
 ): BiletallRouteRecord {
   const fallback =
     DEFAULT_BILETALL_ROUTES.find((item) => item.kind === record.kind) ??
@@ -69,7 +75,7 @@ export function normalizeBiletallRouteRecord(
       fallback.callbackPath,
     customIframeSrc:
       sanitizeBiletallIframeSrc(record.customIframeSrc) ||
-      BILETALL_DEFAULT_IFRAME_SRC[record.kind],
+      buildBiletallDefaultIframeSrc(record.kind, publicOrigin),
   };
 }
 
@@ -107,16 +113,24 @@ export function serializeBiletallRoutes(routes: BiletallRouteRecord[]) {
   });
 }
 
-export function getBiletallCallbacks(routes: BiletallRouteRecord[]) {
+export function getBiletallCallbacks(
+  routes: BiletallRouteRecord[],
+  publicOrigin?: string
+) {
   const byKind = Object.fromEntries(routes.map((route) => [route.kind, route]));
   const ara = byKind.ara ?? DEFAULT_BILETALL_ROUTES[0];
   const satinal = byKind.satinal ?? DEFAULT_BILETALL_ROUTES[1];
   const sonuc = byKind.sonuc ?? DEFAULT_BILETALL_ROUTES[2];
 
+  const toCallback = (path: string) =>
+    publicOrigin
+      ? toBiletallCallbackUrl(path, publicOrigin)
+      : normalizeCallbackPath(path);
+
   return {
-    AramaUrl: ara.callbackPath,
-    IslemUrl: satinal.callbackPath,
-    BiletGosterimUrl: sonuc.callbackPath,
+    AramaUrl: toCallback(ara.callbackPath),
+    IslemUrl: toCallback(satinal.callbackPath),
+    BiletGosterimUrl: toCallback(sonuc.callbackPath),
   };
 }
 

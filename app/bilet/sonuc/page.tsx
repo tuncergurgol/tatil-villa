@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BiletSonucPage() {
-  const { enabled, portalSlug, credentials, routes } = await getBiletallPageContext();
+  const { enabled, portalSlug, credentials, routes, publicOrigin } =
+    await getBiletallPageContext();
   if (!enabled) redirect("/ucak-otobus");
 
   return (
@@ -25,6 +26,7 @@ export default async function BiletSonucPage() {
         portalSlug={portalSlug}
         credentials={credentials}
         routes={routes}
+        publicOrigin={publicOrigin}
         title="Biletall — Bilet Sonuç"
       />
     </BiletShell>

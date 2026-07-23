@@ -11,6 +11,7 @@ type BiletallIframeProps = {
   portalSlug?: string | null;
   credentials?: BiletallCredentials;
   routes?: BiletallRouteRecord[];
+  publicOrigin?: string;
   title: string;
 };
 
@@ -19,10 +20,17 @@ export default function BiletallIframe({
   portalSlug,
   credentials,
   routes,
+  publicOrigin,
   title,
 }: BiletallIframeProps) {
   const meta = getBiletallIframeMeta(kind);
-  const src = resolveBiletallIframeSrc(kind, portalSlug, credentials, routes);
+  const src = resolveBiletallIframeSrc(
+    kind,
+    portalSlug,
+    credentials,
+    routes,
+    publicOrigin
+  );
 
   return (
     <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

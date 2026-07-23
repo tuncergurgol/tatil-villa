@@ -29,6 +29,7 @@ type BiletallRoutesEditorProps = {
   routes: BiletallRouteRecord[];
   portalSlug: string;
   username: string;
+  publicOrigin: string;
 };
 
 type RouteEditFormProps = {
@@ -37,6 +38,7 @@ type RouteEditFormProps = {
   routes: BiletallRouteRecord[];
   portalSlug: string;
   username: string;
+  publicOrigin: string;
   isPending: boolean;
   onCancel: () => void;
   onSaved: () => void;
@@ -49,6 +51,7 @@ function RouteEditForm({
   routes,
   portalSlug,
   username,
+  publicOrigin,
   isPending,
   onCancel,
   onSaved,
@@ -80,9 +83,10 @@ function RouteEditForm({
         item.kind,
         portalSlug,
         { username },
-        draftRoutes
+        draftRoutes,
+        publicOrigin
       ),
-    [item.kind, portalSlug, username, draftRoutes]
+    [item.kind, portalSlug, username, draftRoutes, publicOrigin]
   );
 
   useEffect(() => {
@@ -232,13 +236,19 @@ export default function BiletallRoutesEditor({
   routes,
   portalSlug,
   username,
+  publicOrigin,
 }: BiletallRoutesEditorProps) {
   const router = useRouter();
   const [editingKind, setEditingKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const links = getBiletallAdminLinks(portalSlug, { username }, routes);
+  const links = getBiletallAdminLinks(
+    portalSlug,
+    { username },
+    routes,
+    publicOrigin
+  );
 
   function handleDelete(kind: BiletallRouteRecord["kind"], label: string) {
     if (
@@ -295,6 +305,7 @@ export default function BiletallRoutesEditor({
                   routes={routes}
                   portalSlug={portalSlug}
                   username={username}
+                  publicOrigin={publicOrigin}
                   isPending={isPending}
                   onCancel={() => setEditingKind(null)}
                   onSaved={() => {
