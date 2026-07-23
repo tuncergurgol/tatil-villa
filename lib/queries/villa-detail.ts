@@ -6,6 +6,7 @@ import { getVillaPeriodPriceRanges } from "@/lib/queries/villas";
 import { RegionLevel } from "@/lib/region-levels";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { approximateVillaCoords } from "@/lib/villa-approximate-location";
+import { resolveVillaRegionAddress } from "@/lib/villa-region-address";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import {
   isVillaVisibleOnPublicSite,
@@ -44,6 +45,7 @@ export async function getVillaDetailBySlug(
           slug: true,
           name: true,
           level: true,
+          image: true,
           parent: {
             select: {
               name: true,
@@ -114,7 +116,7 @@ export async function getVillaDetailBySlug(
   const toDate = addMonthsUtc(fromDate, 4);
   const priceInclusionIds = villa.priceInclusionIds;
 
-  const [priceInclusions, reviewAgg, amenityRows, calendarDays] =
+  const [priceInclusions, reviewAgg, siteReviewAgg, siteFallbackReviews, amenityRows, calendarDays] =
     await Promise.all([
       priceInclusionIds.length > 0
         ? prisma.priceInclusionItem.findMany({
@@ -127,6 +129,16 @@ export async function getVillaDetailBySlug(
         where: { villaId: villa.id, approved: true },
         _avg: { rating: true },
         _count: { _all: true },
+      }),
+      prisma.guestReview.aggregate({
+        where: { approved: true },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+      prisma.guestReview.findMany({
+        where: { approved: true },
+        orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+        take: 5,
       }),
       villa.amenities.length > 0
         ? prisma.amenity.findMany({
@@ -268,6 +280,20 @@ export async function getVillaDetailBySlug(
     fromDate
   );
 
+  const regionAddress = resolveVillaRegionAddress(villa.region);
+  const villaReviewRows = villa.guestReviews;
+  const useSiteReviewFallback = reviewAgg._count._all === 0 && siteFallbackReviews.length > 0;
+  const reviewRows = useSiteReviewFallback ? siteFallbackReviews : villaReviewRows;
+  const reviewCount = useSiteReviewFallback
+    ? siteReviewAgg._count._all
+    : reviewAgg._count._all;
+  const averageRatingSource = useSiteReviewFallback
+    ? siteReviewAgg._avg.rating
+    : reviewAgg._avg.rating;
+  const averageRating = averageRatingSource
+    ? Math.round(averageRatingSource * 10) / 10
+    : null;
+
   return {
     id: villa.id,
     villaCode: villa.villaId != null ? String(villa.villaId) : "",
@@ -277,6 +303,8 @@ export async function getVillaDetailBySlug(
     location: villa.location,
     regionId: villa.regionId,
     regionLabel: regionParts.join(" - ") || villa.location,
+    regionAddress,
+    regionImage: villa.region.image?.trim() || "",
     regionSlug: villa.region.slug,
     guests: villa.guests,
     extraCapacity: villa.extraCapacity,
@@ -345,7 +373,7 @@ export async function getVillaDetailBySlug(
       .sort((a, b) => a.sortOrder - b.sortOrder || a.category.localeCompare(b.category, "tr")),
     priceIncluded: priceInclusions.filter((item) => item.type === "INCLUDED"),
     priceExcluded: priceInclusions.filter((item) => item.type === "EXCLUDED"),
-    reviews: villa.guestReviews.map((review) => ({
+    reviews: reviewRows.map((review) => ({
       id: review.id,
       guestName: review.guestName,
       rating: review.rating,
@@ -354,10 +382,8 @@ export async function getVillaDetailBySlug(
       stayMonth: review.stayMonth,
       createdAt: review.createdAt.toISOString(),
     })),
-    reviewCount: reviewAgg._count._all,
-    averageRating: reviewAgg._avg.rating
-      ? Math.round(reviewAgg._avg.rating * 10) / 10
-      : null,
+    reviewCount,
+    averageRating,
     periods,
     currentDamageDeposit,
     calendarDays: calendarDays.map((day) => ({

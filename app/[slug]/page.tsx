@@ -89,6 +89,7 @@ export default async function VillaDetailPage({
     villa,
     brandName,
     origin,
+    brandOgImage: site.ogImageUrl,
   });
 
   return (

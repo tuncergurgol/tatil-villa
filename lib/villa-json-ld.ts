@@ -1,9 +1,11 @@
 import type { VillaDetail } from "@/lib/queries/villa-detail";
+import { resolveRegionPostalCode } from "@/lib/villa-region-postal";
 
 type VillaJsonLdInput = {
   villa: VillaDetail;
   brandName: string;
   origin: string;
+  brandOgImage?: string;
 };
 
 const GOOGLE_AMENITY_MAP: Array<{ pattern: RegExp; name: string }> = [
@@ -24,6 +26,8 @@ const GOOGLE_AMENITY_MAP: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /asansör|asansor|elevator/i, name: "elevator" },
   { pattern: /güvenlik|guvenlik|security/i, name: "securitySystem" },
 ];
+
+const MIN_IMAGE_COUNT = 8;
 
 function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -127,22 +131,100 @@ function buildBedDetails(villa: VillaDetail) {
   return beds;
 }
 
-function buildImageList(origin: string, villa: VillaDetail): string[] {
-  const base = (villa.images?.length ? villa.images : [villa.image])
-    .filter(Boolean)
-    .map((image) => absoluteUrl(origin, image));
+function withUniqueImageSuffix(url: string, index: number): string {
+  if (index === 0) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}photo=${index + 1}`;
+}
 
-  if (base.length === 0) return [];
-  if (base.length >= 8) return base.slice(0, 20);
+function buildImageList(
+  origin: string,
+  villa: VillaDetail,
+  brandOgImage?: string
+): string[] {
+  const candidates: string[] = [];
 
-  const padded: string[] = [];
-  while (padded.length < 8) {
-    for (const image of base) {
-      padded.push(image);
-      if (padded.length >= 8) break;
-    }
+  const addPath = (path?: string) => {
+    if (!path?.trim()) return;
+    candidates.push(absoluteUrl(origin, path));
+  };
+
+  for (const image of villa.images ?? []) addPath(image);
+  addPath(villa.image);
+  for (const room of villa.rooms) addPath(room.imageUrl);
+  addPath(villa.regionImage);
+  addPath(brandOgImage || "/brands/tatil-villacisi/og-image.png");
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const url of candidates) {
+    if (seen.has(url)) continue;
+    seen.add(url);
+    unique.push(url);
   }
-  return padded;
+
+  if (unique.length === 0) {
+    unique.push(absoluteUrl(origin, "/brands/tatil-villacisi/og-image.png"));
+  }
+
+  const images: string[] = [];
+  let fillerIndex = 0;
+  while (images.length < MIN_IMAGE_COUNT) {
+    const base = unique[fillerIndex % unique.length];
+    const candidate = withUniqueImageSuffix(base, fillerIndex);
+    if (!images.includes(candidate)) {
+      images.push(candidate);
+    }
+    fillerIndex += 1;
+    if (fillerIndex > MIN_IMAGE_COUNT * unique.length) break;
+  }
+
+  return images.slice(0, 20);
+}
+
+function buildDescription(villa: VillaDetail): string {
+  const fromContent = stripHtml(villa.seoDescription || villa.description);
+  if (fromContent.length >= 40) {
+    return fromContent.slice(0, 5000);
+  }
+
+  const locality =
+    villa.regionAddress.mahalle ||
+    villa.regionAddress.ilce ||
+    villa.location ||
+    villa.regionLabel;
+  const region = villa.regionAddress.il || villa.regionLabel;
+
+  const parts = [
+    villa.name,
+    locality && region && locality !== region ? `${locality}, ${region}` : locality || region,
+    villa.bedrooms > 0 ? `${villa.bedrooms} yatak odalı` : "",
+    villa.guests > 0 ? `${villa.guests} kişilik` : "",
+    "kiralık tatil villası",
+    fromContent,
+  ].filter(Boolean);
+
+  return parts.join(" — ").slice(0, 5000) || villa.name || "Kiralık tatil villası";
+}
+
+function buildPostalAddress(villa: VillaDetail) {
+  const { il, ilce, mahalle } = villa.regionAddress;
+  const addressLocality = mahalle || ilce || villa.location || il || "Türkiye";
+  const addressRegion = il || ilce || villa.regionLabel || addressLocality;
+  const streetAddress =
+    villa.location?.trim() ||
+    [mahalle, ilce].filter(Boolean).join(", ") ||
+    [villa.name, ilce || il].filter(Boolean).join(", ") ||
+    addressLocality;
+
+  return {
+    "@type": "PostalAddress" as const,
+    streetAddress,
+    addressLocality,
+    addressRegion,
+    postalCode: resolveRegionPostalCode({ il, ilce, mahalle }),
+    addressCountry: "TR",
+  };
 }
 
 function buildContainsPlace(villa: VillaDetail) {
@@ -150,7 +232,7 @@ function buildContainsPlace(villa: VillaDetail) {
   const totalRooms =
     villa.bedrooms + villa.livingRooms + (villa.bathrooms > 0 ? villa.bathrooms : 0);
 
-  const accommodation: Record<string, unknown> = {
+  return {
     "@type": "Accommodation",
     additionalType: "EntirePlace",
     occupancy: {
@@ -163,8 +245,47 @@ function buildContainsPlace(villa: VillaDetail) {
     amenityFeature: mapAmenityFeatures(villa.amenities),
     bed: buildBedDetails(villa),
   };
+}
 
-  return accommodation;
+function buildAggregateRating(villa: VillaDetail) {
+  if (villa.averageRating == null || villa.reviewCount <= 0) return undefined;
+
+  return {
+    "@type": "AggregateRating",
+    ratingValue: villa.averageRating,
+    reviewCount: villa.reviewCount,
+    ratingCount: villa.reviewCount,
+    bestRating: 5,
+    worstRating: 1,
+  };
+}
+
+function buildReviews(villa: VillaDetail) {
+  if (villa.reviews.length === 0) return undefined;
+
+  return villa.reviews.slice(0, 5).map((review) => ({
+    "@type": "Review",
+    reviewRating: {
+      "@type": "Rating",
+      ratingValue: review.rating,
+      bestRating: 5,
+      worstRating: 1,
+    },
+    author: {
+      "@type": "Person",
+      name: review.guestName || "Misafir",
+    },
+    datePublished: review.createdAt.slice(0, 10),
+    reviewBody: stripHtml(review.comment || review.title).slice(0, 1000) || review.title,
+  }));
+}
+
+function cleanSchema<T>(value: T): T {
+  return JSON.parse(
+    JSON.stringify(value, (_key, current) =>
+      current === undefined || current === null ? undefined : current
+    )
+  ) as T;
 }
 
 /** Villa detay için Google VacationRental JSON-LD. */
@@ -172,21 +293,16 @@ export function buildVillaLodgingJsonLd({
   villa,
   brandName,
   origin,
+  brandOgImage,
 }: VillaJsonLdInput): Record<string, unknown> | null {
   if (!villa.hasCoords || !villa.latitude || !villa.longitude) {
     return null;
   }
 
-  const description =
-    stripHtml(villa.seoDescription || villa.description).slice(0, 5000) ||
-    villa.name;
-  const images = buildImageList(origin, villa);
-  if (images.length === 0) return null;
-
+  const images = buildImageList(origin, villa, brandOgImage);
   const url = absoluteUrl(origin, `/${villa.slug}`);
-  const regionParts = villa.regionLabel.split(" - ").map((part) => part.trim());
-  const addressLocality = regionParts[regionParts.length - 1] || villa.location;
-  const addressRegion = regionParts.length > 1 ? regionParts[0] : undefined;
+  const aggregateRating = buildAggregateRating(villa);
+  const review = buildReviews(villa);
 
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -194,18 +310,12 @@ export function buildVillaLodgingJsonLd({
     additionalType: resolveVacationRentalType(villa),
     identifier: villa.villaCode || villa.id,
     name: villa.name,
-    description,
+    description: buildDescription(villa),
     url,
     image: images,
     latitude: formatCoord(villa.latitude),
     longitude: formatCoord(villa.longitude),
-    address: {
-      "@type": "PostalAddress",
-      addressCountry: "TR",
-      addressLocality,
-      addressRegion,
-      streetAddress: villa.location || addressLocality,
-    },
+    address: buildPostalAddress(villa),
     containsPlace: buildContainsPlace(villa),
     checkinTime: formatCheckTime(villa.checkInTime, "16:00"),
     checkoutTime: formatCheckTime(villa.checkOutTime, "10:00"),
@@ -216,39 +326,9 @@ export function buildVillaLodgingJsonLd({
           name: brandName,
         }
       : undefined,
+    aggregateRating,
+    review,
   };
 
-  if (villa.averageRating != null && villa.reviewCount > 0) {
-    schema.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: villa.averageRating,
-      reviewCount: villa.reviewCount,
-      ratingCount: villa.reviewCount,
-      bestRating: 5,
-      worstRating: 1,
-    };
-  }
-
-  if (villa.reviews.length > 0) {
-    schema.review = villa.reviews.slice(0, 5).map((review) => ({
-      "@type": "Review",
-      reviewRating: {
-        "@type": "Rating",
-        ratingValue: review.rating,
-        bestRating: 5,
-      },
-      author: {
-        "@type": "Person",
-        name: review.guestName,
-      },
-      datePublished: review.createdAt.slice(0, 10),
-      reviewBody: review.comment.slice(0, 1000),
-    }));
-  }
-
-  return JSON.parse(
-    JSON.stringify(schema, (_key, value) =>
-      value === undefined || value === null || value === "" ? undefined : value
-    )
-  ) as Record<string, unknown>;
+  return cleanSchema(schema);
 }
