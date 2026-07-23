@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import CategoryFilterPills from "@/components/ui/CategoryFilterPills";
 
 export type BlogInspirationPost = {
   id: string;
@@ -29,38 +30,15 @@ function BlogCategoryFilters({
   activeSlug: string | null;
   onChange: (slug: string | null) => void;
 }) {
-  if (categories.length === 0) return null;
-
   return (
-    <div className="mt-5 -mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex w-max min-w-full items-center justify-center gap-2 sm:flex-wrap sm:justify-center">
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-medium transition ${
-            activeSlug === null
-              ? "border-sky-400 bg-white text-sky-600 shadow-sm"
-              : "border-sky-200 bg-white text-sky-500 hover:border-sky-300"
-          }`}
-        >
-          Tümü
-        </button>
-        {categories.map((category) => (
-          <button
-            key={category.id}
-            type="button"
-            onClick={() => onChange(category.slug)}
-            className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              activeSlug === category.slug
-                ? "border-sky-400 bg-white text-sky-600 shadow-sm"
-                : "border-sky-200 bg-white text-sky-500 hover:border-sky-300"
-            }`}
-          >
-            {category.name}
-          </button>
-        ))}
-      </div>
-    </div>
+    <CategoryFilterPills
+      categories={categories.map((category) => ({
+        id: category.slug,
+        label: category.name,
+      }))}
+      activeId={activeSlug}
+      onChange={onChange}
+    />
   );
 }
 
@@ -139,11 +117,13 @@ export default function BlogInspirationSlider({
             {title}
           </h2>
           <p className="mt-2 text-sm text-slate-500 sm:text-base">{subtitle}</p>
-          <BlogCategoryFilters
-            categories={categories}
-            activeSlug={activeCategorySlug}
-            onChange={setActiveCategorySlug}
-          />
+          <div className="mt-5">
+            <BlogCategoryFilters
+              categories={categories}
+              activeSlug={activeCategorySlug}
+              onChange={setActiveCategorySlug}
+            />
+          </div>
         </div>
       ) : (
         <BlogCategoryFilters

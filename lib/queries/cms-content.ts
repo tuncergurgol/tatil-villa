@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 const blogListSelect = {
   id: true,
@@ -145,15 +147,40 @@ export async function getBlogPostByIdForAdmin(id: string) {
   });
 }
 
-export async function getApprovedReviewsForPublic(limit = 12) {
-  return prisma.guestReview.findMany({
-    where: { approved: true },
+export async function getApprovedReviewsForPublic(
+  limit = 12,
+  siteKey?: PublicSiteKey
+) {
+  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
+
+  const reviews = await prisma.guestReview.findMany({
+    where: {
+      approved: true,
+      villaId: { not: null },
+      villa: villaWhere,
+    },
     orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
-    take: limit,
     include: {
       villa: { select: { id: true, name: true, slug: true, villaId: true } },
     },
   });
+
+  const countByVilla = new Map<string, number>();
+  for (const review of reviews) {
+    if (!review.villaId) continue;
+    countByVilla.set(review.villaId, (countByVilla.get(review.villaId) ?? 0) + 1);
+  }
+
+  const sorted = [...reviews].sort((a, b) => {
+    const villaCountDiff =
+      (countByVilla.get(b.villaId!) ?? 0) - (countByVilla.get(a.villaId!) ?? 0);
+    if (villaCountDiff !== 0) return villaCountDiff;
+    if (a.featured !== b.featured) return Number(b.featured) - Number(a.featured);
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return sorted.slice(0, limit);
 }
 
 export async function getAllReviewsForAdmin() {

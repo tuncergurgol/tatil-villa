@@ -53,8 +53,8 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     getSiteMenuItemsForPublic("footer-quick"),
     getFooterCorporatePages(),
     getFooterRegionLinks(site.key),
-    getActiveFaqsForPublic({ limit: 18 }),
-    getApprovedReviewsForPublic(6),
+    getActiveFaqsForPublic(),
+    getApprovedReviewsForPublic(12, site.key),
     getPublishedBlogPosts({ limit: 24 }),
     getBlogCategoriesForPublic(),
   ]);
