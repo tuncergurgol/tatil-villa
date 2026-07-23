@@ -2,20 +2,29 @@ import type { BiletallCredentials, BiletallIframeKind } from "@/lib/biletall";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import {
   resolveBiletallPublicOrigin,
-  toBiletallCallbackUrl,
+  resolveBiletallCallbackFormat,
+  formatBiletallCallbackPath,
 } from "@/lib/biletall-callbacks";
 
 export const BILETALL_PORTAL_SLUG = "tatildeyizcomtr";
 
-function buildDefaultCallbacks(publicOrigin = resolveBiletallPublicOrigin()) {
+function buildDefaultCallbacks(
+  kind: BiletallIframeKind,
+  publicOrigin = resolveBiletallPublicOrigin()
+) {
   const hostname = sanitizePublicBookingDomain(
     publicOrigin.replace(/^https?:\/\//i, "")
   );
+  const format = resolveBiletallCallbackFormat(kind);
 
   return {
-    AramaUrl: toBiletallCallbackUrl("/bilet/ara", publicOrigin),
-    IslemUrl: toBiletallCallbackUrl("/bilet/satinal", publicOrigin),
-    BiletGosterimUrl: toBiletallCallbackUrl("/bilet/sonuc", publicOrigin),
+    AramaUrl: formatBiletallCallbackPath("/bilet/ara", publicOrigin, format),
+    IslemUrl: formatBiletallCallbackPath("/bilet/satinal", publicOrigin, format),
+    BiletGosterimUrl: formatBiletallCallbackPath(
+      "/bilet/sonuc",
+      publicOrigin,
+      format
+    ),
     SiteAdres: hostname,
   };
 }
@@ -30,7 +39,9 @@ export function buildBiletallDefaultIframeSrc(
     sonuc: "BiletGosterim.aspx",
   };
 
-  const query = new URLSearchParams(buildDefaultCallbacks(publicOrigin)).toString();
+  const query = new URLSearchParams(
+    buildDefaultCallbacks(kind, publicOrigin)
+  ).toString();
   return `https://iframe.biletall.com/portals/${BILETALL_PORTAL_SLUG}/UI/${fileByKind[kind]}?${query}`;
 }
 

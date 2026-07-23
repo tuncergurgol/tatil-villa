@@ -1,5 +1,13 @@
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 
+export type BiletallCallbackIframeKind = "ara" | "satinal" | "sonuc";
+export type BiletallCallbackFormat = "absolute" | "relative";
+
+/** Arama.aspx boş döner; Islem/BiletGosterim iç navigasyon göreli path bekler. */
+export function resolveBiletallCallbackFormat(kind: BiletallCallbackIframeKind) {
+  return kind === "ara" ? "absolute" : "relative";
+}
+
 export function resolveBiletallPublicOrigin(domain?: string | null) {
   return `https://${sanitizePublicBookingDomain(domain)}`;
 }
@@ -21,6 +29,34 @@ export function toBiletallCallbackUrl(path: string, publicOrigin: string) {
   return `${publicOrigin.replace(/\/+$/, "")}${normalizedPath}`;
 }
 
+export function formatBiletallCallbackPath(
+  path: string,
+  publicOrigin: string,
+  format: BiletallCallbackFormat
+) {
+  const trimmed = path.trim().replace(/\s+/g, "");
+  if (!trimmed) return "";
+
+  if (format === "absolute") {
+    return publicOrigin
+      ? toBiletallCallbackUrl(trimmed, publicOrigin)
+      : trimmed.startsWith("/")
+        ? trimmed
+        : `/${trimmed}`;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
 export type BiletallCallbackParams = {
   AramaUrl: string;
   IslemUrl: string;
@@ -35,11 +71,24 @@ const CALLBACK_PARAM_KEYS = [
   "BiletGosterUrl",
 ] as const;
 
+const RESERVED_IFRAME_QUERY_KEYS = new Set([
+  "AramaUrl",
+  "IslemUrl",
+  "BiletGosterimUrl",
+  "BiletGosterUrl",
+  "SiteAdres",
+  "KullaniciAdi",
+  "Sifre",
+]);
+
 export function syncBiletallCallbackParamsInSrc(
   src: string,
   callbacks: BiletallCallbackParams,
-  publicOrigin: string
+  publicOrigin: string,
+  kind?: BiletallCallbackIframeKind
 ) {
+  const format = kind ? resolveBiletallCallbackFormat(kind) : "absolute";
+
   try {
     const url = new URL(src);
 
@@ -52,7 +101,39 @@ export function syncBiletallCallbackParamsInSrc(
     for (const key of CALLBACK_PARAM_KEYS) {
       const value = url.searchParams.get(key);
       if (!value) continue;
-      url.searchParams.set(key, toBiletallCallbackUrl(value, publicOrigin));
+      url.searchParams.set(
+        key,
+        formatBiletallCallbackPath(value, publicOrigin, format)
+      );
+    }
+
+    return url.toString();
+  } catch {
+    return src;
+  }
+}
+
+export function appendBiletallForwardQuery(
+  src: string,
+  searchParams?: Record<string, string | string[] | undefined>
+) {
+  if (!searchParams) return src;
+
+  try {
+    const url = new URL(src);
+
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (!value || RESERVED_IFRAME_QUERY_KEYS.has(key)) continue;
+
+      if (Array.isArray(value)) {
+        url.searchParams.delete(key);
+        for (const item of value) {
+          if (item) url.searchParams.append(key, item);
+        }
+        continue;
+      }
+
+      url.searchParams.set(key, value);
     }
 
     return url.toString();

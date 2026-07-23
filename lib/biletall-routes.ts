@@ -1,7 +1,8 @@
 import type { BiletallIframeKind } from "@/lib/biletall";
 import {
   resolveBiletallPublicOrigin,
-  toBiletallCallbackUrl,
+  formatBiletallCallbackPath,
+  resolveBiletallCallbackFormat,
 } from "@/lib/biletall-callbacks";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import {
@@ -117,17 +118,19 @@ export function serializeBiletallRoutes(routes: BiletallRouteRecord[]) {
 export function getBiletallCallbacks(
   routes: BiletallRouteRecord[],
   publicOrigin?: string,
-  siteHostname?: string
+  siteHostname?: string,
+  kind?: BiletallIframeKind
 ) {
   const byKind = Object.fromEntries(routes.map((route) => [route.kind, route]));
   const ara = byKind.ara ?? DEFAULT_BILETALL_ROUTES[0];
   const satinal = byKind.satinal ?? DEFAULT_BILETALL_ROUTES[1];
   const sonuc = byKind.sonuc ?? DEFAULT_BILETALL_ROUTES[2];
 
+  const origin = publicOrigin ?? resolveBiletallPublicOrigin();
+  const format = kind ? resolveBiletallCallbackFormat(kind) : "absolute";
+
   const toCallback = (path: string) =>
-    publicOrigin
-      ? toBiletallCallbackUrl(path, publicOrigin)
-      : normalizeCallbackPath(path);
+    formatBiletallCallbackPath(path, origin, format);
 
   return {
     AramaUrl: toCallback(ara.callbackPath),

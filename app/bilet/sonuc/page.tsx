@@ -39,6 +39,7 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
           credentials={credentials}
           routes={routes}
           publicOrigin={publicOrigin}
+          forwardQuery={params}
           title="Biletall — Bilet Sonuç"
         />
       ) : (

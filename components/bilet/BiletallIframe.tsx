@@ -15,6 +15,7 @@ type BiletallIframeProps = {
   publicOrigin?: string;
   title: string;
   enlarged?: boolean;
+  forwardQuery?: Record<string, string | string[] | undefined>;
 };
 
 const FRAME_LAYOUT: Record<
@@ -36,6 +37,7 @@ export default function BiletallIframe({
   publicOrigin,
   title,
   enlarged = false,
+  forwardQuery,
 }: BiletallIframeProps) {
   const meta = getBiletallIframeMeta(kind);
   const layout =
@@ -45,7 +47,8 @@ export default function BiletallIframe({
     portalSlug,
     credentials,
     routes,
-    publicOrigin
+    publicOrigin,
+    forwardQuery
   );
 
   return (
