@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, ChevronDown, HelpCircle, MessageCircleHeart } from "lucide-react";
+import { ChevronDown, HelpCircle, MessageCircleHeart } from "lucide-react";
 import BlogInspirationSlider from "@/components/blog/BlogInspirationSlider";
 import { buildReviewItemListJsonLd } from "@/lib/review-json-ld";
 
@@ -306,29 +306,14 @@ export default function SitePreFooterAccordions({
           )}
         </AccordionSection>
 
-        <details
+        <section
           id="blog"
-          className="group mx-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-sky-100/80 bg-[linear-gradient(135deg,#eef9ff_0%,#fff7fb_48%,#ffffff_100%)] shadow-[0_8px_30px_rgba(14,165,233,0.06)] open:shadow-[0_12px_40px_rgba(14,165,233,0.1)] transition"
+          className="mx-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-sky-100/80 bg-[linear-gradient(135deg,#eef9ff_0%,#fff7fb_48%,#ffffff_100%)] px-5 py-8 shadow-[0_8px_30px_rgba(14,165,233,0.06)] sm:px-8"
         >
-          <summary className="flex cursor-pointer list-none flex-col items-center gap-3 px-6 py-8 text-center sm:px-10 [&::-webkit-details-marker]:hidden">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 text-sky-600 ring-1 ring-sky-100">
-              <BookOpen className="h-5 w-5" />
-            </span>
-            <span className="flex flex-col items-center gap-2">
-              <h2 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-                Blog
-              </h2>
-              <span className="h-1 w-10 rounded-full bg-sky-500" />
-              <p className="max-w-md text-sm text-gray-500">
-                Tatil rehberi, bölge önerileri ve villa ipuçları
-              </p>
-            </span>
-            <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-sky-100 bg-white/80 px-3 py-1 text-xs font-medium text-sky-700">
-              Detayları gör
-              <ChevronDown className="h-3.5 w-3.5 transition duration-300 group-open:rotate-180" />
-            </span>
-          </summary>
-          <div className="border-t border-sky-100/80 px-5 pb-8 pt-2 sm:px-8">
+          <h2 className="text-center text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+            Bloglar
+          </h2>
+          <div className="mt-6">
             <BlogInspirationSlider
               embedded
               showHeader={false}
@@ -344,7 +329,7 @@ export default function SitePreFooterAccordions({
               }))}
             />
           </div>
-        </details>
+        </section>
       </div>
     </section>
   );
