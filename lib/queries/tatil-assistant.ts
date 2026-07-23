@@ -193,10 +193,12 @@ export function getAssistantWahaConfig(
   return {
     baseUrl:
       settings.assistantWahaBaseUrl?.trim() ||
+      settings.wahaBaseUrl?.trim() ||
       process.env.WAHA_BASE_URL?.trim() ||
       "http://localhost:3001",
     apiKey:
       settings.assistantWahaApiKey?.trim() ||
+      settings.wahaApiKey?.trim() ||
       process.env.WAHA_API_KEY?.trim() ||
       "",
     sessionName:
