@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useState } from "react";
 import { KeyRound } from "lucide-react";
 import {
@@ -8,7 +7,8 @@ import {
   type BiletallSettingsActionState,
 } from "@/app/actions/admin/biletall-settings";
 import BiletallCredentialsModal from "@/components/admin/obilet/BiletallCredentialsModal";
-import { getBiletallAdminLinks } from "@/lib/biletall";
+import BiletallRoutesEditor from "@/components/admin/obilet/BiletallRoutesEditor";
+import type { BiletallRouteRecord } from "@/lib/biletall-routes";
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100";
@@ -20,6 +20,7 @@ type ObiletSettingsFormProps = {
   biletallPortalSlug: string;
   biletallUsername: string;
   biletallHasPassword: boolean;
+  biletallRoutes: BiletallRouteRecord[];
 };
 
 export default function ObiletSettingsForm({
@@ -27,15 +28,13 @@ export default function ObiletSettingsForm({
   biletallPortalSlug,
   biletallUsername,
   biletallHasPassword,
+  biletallRoutes,
 }: ObiletSettingsFormProps) {
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
     saveBiletallSettings,
     initialState
   );
-  const links = getBiletallAdminLinks(biletallPortalSlug, {
-    username: biletallUsername,
-  });
 
   return (
     <div className="space-y-6">
@@ -151,36 +150,11 @@ export default function ObiletSettingsForm({
         </button>
       </form>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Public route & iframe URL’leri
-        </h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Biletall callback parametreleri site içi path’lerle eşleşir.
-        </p>
-        <ul className="mt-4 space-y-3">
-          {links.map((item) => (
-            <li
-              key={item.kind}
-              className="rounded-xl border border-gray-100 bg-slate-50/80 p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-                <Link
-                  href={item.publicPath}
-                  className="text-sm font-medium text-sky-700 hover:text-sky-900"
-                  target="_blank"
-                >
-                  {item.publicPath} ↗
-                </Link>
-              </div>
-              <p className="mt-2 break-all font-mono text-xs leading-relaxed text-gray-600">
-                {item.iframeSrc}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <BiletallRoutesEditor
+        routes={biletallRoutes}
+        portalSlug={biletallPortalSlug}
+        username={biletallUsername}
+      />
 
       <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-6">
         <h2 className="text-sm font-semibold text-amber-900">CRM referans</h2>

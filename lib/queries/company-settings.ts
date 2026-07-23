@@ -85,6 +85,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   biletallPortalSlug: "tatildeyizcomtr",
   biletallUsername: "",
   biletallPassword: "",
+  biletallRoutesJson: "",
   homePopularTitle: "Popüler Villalar",
   homePopularActive: true,
   homePopularSortMode: "showcase",

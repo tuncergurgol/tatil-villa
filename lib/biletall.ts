@@ -1,3 +1,9 @@
+import {
+  DEFAULT_BILETALL_ROUTES,
+  getBiletallCallbacks,
+  type BiletallRouteRecord,
+} from "@/lib/biletall-routes";
+
 export const BILETALL_IFRAME_HOST = "https://iframe.biletall.com";
 export const BILETALL_DEFAULT_PORTAL_SLUG = "tatildeyizcomtr";
 export const BILETALL_IFRAME_VERSION = "v2";
@@ -47,15 +53,13 @@ export function normalizeBiletallPortalSlug(slug?: string | null) {
 export function buildBiletallIframeSrc(
   kind: BiletallIframeKind,
   portalSlug?: string | null,
-  credentials?: BiletallCredentials
+  credentials?: BiletallCredentials,
+  routes: BiletallRouteRecord[] = DEFAULT_BILETALL_ROUTES
 ) {
   const slug = normalizeBiletallPortalSlug(portalSlug);
   const page = IFRAME_PAGES[kind];
-  const params = new URLSearchParams({
-    AramaUrl: "bilet/ara",
-    IslemUrl: "bilet/satinal",
-    BiletGosterUrl: "bilet/sonuc",
-  });
+  const callbacks = getBiletallCallbacks(routes);
+  const params = new URLSearchParams(callbacks);
 
   const username = credentials?.username?.trim();
   const password = credentials?.password?.trim();
@@ -71,27 +75,15 @@ export function getBiletallIframeMeta(kind: BiletallIframeKind) {
 
 export function getBiletallAdminLinks(
   portalSlug?: string | null,
-  credentials?: BiletallCredentials
+  credentials?: BiletallCredentials,
+  routes: BiletallRouteRecord[] = DEFAULT_BILETALL_ROUTES
 ) {
   const slug = normalizeBiletallPortalSlug(portalSlug);
-  return [
-    {
-      kind: "ara" as const,
-      label: "Bilet Ara",
-      publicPath: BILET_PUBLIC_ROUTES.ara,
-      iframeSrc: buildBiletallIframeSrc("ara", slug, credentials),
-    },
-    {
-      kind: "satinal" as const,
-      label: "Bilet Satın Al",
-      publicPath: BILET_PUBLIC_ROUTES.satinal,
-      iframeSrc: buildBiletallIframeSrc("satinal", slug, credentials),
-    },
-    {
-      kind: "sonuc" as const,
-      label: "Bilet Sonuç / PNR",
-      publicPath: BILET_PUBLIC_ROUTES.sonuc,
-      iframeSrc: buildBiletallIframeSrc("sonuc", slug, credentials),
-    },
-  ];
+  return routes.map((route) => ({
+    kind: route.kind,
+    label: route.label,
+    publicPath: route.publicPath,
+    callbackPath: route.callbackPath,
+    iframeSrc: buildBiletallIframeSrc(route.kind, slug, credentials, routes),
+  }));
 }

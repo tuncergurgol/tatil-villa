@@ -4,15 +4,53 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
+import { DEFAULT_COMPANY_SETTINGS } from "@/lib/queries/company-settings";
+import { BILETALL_DEFAULT_PORTAL_SLUG, type BiletallIframeKind } from "@/lib/biletall";
 import {
-  DEFAULT_COMPANY_SETTINGS,
-} from "@/lib/queries/company-settings";
-import { BILETALL_DEFAULT_PORTAL_SLUG } from "@/lib/biletall";
+  DEFAULT_BILETALL_ROUTES,
+  normalizeBiletallRouteRecord,
+  parseBiletallRoutesJson,
+  serializeBiletallRoutes,
+  type BiletallRouteRecord,
+} from "@/lib/biletall-routes";
 
 export type BiletallSettingsActionState = {
   success?: boolean;
   error?: string;
 };
+
+function revalidateBiletallPaths(routes: BiletallRouteRecord[]) {
+  revalidatePath("/admin/obilet");
+  revalidatePath("/ucak-otobus");
+  for (const route of routes) {
+    revalidatePath(route.publicPath);
+  }
+  for (const route of DEFAULT_BILETALL_ROUTES) {
+    revalidatePath(route.publicPath);
+  }
+}
+
+async function loadBiletallRoutes(): Promise<BiletallRouteRecord[]> {
+  const settings = await prisma.companySettings.findUnique({
+    where: { id: "default" },
+    select: { biletallRoutesJson: true },
+  });
+  return parseBiletallRoutesJson(settings?.biletallRoutesJson);
+}
+
+async function persistBiletallRoutes(routes: BiletallRouteRecord[]) {
+  const json = serializeBiletallRoutes(routes);
+  await prisma.companySettings.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      ...DEFAULT_COMPANY_SETTINGS,
+      biletallRoutesJson: json,
+    },
+    update: { biletallRoutesJson: json },
+  });
+  revalidateBiletallPaths(routes);
+}
 
 const schema = z.object({
   biletallEnabled: z.coerce.boolean(),
@@ -54,12 +92,7 @@ export async function saveBiletallSettings(
     },
   });
 
-  revalidatePath("/admin/obilet");
-  revalidatePath("/ucak-otobus");
-  revalidatePath("/bilet/ara");
-  revalidatePath("/bilet/satinal");
-  revalidatePath("/bilet/sonuc");
-
+  revalidateBiletallPaths(await loadBiletallRoutes());
   return { success: true };
 }
 
@@ -108,11 +141,89 @@ export async function saveBiletallCredentials(
     update,
   });
 
-  revalidatePath("/admin/obilet");
-  revalidatePath("/ucak-otobus");
-  revalidatePath("/bilet/ara");
-  revalidatePath("/bilet/satinal");
-  revalidatePath("/bilet/sonuc");
+  revalidateBiletallPaths(await loadBiletallRoutes());
+  return { success: true };
+}
 
+const routeSchema = z.object({
+  kind: z.enum(["ara", "satinal", "sonuc"]),
+  label: z.string().trim().min(1, "Başlık gerekli").max(120),
+  publicPath: z
+    .string()
+    .trim()
+    .min(2, "Public path gerekli")
+    .regex(/^\/[a-z0-9/_-]+$/i, "Public path / ile başlamalı"),
+  callbackPath: z
+    .string()
+    .trim()
+    .min(2, "Callback path gerekli")
+    .regex(/^[a-z0-9/_-]+$/i, "Callback path geçersiz"),
+});
+
+export async function saveBiletallRoute(
+  _prev: BiletallSettingsActionState,
+  formData: FormData
+): Promise<BiletallSettingsActionState> {
+  await requireAdmin();
+
+  const parsed = routeSchema.safeParse({
+    kind: String(formData.get("kind") ?? ""),
+    label: String(formData.get("label") ?? ""),
+    publicPath: String(formData.get("publicPath") ?? ""),
+    callbackPath: String(formData.get("callbackPath") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form" };
+  }
+
+  const routes = await loadBiletallRoutes();
+  const next = routes.map((route) =>
+    route.kind === parsed.data.kind
+      ? normalizeBiletallRouteRecord({
+          kind: parsed.data.kind,
+          label: parsed.data.label,
+          publicPath: parsed.data.publicPath,
+          callbackPath: parsed.data.callbackPath,
+        })
+      : route
+  );
+
+  await persistBiletallRoutes(next);
+  return { success: true };
+}
+
+export async function deleteBiletallRoute(
+  kind: BiletallIframeKind
+): Promise<BiletallSettingsActionState> {
+  await requireAdmin();
+
+  const routes = await loadBiletallRoutes();
+  const next = routes.map((route) =>
+    route.kind === kind ? normalizeBiletallRouteRecord({ kind }) : route
+  );
+
+  const allDefault = next.every((route, index) => {
+    const fallback = DEFAULT_BILETALL_ROUTES[index];
+    return (
+      route.label === fallback.label &&
+      route.publicPath === fallback.publicPath &&
+      route.callbackPath === fallback.callbackPath
+    );
+  });
+
+  await prisma.companySettings.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      ...DEFAULT_COMPANY_SETTINGS,
+      biletallRoutesJson: allDefault ? "" : serializeBiletallRoutes(next),
+    },
+    update: {
+      biletallRoutesJson: allDefault ? "" : serializeBiletallRoutes(next),
+    },
+  });
+
+  revalidateBiletallPaths(next);
   return { success: true };
 }

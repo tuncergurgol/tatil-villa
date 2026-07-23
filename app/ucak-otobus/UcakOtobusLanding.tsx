@@ -17,7 +17,20 @@ const fraunces = Fraunces({
   weight: ["600", "700"],
 });
 
-const cards = [
+type UcakOtobusLandingProps = {
+  enabled?: boolean;
+  publicPaths?: {
+    ara: string;
+    satinal: string;
+    sonuc: string;
+  };
+};
+
+export default function UcakOtobusLanding({
+  enabled = true,
+  publicPaths = BILET_PUBLIC_ROUTES,
+}: UcakOtobusLandingProps) {
+  const cards = [
   {
     badge: "YENİ",
     badgeClass: "bg-sky-600 text-white",
@@ -28,7 +41,7 @@ const cards = [
     title: "Uçak Bileti",
     description:
       "Tüm havayolları tek ekranda — en uygun fiyatlı uçuşu saniyeler içinde bul, anında e-biletini al.",
-    href: BILET_PUBLIC_ROUTES.ara,
+    href: publicPaths.ara,
     ctaClass: "text-sky-700",
     btnClass: "bg-sky-500 hover:bg-sky-600",
   },
@@ -42,7 +55,7 @@ const cards = [
     title: "Otobüs Bileti",
     description:
       "Türkiye’nin her noktasına — tüm otobüs firmalarının seferlerini karşılaştır, koltuğunu seç, ödemeni yap.",
-    href: BILET_PUBLIC_ROUTES.ara,
+    href: publicPaths.ara,
     ctaClass: "text-orange-700",
     btnClass: "bg-orange-500 hover:bg-orange-600",
   },
@@ -56,26 +69,19 @@ const cards = [
     title: "PNR Sorgula",
     description:
       "Biletin elinin altında olsun — PNR ile rezervasyonunu görüntüle, e-biletini cebine indir.",
-    href: BILET_PUBLIC_ROUTES.sonuc,
+    href: publicPaths.sonuc,
     ctaClass: "text-emerald-700",
     btnClass: "bg-emerald-500 hover:bg-emerald-600",
   },
 ] as const;
 
-const trust = [
+  const trust = [
   { icon: Lock, label: "256-bit SSL Güvenli Ödeme", color: "text-orange-500" },
   { icon: Zap, label: "Anında E-Bilet", color: "text-amber-500" },
   { icon: Headphones, label: "7/24 Müşteri Desteği", color: "text-rose-500" },
   { icon: Building2, label: "Tüm Firmalar Tek Ekranda", color: "text-slate-500" },
 ] as const;
 
-type UcakOtobusLandingProps = {
-  enabled?: boolean;
-};
-
-export default function UcakOtobusLanding({
-  enabled = true,
-}: UcakOtobusLandingProps) {
   return (
     <div
       className={`${nunito.variable} ${fraunces.variable} relative overflow-hidden`}

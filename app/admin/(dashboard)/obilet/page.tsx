@@ -2,12 +2,14 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import ObiletSettingsForm from "@/components/admin/obilet/ObiletSettingsForm";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { BILETALL_DEFAULT_PORTAL_SLUG } from "@/lib/biletall";
+import { parseBiletallRoutesJson } from "@/lib/biletall-routes";
 
 export const dynamic = "force-dynamic";
 
 export default async function ObiletPage() {
   await requireAdmin();
   const settings = await getCompanySettings();
+  const biletallRoutes = parseBiletallRoutesJson(settings.biletallRoutesJson);
 
   return (
     <ObiletSettingsForm
@@ -17,6 +19,7 @@ export default async function ObiletPage() {
       }
       biletallUsername={settings.biletallUsername?.trim() ?? ""}
       biletallHasPassword={Boolean(settings.biletallPassword?.trim())}
+      biletallRoutes={biletallRoutes}
     />
   );
 }

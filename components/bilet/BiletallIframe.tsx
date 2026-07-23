@@ -4,11 +4,13 @@ import {
   type BiletallCredentials,
   type BiletallIframeKind,
 } from "@/lib/biletall";
+import type { BiletallRouteRecord } from "@/lib/biletall-routes";
 
 type BiletallIframeProps = {
   kind: BiletallIframeKind;
   portalSlug?: string | null;
   credentials?: BiletallCredentials;
+  routes?: BiletallRouteRecord[];
   title: string;
 };
 
@@ -16,10 +18,11 @@ export default function BiletallIframe({
   kind,
   portalSlug,
   credentials,
+  routes,
   title,
 }: BiletallIframeProps) {
   const meta = getBiletallIframeMeta(kind);
-  const src = buildBiletallIframeSrc(kind, portalSlug, credentials);
+  const src = buildBiletallIframeSrc(kind, portalSlug, credentials, routes);
 
   return (
     <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

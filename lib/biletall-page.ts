@@ -1,4 +1,5 @@
 import type { BiletallCredentials } from "@/lib/biletall";
+import { parseBiletallRoutesJson } from "@/lib/biletall-routes";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export async function getBiletallPageContext() {
@@ -7,10 +8,12 @@ export async function getBiletallPageContext() {
     username: settings.biletallUsername,
     password: settings.biletallPassword,
   };
+  const routes = parseBiletallRoutesJson(settings.biletallRoutesJson);
 
   return {
     enabled: settings.biletallEnabled ?? true,
     portalSlug: settings.biletallPortalSlug,
     credentials,
+    routes,
   };
 }

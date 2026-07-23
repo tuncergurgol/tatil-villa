@@ -998,6 +998,7 @@ model CompanySettings {
   biletallPortalSlug          String  @default("tatildeyizcomtr")
   biletallUsername            String  @default("")
   biletallPassword            String  @default("")
+  biletallRoutesJson          String  @default("")
   smsOtpEnabled               Boolean @default(false)
   homePopularTitle            String  @default("Popüler Villalar")
   homePopularActive           Boolean @default(true)

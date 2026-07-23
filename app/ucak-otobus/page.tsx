@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getBiletPublicPathMap, parseBiletallRoutesJson } from "@/lib/biletall-routes";
 import UcakOtobusLanding from "./UcakOtobusLanding";
 
 export const metadata: Metadata = {
@@ -12,6 +13,13 @@ export const dynamic = "force-dynamic";
 
 export default async function UcakOtobusPage() {
   const settings = await getCompanySettings();
+  const routes = parseBiletallRoutesJson(settings.biletallRoutesJson);
+  const publicPaths = getBiletPublicPathMap(routes);
 
-  return <UcakOtobusLanding enabled={settings.biletallEnabled ?? true} />;
+  return (
+    <UcakOtobusLanding
+      enabled={settings.biletallEnabled ?? true}
+      publicPaths={publicPaths}
+    />
+  );
 }
