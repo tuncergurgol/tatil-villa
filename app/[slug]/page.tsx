@@ -93,12 +93,14 @@ export default async function VillaDetailPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(lodgingJsonLd),
-        }}
-      />
+      {lodgingJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(lodgingJsonLd),
+          }}
+        />
+      ) : null}
       <VillaDetailView
         villa={villa}
         similarVillas={similarVillas}
