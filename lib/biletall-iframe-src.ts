@@ -1,4 +1,5 @@
 import type { BiletallCredentials, BiletallIframeKind } from "@/lib/biletall";
+import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import {
   resolveBiletallPublicOrigin,
   toBiletallCallbackUrl,
@@ -7,10 +8,15 @@ import {
 export const BILETALL_PORTAL_SLUG = "tatildeyizcomtr";
 
 function buildDefaultCallbacks(publicOrigin = resolveBiletallPublicOrigin()) {
+  const hostname = sanitizePublicBookingDomain(
+    publicOrigin.replace(/^https?:\/\//i, "")
+  );
+
   return {
     AramaUrl: toBiletallCallbackUrl("/bilet/ara", publicOrigin),
     IslemUrl: toBiletallCallbackUrl("/bilet/satinal", publicOrigin),
     BiletGosterimUrl: toBiletallCallbackUrl("/bilet/sonuc", publicOrigin),
+    SiteAdres: hostname,
   };
 }
 

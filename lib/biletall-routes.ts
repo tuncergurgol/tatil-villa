@@ -3,6 +3,7 @@ import {
   resolveBiletallPublicOrigin,
   toBiletallCallbackUrl,
 } from "@/lib/biletall-callbacks";
+import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import {
   BILETALL_DEFAULT_IFRAME_SRC,
   buildBiletallDefaultIframeSrc,
@@ -115,7 +116,8 @@ export function serializeBiletallRoutes(routes: BiletallRouteRecord[]) {
 
 export function getBiletallCallbacks(
   routes: BiletallRouteRecord[],
-  publicOrigin?: string
+  publicOrigin?: string,
+  siteHostname?: string
 ) {
   const byKind = Object.fromEntries(routes.map((route) => [route.kind, route]));
   const ara = byKind.ara ?? DEFAULT_BILETALL_ROUTES[0];
@@ -131,6 +133,11 @@ export function getBiletallCallbacks(
     AramaUrl: toCallback(ara.callbackPath),
     IslemUrl: toCallback(satinal.callbackPath),
     BiletGosterimUrl: toCallback(sonuc.callbackPath),
+    SiteAdres:
+      siteHostname?.trim() ||
+      (publicOrigin
+        ? sanitizePublicBookingDomain(publicOrigin.replace(/^https?:\/\//i, ""))
+        : sanitizePublicBookingDomain(null)),
   };
 }
 

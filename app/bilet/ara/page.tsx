@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BiletAraPage() {
-  const { enabled, portalSlug, credentials, routes, publicOrigin } =
+  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
     await getBiletallPageContext();
   if (!enabled) redirect("/ucak-otobus");
 
@@ -21,6 +21,7 @@ export default async function BiletAraPage() {
       title="Bilet Ara"
       description="Uçak veya otobüs seferlerini arayın, uygun bileti bulun."
       activeKind="ara"
+      homeUrl={publicHomeUrl}
     >
       <div className="flex w-full max-w-md flex-col items-center gap-4">
         {!credentials.username || !credentials.password ? (

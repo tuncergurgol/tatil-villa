@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import BiletallIframe from "@/components/bilet/BiletallIframe";
 import BiletShell from "@/components/bilet/BiletShell";
+import BiletSonucFallback from "@/components/bilet/BiletSonucFallback";
 import { getBiletallPageContext } from "@/lib/biletall-page";
+import { hasBiletallResultContext } from "@/lib/biletall-result-context";
 
 export const metadata: Metadata = {
   title: "Bilet Sonuç / PNR",
@@ -11,25 +13,37 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function BiletSonucPage() {
-  const { enabled, portalSlug, credentials, routes, publicOrigin } =
+type BiletSonucPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function BiletSonucPage({ searchParams }: BiletSonucPageProps) {
+  const params = await searchParams;
+  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
     await getBiletallPageContext();
   if (!enabled) redirect("/ucak-otobus");
+
+  const hasResultContext = hasBiletallResultContext(params);
 
   return (
     <BiletShell
       title="Bilet Sonuç / PNR"
-      description="PNR numaranızla rezervasyonunuzu görüntüleyin ve e-biletinizi indirin."
+      description="Satın alma sonrası biletinizi görüntüleyin. PNR sorgulamak için bilet arama ekranındaki PNR sekmesini kullanın."
       activeKind="sonuc"
+      homeUrl={publicHomeUrl}
     >
-      <BiletallIframe
-        kind="sonuc"
-        portalSlug={portalSlug}
-        credentials={credentials}
-        routes={routes}
-        publicOrigin={publicOrigin}
-        title="Biletall — Bilet Sonuç"
-      />
+      {hasResultContext ? (
+        <BiletallIframe
+          kind="sonuc"
+          portalSlug={portalSlug}
+          credentials={credentials}
+          routes={routes}
+          publicOrigin={publicOrigin}
+          title="Biletall — Bilet Sonuç"
+        />
+      ) : (
+        <BiletSonucFallback homeUrl={publicHomeUrl} />
+      )}
     </BiletShell>
   );
 }

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BiletSatinalPage() {
-  const { enabled, portalSlug, credentials, routes, publicOrigin } =
+  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
     await getBiletallPageContext();
   if (!enabled) redirect("/ucak-otobus");
 
@@ -21,6 +21,7 @@ export default async function BiletSatinalPage() {
       title="Bilet Satın Al"
       description="Yolcu bilgilerinizi girin ve ödemeyi güvenle tamamlayın."
       activeKind="satinal"
+      homeUrl={publicHomeUrl}
     >
       <BiletallIframe
         kind="satinal"

@@ -69,7 +69,7 @@ export default function UcakOtobusLanding({
     title: "PNR Sorgula",
     description:
       "Biletin elinin altında olsun — PNR ile rezervasyonunu görüntüle, e-biletini cebine indir.",
-    href: publicPaths.sonuc,
+    href: publicPaths.ara,
     ctaClass: "text-emerald-700",
     btnClass: "bg-emerald-500 hover:bg-emerald-600",
   },

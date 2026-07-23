@@ -4,6 +4,14 @@ export function resolveBiletallPublicOrigin(domain?: string | null) {
   return `https://${sanitizePublicBookingDomain(domain)}`;
 }
 
+export function resolveBiletallPublicHomeUrl(domain?: string | null) {
+  return `${resolveBiletallPublicOrigin(domain)}/`;
+}
+
+export function resolveBiletallPortalHostname(domain?: string | null) {
+  return sanitizePublicBookingDomain(domain);
+}
+
 export function toBiletallCallbackUrl(path: string, publicOrigin: string) {
   const trimmed = path.trim().replace(/\s+/g, "");
   if (!trimmed) return "";
@@ -17,6 +25,7 @@ export type BiletallCallbackParams = {
   AramaUrl: string;
   IslemUrl: string;
   BiletGosterimUrl: string;
+  SiteAdres: string;
 };
 
 const CALLBACK_PARAM_KEYS = [
@@ -37,6 +46,7 @@ export function syncBiletallCallbackParamsInSrc(
     url.searchParams.set("AramaUrl", callbacks.AramaUrl);
     url.searchParams.set("IslemUrl", callbacks.IslemUrl);
     url.searchParams.set("BiletGosterimUrl", callbacks.BiletGosterimUrl);
+    url.searchParams.set("SiteAdres", callbacks.SiteAdres);
     url.searchParams.delete("BiletGosterUrl");
 
     for (const key of CALLBACK_PARAM_KEYS) {

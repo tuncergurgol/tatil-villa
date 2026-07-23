@@ -1,6 +1,10 @@
 import type { BiletallCredentials } from "@/lib/biletall";
 import { parseBiletallRoutesJson } from "@/lib/biletall-routes";
-import { resolveBiletallPublicOrigin } from "@/lib/biletall-iframe-src";
+import {
+  resolveBiletallPublicHomeUrl,
+  resolveBiletallPublicOrigin,
+  resolveBiletallPortalHostname,
+} from "@/lib/biletall-callbacks";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export async function getBiletallPageContext() {
@@ -10,6 +14,8 @@ export async function getBiletallPageContext() {
     password: settings.biletallPassword,
   };
   const publicOrigin = resolveBiletallPublicOrigin(settings.domain);
+  const publicHomeUrl = resolveBiletallPublicHomeUrl(settings.domain);
+  const siteHostname = resolveBiletallPortalHostname(settings.domain);
   const routes = parseBiletallRoutesJson(settings.biletallRoutesJson);
 
   return {
@@ -18,5 +24,7 @@ export async function getBiletallPageContext() {
     credentials,
     routes,
     publicOrigin,
+    publicHomeUrl,
+    siteHostname,
   };
 }

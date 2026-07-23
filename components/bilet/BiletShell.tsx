@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Bus, Plane, Ticket } from "lucide-react";
+import BiletPageActions from "@/components/bilet/BiletPageActions";
 import type { BiletallIframeKind } from "@/lib/biletall";
 import { BILET_PUBLIC_ROUTES } from "@/lib/biletall";
 
@@ -8,6 +9,7 @@ type BiletShellProps = {
   title: string;
   description: string;
   activeKind?: BiletallIframeKind;
+  homeUrl?: string;
   children: ReactNode;
 };
 
@@ -36,6 +38,7 @@ export default function BiletShell({
   title,
   description,
   activeKind,
+  homeUrl,
   children,
 }: BiletShellProps) {
   return (
@@ -88,7 +91,15 @@ export default function BiletShell({
           </nav>
         </div>
 
-        <div className="mt-8 flex justify-center">{children}</div>
+        <div className="mt-8 flex flex-col items-center gap-4">
+          {children}
+          {homeUrl ? (
+            <BiletPageActions
+              homeUrl={homeUrl}
+              showSearchLink={activeKind !== "ara"}
+            />
+          ) : null}
+        </div>
 
         <ul className="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-slate-500 sm:text-sm">
           <li className="flex items-center gap-1.5">

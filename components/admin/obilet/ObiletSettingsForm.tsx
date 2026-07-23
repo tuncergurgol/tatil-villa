@@ -159,6 +159,23 @@ export default function ObiletSettingsForm({
         publicOrigin={publicOrigin}
       />
 
+      <section className="rounded-2xl border border-sky-100 bg-sky-50/60 p-6">
+        <h2 className="text-sm font-semibold text-sky-900">Biletall portal domain</h2>
+        <p className="mt-1 text-sm text-sky-900/90">
+          Iframe içindeki &quot;Ana Sayfaya Dön&quot; bağlantısı Biletall acente
+          panelindeki site adresinden üretilir. Alan adı yalnızca{" "}
+          <code className="rounded bg-white px-1.5 py-0.5 text-xs">
+            tatildeyiz.com.tr
+          </code>{" "}
+          veya{" "}
+          <code className="rounded bg-white px-1.5 py-0.5 text-xs">
+            www.tatildeyiz.com.tr
+          </code>{" "}
+          olmalı; <strong>https://</strong> ile başlamamalı. Aksi halde iframe
+          hatalı adrese yönlendirir.
+        </p>
+      </section>
+
       <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-6">
         <h2 className="text-sm font-semibold text-amber-900">CRM referans</h2>
         <p className="mt-1 text-sm text-amber-800/90">
