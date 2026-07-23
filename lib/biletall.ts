@@ -3,7 +3,7 @@ import {
   getBiletallCallbacks,
   type BiletallRouteRecord,
 } from "@/lib/biletall-routes";
-import { sanitizeBiletallIframeSrc } from "@/lib/biletall-iframe-src";
+import { sanitizeBiletallIframeSrc, appendBiletallCredentialsToSrc } from "@/lib/biletall-iframe-src";
 
 export const BILETALL_IFRAME_HOST = "https://iframe.biletall.com";
 export const BILETALL_DEFAULT_PORTAL_SLUG = "tatildeyizcomtr";
@@ -59,7 +59,7 @@ export function resolveBiletallIframeSrc(
 ) {
   const route = routes.find((item) => item.kind === kind);
   const custom = sanitizeBiletallIframeSrc(route?.customIframeSrc);
-  if (custom) return custom;
+  if (custom) return appendBiletallCredentialsToSrc(custom, credentials);
   return buildBiletallIframeSrc(kind, portalSlug, credentials, routes);
 }
 

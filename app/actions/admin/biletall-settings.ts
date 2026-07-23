@@ -225,32 +225,20 @@ export async function deleteBiletallRoute(
 ): Promise<BiletallSettingsActionState> {
   await requireAdmin();
 
-  const routes = await loadBiletallRoutes();
-  const next = routes.map((route) =>
+  const next = DEFAULT_BILETALL_ROUTES.map((route) =>
     route.kind === kind ? normalizeBiletallRouteRecord({ kind }) : route
   );
 
-  const allDefault = next.every((route, index) => {
-    const fallback = DEFAULT_BILETALL_ROUTES[index];
-    return (
-      route.label === fallback.label &&
-      route.publicPath === fallback.publicPath &&
-      route.callbackPath === fallback.callbackPath
-    );
-  });
+  await persistBiletallRoutes(next);
+  return { success: true };
+}
 
-  await prisma.companySettings.upsert({
-    where: { id: "default" },
-    create: {
-      id: "default",
-      ...DEFAULT_COMPANY_SETTINGS,
-      biletallRoutesJson: allDefault ? "" : serializeBiletallRoutes(next),
-    },
-    update: {
-      biletallRoutesJson: allDefault ? "" : serializeBiletallRoutes(next),
-    },
-  });
+export async function resetBiletallRoutesToDefaults(): Promise<BiletallSettingsActionState> {
+  await requireAdmin();
 
-  revalidateBiletallPaths(next);
+  const routes = DEFAULT_BILETALL_ROUTES.map((route) =>
+    normalizeBiletallRouteRecord(route)
+  );
+  await persistBiletallRoutes(routes);
   return { success: true };
 }

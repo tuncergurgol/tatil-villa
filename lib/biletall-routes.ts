@@ -1,5 +1,8 @@
 import type { BiletallIframeKind } from "@/lib/biletall";
-import { sanitizeBiletallIframeSrc } from "@/lib/biletall-iframe-src";
+import {
+  BILETALL_DEFAULT_IFRAME_SRC,
+  sanitizeBiletallIframeSrc,
+} from "@/lib/biletall-iframe-src";
 
 export type BiletallRouteRecord = {
   kind: BiletallIframeKind;
@@ -15,18 +18,21 @@ export const DEFAULT_BILETALL_ROUTES: BiletallRouteRecord[] = [
     label: "Bilet Ara",
     publicPath: "/bilet/ara",
     callbackPath: "/bilet/ara",
+    customIframeSrc: BILETALL_DEFAULT_IFRAME_SRC.ara,
   },
   {
     kind: "satinal",
     label: "Bilet Satın Al",
     publicPath: "/bilet/satinal",
     callbackPath: "/bilet/satinal",
+    customIframeSrc: BILETALL_DEFAULT_IFRAME_SRC.satinal,
   },
   {
     kind: "sonuc",
     label: "Bilet Sonuç / PNR",
     publicPath: "/bilet/sonuc",
     callbackPath: "/bilet/sonuc",
+    customIframeSrc: BILETALL_DEFAULT_IFRAME_SRC.sonuc,
   },
 ];
 
@@ -61,7 +67,9 @@ export function normalizeBiletallRouteRecord(
     callbackPath:
       normalizeCallbackPath(record.callbackPath ?? fallback.callbackPath) ||
       fallback.callbackPath,
-    customIframeSrc: sanitizeBiletallIframeSrc(record.customIframeSrc),
+    customIframeSrc:
+      sanitizeBiletallIframeSrc(record.customIframeSrc) ||
+      BILETALL_DEFAULT_IFRAME_SRC[record.kind],
   };
 }
 
@@ -129,6 +137,7 @@ export function isDefaultBiletallRoute(record: BiletallRouteRecord) {
     record.label === fallback.label &&
     record.publicPath === fallback.publicPath &&
     record.callbackPath === fallback.callbackPath &&
-    !record.customIframeSrc?.trim()
+    sanitizeBiletallIframeSrc(record.customIframeSrc) ===
+      sanitizeBiletallIframeSrc(fallback.customIframeSrc)
   );
 }

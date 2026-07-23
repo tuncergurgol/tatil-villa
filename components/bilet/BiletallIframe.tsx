@@ -36,7 +36,7 @@ export default function BiletallIframe({
           margin: 0,
           width: "100%",
           minHeight: meta.height,
-          height: kind === "ara" ? "min(70vh, 420px)" : `${meta.height}px`,
+          height: `${meta.height}px`,
         }}
         allow="payment *"
         referrerPolicy="no-referrer-when-downgrade"
