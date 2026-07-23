@@ -14,8 +14,8 @@ import {
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import {
   buildFlowReply,
+  processFlowStep,
   resolveFlowStep,
-  tryAdvanceFlow,
 } from "@/lib/tatil-assistant-flow";
 
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
@@ -285,7 +285,7 @@ export async function processAssistantMessage(
   });
 
   let searchState = (conversation.searchState ?? {}) as AssistantSearchState;
-  const flowAdvance = tryAdvanceFlow(userText, searchState);
+  const flowAdvance = processFlowStep(userText, searchState);
 
   if (flowAdvance.handled) {
     searchState = flowAdvance.state;
