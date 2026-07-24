@@ -162,6 +162,18 @@ export const adminNavSections: NavSection[] = [
   },
   { label: "Obilet", href: "/admin/obilet", icon: "ticket" },
   {
+    label: "Yolcu360",
+    icon: "car",
+    items: [
+      { label: "Ayarlar", href: "/admin/yolcu360", icon: "settings" },
+      {
+        label: "Siparişler",
+        href: "/admin/yolcu360/siparisler",
+        icon: "list-tree",
+      },
+    ],
+  },
+  {
     label: "Müşteri Yönetimi",
     icon: "users",
     items: [

@@ -1622,3 +1622,41 @@ model PublicVillaShareLink {
 
   @@index([createdAt])
 }
+
+model Yolcu360Settings {
+  id                   String   @id @default("default")
+  enabled              Boolean  @default(false)
+  publicEnabled        Boolean  @default(true)
+  environment          String   @default("staging")
+  apiKey               String   @default("")
+  apiSecret            String   @default("")
+  commissionType       String   @default("percentage")
+  commissionPercentage Float    @default(0)
+  defaultPaymentType   String   @default("creditCard")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Yolcu360Order {
+  id              String    @id @default(cuid())
+  yolcu360OrderId String    @unique
+  trackingId      String    @default("")
+  status          String    @default("pending")
+  passengerName   String    @default("")
+  passengerEmail  String    @default("")
+  passengerPhone  String    @default("")
+  carBrand        String    @default("")
+  carModel        String    @default("")
+  vendorName      String    @default("")
+  totalAmount     Int       @default(0)
+  currency        String    @default("TRY")
+  checkInAt       DateTime?
+  checkOutAt      DateTime?
+  searchSnapshot  Json?
+  rawOrder        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}

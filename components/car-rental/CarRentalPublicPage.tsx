@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react";
 import TravelAdventureSection from "@/components/villa-detail/TravelAdventureSection";
+import Yolcu360SearchWidget from "@/components/yolcu360/Yolcu360SearchWidget";
 import type {
   CarRentalCategoryItem,
   CarRentalDriverCriterionItem,
@@ -39,6 +40,7 @@ type Props = {
   locations: CarRentalLocationItem[];
   criteria: CarRentalDriverCriterionItem[];
   driverAgeOptions: string[];
+  yolcu360Enabled?: boolean;
 };
 
 function formatPriceFrom(price: number, currency: string) {
@@ -51,6 +53,7 @@ export default function CarRentalPublicPage({
   locations,
   criteria,
   driverAgeOptions,
+  yolcu360Enabled = false,
 }: Props) {
   const [sameLocation, setSameLocation] = useState(
     settings.sameLocationDefault
@@ -78,7 +81,13 @@ export default function CarRentalPublicPage({
             {settings.heroSubtitle}
           </p>
 
-          <div className="mt-8 rounded-2xl border border-white/15 bg-white/95 p-4 text-slate-900 shadow-xl sm:p-6">
+          {yolcu360Enabled ? (
+            <Yolcu360SearchWidget
+              settings={settings}
+              driverAgeOptions={driverAgeOptions}
+            />
+          ) : (
+            <div className="mt-8 rounded-2xl border border-white/15 bg-white/95 p-4 text-slate-900 shadow-xl sm:p-6">
             {settings.showSameLocationToggle ? (
               <label className="mb-4 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
                 <input
@@ -210,8 +219,9 @@ export default function CarRentalPublicPage({
                   {settings.ctaText}
                 </button>
               </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
