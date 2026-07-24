@@ -127,7 +127,7 @@ export function getBiletallCallbacks(
   const sonuc = byKind.sonuc ?? DEFAULT_BILETALL_ROUTES[2];
 
   const origin = publicOrigin ?? resolveBiletallPublicOrigin();
-  const format = kind ? resolveBiletallCallbackFormat(kind) : "absolute";
+  const format = resolveBiletallCallbackFormat(kind);
 
   const toCallback = (path: string) =>
     formatBiletallCallbackPath(path, origin, format);
