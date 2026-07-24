@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { processGalleryImageToWebp } from "@/lib/process-gallery-image";
+import { mapWithConcurrency } from "@/lib/map-with-concurrency";
 import { importVillaGalleryFromTatildeyiz } from "@/lib/tatildeyiz-gallery-import-runner";
 import {
   buildSeoGalleryFileName,
@@ -15,6 +16,7 @@ import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 import { villaPublicPath } from "@/lib/villa-public-path";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const UPLOAD_CONCURRENCY = 4;
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/jpg",
@@ -33,9 +35,7 @@ async function revalidateVillaGallery(villaId: string, slug?: string) {
   await revalidateVillaEditPage(villaId);
   if (slug) {
     revalidatePath(villaPublicPath(slug));
-    revalidatePath(`/villalar/${slug}`);
   }
-  revalidatePath("/villalar");
 }
 
 async function getVillaGalleryContext(villaId: string) {
@@ -104,9 +104,14 @@ export async function uploadVillaGalleryImages(
     const uploadDir = path.join(process.cwd(), "public", "uploads", "villas", villaId);
     await mkdir(uploadDir, { recursive: true });
 
-    const uploadedUrls: string[] = [];
     let sequence = getNextGallerySequence(currentImages);
 
+    type PreparedFile = {
+      file: File;
+      sequence: number;
+    };
+
+    const prepared: PreparedFile[] = [];
     for (const file of files) {
       if (!ALLOWED_TYPES.has(file.type)) {
         return {
@@ -116,16 +121,22 @@ export async function uploadVillaGalleryImages(
       if (file.size > MAX_FILE_SIZE) {
         return { error: "Dosya boyutu 10 MB'dan küçük olmalıdır" };
       }
-
-      const fileName = buildSeoGalleryFileName(villa.name, sequence);
-      const outputPath = path.join(uploadDir, fileName);
-      const sourceBuffer = Buffer.from(await file.arrayBuffer());
-      const webpBuffer = await processGalleryImageToWebp(sourceBuffer);
-      await writeFile(outputPath, webpBuffer);
-
-      uploadedUrls.push(`/uploads/villas/${villaId}/${fileName}`);
+      prepared.push({ file, sequence });
       sequence += 1;
     }
+
+    const uploadedUrls = await mapWithConcurrency(
+      prepared,
+      UPLOAD_CONCURRENCY,
+      async ({ file, sequence: fileSequence }) => {
+        const fileName = buildSeoGalleryFileName(villa.name, fileSequence);
+        const outputPath = path.join(uploadDir, fileName);
+        const sourceBuffer = Buffer.from(await file.arrayBuffer());
+        const webpBuffer = await processGalleryImageToWebp(sourceBuffer);
+        await writeFile(outputPath, webpBuffer);
+        return `/uploads/villas/${villaId}/${fileName}`;
+      }
+    );
 
     const nextImages = [...currentImages, ...uploadedUrls];
     await persistGalleryOrder(villaId, nextImages);

@@ -41,12 +41,13 @@ export default function VillaGalleryTab({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isImporting, startImport] = useTransition();
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   useEffect(() => {
     setImages(initialImages);
   }, [initialImages]);
 
-  const busy = isPending || isImporting;
+  const busy = isPending || isImporting || Boolean(uploadProgress);
 
   const allSelected = images.length > 0 && selected.size === images.length;
   const hasSelection = selected.size > 0;
@@ -80,17 +81,36 @@ export default function VillaGalleryTab({
     }
 
     setError(null);
-    const formData = new FormData();
-    Array.from(files).forEach((file) => formData.append("files", file));
+    setSuccessMessage(null);
+    const fileList = Array.from(files);
+    const batchSize = 3;
 
     startTransition(async () => {
-      const result = await uploadVillaGalleryImages(villaId, formData);
-      if (result.error) {
-        setError(result.error);
-        return;
+      try {
+        for (let index = 0; index < fileList.length; index += batchSize) {
+          const batch = fileList.slice(index, index + batchSize);
+          const done = Math.min(index + batch.length, fileList.length);
+          setUploadProgress(`${done}/${fileList.length} görsel işleniyor...`);
+
+          const formData = new FormData();
+          batch.forEach((file) => formData.append("files", file));
+
+          const result = await uploadVillaGalleryImages(villaId, formData);
+          if (result.error) {
+            setError(result.error);
+            setUploadProgress(null);
+            return;
+          }
+        }
+
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setSuccessMessage(`${fileList.length} görsel yüklendi.`);
+        setUploadProgress(null);
+        refresh();
+      } catch {
+        setError("Görseller yüklenirken bir sorun oluştu");
+        setUploadProgress(null);
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      refresh();
     });
   }
 
@@ -266,8 +286,11 @@ export default function VillaGalleryTab({
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
         >
           <CloudUpload className="h-4 w-4" />
-          {busy ? "Yükleniyor..." : "Yükle"}
+          {uploadProgress ?? (busy ? "Yükleniyor..." : "Yükle")}
         </button>
+        {uploadProgress ? (
+          <span className="text-xs font-medium text-blue-700">{uploadProgress}</span>
+        ) : null}
         <span className="text-xs text-gray-500">
           JPG, PNG, WEBP — 100 KB altında WebP olarak kaydedilir (Tatildeyiz - Villa Adı - 1.webp)
         </span>
