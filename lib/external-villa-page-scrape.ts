@@ -8,6 +8,7 @@
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
  * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
+ * - risusvillatatili.com / KVT (pricing-item + fake-calendar villatarih)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
  */
@@ -36,7 +37,8 @@ export type ScrapedVillaPage = {
     | "heryervillam"
     | "villavillam"
     | "villakalkan"
-    | "yazlikvillaci";
+    | "yazlikvillaci"
+    | "kvt";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -126,7 +128,13 @@ function parseTurkishLongDate(raw: string): Date | null {
   const day = Number(m[1]);
   const monthName = m[2]!.toLocaleLowerCase("tr-TR");
   const year = Number(m[3]);
-  const month = TURKISH_MONTHS[monthName];
+  let month = TURKISH_MONTHS[monthName];
+  if (!month) {
+    const abbrev = monthName.slice(0, 3);
+    month =
+      TURKISH_MONTHS[abbrev] ??
+      Object.entries(TURKISH_MONTHS).find(([name]) => name.startsWith(abbrev))?.[1];
+  }
   if (!month || !Number.isFinite(day) || !Number.isFinite(year)) return null;
 
   const key = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -959,6 +967,156 @@ function originFromUrl(pageUrl: string): string {
   return `${parsed.protocol}//${parsed.host}`;
 }
 
+function looksLikeKvtPricing(pageUrl: string, html: string): boolean {
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  if (host.includes("risusvillatatili")) return true;
+  return html.includes("pricing-item") && html.includes("fake-calendar");
+}
+
+function extractKvtCalendarMeta(html: string): {
+  villaId: string | null;
+  doviz: string;
+} {
+  const fake =
+    html.match(
+      /id=["']fake-calendar["'][^>]*\bdata-id=["'](\d+)["']/i
+    ) ??
+    html.match(
+      /\bdata-id=["'](\d+)["'][^>]*\bid=["']fake-calendar["']/i
+    );
+  const doviz =
+    html.match(/fake-calendar[^>]*\bdata-doviz=["']([^"']+)["']/i)?.[1] ??
+    "tl";
+  return { villaId: fake?.[1] ?? null, doviz };
+}
+
+/** risusvillatatili.com / KVT — `.pricing-item` kartları (haftalık + gecelik). */
+export function parseKvtPricingItems(
+  html: string,
+  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
+): MappedVillaPricePeriod[] {
+  const periods: MappedVillaPricePeriod[] = [];
+  const chunks = html.split(/<div[^>]*\bpricing-item\b[^>]*>/i);
+  let sourceId = 1;
+
+  for (let index = 1; index < chunks.length; index++) {
+    const block = (chunks[index] ?? "").slice(0, 8000);
+    const text = stripTags(block);
+    const rangeMatch = text.match(
+      /(\d{1,2}\s+[A-Za-zÇĞİÖŞÜçğıöşü.]+\s+\d{4})\s*[-–—]\s*(\d{1,2}\s+[A-Za-zÇĞİÖŞÜçğıöşü.]+\s+\d{4})/u
+    );
+    if (!rangeMatch) continue;
+
+    const range = parseTurkishDateRange(
+      `${rangeMatch[1]} - ${rangeMatch[2]}`
+    );
+    if (!range) continue;
+
+    const priceCols = [
+      ...block.matchAll(/class=["']col-2[^"']*["'][^>]*>([\s\S]*?)(?=<div class=["']col-2|<\/div>\s*<\/div>\s*<\/div>)/gi),
+    ];
+    const priceHits = priceCols
+      .flatMap((match) => {
+        const col = match[1] ?? "";
+        const hit = col.match(
+          /data-doviz=["']([^"']+)["'][^>]*\bdata-price=["'](\d+)["']/i
+        );
+        if (!hit) return [];
+        const price = Number(hit[2]);
+        if (!Number.isFinite(price) || price <= 0) return [];
+        return [{ currency: mapCurrencyCode(hit[1]), price }];
+      });
+
+    if (priceHits.length === 0) continue;
+
+    const nightly =
+      priceHits.length >= 2
+        ? priceHits.reduce((lowest, item) =>
+            item.price < lowest.price ? item : lowest
+          )
+        : priceHits[0]!;
+    const weekly =
+      priceHits.length >= 2
+        ? priceHits.reduce((highest, item) =>
+            item.price > highest.price ? item : highest
+          )
+        : null;
+
+    const minStayMatch = text.match(/(?:Minimum|Min\.?)\s+(\d+)\s+Gece/i);
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate: range.start,
+        endDate: range.end,
+        nightlyPrice: nightly.price,
+        currency: nightly.currency,
+        weeklyPrice: weekly && weekly.price > nightly.price ? weekly.price : null,
+        minStayNights: minStayMatch ? Number(minStayMatch[1]) : null,
+        damageDeposit: damageDeposit?.amount ?? null,
+        damageDepositCurrency: damageDeposit?.currency ?? nightly.currency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+async function scrapeKvtFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeKvtPricing(pageUrl, html)) return null;
+
+  const deposit = extractDamageDeposit(html);
+  const periods = parseKvtPricingItems(html, deposit);
+  const meta = extractKvtCalendarMeta(html);
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+
+  if (meta.villaId) {
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    try {
+      const body = await fetchText(`${originFromUrl(pageUrl)}/ajax/villatarih`, {
+        method: "POST",
+        body: `id=${encodeURIComponent(meta.villaId)}&doviz=${encodeURIComponent(meta.doviz || "tl")}`,
+        referer: pageUrl,
+      });
+      if (body.includes("##")) {
+        const occ = parseBoceksoftVillatarihResponse(body);
+        for (const [key, value] of occ) occupancyByDateKey.set(key, value);
+      } else {
+        warnings.push("KVT takvim yanıtı beklenen formatta değil");
+      }
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `KVT müsaitlik AJAX başarısız: ${error.message}`
+          : "KVT müsaitlik AJAX başarısız"
+      );
+    }
+  } else {
+    warnings.push("KVT takvim villa id (fake-calendar) bulunamadı");
+  }
+
+  if (periods.length === 0) return null;
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "KVT fiyatları alındı; müsaitlik takvimi okunamadı veya boş"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "kvt",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 async function scrapeBoceksoft(
   pageUrl: string,
   html: string,
@@ -979,8 +1137,7 @@ async function scrapeBoceksoft(
     Boolean(meta.villaId) ||
     html.includes("/ajax/villatarih") ||
     html.includes("boceksoft") ||
-    html.includes("price-range-hover") ||
-    /data-year=["']\d{4}["']/.test(html);
+    html.includes("price-range-hover");
 
   if (!looksBocek && periods.length === 0) return null;
 
@@ -1786,6 +1943,9 @@ export async function scrapeExternalVillaPage(
   );
   if (villakalkan) return villakalkan;
 
+  const kvt = await scrapeKvtFromPage(parsed.toString(), html, warnings);
+  if (kvt) return kvt;
+
   const bocek = await scrapeBoceksoft(parsed.toString(), html, warnings);
   if (bocek) return bocek;
 
@@ -1819,6 +1979,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villakalkan.com.tr, yazlikvillaci.com.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villakalkan.com.tr, yazlikvillaci.com.tr, risusvillatatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
