@@ -54,8 +54,8 @@ cd "$APP_DIR"
 pm2 restart tatil-villa --update-env >/dev/null
 
 echo "==> Cron test (calendar-price-transfer)"
-HTTP_CODE="$(curl -s -o /tmp/tatil-cron-test.json -w '%{http_code}' -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/calendar-price-transfer")"
-echo "    HTTP $HTTP_CODE — $(head -c 200 /tmp/tatil-cron-test.json)"
+HTTP_CODE="$(curl -s -o /tmp/tatil-cron-test.json -w '%{http_code}' -m 120 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/calendar-price-transfer" || echo 000)"
+echo "    HTTP ${HTTP_CODE} — $(head -c 200 /tmp/tatil-cron-test.json 2>/dev/null || true)"
 rm -f /tmp/tatil-cron-test.json
 
 echo "=========================================================="

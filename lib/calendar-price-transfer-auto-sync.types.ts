@@ -95,8 +95,16 @@ export function criteriaToSyncFlags(
   };
 }
 
-function nonEmptyStringField(field: string) {
-  return { [field]: { not: null, notIn: [""] } } as const;
+function nonEmptyStringField(
+  field:
+    | "whatsappGroupId"
+    | "externalSyncUrl1"
+    | "externalSyncUrl2"
+    | "externalSyncUrl3"
+) {
+  return {
+    AND: [{ [field]: { not: null } }, { [field]: { not: "" } }],
+  };
 }
 
 /** Otomatik güncellemede yalnızca seçilen kaynağı olan villalar. */
