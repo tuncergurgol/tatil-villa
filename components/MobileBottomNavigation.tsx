@@ -103,16 +103,23 @@ export default function MobileBottomNavigation({
                 </span>
               </button>
             ) : (
-              <Link
-                href="/villalar"
-                className={`${itemClass} w-full text-rose-700`}
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-400 text-white shadow-[0_6px_16px_rgba(244,63,94,0.3)]">
-                  <CalendarSearch className="h-6 w-6" strokeWidth={1.8} />
-                </span>
-                <span className="font-semibold leading-tight">Villa Ara</span>
-              </Link>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                const input = document.getElementById(
+                  "header-villa-search-input"
+                ) as HTMLInputElement | null;
+                input?.scrollIntoView({ behavior: "smooth", block: "center" });
+                window.setTimeout(() => input?.focus(), 250);
+              }}
+              className={`${itemClass} w-full text-rose-700`}
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-400 text-white shadow-[0_6px_16px_rgba(244,63,94,0.3)]">
+                <CalendarSearch className="h-6 w-6" strokeWidth={1.8} />
+              </span>
+              <span className="font-semibold leading-tight">Villa Ara</span>
+            </button>
+          )}
           </div>
 
           <a

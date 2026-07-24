@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { MapPin, Search } from "lucide-react";
+import FloatingPanel from "@/components/FloatingPanel";
 import { villaPublicPath } from "@/lib/villa-public-path";
 
 type SearchResult = {
@@ -23,13 +24,17 @@ type SearchResult = {
 export default function HeaderVillaSearch({
   initialQuery = "",
   className = "",
+  inputId = "header-villa-search-input",
 }: {
   initialQuery?: string;
   className?: string;
+  inputId?: string;
 }) {
   const router = useRouter();
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -44,6 +49,8 @@ export default function HeaderVillaSearch({
       return;
     }
 
+    setOpen(true);
+
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setLoading(true);
@@ -52,7 +59,10 @@ export default function HeaderVillaSearch({
           `/api/villas/search?q=${encodeURIComponent(value)}`,
           { signal: controller.signal }
         );
-        if (!response.ok) return;
+        if (!response.ok) {
+          setResults([]);
+          return;
+        }
         const data = (await response.json()) as { results?: SearchResult[] };
         setResults(data.results ?? []);
         setOpen(true);
@@ -72,14 +82,26 @@ export default function HeaderVillaSearch({
   }, [query]);
 
   useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+    if (!open) return;
+
+    function handlePointerDown(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node;
+      if (
+        rootRef.current?.contains(target) ||
+        panelRef.current?.contains(target)
+      ) {
+        return;
       }
+      setOpen(false);
     }
+
     document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, []);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [open]);
 
   function goToResults(value: string) {
     const trimmed = value.trim();
@@ -102,38 +124,55 @@ export default function HeaderVillaSearch({
     router.push(villaPublicPath(villa.slug));
   }
 
+  const showPanel = open && query.trim().length > 0;
+
   return (
     <div ref={rootRef} className={`relative min-w-0 ${className}`}>
-      <form onSubmit={handleSubmit} role="search">
-        <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-sky-500" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => {
-            if (results.length > 0) setOpen(true);
-          }}
-          placeholder="Villa adı ara..."
-          aria-label="Villa adı ile ara"
-          aria-autocomplete="list"
-          aria-controls={listId}
-          aria-expanded={open}
-          className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-base text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 sm:text-sm"
-          autoComplete="off"
-        />
-      </form>
+      <div ref={anchorRef}>
+        <form onSubmit={handleSubmit} role="search">
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-sky-500" />
+          <input
+            id={inputId}
+            type="search"
+            enterKeyHint="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => {
+              if (query.trim().length > 0) setOpen(true);
+            }}
+            placeholder="Villa adı ara..."
+            aria-label="Villa adı ile ara"
+            aria-autocomplete="list"
+            aria-controls={listId}
+            aria-expanded={showPanel}
+            className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-base text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 sm:text-sm"
+            autoComplete="off"
+          />
+        </form>
+      </div>
 
-      {open && query.trim().length > 0 ? (
-        <div
-          id={listId}
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[220] max-h-96 w-full overflow-y-auto rounded-2xl border border-gray-100 bg-white py-1 shadow-2xl sm:left-auto sm:right-0 sm:w-[min(28rem,calc(100vw-1.5rem))]"
-        >
+      <FloatingPanel
+        open={showPanel}
+        anchorRef={anchorRef}
+        panelRef={panelRef}
+        className="max-h-96 overflow-y-auto rounded-2xl border border-gray-100 bg-white py-1 shadow-2xl"
+      >
+        <div id={listId}>
           {loading && results.length === 0 ? (
             <p className="px-4 py-3 text-sm text-gray-500">Aranıyor...</p>
           ) : results.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-gray-500">
-              Eşleşen aktif villa bulunamadı
-            </p>
+            <div className="px-4 py-3">
+              <p className="text-sm text-gray-500">
+                Eşleşen aktif villa bulunamadı
+              </p>
+              <button
+                type="button"
+                onClick={() => goToResults(query)}
+                className="mt-2 text-sm font-semibold text-sky-600 hover:text-sky-700"
+              >
+                Tüm sonuçlarda ara
+              </button>
+            </div>
           ) : (
             <ul>
               {results.map((villa) => (
@@ -141,7 +180,7 @@ export default function HeaderVillaSearch({
                   <button
                     type="button"
                     onClick={() => selectVilla(villa)}
-                    className="flex w-full cursor-pointer items-start gap-3 px-3 py-2.5 text-left transition hover:bg-sky-50"
+                    className="flex w-full cursor-pointer items-start gap-3 px-3 py-2.5 text-left transition hover:bg-sky-50 active:bg-sky-100"
                   >
                     <span className="relative mt-0.5 h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
                       {villa.image ? (
@@ -168,10 +207,19 @@ export default function HeaderVillaSearch({
                   </button>
                 </li>
               ))}
+              <li className="border-t border-gray-100 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => goToResults(query)}
+                  className="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-sky-600 hover:bg-sky-50 active:bg-sky-100"
+                >
+                  &quot;{query.trim()}&quot; için tüm sonuçları gör
+                </button>
+              </li>
             </ul>
           )}
         </div>
-      ) : null}
+      </FloatingPanel>
     </div>
   );
 }
