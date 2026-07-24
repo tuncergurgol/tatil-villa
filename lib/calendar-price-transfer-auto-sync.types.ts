@@ -103,7 +103,7 @@ function nonEmptyStringField(
     | "externalSyncUrl3"
 ) {
   return {
-    AND: [{ [field]: { not: null } }, { [field]: { not: "" } }],
+    AND: [{ NOT: { [field]: null } }, { [field]: { not: "" } }],
   };
 }
 

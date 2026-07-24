@@ -75,8 +75,8 @@ export async function runCalendarPriceTransferAutoUpdate(options?: {
   }
   andFilters.push({
     OR: [
-      { periodImportLog: { is: null } },
-      { periodImportLog: { is: { attemptedAt: { lt: dueBefore } } } },
+      { periodImportLog: null },
+      { periodImportLog: { attemptedAt: { lt: dueBefore } } },
     ],
   });
 
