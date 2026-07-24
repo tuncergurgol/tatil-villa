@@ -1,42 +1,18 @@
 "use server";
 
-import { mkdir, unlink, writeFile } from "fs/promises";
+import { unlink } from "fs/promises";
 import path from "path";
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { processGalleryImageToWebp } from "@/lib/process-gallery-image";
-import { mapWithConcurrency } from "@/lib/map-with-concurrency";
 import { importVillaGalleryFromTatildeyiz } from "@/lib/tatildeyiz-gallery-import-runner";
-import {
-  buildSeoGalleryFileName,
-  getNextGallerySequence,
-} from "@/lib/villa-gallery-filename";
-import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
-import { villaPublicPath } from "@/lib/villa-public-path";
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 4;
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-]);
+import { uploadVillaGalleryFiles } from "@/lib/villa-gallery-upload.server";
+import { revalidateVillaGallery } from "@/lib/villa-gallery-revalidate.server";
 
 export type VillaGalleryActionState = {
   error?: string;
   success?: boolean;
   urls?: string[];
 };
-
-async function revalidateVillaGallery(villaId: string, slug?: string) {
-  revalidatePath("/admin/villalar");
-  await revalidateVillaEditPage(villaId);
-  if (slug) {
-    revalidatePath(villaPublicPath(slug));
-  }
-}
 
 async function getVillaGalleryContext(villaId: string) {
   const villa = await prisma.villa.findUnique({
@@ -52,7 +28,6 @@ async function getVillaGalleryContext(villaId: string) {
 }
 
 function normalizeGalleryImages(images: string[], coverImage: string) {
-  // Galeri dizisi kaynak; vitrin her zaman 1. görseldir.
   if (images.length > 0) return images;
   if (coverImage) return [coverImage];
   return [];
@@ -94,62 +69,7 @@ export async function uploadVillaGalleryImages(
     .getAll("files")
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
-  if (files.length === 0) {
-    return { error: "Yüklenecek dosya seçilmedi" };
-  }
-
-  try {
-    const { villa } = await getVillaGalleryContext(villaId);
-    const currentImages = normalizeGalleryImages(villa.images, villa.image);
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "villas", villaId);
-    await mkdir(uploadDir, { recursive: true });
-
-    let sequence = getNextGallerySequence(currentImages);
-
-    type PreparedFile = {
-      file: File;
-      sequence: number;
-    };
-
-    const prepared: PreparedFile[] = [];
-    for (const file of files) {
-      if (!ALLOWED_TYPES.has(file.type)) {
-        return {
-          error: "Yalnızca JPG, PNG ve WEBP dosyaları yüklenebilir",
-        };
-      }
-      if (file.size > MAX_FILE_SIZE) {
-        return { error: "Dosya boyutu 10 MB'dan küçük olmalıdır" };
-      }
-      prepared.push({ file, sequence });
-      sequence += 1;
-    }
-
-    const uploadedUrls = await mapWithConcurrency(
-      prepared,
-      UPLOAD_CONCURRENCY,
-      async ({ file, sequence: fileSequence }) => {
-        const fileName = buildSeoGalleryFileName(villa.name, fileSequence);
-        const outputPath = path.join(uploadDir, fileName);
-        const sourceBuffer = Buffer.from(await file.arrayBuffer());
-        const webpBuffer = await processGalleryImageToWebp(sourceBuffer);
-        await writeFile(outputPath, webpBuffer);
-        return `/uploads/villas/${villaId}/${fileName}`;
-      }
-    );
-
-    const nextImages = [...currentImages, ...uploadedUrls];
-    await persistGalleryOrder(villaId, nextImages);
-    await revalidateVillaGallery(villaId, villa.slug);
-
-    return { success: true, urls: uploadedUrls };
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Görseller yüklenirken bir hata oluştu";
-    return { error: message };
-  }
+  return uploadVillaGalleryFiles(villaId, files);
 }
 
 export async function updateVillaGalleryOrder(

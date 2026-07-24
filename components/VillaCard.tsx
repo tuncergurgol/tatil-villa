@@ -1,4 +1,4 @@
-import Image from "next/image";
+import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import { Bath, BedDouble, MapPin, Users } from "lucide-react";
 import VillaPriceRange from "@/components/VillaPriceRange";
@@ -28,7 +28,7 @@ export default function VillaCard({
       }`}
     >
       <div className="relative aspect-[4/3] overflow-hidden">
-        <Image
+        <GalleryImage
           src={villa.image}
           alt={villa.name}
           fill

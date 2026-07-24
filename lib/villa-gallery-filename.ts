@@ -9,7 +9,10 @@ export function sanitizeGalleryNamePart(value: string) {
 
 export function buildSeoGalleryFileName(villaName: string, sequence: number) {
   const villa = sanitizeGalleryNamePart(villaName) || "Villa";
-  return `${VILLA_GALLERY_SITE_NAME} - ${villa} - ${sequence}.webp`;
+  const parts = [VILLA_GALLERY_SITE_NAME, villa]
+    .flatMap((part) => part.split(/\s+/))
+    .filter(Boolean);
+  return `${parts.join("-")}-${sequence}.webp`;
 }
 
 /** @deprecated buildSeoGalleryFileName(villaName, sequence) kullanın */
@@ -22,8 +25,8 @@ export function buildVillaGalleryFileName(
 }
 
 export function extractGallerySequence(url: string) {
-  const fileName = url.split("/").pop() ?? "";
-  const match = fileName.match(/ - (\d+)\.webp$/i);
+  const fileName = decodeURIComponent(url.split("/").pop() ?? "");
+  const match = fileName.match(/(\d+)\.webp$/i);
   return match ? parseInt(match[1], 10) : 0;
 }
 

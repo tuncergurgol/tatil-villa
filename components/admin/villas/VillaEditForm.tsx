@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import Image from "next/image";
+import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Villa, VillaOwner } from "@prisma/client";
@@ -220,7 +220,7 @@ export default function VillaEditForm({
         <div className="flex items-center gap-4">
           {showcaseImage ? (
             <div className="relative h-20 w-28 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm">
-              <Image
+              <GalleryImage
                 src={showcaseImage}
                 alt={`${villa.name} vitrin`}
                 fill

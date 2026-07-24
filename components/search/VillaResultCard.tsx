@@ -1,4 +1,4 @@
-import Image from "next/image";
+import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import {
   Bath,
@@ -39,7 +39,7 @@ export default function VillaResultCard({
       <div className="flex flex-col sm:flex-row">
         <div className="relative aspect-[16/11] w-full shrink-0 overflow-hidden sm:aspect-auto sm:min-h-[220px] sm:w-[280px] lg:w-[320px]">
           <Link href={villaPublicPath(villa.slug)} className="absolute inset-0">
-            <Image
+            <GalleryImage
               src={villa.image}
               alt={villa.name}
               fill

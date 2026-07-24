@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import GalleryImage from "@/components/GalleryImage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
@@ -128,7 +128,7 @@ export default function VillaDetailGallery({
               onClick={() => setLightboxIndex(index)}
               className="relative aspect-[16/10] w-full shrink-0 snap-center overflow-hidden"
             >
-              <Image
+              <GalleryImage
                 src={src}
                 alt={`${name} ${index + 1}`}
                 fill
@@ -166,7 +166,7 @@ export default function VillaDetailGallery({
           onClick={() => setLightboxIndex(0)}
           className="relative col-span-2 row-span-2 min-h-[440px] cursor-pointer overflow-hidden"
         >
-          <Image
+          <GalleryImage
             src={main}
             alt={name}
             fill
@@ -182,7 +182,7 @@ export default function VillaDetailGallery({
             onClick={() => setLightboxIndex(index + 1)}
             className="relative aspect-[4/3] cursor-pointer overflow-hidden"
           >
-            <Image
+            <GalleryImage
               src={src}
               alt={`${name} ${index + 2}`}
               fill
@@ -254,7 +254,7 @@ export default function VillaDetailGallery({
             </>
           )}
           <div className="relative h-[75vh] w-full max-w-5xl">
-            <Image
+            <GalleryImage
               src={images[lightboxIndex]}
               alt={`${name} ${lightboxIndex + 1}`}
               fill

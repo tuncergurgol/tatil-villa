@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -17,8 +16,9 @@ import {
   importVillaGalleryFromTatildeyizAction,
   setVillaGalleryVitrin,
   updateVillaGalleryOrder,
-  uploadVillaGalleryImages,
 } from "@/app/actions/admin/villa-gallery";
+import GalleryImage from "@/components/GalleryImage";
+import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
 
 interface VillaGalleryTabProps {
   villaId: string;
@@ -48,6 +48,30 @@ export default function VillaGalleryTab({
   }, [initialImages]);
 
   const busy = isPending || isImporting || Boolean(uploadProgress);
+
+  async function uploadGalleryBatch(files: File[]) {
+    const formData = new FormData();
+    formData.append("villaId", villaId);
+    files.forEach((file) => formData.append("files", file));
+
+    const response = await fetch("/api/admin/villa-gallery/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    let payload: { error?: string; success?: boolean } = {};
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error(`Sunucu yanıtı okunamadı (HTTP ${response.status})`);
+    }
+
+    if (!response.ok || payload.error) {
+      throw new Error(
+        payload.error ?? `Yükleme başarısız (HTTP ${response.status})`
+      );
+    }
+  }
 
   const allSelected = images.length > 0 && selected.size === images.length;
   const hasSelection = selected.size > 0;
@@ -83,7 +107,7 @@ export default function VillaGalleryTab({
     setError(null);
     setSuccessMessage(null);
     const fileList = Array.from(files);
-    const batchSize = 3;
+    const batchSize = 5;
 
     startTransition(async () => {
       try {
@@ -92,23 +116,19 @@ export default function VillaGalleryTab({
           const done = Math.min(index + batch.length, fileList.length);
           setUploadProgress(`${done}/${fileList.length} görsel işleniyor...`);
 
-          const formData = new FormData();
-          batch.forEach((file) => formData.append("files", file));
-
-          const result = await uploadVillaGalleryImages(villaId, formData);
-          if (result.error) {
-            setError(result.error);
-            setUploadProgress(null);
-            return;
-          }
+          await uploadGalleryBatch(batch);
         }
 
         if (fileInputRef.current) fileInputRef.current.value = "";
         setSuccessMessage(`${fileList.length} görsel yüklendi.`);
         setUploadProgress(null);
         refresh();
-      } catch {
-        setError("Görseller yüklenirken bir sorun oluştu");
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Görseller yüklenirken bir sorun oluştu";
+        setError(message);
         setUploadProgress(null);
       }
     });
@@ -193,8 +213,9 @@ export default function VillaGalleryTab({
   function handleDownloadAll() {
     images.forEach((url, index) => {
       const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = url.split("/").pop() ?? `galeri-${index + 1}.webp`;
+      anchor.href = encodeGalleryImageUrl(url);
+      anchor.download = decodeURIComponent(url.split("/").pop() ?? "") ||
+        `galeri-${index + 1}.webp`;
       anchor.rel = "noopener";
       document.body.appendChild(anchor);
       anchor.click();
@@ -292,7 +313,7 @@ export default function VillaGalleryTab({
           <span className="text-xs font-medium text-blue-700">{uploadProgress}</span>
         ) : null}
         <span className="text-xs text-gray-500">
-          JPG, PNG, WEBP — 100 KB altında WebP olarak kaydedilir (Tatildeyiz - Villa Adı - 1.webp)
+          JPG, PNG, WEBP — 100 KB altında WebP olarak kaydedilir (Tatildeyiz-Villa-Adı-1.webp)
         </span>
       </div>
 
@@ -349,7 +370,7 @@ export default function VillaGalleryTab({
                     : "border-gray-200"
                 } ${dragIndex === index ? "opacity-60" : ""}`}
               >
-                <Image
+                <GalleryImage
                   src={url}
                   alt={`${villaName} ${index + 1}`}
                   fill
@@ -433,7 +454,7 @@ export default function VillaGalleryTab({
           <div className="relative max-h-[90vh] max-w-[90vw]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={previewUrl}
+              src={encodeGalleryImageUrl(previewUrl)}
               alt="Galeri önizleme"
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
             />
