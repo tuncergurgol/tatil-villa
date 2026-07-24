@@ -8,6 +8,7 @@
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
  * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
+ * - yazlikcim.com.tr (Boceksoft takvim; günlük fiyat yoksa schema/sezon fallback)
  * - risusvillatatili.com / KVT (pricing-item + fake-calendar villatarih)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
@@ -32,6 +33,7 @@ export type ScrapedVillaPage = {
   sourceHost: string;
   strategy:
     | "boceksoft"
+    | "yazlikcim"
     | "next_data"
     | "html_periods"
     | "heryervillam"
@@ -1125,12 +1127,193 @@ async function scrapeKvtFromPage(
   };
 }
 
+function looksLikeYazlikcim(pageUrl: string): boolean {
+  try {
+    return normalizeHost(new URL(pageUrl).hostname).includes("yazlikcim");
+  } catch {
+    return false;
+  }
+}
+
+/** schema.org AggregateOffer veya detay kutusundaki min-max gecelik. */
+export function extractYazlikcimPriceRange(
+  html: string
+): { low: number; high: number; currency: VillaPeriodCurrency } | null {
+  const schema =
+    html.match(
+      /"@type"\s*:\s*"AggregateOffer"[\s\S]*?"lowPrice"\s*:\s*"(\d+)"[\s\S]*?"highPrice"\s*:\s*"(\d+)"/i
+    ) ??
+    html.match(/"lowPrice"\s*:\s*"(\d+)"[\s\S]*?"highPrice"\s*:\s*"(\d+)"/i);
+  if (schema) {
+    const low = Number(schema[1]);
+    const high = Number(schema[2]);
+    if (low > 0 && high >= low) {
+      return { low, high, currency: "TL" };
+    }
+  }
+
+  const hero = html.match(
+    /paymentRspFs[^>]*>[\s\S]{0,500}?data-price=["'](\d+)["'][\s\S]{0,120}?data-price=["'](\d+)["']/i
+  );
+  if (hero) {
+    const low = Number(hero[1]);
+    const high = Number(hero[2]);
+    if (low > 0 && high >= low) {
+      return { low, high, currency: "TL" };
+    }
+  }
+
+  return null;
+}
+
+const YAZLIKCIM_MONTH_NAMES: Record<string, number> = {
+  ocak: 1,
+  şubat: 2,
+  subat: 2,
+  mart: 3,
+  nisan: 4,
+  mayıs: 5,
+  mayis: 5,
+  haziran: 6,
+  temmuz: 7,
+  ağustos: 8,
+  agustos: 8,
+  eylül: 9,
+  eylul: 9,
+  ekim: 10,
+  kasım: 11,
+  kasim: 11,
+  aralık: 12,
+  aralik: 12,
+};
+
+function parseYazlikcimMonthList(raw: string): number[] {
+  const months = new Set<number>();
+  const chunks = raw.split(/,|ve/gi);
+  for (const chunk of chunks) {
+    const normalized = chunk
+      .toLocaleLowerCase("tr-TR")
+      .replace(/&uuml;/g, "ü")
+      .replace(/&ouml;/g, "ö")
+      .replace(/&ccedil;/g, "ç")
+      .replace(/&nbsp;/g, " ")
+      .trim();
+    for (const [name, month] of Object.entries(YAZLIKCIM_MONTH_NAMES)) {
+      if (normalized.includes(name)) months.add(month);
+    }
+  }
+  return [...months].sort((a, b) => a - b);
+}
+
+/** SSS metnindeki kış / düşük / yüksek sezon ayları. */
+export function parseYazlikcimSeasonMonths(html: string): {
+  winter: number[];
+  low: number[];
+  high: number[];
+} {
+  const defaults = {
+    winter: [1, 2, 3, 4, 11, 12],
+    low: [5, 6, 9, 10],
+    high: [7, 8],
+  };
+
+  const text = stripTags(html);
+  const winterMatch = text.match(
+    /([A-Za-zÇĞİÖŞÜçğıöşü,&\s]+)\s+aylar[ıi]\s+K[ıi]ş\s+Sezon/i
+  );
+  const lowMatch = text.match(
+    /([A-Za-zÇĞİÖŞÜçğıöşü,&\s]+)\s+aylar[ıi]\s+D[üu]ş[üu]k\s+Sezon/i
+  );
+  const highMatch = text.match(
+    /([A-Za-zÇĞİÖŞÜçğıöşü,&\s]+)\s+aylar[ıi]\s+Y[üu]ksek\s+Sezon/i
+  );
+
+  const winter = winterMatch ? parseYazlikcimMonthList(winterMatch[1]!) : defaults.winter;
+  const low = lowMatch ? parseYazlikcimMonthList(lowMatch[1]!) : defaults.low;
+  const high = highMatch ? parseYazlikcimMonthList(highMatch[1]!) : defaults.high;
+
+  if (winter.length === 0 || low.length === 0 || high.length === 0) {
+    return defaults;
+  }
+  return { winter, low, high };
+}
+
+function lastDayOfMonth(year: number, month: number): Date {
+  return startOfDay(new Date(year, month, 0));
+}
+
+function monthTier(
+  month: number,
+  seasons: { winter: number[]; low: number[]; high: number[] }
+): "winter" | "low" | "high" | null {
+  if (seasons.winter.includes(month)) return "winter";
+  if (seasons.low.includes(month)) return "low";
+  if (seasons.high.includes(month)) return "high";
+  return null;
+}
+
+/** Takvim günlük fiyatı yoksa schema min-max + sezon aylarından yıllık periyot üretir. */
+export function buildYazlikcimSeasonFallbackPeriods(
+  html: string,
+  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
+): MappedVillaPricePeriod[] {
+  const range = extractYazlikcimPriceRange(html);
+  if (!range) return [];
+
+  const seasons = parseYazlikcimSeasonMonths(html);
+  const midPrice = Math.round((range.low + range.high) / 2);
+  const tierPrice: Record<"winter" | "low" | "high", number> = {
+    winter: range.low,
+    low: midPrice,
+    high: range.high,
+  };
+
+  const nowYear = new Date().getFullYear();
+  const years = [nowYear, nowYear + 1];
+  const periods: MappedVillaPricePeriod[] = [];
+  let sourceId = 1;
+
+  for (const year of years) {
+    let runTier: "winter" | "low" | "high" | null = null;
+    let runStartMonth = 1;
+
+    const flushRun = (endMonth: number) => {
+      if (!runTier) return;
+      periods.push(
+        buildMappedPeriod({
+          sourceId: sourceId++,
+          startDate: startOfDay(new Date(year, runStartMonth - 1, 1)),
+          endDate: lastDayOfMonth(year, endMonth),
+          nightlyPrice: tierPrice[runTier],
+          currency: range.currency,
+          damageDeposit: damageDeposit?.amount ?? null,
+          damageDepositCurrency: damageDeposit?.currency ?? range.currency,
+        })
+      );
+      runTier = null;
+    };
+
+    for (let month = 1; month <= 12; month++) {
+      const tier = monthTier(month, seasons);
+      if (!tier) continue;
+      if (runTier === tier) continue;
+      if (runTier) flushRun(month - 1);
+      runTier = tier;
+      runStartMonth = month;
+    }
+    if (runTier) flushRun(12);
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
 async function scrapeBoceksoft(
   pageUrl: string,
   html: string,
   warnings: string[]
 ): Promise<ScrapedVillaPage | null> {
   const host = normalizeHost(new URL(pageUrl).hostname);
+  const isYazlikcim = looksLikeYazlikcim(pageUrl);
   const deposit = extractDamageDeposit(html);
   let periods = parseBoceksoftPeriodList(html, deposit);
   if (periods.length === 0) {
@@ -1138,10 +1321,12 @@ async function scrapeBoceksoft(
   }
   const meta = extractBoceksoftCalendarMeta(html);
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  let usedYazlikcimFallback = false;
 
   const looksBocek =
     host.includes("dalvillalari") ||
     host.includes("kiralikvilladatatil") ||
+    isYazlikcim ||
     Boolean(meta.villaId) ||
     html.includes("/ajax/villatarih") ||
     html.includes("boceksoft") ||
@@ -1197,11 +1382,21 @@ async function scrapeBoceksoft(
     warnings.push("Takvim villa id (#calendar data-id) bulunamadı; sadece fiyat çekildi");
   }
 
+  if (periods.length === 0 && isYazlikcim) {
+    periods = buildYazlikcimSeasonFallbackPeriods(html, deposit);
+    if (periods.length > 0) {
+      usedYazlikcimFallback = true;
+      warnings.push(
+        "Yazlıkçım takviminde günlük fiyat yok; schema.org min-max ve sezon açıklamasından tahmini periyot oluşturuldu"
+      );
+    }
+  }
+
   if (periods.length === 0) return null;
 
   return {
     sourceHost: host,
-    strategy: "boceksoft",
+    strategy: usedYazlikcimFallback ? "yazlikcim" : "boceksoft",
     pageTitle: extractPageTitle(html),
     periods,
     occupancyByDateKey,
@@ -2026,6 +2221,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villakalkan.com.tr, yazlikvillaci.com.tr, risusvillatatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
