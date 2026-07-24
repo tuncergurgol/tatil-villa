@@ -4,7 +4,8 @@
  *
  * Destek:
  * - heryervillam.com (HTML fiyat tablosu + takvim)
- * - villavillam.com.tr (NEXT_DATA id + api.villavillam.com.tr PriceList/Availability)
+ * - villavillam.com.tr / villacim.com.tr (NEXT_DATA id + api PriceList/Availability)
+ * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
  * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
@@ -38,6 +39,8 @@ export type ScrapedVillaPage = {
     | "html_periods"
     | "heryervillam"
     | "villavillam"
+    | "villacim"
+    | "akdenizvillam"
     | "villakalkan"
     | "yazlikvillaci"
     | "kvt";
@@ -1405,13 +1408,44 @@ async function scrapeBoceksoft(
 }
 
 const VILLAVILLAM_API = "https://api.villavillam.com.tr";
+const VILLACIM_API = "https://api.villacim.com.tr";
 
-function looksLikeVillavillam(pageUrl: string): boolean {
+type VillaApiSiteConfig = {
+  apiHost: string;
+  origin: string;
+  hostKey: "villavillam" | "villacim";
+};
+
+function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
   try {
-    return normalizeHost(new URL(pageUrl).hostname).includes("villavillam");
+    const host = normalizeHost(new URL(pageUrl).hostname);
+    if (host.includes("villavillam")) {
+      return {
+        apiHost: VILLAVILLAM_API,
+        origin: "https://www.villavillam.com.tr",
+        hostKey: "villavillam",
+      };
+    }
+    if (host.includes("villacim")) {
+      return {
+        apiHost: VILLACIM_API,
+        origin: "https://www.villacim.com.tr",
+        hostKey: "villacim",
+      };
+    }
   } catch {
-    return false;
+    return null;
   }
+  return null;
+}
+
+function looksLikeVillaApiSite(pageUrl: string): boolean {
+  return resolveVillaApiSite(pageUrl) !== null;
+}
+
+/** @deprecated resolveVillaApiSite kullanın */
+function looksLikeVillavillam(pageUrl: string): boolean {
+  return looksLikeVillaApiSite(pageUrl);
 }
 
 function currencyFromVillavillamSymbol(symbol: string | null | undefined): {
@@ -1425,22 +1459,28 @@ function currencyFromVillavillamSymbol(symbol: string | null | undefined): {
   return { apiCurrency: "TL", currency: "TL" };
 }
 
-function extractVillavillamEntity(html: string): {
+function extractVillaApiEntity(html: string): {
   entityId: string;
   title: string | null;
   symbol: string | null;
+  currencyCode: string | null;
   damageDeposit: number | null;
   result: Record<string, unknown>;
 } | null {
   const data = parseNextDataJson(html);
   if (!data || typeof data !== "object") return null;
-  const result = (data as { props?: { pageProps?: { data?: { result?: unknown } } } })
-    .props?.pageProps?.data?.result;
-  if (!result || typeof result !== "object") return null;
-  const o = result as Record<string, unknown>;
-  const entityId = String(o.id ?? "").trim();
+  const dataNode = (
+    data as { props?: { pageProps?: { data?: Record<string, unknown> } } }
+  ).props?.pageProps?.data;
+  if (!dataNode || typeof dataNode !== "object") return null;
+  const nested = dataNode.result;
+  const result =
+    nested && typeof nested === "object"
+      ? (nested as Record<string, unknown>)
+      : dataNode;
+  const entityId = String(result.id ?? "").trim();
   if (!entityId) return null;
-  const hasarRaw = o.hasar;
+  const hasarRaw = result.hasar ?? result.depozito;
   const damageDeposit =
     typeof hasarRaw === "number"
       ? hasarRaw
@@ -1450,15 +1490,39 @@ function extractVillavillamEntity(html: string): {
   return {
     entityId,
     title:
-      typeof o.baslik === "string"
-        ? o.baslik
-        : typeof o.title === "string"
-          ? o.title
+      typeof result.baslik === "string"
+        ? result.baslik
+        : typeof result.title === "string"
+          ? result.title
           : null,
-    symbol: typeof o.Symbol === "string" ? o.Symbol : null,
-    damageDeposit: Number.isFinite(damageDeposit) && damageDeposit > 0 ? damageDeposit : null,
-    result: o,
+    symbol: typeof result.Symbol === "string" ? result.Symbol : null,
+    currencyCode:
+      typeof result.CurrencyCode === "string" ? result.CurrencyCode : null,
+    damageDeposit:
+      Number.isFinite(damageDeposit) && damageDeposit > 0 ? damageDeposit : null,
+    result,
   };
+}
+
+/** @deprecated extractVillaApiEntity kullanın */
+function extractVillavillamEntity(html: string) {
+  return extractVillaApiEntity(html);
+}
+
+function apiCurrencyParam(
+  site: VillaApiSiteConfig,
+  symbol: string | null | undefined,
+  currencyCode: string | null | undefined
+): string {
+  const { apiCurrency } = currencyFromVillavillamSymbol(symbol);
+  if (site.hostKey === "villacim") {
+    if (currencyCode === "TRY" || apiCurrency === "TL") return "tl";
+    if (apiCurrency === "EUR") return "eur";
+    if (apiCurrency === "USD") return "dolar";
+    if (apiCurrency === "GBP") return "gbp";
+    return "tl";
+  }
+  return apiCurrency;
 }
 
 function parseVillavillamAvailabilityFromResult(
@@ -1486,24 +1550,45 @@ function parseVillavillamAvailabilityFromResult(
   return null;
 }
 
-async function fetchVillavillamJson<T>(
+async function fetchVillaApiJson<T>(
+  site: VillaApiSiteConfig,
   pathAndQuery: string,
   referer: string
 ): Promise<T> {
-  const response = await fetch(`${VILLAVILLAM_API}${pathAndQuery}`, {
+  const response = await fetch(`${site.apiHost}${pathAndQuery}`, {
     headers: {
       "User-Agent": BROWSER_UA,
       Accept: "application/json, text/plain, */*",
-      Origin: "https://www.villavillam.com.tr",
+      Origin: site.origin,
       Referer: referer,
       "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+      "sec-ch-ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-site",
     },
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error(`Villavillam API ${response.status}: ${pathAndQuery}`);
+    throw new Error(`Villa API ${response.status}: ${pathAndQuery}`);
   }
   return (await response.json()) as T;
+}
+
+/** @deprecated fetchVillaApiJson kullanın */
+async function fetchVillavillamJson<T>(
+  pathAndQuery: string,
+  referer: string
+): Promise<T> {
+  return fetchVillaApiJson<T>(
+    {
+      apiHost: VILLAVILLAM_API,
+      origin: "https://www.villavillam.com.tr",
+      hostKey: "villavillam",
+    },
+    pathAndQuery,
+    referer
+  );
 }
 
 function parseVillavillamPriceList(
@@ -1620,36 +1705,44 @@ export async function scrapeVillavillamFromPage(
   html: string,
   warnings: string[]
 ): Promise<ScrapedVillaPage | null> {
-  if (!looksLikeVillavillam(pageUrl)) return null;
+  const site = resolveVillaApiSite(pageUrl);
+  if (!site) return null;
 
-  const entity = extractVillavillamEntity(html);
+  const entity = extractVillaApiEntity(html);
   if (!entity) {
-    warnings.push("Villavillam __NEXT_DATA__ villa id bulunamadı");
+    warnings.push(`${site.hostKey} __NEXT_DATA__ villa id bulunamadı`);
     return null;
   }
 
-  const { apiCurrency, currency: symbolCurrency } =
-    currencyFromVillavillamSymbol(entity.symbol);
+  const apiCurrency = apiCurrencyParam(
+    site,
+    entity.symbol,
+    entity.currencyCode
+  );
+  const { currency: symbolCurrency } = currencyFromVillavillamSymbol(
+    entity.symbol
+  );
 
   await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
   let priceRows: unknown[] = [];
   try {
-    const priceJson = await fetchVillavillamJson<{
+    const priceJson = await fetchVillaApiJson<{
       data?: unknown[];
       error?: string;
     }>(
+      site,
       `/PriceList?id=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}&start2=`,
       pageUrl
     );
     priceRows = Array.isArray(priceJson.data) ? priceJson.data : [];
     if (priceRows.length === 0 && priceJson.error) {
-      warnings.push(`Villavillam PriceList: ${priceJson.error}`);
+      warnings.push(`${site.hostKey} PriceList: ${priceJson.error}`);
     }
   } catch (error) {
     warnings.push(
       error instanceof Error
-        ? `Villavillam PriceList başarısız: ${error.message}`
-        : "Villavillam PriceList başarısız"
+        ? `${site.hostKey} PriceList başarısız: ${error.message}`
+        : `${site.hostKey} PriceList başarısız`
     );
   }
 
@@ -1663,10 +1756,10 @@ export async function scrapeVillavillamFromPage(
   for (const query of availabilityQueries) {
     if (availability && availability.occupancyByDateKey.size > 0) break;
     try {
-      const availJson = await fetchVillavillamJson<{
+      const availJson = await fetchVillaApiJson<{
         Symbol?: string;
         data?: Record<string, unknown>;
-      }>(query, pageUrl);
+      }>(site, query, pageUrl);
       availability = parseVillavillamAvailability(availJson);
     } catch {
       // Sonraki parametreyle dene
@@ -1681,7 +1774,7 @@ export async function scrapeVillavillamFromPage(
 
   if (!availability || availability.occupancyByDateKey.size === 0) {
     warnings.push(
-      "Villavillam Availability API boş döndü; sayfa verisinden müsaitlik okunamadı"
+      `${site.hostKey} Availability API boş döndü; sayfa verisinden müsaitlik okunamadı`
     );
   }
 
@@ -1704,7 +1797,7 @@ export async function scrapeVillavillamFromPage(
     }));
     if (periods.length > 0) {
       warnings.push(
-        "Villavillam dönem listesi boştu; günlük fiyatlardan birleştirildi"
+        `${site.hostKey} dönem listesi boştu; günlük fiyatlardan birleştirildi`
       );
     }
   }
@@ -1715,14 +1808,246 @@ export async function scrapeVillavillamFromPage(
     availability?.occupancyByDateKey ?? new Map<string, VillaDayOccupancy>();
   if (occupancyByDateKey.size === 0) {
     warnings.push(
-      "Villavillam fiyatları alındı; müsaitlik takvimi bulunamadı (tüm günler boş kabul edildi)"
+      `${site.hostKey} fiyatları alındı; müsaitlik takvimi bulunamadı (tüm günler boş kabul edildi)`
     );
   }
 
   return {
     sourceHost: normalizeHost(new URL(pageUrl).hostname),
-    strategy: "villavillam",
+    strategy: site.hostKey === "villacim" ? "villacim" : "villavillam",
     pageTitle: entity.title ?? extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
+function parseJsonValueAt(html: string, start: number): unknown | null {
+  const open = html[start];
+  if (open !== "{" && open !== "[") return null;
+  const close = open === "{" ? "}" : "]";
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i]!;
+    if (inString) {
+      if (escape) escape = false;
+      else if (ch === "\\") escape = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === open) depth++;
+    else if (ch === close) {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(html.slice(start, i + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function extractEmbeddedJsonField(
+  html: string,
+  objectMarker: string,
+  field: string
+): unknown | null {
+  const objectPos = html.indexOf(objectMarker);
+  if (objectPos === -1) return null;
+  const fieldToken = `"${field}":`;
+  const fieldPos = html.indexOf(fieldToken, objectPos);
+  if (fieldPos === -1) return null;
+  let i = fieldPos + fieldToken.length;
+  while (i < html.length && /\s/.test(html[i]!)) i++;
+  return parseJsonValueAt(html, i);
+}
+
+/** Next.js RSC flight payload içindeki kaçışlı JSON ({\"key\":...}). */
+function parseFlightEscapedJsonValueAt(
+  html: string,
+  start: number
+): unknown | null {
+  const open = html[start];
+  if (open !== "{" && open !== "[") return null;
+  const close = open === "{" ? "}" : "]";
+  let depth = 0;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i]!;
+    if (ch === open) depth++;
+    else if (ch === close) {
+      depth--;
+      if (depth === 0) {
+        const raw = html.slice(start, i + 1);
+        const normalized = raw.replace(/\\+"/g, '"');
+        try {
+          return JSON.parse(normalized);
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function findAkdenizvillamEmbeddedFieldStart(
+  html: string,
+  field: string
+): number {
+  const markers = [`\\"${field}\\":`, `"${field}":`];
+  for (const marker of markers) {
+    const pos = html.indexOf(marker);
+    if (pos >= 0) {
+      let i = pos + marker.length;
+      while (i < html.length && /\s/.test(html[i]!)) i++;
+      return i;
+    }
+  }
+  return -1;
+}
+
+function looksLikeAkdenizvillam(pageUrl: string): boolean {
+  try {
+    return normalizeHost(new URL(pageUrl).hostname).includes("akdenizvillam");
+  } catch {
+    return false;
+  }
+}
+
+export function parseAkdenizvillamPriceRows(
+  rows: unknown[],
+  defaultDamageDeposit?: number | null
+): MappedVillaPricePeriod[] {
+  const periods: MappedVillaPricePeriod[] = [];
+  let sourceId = 1;
+
+  for (const raw of rows) {
+    if (!raw || typeof raw !== "object") continue;
+    const o = raw as Record<string, unknown>;
+    const startDate = parseIsoLikeDate(String(o.check_in ?? ""));
+    const endDate = parseIsoLikeDate(String(o.check_out ?? ""));
+    const nightlyPrice = Number(o.price);
+    if (!startDate || !endDate || compareDates(startDate, endDate) > 0) continue;
+    if (!Number.isFinite(nightlyPrice) || nightlyPrice <= 0) continue;
+
+    const damageDeposit = Number(o.damage_deposit);
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate,
+        endDate,
+        nightlyPrice,
+        currency: "TL",
+        minStayNights: Number.isFinite(Number(o.min_stay))
+          ? Number(o.min_stay)
+          : null,
+        damageDeposit:
+          Number.isFinite(damageDeposit) && damageDeposit > 0
+            ? damageDeposit
+            : (defaultDamageDeposit ?? null),
+        damageDepositCurrency: "TL",
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+export function parseAkdenizvillamAvailability(
+  items: unknown[]
+): Map<string, VillaDayOccupancy> {
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+
+  for (const raw of items) {
+    if (!raw || typeof raw !== "object") continue;
+    const wrapper = raw as Record<string, unknown>;
+    const payload =
+      wrapper.json && typeof wrapper.json === "object"
+        ? (wrapper.json as Record<string, unknown>)
+        : wrapper;
+    const status = Number(payload.availabilitys_status ?? payload.status ?? 1);
+    if (status !== 1) continue;
+
+    const checkIn = parseIsoLikeDate(String(payload.check_in ?? ""));
+    const checkOut = parseIsoLikeDate(String(payload.check_out ?? ""));
+    if (!checkIn || !checkOut) continue;
+
+    const cursor = new Date(checkIn);
+    while (compareDates(cursor, checkOut) < 0) {
+      occupancyByDateKey.set(toDateKey(cursor), "BOOKED");
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  return occupancyByDateKey;
+}
+
+function scrapeAkdenizvillamFromHtml(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): ScrapedVillaPage | null {
+  if (!looksLikeAkdenizvillam(pageUrl)) return null;
+  if (!html.includes("prices_data")) return null;
+
+  const priceFieldStart = findAkdenizvillamEmbeddedFieldStart(html, "prices_data");
+  const priceWrapper =
+    priceFieldStart >= 0
+      ? parseFlightEscapedJsonValueAt(html, priceFieldStart)
+      : null;
+  const priceRows =
+    priceWrapper &&
+    typeof priceWrapper === "object" &&
+    Array.isArray((priceWrapper as { json?: unknown }).json)
+      ? ((priceWrapper as { json: unknown[] }).json ?? [])
+      : [];
+
+  const periods = parseAkdenizvillamPriceRows(priceRows);
+
+  let occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const availFieldStart = findAkdenizvillamEmbeddedFieldStart(
+    html,
+    "availabilitys_data"
+  );
+  if (availFieldStart >= 0) {
+    const parsed = parseFlightEscapedJsonValueAt(html, availFieldStart);
+    if (Array.isArray(parsed)) {
+      occupancyByDateKey = parseAkdenizvillamAvailability(parsed);
+    }
+  }
+
+  if (periods.length === 0) {
+    const agg = html.match(
+      /"lowPrice"\s*:\s*"(\d+)"[\s\S]*?"highPrice"\s*:\s*"(\d+)"/i
+    );
+    if (agg) {
+      warnings.push(
+        "Akdenizvillam periyot listesi okunamadı; schema.org min-max bulundu ancak dönem üretilemedi"
+      );
+    }
+    return null;
+  }
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "Akdenizvillam fiyatları alındı; müsaitlik listesi boş veya okunamadı"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "akdenizvillam",
+    pageTitle: extractPageTitle(html),
     periods,
     occupancyByDateKey,
     warnings,
@@ -2178,6 +2503,13 @@ export async function scrapeExternalVillaPage(
   );
   if (villavillam) return villavillam;
 
+  const akdenizvillam = scrapeAkdenizvillamFromHtml(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (akdenizvillam) return akdenizvillam;
+
   const villakalkan = scrapeVillakalkanFromHtml(
     parsed.toString(),
     html,
@@ -2221,6 +2553,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, akdenizvillam.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
