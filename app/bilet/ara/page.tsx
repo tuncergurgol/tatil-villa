@@ -12,13 +12,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function BiletAraPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
-  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
+export default async function BiletAraPage() {
+  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl, siteHostname } =
     await getBiletallPageContext();
   if (!enabled) redirect("/");
 
@@ -43,7 +38,7 @@ export default async function BiletAraPage({
           credentials={credentials}
           routes={routes}
           publicOrigin={publicOrigin}
-          forwardQuery={params}
+          siteHostname={siteHostname}
           title="Biletall — Bilet Ara"
           enlarged
         />

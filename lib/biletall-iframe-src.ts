@@ -62,7 +62,7 @@ export function normalizeIframeSrcUrl(input: string) {
     const url = new URL(trimmed);
     const params = new URLSearchParams();
     for (const [key, value] of url.searchParams.entries()) {
-      params.set(key, value.trim());
+      params.set(key, value);
     }
     url.search = params.toString();
     return url.toString();

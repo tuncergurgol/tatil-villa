@@ -19,7 +19,7 @@ type BiletSonucPageProps = {
 
 export default async function BiletSonucPage({ searchParams }: BiletSonucPageProps) {
   const params = await searchParams;
-  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
+  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl, siteHostname } =
     await getBiletallPageContext();
   if (!enabled) redirect("/");
 
@@ -39,7 +39,8 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
           credentials={credentials}
           routes={routes}
           publicOrigin={publicOrigin}
-          forwardQuery={params}
+          siteHostname={siteHostname}
+          forwardSessionQuery
           title="Biletall — Bilet Sonuç"
         />
       ) : (

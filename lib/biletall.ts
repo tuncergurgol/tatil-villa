@@ -65,13 +65,19 @@ export function resolveBiletallIframeSrc(
   credentials?: BiletallCredentials,
   routes: BiletallRouteRecord[] = DEFAULT_BILETALL_ROUTES,
   publicOrigin = resolveBiletallPublicOrigin(),
+  siteHostname?: string,
   forwardQuery?: Record<string, string | string[] | undefined>
 ) {
   const route = routes.find((item) => item.kind === kind);
   const custom = sanitizeBiletallIframeSrc(route?.customIframeSrc);
   let src: string;
   if (custom) {
-    const callbacks = getBiletallCallbacks(routes, publicOrigin, undefined, kind);
+    const callbacks = getBiletallCallbacks(
+      routes,
+      publicOrigin,
+      siteHostname,
+      kind
+    );
     src = syncBiletallCallbackParamsInSrc(
       custom,
       callbacks,
@@ -85,7 +91,8 @@ export function resolveBiletallIframeSrc(
       portalSlug,
       credentials,
       routes,
-      publicOrigin
+      publicOrigin,
+      siteHostname
     );
   }
   return appendBiletallForwardQuery(src, forwardQuery);
@@ -96,11 +103,17 @@ export function buildBiletallIframeSrc(
   portalSlug?: string | null,
   credentials?: BiletallCredentials,
   routes: BiletallRouteRecord[] = DEFAULT_BILETALL_ROUTES,
-  publicOrigin = resolveBiletallPublicOrigin()
+  publicOrigin = resolveBiletallPublicOrigin(),
+  siteHostname?: string
 ) {
   const slug = normalizeBiletallPortalSlug(portalSlug);
   const page = IFRAME_PAGES[kind];
-  const callbacks = getBiletallCallbacks(routes, publicOrigin, undefined, kind);
+  const callbacks = getBiletallCallbacks(
+    routes,
+    publicOrigin,
+    siteHostname,
+    kind
+  );
   const params = new URLSearchParams(callbacks);
 
   const username = credentials?.username?.trim();

@@ -73,7 +73,7 @@ const CALLBACK_PARAM_KEYS = [
   "BiletGosterUrl",
 ] as const;
 
-const RESERVED_IFRAME_QUERY_KEYS = new Set([
+export const BILETALL_RESERVED_IFRAME_QUERY_KEYS = new Set([
   "AramaUrl",
   "IslemUrl",
   "BiletGosterimUrl",
@@ -82,6 +82,38 @@ const RESERVED_IFRAME_QUERY_KEYS = new Set([
   "KullaniciAdi",
   "Sifre",
 ]);
+
+/** Biletall yönlendirmesindeki oturum parametrelerini bozmadan iframe src'ye ekler. */
+export function filterBiletallForwardSearch(rawSearch: string) {
+  const query = rawSearch.startsWith("?") ? rawSearch.slice(1) : rawSearch;
+  if (!query) return "";
+
+  const parts: string[] = [];
+  for (const segment of query.split("&")) {
+    if (!segment) continue;
+    const separatorIndex = segment.indexOf("=");
+    const rawKey =
+      separatorIndex === -1
+        ? segment
+        : segment.slice(0, separatorIndex);
+    let key = rawKey;
+    try {
+      key = decodeURIComponent(rawKey.replace(/\+/g, " "));
+    } catch {
+      key = rawKey;
+    }
+    if (BILETALL_RESERVED_IFRAME_QUERY_KEYS.has(key)) continue;
+    parts.push(segment);
+  }
+
+  return parts.join("&");
+}
+
+export function appendRawBiletallForwardSearch(src: string, rawSearch: string) {
+  const forward = filterBiletallForwardSearch(rawSearch);
+  if (!forward) return src;
+  return `${src}${src.includes("?") ? "&" : "?"}${forward}`;
+}
 
 export function syncBiletallCallbackParamsInSrc(
   src: string,
@@ -125,7 +157,7 @@ export function appendBiletallForwardQuery(
     const url = new URL(src);
 
     for (const [key, value] of Object.entries(searchParams)) {
-      if (!value || RESERVED_IFRAME_QUERY_KEYS.has(key)) continue;
+      if (!value || BILETALL_RESERVED_IFRAME_QUERY_KEYS.has(key)) continue;
 
       if (Array.isArray(value)) {
         url.searchParams.delete(key);

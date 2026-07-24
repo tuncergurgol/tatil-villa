@@ -11,13 +11,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function BiletSatinalPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
-  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl } =
+export default async function BiletSatinalPage() {
+  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl, siteHostname } =
     await getBiletallPageContext();
   if (!enabled) redirect("/");
 
@@ -34,7 +29,8 @@ export default async function BiletSatinalPage({
         credentials={credentials}
         routes={routes}
         publicOrigin={publicOrigin}
-        forwardQuery={params}
+        siteHostname={siteHostname}
+        forwardSessionQuery
         title="Biletall — Bilet Satın Al"
       />
     </BiletShell>

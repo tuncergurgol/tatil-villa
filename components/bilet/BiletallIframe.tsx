@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { Bus, Plane } from "lucide-react";
+import { appendRawBiletallForwardSearch } from "@/lib/biletall-callbacks";
 import {
   getBiletallIframeMeta,
   resolveBiletallIframeSrc,
@@ -13,9 +17,11 @@ type BiletallIframeProps = {
   credentials?: BiletallCredentials;
   routes?: BiletallRouteRecord[];
   publicOrigin?: string;
+  siteHostname?: string;
   title: string;
   enlarged?: boolean;
-  forwardQuery?: Record<string, string | string[] | undefined>;
+  /** Biletall yönlendirmesindeki oturum parametrelerini tarayıcıdan ham olarak ilet. */
+  forwardSessionQuery?: boolean;
 };
 
 const FRAME_LAYOUT: Record<
@@ -35,21 +41,42 @@ export default function BiletallIframe({
   credentials,
   routes,
   publicOrigin,
+  siteHostname,
   title,
   enlarged = false,
-  forwardQuery,
+  forwardSessionQuery = false,
 }: BiletallIframeProps) {
   const meta = getBiletallIframeMeta(kind);
   const layout =
-    enlarged && kind === "ara" ? { ...FRAME_LAYOUT.ara, ...ENLARGED_ARA_LAYOUT } : FRAME_LAYOUT[kind];
-  const src = resolveBiletallIframeSrc(
-    kind,
-    portalSlug,
-    credentials,
-    routes,
-    publicOrigin,
-    forwardQuery
+    enlarged && kind === "ara"
+      ? { ...FRAME_LAYOUT.ara, ...ENLARGED_ARA_LAYOUT }
+      : FRAME_LAYOUT[kind];
+
+  const baseSrc = useMemo(
+    () =>
+      resolveBiletallIframeSrc(
+        kind,
+        portalSlug,
+        credentials,
+        routes,
+        publicOrigin,
+        siteHostname
+      ),
+    [kind, portalSlug, credentials, routes, publicOrigin, siteHostname]
   );
+
+  const [src, setSrc] = useState<string | null>(
+    forwardSessionQuery ? null : baseSrc
+  );
+
+  useEffect(() => {
+    if (!forwardSessionQuery) {
+      setSrc(baseSrc);
+      return;
+    }
+
+    setSrc(appendRawBiletallForwardSearch(baseSrc, window.location.search));
+  }, [baseSrc, forwardSessionQuery]);
 
   return (
     <div
@@ -78,22 +105,31 @@ export default function BiletallIframe({
         </div>
       ) : null}
 
-      <iframe
-        id={meta.id}
-        title={title}
-        src={src}
-        scrolling={meta.scrolling}
-        className="block w-full border-0 bg-white"
-        style={{
-          margin: 0,
-          width: "100%",
-          minHeight: layout.height,
-          height: `${layout.height}px`,
-          ...(enlarged ? { zoom: 1.12 } : {}),
-        }}
-        allow="payment *"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
+      {src ? (
+        <iframe
+          id={meta.id}
+          title={title}
+          src={src}
+          scrolling={meta.scrolling}
+          className="block w-full border-0 bg-white"
+          style={{
+            margin: 0,
+            width: "100%",
+            minHeight: layout.height,
+            height: `${layout.height}px`,
+            ...(enlarged ? { zoom: 1.12 } : {}),
+          }}
+          allow="payment *"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      ) : (
+        <div
+          className="flex items-center justify-center bg-white text-sm font-medium text-slate-500"
+          style={{ minHeight: layout.height, height: `${layout.height}px` }}
+        >
+          Bilet ekranı yükleniyor…
+        </div>
+      )}
     </div>
   );
 }
