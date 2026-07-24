@@ -3,7 +3,7 @@ import { parseBiletallRoutesJson } from "@/lib/biletall-routes";
 import {
   resolveBiletallRequestHostname,
   resolveBiletallRequestOrigin,
-} from "@/lib/biletall-callbacks";
+} from "@/lib/biletall-request-origin.server";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export async function getBiletallPageContext() {
