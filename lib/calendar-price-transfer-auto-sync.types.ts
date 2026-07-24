@@ -94,3 +94,51 @@ export function criteriaToSyncFlags(
     link3: set.has("link3"),
   };
 }
+
+function nonEmptyStringField(field: string) {
+  return { [field]: { not: null, notIn: [""] } } as const;
+}
+
+/** Otomatik güncellemede yalnızca seçilen kaynağı olan villalar. */
+export function buildVillaWhereForAutoUpdateCriteria(
+  criteria: CalendarPriceTransferSyncCriteria
+) {
+  const or: Record<string, unknown>[] = [];
+
+  if (criteria.whatsapp) {
+    or.push(nonEmptyStringField("whatsappGroupId"));
+  }
+  if (criteria.link1) {
+    or.push(nonEmptyStringField("externalSyncUrl1"));
+  }
+  if (criteria.link2) {
+    or.push(nonEmptyStringField("externalSyncUrl2"));
+  }
+  if (criteria.link3) {
+    or.push(nonEmptyStringField("externalSyncUrl3"));
+  }
+  if (criteria.ical) {
+    or.push({
+      icalSources: {
+        some: {
+          NOT: {
+            name: {
+              in: [
+                "Harici Sync 1",
+                "Harici Sync 2",
+                "Harici Sync 3",
+                "Harici Sync 4",
+              ],
+            },
+          },
+        },
+      },
+    });
+  }
+
+  if (or.length === 0) {
+    return {};
+  }
+
+  return { OR: or };
+}

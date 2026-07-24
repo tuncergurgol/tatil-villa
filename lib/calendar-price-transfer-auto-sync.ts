@@ -1,16 +1,18 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
+  buildVillaWhereForAutoUpdateCriteria,
   clampAutoUpdateInterval,
   criteriaToSyncFlags,
   parseCalendarPriceTransferCriteria,
   type CalendarPriceTransferAutoUpdateSettings,
 } from "@/lib/calendar-price-transfer-auto-sync.types";
 import { runCalendarPriceTransferBatchSync } from "@/lib/calendar-price-transfer-sync";
-import {
-  getAutoUpdateIntervalMs,
-  shouldRunCalendarPriceTransferAutoUpdate,
-} from "@/lib/calendar-price-transfer-auto-sync.shared";
+import { getAutoUpdateIntervalMs } from "@/lib/calendar-price-transfer-auto-sync.shared";
+
+/** Her cron tetiklemesinde işlenecek villa üst sınırı (toplu scrape süresi). */
+const AUTO_UPDATE_BATCH_SIZE = 40;
 
 export type {
   CalendarPriceTransferAutoUpdatePeriod,
@@ -22,6 +24,7 @@ export type {
 export {
   CALENDAR_PRICE_TRANSFER_CRITERIA,
   ALL_CALENDAR_PRICE_TRANSFER_CRITERIA,
+  buildVillaWhereForAutoUpdateCriteria,
   clampAutoUpdateInterval,
   criteriaToSyncFlags,
   getAutoUpdateIntervalMs,
@@ -59,20 +62,46 @@ export async function runCalendarPriceTransferAutoUpdate(options?: {
     };
   }
 
-  if (!options?.force && !shouldRunCalendarPriceTransferAutoUpdate(config)) {
+  const criteria = criteriaToSyncFlags(config.criteria);
+  const criteriaWhere = buildVillaWhereForAutoUpdateCriteria(criteria);
+  const intervalMs = getAutoUpdateIntervalMs(config.period, config.interval);
+  const dueBefore = options?.force
+    ? new Date()
+    : new Date(Date.now() - intervalMs);
+
+  const andFilters: Prisma.VillaWhereInput[] = [];
+  if (Object.keys(criteriaWhere).length > 0) {
+    andFilters.push(criteriaWhere);
+  }
+  andFilters.push({
+    OR: [
+      { periodImportLog: { is: null } },
+      { periodImportLog: { is: { attemptedAt: { lt: dueBefore } } } },
+    ],
+  });
+
+  const where: Prisma.VillaWhereInput = {
+    active: true,
+    AND: andFilters,
+  };
+
+  const villas = await prisma.villa.findMany({
+    where,
+    select: { id: true },
+    orderBy: [
+      { periodImportLog: { attemptedAt: { sort: "asc", nulls: "first" } } },
+      { villaId: "asc" },
+    ],
+    take: options?.force ? undefined : AUTO_UPDATE_BATCH_SIZE,
+  });
+
+  if (villas.length === 0) {
     return {
       ok: true,
       skipped: true,
-      message: "Henüz güncelleme zamanı gelmedi",
+      message: "Güncellenecek villa yok (seçilen kriterlere uygun villalar güncel)",
     };
   }
-
-  const criteria = criteriaToSyncFlags(config.criteria);
-  const villas = await prisma.villa.findMany({
-    where: { active: true },
-    select: { id: true },
-    orderBy: [{ villaId: "asc" }, { name: "asc" }],
-  });
 
   let okCount = 0;
   let failCount = 0;
@@ -93,6 +122,11 @@ export async function runCalendarPriceTransferAutoUpdate(options?: {
     data: { calendarPriceAutoUpdateLastRunAt: new Date() },
   });
 
+  const batchNote =
+    villas.length >= AUTO_UPDATE_BATCH_SIZE && !options?.force
+      ? ` (bu turda ${AUTO_UPDATE_BATCH_SIZE} villa; kalanlar sonraki cron'da)`
+      : "";
+
   return {
     ok: failCount === 0,
     skipped: false,
@@ -101,7 +135,7 @@ export async function runCalendarPriceTransferAutoUpdate(options?: {
     failCount,
     message:
       failCount > 0
-        ? `${okCount} villa güncellendi, ${failCount} hatada sorun oluştu. ${samples.join(" | ")}`
-        : `${okCount} villa otomatik güncellendi.`,
+        ? `${okCount} villa güncellendi, ${failCount} hatada sorun oluştu${batchNote}. ${samples.join(" | ")}`
+        : `${okCount} villa otomatik güncellendi${batchNote}.`,
   };
 }

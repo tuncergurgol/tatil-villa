@@ -397,7 +397,12 @@ function AutoUpdateModal({
           <div>
             <h2 className="text-lg font-bold text-gray-900">Otomatik Güncelleme</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Seçilen kriterlere göre villalar periyodik güncellenir.
+              Seçilen kriterlere göre villalar periyodik güncellenir. Sunucuda{" "}
+              <code className="rounded bg-gray-100 px-1 text-xs">
+                /api/cron/calendar-price-transfer
+              </code>{" "}
+              cron işi ve <code className="rounded bg-gray-100 px-1 text-xs">CRON_SECRET</code>{" "}
+              gerekir (kurulum: <code className="text-xs">04-setup-cron.sh</code>).
             </p>
           </div>
           <button
@@ -497,7 +502,12 @@ function AutoUpdateModal({
                 timeStyle: "short",
               }).format(new Date(initial.lastRunAt))}
             </p>
-          ) : null}
+          ) : (
+            <p className="text-xs text-amber-700">
+              Henüz otomatik çalışma kaydı yok. Cron kurulu değilse güncelleme
+              başlamaz.
+            </p>
+          )}
 
           {error ? (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
