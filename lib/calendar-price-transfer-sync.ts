@@ -19,22 +19,13 @@ import {
   parseWhatsappCalendarMessage,
 } from "@/lib/whatsapp-calendar-parser";
 
-export type CalendarPriceTransferSyncCriteria = {
-  whatsapp: boolean;
-  ical: boolean;
-  link1: boolean;
-  link2: boolean;
-  link3: boolean;
-};
+import {
+  type CalendarPriceTransferSyncCriteria,
+  ALL_CALENDAR_PRICE_TRANSFER_CRITERIA,
+} from "@/lib/calendar-price-transfer-auto-sync.types";
 
-export const ALL_CALENDAR_PRICE_TRANSFER_CRITERIA: CalendarPriceTransferSyncCriteria =
-  {
-    whatsapp: true,
-    ical: true,
-    link1: true,
-    link2: true,
-    link3: true,
-  };
+export type { CalendarPriceTransferSyncCriteria } from "@/lib/calendar-price-transfer-auto-sync.types";
+export { ALL_CALENDAR_PRICE_TRANSFER_CRITERIA } from "@/lib/calendar-price-transfer-auto-sync.types";
 
 async function loadWhatsappCalendarParserRules() {
   const [phraseRules, dateTrainingRules] = await Promise.all([

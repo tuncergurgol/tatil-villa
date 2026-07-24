@@ -15,13 +15,13 @@ import {
   ALL_CALENDAR_PRICE_TRANSFER_CRITERIA,
   runCalendarPriceTransferBatchSync,
 } from "@/lib/calendar-price-transfer-sync";
+import { getCalendarPriceTransferAutoUpdateSettings } from "@/lib/calendar-price-transfer-auto-sync";
 import {
   clampAutoUpdateInterval,
-  getCalendarPriceTransferAutoUpdateSettings,
   serializeCalendarPriceTransferCriteria,
   type CalendarPriceTransferAutoUpdatePeriod,
   type CalendarPriceTransferCriterionKey,
-} from "@/lib/calendar-price-transfer-auto-sync";
+} from "@/lib/calendar-price-transfer-auto-sync.types";
 import { updateCompanySettings } from "@/lib/queries/company-settings";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 

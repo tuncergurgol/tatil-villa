@@ -26,7 +26,7 @@ import {
   CALENDAR_PRICE_TRANSFER_CRITERIA,
   type CalendarPriceTransferAutoUpdateSettings,
   type CalendarPriceTransferCriterionKey,
-} from "@/lib/calendar-price-transfer-auto-sync";
+} from "@/lib/calendar-price-transfer-auto-sync.types";
 import type {
   CalendarPriceTransferRow,
   CalendarPriceTransferWhatsappGroupOption,
