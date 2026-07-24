@@ -443,11 +443,19 @@ function extractBoceksoftCalendarMeta(html: string): {
   villaId: string | null;
   doviz: string;
 } {
-  const cal = html.match(
-    /<div[^>]+id=["']calendar["'][^>]*data-id=["']([^"']+)["'][^>]*>/i
-  );
+  const cal =
+    html.match(
+      /<div[^>]+id=["']calendar["'][^>]*data-id=["']([^"']+)["'][^>]*>/i
+    ) ??
+    html.match(
+      /id=["']fake-calendar["'][^>]*\bdata-id=["'](\d+)["']/i
+    ) ??
+    html.match(
+      /\bdata-id=["'](\d+)["'][^>]*\bid=["']fake-calendar["']/i
+    );
   const doviz =
     html.match(/id=["']calendar["'][^>]*data-doviz=["']([^"']+)["']/i)?.[1] ??
+    html.match(/fake-calendar[^>]*\bdata-doviz=["']([^"']+)["']/i)?.[1] ??
     "tl";
   return { villaId: cal?.[1] ?? null, doviz };
 }
