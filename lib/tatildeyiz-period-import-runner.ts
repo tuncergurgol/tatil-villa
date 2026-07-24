@@ -3,14 +3,13 @@ import {
   buildDaySnapshotsForPeriod,
   buildOccupancyByDateKey,
   mapTatildeyizPropertyPeriods,
-  mappedPeriodToPeriodData,
 } from "@/lib/tatildeyiz-period-import";
 import { fetchTatildeyizPropertyWithDelay } from "@/lib/tatildeyiz-property";
 import {
   assertTatildeyizVillaSource,
   mapTatildeyizFetchError,
 } from "@/lib/tatildeyiz-villa-source";
-import { dateKeyToDbDate, toDateKey } from "@/lib/villa-period-calendar";
+import { persistVillaPricePeriods } from "@/lib/villa-period-persist";
 
 export type VillaPeriodImportResult = {
   periodCount: number;
@@ -92,35 +91,10 @@ export async function importVillaPeriodsFromTatildeyiz(
     };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.villaPricePeriodDay.deleteMany({ where: { villaId } });
-    await tx.villaPricePeriod.deleteMany({ where: { villaId } });
-
-    for (const mapped of periods) {
-      const periodData = mappedPeriodToPeriodData(mapped);
-      const created = await tx.villaPricePeriod.create({
-        data: {
-          villaId,
-          ...periodData,
-          startDate: dateKeyToDbDate(toDateKey(mapped.startDate)),
-          endDate: dateKeyToDbDate(toDateKey(mapped.endDate)),
-        },
-      });
-
-      const snapshots = buildDaySnapshotsForPeriod(mapped, occupancyByDateKey);
-      if (snapshots.length === 0) continue;
-
-      await tx.villaPricePeriodDay.createMany({
-        data: snapshots.map(({ dateKey, snapshot }) => ({
-          periodId: created.id,
-          villaId,
-          date: dateKeyToDbDate(dateKey),
-          ...snapshot,
-          occupancyStatus: snapshot.occupancyStatus ?? "EMPTY",
-        })),
-        skipDuplicates: true,
-      });
-    }
+  await persistVillaPricePeriods({
+    villaId,
+    periods,
+    occupancyByDateKey,
   });
 
   return {

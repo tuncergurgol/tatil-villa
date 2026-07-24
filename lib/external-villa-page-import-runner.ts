@@ -1,13 +1,12 @@
 import { prisma } from "@/lib/db";
 import {
   buildDaySnapshotsForPeriod,
-  mappedPeriodToPeriodData,
 } from "@/lib/tatildeyiz-period-import";
 import {
   scrapeExternalVillaPage,
   type ScrapedVillaPage,
 } from "@/lib/external-villa-page-scrape";
-import { dateKeyToDbDate, toDateKey } from "@/lib/villa-period-calendar";
+import { persistVillaPricePeriods } from "@/lib/villa-period-persist";
 import type { VillaPeriodImportResult } from "@/lib/tatildeyiz-period-import-runner";
 
 export type ExternalVillaPageImportResult = VillaPeriodImportResult & {
@@ -75,38 +74,10 @@ export async function importVillaPeriodsFromExternalPage(
     };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.villaPricePeriodDay.deleteMany({ where: { villaId } });
-    await tx.villaPricePeriod.deleteMany({ where: { villaId } });
-
-    for (const mapped of scraped.periods) {
-      const periodData = mappedPeriodToPeriodData(mapped);
-      const created = await tx.villaPricePeriod.create({
-        data: {
-          villaId,
-          ...periodData,
-          startDate: dateKeyToDbDate(toDateKey(mapped.startDate)),
-          endDate: dateKeyToDbDate(toDateKey(mapped.endDate)),
-        },
-      });
-
-      const snapshots = buildDaySnapshotsForPeriod(
-        mapped,
-        scraped.occupancyByDateKey
-      );
-      if (snapshots.length === 0) continue;
-
-      await tx.villaPricePeriodDay.createMany({
-        data: snapshots.map(({ dateKey, snapshot }) => ({
-          periodId: created.id,
-          villaId,
-          date: dateKeyToDbDate(dateKey),
-          ...snapshot,
-          occupancyStatus: snapshot.occupancyStatus ?? "EMPTY",
-        })),
-        skipDuplicates: true,
-      });
-    }
+  await persistVillaPricePeriods({
+    villaId,
+    periods: scraped.periods,
+    occupancyByDateKey: scraped.occupancyByDateKey,
   });
 
   return {

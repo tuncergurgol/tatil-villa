@@ -1,3 +1,4 @@
+import { PeriodImportStatus } from "@prisma/client";
 import { WhatsappCalendarMessageStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
@@ -8,6 +9,7 @@ import {
 } from "@/lib/villa-external-sync";
 import { syncVillaIcalSource } from "@/lib/villa-ical-import-service";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { importVillaPeriodsWithFallback } from "@/lib/villa-period-import-with-fallback";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 import {
@@ -168,6 +170,7 @@ export async function runCalendarPriceTransferBatchSync(
     where: { id: villaId },
     select: {
       id: true,
+      slug: true,
       name: true,
       whatsappGroupId: true,
       externalSyncUrl1: true,
@@ -186,6 +189,62 @@ export async function runCalendarPriceTransferBatchSync(
 
   const messages: string[] = [];
   const errors: string[] = [];
+
+  try {
+    const periodResult = await importVillaPeriodsWithFallback(villa.id);
+    const periodMessage = `${periodResult.sourceLabel}: ${periodResult.periodCount} periyot, ${periodResult.dayCount} gün aktarıldı`;
+    messages.push(`Periyot: ${periodMessage}`);
+    await prisma.villaPeriodImportLog.upsert({
+      where: { villaId: villa.id },
+      create: {
+        villaId: villa.id,
+        sourceSlug: villa.slug,
+        status: PeriodImportStatus.SUCCESS,
+        message: periodMessage,
+        periodCount: periodResult.periodCount,
+        dayCount: periodResult.dayCount,
+        bookedDays: periodResult.bookedDays,
+        optionDays: periodResult.optionDays,
+        attemptedAt: new Date(),
+        succeededAt: new Date(),
+      },
+      update: {
+        sourceSlug: villa.slug,
+        status: PeriodImportStatus.SUCCESS,
+        message: periodMessage,
+        periodCount: periodResult.periodCount,
+        dayCount: periodResult.dayCount,
+        bookedDays: periodResult.bookedDays,
+        optionDays: periodResult.optionDays,
+        attemptedAt: new Date(),
+        succeededAt: new Date(),
+      },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Periyot aktarımı başarısız";
+    errors.push(`Periyot: ${message}`);
+    await prisma.villaPeriodImportLog.upsert({
+      where: { villaId: villa.id },
+      create: {
+        villaId: villa.id,
+        sourceSlug: villa.slug,
+        status: PeriodImportStatus.ERROR,
+        message,
+        attemptedAt: new Date(),
+      },
+      update: {
+        sourceSlug: villa.slug,
+        status: PeriodImportStatus.ERROR,
+        message,
+        periodCount: 0,
+        dayCount: 0,
+        bookedDays: 0,
+        optionDays: 0,
+        attemptedAt: new Date(),
+      },
+    });
+  }
 
   if (criteria.whatsapp && villa.whatsappGroupId.trim()) {
     const result = await syncWhatsappForVilla(

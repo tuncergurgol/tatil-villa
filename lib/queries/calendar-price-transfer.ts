@@ -51,6 +51,10 @@ function messageLooksLikeError(message: string, status?: string): boolean {
   const text = message.trim();
   if (!text) return false;
   if (status && /fail|error|hata/i.test(status)) return true;
+  if (/\d+\s*periyot,\s*\d+\s*gün/i.test(text)) return false;
+  if (/aktarıldı|güncellendi|işlendi|başarılı|basarili/i.test(text)) {
+    return false;
+  }
   return /hata|fail|error|başarısız|basarisiz|geçersiz|gecersiz|bulunamadı|bulunamadi/i.test(
     text
   );

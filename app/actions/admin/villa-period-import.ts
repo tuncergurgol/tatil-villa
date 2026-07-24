@@ -4,7 +4,7 @@ import { PeriodImportStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { importVillaPeriodsFromTatildeyiz } from "@/lib/tatildeyiz-period-import-runner";
+import { importVillaPeriodsWithFallback } from "@/lib/villa-period-import-with-fallback";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 
 type ImportActionResult = {
@@ -43,14 +43,14 @@ async function runSingleImport(villa: { id: string; slug: string }) {
   });
 
   try {
-    const result = await importVillaPeriodsFromTatildeyiz(villa.id, villa.slug);
+    const result = await importVillaPeriodsWithFallback(villa.id);
     await prisma.villaPeriodImportLog.upsert({
       where: { villaId: villa.id },
       create: {
         villaId: villa.id,
         sourceSlug: villa.slug,
         status: PeriodImportStatus.SUCCESS,
-        message: "Aktarım başarılı",
+        message: `${result.sourceLabel}: ${result.periodCount} periyot, ${result.dayCount} gün aktarıldı`,
         periodCount: result.periodCount,
         dayCount: result.dayCount,
         bookedDays: result.bookedDays,
@@ -62,7 +62,7 @@ async function runSingleImport(villa: { id: string; slug: string }) {
       update: {
         sourceSlug: villa.slug,
         status: PeriodImportStatus.SUCCESS,
-        message: "Aktarım başarılı",
+        message: `${result.sourceLabel}: ${result.periodCount} periyot, ${result.dayCount} gün aktarıldı`,
         periodCount: result.periodCount,
         dayCount: result.dayCount,
         bookedDays: result.bookedDays,

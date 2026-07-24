@@ -1227,6 +1227,7 @@ function extractVillavillamEntity(html: string): {
   title: string | null;
   symbol: string | null;
   damageDeposit: number | null;
+  result: Record<string, unknown>;
 } | null {
   const data = parseNextDataJson(html);
   if (!data || typeof data !== "object") return null;
@@ -1253,7 +1254,33 @@ function extractVillavillamEntity(html: string): {
           : null,
     symbol: typeof o.Symbol === "string" ? o.Symbol : null,
     damageDeposit: Number.isFinite(damageDeposit) && damageDeposit > 0 ? damageDeposit : null,
+    result: o,
   };
+}
+
+function parseVillavillamAvailabilityFromResult(
+  result: Record<string, unknown>,
+  symbol: string | null | undefined
+) {
+  const candidates: Record<string, unknown>[] = [result];
+  for (const key of ["availability", "takvim", "calendar", "musaitlik"]) {
+    const nested = result[key];
+    if (nested && typeof nested === "object") {
+      candidates.push(nested as Record<string, unknown>);
+    }
+  }
+
+  for (const candidate of candidates) {
+    const parsed = parseVillavillamAvailability({
+      Symbol: symbol ?? undefined,
+      data: candidate,
+    });
+    if (parsed.occupancyByDateKey.size > 0 || parsed.dailyDateKeys.length > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
 }
 
 async function fetchVillavillamJson<T>(
@@ -1426,20 +1453,32 @@ export async function scrapeVillavillamFromPage(
   await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
   let availability: ReturnType<typeof parseVillavillamAvailability> | null =
     null;
-  try {
-    const availJson = await fetchVillavillamJson<{
-      Symbol?: string;
-      data?: Record<string, unknown>;
-    }>(
-      `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&start2=`,
-      pageUrl
-    );
-    availability = parseVillavillamAvailability(availJson);
-  } catch (error) {
+  const availabilityQueries = [
+    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&start2=`,
+    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&start2=&currency=${encodeURIComponent(apiCurrency)}`,
+  ];
+  for (const query of availabilityQueries) {
+    if (availability && availability.occupancyByDateKey.size > 0) break;
+    try {
+      const availJson = await fetchVillavillamJson<{
+        Symbol?: string;
+        data?: Record<string, unknown>;
+      }>(query, pageUrl);
+      availability = parseVillavillamAvailability(availJson);
+    } catch {
+      // Sonraki parametreyle dene
+    }
+  }
+
+  if (!availability || availability.occupancyByDateKey.size === 0) {
+    availability =
+      parseVillavillamAvailabilityFromResult(entity.result, entity.symbol) ??
+      availability;
+  }
+
+  if (!availability || availability.occupancyByDateKey.size === 0) {
     warnings.push(
-      error instanceof Error
-        ? `Villavillam Availability başarısız: ${error.message}`
-        : "Villavillam Availability başarısız"
+      "Villavillam Availability API boş döndü; sayfa verisinden müsaitlik okunamadı"
     );
   }
 
@@ -1473,7 +1512,7 @@ export async function scrapeVillavillamFromPage(
     availability?.occupancyByDateKey ?? new Map<string, VillaDayOccupancy>();
   if (occupancyByDateKey.size === 0) {
     warnings.push(
-      "Villavillam fiyatları alındı; müsaitlik takvimi bulunamadı"
+      "Villavillam fiyatları alındı; müsaitlik takvimi bulunamadı (tüm günler boş kabul edildi)"
     );
   }
 
