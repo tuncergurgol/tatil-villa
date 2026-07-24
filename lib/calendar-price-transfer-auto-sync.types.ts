@@ -102,9 +102,7 @@ function nonEmptyStringField(
     | "externalSyncUrl2"
     | "externalSyncUrl3"
 ) {
-  return {
-    AND: [{ NOT: { [field]: null } }, { [field]: { not: "" } }],
-  };
+  return { [field]: { not: "" } };
 }
 
 /** Otomatik güncellemede yalnızca seçilen kaynağı olan villalar. */
