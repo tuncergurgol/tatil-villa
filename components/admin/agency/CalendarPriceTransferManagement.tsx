@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  Clock,
   Download,
   Loader2,
   RefreshCw,
@@ -14,12 +15,18 @@ import {
   clearCalendarPriceTransferLinkAction,
   clearCalendarPriceTransferWhatsappAction,
   deletePrimaryVillaIcalSourceAction,
+  saveCalendarPriceTransferAutoUpdateAction,
   saveCalendarPriceTransferLinkAction,
   saveCalendarPriceTransferWhatsappAction,
   syncSelectedVillasCalendarPriceTransferAction,
   syncVillaCalendarPriceTransferAction,
   upsertPrimaryVillaIcalSourceAction,
 } from "@/app/actions/admin/calendar-price-transfer";
+import {
+  CALENDAR_PRICE_TRANSFER_CRITERIA,
+  type CalendarPriceTransferAutoUpdateSettings,
+  type CalendarPriceTransferCriterionKey,
+} from "@/lib/calendar-price-transfer-auto-sync";
 import type {
   CalendarPriceTransferRow,
   CalendarPriceTransferWhatsappGroupOption,
@@ -316,12 +323,220 @@ function ConnectionEditorModal({
   );
 }
 
+function AutoUpdateModal({
+  initial,
+  onClose,
+  onSaved,
+}: {
+  initial: CalendarPriceTransferAutoUpdateSettings;
+  onClose: () => void;
+  onSaved: (
+    settings: CalendarPriceTransferAutoUpdateSettings,
+    message: string
+  ) => void;
+}) {
+  const [enabled, setEnabled] = useState(initial.enabled);
+  const [period, setPeriod] = useState<"hour" | "day">(initial.period);
+  const [interval, setInterval] = useState(String(initial.interval));
+  const [criteria, setCriteria] = useState<Set<CalendarPriceTransferCriterionKey>>(
+    new Set(initial.criteria)
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function toggleCriterion(key: CalendarPriceTransferCriterionKey) {
+    setCriteria((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function handleSave() {
+    setError(null);
+    const parsedInterval = Number.parseInt(interval, 10);
+    if (!Number.isFinite(parsedInterval) || parsedInterval < 1 || parsedInterval > 24) {
+      setError("Zaman birimi 1 ile 24 arasında olmalıdır");
+      return;
+    }
+    if (enabled && criteria.size === 0) {
+      setError("En az bir güncelleme kriteri seçin");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await saveCalendarPriceTransferAutoUpdateAction({
+        enabled,
+        period,
+        interval: parsedInterval,
+        criteria: [...criteria],
+      });
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onSaved(
+        {
+          enabled,
+          period,
+          interval: parsedInterval,
+          criteria: [...criteria],
+          lastRunAt: initial.lastRunAt,
+        },
+        result.message || "Ayarlar kaydedildi"
+      );
+      onClose();
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+      <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Otomatik Güncelleme</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Seçilen kriterlere göre villalar periyodik güncellenir.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+            aria-label="Kapat"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-5 py-5">
+          <label className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(event) => setEnabled(event.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-amber-600"
+            />
+            <span className="text-sm font-semibold text-gray-800">
+              Otomatik güncellemeyi etkinleştir
+            </span>
+          </label>
+
+          <div>
+            <p className="mb-2 text-sm font-semibold text-gray-800">
+              Güncelleme Periyodu
+            </p>
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: "hour", label: "Saat" },
+                  { value: "day", label: "Gün" },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setPeriod(item.value)}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                    period === item.value
+                      ? "bg-amber-500 text-white"
+                      : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-gray-800">
+              Zaman Birimi (1–24)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={24}
+              value={interval}
+              onChange={(event) => setInterval(event.target.value)}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Örnek: {period === "hour" ? "6 saatte bir" : "2 günde bir"}
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-2 text-sm font-semibold text-gray-800">
+              Güncelleme Kriterleri
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {CALENDAR_PRICE_TRANSFER_CRITERIA.map((item) => (
+                <label
+                  key={item.key}
+                  className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={criteria.has(item.key)}
+                    onChange={() => toggleCriterion(item.key)}
+                    className="h-4 w-4 rounded border-gray-300 text-amber-600"
+                  />
+                  {item.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {initial.lastRunAt ? (
+            <p className="text-xs text-gray-500">
+              Son otomatik çalışma:{" "}
+              {new Intl.DateTimeFormat("tr-TR", {
+                dateStyle: "short",
+                timeStyle: "short",
+              }).format(new Date(initial.lastRunAt))}
+            </p>
+          ) : null}
+
+          {error ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleSave}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Kaydet
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CalendarPriceTransferManagement({
   rows,
   whatsappGroups,
+  autoUpdate,
 }: {
   rows: CalendarPriceTransferRow[];
   whatsappGroups: CalendarPriceTransferWhatsappGroupOption[];
+  autoUpdate: CalendarPriceTransferAutoUpdateSettings;
 }) {
   const router = useRouter();
   const headerScrollRef = useRef<HTMLDivElement>(null);
@@ -335,6 +550,8 @@ export default function CalendarPriceTransferManagement({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [busyVillaId, setBusyVillaId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorTarget | null>(null);
+  const [autoUpdateOpen, setAutoUpdateOpen] = useState(false);
+  const [autoUpdateSettings, setAutoUpdateSettings] = useState(autoUpdate);
   const [notice, setNotice] = useState<{
     type: "ok" | "error";
     message: string;
@@ -615,6 +832,19 @@ export default function CalendarPriceTransferManagement({
               )}
               Excel İndir ({filteredRows.length})
             </button>
+            <button
+              type="button"
+              onClick={() => setAutoUpdateOpen(true)}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                autoUpdateSettings.enabled
+                  ? "bg-amber-500 text-white hover:bg-amber-600"
+                  : "border border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+              OTOMATİK GÜNCELLE
+              {autoUpdateSettings.enabled ? " (Açık)" : ""}
+            </button>
           </div>
         </div>
 
@@ -854,6 +1084,18 @@ export default function CalendarPriceTransferManagement({
           onSaved={(message) => {
             setNotice({ type: "ok", message });
             refresh();
+          }}
+        />
+      ) : null}
+
+      {autoUpdateOpen ? (
+        <AutoUpdateModal
+          initial={autoUpdateSettings}
+          onClose={() => setAutoUpdateOpen(false)}
+          onSaved={(settings, message) => {
+            setAutoUpdateSettings(settings);
+            setNotice({ type: "ok", message });
+            router.refresh();
           }}
         />
       ) : null}

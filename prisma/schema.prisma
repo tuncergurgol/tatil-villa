@@ -1015,6 +1015,11 @@ model CompanySettings {
   assistantWahaSessionName    String  @default("tatil-asistani")
   assistantWebhookSecret      String  @default("")
   assistantWelcomeMessage     String  @default("") @db.Text
+  calendarPriceAutoUpdateEnabled      Boolean  @default(false)
+  calendarPriceAutoUpdatePeriod       String   @default("hour")
+  calendarPriceAutoUpdateInterval     Int      @default(6)
+  calendarPriceAutoUpdateCriteriaJson String   @default("[\"ical\",\"link1\",\"link2\",\"link3\"]") @db.Text
+  calendarPriceAutoUpdateLastRunAt    DateTime?
 
   updatedAt DateTime @updatedAt
 }

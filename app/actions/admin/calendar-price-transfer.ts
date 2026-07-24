@@ -8,10 +8,21 @@ import {
   isExternalIcalSourceName,
   isExternalSyncSlot,
   setVillaExternalSyncUrl,
-  syncVillaExternalLinkSlot,
   type ExternalSyncSlot,
 } from "@/lib/villa-external-sync";
 import { syncVillaIcalSource } from "@/lib/villa-ical-import-service";
+import {
+  ALL_CALENDAR_PRICE_TRANSFER_CRITERIA,
+  runCalendarPriceTransferBatchSync,
+} from "@/lib/calendar-price-transfer-sync";
+import {
+  clampAutoUpdateInterval,
+  getCalendarPriceTransferAutoUpdateSettings,
+  serializeCalendarPriceTransferCriteria,
+  type CalendarPriceTransferAutoUpdatePeriod,
+  type CalendarPriceTransferCriterionKey,
+} from "@/lib/calendar-price-transfer-auto-sync";
+import { updateCompanySettings } from "@/lib/queries/company-settings";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 
 export type CalendarPriceTransferActionResult = {
@@ -29,76 +40,23 @@ async function revalidateTransferPaths(villaId?: string) {
   }
 }
 
-/** Tek villa: manuel iCal kaynakları + Link 1-3 harici sync (takvim + periyot fiyat). */
+/** Tek villa: seçili kaynaklara göre takvim + periyot fiyat güncellemesi. */
 export async function syncVillaCalendarPriceTransferAction(
   villaId: string
 ): Promise<CalendarPriceTransferActionResult> {
   await requireAdmin();
 
-  const villa = await prisma.villa.findUnique({
-    where: { id: villaId },
-    select: {
-      id: true,
-      name: true,
-      externalSyncUrl1: true,
-      externalSyncUrl2: true,
-      externalSyncUrl3: true,
-      icalSources: {
-        select: { id: true, name: true },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      },
-    },
-  });
-
-  if (!villa) {
-    return { error: "Villa bulunamadı" };
-  }
-
-  const messages: string[] = [];
-  const errors: string[] = [];
-
-  const manualSources = villa.icalSources.filter(
-    (source) => !isExternalIcalSourceName(source.name)
+  const result = await runCalendarPriceTransferBatchSync(
+    villaId,
+    ALL_CALENDAR_PRICE_TRANSFER_CRITERIA
   );
-  for (const source of manualSources) {
-    const result = await syncVillaIcalSource(source.id);
-    if (result.ok) messages.push(`iCal: ${result.message}`);
-    else errors.push(`iCal: ${result.message}`);
-  }
-
-  const slots: Array<{ slot: ExternalSyncSlot; url: string }> = [
-    { slot: 1, url: villa.externalSyncUrl1 },
-    { slot: 2, url: villa.externalSyncUrl2 },
-    { slot: 3, url: villa.externalSyncUrl3 },
-  ];
-
-  for (const item of slots) {
-    if (!item.url.trim()) continue;
-    const result = await syncVillaExternalLinkSlot(villa.id, item.slot);
-    if (result.ok) messages.push(`Link ${item.slot}: ${result.message}`);
-    else errors.push(`Link ${item.slot}: ${result.message}`);
-  }
-
   await revalidateTransferPaths(villaId);
 
-  if (messages.length === 0 && errors.length === 0) {
-    return {
-      error:
-        "Güncellenecek iCal veya Link kaydı yok. Önce bağlantı ekleyin.",
-    };
+  if (!result.ok) {
+    return { error: result.message };
   }
 
-  if (errors.length > 0 && messages.length === 0) {
-    return { error: errors.join(" | ") };
-  }
-
-  return {
-    success: true,
-    message:
-      errors.length > 0
-        ? `${messages.join(" | ")} — Hatalar: ${errors.join(" | ")}`
-        : messages.join(" | "),
-  };
+  return { success: true, message: result.message };
 }
 
 /** Seçilen villaları sırayla güncelle. */
@@ -305,4 +263,42 @@ export async function clearCalendarPriceTransferWhatsappAction(
 
   await revalidateTransferPaths(villaId);
   return { success: true, message: "WhatsApp eşleştirmesi kaldırıldı" };
+}
+
+export async function saveCalendarPriceTransferAutoUpdateAction(input: {
+  enabled: boolean;
+  period: CalendarPriceTransferAutoUpdatePeriod;
+  interval: number;
+  criteria: CalendarPriceTransferCriterionKey[];
+}): Promise<CalendarPriceTransferActionResult> {
+  await requireAdmin();
+
+  const criteria = input.criteria.filter((item) =>
+    ["whatsapp", "ical", "link1", "link2", "link3"].includes(item)
+  );
+
+  if (input.enabled && criteria.length === 0) {
+    return { error: "En az bir güncelleme kriteri seçin" };
+  }
+
+  await updateCompanySettings({
+    calendarPriceAutoUpdateEnabled: input.enabled,
+    calendarPriceAutoUpdatePeriod: input.period === "day" ? "day" : "hour",
+    calendarPriceAutoUpdateInterval: clampAutoUpdateInterval(input.interval),
+    calendarPriceAutoUpdateCriteriaJson:
+      serializeCalendarPriceTransferCriteria(criteria),
+  });
+
+  await revalidateTransferPaths();
+  return {
+    success: true,
+    message: input.enabled
+      ? "Otomatik güncelleme ayarları kaydedildi"
+      : "Otomatik güncelleme kapatıldı",
+  };
+}
+
+export async function getCalendarPriceTransferAutoUpdateAction() {
+  await requireAdmin();
+  return getCalendarPriceTransferAutoUpdateSettings();
 }

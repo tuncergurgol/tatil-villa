@@ -101,6 +101,12 @@ export const DEFAULT_COMPANY_SETTINGS = {
   assistantWahaSessionName: "tatil-asistani",
   assistantWebhookSecret: "",
   assistantWelcomeMessage: "",
+  calendarPriceAutoUpdateEnabled: false,
+  calendarPriceAutoUpdatePeriod: "hour",
+  calendarPriceAutoUpdateInterval: 6,
+  calendarPriceAutoUpdateCriteriaJson:
+    '["ical","link1","link2","link3"]',
+  calendarPriceAutoUpdateLastRunAt: null,
 };
 
 export async function getCompanySettings() {
