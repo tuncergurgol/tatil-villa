@@ -11,6 +11,10 @@ import {
 } from "react";
 import { MapPin, Search } from "lucide-react";
 import FloatingPanel from "@/components/FloatingPanel";
+import {
+  HEADER_VILLA_SEARCH_INPUT_ID,
+  MOBILE_VILLA_SEARCH_OPEN_EVENT,
+} from "@/lib/mobile-villa-search";
 import { villaPublicPath } from "@/lib/villa-public-path";
 
 type SearchResult = {
@@ -24,7 +28,7 @@ type SearchResult = {
 export default function HeaderVillaSearch({
   initialQuery = "",
   className = "",
-  inputId = "header-villa-search-input",
+  inputId = HEADER_VILLA_SEARCH_INPUT_ID,
 }: {
   initialQuery?: string;
   className?: string;
@@ -35,6 +39,7 @@ export default function HeaderVillaSearch({
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -82,13 +87,27 @@ export default function HeaderVillaSearch({
   }, [query]);
 
   useEffect(() => {
+    function handleMobileOpen() {
+      inputRef.current?.focus({ preventScroll: true });
+      if (query.trim().length > 0) {
+        setOpen(true);
+      }
+    }
+
+    window.addEventListener(MOBILE_VILLA_SEARCH_OPEN_EVENT, handleMobileOpen);
+    return () =>
+      window.removeEventListener(MOBILE_VILLA_SEARCH_OPEN_EVENT, handleMobileOpen);
+  }, [query]);
+
+  useEffect(() => {
     if (!open) return;
 
     function handlePointerDown(event: MouseEvent | TouchEvent) {
       const target = event.target as Node;
       if (
         rootRef.current?.contains(target) ||
-        panelRef.current?.contains(target)
+        panelRef.current?.contains(target) ||
+        (target as HTMLElement).closest?.("[data-mobile-bottom-nav]")
       ) {
         return;
       }
@@ -132,6 +151,7 @@ export default function HeaderVillaSearch({
         <form onSubmit={handleSubmit} role="search">
           <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-sky-500" />
           <input
+            ref={inputRef}
             id={inputId}
             type="search"
             enterKeyHint="search"

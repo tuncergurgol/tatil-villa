@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   CalendarCheck,
@@ -11,6 +11,7 @@ import {
   PhoneCall,
   PhoneIncoming,
 } from "lucide-react";
+import { focusHeaderVillaSearchInput } from "@/lib/mobile-villa-search";
 import { normalizePhoneToE164, toWhatsAppRecipient } from "@/lib/phone";
 
 type MobileBottomNavigationProps = {
@@ -28,6 +29,7 @@ export default function MobileBottomNavigation({
   whatsapp,
 }: MobileBottomNavigationProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isVillaDetail, setIsVillaDetail] = useState(false);
 
   useEffect(() => {
@@ -57,6 +59,12 @@ export default function MobileBottomNavigation({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function handleVillaSearch() {
+    if (!focusHeaderVillaSearchInput()) {
+      router.push("/villalar");
+    }
+  }
+
   return (
     <>
       <div
@@ -65,6 +73,7 @@ export default function MobileBottomNavigation({
       />
       <nav
         aria-label="Mobil hızlı işlemler"
+        data-mobile-bottom-nav
         className="fixed inset-x-0 bottom-0 z-[65] overflow-hidden rounded-t-[1.75rem] border-t border-rose-200/80 bg-[#fff0f1]/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_35px_rgba(136,19,55,0.15)] backdrop-blur-xl sm:hidden"
       >
         <div className="mx-auto grid h-[5rem] max-w-lg grid-cols-5">
@@ -105,13 +114,7 @@ export default function MobileBottomNavigation({
             ) : (
             <button
               type="button"
-              onClick={() => {
-                const input = document.getElementById(
-                  "header-villa-search-input"
-                ) as HTMLInputElement | null;
-                input?.scrollIntoView({ behavior: "smooth", block: "center" });
-                window.setTimeout(() => input?.focus(), 250);
-              }}
+              onClick={handleVillaSearch}
               className={`${itemClass} w-full text-rose-700`}
             >
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-400 text-white shadow-[0_6px_16px_rgba(244,63,94,0.3)]">
