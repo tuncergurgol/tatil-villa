@@ -24,6 +24,7 @@ import VillaDetailGallery from "@/components/villa-detail/VillaDetailGallery";
 import VillaDetailSectionNav, {
   type VillaDetailNavItem,
 } from "@/components/villa-detail/VillaDetailSectionNav";
+import VillaHtmlContent from "@/components/villa-detail/VillaHtmlContent";
 import VillaKnowBeforeSection from "@/components/villa-detail/VillaKnowBeforeSection";
 import { VillaStaySelectionProvider } from "@/components/villa-detail/VillaStaySelectionContext";
 import {
@@ -236,8 +237,8 @@ export default function VillaDetailView({
 
               <div className="mt-10">
                 <SectionTitle>Villa Detayı</SectionTitle>
-                <div className="prose prose-slate mt-5 max-w-none whitespace-pre-line text-[15px] leading-relaxed text-slate-600">
-                  {villa.description}
+                <div className="mt-5">
+                  <VillaHtmlContent html={villa.description} />
                 </div>
 
                 {highlightedFeatures.length > 0 ? (

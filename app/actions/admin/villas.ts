@@ -17,6 +17,13 @@ import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
 import { cloneVilla } from "@/lib/villa-clone";
+import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
+
+function readDescription(formData: FormData): string {
+  return normalizeVillaDescriptionForStorage(
+    String(formData.get("description") ?? "")
+  );
+}
 
 function parseBool(value: FormDataEntryValue | null) {
   return value === "true" || value === "on";
@@ -96,7 +103,7 @@ export async function createVillaFromGeneral(
         bathrooms: parseIntField(formData.get("bathrooms"), 1),
         image: "",
         images: [],
-        description: String(formData.get("description") ?? ""),
+        description: readDescription(formData),
         amenities: [],
         facilityCategories: [],
         salesType:
@@ -164,7 +171,7 @@ export async function createVilla(formData: FormData) {
         : null,
       image: formData.get("image") as string,
       images: imagesRaw.split("\n").map((s) => s.trim()).filter(Boolean),
-      description: formData.get("description") as string,
+      description: readDescription(formData),
       amenities,
       facilityCategories,
       featured: formData.get("featured") === "on",
@@ -217,7 +224,7 @@ export async function updateVilla(id: string, formData: FormData) {
         : null,
       image: formData.get("image") as string,
       images: imagesRaw.split("\n").map((s) => s.trim()).filter(Boolean),
-      description: formData.get("description") as string,
+      description: readDescription(formData),
       amenities,
       facilityCategories,
       featured: formData.get("featured") === "on",
@@ -264,7 +271,7 @@ export async function updateVillaGeneral(
         showInOffer: parseBool(formData.get("showInOffer")),
         ribbonText1: String(formData.get("ribbonText1") ?? ""),
         ribbonText2: String(formData.get("ribbonText2") ?? ""),
-        description: String(formData.get("description") ?? ""),
+        description: readDescription(formData),
       },
       select: { slug: true },
     });

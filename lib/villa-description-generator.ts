@@ -1,5 +1,6 @@
 import type { VillaCategory } from "@prisma/client";
 import { facilityTypeLabel } from "@/lib/facility-type";
+import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 
 export interface VillaDescriptionContext {
   name: string;
@@ -81,7 +82,9 @@ export function parseVillaDescriptionAiResponse(content: string): string | null 
   if (!trimmed) return null;
 
   const htmlMatch = trimmed.match(/<[\s\S]+>/);
-  if (htmlMatch) return htmlMatch[0].trim();
+  if (htmlMatch) {
+    return normalizeVillaDescriptionForStorage(htmlMatch[0].trim());
+  }
 
   const paragraphs = trimmed
     .split(/\n{2,}/)
@@ -90,5 +93,7 @@ export function parseVillaDescriptionAiResponse(content: string): string | null 
     .map((block) => `<p>${block}</p>`)
     .join("");
 
-  return paragraphs || null;
+  return paragraphs
+    ? normalizeVillaDescriptionForStorage(paragraphs)
+    : null;
 }
