@@ -1,7 +1,19 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  BedDouble,
+  CalendarDays,
+  CircleHelp,
+  Info,
+  MapPin,
+  MessageCircle,
+  Shield,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { getVillaDetailNavTheme } from "@/lib/villa-detail-nav-theme";
 
 export type VillaDetailNavItem = {
   id: string;
@@ -11,14 +23,27 @@ export type VillaDetailNavItem = {
 type VillaDetailSectionNavProps = {
   items: VillaDetailNavItem[];
   villaName: string;
+  siteKey: PublicSiteKey;
   className?: string;
 };
 
 const FALLBACK_HEADER_PX = 0;
 
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "genel-bakis": Info,
+  "oda-kapasite": BedDouble,
+  yorumlar: MessageCircle,
+  olanaklar: Sparkles,
+  lokasyon: MapPin,
+  musaitlik: CalendarDays,
+  "bilmeniz-gerekenler": Shield,
+  sss: CircleHelp,
+};
+
 export default function VillaDetailSectionNav({
   items,
   villaName,
+  siteKey,
   className = "",
 }: VillaDetailSectionNavProps) {
   const [activeId, setActiveId] = useState(items[0]?.id ?? "");
@@ -26,14 +51,7 @@ export default function VillaDetailSectionNav({
   const [headerOffset, setHeaderOffset] = useState(FALLBACK_HEADER_PX);
   const navRef = useRef<HTMLElement>(null);
   const title = villaName.trim();
-
-  const activeIndex = Math.max(
-    0,
-    items.findIndex((item) => item.id === activeId)
-  );
-  const activeItem = items[activeIndex] ?? items[0];
-  const hasPrev = activeIndex > 0;
-  const hasNext = activeIndex < items.length - 1;
+  const theme = getVillaDetailNavTheme(siteKey);
 
   useEffect(() => {
     const header = document.querySelector("header");
@@ -81,7 +99,7 @@ export default function VillaDetailSectionNav({
       root.style.removeProperty("--villa-detail-sticky-below-nav");
       root.style.removeProperty("--villa-detail-scroll-mt");
     };
-  }, [headerOffset, stuck, title, activeItem?.label]);
+  }, [headerOffset, stuck, title, items.length]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -144,69 +162,45 @@ export default function VillaDetailSectionNav({
         ref={navRef}
         aria-label="Villa bölümleri"
         style={{ top: headerOffset }}
-        className={`sticky z-40 -mx-4 border-b border-slate-200 bg-white sm:mx-0 ${
-          stuck ? "shadow-md" : ""
+        className={`sticky z-40 -mx-4 sm:mx-0 sm:border-b sm:border-slate-200 sm:bg-white ${
+          stuck ? "shadow-md max-sm:border-0 max-sm:bg-transparent" : "max-sm:border-0 max-sm:bg-transparent"
         } ${className}`}
       >
-        {/* Mobil: villa adı + bölüm pager */}
-        <div className="flex min-w-0 items-stretch sm:hidden">
-          {title ? (
-            <a
-              href="#genel-bakis"
-              title={title}
-              onClick={(e) => {
-                e.preventDefault();
-                goToSection("genel-bakis");
-              }}
-              className="flex max-w-[44%] shrink-0 items-center border-r border-slate-200 px-2.5 py-2.5 text-[14px] font-bold leading-snug text-slate-900"
-            >
-              <span className="line-clamp-2">{title}</span>
-            </a>
-          ) : null}
-
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-1 px-1 py-1.5">
-            <button
-              type="button"
-              aria-label="Önceki bölüm"
-              disabled={!hasPrev}
-              onClick={() => {
-                if (!hasPrev) return;
-                goToSection(items[activeIndex - 1]!.id);
-              }}
-              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
-                hasPrev
-                  ? "text-teal-700 hover:bg-teal-50"
-                  : "invisible pointer-events-none"
-              }`}
-            >
-              <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
-            </button>
-
-            <p
-              className="min-w-0 flex-1 truncate text-center text-[13px] font-semibold text-teal-800"
-              aria-live="polite"
-            >
-              {activeItem?.label}
-            </p>
-
-            <button
-              type="button"
-              aria-label="Sonraki bölüm"
-              disabled={!hasNext}
-              onClick={() => {
-                if (!hasNext) return;
-                goToSection(items[activeIndex + 1]!.id);
-              }}
-              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
-                hasNext
-                  ? "text-teal-700 hover:bg-teal-50"
-                  : "invisible pointer-events-none"
-              }`}
-            >
-              <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
-            </button>
+        {/* Mobil: kaydırınca ikonlu sekme çubuğu */}
+        {stuck ? (
+          <div className={`sm:hidden ${theme.bar} mx-2 rounded-lg shadow-md`}>
+            <ul className="flex gap-0 overflow-x-auto overscroll-x-contain px-1 py-1 [-webkit-overflow-scrolling:touch]">
+              {items.map((item) => {
+                const active = item.id === activeId;
+                const Icon = NAV_ICONS[item.id] ?? Info;
+                return (
+                  <li key={item.id} className="shrink-0">
+                    <a
+                      href={`#${item.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        goToSection(item.id);
+                      }}
+                      className={`relative flex min-w-[4.5rem] flex-col items-center gap-1 px-2.5 py-2.5 transition ${
+                        active ? theme.activeText : theme.inactiveText
+                      }`}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" strokeWidth={2} />
+                      <span className="max-w-[5.5rem] truncate text-center text-[10px] font-semibold leading-tight">
+                        {item.label}
+                      </span>
+                      {active ? (
+                        <span
+                          className={`absolute inset-x-2 bottom-1 h-0.5 rounded-full ${theme.activeIndicator}`}
+                        />
+                      ) : null}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-        </div>
+        ) : null}
 
         {/* Masaüstü: villa adı (sticky) + sekmeler */}
         <div className="hidden min-w-0 items-stretch sm:flex">
@@ -214,6 +208,10 @@ export default function VillaDetailSectionNav({
             <a
               href="#genel-bakis"
               title={title}
+              onClick={(e) => {
+                e.preventDefault();
+                goToSection("genel-bakis");
+              }}
               className="flex max-w-[220px] shrink-0 items-center border-r border-slate-200 px-3 py-2.5 text-[17px] font-bold leading-snug text-slate-900 md:max-w-[260px]"
             >
               <span className="truncate whitespace-nowrap">{title}</span>
@@ -227,6 +225,10 @@ export default function VillaDetailSectionNav({
                 <li key={item.id} className="shrink-0">
                   <a
                     href={`#${item.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToSection(item.id);
+                    }}
                     className={`relative inline-flex cursor-pointer whitespace-nowrap px-3.5 py-3.5 text-sm font-medium transition ${
                       active
                         ? "text-teal-800"

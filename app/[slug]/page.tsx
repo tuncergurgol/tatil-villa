@@ -104,6 +104,7 @@ export default async function VillaDetailPage({
       ) : null}
       <VillaDetailView
         villa={villa}
+        siteKey={site.key}
         similarVillas={similarVillas}
         companyPhone={company.phone || company.whatsapp || ""}
         brandName={brandName || undefined}

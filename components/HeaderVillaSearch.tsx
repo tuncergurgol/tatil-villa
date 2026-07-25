@@ -165,7 +165,7 @@ export default function HeaderVillaSearch({
             aria-autocomplete="list"
             aria-controls={listId}
             aria-expanded={showPanel}
-            className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-base text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 sm:text-sm"
+            className="w-full rounded-full border border-gray-200 bg-gray-50 py-[7px] pl-9 pr-3 text-base text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 sm:py-2.5 sm:text-sm"
             autoComplete="off"
           />
         </form>

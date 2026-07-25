@@ -13,6 +13,7 @@ import {
 import { submitBooking, type BookingActionState } from "@/app/actions/booking";
 import FloatingPanel from "@/components/FloatingPanel";
 import GuestPicker from "@/components/GuestPicker";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import PreReservationModal, {
   type PreReservationSubmitPayload,
 } from "@/components/PreReservationModal";
@@ -295,6 +296,7 @@ export default function BookingForm({
   const guestPanelRef = useRef<HTMLDivElement>(null);
 
   const today = useMemo(() => todayDate(), []);
+  const isMobile = useIsMobile();
   const minViewYear = today.getFullYear();
   const minViewMonth = today.getMonth();
   const [viewYear, setViewYear] = useState(minViewYear);
@@ -343,10 +345,16 @@ export default function BookingForm({
     setViewMonth(nextMonth);
   }
 
-  function renderMonth(year: number, month: number) {
+  function renderMonth(
+    year: number,
+    month: number,
+    options?: { hideOutsideDays?: boolean; fullWidth?: boolean }
+  ) {
+    const hideOutsideDays = options?.hideOutsideDays ?? false;
+    const fullWidth = options?.fullWidth ?? false;
     const cells = buildMonthGrid(year, month);
     return (
-      <div className="w-[248px] shrink-0">
+      <div className={fullWidth ? "w-full min-w-0 shrink" : "w-[248px] shrink-0"}>
         <p className="mb-2 text-center text-sm font-semibold text-slate-800">
           {getMonthLabel(year, month)}
         </p>
@@ -360,6 +368,16 @@ export default function BookingForm({
             </div>
           ))}
           {cells.map((cell, index) => {
+            if (hideOutsideDays && !cell.inCurrentMonth) {
+              return (
+                <div
+                  key={`${year}-${month}-pad-${index}`}
+                  className="aspect-square min-h-0 sm:aspect-auto sm:min-h-[38px]"
+                  aria-hidden
+                />
+              );
+            }
+
             const dateKey = toDateKey(cell.date);
             const isPast = compareDates(cell.date, today) < 0;
             const current = occupancyMap.get(dateKey) ?? "EMPTY";
@@ -406,8 +424,8 @@ export default function BookingForm({
                   if (pendingStart) setHoverDate(pendingStart);
                 }}
                 onClick={() => selectDay(dateKey)}
-                className={`relative flex min-h-[38px] items-start justify-start overflow-visible rounded-md border p-0.5 text-left transition ${
-                  !cell.inCurrentMonth ? "opacity-45" : ""
+                className={`relative flex aspect-square min-h-0 items-start justify-start overflow-visible rounded-md border p-0.5 text-left transition sm:aspect-auto sm:min-h-[38px] ${
+                  !cell.inCurrentMonth && !hideOutsideDays ? "opacity-45" : ""
                 } ${
                   isPast
                     ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
@@ -653,7 +671,7 @@ export default function BookingForm({
             panelRef={datePanelRef}
             align="center"
             fitContent
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            className="w-[min(100vw-2rem,32rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:w-auto"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
               <button
@@ -672,9 +690,12 @@ export default function BookingForm({
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex gap-4">
-              {renderMonth(viewYear, viewMonth)}
-              {renderMonth(rightYear, rightMonth)}
+            <div className="flex w-full flex-col gap-4 sm:flex-row sm:gap-4">
+              {renderMonth(viewYear, viewMonth, {
+                hideOutsideDays: isMobile,
+                fullWidth: isMobile,
+              })}
+              {!isMobile ? renderMonth(rightYear, rightMonth) : null}
             </div>
           </FloatingPanel>
         </div>

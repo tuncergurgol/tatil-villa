@@ -31,6 +31,7 @@ import {
   resolveForeignPriceCurrencies,
   type PublicExchangeRates,
 } from "@/lib/currency-conversion";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
 import type {
   SimilarVillaCard,
   VillaDetail,
@@ -45,6 +46,7 @@ type FaqItem = {
 type VillaDetailViewProps = {
   villa: VillaDetail;
   faqs: FaqItem[];
+  siteKey: PublicSiteKey;
   similarVillas?: SimilarVillaCard[];
   companyPhone?: string;
   brandName?: string;
@@ -106,6 +108,7 @@ function isFeaturedAmenityCategory(category: string) {
 export default function VillaDetailView({
   villa,
   faqs,
+  siteKey,
   similarVillas = [],
   companyPhone,
   brandName,
@@ -180,6 +183,7 @@ export default function VillaDetailView({
         <VillaDetailSectionNav
           items={navItems}
           villaName={villa.name}
+          siteKey={siteKey}
           className="mt-5"
         />
 

@@ -148,9 +148,6 @@ export default function Header({
         id="header-villa-search-section"
         className="border-t border-gray-100 px-4 pb-3 pt-2 md:hidden"
       >
-        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-sky-600">
-          Villa Ara
-        </p>
         <HeaderVillaSearch className="w-full" />
       </div>
 

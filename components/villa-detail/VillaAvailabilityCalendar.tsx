@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { VillaDayOccupancy } from "@prisma/client";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { canSelectStayDay } from "@/lib/booking-calendar-selection";
 import {
   convertCurrencyAmount,
@@ -123,11 +124,14 @@ function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-0.5">
         {cells.map((cell, index) => {
           if (!cell.day || !cell.dateKey) {
             return (
-              <div key={`empty-${index}`} className="min-h-[52px] sm:min-h-[58px]" />
+              <div
+                key={`empty-${index}`}
+                className="aspect-square min-h-0 sm:min-h-[58px] sm:aspect-auto"
+              />
             );
           }
 
@@ -182,7 +186,7 @@ function MonthGrid({
                 if (pendingStart) setHoverDate(pendingStart);
               }}
               onClick={() => selectDay(dateKey)}
-              className={`relative min-h-[52px] overflow-visible rounded-md border p-1 text-left sm:min-h-[58px] ${
+              className={`relative aspect-square min-h-0 overflow-visible rounded-md border p-0.5 text-left sm:aspect-auto sm:min-h-[58px] sm:p-1 ${
                 isPast
                   ? "cursor-not-allowed border-slate-100 opacity-50"
                   : canClick
@@ -235,6 +239,7 @@ export default function VillaAvailabilityCalendar({
   days,
   exchangeRates,
 }: VillaAvailabilityCalendarProps) {
+  const isMobile = useIsMobile();
   const { occupancyMap } = useVillaStaySelection();
 
   const dayMap = useMemo(() => {
@@ -260,9 +265,14 @@ export default function VillaAvailabilityCalendar({
     const now = new Date();
     const current = monthKey(now.getFullYear(), now.getMonth());
     const idx = months.indexOf(current);
-    if (idx >= 0) return Math.min(idx, Math.max(0, months.length - 2));
+    if (idx >= 0) {
+      const maxIdx = isMobile
+        ? Math.max(0, months.length - 1)
+        : Math.max(0, months.length - 2);
+      return Math.min(idx, maxIdx);
+    }
     return 0;
-  }, [months]);
+  }, [months, isMobile]);
 
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
   const firstKey = months[Math.min(monthIndex, months.length - 1)] ?? months[0];
@@ -275,7 +285,10 @@ export default function VillaAvailabilityCalendar({
   const month1 = Number(m1) - 1;
   const year2 = Number(y2);
   const month2 = Number(m2) - 1;
-  const showTwo = firstKey !== secondKey;
+  const showTwo = !isMobile && firstKey !== secondKey;
+  const maxMonthIndex = isMobile
+    ? Math.max(0, months.length - 1)
+    : Math.max(0, months.length - 2);
 
   return (
     <div>
@@ -297,9 +310,9 @@ export default function VillaAvailabilityCalendar({
         <button
           type="button"
           onClick={() =>
-            setMonthIndex((i) => Math.min(Math.max(0, months.length - 2), i + 1))
+            setMonthIndex((i) => Math.min(maxMonthIndex, i + 1))
           }
-          disabled={monthIndex >= months.length - 2 && months.length > 1}
+          disabled={monthIndex >= maxMonthIndex && months.length > 1}
           className="rounded-lg border border-slate-200 p-2 text-slate-600 disabled:opacity-40"
           aria-label="Sonraki ay"
         >
@@ -307,9 +320,7 @@ export default function VillaAvailabilityCalendar({
         </button>
       </div>
 
-      <div
-        className={`grid gap-6 ${showTwo ? "lg:grid-cols-2" : "grid-cols-1"}`}
-      >
+      <div className={`grid gap-6 ${showTwo ? "lg:grid-cols-2" : "grid-cols-1"}`}>
         <MonthGrid
           year={year1}
           month={month1}
