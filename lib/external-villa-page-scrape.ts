@@ -1474,27 +1474,12 @@ export function parseVillasayfamAvailability(
     const end = parseIsoLikeDate(String(row.endDate ?? ""));
     if (!start || !end) continue;
 
-    // Villa Sayfam API: startDate = giriş, endDate = çıkış günü.
-    // Konaklanan geceler [start, end).
+    // Villa Sayfam API: startDate = giriş günü, endDate = son dolu gece (dahil).
+    // Örn. 24–27 Temmuz rezervasyonu → start=24, end=26; çıkış 27 sabahı boş kalır.
     const cursor = new Date(start);
-    while (compareDates(cursor, end) < 0) {
+    while (compareDates(cursor, end) <= 0) {
       occupancyByDateKey.set(toDateKey(cursor), "BOOKED");
       cursor.setDate(cursor.getDate() + 1);
-    }
-
-    const nextRow = sorted[index + 1];
-    const nextStart = nextRow
-      ? parseIsoLikeDate(String(nextRow.startDate ?? ""))
-      : null;
-    const checkoutBridgeDay = new Date(end);
-    checkoutBridgeDay.setDate(checkoutBridgeDay.getDate() + 1);
-    if (
-      nextStart &&
-      compareDates(nextStart, end) > 0 &&
-      toDateKey(nextStart) === toDateKey(checkoutBridgeDay)
-    ) {
-      // Ertesi gün yeni blok başlıyorsa çıkış gününü dolu işaretle (giriş+çıkış yanılgısını önler).
-      occupancyByDateKey.set(toDateKey(end), "BOOKED");
     }
   }
 
