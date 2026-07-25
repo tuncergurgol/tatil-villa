@@ -24,6 +24,10 @@ const LINKS = [
     villaId: 1312,
     url: "https://www.tatilpremium.com/tr/villa-tepe",
   },
+  {
+    villaId: 2396,
+    url: "https://www.villasayfam.com/villa/villa-cracus-2396",
+  },
 ] as const;
 
 async function main() {

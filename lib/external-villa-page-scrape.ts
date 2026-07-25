@@ -15,6 +15,7 @@
  * - yazlikcim.com.tr (Boceksoft takvim; günlük fiyat yoksa schema/sezon fallback)
  * - risusvillatatili.com / KVT (pricing-item + fake-calendar villatarih)
  * - tatilkentim.com (pricing-item gecelik/haftalık + /villa/{id}/calendar)
+ * - villasayfam.com (api.villasayfam.com pricePeriods + availability)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
  */
@@ -51,7 +52,8 @@ export type ScrapedVillaPage = {
     | "villakalkan"
     | "yazlikvillaci"
     | "kvt"
-    | "tatilkentim";
+    | "tatilkentim"
+    | "villasayfam";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -1363,6 +1365,215 @@ async function scrapeTatilkentimFromPage(
     sourceHost: normalizeHost(new URL(pageUrl).hostname),
     strategy: "tatilkentim",
     pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
+const VILLASAYFAM_API = "https://api.villasayfam.com";
+
+function looksLikeVillasayfam(pageUrl: string): boolean {
+  try {
+    return normalizeHost(new URL(pageUrl).hostname).includes("villasayfam");
+  } catch {
+    return false;
+  }
+}
+
+function extractVillasayfamSlug(pageUrl: string): string | null {
+  try {
+    const match = new URL(pageUrl).pathname.match(/\/villa\/([^/]+)\/?$/i);
+    return match?.[1]?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchVillasayfamJson<T>(
+  pathAndQuery: string,
+  referer: string
+): Promise<T> {
+  const response = await fetch(`${VILLASAYFAM_API}${pathAndQuery}`, {
+    headers: {
+      "User-Agent": BROWSER_UA,
+      Accept: "application/json, text/plain, */*",
+      Origin: "https://www.villasayfam.com",
+      Referer: referer,
+      "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+    },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`Villa Sayfam API ${response.status}: ${pathAndQuery}`);
+  }
+  return (await response.json()) as T;
+}
+
+type VillasayfamPricePeriodRow = {
+  startDate?: string;
+  endDate?: string;
+  price?: number;
+  currency?: string;
+  minStay?: number | null;
+};
+
+type VillasayfamAvailabilityRow = {
+  source?: string;
+  startDate?: string;
+  endDate?: string;
+};
+
+export function parseVillasayfamPricePeriods(
+  rows: VillasayfamPricePeriodRow[],
+  damageDeposit: number | null
+): MappedVillaPricePeriod[] {
+  const periods: MappedVillaPricePeriod[] = [];
+  let sourceId = 1;
+
+  for (const row of rows) {
+    const startDate = parseIsoLikeDate(String(row.startDate ?? ""));
+    const endDate = parseIsoLikeDate(String(row.endDate ?? ""));
+    const nightlyPrice = positiveInt(Number(row.price));
+    if (!startDate || !endDate || !nightlyPrice) continue;
+    if (compareDates(startDate, endDate) > 0) continue;
+
+    const currency = mapCurrencyCode(row.currency);
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate,
+        endDate,
+        nightlyPrice,
+        currency,
+        minStayNights: positiveInt(Number(row.minStay)),
+        damageDeposit,
+        damageDepositCurrency: currency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+export function parseVillasayfamAvailability(
+  rows: VillasayfamAvailabilityRow[]
+): Map<string, VillaDayOccupancy> {
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+
+  for (const row of rows) {
+    const source = String(row.source ?? "").toUpperCase();
+    if (source && source !== "BLOCK" && source !== "BOOKING") continue;
+
+    const start = parseIsoLikeDate(String(row.startDate ?? ""));
+    const end = parseIsoLikeDate(String(row.endDate ?? ""));
+    if (!start || !end) continue;
+
+    const cursor = new Date(start);
+    while (compareDates(cursor, end) < 0) {
+      occupancyByDateKey.set(toDateKey(cursor), "BOOKED");
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  return occupancyByDateKey;
+}
+
+async function scrapeVillasayfamFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeVillasayfam(pageUrl)) return null;
+
+  const slug = extractVillasayfamSlug(pageUrl);
+  if (!slug) {
+    warnings.push("Villa Sayfam slug (URL /villa/{slug}) bulunamadı");
+    return null;
+  }
+
+  type ApiWrap<T> = { content?: T };
+  type VillaContent = {
+    id?: string;
+    name?: string;
+    deposit?: string | number | null;
+    pricePeriods?: VillasayfamPricePeriodRow[];
+  };
+
+  let villaPayload: ApiWrap<VillaContent>;
+  try {
+    villaPayload = await fetchVillasayfamJson<ApiWrap<VillaContent>>(
+      `/v1/villas/${encodeURIComponent(slug)}`,
+      pageUrl
+    );
+  } catch (error) {
+    warnings.push(
+      error instanceof Error ? error.message : "Villa Sayfam villa API hatası"
+    );
+    return null;
+  }
+
+  const villa = villaPayload.content;
+  const villaUuid = villa?.id?.trim();
+  if (!villaUuid) {
+    warnings.push("Villa Sayfam villa UUID alınamadı");
+    return null;
+  }
+
+  const depositRaw =
+    typeof villa.deposit === "number"
+      ? villa.deposit
+      : Number(String(villa.deposit ?? "").replace(/[^\d.]/g, ""));
+  const damageDeposit =
+    Number.isFinite(depositRaw) && depositRaw > 0 ? Math.round(depositRaw) : null;
+
+  const periods = parseVillasayfamPricePeriods(villa.pricePeriods ?? [], damageDeposit);
+  if (periods.length === 0) {
+    warnings.push("Villa Sayfam fiyat periyodu bulunamadı");
+    return null;
+  }
+
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const today = startOfDay(new Date());
+  const rangeStart = periods[0]!.startDate;
+  const rangeEnd = periods[periods.length - 1]!.endDate;
+  const availStart = compareDates(rangeStart, today) < 0 ? today : rangeStart;
+  const availEnd = new Date(rangeEnd);
+  availEnd.setMonth(availEnd.getMonth() + 6);
+
+  await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+  try {
+    const startKey = toDateKey(availStart);
+    const endKey = toDateKey(availEnd);
+    const availPayload = await fetchVillasayfamJson<
+      ApiWrap<{ data?: VillasayfamAvailabilityRow[] }>
+    >(
+      `/v1/villas/${encodeURIComponent(villaUuid)}/availability?startDate=${startKey}&endDate=${endKey}`,
+      pageUrl
+    );
+    for (const [key, value] of parseVillasayfamAvailability(
+      availPayload.content?.data ?? []
+    )) {
+      occupancyByDateKey.set(key, value);
+    }
+  } catch (error) {
+    warnings.push(
+      error instanceof Error
+        ? `Villa Sayfam müsaitlik API: ${error.message}`
+        : "Villa Sayfam müsaitlik API alınamadı"
+    );
+  }
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "Villa Sayfam fiyatları alındı; müsaitlik takvimi boş veya okunamadı"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "villasayfam",
+    pageTitle: villa.name?.trim() || extractPageTitle(html),
     periods,
     occupancyByDateKey,
     warnings,
@@ -3106,6 +3317,13 @@ export async function scrapeExternalVillaPage(
   const kvt = await scrapeKvtFromPage(parsed.toString(), html, warnings);
   if (kvt) return kvt;
 
+  const villasayfam = await scrapeVillasayfamFromPage(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (villasayfam) return villasayfam;
+
   const tatilkentim = await scrapeTatilkentimFromPage(
     parsed.toString(),
     html,
@@ -3146,6 +3364,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
