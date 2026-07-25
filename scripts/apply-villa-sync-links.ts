@@ -24,8 +24,11 @@ const LINKS = [
     villaId: 1312,
     url: "https://www.tatilpremium.com/tr/villa-tepe",
   },
+] as const;
+
+const SLUG_LINKS = [
   {
-    villaId: 2396,
+    slug: "villa-ela-duo",
     url: "https://www.villasayfam.com/villa/villa-cracus-2396",
   },
 ] as const;
@@ -46,6 +49,36 @@ async function main() {
 
     console.log(
       `\n=== ${villa.villaId} ${villa.name} ===\n  eski: ${villa.externalSyncUrl1 || "(boş)"}\n  yeni: ${item.url}`
+    );
+
+    if (dryRun) continue;
+
+    const saved = await setVillaExternalSyncUrl(villa.id, 1, item.url);
+    if (!saved.ok) {
+      console.log(`FAIL link kaydı: ${saved.message}`);
+      continue;
+    }
+
+    const result = await syncVillaExternalLinkSlot(villa.id, 1, {
+      urlOverride: item.url,
+    });
+    console.log(result.ok ? "OK" : "FAIL", result.message);
+    await sleep(1200);
+  }
+
+  for (const item of SLUG_LINKS) {
+    const villa = await prisma.villa.findFirst({
+      where: { slug: item.slug },
+      select: { id: true, villaId: true, name: true, externalSyncUrl1: true },
+    });
+
+    if (!villa) {
+      console.log(`SKIP slug ${item.slug} bulunamadı`);
+      continue;
+    }
+
+    console.log(
+      `\n=== ${villa.villaId ?? item.slug} ${villa.name} ===\n  eski: ${villa.externalSyncUrl1 || "(boş)"}\n  yeni: ${item.url}`
     );
 
     if (dryRun) continue;

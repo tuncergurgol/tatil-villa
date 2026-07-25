@@ -6,11 +6,11 @@ import {
 
 async function main() {
   const villa = await prisma.villa.findFirst({
-    where: { villaId: 2396 },
-    select: { id: true, name: true, externalSyncUrl1: true },
+    where: { slug: "villa-ela-duo" },
+    select: { id: true, villaId: true, name: true, externalSyncUrl1: true },
   });
   if (!villa) {
-    console.log("Villa 2396 bulunamadı");
+    console.log("Villa Ela Duo bulunamadı");
     return;
   }
 
