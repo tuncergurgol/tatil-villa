@@ -1515,7 +1515,7 @@ async function scrapeVillasayfamFromPage(
 
   const villa = villaPayload.content;
   const villaUuid = villa?.id?.trim();
-  if (!villaUuid) {
+  if (!villa || !villaUuid) {
     warnings.push("Villa Sayfam villa UUID alınamadı");
     return null;
   }
