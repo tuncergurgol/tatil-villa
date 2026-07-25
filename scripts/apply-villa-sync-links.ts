@@ -20,6 +20,10 @@ const LINKS = [
     villaId: 1225,
     url: "https://tatilkentim.com/villa-arna-elit-demre",
   },
+  {
+    villaId: 1312,
+    url: "https://www.tatilpremium.com/tr/villa-tepe",
+  },
 ] as const;
 
 async function main() {

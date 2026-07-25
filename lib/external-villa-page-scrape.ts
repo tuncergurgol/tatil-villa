@@ -5,6 +5,7 @@
  * Destek:
  * - heryervillam.com (HTML fiyat tablosu + takvim)
  * - villavillam.com.tr / villacim.com.tr (NEXT_DATA id + api PriceList/Availability)
+ * - tatilpremium.com (RSC routingData id + api.tatilpremium.com PriceList/Availability)
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
  * - villavakti.com (sezon fiyat tablosu)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (Next.js RSC min-max fiyat)
@@ -43,6 +44,7 @@ export type ScrapedVillaPage = {
     | "heryervillam"
     | "villavillam"
     | "villacim"
+    | "tatilpremium"
     | "akdenizvillam"
     | "villavakti"
     | "product_detail_rsc"
@@ -1651,11 +1653,12 @@ async function scrapeBoceksoft(
 
 const VILLAVILLAM_API = "https://api.villavillam.com.tr";
 const VILLACIM_API = "https://api.villacim.com.tr";
+const TATILPREMIUM_API = "https://api.tatilpremium.com";
 
 type VillaApiSiteConfig = {
   apiHost: string;
   origin: string;
-  hostKey: "villavillam" | "villacim";
+  hostKey: "villavillam" | "villacim" | "tatilpremium";
 };
 
 function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
@@ -1673,6 +1676,13 @@ function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
         apiHost: VILLACIM_API,
         origin: "https://www.villacim.com.tr",
         hostKey: "villacim",
+      };
+    }
+    if (host.includes("tatilpremium")) {
+      return {
+        apiHost: TATILPREMIUM_API,
+        origin: "https://www.tatilpremium.com",
+        hostKey: "tatilpremium",
       };
     }
   } catch {
@@ -1749,6 +1759,48 @@ function extractVillaApiEntity(html: string): {
 /** @deprecated extractVillaApiEntity kullanın */
 function extractVillavillamEntity(html: string) {
   return extractVillaApiEntity(html);
+}
+
+/** tatilpremium.com — Next.js RSC `routingData` içinden villa entity id. */
+export function extractTatilpremiumRoutingEntity(
+  html: string,
+  pageUrl: string
+): ReturnType<typeof extractVillaApiEntity> {
+  let slug = "";
+  try {
+    const parts = new URL(pageUrl).pathname.split("/").filter(Boolean);
+    slug = parts[parts.length - 1] ?? "";
+  } catch {
+    return null;
+  }
+  if (!slug) return null;
+
+  const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const blockMatch = html.match(
+    new RegExp(
+      `routingData\\\\":\\{\\\\"id\\\\":\\\\"(\\d+)\\\\"[\\s\\S]*?\\\\"url\\\\":\\\\"/${escapedSlug}\\\\"`,
+      "i"
+    )
+  );
+  if (!blockMatch?.[1]) return null;
+
+  const start = blockMatch.index ?? html.indexOf(blockMatch[0]);
+  const chunk = html.slice(start, start + 12000);
+  const hasarRaw = chunk.match(/\\"hasar\\":\\"([^\\]+)\\"/)?.[1];
+  const damageDeposit = hasarRaw
+    ? Number(String(hasarRaw).replace(/[^\d.]/g, ""))
+    : NaN;
+
+  return {
+    entityId: blockMatch[1],
+    title: chunk.match(/\\"baslik\\":\\"([^\\]+)\\"/)?.[1] ?? null,
+    symbol: chunk.match(/\\"Symbol\\":\\"([^\\]+)\\"/)?.[1] ?? "₺",
+    currencyCode:
+      chunk.match(/\\"FromCurrencyCode\\":\\"([^\\]+)\\"/)?.[1] ?? "TRY",
+    damageDeposit:
+      Number.isFinite(damageDeposit) && damageDeposit > 0 ? damageDeposit : null,
+    result: {},
+  };
 }
 
 function apiCurrencyParam(
@@ -1950,9 +2002,14 @@ export async function scrapeVillavillamFromPage(
   const site = resolveVillaApiSite(pageUrl);
   if (!site) return null;
 
-  const entity = extractVillaApiEntity(html);
+  let entity = extractVillaApiEntity(html);
+  if (!entity && site.hostKey === "tatilpremium") {
+    entity = extractTatilpremiumRoutingEntity(html, pageUrl);
+  }
   if (!entity) {
-    warnings.push(`${site.hostKey} __NEXT_DATA__ villa id bulunamadı`);
+    warnings.push(
+      `${site.hostKey} villa id bulunamadı (__NEXT_DATA__ veya routingData)`
+    );
     return null;
   }
 
@@ -2056,7 +2113,12 @@ export async function scrapeVillavillamFromPage(
 
   return {
     sourceHost: normalizeHost(new URL(pageUrl).hostname),
-    strategy: site.hostKey === "villacim" ? "villacim" : "villavillam",
+    strategy:
+      site.hostKey === "villacim"
+        ? "villacim"
+        : site.hostKey === "tatilpremium"
+          ? "tatilpremium"
+          : "villavillam",
     pageTitle: entity.title ?? extractPageTitle(html),
     periods,
     occupancyByDateKey,
@@ -3084,6 +3146,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
