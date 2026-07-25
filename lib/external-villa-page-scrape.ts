@@ -1461,7 +1461,12 @@ export function parseVillasayfamAvailability(
 ): Map<string, VillaDayOccupancy> {
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
 
-  for (const row of rows) {
+  const sorted = [...rows].sort((a, b) =>
+    String(a.startDate ?? "").localeCompare(String(b.startDate ?? ""))
+  );
+
+  for (let index = 0; index < sorted.length; index += 1) {
+    const row = sorted[index]!;
     const source = String(row.source ?? "").toUpperCase();
     if (source && source !== "BLOCK" && source !== "BOOKING") continue;
 
@@ -1469,10 +1474,27 @@ export function parseVillasayfamAvailability(
     const end = parseIsoLikeDate(String(row.endDate ?? ""));
     if (!start || !end) continue;
 
+    // Villa Sayfam API: startDate = giriş, endDate = çıkış günü.
+    // Konaklanan geceler [start, end).
     const cursor = new Date(start);
     while (compareDates(cursor, end) < 0) {
       occupancyByDateKey.set(toDateKey(cursor), "BOOKED");
       cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const nextRow = sorted[index + 1];
+    const nextStart = nextRow
+      ? parseIsoLikeDate(String(nextRow.startDate ?? ""))
+      : null;
+    const checkoutBridgeDay = new Date(end);
+    checkoutBridgeDay.setDate(checkoutBridgeDay.getDate() + 1);
+    if (
+      nextStart &&
+      compareDates(nextStart, end) > 0 &&
+      toDateKey(nextStart) === toDateKey(checkoutBridgeDay)
+    ) {
+      // Ertesi gün yeni blok başlıyorsa çıkış gününü dolu işaretle (giriş+çıkış yanılgısını önler).
+      occupancyByDateKey.set(toDateKey(end), "BOOKED");
     }
   }
 
