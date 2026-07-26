@@ -14,6 +14,8 @@ export type BlogGenerationResult = {
   coverImagePrompt: string;
 };
 
+export const BLOG_MIN_WORD_COUNT = 500;
+
 function truncate(value: string, max: number) {
   if (value.length <= max) return value;
   return `${value.slice(0, max - 1).trimEnd()}…`;
@@ -27,12 +29,29 @@ function stripCodeFence(content: string) {
     .trim();
 }
 
-export function buildBlogGenerationPrompt(context: BlogGenerationContext) {
+export function countWordsInHtml(html: string): number {
+  const text = html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return 0;
+  return text.split(" ").filter(Boolean).length;
+}
+
+export function buildBlogGenerationPrompt(
+  context: BlogGenerationContext,
+  options?: { emphasizeWordCount?: boolean }
+) {
   const categoryLine = context.categoryName
     ? `Kategori: ${context.categoryName}`
     : "Kategori: Genel tatil / villa kiralama";
 
-  return `Türkiye'de villa kiralama ve tatil konaklama sitesi (Tatildeyiz) için SEO uyumlu bir blog yazısı üret.
+  const wordCountNote = options?.emphasizeWordCount
+    ? `\n- content alanı kesinlikle en az ${BLOG_MIN_WORD_COUNT} kelime olsun; kısa yazma`
+    : "";
+
+  return `Türkiye'de villa kiralama ve tatil konaklama sitesi (Tatildeyiz) için SEO uyumlu, zengin içerikli bir blog yazısı üret.
 
 Konu: ${context.topic}
 ${categoryLine}
@@ -40,12 +59,16 @@ ${categoryLine}
 Kurallar:
 - Türkçe yaz
 - Tatil, villa kiralama, bölge rehberi veya tatil ipuçları odağında kal
-- Abartılı vaatlerden kaçın, doğal ve profesyonel ton kullan
-- content alanı HTML formatında olsun (p, h2, ul, li kullan; 4-6 paragraf + madde listesi)
-- slug URL dostu, küçük harf, tire ile ayrılmış olsun (Türkçe karakter kullanma)
-- seoTitle en fazla 60 karakter
-- seoDescription en fazla 155 karakter
-- seoKeywords virgülle ayrılmış 6-10 anahtar kelime
+- Doğal, bilgilendirici ve profesyonel ton; abartılı vaatlerden kaçın
+- content alanı HTML formatında olsun (yalnızca p, h2, h3, ul, li, strong kullan)
+- content yapısı: güçlü giriş paragrafı + en az 4 h2 bölümü + en az 1 h3 alt başlık + en az 2 madde listesi (ul/li)
+- content toplamı en az ${BLOG_MIN_WORD_COUNT} kelime olsun (HTML etiketleri hariç)${wordCountNote}
+- Anahtar kelimeyi başlık, ilk paragraf ve en az bir h2 içinde doğal şekilde geçir
+- excerpt: 2-3 cümle, okuyucuyu içeriğe çeken özet (120-180 karakter)
+- slug: URL dostu, küçük harf, tire ile ayrılmış (Türkçe karakter kullanma)
+- seoTitle: en fazla 60 karakter, anahtar kelime içersin
+- seoDescription: en fazla 155 karakter, tıklama oranını artıracak özet
+- seoKeywords: virgülle ayrılmış 8-12 anahtar kelime (bölge + villa kiralama + konu)
 - coverImagePrompt: kapak görseli için İngilizce, kısa DALL-E prompt (metin/yazı olmasın)
 
 Yanıtı yalnızca aşağıdaki JSON formatında ver:

@@ -152,7 +152,7 @@ pm2 save
 
 # ---- 7) Saglik kontrolu ----------------------------------------------------
 echo ""
-echo "==> [7/7] Saglik kontrolu ($HEALTH_URL)"
+echo "==> [7/8] Saglik kontrolu ($HEALTH_URL)"
 sleep 4
 HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
 if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "307" ]]; then
@@ -160,6 +160,15 @@ if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "307" ]]
 else
   echo "    UYARI: Beklenmeyen HTTP $HTTP_CODE. Loglari kontrol edin:"
   echo "           pm2 logs $PM2_NAME --lines 50"
+fi
+
+# ---- 8) Cron (blog AI dahil) ------------------------------------------------
+echo ""
+echo "==> [8/8] Cron guncelleniyor (blog-generate dahil)"
+if [[ -f scripts/deploy/04-setup-cron.sh ]]; then
+  bash scripts/deploy/04-setup-cron.sh
+else
+  echo "    UYARI: scripts/deploy/04-setup-cron.sh bulunamadi"
 fi
 
 echo ""

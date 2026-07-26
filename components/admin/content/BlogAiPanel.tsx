@@ -80,10 +80,12 @@ export default function BlogAiPanel({
   settings,
   topics,
   categories,
+  openaiConfigured,
 }: {
   settings: Settings;
   topics: Topic[];
   categories: Category[];
+  openaiConfigured: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -120,12 +122,21 @@ export default function BlogAiPanel({
               Yapay Zeka Blog Üretici
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Konu listesinden sırayla blog yazısı üretir. Başlık, açıklama,
-              içerik, kapak görseli ve SEO alanları otomatik oluşturulur.
+              Konu listesinden sırayla blog yazısı üretir. Her yazı en az 500
+              kelime, SEO uyumlu başlık/açıklama ve kapak görseli içerir.
             </p>
           </div>
         </div>
       </div>
+
+      {!openaiConfigured ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>OpenAI anahtarı eksik.</strong> Sunucu{" "}
+          <code className="rounded bg-amber-100 px-1">.env</code> dosyasına{" "}
+          <code className="rounded bg-amber-100 px-1">OPENAI_API_KEY</code>{" "}
+          eklenmeden blog üretimi çalışmaz.
+        </div>
+      ) : null}
 
       {(message || error) && (
         <div
@@ -383,12 +394,11 @@ export default function BlogAiPanel({
       </div>
 
       <p className="text-xs text-gray-500">
-        Otomatik üretim için sunucuda cron tanımlayın:{" "}
+        Otomatik üretim sunucu cron ile saatte bir tetiklenir (
         <code className="rounded bg-gray-100 px-1.5 py-0.5">
           GET /api/cron/blog-generate
-        </code>{" "}
-        (CRON_SECRET ile). Öneri: günde bir kez çalıştırın; gerçek yayın sıklığı
-        yukarıdaki ayara göre belirlenir.
+        </code>
+        ). Gerçek yayın sıklığı yukarıdaki ayara göre belirlenir.
       </p>
     </div>
   );

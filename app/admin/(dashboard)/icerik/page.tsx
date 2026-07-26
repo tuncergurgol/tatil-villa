@@ -13,6 +13,7 @@ import {
 } from "@/lib/queries/blog-ai";
 import { getAllSiteMenusForAdmin } from "@/lib/queries/site-menus";
 import { getAllCampaigns } from "@/lib/queries/campaigns";
+import { isOpenAiConfigured } from "@/lib/blog-ai-runner";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,7 @@ export default async function ContentHubPage({
       blogPosts={blogPosts}
       blogAiSettings={blogAiSettings}
       blogAiTopics={blogAiTopics}
+      blogAiOpenAiConfigured={isOpenAiConfigured()}
       reviews={reviews}
       pages={pages}
       menus={menus}

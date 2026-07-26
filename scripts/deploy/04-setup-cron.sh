@@ -44,6 +44,8 @@ cat >> "$CRON_FILE" <<EOF
 */15 * * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/calendar-price-transfer" >>"${LOG_DIR}/calendar-price-transfer.log" 2>&1
 # tatil-villa cron — harici villa link senkronu (saatte bir)
 15 * * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/villa-external-sync" >>"${LOG_DIR}/villa-external-sync.log" 2>&1
+# tatil-villa cron — yapay zeka blog üretimi (saatte bir; yayın sıklığı admin ayarından)
+5 * * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/blog-generate" >>"${LOG_DIR}/blog-generate.log" 2>&1
 EOF
 
 crontab "$CRON_FILE"
@@ -62,4 +64,5 @@ echo "=========================================================="
 echo "  Cron kuruldu."
 echo "  Log: ${LOG_DIR}/"
 echo "  Takvim/fiyat: her 15 dakikada bir tetiklenir."
+echo "  Blog AI    : saatte bir tetiklenir (sıklık admin ayarından)."
 echo "=========================================================="

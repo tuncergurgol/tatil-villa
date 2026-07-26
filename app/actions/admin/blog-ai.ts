@@ -5,9 +5,9 @@ import { z } from "zod";
 import type { BlogAiPublishFrequency } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { computeNextBlogAiRunAt } from "@/lib/blog-ai-frequency";
 import {
   ensureBlogAiSettings,
+  resolveNextBlogAiRunAtOnSave,
   runBlogAiGenerationForTopic,
   runScheduledBlogAiGeneration,
 } from "@/lib/blog-ai-runner";
@@ -57,10 +57,12 @@ export async function saveBlogAiSettingsAction(
 
   const current = await ensureBlogAiSettings();
   const frequency = parsed.data.frequency as BlogAiPublishFrequency;
-  const nextRunAt =
-    parsed.data.enabled && !current.nextRunAt
-      ? computeNextBlogAiRunAt(frequency)
-      : current.nextRunAt;
+  const nextRunAt = resolveNextBlogAiRunAtOnSave({
+    enabled: parsed.data.enabled,
+    frequency,
+    currentEnabled: current.enabled,
+    currentNextRunAt: current.nextRunAt,
+  });
 
   await prisma.blogAiSettings.update({
     where: { id: "default" },
@@ -157,7 +159,7 @@ export async function generateBlogAiTopicNowAction(
 
 export async function runBlogAiSchedulerNowAction(): Promise<BlogAiActionState> {
   await requireAdmin();
-  const result = await runScheduledBlogAiGeneration();
+  const result = await runScheduledBlogAiGeneration({ force: true });
   revalidateBlogAiPaths();
   if (!result.ok) return { error: result.message };
   if (result.slug) revalidatePath(`/blog/${result.slug}`);

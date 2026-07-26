@@ -5,11 +5,11 @@ import { prisma } from "@/lib/db";
 import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
 import {
   computeNextBlogAiRunAt,
-  getBlogAiFrequencyDays,
 } from "@/lib/blog-ai-frequency";
 import {
+  BLOG_MIN_WORD_COUNT,
   buildBlogGenerationPrompt,
-  generateBlogTemplate,
+  countWordsInHtml,
   parseBlogAiResponse,
   type BlogGenerationResult,
 } from "@/lib/blog-generator";
@@ -17,10 +17,17 @@ import {
 const FALLBACK_COVER_IMAGE =
   "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&h=630&fit=crop&q=80";
 
+const STUCK_GENERATING_MS = 20 * 60 * 1000;
+const OPENAI_MAX_TOKENS = 4096;
+
+export function isOpenAiConfigured() {
+  return Boolean(process.env.OPENAI_API_KEY?.trim());
+}
+
 async function generateBlogTextWithOpenAI(
   prompt: string
 ): Promise<BlogGenerationResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) return null;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -32,18 +39,25 @@ async function generateBlogTextWithOpenAI(
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
       temperature: 0.7,
+      max_tokens: OPENAI_MAX_TOKENS,
       messages: [
         {
           role: "system",
           content:
-            "Tatil ve villa kiralama blog içerikleri üreten yardımcı bir asistansın. Yanıtlarını yalnızca istenen JSON formatında ver.",
+            "Tatil ve villa kiralama için SEO uyumlu, en az 500 kelimelik blog içerikleri üreten yardımcı bir asistansın. Yanıtlarını yalnızca istenen JSON formatında ver.",
         },
         { role: "user", content: prompt },
       ],
     }),
   });
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error(
+      `[blog-ai] OpenAI metin hatası ${response.status}: ${detail.slice(0, 300)}`
+    );
+    return null;
+  }
 
   const data = (await response.json()) as {
     choices?: { message?: { content?: string } }[];
@@ -58,7 +72,7 @@ async function generateCoverImage(
   prompt: string,
   slug: string
 ): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) return FALLBACK_COVER_IMAGE;
 
   try {
@@ -112,31 +126,59 @@ async function buildUniqueBlogSlug(base: string) {
   return candidate;
 }
 
+async function recoverStuckBlogAiTopics() {
+  const threshold = new Date(Date.now() - STUCK_GENERATING_MS);
+  await prisma.blogAiTopic.updateMany({
+    where: {
+      status: "GENERATING",
+      updatedAt: { lt: threshold },
+    },
+    data: {
+      status: "FAILED",
+      errorMessage: "Üretim zaman aşımına uğradı. Yeniden deneyin.",
+    },
+  });
+}
+
 export async function generateBlogContentForTopic(options: {
   topic: string;
   categoryName?: string | null;
 }) {
-  const prompt = buildBlogGenerationPrompt({
-    topic: options.topic,
-    categoryName: options.categoryName,
-  });
-
-  try {
-    const aiResult = await generateBlogTextWithOpenAI(prompt);
-    if (aiResult) {
-      return { result: aiResult, source: "ai" as const };
-    }
-  } catch {
-    // şablona düş
+  if (!isOpenAiConfigured()) {
+    throw new Error(
+      "OPENAI_API_KEY tanımlı değil. Sunucu .env dosyasına OpenAI anahtarı ekleyin."
+    );
   }
 
-  return {
-    result: generateBlogTemplate({
-      topic: options.topic,
-      categoryName: options.categoryName,
-    }),
-    source: "template" as const,
-  };
+  let lastResult: BlogGenerationResult | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const prompt = buildBlogGenerationPrompt(
+      {
+        topic: options.topic,
+        categoryName: options.categoryName,
+      },
+      { emphasizeWordCount: attempt > 0 }
+    );
+
+    const aiResult = await generateBlogTextWithOpenAI(prompt);
+    if (!aiResult) continue;
+
+    lastResult = aiResult;
+    const wordCount = countWordsInHtml(aiResult.content);
+    if (wordCount >= BLOG_MIN_WORD_COUNT) {
+      return { result: aiResult, source: "ai" as const, wordCount };
+    }
+  }
+
+  if (lastResult) {
+    const wordCount = countWordsInHtml(lastResult.content);
+    throw new Error(
+      `Blog içeriği yetersiz (${wordCount}/${BLOG_MIN_WORD_COUNT} kelime). Lütfen tekrar deneyin.`
+    );
+  }
+
+  throw new Error("OpenAI blog içeriği üretilemedi. API yanıtını kontrol edin.");
 }
 
 export type BlogAiRunResult = {
@@ -245,7 +287,11 @@ export async function runBlogAiGenerationForTopic(
   }
 }
 
-export async function runScheduledBlogAiGeneration(): Promise<BlogAiRunResult> {
+export async function runScheduledBlogAiGeneration(options?: {
+  force?: boolean;
+}): Promise<BlogAiRunResult> {
+  await recoverStuckBlogAiTopics();
+
   const settings = await prisma.blogAiSettings.findUnique({
     where: { id: "default" },
   });
@@ -254,22 +300,20 @@ export async function runScheduledBlogAiGeneration(): Promise<BlogAiRunResult> {
     return { ok: false, message: "Otomatik blog üretimi kapalı" };
   }
 
+  if (!isOpenAiConfigured()) {
+    return {
+      ok: false,
+      message:
+        "OPENAI_API_KEY tanımlı değil. Sunucu .env dosyasına anahtar ekleyin.",
+    };
+  }
+
   const now = new Date();
-  if (settings.nextRunAt && settings.nextRunAt > now) {
+  if (!options?.force && settings.nextRunAt && settings.nextRunAt > now) {
     return {
       ok: false,
       message: `Sonraki çalışma: ${settings.nextRunAt.toISOString()}`,
     };
-  }
-
-  if (settings.lastGeneratedAt) {
-    const minNext = new Date(settings.lastGeneratedAt);
-    minNext.setDate(
-      minNext.getDate() + getBlogAiFrequencyDays(settings.frequency)
-    );
-    if (minNext > now) {
-      return { ok: false, message: "Yayın sıklığı henüz dolmadı" };
-    }
   }
 
   const nextTopic = await prisma.blogAiTopic.findFirst({
@@ -290,4 +334,20 @@ export async function ensureBlogAiSettings() {
     create: {},
     update: {},
   });
+}
+
+export function resolveNextBlogAiRunAtOnSave(input: {
+  enabled: boolean;
+  frequency: BlogAiPublishFrequency;
+  currentEnabled: boolean;
+  currentNextRunAt: Date | null;
+}): Date | null {
+  if (!input.enabled) return null;
+
+  const now = new Date();
+  if (!input.currentEnabled || !input.currentNextRunAt || input.currentNextRunAt <= now) {
+    return now;
+  }
+
+  return input.currentNextRunAt;
 }
