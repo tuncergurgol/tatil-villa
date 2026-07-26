@@ -1,11 +1,7 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import type { BlogAiPublishFrequency } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
-import {
-  computeNextBlogAiRunAt,
-} from "@/lib/blog-ai-frequency";
+import { computeNextBlogAiRunAt } from "@/lib/blog-ai-frequency";
 import {
   BLOG_MIN_WORD_COUNT,
   buildBlogGenerationPrompt,
@@ -13,15 +9,22 @@ import {
   parseBlogAiResponse,
   type BlogGenerationResult,
 } from "@/lib/blog-generator";
-
-const FALLBACK_COVER_IMAGE =
-  "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&h=630&fit=crop&q=80";
+import { downloadBlogCoverImage } from "@/lib/blog-cover-image";
+import { generateTextWithGemini, isGeminiConfigured } from "@/lib/gemini-client";
 
 const STUCK_GENERATING_MS = 20 * 60 * 1000;
 const OPENAI_MAX_TOKENS = 4096;
 
+const BLOG_SYSTEM_INSTRUCTION =
+  "Tatil ve villa kiralama için SEO uyumlu, en az 500 kelimelik blog içerikleri üreten yardımcı bir asistansın. Yanıtlarını yalnızca istenen JSON formatında ver.";
+
 export function isOpenAiConfigured() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
+}
+
+/** Gemini (ücretsiz) veya OpenAI ile blog üretimi yapılandırılmış mı? */
+export function isBlogAiConfigured() {
+  return isGeminiConfigured() || isOpenAiConfigured();
 }
 
 async function generateBlogTextWithOpenAI(
@@ -41,11 +44,7 @@ async function generateBlogTextWithOpenAI(
       temperature: 0.7,
       max_tokens: OPENAI_MAX_TOKENS,
       messages: [
-        {
-          role: "system",
-          content:
-            "Tatil ve villa kiralama için SEO uyumlu, en az 500 kelimelik blog içerikleri üreten yardımcı bir asistansın. Yanıtlarını yalnızca istenen JSON formatında ver.",
-        },
+        { role: "system", content: BLOG_SYSTEM_INSTRUCTION },
         { role: "user", content: prompt },
       ],
     }),
@@ -68,49 +67,31 @@ async function generateBlogTextWithOpenAI(
   return parseBlogAiResponse(content);
 }
 
-async function generateCoverImage(
-  prompt: string,
-  slug: string
-): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return FALLBACK_COVER_IMAGE;
+async function generateBlogTextWithGemini(
+  prompt: string
+): Promise<BlogGenerationResult | null> {
+  const content = await generateTextWithGemini({
+    systemInstruction: BLOG_SYSTEM_INSTRUCTION,
+    prompt,
+    jsonMode: true,
+    temperature: 0.7,
+    maxOutputTokens: 8192,
+  });
+  if (!content) return null;
+  return parseBlogAiResponse(content);
+}
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: `${prompt}. Professional travel photography, no text, no watermark.`,
-        n: 1,
-        size: "1792x1024",
-        response_format: "url",
-      }),
-    });
-
-    if (!response.ok) return FALLBACK_COVER_IMAGE;
-
-    const data = (await response.json()) as {
-      data?: { url?: string }[];
-    };
-    const imageUrl = data.data?.[0]?.url;
-    if (!imageUrl) return FALLBACK_COVER_IMAGE;
-
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) return FALLBACK_COVER_IMAGE;
-
-    const buffer = Buffer.from(await imageResponse.arrayBuffer());
-    const dir = path.join(process.cwd(), "public", "uploads", "blog-ai");
-    await mkdir(dir, { recursive: true });
-    const filename = `${slug}-${Date.now()}.jpg`;
-    await writeFile(path.join(dir, filename), buffer);
-    return `/uploads/blog-ai/${filename}`;
-  } catch {
-    return FALLBACK_COVER_IMAGE;
+async function generateBlogText(prompt: string): Promise<BlogGenerationResult | null> {
+  if (isGeminiConfigured()) {
+    const geminiResult = await generateBlogTextWithGemini(prompt);
+    if (geminiResult) return geminiResult;
   }
+
+  if (isOpenAiConfigured()) {
+    return generateBlogTextWithOpenAI(prompt);
+  }
+
+  return null;
 }
 
 async function buildUniqueBlogSlug(base: string) {
@@ -144,9 +125,9 @@ export async function generateBlogContentForTopic(options: {
   topic: string;
   categoryName?: string | null;
 }) {
-  if (!isOpenAiConfigured()) {
+  if (!isBlogAiConfigured()) {
     throw new Error(
-      "OPENAI_API_KEY tanımlı değil. Sunucu .env dosyasına OpenAI anahtarı ekleyin."
+      "GEMINI_API_KEY tanımlı değil. Google AI Studio'dan ücretsiz anahtar alıp sunucu .env dosyasına ekleyin."
     );
   }
 
@@ -161,7 +142,7 @@ export async function generateBlogContentForTopic(options: {
       { emphasizeWordCount: attempt > 0 }
     );
 
-    const aiResult = await generateBlogTextWithOpenAI(prompt);
+    const aiResult = await generateBlogText(prompt);
     if (!aiResult) continue;
 
     lastResult = aiResult;
@@ -178,7 +159,9 @@ export async function generateBlogContentForTopic(options: {
     );
   }
 
-  throw new Error("OpenAI blog içeriği üretilemedi. API yanıtını kontrol edin.");
+  throw new Error(
+    "Blog içeriği üretilemedi. GEMINI_API_KEY ve kota limitlerini kontrol edin."
+  );
 }
 
 export type BlogAiRunResult = {
@@ -230,7 +213,7 @@ export async function runBlogAiGenerationForTopic(
     });
 
     const slug = await buildUniqueBlogSlug(result.slug || result.title);
-    const coverImage = await generateCoverImage(result.coverImagePrompt, slug);
+    const coverImage = await downloadBlogCoverImage(slug);
 
     const post = await prisma.blogPost.create({
       data: {
@@ -300,11 +283,11 @@ export async function runScheduledBlogAiGeneration(options?: {
     return { ok: false, message: "Otomatik blog üretimi kapalı" };
   }
 
-  if (!isOpenAiConfigured()) {
+  if (!isBlogAiConfigured()) {
     return {
       ok: false,
       message:
-        "OPENAI_API_KEY tanımlı değil. Sunucu .env dosyasına anahtar ekleyin.",
+        "GEMINI_API_KEY tanımlı değil. Google AI Studio'dan ücretsiz anahtar alıp .env dosyasına ekleyin.",
     };
   }
 

@@ -80,12 +80,12 @@ export default function BlogAiPanel({
   settings,
   topics,
   categories,
-  openaiConfigured,
+  aiConfigured,
 }: {
   settings: Settings;
   topics: Topic[];
   categories: Category[];
-  openaiConfigured: boolean;
+  aiConfigured: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -122,19 +122,33 @@ export default function BlogAiPanel({
               Yapay Zeka Blog Üretici
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Konu listesinden sırayla blog yazısı üretir. Her yazı en az 500
-              kelime, SEO uyumlu başlık/açıklama ve kapak görseli içerir.
+              Konu listesinden sırayla blog yazısı üretir. Google Gemini (ücretsiz
+              kota) ile en az 500 kelimelik SEO uyumlu içerik ve kapak görseli
+              oluşturulur.
             </p>
           </div>
         </div>
       </div>
 
-      {!openaiConfigured ? (
+      {!aiConfigured ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>OpenAI anahtarı eksik.</strong> Sunucu{" "}
+          <strong>Gemini API anahtarı eksik.</strong>{" "}
+          <a
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium underline"
+          >
+            Google AI Studio
+          </a>
+          {" "}üzerinden ücretsiz anahtar alın ve sunucu{" "}
           <code className="rounded bg-amber-100 px-1">.env</code> dosyasına{" "}
-          <code className="rounded bg-amber-100 px-1">OPENAI_API_KEY</code>{" "}
-          eklenmeden blog üretimi çalışmaz.
+          <code className="rounded bg-amber-100 px-1">GEMINI_API_KEY</code>{" "}
+          olarak ekleyin. Ardından{" "}
+          <code className="rounded bg-amber-100 px-1">
+            pm2 restart tatil-villa --update-env
+          </code>
+          .
         </div>
       ) : null}
 

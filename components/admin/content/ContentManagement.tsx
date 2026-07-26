@@ -45,7 +45,7 @@ interface ContentManagementProps {
   blogPosts: BlogPost[];
   blogAiSettings: BlogAiSettings;
   blogAiTopics: BlogAiTopic[];
-  blogAiOpenAiConfigured: boolean;
+  blogAiConfigured: boolean;
   reviews: Review[];
   pages: CmsPage[];
   menus: SiteMenu[];
@@ -60,7 +60,7 @@ export default function ContentManagement({
   blogPosts,
   blogAiSettings,
   blogAiTopics,
-  blogAiOpenAiConfigured,
+  blogAiConfigured,
   reviews,
   pages,
   menus,
@@ -180,7 +180,7 @@ export default function ContentManagement({
               posts={blogPosts}
               blogAiSettings={blogAiSettings}
               blogAiTopics={blogAiTopics}
-              blogAiOpenAiConfigured={blogAiOpenAiConfigured}
+              blogAiConfigured={blogAiConfigured}
             />
           </TabPanel>
           <TabPanel active={activeModule === "yorumlar"}>

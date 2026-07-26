@@ -1,3 +1,5 @@
+import { isBlogAiConfigured } from "../lib/blog-ai-runner";
+import { isGeminiConfigured } from "../lib/gemini-client";
 import { prisma } from "../lib/db";
 
 async function main() {
@@ -16,7 +18,8 @@ async function main() {
   console.log(
     JSON.stringify(
       {
-        openaiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+        geminiConfigured: isGeminiConfigured(),
+        blogAiConfigured: isBlogAiConfigured(),
         settings,
         topics,
       },

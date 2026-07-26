@@ -83,13 +83,13 @@ export default function BlogManagement({
   posts,
   blogAiSettings,
   blogAiTopics,
-  blogAiOpenAiConfigured,
+  blogAiConfigured,
 }: {
   categories: Category[];
   posts: Post[];
   blogAiSettings: BlogAiSettings;
   blogAiTopics: BlogAiTopic[];
-  blogAiOpenAiConfigured: boolean;
+  blogAiConfigured: boolean;
 }) {
   const router = useRouter();
   const [activeView, setActiveView] = useState<BlogView>("posts");
@@ -194,7 +194,7 @@ export default function BlogManagement({
           settings={blogAiSettings}
           topics={blogAiTopics}
           categories={categories}
-          openaiConfigured={blogAiOpenAiConfigured}
+          aiConfigured={blogAiConfigured}
         />
       ) : (
     <div className="space-y-8">
