@@ -51,7 +51,7 @@ export async function generateTextWithGemini(options: {
       ],
       generationConfig: {
         temperature: options.temperature ?? 0.7,
-        maxOutputTokens: options.maxOutputTokens ?? 8192,
+        maxOutputTokens: options.maxOutputTokens ?? 16384,
         ...(options.jsonMode ? { responseMimeType: "application/json" } : {}),
       },
     }),

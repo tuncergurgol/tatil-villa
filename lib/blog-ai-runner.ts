@@ -133,7 +133,7 @@ export async function generateBlogContentForTopic(options: {
 
   let lastResult: BlogGenerationResult | null = null;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const prompt = buildBlogGenerationPrompt(
       {
         topic: options.topic,
