@@ -270,6 +270,19 @@ export async function runBlogAiGenerationForTopic(
   }
 }
 
+async function findNextBlogAiTopic() {
+  const pending = await prisma.blogAiTopic.findFirst({
+    where: { status: "PENDING" },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+  if (pending) return pending;
+
+  return prisma.blogAiTopic.findFirst({
+    where: { status: "FAILED" },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+}
+
 export async function runScheduledBlogAiGeneration(options?: {
   force?: boolean;
 }): Promise<BlogAiRunResult> {
@@ -299,10 +312,7 @@ export async function runScheduledBlogAiGeneration(options?: {
     };
   }
 
-  const nextTopic = await prisma.blogAiTopic.findFirst({
-    where: { status: { in: ["PENDING", "FAILED"] } },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
+  const nextTopic = await findNextBlogAiTopic();
 
   if (!nextTopic) {
     return { ok: false, message: "Bekleyen konu yok" };

@@ -1,5 +1,13 @@
 const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 
+/** Yoğunluk / model kısıtında sırayla denenecek modeller. */
+const GEMINI_MODEL_FALLBACKS = [
+  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
+  "gemini-2.0-flash-lite",
+] as const;
+
 type GeminiGenerateResponse = {
   candidates?: {
     content?: { parts?: { text?: string }[] };
@@ -16,17 +24,23 @@ export function getGeminiModel() {
   return process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 }
 
-export async function generateTextWithGemini(options: {
-  systemInstruction?: string;
-  prompt: string;
-  jsonMode?: boolean;
-  temperature?: number;
-  maxOutputTokens?: number;
-}): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return null;
+function getGeminiModelCandidates() {
+  const preferred = getGeminiModel();
+  const ordered = [preferred, ...GEMINI_MODEL_FALLBACKS];
+  return [...new Set(ordered)];
+}
 
-  const model = getGeminiModel();
+async function generateTextWithGeminiModel(
+  model: string,
+  apiKey: string,
+  options: {
+    systemInstruction?: string;
+    prompt: string;
+    jsonMode?: boolean;
+    temperature?: number;
+    maxOutputTokens?: number;
+  }
+): Promise<{ text: string | null; retryable: boolean }> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
   const response = await fetch(url, {
@@ -60,15 +74,16 @@ export async function generateTextWithGemini(options: {
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     console.error(
-      `[gemini] API hatası ${response.status}: ${detail.slice(0, 400)}`
+      `[gemini] ${model} hatası ${response.status}: ${detail.slice(0, 400)}`
     );
-    return null;
+    const retryable = response.status === 429 || response.status === 503;
+    return { text: null, retryable };
   }
 
   const data = (await response.json()) as GeminiGenerateResponse;
   if (data.error?.message) {
-    console.error(`[gemini] ${data.error.message}`);
-    return null;
+    console.error(`[gemini] ${model}: ${data.error.message}`);
+    return { text: null, retryable: true };
   }
 
   const text = data.candidates
@@ -77,5 +92,24 @@ export async function generateTextWithGemini(options: {
     .join("")
     .trim();
 
-  return text || null;
+  return { text: text || null, retryable: false };
+}
+
+export async function generateTextWithGemini(options: {
+  systemInstruction?: string;
+  prompt: string;
+  jsonMode?: boolean;
+  temperature?: number;
+  maxOutputTokens?: number;
+}): Promise<string | null> {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  for (const model of getGeminiModelCandidates()) {
+    const result = await generateTextWithGeminiModel(model, apiKey, options);
+    if (result.text) return result.text;
+    if (!result.retryable) continue;
+  }
+
+  return null;
 }

@@ -14,7 +14,8 @@ export type BlogGenerationResult = {
   coverImagePrompt: string;
 };
 
-export const BLOG_MIN_WORD_COUNT = 500;
+export const BLOG_MIN_WORD_COUNT = 480;
+export const BLOG_TARGET_WORD_COUNT = 500;
 
 function truncate(value: string, max: number) {
   if (value.length <= max) return value;
@@ -62,7 +63,7 @@ Kurallar:
 - Doğal, bilgilendirici ve profesyonel ton; abartılı vaatlerden kaçın
 - content alanı HTML formatında olsun (yalnızca p, h2, h3, ul, li, strong kullan)
 - content yapısı: güçlü giriş paragrafı + en az 4 h2 bölümü + en az 1 h3 alt başlık + en az 2 madde listesi (ul/li)
-- content toplamı en az ${BLOG_MIN_WORD_COUNT} kelime olsun (HTML etiketleri hariç)${wordCountNote}
+- content toplamı en az ${BLOG_TARGET_WORD_COUNT} kelime olsun (HTML etiketleri hariç)${wordCountNote}
 - Anahtar kelimeyi başlık, ilk paragraf ve en az bir h2 içinde doğal şekilde geçir
 - excerpt: 2-3 cümle, okuyucuyu içeriğe çeken özet (120-180 karakter)
 - slug: URL dostu, küçük harf, tire ile ayrılmış (Türkçe karakter kullanma)

@@ -123,7 +123,7 @@ export default function BlogAiPanel({
             </h2>
             <p className="mt-1 text-sm text-gray-600">
               Konu listesinden sırayla blog yazısı üretir. Google Gemini (ücretsiz
-              kota) ile en az 500 kelimelik SEO uyumlu içerik ve kapak görseli
+              kota) ile yaklaşık 500 kelimelik SEO uyumlu içerik ve kapak görseli
               oluşturulur.
             </p>
           </div>
