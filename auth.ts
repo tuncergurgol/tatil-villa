@@ -10,6 +10,7 @@ import {
 } from "@/lib/phone";
 import {
   ADMIN_LOGIN_OTP_PURPOSE,
+  OTP_TTL_MS,
   type AdminLoginOtpPayload,
 } from "@/lib/verification-otp";
 
@@ -46,13 +47,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!user || !user.active) return null;
 
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-
-        if (!valid) return null;
-
         const phone = normalizePhoneToE164(user.phone);
         if (!phone || !isValidTurkishMobileE164(phone)) return null;
 
@@ -70,6 +64,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const payload = record.payload as AdminLoginOtpPayload | null;
         if (payload?.userId !== user.id) return null;
+
+        const passwordVerifiedAt = payload?.passwordVerifiedAt
+          ? Date.parse(payload.passwordVerifiedAt)
+          : NaN;
+        const otpPasswordTrusted =
+          Number.isFinite(passwordVerifiedAt) &&
+          Date.now() - passwordVerifiedAt <= OTP_TTL_MS;
+
+        if (!otpPasswordTrusted) {
+          const valid = await bcrypt.compare(
+            credentials.password as string,
+            user.passwordHash
+          );
+          if (!valid) return null;
+        }
 
         await prisma.verificationCode.update({
           where: { id: record.id },

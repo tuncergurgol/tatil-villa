@@ -14,6 +14,7 @@ import { generateTextWithGemini, isGeminiConfigured } from "@/lib/gemini-client"
 
 const STUCK_GENERATING_MS = 20 * 60 * 1000;
 const OPENAI_MAX_TOKENS = 4096;
+let blogGenerationInFlight = false;
 
 const BLOG_SYSTEM_INSTRUCTION =
   "Tatil ve villa kiralama için SEO uyumlu, en az 500 kelimelik blog içerikleri üreten yardımcı bir asistansın. Yanıtlarını yalnızca istenen JSON formatında ver.";
@@ -286,6 +287,10 @@ async function findNextBlogAiTopic() {
 export async function runScheduledBlogAiGeneration(options?: {
   force?: boolean;
 }): Promise<BlogAiRunResult> {
+  if (blogGenerationInFlight) {
+    return { ok: false, message: "Blog üretimi zaten devam ediyor" };
+  }
+
   await recoverStuckBlogAiTopics();
 
   const settings = await prisma.blogAiSettings.findUnique({
@@ -318,7 +323,12 @@ export async function runScheduledBlogAiGeneration(options?: {
     return { ok: false, message: "Bekleyen konu yok" };
   }
 
-  return runBlogAiGenerationForTopic(nextTopic.id);
+  blogGenerationInFlight = true;
+  try {
+    return await runBlogAiGenerationForTopic(nextTopic.id);
+  } finally {
+    blogGenerationInFlight = false;
+  }
 }
 
 export async function ensureBlogAiSettings() {

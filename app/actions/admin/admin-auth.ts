@@ -112,6 +112,7 @@ export async function startAdminLoginAction(
   const payload: AdminLoginOtpPayload = {
     userId: user.id,
     email: user.email,
+    passwordVerifiedAt: new Date().toISOString(),
   };
 
   await invalidateActiveOtps(phone, ADMIN_LOGIN_OTP_PURPOSE);

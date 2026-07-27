@@ -28,6 +28,8 @@ export type BookingGuestLoginOtpPayload = {
 export type AdminLoginOtpPayload = {
   userId: string;
   email: string;
+  /** OTP gönderilirken şifre doğrulandı — tekrar bcrypt gerekmez. */
+  passwordVerifiedAt: string;
 };
 
 export type AdminPasswordResetPayload = {

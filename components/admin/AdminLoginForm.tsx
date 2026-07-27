@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
   resendAdminLoginOtpAction,
@@ -17,7 +16,6 @@ type Props = {
 };
 
 export default function AdminLoginForm({ idleMessage }: Props) {
-  const router = useRouter();
   const [startState, startAction, startPending] = useActionState(
     startAdminLoginAction,
     initialState
@@ -96,23 +94,37 @@ export default function AdminLoginForm({ idleMessage }: Props) {
     const formData = new FormData(e.currentTarget);
     const otpCode = String(formData.get("otpCode") ?? "").trim();
 
-    const result = await signIn("credentials", {
-      email: otpSession.email,
-      password: otpSession.password,
-      otpCode,
-      verificationId: otpSession.verificationId,
-      redirect: false,
-    });
+    const result = await Promise.race([
+      signIn("credentials", {
+        email: otpSession.email,
+        password: otpSession.password,
+        otpCode,
+        verificationId: otpSession.verificationId,
+        redirect: false,
+      }),
+      new Promise<{ error: string }>((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              error: "Sunucu yanıt vermedi. Lütfen tekrar deneyin.",
+            }),
+          25_000
+        )
+      ),
+    ]);
 
     setSignInPending(false);
 
     if (result?.error) {
-      setSignInError("Doğrulama kodu hatalı veya süresi doldu");
+      setSignInError(
+        result.error === "CredentialsSignin"
+          ? "Doğrulama kodu hatalı veya süresi doldu"
+          : result.error
+      );
       return;
     }
 
-    router.push("/admin");
-    router.refresh();
+    window.location.assign("/admin");
   }
 
   if (otpSession) {
