@@ -126,6 +126,11 @@ export function escapeXml(value: string | null | undefined): string {
     .replace(/'/g, "&apos;");
 }
 
+/** GİB gunubirlikson.xsd — type_ibanNo maxLength 26; boşluksuz TR IBAN. */
+export function normalizeIbanForBtrans(iban: string | null | undefined): string {
+  return (iban ?? "").replace(/\s+/g, "").toUpperCase();
+}
+
 export function isWithinMonth(date: Date, year: number, month: number): boolean {
   return date.getFullYear() === year && date.getMonth() === month - 1;
 }
@@ -164,7 +169,7 @@ export function checkMissingFields(
     missing.push("Ev sahibi cep telefonu (10 hane)");
   }
 
-  if (!owner.bankIban.trim()) {
+  if (!normalizeIbanForBtrans(owner.bankIban)) {
     missing.push("IBAN (26 hane)");
   }
 
@@ -254,7 +259,7 @@ export function buildIslemXml(input: {
     "      <odemeBilgileri>",
     "        <komisyonOdeme>",
     "          <komisyonTahsilSekli>5</komisyonTahsilSekli>",
-    `          <ibanNo>${escapeXml(input.komisyonIban)}</ibanNo>`,
+    `          <ibanNo>${escapeXml(normalizeIbanForBtrans(input.komisyonIban))}</ibanNo>`,
     `          <tahsilTar>${formatYYYYMMDD(input.tahsilTarihi)}</tahsilTar>`,
     `          <komisyonOrani>${Math.round(input.komisyonOrani ?? 0)}</komisyonOrani>`,
     `          <komisyonTutari>${formatAmount(input.komisyonTutari)}</komisyonTutari>`,
@@ -263,7 +268,7 @@ export function buildIslemXml(input: {
     "      </odemeBilgileri>",
     "      <gayrimenkulSahipBilgi>",
     buildOwnerKisiXml(input.owner),
-    `        <ibanNo>${escapeXml(input.owner.bankIban.replace(/\s+/g, "").toUpperCase())}</ibanNo>`,
+    `        <ibanNo>${escapeXml(normalizeIbanForBtrans(input.owner.bankIban))}</ibanNo>`,
     `        <ceptelNumarasi>${escapeXml(normalizeTurkishPhoneDigits(input.owner.phone))}</ceptelNumarasi>`,
     `        <eposta>${escapeXml(input.owner.email.trim())}</eposta>`,
     "      </gayrimenkulSahipBilgi>",
