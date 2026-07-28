@@ -131,6 +131,19 @@ export function normalizeIbanForBtrans(iban: string | null | undefined): string 
   return (iban ?? "").replace(/\s+/g, "").toUpperCase();
 }
 
+/** GİB gunubirlikson.xsd — enlem/boylam fractionDigits max 8. */
+export function formatCoordinateForBtrans(
+  value: number,
+  maxFractionDigits = 8
+): string {
+  if (!Number.isFinite(value)) return "0";
+  const factor = 10 ** maxFractionDigits;
+  const truncated = Math.trunc(value * factor) / factor;
+  let formatted = truncated.toFixed(maxFractionDigits);
+  formatted = formatted.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+  return formatted;
+}
+
 export function isWithinMonth(date: Date, year: number, month: number): boolean {
   return date.getFullYear() === year && date.getMonth() === month - 1;
 }
@@ -246,8 +259,8 @@ export function buildIslemXml(input: {
     "        <yevmiyeNo>0</yevmiyeNo>",
     "        <basvuruBulunmaBilgisi><hayir /></basvuruBulunmaBilgisi>",
     "        <koordinatBilgileri>",
-    `          <enlem>${input.enlem}</enlem>`,
-    `          <boylam>${input.boylam}</boylam>`,
+    `          <enlem>${formatCoordinateForBtrans(input.enlem)}</enlem>`,
+    `          <boylam>${formatCoordinateForBtrans(input.boylam)}</boylam>`,
     "        </koordinatBilgileri>",
     "      </ilanaKonuGayrimenkulBilgisi>",
     "      <rezervasyonBilgileri>",
