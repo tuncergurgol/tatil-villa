@@ -1,7 +1,11 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  approveGuestReviewAction,
+  rejectGuestReviewAction,
+} from "@/app/actions/admin/guest-review";
 import {
   deleteGuestReviewAction,
   saveGuestReviewAction,
@@ -23,14 +27,119 @@ type ReviewRow = {
   approved: boolean;
   featured: boolean;
   sortOrder: number;
+  source: string;
+  rejectedReason: string;
+  submittedAt: Date | string | null;
+  villa: { id: string; name: string; villaId: number | null } | null;
 };
+
+function sourceLabel(source: string) {
+  if (source === "guest_invite") return "Misafir daveti";
+  return "Manuel";
+}
 
 export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
+  const pendingReviews = useMemo(
+    () =>
+      reviews.filter(
+        (review) =>
+          !review.approved &&
+          review.source === "guest_invite" &&
+          !review.rejectedReason?.trim()
+      ),
+    [reviews]
+  );
+  const publishedReviews = useMemo(
+    () => reviews.filter((review) => !pendingReviews.some((p) => p.id === review.id)),
+    [reviews, pendingReviews]
+  );
+
+  function handleApprove(id: string) {
+    startTransition(async () => {
+      await approveGuestReviewAction(id);
+      router.refresh();
+    });
+  }
+
+  function handleReject(id: string) {
+    const reason = window.prompt(
+      "Red nedeni (isteğe bağlı — müşteriyle iletişim için not):"
+    );
+    if (reason === null) return;
+    startTransition(async () => {
+      await rejectGuestReviewAction(id, reason);
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-6">
+      {pendingReviews.length > 0 ? (
+        <section className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+          <div>
+            <h2 className="text-sm font-semibold text-amber-900">
+              Onay Bekleyen Yorumlar ({pendingReviews.length})
+            </h2>
+            <p className="mt-1 text-xs text-amber-800">
+              Misafir daveti ile gelen yorumlar yayına alınmadan önce incelenir.
+            </p>
+          </div>
+
+          {pendingReviews.map((review) => (
+            <article
+              key={review.id}
+              className="space-y-3 rounded-xl border border-amber-200 bg-white p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-gray-900">{review.guestName}</p>
+                  <p className="text-xs text-gray-500">
+                    {review.villa?.name ?? "Villa belirtilmemiş"} ·{" "}
+                    {review.rating}/5 · {sourceLabel(review.source)}
+                  </p>
+                  {review.submittedAt ? (
+                    <p className="text-xs text-gray-400">
+                      {new Date(review.submittedAt).toLocaleString("tr-TR")}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleApprove(review.id)}
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Onayla
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleReject(review.id)}
+                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Reddet
+                  </button>
+                </div>
+              </div>
+              {review.title ? (
+                <p className="text-sm font-medium text-gray-800">{review.title}</p>
+              ) : null}
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{review.comment}</p>
+              {review.rating <= 3 ? (
+                <p className="text-xs font-medium text-amber-700">
+                  Düşük puan — müşteriyle iletişim kurulması önerilir; Google
+                  yönlendirmesi yapılmaz.
+                </p>
+              ) : null}
+            </article>
+          ))}
+        </section>
+      ) : null}
+
       <form
         action={(fd) =>
           startTransition(async () => {
@@ -40,7 +149,7 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
         }
         className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5"
       >
-        <h2 className="text-sm font-semibold text-gray-800">Yeni Yorum</h2>
+        <h2 className="text-sm font-semibold text-gray-800">Yeni Yorum (Manuel)</h2>
 
         <CmsFormSection title="Temel Bilgiler">
           <div className="grid gap-4 md:grid-cols-3">
@@ -126,11 +235,18 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
         </div>
       </form>
 
-      {reviews.map((review) => (
+      {publishedReviews.map((review) => (
         <div
           key={review.id}
           className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5"
         >
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+            <span>{sourceLabel(review.source)}</span>
+            {review.villa ? <span>{review.villa.name}</span> : null}
+            {!review.approved && review.rejectedReason ? (
+              <span className="text-red-600">Red: {review.rejectedReason}</span>
+            ) : null}
+          </div>
           <form
             action={(fd) =>
               startTransition(async () => {

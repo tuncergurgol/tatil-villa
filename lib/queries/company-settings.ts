@@ -95,6 +95,8 @@ export const DEFAULT_COMPANY_SETTINGS = {
   homeRecommendedTitle: "Önerilen Villalar",
   homeRecommendedActive: true,
   homeRecommendedSortMode: "showcase",
+  googleReviewUrl: "",
+  guestReviewInvitesEnabled: true,
   tatilAssistantEnabled: true,
   assistantWahaBaseUrl: "http://localhost:3001",
   assistantWahaApiKey: "",

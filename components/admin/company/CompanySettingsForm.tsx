@@ -423,6 +423,27 @@ export default function CompanySettingsForm({
                 defaultValue={settings.youtube}
                 placeholder="https://youtube.com/..."
               />
+              <div className="sm:col-span-2">
+                <SettingsField
+                  label="Google Yorum Linki"
+                  name="googleReviewUrl"
+                  defaultValue={settings.googleReviewUrl}
+                  placeholder="https://g.page/r/.../review"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Misafir yorum formu sonrası isteğe bağlı Google yönlendirmesi
+                  için kullanılır.
+                </p>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  name="guestReviewInvitesEnabled"
+                  defaultChecked={settings.guestReviewInvitesEnabled}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                />
+                Çıkış sonrası otomatik misafir yorum davetleri (WhatsApp / e-posta)
+              </label>
             </div>
           </TabPanel>
 

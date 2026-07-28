@@ -1497,6 +1497,7 @@ export default function BookingDetailModal({
                   bookingStatus={status}
                   externalCode={booking.externalCode}
                   guestEmail={guestEmail}
+                  checkOut={booking.checkOut}
                   prepayments={prepayments}
                   confirmationSentAt={confirmationSentAt}
                   confirmationSends={details.confirmationSends ?? []}

@@ -185,7 +185,11 @@ export async function getApprovedReviewsForPublic(
 
 export async function getAllReviewsForAdmin() {
   return prisma.guestReview.findMany({
-    orderBy: [{ createdAt: "desc" }],
+    orderBy: [
+      { approved: "asc" },
+      { submittedAt: "desc" },
+      { createdAt: "desc" },
+    ],
     include: {
       villa: { select: { id: true, name: true, villaId: true } },
     },

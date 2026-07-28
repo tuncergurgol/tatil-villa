@@ -83,6 +83,8 @@ const companySettingsSchema = z.object({
   homeRecommendedTitle: z.string(),
   homeRecommendedActive: z.coerce.boolean(),
   homeRecommendedSortMode: z.enum(["showcase", "random"]),
+  googleReviewUrl: z.string(),
+  guestReviewInvitesEnabled: z.coerce.boolean(),
 });
 
 function readTrackingFields(
@@ -179,6 +181,8 @@ export async function saveCompanySettings(
     homeRecommendedTitle: formData.get("homeRecommendedTitle"),
     homeRecommendedActive: formData.get("homeRecommendedActive") === "on",
     homeRecommendedSortMode: formData.get("homeRecommendedSortMode"),
+    googleReviewUrl: formData.get("googleReviewUrl") ?? "",
+    guestReviewInvitesEnabled: formData.get("guestReviewInvitesEnabled") === "on",
   });
 
   if (!parsed.success) {

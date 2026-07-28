@@ -19,6 +19,7 @@ import {
 } from "@/components/admin/bookings/booking-form-ui";
 import CheckInInfoShareModal from "@/components/admin/bookings/CheckInInfoShareModal";
 import type { CheckInInfoShareAudience } from "@/app/actions/admin/booking-check-in-info-share";
+import { sendGuestReviewInviteAction } from "@/app/actions/admin/guest-review";
 import { buildCheckInInfoSharePath } from "@/lib/agency-message-render";
 
 interface BookingKonfirmeTabProps {
@@ -26,6 +27,7 @@ interface BookingKonfirmeTabProps {
   bookingStatus: BookingStatus;
   externalCode: number | null;
   guestEmail: string;
+  checkOut: Date | string;
   prepayments: BookingPrepaymentRecord[];
   confirmationSentAt: Date | string | null;
   confirmationSends: BookingConfirmationSendRecord[];
@@ -80,6 +82,7 @@ export default function BookingKonfirmeTab({
   bookingStatus,
   externalCode: _externalCode,
   guestEmail: _guestEmail,
+  checkOut,
   prepayments,
   confirmationSentAt,
   confirmationSends,
@@ -100,6 +103,11 @@ export default function BookingKonfirmeTab({
   const [isStatusPending, startStatusTransition] = useTransition();
   const [checkInShareAudience, setCheckInShareAudience] =
     useState<CheckInInfoShareAudience | null>(null);
+  const [reviewInviteError, setReviewInviteError] = useState<string | null>(null);
+  const [reviewInviteSuccess, setReviewInviteSuccess] = useState<string | null>(
+    null
+  );
+  const [isReviewInvitePending, startReviewInviteTransition] = useTransition();
 
   const hasPrepayments = prepayments.length > 0;
   const canSendConfirmation = hasPrepayments && !isConfirmPending;
@@ -111,6 +119,30 @@ export default function BookingKonfirmeTab({
     [confirmationSends, confirmationSentAt]
   );
   const hasSentConfirmation = historyItems.length > 0;
+  const checkOutDate = new Date(checkOut);
+  const canSendReviewInvite =
+    (
+      [
+        BookingStatus.CONFIRMED,
+        BookingStatus.CONFIRMATION_SENT,
+        BookingStatus.COMPENSATION,
+      ] as BookingStatus[]
+    ).includes(bookingStatus) && checkOutDate < new Date();
+
+  function handleSendReviewInvite(forceResend = false) {
+    setReviewInviteError(null);
+    setReviewInviteSuccess(null);
+    startReviewInviteTransition(async () => {
+      const result = await sendGuestReviewInviteAction(bookingId, {
+        forceResend,
+      });
+      if (result.error) {
+        setReviewInviteError(result.error);
+        return;
+      }
+      setReviewInviteSuccess(result.message ?? "Yorum daveti gönderildi");
+    });
+  }
 
   function handleSendConfirmation() {
     if (!hasPrepayments) {
@@ -395,6 +427,55 @@ export default function BookingKonfirmeTab({
             className="rounded-lg bg-sky-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
             Villa Yetkilisi Bilgilendir
+          </button>
+        </div>
+      </FormSection>
+
+      <FormSection title="Misafir Yorum Daveti">
+        <p className="mb-3 text-sm text-gray-600">
+          Çıkış:{" "}
+          <strong>{checkOutDate.toLocaleDateString("tr-TR")}</strong> — Misafire
+          özel yorum linki WhatsApp ve e-posta ile gönderilir.
+        </p>
+        {!canSendReviewInvite ? (
+          <p className="mb-3 text-sm text-amber-700">
+            Yorum daveti, onaylı rezervasyonlarda çıkış tarihi geçtikten sonra
+            gönderilebilir.
+          </p>
+        ) : null}
+        {reviewInviteError ? (
+          <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {reviewInviteError}
+          </p>
+        ) : null}
+        {reviewInviteSuccess ? (
+          <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {reviewInviteSuccess}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!canSendReviewInvite || isReviewInvitePending}
+            onClick={() => handleSendReviewInvite(false)}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+          >
+            {isReviewInvitePending ? (
+              <>
+                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                Gönderiliyor…
+              </>
+            ) : (
+              "Yorum Daveti Gönder"
+            )}
+          </button>
+          <button
+            type="button"
+            disabled={!canSendReviewInvite || isReviewInvitePending}
+            onClick={() => handleSendReviewInvite(true)}
+            className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Yeniden Gönder
           </button>
         </div>
       </FormSection>

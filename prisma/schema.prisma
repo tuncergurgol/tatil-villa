@@ -851,6 +851,8 @@ model Booking {
   details            Json                @default("{}")
   prepayments        BookingPrepayment[]
   paymentSessions    BookingPaymentSession[]
+  guestReviewInvitation GuestReviewInvitation?
+  guestReview           GuestReview?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -1020,6 +1022,8 @@ model CompanySettings {
   calendarPriceAutoUpdateInterval     Int      @default(6)
   calendarPriceAutoUpdateCriteriaJson String   @default("[\"ical\",\"link1\",\"link2\",\"link3\"]") @db.Text
   calendarPriceAutoUpdateLastRunAt    DateTime?
+  googleReviewUrl                   String   @default("")
+  guestReviewInvitesEnabled         Boolean  @default(true)
 
   updatedAt DateTime @updatedAt
 }
@@ -1233,25 +1237,50 @@ model TatilAssistantMessage {
 }
 
 model GuestReview {
-  id         String   @id @default(cuid())
-  guestName  String
-  guestCity  String   @default("")
-  rating     Int
-  title      String   @default("")
-  comment    String   @db.Text
-  villaId    String?
-  villa      Villa?   @relation(fields: [villaId], references: [id], onDelete: SetNull)
-  stayMonth  String   @default("")
-  source     String   @default("manual")
-  approved   Boolean  @default(false)
-  featured   Boolean  @default(false)
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  guestName      String
+  guestCity      String   @default("")
+  rating         Int
+  title          String   @default("")
+  comment        String   @db.Text
+  villaId        String?
+  villa          Villa?   @relation(fields: [villaId], references: [id], onDelete: SetNull)
+  bookingId      String?  @unique
+  booking        Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  invitationId   String?  @unique
+  invitation     GuestReviewInvitation? @relation(fields: [invitationId], references: [id], onDelete: SetNull)
+  stayMonth      String   @default("")
+  source         String   @default("manual")
+  approved       Boolean  @default(false)
+  featured       Boolean  @default(false)
+  rejectedReason String   @default("") @db.Text
+  submittedAt    DateTime?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([approved, featured])
   @@index([villaId])
   @@index([rating])
+  @@index([approved, createdAt])
+}
+
+model GuestReviewInvitation {
+  id             String    @id @default(cuid())
+  bookingId      String    @unique
+  booking        Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  token          String    @unique
+  emailSentAt    DateTime?
+  whatsappSentAt DateTime?
+  expiresAt      DateTime
+  usedAt         DateTime?
+  review         GuestReview?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([token])
+  @@index([expiresAt])
+  @@index([usedAt])
 }
 
 model SiteMenu {
