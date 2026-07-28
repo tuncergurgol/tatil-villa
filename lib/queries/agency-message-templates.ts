@@ -8,6 +8,12 @@ export type AgencyMessageTemplateItem = {
   smsBody: string;
   whatsappBody: string;
   mailBody: string;
+  scheduleTiming: string;
+  scheduleEnabled: boolean;
+  scheduleAnchor: string;
+  scheduleOffsetDays: number;
+  scheduleHour: number;
+  scheduleMinute: number;
   sortOrder: number;
   active: boolean;
 };
@@ -24,6 +30,12 @@ export async function getAgencyMessageTemplateAdminData() {
       smsBody: true,
       whatsappBody: true,
       mailBody: true,
+      scheduleTiming: true,
+      scheduleEnabled: true,
+      scheduleAnchor: true,
+      scheduleOffsetDays: true,
+      scheduleHour: true,
+      scheduleMinute: true,
       sortOrder: true,
       active: true,
     },

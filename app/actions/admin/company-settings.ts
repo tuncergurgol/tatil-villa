@@ -85,6 +85,7 @@ const companySettingsSchema = z.object({
   homeRecommendedSortMode: z.enum(["showcase", "random"]),
   googleReviewUrl: z.string(),
   guestReviewInvitesEnabled: z.coerce.boolean(),
+  scheduledBookingMessagesEnabled: z.coerce.boolean(),
 });
 
 function readTrackingFields(
@@ -183,6 +184,8 @@ export async function saveCompanySettings(
     homeRecommendedSortMode: formData.get("homeRecommendedSortMode"),
     googleReviewUrl: formData.get("googleReviewUrl") ?? "",
     guestReviewInvitesEnabled: formData.get("guestReviewInvitesEnabled") === "on",
+    scheduledBookingMessagesEnabled:
+      formData.get("scheduledBookingMessagesEnabled") === "on",
   });
 
   if (!parsed.success) {

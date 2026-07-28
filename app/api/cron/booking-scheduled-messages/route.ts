@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { runScheduledBookingMessages } from "@/lib/scheduled-booking-messages";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 function readCronSecret(request: Request) {
   return (
@@ -12,7 +12,6 @@ function readCronSecret(request: Request) {
   );
 }
 
-/** @deprecated booking-scheduled-messages kullanın */
 export async function GET(request: Request) {
   const expected = process.env.CRON_SECRET?.trim();
   if (!expected) {
@@ -28,5 +27,5 @@ export async function GET(request: Request) {
   }
 
   const result = await runScheduledBookingMessages();
-  return NextResponse.json({ ...result, legacyRoute: "guest-review-invites" });
+  return NextResponse.json(result);
 }

@@ -97,6 +97,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   homeRecommendedSortMode: "showcase",
   googleReviewUrl: "",
   guestReviewInvitesEnabled: true,
+  scheduledBookingMessagesEnabled: true,
   tatilAssistantEnabled: true,
   assistantWahaBaseUrl: "http://localhost:3001",
   assistantWahaApiKey: "",

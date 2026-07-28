@@ -106,6 +106,80 @@ export default function AgencyMessageTemplateFormModal({
             </select>
           </label>
 
+          <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4 space-y-4">
+            <p className="text-sm font-semibold text-amber-900">
+              Otomatik Zamanlama
+            </p>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                name="scheduleEnabled"
+                defaultChecked={item?.scheduleEnabled ?? false}
+                className="h-4 w-4 rounded border-gray-300 text-violet-600"
+              />
+              Otomatik gönderim aktif
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-gray-500">
+                Zamanlama (görünen metin)
+              </span>
+              <input
+                name="scheduleTiming"
+                defaultValue={item?.scheduleTiming ?? ""}
+                className={inputClass}
+                placeholder="örn. Çıkıştan 1 Gün Sonra Saat: 11:00"
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="block">
+                <span className="text-xs font-medium text-gray-500">Referans</span>
+                <select
+                  name="scheduleAnchor"
+                  defaultValue={item?.scheduleAnchor ?? ""}
+                  className={inputClass}
+                >
+                  <option value="">Manuel</option>
+                  <option value="check_in">Giriş tarihi</option>
+                  <option value="check_out">Çıkış tarihi</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-500">
+                  Gün farkı
+                </span>
+                <input
+                  name="scheduleOffsetDays"
+                  type="number"
+                  defaultValue={item?.scheduleOffsetDays ?? 0}
+                  className={inputClass}
+                  placeholder="-1 = 1 gün önce, +1 = 1 gün sonra"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-500">Saat</span>
+                <input
+                  name="scheduleHour"
+                  type="number"
+                  min={0}
+                  max={23}
+                  defaultValue={item?.scheduleHour ?? 10}
+                  className={inputClass}
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-gray-500">Dakika</span>
+                <input
+                  name="scheduleMinute"
+                  type="number"
+                  min={0}
+                  max={59}
+                  defaultValue={item?.scheduleMinute ?? 0}
+                  className={inputClass}
+                />
+              </label>
+            </div>
+          </div>
+
           <label className="block">
             <span className="text-xs font-medium text-gray-500">SMS</span>
             <textarea

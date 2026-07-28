@@ -444,6 +444,15 @@ export default function CompanySettingsForm({
                 />
                 Çıkış sonrası otomatik misafir yorum davetleri (WhatsApp / e-posta)
               </label>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  name="scheduledBookingMessagesEnabled"
+                  defaultChecked={settings.scheduledBookingMessagesEnabled}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                />
+                Zamanlanmış rezervasyon mesajları (11.1, 11.3, 11.4, 40.x otomatik)
+              </label>
             </div>
           </TabPanel>
 

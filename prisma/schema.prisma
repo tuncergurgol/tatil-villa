@@ -251,21 +251,28 @@ model PaymentProvider {
 }
 
 model AgencyMessageTemplate {
-  id            String   @id @default(cuid())
-  rowNo         Int
-  name          String
-  recipient     String
-  smsBody       String   @default("") @db.Text
-  whatsappBody  String   @default("") @db.Text
-  mailBody      String   @default("") @db.Text
-  sortOrder     Int      @default(0)
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  rowNo              Int
+  name               String
+  recipient          String
+  smsBody            String   @default("") @db.Text
+  whatsappBody       String   @default("") @db.Text
+  mailBody           String   @default("") @db.Text
+  scheduleTiming     String   @default("")
+  scheduleEnabled    Boolean  @default(false)
+  scheduleAnchor     String   @default("")
+  scheduleOffsetDays Int      @default(0)
+  scheduleHour       Int      @default(10)
+  scheduleMinute     Int      @default(0)
+  sortOrder          Int      @default(0)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([active])
   @@index([sortOrder])
   @@index([rowNo])
+  @@index([scheduleEnabled, scheduleHour])
 }
 
 model Customer {
@@ -853,6 +860,7 @@ model Booking {
   paymentSessions    BookingPaymentSession[]
   guestReviewInvitation GuestReviewInvitation?
   guestReview           GuestReview?
+  scheduledMessageLogs  BookingScheduledMessageLog[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -1024,6 +1032,7 @@ model CompanySettings {
   calendarPriceAutoUpdateLastRunAt    DateTime?
   googleReviewUrl                   String   @default("")
   guestReviewInvitesEnabled         Boolean  @default(true)
+  scheduledBookingMessagesEnabled   Boolean  @default(true)
 
   updatedAt DateTime @updatedAt
 }
@@ -1281,6 +1290,18 @@ model GuestReviewInvitation {
   @@index([token])
   @@index([expiresAt])
   @@index([usedAt])
+}
+
+model BookingScheduledMessageLog {
+  id            String   @id @default(cuid())
+  bookingId     String
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  templateRowNo Int
+  channels      String   @default("")
+  sentAt        DateTime @default(now())
+
+  @@unique([bookingId, templateRowNo])
+  @@index([templateRowNo, sentAt])
 }
 
 model SiteMenu {

@@ -33,5 +33,13 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_10_4 = 104;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = AGENCY_MESSAGE_TEMPLATE_ROW_10_4;
 /** Giriş bilgilendirme / müşteri bilgilendirme (UI: 11.1, rowNo: 111) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_11_1 = 111;
+/** Çıkıştan 1 gün önce misafir hatırlatma (UI: 11.3, rowNo: 113) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_11_3 = 113;
+/** Yorum daveti (UI: 11.4, rowNo: 114) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_11_4 = 114;
 /** Villa yetkilisi / karşılayan bilgilendirme (UI: 40.1, rowNo: 401) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_40_1 = 401;
+/** Havuz ısıtma — karşılayan (UI: 40.2, rowNo: 402) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_40_2 = 402;
+/** Çıkıştan 1 gün önce karşılayan (UI: 40.3, rowNo: 403) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_40_3 = 403;

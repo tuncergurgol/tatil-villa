@@ -10,6 +10,7 @@ import {
   formatAgencyMessageRowNo,
   getAgencyMessageRowSortKey,
 } from "@/lib/agency-message-row-no";
+import { formatScheduleTiming } from "@/lib/agency-message-schedule";
 import type { AgencyMessageTemplateItem } from "@/lib/queries/agency-message-templates";
 
 interface AgencyMessageTemplateManagementProps {
@@ -107,11 +108,12 @@ export default function AgencyMessageTemplateManagement({
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full min-w-[1280px] text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="w-16 px-4 py-3">Sıra</th>
                 <th className="min-w-[180px] px-4 py-3">Mesaj Adı</th>
+                <th className="min-w-[200px] px-4 py-3">Zamanlama</th>
                 <th className="w-36 px-4 py-3">Kime</th>
                 <th className="min-w-[200px] px-4 py-3">SMS</th>
                 <th className="min-w-[200px] px-4 py-3">WhatsApp</th>
@@ -128,6 +130,17 @@ export default function AgencyMessageTemplateManagement({
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {item.name}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-600">
+                      <span
+                        className={
+                          item.scheduleEnabled
+                            ? "inline-flex rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-800"
+                            : ""
+                        }
+                      >
+                        {formatScheduleTiming(item)}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       {getAgencyMessageRecipientLabel(item.recipient)}
@@ -182,7 +195,7 @@ export default function AgencyMessageTemplateManagement({
               ) : (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Henüz mesaj şablonu tanımlanmadı.
