@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Yolcu360CarResult } from "@/lib/yolcu360/types";
-import { formatYolcu360Money } from "@/lib/yolcu360/settings";
+import { formatYolcu360Money } from "@/lib/yolcu360/format";
 import { saveYolcu360BookingSession } from "@/lib/yolcu360/session";
 
 type SearchParams = Record<string, string>;

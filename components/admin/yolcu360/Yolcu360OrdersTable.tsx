@@ -6,7 +6,7 @@ import {
   cancelYolcu360OrderAction,
   refreshYolcu360OrderAction,
 } from "@/app/actions/admin/yolcu360-settings";
-import { formatYolcu360Money } from "@/lib/yolcu360/settings";
+import { formatYolcu360Money } from "@/lib/yolcu360/format";
 
 type OrderRow = {
   id: string;

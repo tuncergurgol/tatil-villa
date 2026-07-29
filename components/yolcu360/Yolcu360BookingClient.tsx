@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Yolcu360CarResult, Yolcu360ExtraProduct } from "@/lib/yolcu360/types";
-import { formatYolcu360Money } from "@/lib/yolcu360/settings";
+import { formatYolcu360Money } from "@/lib/yolcu360/format";
 import Yolcu360FindeksWizard from "@/components/yolcu360/Yolcu360FindeksWizard";
 import {
   loadYolcu360BookingSession,

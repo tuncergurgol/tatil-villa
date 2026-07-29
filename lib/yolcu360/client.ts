@@ -1,9 +1,9 @@
 import "server-only";
 
 import {
-  getYolcu360BaseUrl,
   getYolcu360Settings,
 } from "@/lib/yolcu360/settings";
+import { getYolcu360BaseUrl } from "@/lib/yolcu360/format";
 import type {
   Yolcu360ApiErrorPayload,
   Yolcu360AuthResponse,
