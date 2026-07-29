@@ -12,7 +12,7 @@ import {
 import { parseBookingDetails } from "@/lib/booking-form-details";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
-  isValidTurkishMobileE164,
+  isValidWhatsAppPhoneE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
@@ -194,7 +194,7 @@ export async function sendGuestReviewInviteForBooking(
   }
 
   const phone = normalizePhoneToE164(booking.guestPhone);
-  if (shouldSendWhatsApp && phone && isValidTurkishMobileE164(phone)) {
+  if (shouldSendWhatsApp && phone && isValidWhatsAppPhoneE164(phone)) {
     const wa = await sendCustomerNotificationWhatsApp(
       phone,
       appendBookingSiteFooter(message, brand.siteInfo)

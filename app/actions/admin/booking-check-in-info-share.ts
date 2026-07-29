@@ -45,7 +45,7 @@ import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
 import {
-  isValidTurkishMobileE164,
+  isValidWhatsAppPhoneE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
 import {
@@ -449,10 +449,10 @@ export async function sendCheckInInfoShareAction(
         };
       }
       const e164 = normalizePhoneToE164(ctx.phone);
-      if (!e164 || !isValidTurkishMobileE164(e164)) {
+      if (!e164 || !isValidWhatsAppPhoneE164(e164)) {
         return {
           success: false,
-          error: "Geçersiz telefon numarası. Türkiye cep numarası girin",
+          error: "Geçersiz telefon numarası",
         };
       }
     }
