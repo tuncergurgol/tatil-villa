@@ -28,6 +28,12 @@ function toRfc3339(date: string, time: string, timezone = "+03:00") {
   return `${date}T${time}:00${timezone}`;
 }
 
+function isPastDateTime(date: string, time: string) {
+  const normalized = toRfc3339(date, time);
+  const parsed = new Date(normalized);
+  return !Number.isNaN(parsed.getTime()) && parsed.getTime() < Date.now();
+}
+
 export default function Yolcu360ResultsClient({
   searchParams,
 }: {
@@ -51,6 +57,15 @@ export default function Yolcu360ResultsClient({
         const tz = pickup.timezone?.includes("/")
           ? "+03:00"
           : pickup.timezone || "+03:00";
+
+        if (
+          isPastDateTime(searchParams.checkInDate, searchParams.checkInTime) ||
+          isPastDateTime(searchParams.checkOutDate, searchParams.checkOutTime)
+        ) {
+          throw new Error(
+            "Alış veya teslim tarihi geçmişte. Lütfen gelecekte bir tarih ve saat seçin."
+          );
+        }
 
         const res = await fetch("/api/yolcu360/search", {
           method: "POST",

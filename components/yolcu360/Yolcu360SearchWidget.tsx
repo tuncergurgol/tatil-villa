@@ -105,6 +105,7 @@ export default function Yolcu360SearchWidget({ settings, driverAgeOptions }: Pro
   const [checkOutTime, setCheckOutTime] = useState("10:00");
   const [age, setAge] = useState(settings.defaultDriverAge);
   const [error, setError] = useState<string | null>(null);
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const effectiveDropoff = useMemo(
     () => (sameLocation ? pickup : dropoff),
