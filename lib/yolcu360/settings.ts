@@ -1,9 +1,5 @@
-import "server-only";
-
 import { prisma } from "@/lib/db";
 import type { Yolcu360Environment } from "@/lib/yolcu360/types";
-
-export { formatYolcu360Money, buildYolcu360TrackingId, getYolcu360BaseUrl } from "@/lib/yolcu360/format";
 
 export const DEFAULT_YOLCU360_SETTINGS = {
   enabled: false,
@@ -26,3 +22,14 @@ export async function getYolcu360Settings() {
   return row;
 }
 
+export function getYolcu360BaseUrl(environment: string) {
+  return environment === "production"
+    ? "https://api.pro.yolcu360.com/api/v1"
+    : "https://staging.api.pro.yolcu360.com/api/v1";
+}
+
+export { formatYolcu360Money } from "@/lib/yolcu360/format-money";
+
+export function buildYolcu360TrackingId() {
+  return `TV-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}

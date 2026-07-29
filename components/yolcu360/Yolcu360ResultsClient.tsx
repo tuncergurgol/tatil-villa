@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Yolcu360CarResult } from "@/lib/yolcu360/types";
-import { formatYolcu360Money } from "@/lib/yolcu360/format";
+import { formatYolcu360Money } from "@/lib/yolcu360/format-money";
+import { parseYolcu360DriverAge } from "@/lib/yolcu360/driver-age";
 import { saveYolcu360BookingSession } from "@/lib/yolcu360/session";
 
 type SearchParams = Record<string, string>;
@@ -13,7 +14,10 @@ async function resolveLocationPoint(placeId: string) {
   const res = await fetch(
     `/api/yolcu360/locations?placeId=${encodeURIComponent(placeId)}`
   );
-  if (!res.ok) throw new Error("Konum bilgisi alınamadı");
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(data?.error ?? "Konum bilgisi alınamadı");
+  }
   return (await res.json()) as {
     point: { lat: number; lon: number };
     timezone?: string;
@@ -62,7 +66,7 @@ export default function Yolcu360ResultsClient({
               searchParams.checkOutTime,
               tz
             ),
-            age: searchParams.age,
+            age: parseYolcu360DriverAge(searchParams.age),
             country: "TR",
             paymentType: "creditCard",
             checkInLocation: pickup.point,
