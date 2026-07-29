@@ -100,6 +100,12 @@ async function authenticate(force = false) {
   });
 
   if (!loginRes.ok) {
+    if (loginRes.status === 403) {
+      throw new Yolcu360ApiError(
+        "Yolcu360 erişim engellendi (403). Sunucu IP adresinin bu ortam için whitelist’te olduğundan emin olun; staging ve production ayrı whitelist gerektirir.",
+        loginRes.status
+      );
+    }
     const payload = (await loginRes.json().catch(() => null)) as Yolcu360ApiErrorPayload | null;
     throw new Yolcu360ApiError(
       payload?.description ?? "Yolcu360 kimlik doğrulama başarısız",
