@@ -8,7 +8,7 @@
  * - tatilpremium.com (RSC routingData id + api.tatilpremium.com PriceList/Availability)
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
  * - villavakti.com (sezon fiyat tablosu)
- * - villaciniz.com.tr / villapaketi.com / villayolu.com (Next.js RSC min-max fiyat)
+ * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
  * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
@@ -46,6 +46,9 @@ export type ScrapedVillaPage = {
     | "villavillam"
     | "villacim"
     | "tatilpremium"
+    | "villapaketi"
+    | "villaciniz"
+    | "villayolu"
     | "akdenizvillam"
     | "villavakti"
     | "product_detail_rsc"
@@ -1872,11 +1875,20 @@ async function scrapeBoceksoft(
 const VILLAVILLAM_API = "https://api.villavillam.com.tr";
 const VILLACIM_API = "https://api.villacim.com.tr";
 const TATILPREMIUM_API = "https://api.tatilpremium.com";
+const VILLAPAKETI_API = "https://api.villapaketi.com";
+const VILLACINIZ_API = "https://api.villaciniz.com.tr";
+const VILLAYOLU_API = "https://api.villayolu.com";
 
 type VillaApiSiteConfig = {
   apiHost: string;
   origin: string;
-  hostKey: "villavillam" | "villacim" | "tatilpremium";
+  hostKey:
+    | "villavillam"
+    | "villacim"
+    | "tatilpremium"
+    | "villapaketi"
+    | "villaciniz"
+    | "villayolu";
 };
 
 function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
@@ -1901,6 +1913,27 @@ function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
         apiHost: TATILPREMIUM_API,
         origin: "https://www.tatilpremium.com",
         hostKey: "tatilpremium",
+      };
+    }
+    if (host.includes("villapaketi")) {
+      return {
+        apiHost: VILLAPAKETI_API,
+        origin: "https://www.villapaketi.com",
+        hostKey: "villapaketi",
+      };
+    }
+    if (host.includes("villaciniz")) {
+      return {
+        apiHost: VILLACINIZ_API,
+        origin: "https://www.villaciniz.com.tr",
+        hostKey: "villaciniz",
+      };
+    }
+    if (host.includes("villayolu")) {
+      return {
+        apiHost: VILLAYOLU_API,
+        origin: "https://www.villayolu.com",
+        hostKey: "villayolu",
       };
     }
   } catch {
@@ -1979,7 +2012,7 @@ function extractVillavillamEntity(html: string) {
   return extractVillaApiEntity(html);
 }
 
-/** tatilpremium.com — Next.js RSC `routingData` içinden villa entity id. */
+/** Next.js RSC `routingData` içinden villa entity id (tatilpremium, villapaketi, villaciniz, villayolu). */
 export function extractTatilpremiumRoutingEntity(
   html: string,
   pageUrl: string
@@ -2141,7 +2174,9 @@ function parseVillavillamPriceList(
     const discount1Rate =
       Number.isFinite(oran) && oran > 0 && oran < 100 ? Math.round(oran) : null;
 
-    const cleaningFee = Number(o.temizlikFiyat);
+    const cleaningFee = Number(
+      o.temizlikFiyat ?? o.temizlikfiyat ?? o.temizlik_fiyat
+    );
     periods.push(
       buildMappedPeriod({
         sourceId: sourceId++,
@@ -2221,7 +2256,13 @@ export async function scrapeVillavillamFromPage(
   if (!site) return null;
 
   let entity = extractVillaApiEntity(html);
-  if (!entity && site.hostKey === "tatilpremium") {
+  if (
+    !entity &&
+    (site.hostKey === "tatilpremium" ||
+      site.hostKey === "villapaketi" ||
+      site.hostKey === "villaciniz" ||
+      site.hostKey === "villayolu")
+  ) {
     entity = extractTatilpremiumRoutingEntity(html, pageUrl);
   }
   if (!entity) {
@@ -2336,7 +2377,13 @@ export async function scrapeVillavillamFromPage(
         ? "villacim"
         : site.hostKey === "tatilpremium"
           ? "tatilpremium"
-          : "villavillam",
+          : site.hostKey === "villapaketi"
+            ? "villapaketi"
+            : site.hostKey === "villaciniz"
+              ? "villaciniz"
+              : site.hostKey === "villayolu"
+                ? "villayolu"
+                : "villavillam",
     pageTitle: entity.title ?? extractPageTitle(html),
     periods,
     occupancyByDateKey,
