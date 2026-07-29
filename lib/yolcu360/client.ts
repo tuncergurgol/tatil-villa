@@ -1,9 +1,9 @@
 import "server-only";
 
 import {
+  getYolcu360BaseUrl,
   getYolcu360Settings,
 } from "@/lib/yolcu360/settings";
-import { getYolcu360BaseUrl } from "@/lib/yolcu360/format";
 import type {
   Yolcu360ApiErrorPayload,
   Yolcu360AuthResponse,
@@ -206,7 +206,7 @@ export async function searchYolcu360Cars(body: Yolcu360SearchPointRequest) {
   ) {
     payload.commission = {
       type: "percentage",
-      percentage: settings.commissionPercentage,
+      percentage: Math.round(settings.commissionPercentage),
     };
   }
   return yolcu360Request<Yolcu360SearchResponse>("/search/point", {

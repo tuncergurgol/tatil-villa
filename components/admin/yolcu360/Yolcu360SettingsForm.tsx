@@ -179,7 +179,7 @@ export default function Yolcu360SettingsForm({ settings }: Yolcu360SettingsFormP
               name="commissionPercentage"
               min={0}
               max={100}
-              step={0.1}
+              step={1}
               defaultValue={settings.commissionPercentage}
               className={inputClass}
             />
