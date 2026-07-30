@@ -36,20 +36,48 @@ function LocationAutocomplete({
   const [query, setQuery] = useState(value?.description ?? "");
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [open, setOpen] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!query.trim() || query.length < 2) {
       setSuggestions([]);
+      setSearchError(null);
+      setLoading(false);
       return;
     }
     const timer = window.setTimeout(async () => {
-      const res = await fetch(
-        `/api/yolcu360/locations?query=${encodeURIComponent(query)}`
-      );
-      if (!res.ok) return;
-      const data = (await res.json()) as LocationSuggestion[];
-      setSuggestions(data);
-      setOpen(true);
+      setLoading(true);
+      setSearchError(null);
+      try {
+        const res = await fetch(
+          `/api/yolcu360/locations?query=${encodeURIComponent(query)}`
+        );
+        const data = (await res.json()) as
+          | LocationSuggestion[]
+          | { error?: string };
+        if (!res.ok) {
+          setSuggestions([]);
+          setSearchError(
+            typeof data === "object" &&
+              data &&
+              !Array.isArray(data) &&
+              data.error
+              ? data.error
+              : "Konum araması başarısız"
+          );
+          setOpen(true);
+          return;
+        }
+        setSuggestions(Array.isArray(data) ? data : []);
+        setOpen(true);
+      } catch {
+        setSuggestions([]);
+        setSearchError("Konum araması başarısız");
+        setOpen(true);
+      } finally {
+        setLoading(false);
+      }
     }, 300);
     return () => window.clearTimeout(timer);
   }, [query]);
@@ -70,7 +98,17 @@ function LocationAutocomplete({
         placeholder="Havalimanı veya şehir ara…"
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
       />
-      {open && suggestions.length > 0 ? (
+      {open && loading ? (
+        <p className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg">
+          Konumlar aranıyor…
+        </p>
+      ) : null}
+      {open && !loading && searchError ? (
+        <p className="absolute z-20 mt-1 w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 shadow-lg">
+          {searchError}
+        </p>
+      ) : null}
+      {open && !loading && !searchError && suggestions.length > 0 ? (
         <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
           {suggestions.map((item) => (
             <li key={item.placeId}>
@@ -89,6 +127,15 @@ function LocationAutocomplete({
             </li>
           ))}
         </ul>
+      ) : null}
+      {open &&
+      !loading &&
+      !searchError &&
+      query.trim().length >= 2 &&
+      suggestions.length === 0 ? (
+        <p className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-lg">
+          Sonuç bulunamadı
+        </p>
       ) : null}
     </label>
   );
@@ -173,6 +220,7 @@ export default function Yolcu360SearchWidget({ settings, driverAgeOptions }: Pro
             <input
               type="date"
               value={checkInDate}
+              min={today}
               onChange={(e) => setCheckInDate(e.target.value)}
               className="w-full min-w-0 rounded-xl border border-slate-200 px-2 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
             />
@@ -199,6 +247,7 @@ export default function Yolcu360SearchWidget({ settings, driverAgeOptions }: Pro
             <input
               type="date"
               value={checkOutDate}
+              min={checkInDate || today}
               onChange={(e) => setCheckOutDate(e.target.value)}
               className="w-full min-w-0 rounded-xl border border-slate-200 px-2 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
             />
