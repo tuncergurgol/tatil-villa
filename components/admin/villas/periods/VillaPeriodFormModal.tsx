@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useTransition } from "react";
 import {
   CalendarDays,
   Save,
@@ -15,7 +15,12 @@ import {
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodRangePreview from "@/components/admin/villas/periods/VillaPeriodRangePreview";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
-import { toDateKey } from "@/lib/villa-period-calendar";
+import {
+  formatPeriodDate,
+  parseDateKey,
+  toDateKey,
+} from "@/lib/villa-period-calendar";
+import { countNightsBetween } from "@/lib/villa-period-selection";
 import {
   VILLA_PERIOD_CURRENCIES,
   calculateCommissionAmount,
@@ -172,6 +177,24 @@ const emptyFormState = (): PeriodFormState => ({
 
 function toInputValue(value: number | null | undefined) {
   return formatAmountInput(value);
+}
+
+function buildPeriodFormState(
+  period: VillaPricePeriodItem | null | undefined,
+  prefillDateRange?: VillaPeriodFormDateRange | null
+): PeriodFormState {
+  const base = period ? periodToFormState(period) : emptyFormState();
+
+  if (prefillDateRange?.startDate && prefillDateRange?.endDate) {
+    return {
+      ...base,
+      actionStartDate: prefillDateRange.startDate,
+      actionEndDate: prefillDateRange.endDate,
+      occupancySelection: "",
+    };
+  }
+
+  return period ? { ...base, occupancySelection: "" } : base;
 }
 
 function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
@@ -359,27 +382,28 @@ export default function VillaPeriodFormModal({
   const [availabilityPending, setAvailabilityPending] = useState(false);
   const [discountPending, setDiscountPending] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
-    const base = period ? periodToFormState(period) : emptyFormState();
-    const actionRange = prefillDateRange ?? {
-      startDate: base.actionStartDate,
-      endDate: base.actionEndDate,
-    };
-
-    const nextForm = {
-      ...base,
-      actionStartDate: actionRange.startDate,
-      actionEndDate: actionRange.endDate,
-    };
-
-    setForm(
-      period
-        ? { ...nextForm, occupancySelection: "" }
-        : nextForm
-    );
+    setForm(buildPeriodFormState(period, prefillDateRange));
     setError(null);
   }, [open, period, prefillDateRange]);
+
+  const occupancyStayPreview = useMemo(() => {
+    if (!form.actionStartDate || !form.actionEndDate) return null;
+    if (form.actionStartDate > form.actionEndDate) return null;
+
+    const nights = countNightsBetween(
+      form.actionStartDate,
+      form.actionEndDate
+    );
+    if (nights <= 0) return null;
+
+    return {
+      nights,
+      checkInLabel: formatPeriodDate(parseDateKey(form.actionStartDate)),
+      checkOutLabel: formatPeriodDate(parseDateKey(form.actionEndDate)),
+    };
+  }, [form.actionStartDate, form.actionEndDate]);
 
   const nightlyPrice = parseNumber(form.nightlyPrice) ?? 0;
   const nightlyWithoutCommission = parseNumber(form.nightlyPriceWithoutCommission);
@@ -678,7 +702,9 @@ export default function VillaPeriodFormModal({
               <div className="space-y-4 p-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
-                    <span className={labelClass}>Başlangıç Tarihi</span>
+                    <span className={labelClass}>
+                      {period ? "Giriş Tarihi" : "Başlangıç Tarihi"}
+                    </span>
                     <input
                       type="date"
                       required
@@ -690,7 +716,9 @@ export default function VillaPeriodFormModal({
                     />
                   </label>
                   <label className="block">
-                    <span className={labelClass}>Bitiş Tarihi</span>
+                    <span className={labelClass}>
+                      {period ? "Çıkış Tarihi" : "Bitiş Tarihi"}
+                    </span>
                     <input
                       type="date"
                       required
@@ -702,6 +730,26 @@ export default function VillaPeriodFormModal({
                     />
                   </label>
                 </div>
+
+                {period ? (
+                  <p className={helpClass}>
+                    Çıkış günü sabah boşalır; konaklanan son gece bir önceki
+                    gecedir. Örn. 6–9 Ağustos = 3 gece (6, 7, 8).
+                  </p>
+                ) : null}
+
+                {period && occupancyStayPreview ? (
+                  <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                    <span className="font-semibold">
+                      {occupancyStayPreview.nights} gece
+                    </span>
+                    <span className="text-blue-800">
+                      {" "}
+                      — giriş {occupancyStayPreview.checkInLabel}, çıkış{" "}
+                      {occupancyStayPreview.checkOutLabel}
+                    </span>
+                  </div>
+                ) : null}
 
                 {period ? (
                   <div>

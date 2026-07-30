@@ -131,7 +131,10 @@ export function toDbDate(date: Date): Date {
 
 /** Prisma @db.Date alanından okunan tarihi YYYY-MM-DD anahtarına çevirir. */
 export function dbDateToDateKey(date: Date): string {
-  return toDateKey(startOfDay(date));
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function startOfDay(date: Date): Date {
