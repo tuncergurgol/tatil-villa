@@ -43,6 +43,7 @@ interface VillaPeriodFormModalProps {
   open: boolean;
   villaId: string;
   period?: VillaPricePeriodItem | null;
+  templatePeriod?: VillaPricePeriodItem | null;
   prefillDateRange?: VillaPeriodFormDateRange | null;
   continueAfterSave: boolean;
   onClose: () => void;
@@ -87,6 +88,28 @@ const FORM_META_FIELDS = new Set([
   "occupancySelection",
   "actionStartDate",
   "actionEndDate",
+]);
+
+const CURRENCY_FIELDS = new Set<keyof PeriodFormState>([
+  "nightlyPriceCurrency",
+  "cleaningFeeCurrency",
+  "damageDepositCurrency",
+  "petCleaningFeeCurrency",
+  "petDamageDepositCurrency",
+  "underfloorHeatingFeeCurrency",
+  "extraBedFeeCurrency",
+  "poolHeatingPrivateFeeCurrency",
+  "poolHeatingIndoorFeeCurrency",
+  "poolHeatingKidsFeeCurrency",
+  "childFee02Currency",
+  "childFee03_09Currency",
+]);
+
+const RATE_FIELDS = new Set([
+  "prepaymentRate",
+  "commissionRate",
+  "discount1Rate",
+  "discount2Rate",
 ]);
 
 type PeriodFormState = {
@@ -181,20 +204,45 @@ function toInputValue(value: number | null | undefined) {
 
 function buildPeriodFormState(
   period: VillaPricePeriodItem | null | undefined,
-  prefillDateRange?: VillaPeriodFormDateRange | null
+  options?: {
+    prefillDateRange?: VillaPeriodFormDateRange | null;
+    templatePeriod?: VillaPricePeriodItem | null;
+  }
 ): PeriodFormState {
-  const base = period ? periodToFormState(period) : emptyFormState();
+  const source = period ?? options?.templatePeriod ?? null;
+  const base = source ? periodToFormState(source) : emptyFormState();
 
-  if (prefillDateRange?.startDate && prefillDateRange?.endDate) {
+  if (period) {
+    return { ...base, occupancySelection: "" };
+  }
+
+  const range = options?.prefillDateRange;
+  if (range?.startDate && range?.endDate) {
     return {
       ...base,
-      actionStartDate: prefillDateRange.startDate,
-      actionEndDate: prefillDateRange.endDate,
+      actionStartDate: range.startDate,
+      actionEndDate: range.endDate,
       occupancySelection: "",
     };
   }
 
-  return period ? { ...base, occupancySelection: "" } : base;
+  return { ...base, occupancySelection: "" };
+}
+
+function validatePeriodForm(form: PeriodFormState): string | null {
+  if (!form.actionStartDate || !form.actionEndDate) {
+    return "Başlangıç ve bitiş tarihi gerekli";
+  }
+  if (form.actionStartDate > form.actionEndDate) {
+    return "Bitiş tarihi başlangıçtan önce olamaz";
+  }
+
+  const nightlyPrice = parseAmountInput(form.nightlyPrice);
+  if (nightlyPrice == null || nightlyPrice <= 0) {
+    return "Gecelik konaklama bedeli gerekli";
+  }
+
+  return null;
 }
 
 function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
@@ -371,6 +419,7 @@ export default function VillaPeriodFormModal({
   open,
   villaId,
   period,
+  templatePeriod = null,
   prefillDateRange = null,
   continueAfterSave,
   onClose,
@@ -384,9 +433,14 @@ export default function VillaPeriodFormModal({
 
   useLayoutEffect(() => {
     if (!open) return;
-    setForm(buildPeriodFormState(period, prefillDateRange));
+    setForm(
+      buildPeriodFormState(period, {
+        prefillDateRange,
+        templatePeriod,
+      })
+    );
     setError(null);
-  }, [open, period, prefillDateRange]);
+  }, [open, period, prefillDateRange, templatePeriod]);
 
   const occupancyStayPreview = useMemo(() => {
     if (!form.actionStartDate || !form.actionEndDate) return null;
@@ -532,15 +586,32 @@ export default function VillaPeriodFormModal({
     target.set("endDate", options.endDate);
     target.set("availability", "available");
 
+    const nightlyPrice = parseAmountInput(form.nightlyPrice);
+    if (nightlyPrice != null && nightlyPrice > 0) {
+      target.set("nightlyPrice", String(Math.round(nightlyPrice)));
+    }
+
+    for (const key of CURRENCY_FIELDS) {
+      const value = form[key];
+      target.set(key, value || "TL");
+    }
+
     Object.entries(form).forEach(([key, value]) => {
       if (FORM_META_FIELDS.has(key)) return;
+      if (CURRENCY_FIELDS.has(key as keyof PeriodFormState)) return;
+      if (key === "nightlyPrice") return;
       if (!options.includePricing && !DISCOUNT_FIELDS.has(key)) return;
       if (!options.includeDiscounts && DISCOUNT_FIELDS.has(key)) return;
       if (value === "") return;
 
       if (AMOUNT_FIELDS.has(key)) {
         const parsed = parseAmountInput(value);
-        if (parsed != null) target.set(key, String(parsed));
+        if (parsed != null) target.set(key, String(Math.round(parsed)));
+        return;
+      }
+
+      if (RATE_FIELDS.has(key)) {
+        target.set(key, String(parseRate(value)));
         return;
       }
 
@@ -582,7 +653,11 @@ export default function VillaPeriodFormModal({
   }
 
   function handlePricingSave() {
-    if (!form.actionStartDate || !form.actionEndDate) return;
+    const validationError = validatePeriodForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setError(null);
 
@@ -608,7 +683,11 @@ export default function VillaPeriodFormModal({
   }
 
   function handleDiscountSave() {
-    if (!form.actionStartDate || !form.actionEndDate) return;
+    const validationError = validatePeriodForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setError(null);
     setDiscountPending(true);
@@ -639,6 +718,12 @@ export default function VillaPeriodFormModal({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (period) return;
+
+    const validationError = validatePeriodForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setError(null);
 

@@ -14,18 +14,16 @@ import VillaPeriodSidebar from "@/components/admin/villas/periods/VillaPeriodSid
 import { villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
-import { normalizeDateRange } from "@/lib/villa-period-selection";
 import {
   getMonthLabel,
-  compareDates,
   dbDateToDateKey,
-  getDefaultPeriodEndDate,
+  buildNewPeriodPrefill,
   parseDateKey,
   startOfDay,
   toDateKey,
   todayDate,
 } from "@/lib/villa-period-calendar";
-import { offsetDateKey } from "@/lib/villa-period-selection";
+import { normalizeDateRange } from "@/lib/villa-period-selection";
 import { importVillaPeriodsFromTatildeyizAction } from "@/app/actions/admin/villa-period-import";
 
 interface VillaPeriodManagementProps {
@@ -54,20 +52,6 @@ function normalizePeriods(periods: VillaPricePeriodItem[]): VillaPricePeriodItem
   }));
 }
 
-function getNextPeriodStartDate(periods: VillaPricePeriodItem[]): string {
-  if (periods.length === 0) return "";
-
-  let latestEnd = toLocalDate(periods[0]!.endDate);
-  for (const period of periods) {
-    const end = toLocalDate(period.endDate);
-    if (compareDates(end, latestEnd) > 0) {
-      latestEnd = end;
-    }
-  }
-
-  return offsetDateKey(toDateKey(latestEnd), 1);
-}
-
 export default function VillaPeriodManagement({
   villa,
   periods,
@@ -89,6 +73,8 @@ export default function VillaPeriodManagement({
     startDate: string;
     endDate: string;
   } | null>(null);
+  const [modalTemplatePeriod, setModalTemplatePeriod] =
+    useState<VillaPricePeriodItem | null>(null);
   const [selectedRange, setSelectedRange] =
     useState<PeriodCalendarSelectionRange | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -159,17 +145,9 @@ export default function VillaPeriodManagement({
   function openCreateModal(continueMode: boolean) {
     setEditingPeriod(null);
     setContinueAfterSave(continueMode);
-    setModalDateRange(
-      continueMode && normalizedPeriods.length > 0
-        ? (() => {
-            const startDate = getNextPeriodStartDate(normalizedPeriods);
-            return {
-              startDate,
-              endDate: getDefaultPeriodEndDate(startDate),
-            };
-          })()
-        : null
-    );
+    const prefill = buildNewPeriodPrefill(normalizedPeriods);
+    setModalTemplatePeriod(prefill.templatePeriod);
+    setModalDateRange(prefill.dateRange);
     setModalOpen(true);
   }
 
@@ -179,6 +157,7 @@ export default function VillaPeriodManagement({
   ) {
     setEditingPeriod(period);
     setModalDateRange(dateRange ?? null);
+    setModalTemplatePeriod(null);
     setContinueAfterSave(false);
     setModalOpen(true);
   }
@@ -412,11 +391,13 @@ export default function VillaPeriodManagement({
         open={modalOpen}
         villaId={villa.id}
         period={editingPeriod}
+        templatePeriod={modalTemplatePeriod}
         prefillDateRange={modalDateRange}
         continueAfterSave={continueAfterSave}
         onClose={() => {
           setModalOpen(false);
           setModalDateRange(null);
+          setModalTemplatePeriod(null);
           clearSelection();
         }}
         onSaved={handleSaved}

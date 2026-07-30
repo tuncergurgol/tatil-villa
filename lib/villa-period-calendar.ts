@@ -180,6 +180,51 @@ export function getDefaultPeriodEndDate(startDateKey: string): string {
   return toDateKey(plus30);
 }
 
+export function getLatestPeriodByEndDate(
+  periods: VillaPricePeriodItem[]
+): VillaPricePeriodItem | null {
+  if (periods.length === 0) return null;
+
+  return periods.reduce((latest, period) =>
+    compareDates(period.endDate, latest.endDate) > 0 ? period : latest
+  );
+}
+
+/** Son periyodun bitişinden sonraki gün (YYYY-MM-DD). */
+export function getNextPeriodStartDate(
+  periods: VillaPricePeriodItem[]
+): string {
+  const latest = getLatestPeriodByEndDate(periods);
+  if (!latest) return "";
+
+  const endKey = dbDateToDateKey(startOfDay(new Date(latest.endDate)));
+  return addDaysToDateKey(endKey, 1);
+}
+
+export type NewPeriodPrefill = {
+  templatePeriod: VillaPricePeriodItem | null;
+  dateRange: { startDate: string; endDate: string } | null;
+};
+
+/** Yeni periyot formu: son periyodun bilgileri + ardışık tarih aralığı (+30 gün). */
+export function buildNewPeriodPrefill(
+  periods: VillaPricePeriodItem[]
+): NewPeriodPrefill {
+  const templatePeriod = getLatestPeriodByEndDate(periods);
+  if (!templatePeriod) {
+    return { templatePeriod: null, dateRange: null };
+  }
+
+  const startDate = getNextPeriodStartDate(periods);
+  return {
+    templatePeriod,
+    dateRange: {
+      startDate,
+      endDate: getDefaultPeriodEndDate(startDate),
+    },
+  };
+}
+
 export function enumerateDateKeys(startKey: string, endKey: string): string[] {
   const keys: string[] = [];
   const cursor = startOfDay(parseDateKey(startKey));

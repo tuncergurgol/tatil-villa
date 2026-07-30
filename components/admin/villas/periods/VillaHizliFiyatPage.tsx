@@ -23,6 +23,7 @@ import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import {
+  buildNewPeriodPrefill,
   dbDateToDateKey,
   startOfDay,
 } from "@/lib/villa-period-calendar";
@@ -315,6 +316,12 @@ export default function VillaHizliFiyatPage({
   const [editingPeriod, setEditingPeriod] = useState<VillaPricePeriodItem | null>(
     null
   );
+  const [modalDateRange, setModalDateRange] = useState<{
+    startDate: string;
+    endDate: string;
+  } | null>(null);
+  const [modalTemplatePeriod, setModalTemplatePeriod] =
+    useState<VillaPricePeriodItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -504,8 +511,13 @@ export default function VillaHizliFiyatPage({
   function openAdvancedModal(period?: VillaPricePeriodItem) {
     if (period) {
       setEditingPeriod(period);
+      setModalDateRange(null);
+      setModalTemplatePeriod(null);
     } else {
+      const prefill = buildNewPeriodPrefill(periods);
       setEditingPeriod(null);
+      setModalTemplatePeriod(prefill.templatePeriod);
+      setModalDateRange(prefill.dateRange);
     }
     setModalOpen(true);
   }
@@ -924,14 +936,20 @@ export default function VillaHizliFiyatPage({
         open={modalOpen}
         villaId={villa.id}
         period={editingPeriod}
+        templatePeriod={modalTemplatePeriod}
+        prefillDateRange={modalDateRange}
         continueAfterSave={false}
         onClose={() => {
           setModalOpen(false);
           setEditingPeriod(null);
+          setModalDateRange(null);
+          setModalTemplatePeriod(null);
         }}
         onSaved={() => {
           setModalOpen(false);
           setEditingPeriod(null);
+          setModalDateRange(null);
+          setModalTemplatePeriod(null);
           router.refresh();
         }}
       />
