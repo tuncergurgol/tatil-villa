@@ -71,7 +71,10 @@ export default function Yolcu360PaymentClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Ödeme başarısız");
 
-      if (data.is3dsSecure && data.threeDSHtmlContent) {
+      if (
+        data.threeDSHtmlContent &&
+        (data.is3dsSecure || data.status === "redirect_required")
+      ) {
         setThreeDSHtml(data.threeDSHtmlContent);
         return;
       }

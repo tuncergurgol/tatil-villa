@@ -19,6 +19,7 @@ import type {
   Yolcu360SearchPointRequest,
   Yolcu360SearchResponse,
 } from "@/lib/yolcu360/types";
+import { normalizeYolcu360PayResponse } from "@/lib/yolcu360/pay-response";
 
 type TokenCache = {
   accessToken: string;
@@ -249,10 +250,13 @@ export async function getYolcu360InstallmentInfo(orderID: string, binNumber: str
 }
 
 export async function payYolcu360Order(body: Yolcu360PayRequest) {
-  return yolcu360Request<Yolcu360PayResponse>("/payment/pay", {
+  const raw = await yolcu360Request<unknown>("/payment/pay", {
     method: "POST",
     body,
   });
+  return normalizeYolcu360PayResponse(
+    raw as Parameters<typeof normalizeYolcu360PayResponse>[0]
+  );
 }
 
 export async function checkYolcu360CancelEligibility(orderID: string) {
