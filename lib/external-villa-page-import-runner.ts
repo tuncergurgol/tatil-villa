@@ -3,6 +3,8 @@ import {
   buildDaySnapshotsForPeriod,
 } from "@/lib/tatildeyiz-period-import";
 import {
+  applyPeriodMetaFallback,
+  buildPeriodMetaFallbackFromPeriods,
   scrapeExternalVillaPage,
   type ScrapedVillaPage,
 } from "@/lib/external-villa-page-scrape";
@@ -55,10 +57,26 @@ export async function importVillaPeriodsFromExternalPage(
     throw new Error("Villa bulunamadı");
   }
 
+  const existingPeriods = await prisma.villaPricePeriod.findMany({
+    where: { villaId },
+    select: {
+      prepaymentRate: true,
+      commissionRate: true,
+      cleaningDayCount: true,
+      cleaningFee: true,
+      cleaningFeeCurrency: true,
+      damageDeposit: true,
+      damageDepositCurrency: true,
+    },
+  });
+
   const scraped = await scrapeExternalVillaPage(pageUrl);
   if (scraped.periods.length === 0) {
     throw new Error("Sayfadan fiyat periyodu bulunamadı");
   }
+
+  const existingFallback = buildPeriodMetaFallbackFromPeriods(existingPeriods);
+  applyPeriodMetaFallback(scraped.periods, existingFallback);
 
   const { dayCount, bookedDays, optionDays } = countOccupancyDays(scraped);
 

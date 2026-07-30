@@ -39,6 +39,10 @@ async function main() {
           nightlyPrice: p.nightlyPrice,
           currency: p.nightlyPriceCurrency,
           minStayNights: p.minStayNights,
+          prepaymentRate: p.prepaymentRate,
+          commissionRate: p.commissionRate,
+          cleaningDayCount: p.cleaningDayCount,
+          cleaningFee: p.cleaningFee,
           damageDeposit: p.damageDeposit,
         })),
         sampleBooked: [...scraped.occupancyByDateKey.entries()]

@@ -25,6 +25,7 @@ import {
   calculateDiscountAmounts,
   deriveNightlyFromWeekly,
   deriveWeeklyFromNightly,
+  deriveWithoutCommissionFromCommissioned,
 } from "@/lib/villa-period-pricing";
 import {
   compareDates,
@@ -213,6 +214,11 @@ function buildMappedPeriod(input: {
   currency?: VillaPeriodCurrency;
   weeklyPrice?: number | null;
   minStayNights?: number | null;
+  prepaymentRate?: number | null;
+  commissionRate?: number | null;
+  cleaningDayCount?: number | null;
+  cleaningFee?: number | null;
+  cleaningFeeCurrency?: VillaPeriodCurrency;
   damageDeposit?: number | null;
   damageDepositCurrency?: VillaPeriodCurrency;
   discount1Rate?: number | null;
@@ -227,6 +233,12 @@ function buildMappedPeriod(input: {
   );
   const currency = input.currency ?? "TL";
   const depositCurrency = input.damageDepositCurrency ?? currency;
+  const cleaningCurrency = input.cleaningFeeCurrency ?? currency;
+  const commissionRate = positiveInt(input.commissionRate);
+  const nightlyPriceWithoutCommission =
+    commissionRate != null
+      ? deriveWithoutCommissionFromCommissioned(nightlyPrice, commissionRate)
+      : null;
 
   return {
     sourceId: input.sourceId,
@@ -237,14 +249,14 @@ function buildMappedPeriod(input: {
     nightlyPriceCurrency: currency,
     weeklyPrice:
       positiveInt(input.weeklyPrice) ?? deriveWeeklyFromNightly(nightlyPrice),
-    prepaymentRate: null,
-    commissionRate: null,
-    nightlyPriceWithoutCommission: null,
+    prepaymentRate: positiveInt(input.prepaymentRate),
+    commissionRate,
+    nightlyPriceWithoutCommission,
     discountedNightlyPrice: preview.discountedNightlyPrice,
     minStayNights: positiveInt(input.minStayNights),
-    cleaningDayCount: null,
-    cleaningFee: null,
-    cleaningFeeCurrency: currency,
+    cleaningDayCount: positiveInt(input.cleaningDayCount),
+    cleaningFee: positiveInt(input.cleaningFee),
+    cleaningFeeCurrency: cleaningCurrency,
     damageDeposit: positiveInt(input.damageDeposit),
     damageDepositCurrency: depositCurrency,
     petCleaningFee: null,
@@ -330,17 +342,307 @@ function extractPageTitle(html: string): string | null {
   return title?.[1] ? decodeHtmlEntities(title[1]).trim() : null;
 }
 
+export type ScrapedVillaPeriodDefaults = {
+  prepaymentRate: number | null;
+  commissionRate: number | null;
+  cleaningDayCount: number | null;
+  cleaningFee: number | null;
+  cleaningFeeCurrency: VillaPeriodCurrency;
+  damageDeposit: number | null;
+  damageDepositCurrency: VillaPeriodCurrency;
+};
+
+export type ScrapedVillaPeriodMeta = Partial<ScrapedVillaPeriodDefaults>;
+
+function parsePercentRate(raw: string | null | undefined): number | null {
+  if (!raw?.trim()) return null;
+  const match = raw.match(/(\d{1,3})/);
+  if (!match) return null;
+  const value = Number(match[1]);
+  if (!Number.isFinite(value) || value <= 0 || value > 100) return null;
+  return Math.round(value);
+}
+
+function parseTurkishMoneyAmount(raw: string): number | null {
+  const s = raw.trim().replace(/\s/g, "");
+  if (!s) return null;
+  if (/^\d{1,3}(?:\.\d{3})+$/.test(s)) {
+    return Number(s.replace(/\./g, ""));
+  }
+  const parsed = parseLocalizedMoney(s);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.round(parsed);
+}
+
+function parseCleaningRuleText(raw: string | null | undefined): {
+  cleaningDayCount: number | null;
+  cleaningFee: number | null;
+  cleaningFeeCurrency: VillaPeriodCurrency;
+} {
+  const text = decodeHtmlEntities(raw ?? "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) {
+    return {
+      cleaningDayCount: null,
+      cleaningFee: null,
+      cleaningFeeCurrency: "TL",
+    };
+  }
+
+  const dayMatch = text.match(/(\d+)\s*gece\s*alt/i);
+  const feeMatch = text.match(
+    /(\d[\d.,\s]*)\s*(?:₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,40}temizlik/i
+  );
+  const currency = mapCurrencyCode(
+    feeMatch?.[0]?.match(/(TL|EUR|USD|GBP|₺|€|\$|£)/i)?.[1] ?? "TL"
+  );
+  const cleaningFee = feeMatch?.[1]
+    ? positiveInt(parseTurkishMoneyAmount(feeMatch[1]))
+    : null;
+
+  return {
+    cleaningDayCount: dayMatch ? positiveInt(Number(dayMatch[1])) : null,
+    cleaningFee,
+    cleaningFeeCurrency: currency,
+  };
+}
+
 function extractDamageDeposit(html: string): {
   amount: number | null;
   currency: VillaPeriodCurrency;
 } {
+  const structured = html.match(
+    /hasar\s*depozito(?:su)?[\s\S]{0,180}?data-price=["'](\d+)["'][^>]*data-doviz=["']([^"']+)["']/i
+  );
+  if (structured?.[1]) {
+    return {
+      amount: positiveInt(Number(structured[1])),
+      currency: mapCurrencyCode(structured[2]),
+    };
+  }
+
+  const structuredAlt = html.match(
+    /hasar\s*depozito(?:su)?[\s\S]{0,180}?data-doviz=["']([^"']+)["'][^>]*data-price=["'](\d+)["']/i
+  );
+  if (structuredAlt?.[2]) {
+    return {
+      amount: positiveInt(Number(structuredAlt[2])),
+      currency: mapCurrencyCode(structuredAlt[1]),
+    };
+  }
+
   const text = stripTags(html);
   const m = text.match(
-    /hasar\s*depozitosu[^0-9]{0,40}(\d[\d.\s]*)\s*(TL|EUR|USD|GBP|€|\$|£)?/i
+    /hasar\s*depozito(?:su)?[^0-9]{0,40}(\d[\d.\s]*)\s*(TL|EUR|USD|GBP|€|\$|£)?/i
   );
   if (!m) return { amount: null, currency: "TL" };
   const amount = positiveInt(Number((m[1] ?? "").replace(/[.\s]/g, "")));
   return { amount, currency: mapCurrencyCode(m[2]) };
+}
+
+function extractPrepaymentRate(html: string): number | null {
+  const text = stripTags(html);
+  const patterns = [
+    /kiralama\s+kaporas[ıi][^%0-9]{0,30}%?\s*(\d{1,3})/i,
+    /ön\s*ödeme(?:\s*oran[ıi])?[^%0-9]{0,30}%?\s*(\d{1,3})/i,
+    /on\s*odeme(?:\s*orani)?[^%0-9]{0,30}%?\s*(\d{1,3})/i,
+    /kapora[^%0-9]{0,30}%?\s*(\d{1,3})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = parsePercentRate(match?.[1] ?? null);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function extractCommissionRate(html: string): number | null {
+  const text = stripTags(html);
+  const patterns = [
+    /komisyon\s*oran[ıi]?[^%0-9]{0,30}%?\s*(\d{1,3})/i,
+    /komisyon[^%0-9]{0,20}%?\s*(\d{1,3})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = parsePercentRate(match?.[1] ?? null);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function extractCleaningDefaults(html: string): {
+  cleaningDayCount: number | null;
+  cleaningFee: number | null;
+  cleaningFeeCurrency: VillaPeriodCurrency;
+} {
+  const titleMatches = [
+    ...html.matchAll(/\btitle=["']([^"']*temizlik[^"']*)["']/gi),
+  ];
+  for (const match of titleMatches) {
+    const parsed = parseCleaningRuleText(match[1]);
+    if (parsed.cleaningFee != null || parsed.cleaningDayCount != null) {
+      return parsed;
+    }
+  }
+
+  const text = stripTags(html);
+  const inline = text.match(
+    /(\d+)\s*gece\s*alt[ıi]ndaki[^.]{0,80}?(\d[\d.,\s]*)\s*(?:₺|TL)[^.]{0,20}temizlik/i
+  );
+  if (inline) {
+    return {
+      cleaningDayCount: positiveInt(Number(inline[1])),
+      cleaningFee: positiveInt(parseTurkishMoneyAmount(inline[2] ?? "")),
+      cleaningFeeCurrency: "TL",
+    };
+  }
+
+  return {
+    cleaningDayCount: null,
+    cleaningFee: null,
+    cleaningFeeCurrency: "TL",
+  };
+}
+
+export function extractScrapedPeriodDefaults(html: string): ScrapedVillaPeriodDefaults {
+  const deposit = extractDamageDeposit(html);
+  const cleaning = extractCleaningDefaults(html);
+  return {
+    prepaymentRate: extractPrepaymentRate(html),
+    commissionRate: extractCommissionRate(html),
+    cleaningDayCount: cleaning.cleaningDayCount,
+    cleaningFee: cleaning.cleaningFee,
+    cleaningFeeCurrency: cleaning.cleaningFeeCurrency,
+    damageDeposit: deposit.amount,
+    damageDepositCurrency: deposit.currency,
+  };
+}
+
+function recomputeWithoutCommission(period: MappedVillaPricePeriod) {
+  if (period.commissionRate == null) {
+    period.nightlyPriceWithoutCommission = null;
+    return;
+  }
+  period.nightlyPriceWithoutCommission = deriveWithoutCommissionFromCommissioned(
+    period.nightlyPrice,
+    period.commissionRate
+  );
+}
+
+function applyMetaToPeriod(
+  period: MappedVillaPricePeriod,
+  meta: ScrapedVillaPeriodMeta,
+  defaults: ScrapedVillaPeriodDefaults
+) {
+  if (period.prepaymentRate == null) {
+    period.prepaymentRate =
+      meta.prepaymentRate ?? defaults.prepaymentRate ?? null;
+  }
+  if (period.commissionRate == null) {
+    period.commissionRate =
+      meta.commissionRate ?? defaults.commissionRate ?? null;
+  }
+  if (period.cleaningDayCount == null) {
+    period.cleaningDayCount =
+      meta.cleaningDayCount ?? defaults.cleaningDayCount ?? null;
+  }
+  if (period.cleaningFee == null) {
+    period.cleaningFee = meta.cleaningFee ?? defaults.cleaningFee ?? null;
+    if (period.cleaningFee != null) {
+      period.cleaningFeeCurrency =
+        meta.cleaningFeeCurrency ?? defaults.cleaningFeeCurrency;
+    }
+  }
+  if (period.damageDeposit == null) {
+    period.damageDeposit =
+      meta.damageDeposit ?? defaults.damageDeposit ?? null;
+    if (period.damageDeposit != null) {
+      period.damageDepositCurrency =
+        meta.damageDepositCurrency ?? defaults.damageDepositCurrency;
+    }
+  }
+  recomputeWithoutCommission(period);
+}
+
+export function finalizeScrapedPeriods(
+  periods: MappedVillaPricePeriod[],
+  html: string
+): MappedVillaPricePeriod[] {
+  const defaults = extractScrapedPeriodDefaults(html);
+  return periods.map((period) => {
+    const next = { ...period };
+    applyMetaToPeriod(next, {}, defaults);
+    return next;
+  });
+}
+
+function finalizeScrapedPage(page: ScrapedVillaPage, html: string): ScrapedVillaPage {
+  return {
+    ...page,
+    periods: finalizeScrapedPeriods(page.periods, html),
+  };
+}
+
+function modeValue<T>(values: Array<T | null | undefined>): T | null {
+  const counts = new Map<T, number>();
+  for (const value of values) {
+    if (value == null) continue;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  let best: T | null = null;
+  let bestCount = 0;
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      best = value;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+export function applyPeriodMetaFallback(
+  periods: MappedVillaPricePeriod[],
+  fallback: ScrapedVillaPeriodMeta
+) {
+  const defaults: ScrapedVillaPeriodDefaults = {
+    prepaymentRate: fallback.prepaymentRate ?? null,
+    commissionRate: fallback.commissionRate ?? null,
+    cleaningDayCount: fallback.cleaningDayCount ?? null,
+    cleaningFee: fallback.cleaningFee ?? null,
+    cleaningFeeCurrency: fallback.cleaningFeeCurrency ?? "TL",
+    damageDeposit: fallback.damageDeposit ?? null,
+    damageDepositCurrency: fallback.damageDepositCurrency ?? "TL",
+  };
+  for (const period of periods) {
+    applyMetaToPeriod(period, {}, defaults);
+  }
+}
+
+export function buildPeriodMetaFallbackFromPeriods(
+  periods: Array<{
+    prepaymentRate: number | null;
+    commissionRate: number | null;
+    cleaningDayCount: number | null;
+    cleaningFee: number | null;
+    cleaningFeeCurrency: VillaPeriodCurrency;
+    damageDeposit: number | null;
+    damageDepositCurrency: VillaPeriodCurrency;
+  }>
+): ScrapedVillaPeriodMeta {
+  if (periods.length === 0) return {};
+  return {
+    prepaymentRate: modeValue(periods.map((period) => period.prepaymentRate)),
+    commissionRate: modeValue(periods.map((period) => period.commissionRate)),
+    cleaningDayCount: modeValue(periods.map((period) => period.cleaningDayCount)),
+    cleaningFee: modeValue(periods.map((period) => period.cleaningFee)),
+    cleaningFeeCurrency:
+      modeValue(periods.map((period) => period.cleaningFeeCurrency)) ?? "TL",
+    damageDeposit: modeValue(periods.map((period) => period.damageDeposit)),
+    damageDepositCurrency:
+      modeValue(periods.map((period) => period.damageDepositCurrency)) ?? "TL",
+  };
 }
 
 /** Boceksoft / dalvillalari dönem listesi (data-year + data-price). */
@@ -1089,6 +1391,8 @@ export function parseKvtPricingItems(
         : null;
 
     const minStayMatch = text.match(/(?:Minimum|Min\.?)\s+(\d+)\s+Gece/i);
+    const titleMatch = block.match(/\btitle=["']([^"']+)["']/i);
+    const cleaningMeta = parseCleaningRuleText(titleMatch?.[1]);
 
     periods.push(
       buildMappedPeriod({
@@ -1099,6 +1403,9 @@ export function parseKvtPricingItems(
         currency: nightly.currency,
         weeklyPrice: weekly && weekly.price > nightly.price ? weekly.price : null,
         minStayNights: minStayMatch ? Number(minStayMatch[1]) : null,
+        cleaningDayCount: cleaningMeta.cleaningDayCount,
+        cleaningFee: cleaningMeta.cleaningFee,
+        cleaningFeeCurrency: cleaningMeta.cleaningFeeCurrency,
         damageDeposit: damageDeposit?.amount ?? null,
         damageDepositCurrency: damageDeposit?.currency ?? nightly.currency,
       })
@@ -2177,6 +2484,21 @@ function parseVillavillamPriceList(
     const cleaningFee = Number(
       o.temizlikFiyat ?? o.temizlikfiyat ?? o.temizlik_fiyat
     );
+    const prepaymentRate = parsePercentRate(
+      String(
+        o.onOdemeOrani ??
+          o.onodemeorani ??
+          o.kapora ??
+          o.prepaymentRate ??
+          ""
+      )
+    );
+    const commissionRate = parsePercentRate(
+      String(o.komisyonOrani ?? o.komisyonorani ?? o.komisyon ?? "")
+    );
+    const cleaningDayCount = positiveInt(
+      Number(o.temizlikGun ?? o.temizlikgun ?? o.cleaningDayCount ?? NaN)
+    );
     periods.push(
       buildMappedPeriod({
         sourceId: sourceId++,
@@ -2189,16 +2511,19 @@ function parseVillavillamPriceList(
             ? packagePrice
             : undefined,
         minStayNights: Number.isFinite(gece) && gece > 0 ? gece : null,
+        prepaymentRate,
+        commissionRate,
+        cleaningDayCount,
+        cleaningFee:
+          Number.isFinite(cleaningFee) && cleaningFee > 0
+            ? Math.round(cleaningFee)
+            : null,
+        cleaningFeeCurrency: currency,
         damageDeposit,
         damageDepositCurrency: currency,
         discount1Rate,
       })
     );
-    const last = periods[periods.length - 1]!;
-    if (Number.isFinite(cleaningFee) && cleaningFee > 0) {
-      last.cleaningFee = Math.round(cleaningFee);
-      last.cleaningFeeCurrency = currency;
-    }
   }
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
 }
@@ -3324,80 +3649,83 @@ export async function scrapeExternalVillaPage(
   const warnings: string[] = [];
 
   const heryer = scrapeHeryervillamFromHtml(parsed.toString(), html, warnings);
-  if (heryer) return heryer;
+  if (heryer) return finalizeScrapedPage(heryer, html);
 
   const yazlikvillaci = await scrapeYazlikvillaciFromPage(
     parsed.toString(),
     html,
     warnings
   );
-  if (yazlikvillaci) return yazlikvillaci;
+  if (yazlikvillaci) return finalizeScrapedPage(yazlikvillaci, html);
 
   const villavillam = await scrapeVillavillamFromPage(
     parsed.toString(),
     html,
     warnings
   );
-  if (villavillam) return villavillam;
+  if (villavillam) return finalizeScrapedPage(villavillam, html);
 
   const akdenizvillam = scrapeAkdenizvillamFromHtml(
     parsed.toString(),
     html,
     warnings
   );
-  if (akdenizvillam) return akdenizvillam;
+  if (akdenizvillam) return finalizeScrapedPage(akdenizvillam, html);
 
   const villavakti = scrapeVillavaktiFromHtml(
     parsed.toString(),
     html,
     warnings
   );
-  if (villavakti) return villavakti;
+  if (villavakti) return finalizeScrapedPage(villavakti, html);
 
   const productDetailRsc = scrapeProductDetailRscFromHtml(
     parsed.toString(),
     html,
     warnings
   );
-  if (productDetailRsc) return productDetailRsc;
+  if (productDetailRsc) return finalizeScrapedPage(productDetailRsc, html);
 
   const villakalkan = scrapeVillakalkanFromHtml(
     parsed.toString(),
     html,
     warnings
   );
-  if (villakalkan) return villakalkan;
+  if (villakalkan) return finalizeScrapedPage(villakalkan, html);
 
   const kvt = await scrapeKvtFromPage(parsed.toString(), html, warnings);
-  if (kvt) return kvt;
+  if (kvt) return finalizeScrapedPage(kvt, html);
 
   const villasayfam = await scrapeVillasayfamFromPage(
     parsed.toString(),
     html,
     warnings
   );
-  if (villasayfam) return villasayfam;
+  if (villasayfam) return finalizeScrapedPage(villasayfam, html);
 
   const tatilkentim = await scrapeTatilkentimFromPage(
     parsed.toString(),
     html,
     warnings
   );
-  if (tatilkentim) return tatilkentim;
+  if (tatilkentim) return finalizeScrapedPage(tatilkentim, html);
 
   const bocek = await scrapeBoceksoft(parsed.toString(), html, warnings);
-  if (bocek) return bocek;
+  if (bocek) return finalizeScrapedPage(bocek, html);
 
   const next = parseNextDataPeriodsAndOccupancy(html);
   if (next && next.periods.length > 0) {
-    return {
+    return finalizeScrapedPage(
+      {
       sourceHost: normalizeHost(parsed.hostname),
       strategy: "next_data",
       pageTitle: extractPageTitle(html),
       periods: next.periods,
       occupancyByDateKey: next.occupancyByDateKey,
       warnings,
-    };
+      },
+      html
+    );
   }
 
   const generic = parseGenericHtmlPeriods(html);
@@ -3407,14 +3735,17 @@ export async function scrapeExternalVillaPage(
         "Müsaitlik takvimi bu sitede otomatik okunamadı; yalnızca fiyat periyotları aktarıldı"
       );
     }
-    return {
+    return finalizeScrapedPage(
+      {
       sourceHost: normalizeHost(parsed.hostname),
       strategy: "html_periods",
       pageTitle: extractPageTitle(html),
       periods: generic,
       occupancyByDateKey: next?.occupancyByDateKey ?? new Map(),
       warnings,
-    };
+      },
+      html
+    );
   }
 
   throw new Error(
