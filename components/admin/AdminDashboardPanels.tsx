@@ -2,8 +2,10 @@ import { BookingStatus } from "@prisma/client";
 import {
   AlarmClock,
   BadgeCheck,
+  Bus,
   CalendarClock,
   CalendarDays,
+  Car,
   Clock3,
   DoorOpen,
   LogOut,
@@ -20,12 +22,14 @@ import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import type {
   DashboardBookingQuickStats,
   DashboardBookingStatusStats,
+  DashboardIntegrationLeadStats,
 } from "@/lib/queries/dashboard-stats";
 
 type Props = {
   statusStats: DashboardBookingStatusStats;
   quickStats: DashboardBookingQuickStats;
   unansweredCallbacks: number;
+  integrationLeads: DashboardIntegrationLeadStats;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -49,6 +53,7 @@ export default function AdminDashboardPanels({
   statusStats,
   quickStats,
   unansweredCallbacks,
+  integrationLeads,
 }: Props) {
   const statusCards = [
     {
@@ -185,16 +190,34 @@ export default function AdminDashboardPanels({
       </section>
 
       <section className="space-y-3">
-        <SectionTitle>Sizi Arayalım</SectionTitle>
+        <SectionTitle>Yeni rezervasyonlar</SectionTitle>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DashboardStatCard
             href={buildCallbackRequestsHref("unanswered")}
-            label="Yeni gelen ve cevaplanmayan"
+            label="Sizi Arayalım"
             value={unansweredCallbacks}
             icon={PhoneIncoming}
             iconWrapClass="bg-orange-100 text-orange-700"
             accentClass="border-orange-100 hover:border-orange-300"
             linkClass="text-orange-700"
+          />
+          <DashboardStatCard
+            href="/admin/obilet/talepler"
+            label="Obilet"
+            value={integrationLeads.newObiletInquiries}
+            icon={Bus}
+            iconWrapClass="bg-sky-100 text-sky-700"
+            accentClass="border-sky-100 hover:border-sky-300"
+            linkClass="text-sky-700"
+          />
+          <DashboardStatCard
+            href="/admin/yolcu360/siparisler"
+            label="Yolcu360"
+            value={integrationLeads.newYolcu360Orders}
+            icon={Car}
+            iconWrapClass="bg-emerald-100 text-emerald-700"
+            accentClass="border-emerald-100 hover:border-emerald-300"
+            linkClass="text-emerald-700"
           />
         </div>
       </section>

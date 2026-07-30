@@ -3,6 +3,7 @@ import { getBookingCount, getPendingBookingCount } from "@/lib/queries/bookings"
 import {
   getDashboardBookingQuickStats,
   getDashboardBookingStatusStats,
+  getDashboardIntegrationLeadStats,
   getDashboardUnansweredCallbackCount,
 } from "@/lib/queries/dashboard-stats";
 import { getVillaCount } from "@/lib/queries/villas";
@@ -18,6 +19,7 @@ export default async function AdminDashboardPage() {
     statusStats,
     quickStats,
     unansweredCallbacks,
+    integrationLeads,
   ] = await Promise.all([
     getVillaCount(),
     getBookingCount(),
@@ -26,6 +28,7 @@ export default async function AdminDashboardPage() {
     getDashboardBookingStatusStats(),
     getDashboardBookingQuickStats(),
     getDashboardUnansweredCallbackCount(),
+    getDashboardIntegrationLeadStats(),
   ]);
 
   const stats = [
@@ -63,6 +66,7 @@ export default async function AdminDashboardPage() {
         statusStats={statusStats}
         quickStats={quickStats}
         unansweredCallbacks={unansweredCallbacks}
+        integrationLeads={integrationLeads}
       />
     </div>
   );

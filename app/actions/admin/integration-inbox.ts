@@ -5,8 +5,10 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
 
 function revalidateInboxPaths() {
+  revalidatePath("/admin");
   revalidatePath("/admin/acente/sizi-arayalim");
   revalidatePath("/admin/yolcu360/siparisler");
+  revalidatePath("/admin/obilet/talepler");
 }
 
 export async function markYolcu360OrderSeenAction(orderId: string) {

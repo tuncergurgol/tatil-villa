@@ -1,7 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
-import { RefreshCw, XCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, RefreshCw, XCircle } from "lucide-react";
+import { markYolcu360OrderSeenAction } from "@/app/actions/admin/integration-inbox";
 import {
   cancelYolcu360OrderAction,
   refreshYolcu360OrderAction,
@@ -15,6 +17,7 @@ type OrderRow = {
   status: string;
   passengerName: string;
   passengerEmail: string;
+  passengerPhone: string;
   carBrand: string;
   carModel: string;
   vendorName: string;
@@ -22,10 +25,12 @@ type OrderRow = {
   currency: string;
   checkInAt: Date | null;
   checkOutAt: Date | null;
+  adminSeenAt: Date | null;
   createdAt: Date;
 };
 
 export default function Yolcu360OrdersTable({ orders }: { orders: OrderRow[] }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function refresh(orderId: string) {
@@ -38,6 +43,13 @@ export default function Yolcu360OrdersTable({ orders }: { orders: OrderRow[] }) 
     if (!confirm("Bu siparişi iptal etmek istediğinize emin misiniz?")) return;
     startTransition(async () => {
       await cancelYolcu360OrderAction(orderId);
+    });
+  }
+
+  function markSeen(id: string) {
+    startTransition(async () => {
+      await markYolcu360OrderSeenAction(id);
+      router.refresh();
     });
   }
 
@@ -60,6 +72,7 @@ export default function Yolcu360OrdersTable({ orders }: { orders: OrderRow[] }) 
             <th className="px-4 py-3">Tedarikçi</th>
             <th className="px-4 py-3">Tutar</th>
             <th className="px-4 py-3">Durum</th>
+            <th className="px-4 py-3">Okundu</th>
             <th className="px-4 py-3">İşlem</th>
           </tr>
         </thead>
@@ -72,6 +85,9 @@ export default function Yolcu360OrdersTable({ orders }: { orders: OrderRow[] }) 
               <td className="px-4 py-3">
                 <div className="font-medium text-gray-900">{order.passengerName}</div>
                 <div className="text-xs text-gray-500">{order.passengerEmail}</div>
+                {order.passengerPhone ? (
+                  <div className="text-xs text-gray-500">{order.passengerPhone}</div>
+                ) : null}
                 {order.trackingId ? (
                   <div className="text-xs text-gray-400">{order.trackingId}</div>
                 ) : null}
@@ -89,7 +105,29 @@ export default function Yolcu360OrdersTable({ orders }: { orders: OrderRow[] }) 
                 </span>
               </td>
               <td className="px-4 py-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    order.adminSeenAt
+                      ? "bg-gray-100 text-gray-600"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {order.adminSeenAt ? "Evet" : "Yeni"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
                 <div className="flex gap-1">
+                  {!order.adminSeenAt ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => markSeen(order.id)}
+                      className="rounded-lg border border-emerald-200 p-2 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                      title="Okundu işaretle"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     disabled={isPending}

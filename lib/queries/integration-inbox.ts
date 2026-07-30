@@ -8,6 +8,13 @@ export async function listNewBiletallInquiriesForInbox(limit = 12) {
   });
 }
 
+export async function listBiletallInquiries(limit = 100) {
+  return prisma.biletallInquiry.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}
+
 export async function countNewIntegrationLeads() {
   const [yolcu360, obilet] = await Promise.all([
     prisma.yolcu360Order.count({ where: { adminSeenAt: null } }),
