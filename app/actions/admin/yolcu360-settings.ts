@@ -10,6 +10,7 @@ import {
   getYolcu360Order,
   testYolcu360Connection,
 } from "@/lib/yolcu360/client";
+import { testYolcu360Credentials } from "@/lib/yolcu360/connection-test";
 import {
   parseCommissionPercentageInput,
 } from "@/lib/yolcu360/commission";
@@ -62,6 +63,24 @@ export async function saveYolcu360Settings(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Geçersiz ayar" };
+  }
+
+  const existing = await prisma.yolcu360Settings.findUnique({
+    where: { id: "default" },
+    select: { apiKey: true, apiSecret: true },
+  });
+
+  if (parsed.data.environment === "production") {
+    const apiKey = existing?.apiKey?.trim() ?? "";
+    const apiSecret = existing?.apiSecret?.trim() ?? "";
+    const test = await testYolcu360Credentials(
+      apiKey,
+      apiSecret,
+      "production"
+    );
+    if (!test.ok) {
+      return { error: test.error };
+    }
   }
 
   await prisma.yolcu360Settings.upsert({

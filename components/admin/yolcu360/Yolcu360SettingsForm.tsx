@@ -154,6 +154,11 @@ export default function Yolcu360SettingsForm({ settings }: Yolcu360SettingsFormP
               <option value="staging">Staging (test)</option>
               <option value="production">Production (canlı)</option>
             </select>
+            <p className="mt-1 text-xs text-amber-700">
+              Canlı ortam için Yolcu360, sunucu IP adresini (
+              <strong>185.184.210.96</strong>) production whitelist&apos;ine
+              eklemelidir. Kayıt sırasında bağlantı testi yapılır.
+            </p>
           </label>
 
           <label className="block">
