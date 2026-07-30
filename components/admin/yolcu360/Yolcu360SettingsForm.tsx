@@ -179,10 +179,14 @@ export default function Yolcu360SettingsForm({ settings }: Yolcu360SettingsFormP
               name="commissionPercentage"
               min={0}
               max={100}
-              step={1}
+              step={0.1}
               defaultValue={settings.commissionPercentage}
               className={inputClass}
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Ondalık girilebilir (ör. 7,5). Yolcu360 aramasında en yakın tam sayı
+              kullanılır.
+            </p>
             <input type="hidden" name="commissionType" value="percentage" />
           </label>
         </div>

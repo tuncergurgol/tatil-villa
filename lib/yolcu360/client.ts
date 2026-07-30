@@ -1,5 +1,6 @@
 import "server-only";
 
+import { toYolcu360ApiCommissionPercentage } from "@/lib/yolcu360/commission";
 import {
   getYolcu360BaseUrl,
   getYolcu360Settings,
@@ -206,7 +207,9 @@ export async function searchYolcu360Cars(body: Yolcu360SearchPointRequest) {
   ) {
     payload.commission = {
       type: "percentage",
-      percentage: Math.round(settings.commissionPercentage),
+      percentage: toYolcu360ApiCommissionPercentage(
+        settings.commissionPercentage
+      ),
     };
   }
   return yolcu360Request<Yolcu360SearchResponse>("/search/point", {

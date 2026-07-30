@@ -10,6 +10,9 @@ import {
   getYolcu360Order,
   testYolcu360Connection,
 } from "@/lib/yolcu360/client";
+import {
+  parseCommissionPercentageInput,
+} from "@/lib/yolcu360/commission";
 import { DEFAULT_YOLCU360_SETTINGS } from "@/lib/yolcu360/settings";
 import { syncYolcu360OrderStatus, upsertYolcu360OrderFromApi } from "@/lib/yolcu360/orders-db";
 
@@ -51,7 +54,9 @@ export async function saveYolcu360Settings(
     publicEnabled: formData.get("publicEnabled") === "on",
     environment: formData.get("environment"),
     commissionType: formData.get("commissionType") ?? "percentage",
-    commissionPercentage: formData.get("commissionPercentage") ?? "0",
+    commissionPercentage: parseCommissionPercentageInput(
+      formData.get("commissionPercentage")
+    ),
     defaultPaymentType: formData.get("defaultPaymentType") ?? "creditCard",
   });
 
