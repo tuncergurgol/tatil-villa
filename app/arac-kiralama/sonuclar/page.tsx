@@ -30,11 +30,15 @@ export default async function Yolcu360ResultsPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <Link href="/arac-kiralama" className="text-sm font-semibold text-teal-700">
         ← Yeni arama
       </Link>
       <h1 className="mt-4 text-3xl font-bold text-slate-900">Uygun araçlar</h1>
+      <p className="mt-2 text-sm text-slate-600">
+        {normalized.checkInDate} {normalized.checkInTime} → {normalized.checkOutDate}{" "}
+        {normalized.checkOutTime}
+      </p>
       <div className="mt-6">
         <Yolcu360ResultsClient searchParams={normalized} />
       </div>

@@ -1,14 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Yolcu360CarResult } from "@/lib/yolcu360/types";
-import { formatYolcu360Money } from "@/lib/yolcu360/format-money";
 import { parseYolcu360DriverAge } from "@/lib/yolcu360/driver-age";
 import { saveYolcu360BookingSession } from "@/lib/yolcu360/session";
+import {
+  applyCarSearchFilters,
+  buildSearchFacets,
+  CAR_SEARCH_BASE_PARAM_KEYS,
+  clearCarSearchFilters,
+  hasActiveCarFilters,
+  parseFilterParams,
+  serializeFilterParams,
+  sortCarResults,
+  type CarSearchFilterState,
+  type CarSearchSortBy,
+} from "@/lib/yolcu360/search-filters";
+import Yolcu360ResultsFilters from "@/components/yolcu360/Yolcu360ResultsFilters";
+import Yolcu360ResultCard from "@/components/yolcu360/Yolcu360ResultCard";
 
 type SearchParams = Record<string, string>;
+
+const SORT_OPTIONS: Array<{ value: CarSearchSortBy; label: string }> = [
+  { value: "lowest_price_first", label: "En düşük fiyat" },
+  { value: "highest_price_first", label: "En yüksek fiyat" },
+  { value: "brand_az", label: "Marka (A-Z)" },
+];
+
+function pickBaseSearchParams(params: SearchParams): SearchParams {
+  const base: SearchParams = {};
+  for (const key of CAR_SEARCH_BASE_PARAM_KEYS) {
+    if (params[key]) base[key] = params[key];
+  }
+  return base;
+}
+
+function baseSearchParamsKey(params: SearchParams) {
+  return JSON.stringify(pickBaseSearchParams(params));
+}
 
 async function resolveLocationPoint(placeId: string) {
   const res = await fetch(
@@ -42,16 +73,34 @@ export default function Yolcu360ResultsClient({
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<Yolcu360CarResult[]>([]);
+  const [allResults, setAllResults] = useState<Yolcu360CarResult[]>([]);
+  const [filters, setFilters] = useState<CarSearchFilterState>(() =>
+    parseFilterParams(searchParams)
+  );
+
+  const baseSearchParams = useMemo(
+    () => pickBaseSearchParams(searchParams),
+    [searchParams]
+  );
+  const searchKey = useMemo(() => baseSearchParamsKey(searchParams), [searchParams]);
 
   useEffect(() => {
+    setFilters(parseFilterParams(searchParams));
+  }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function run() {
+      setLoading(true);
+      setError(null);
+
       try {
-        const pickup = await resolveLocationPoint(searchParams.pickupPlaceId);
+        const pickup = await resolveLocationPoint(baseSearchParams.pickupPlaceId);
         const returnPlaceId =
-          searchParams.sameLocation === "1"
-            ? searchParams.pickupPlaceId
-            : searchParams.returnPlaceId;
+          baseSearchParams.sameLocation === "1"
+            ? baseSearchParams.pickupPlaceId
+            : baseSearchParams.returnPlaceId;
         const dropoff = await resolveLocationPoint(returnPlaceId);
 
         const tz = pickup.timezone?.includes("/")
@@ -59,8 +108,8 @@ export default function Yolcu360ResultsClient({
           : pickup.timezone || "+03:00";
 
         if (
-          isPastDateTime(searchParams.checkInDate, searchParams.checkInTime) ||
-          isPastDateTime(searchParams.checkOutDate, searchParams.checkOutTime)
+          isPastDateTime(baseSearchParams.checkInDate, baseSearchParams.checkInTime) ||
+          isPastDateTime(baseSearchParams.checkOutDate, baseSearchParams.checkOutTime)
         ) {
           throw new Error(
             "Alış veya teslim tarihi geçmişte. Lütfen gelecekte bir tarih ve saat seçin."
@@ -72,16 +121,16 @@ export default function Yolcu360ResultsClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             checkInDateTime: toRfc3339(
-              searchParams.checkInDate,
-              searchParams.checkInTime,
+              baseSearchParams.checkInDate,
+              baseSearchParams.checkInTime,
               tz
             ),
             checkOutDateTime: toRfc3339(
-              searchParams.checkOutDate,
-              searchParams.checkOutTime,
+              baseSearchParams.checkOutDate,
+              baseSearchParams.checkOutTime,
               tz
             ),
-            age: parseYolcu360DriverAge(searchParams.age),
+            age: parseYolcu360DriverAge(baseSearchParams.age),
             country: "TR",
             paymentType: "creditCard",
             checkInLocation: pickup.point,
@@ -92,15 +141,46 @@ export default function Yolcu360ResultsClient({
         if (!res.ok) {
           throw new Error(data.error ?? "Arama başarısız");
         }
-        setResults(data.results ?? []);
+        if (!cancelled) {
+          setAllResults(data.results ?? []);
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Arama başarısız");
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Arama başarısız");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
     void run();
-  }, [searchParams]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [baseSearchParams, searchKey]);
+
+  const facets = useMemo(
+    () => buildSearchFacets(allResults, filters),
+    [allResults, filters]
+  );
+
+  const filteredResults = useMemo(() => {
+    const filtered = applyCarSearchFilters(allResults, filters);
+    return sortCarResults(filtered, filters.sortBy);
+  }, [allResults, filters]);
+
+  function updateFilters(next: CarSearchFilterState) {
+    setFilters(next);
+    const params = serializeFilterParams(baseSearchParams, next);
+    const query = new URLSearchParams(params).toString();
+    router.replace(`/arac-kiralama/sonuclar?${query}`, { scroll: false });
+  }
+
+  function handleClearFilters() {
+    updateFilters(clearCarSearchFilters(filters));
+  }
 
   function selectCar(car: Yolcu360CarResult) {
     saveYolcu360BookingSession({
@@ -135,7 +215,7 @@ export default function Yolcu360ResultsClient({
     );
   }
 
-  if (results.length === 0) {
+  if (allResults.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
         <p className="text-slate-600">Bu kriterlere uygun araç bulunamadı.</p>
@@ -150,60 +230,68 @@ export default function Yolcu360ResultsClient({
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-slate-600">{results.length} araç bulundu</p>
-      {results.map((car) => {
-        const total = car.pricing?.paymentTotal ?? car.pricing?.total;
-        return (
-          <article
-            key={`${car.searchID}-${car.code}`}
-            className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row"
-          >
-            {car.imageURL ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={car.imageURL}
-                alt={`${car.brand?.name ?? ""} ${car.model?.name ?? ""}`}
-                className="h-32 w-full rounded-xl object-cover sm:w-48"
-              />
-            ) : (
-              <div className="flex h-32 w-full items-center justify-center rounded-xl bg-slate-100 text-slate-400 sm:w-48">
-                Araç
-              </div>
-            )}
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-slate-900">
-                {car.brand?.name} {car.model?.name}
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                {car.class?.name} · {car.transmission?.name} · {car.fuel?.name}
-              </p>
-              <p className="mt-1 text-sm text-slate-500">
-                {car.vendor?.displayName ?? car.vendor?.name}
-              </p>
-              {car.isFindeksRequired ? (
-                <p className="mt-2 text-xs font-semibold text-amber-700">
-                  Findeks kontrolü gerekli
-                </p>
-              ) : null}
-            </div>
-            <div className="flex flex-col items-end justify-between gap-3">
-              {total ? (
-                <p className="text-2xl font-bold text-teal-700">
-                  {formatYolcu360Money(total.amount, total.currency)}
-                </p>
-              ) : null}
+    <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <Yolcu360ResultsFilters
+        facets={facets}
+        filters={filters}
+        onChange={updateFilters}
+        onClear={handleClearFilters}
+      />
+
+      <div className="min-w-0 space-y-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-600">
+            <span className="font-semibold text-slate-900">{filteredResults.length}</span> /{" "}
+            {allResults.length} araç gösteriliyor
+          </p>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <span className="font-medium">Sırala</span>
+            <select
+              value={filters.sortBy}
+              onChange={(event) =>
+                updateFilters({
+                  ...filters,
+                  sortBy: event.target.value as CarSearchSortBy,
+                })
+              }
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-100"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {filteredResults.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+            <p className="text-slate-600">
+              Seçili filtrelere uygun araç bulunamadı. Filtreleri gevşetmeyi deneyin.
+            </p>
+            {hasActiveCarFilters(filters) ? (
               <button
                 type="button"
-                onClick={() => selectCar(car)}
-                className="rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+                onClick={handleClearFilters}
+                className="mt-4 text-sm font-semibold text-teal-700 underline"
               >
-                Seç ve devam et
+                Filtreleri temizle
               </button>
-            </div>
-          </article>
-        );
-      })}
+            ) : null}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredResults.map((car) => (
+              <Yolcu360ResultCard
+                key={`${car.searchID}-${car.code}`}
+                car={car}
+                onSelect={selectCar}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
