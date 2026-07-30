@@ -21,8 +21,12 @@ export type PublicSiteProfile = {
   seoTitle: string;
   seoDescription: string;
   heroTitle: string;
+  heroImageUrl: string;
   useDefaultLogo: boolean;
 };
+
+const DEFAULT_HERO_IMAGE_URL =
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80";
 
 type BrandedSiteProfile = Omit<PublicSiteProfile, "useDefaultLogo">;
 
@@ -40,6 +44,7 @@ const BRANDED_SITES: Array<{ hosts: string[]; profile: BrandedSiteProfile }> = [
       seoDescription:
         "Balayı çiftlerine özel korunaklı, jakuzili ve özel havuzlu kiralık villaları keşfedin. Aşkınıza özel unutulmaz bir balayı tatili planlayın.",
       heroTitle: "Aşkınıza Özel Hayalinizdeki Balayı Villaları",
+      heroImageUrl: "/brands/balayi-villacisi/hero.png",
     },
   },
   {
@@ -55,6 +60,7 @@ const BRANDED_SITES: Array<{ hosts: string[]; profile: BrandedSiteProfile }> = [
       seoDescription:
         "Türkiye'nin en güzel bölgelerinde özel havuzlu, deniz manzaralı ve korunaklı kiralık tatil villalarını keşfedin. Hayalinizdeki tatili Tatil Villacısı ile planlayın.",
       heroTitle: "Hayalinizdeki Tatil Villası Bir Tık Uzağınızda",
+      heroImageUrl: "/brands/tatil-villacisi/hero.png",
     },
   },
 ];
@@ -96,6 +102,7 @@ export function resolvePublicSiteProfile(
     seoTitle: company.seoTitle,
     seoDescription: company.seoDescription,
     heroTitle: "Yeni Maceranı Keşfet",
+    heroImageUrl: DEFAULT_HERO_IMAGE_URL,
     useDefaultLogo: true,
   };
 }

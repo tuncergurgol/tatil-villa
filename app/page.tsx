@@ -35,7 +35,7 @@ export default async function HomePage() {
       <section className="relative flex min-h-[520px] items-center justify-center overflow-visible pb-24 sm:min-h-[580px] sm:pb-28">
         <div className="absolute inset-0 overflow-hidden">
           <Image
-            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80"
+            src={site.heroImageUrl}
             alt="Tatil manzarası"
             fill
             className="object-cover"
