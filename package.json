@@ -64,6 +64,8 @@
     "seed:tours": "tsx scripts/seed-tours.ts",
     "migrate:tour-images-r2": "tsx scripts/migrate-tour-images-to-r2.ts",
     "migrate:tour-images-r2:dry": "tsx scripts/migrate-tour-images-to-r2.ts --dry-run",
+    "fix:villa-kopyasi-slugs": "tsx scripts/fix-villa-kopyasi-slugs.ts",
+    "fix:villa-kopyasi-slugs:dry": "tsx scripts/fix-villa-kopyasi-slugs.ts --dry-run",
     "import:cms": "tsx scripts/import-cms-from-tatildeyiz.ts",
     "import:cms:dry": "tsx scripts/import-cms-from-tatildeyiz.ts --dry-run",
     "import:cms:pages": "tsx scripts/import-cms-from-tatildeyiz.ts --only=pages"

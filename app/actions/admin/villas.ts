@@ -15,7 +15,11 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaPublicPath } from "@/lib/villa-public-path";
-import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
+import {
+  buildVillaSlugFromName,
+  ensureUniqueVillaSlug,
+  resolveVillaSlugForName,
+} from "@/lib/villa-slug";
 import { cloneVilla } from "@/lib/villa-clone";
 import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 
@@ -75,14 +79,8 @@ export async function createVillaFromGeneral(
       };
     }
 
-    const baseSlug = slugifyTurkish(name) || "yeni-villa";
-    const slugExists = await prisma.villa.findUnique({
-      where: { slug: baseSlug },
-      select: { id: true },
-    });
-    const slug = slugExists
-      ? `${baseSlug}-${Date.now().toString(36)}`
-      : baseSlug;
+    const baseSlug = buildVillaSlugFromName(name);
+    const slug = await ensureUniqueVillaSlug(baseSlug);
     const salesType = String(
       formData.get("salesType") ?? "komisyon"
     ) as SalesType;
@@ -246,6 +244,21 @@ export async function updateVillaGeneral(
   try {
     await requireAdmin();
 
+    const name = String(formData.get("name") ?? "").trim();
+    if (!name) {
+      return { success: false, error: "Villa adı zorunludur" };
+    }
+
+    const existing = await prisma.villa.findUnique({
+      where: { id },
+      select: { slug: true },
+    });
+    if (!existing) {
+      return { success: false, error: "Villa bulunamadı" };
+    }
+
+    const slug = await resolveVillaSlugForName(name, id);
+
     const salesType = String(
       formData.get("salesType") ?? "komisyon"
     ) as SalesType;
@@ -253,7 +266,8 @@ export async function updateVillaGeneral(
     const updated = await prisma.villa.update({
       where: { id },
       data: {
-        name: String(formData.get("name") ?? ""),
+        name,
+        slug,
         originalName: String(formData.get("originalName") ?? ""),
         category:
           (formData.get("category") as VillaCategory) || VillaCategory.villa,
@@ -280,6 +294,10 @@ export async function updateVillaGeneral(
 
     revalidatePath("/admin/villalar");
     await revalidateVillaEditPage(id);
+    if (existing.slug && existing.slug !== updated.slug) {
+      revalidatePath(villaPublicPath(existing.slug));
+      revalidatePath(`/villalar/${existing.slug}`);
+    }
     if (updated.slug) {
       revalidatePath(villaPublicPath(updated.slug));
       revalidatePath(`/villalar/${updated.slug}`);

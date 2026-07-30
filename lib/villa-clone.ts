@@ -9,7 +9,11 @@ import {
   type VillaRoom,
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
+import {
+  buildVillaSlugFromName,
+  ensureUniqueVillaSlug,
+  stripVillaCopyLabelFromName,
+} from "@/lib/villa-slug";
 
 function stripCopySuffix(name: string) {
   return name.replace(/\s+Kopyası(\s*\(\d+\))?$/i, "").trim();
@@ -33,22 +37,9 @@ async function buildUniqueCopyName(baseName: string) {
   return candidate;
 }
 
-async function buildUniqueSlug(name: string) {
-  const baseSlug = slugifyTurkish(name) || "villa-kopyasi";
-  let candidate = baseSlug;
-  let suffix = 2;
-
-  while (
-    await prisma.villa.findUnique({
-      where: { slug: candidate },
-      select: { id: true },
-    })
-  ) {
-    candidate = `${baseSlug}-${suffix}`;
-    suffix += 1;
-  }
-
-  return candidate;
+async function buildUniqueSlug(name: string, excludeVillaId?: string) {
+  const baseSlug = buildVillaSlugFromName(stripVillaCopyLabelFromName(name));
+  return ensureUniqueVillaSlug(baseSlug, excludeVillaId);
 }
 
 async function allocateNextVillaId() {
