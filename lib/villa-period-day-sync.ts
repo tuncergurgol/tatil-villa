@@ -52,31 +52,54 @@ export async function syncVillaPricePeriodDays(
     await tx.villaPricePeriodDay.deleteMany({
       where: {
         villaId,
-        date: { in: dbDates },
+        date: {
+          gte: toDbDate(startDate),
+          lte: toDbDate(endDate),
+        },
       },
     });
 
     if (dbDates.length === 0) return;
 
-    await tx.villaPricePeriodDay.createMany({
-      data: dates.map((date) => {
-        const daySnapshot = buildDaySnapshotForDate(
-          snapshot,
-          date,
-          occupancyByDate.get(toDateKey(date)) ??
-            snapshot.occupancyStatus ??
-            "EMPTY"
-        );
+    for (const date of dates) {
+      const dbDate = toDbDate(date);
+      const daySnapshot = buildDaySnapshotForDate(
+        snapshot,
+        date,
+        occupancyByDate.get(toDateKey(date)) ??
+          snapshot.occupancyStatus ??
+          "EMPTY"
+      );
+      const {
+        occupancyStatus: snapshotOccupancy,
+        ...pricingData
+      } = daySnapshot;
+      const occupancyStatus =
+        occupancyByDate.get(toDateKey(date)) ??
+        snapshotOccupancy ??
+        "EMPTY";
 
-        return {
+      await tx.villaPricePeriodDay.upsert({
+        where: {
+          villaId_date: {
+            villaId,
+            date: dbDate,
+          },
+        },
+        create: {
           periodId,
           villaId,
-          date: toDbDate(date),
-          ...daySnapshot,
-          occupancyStatus: daySnapshot.occupancyStatus ?? "EMPTY",
-        };
-      }),
-    });
+          date: dbDate,
+          ...pricingData,
+          occupancyStatus,
+        },
+        update: {
+          periodId,
+          ...pricingData,
+          occupancyStatus,
+        },
+      });
+    }
   });
 
   return dateKeys;
@@ -147,10 +170,12 @@ export async function reassignPeriodDaysInRange(
 
   for (const date of dates) {
     const dbDate = toDbDate(date);
-    const existing = await tx.villaPricePeriodDay.findFirst({
+    const existing = await tx.villaPricePeriodDay.findUnique({
       where: {
-        villaId,
-        date: dbDate,
+        villaId_date: {
+          villaId,
+          date: dbDate,
+        },
       },
       select: {
         id: true,
@@ -172,27 +197,29 @@ export async function reassignPeriodDaysInRange(
     } = daySnapshot;
     void _occupancy;
 
-    if (existing) {
-      await tx.villaPricePeriodDay.update({
-        where: { id: existing.id },
-        data: {
-          periodId,
-          ...pricingData,
-          availability: existing.availability,
-          occupancyStatus: existing.occupancyStatus,
+    await tx.villaPricePeriodDay.upsert({
+      where: {
+        villaId_date: {
+          villaId,
+          date: dbDate,
         },
-      });
-      continue;
-    }
-
-    await tx.villaPricePeriodDay.create({
-      data: {
+      },
+      create: {
         periodId,
         villaId,
-        date,
+        date: dbDate,
         ...pricingData,
         availability: dayAvailability,
         occupancyStatus: daySnapshot.occupancyStatus ?? "EMPTY",
+      },
+      update: {
+        periodId,
+        ...pricingData,
+        availability: existing?.availability ?? dayAvailability,
+        occupancyStatus:
+          existing?.occupancyStatus ??
+          daySnapshot.occupancyStatus ??
+          "EMPTY",
       },
     });
   }
@@ -214,10 +241,12 @@ export async function reassignPeriodDaysDiscountInRange(
 
   for (const date of dates) {
     const dbDate = toDbDate(date);
-    const existing = await tx.villaPricePeriodDay.findFirst({
+    const existing = await tx.villaPricePeriodDay.findUnique({
       where: {
-        villaId,
-        date: dbDate,
+        villaId_date: {
+          villaId,
+          date: dbDate,
+        },
       },
     });
 
