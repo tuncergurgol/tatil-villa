@@ -151,8 +151,9 @@ export default function Yolcu360PaymentClient() {
             required
             value={expireYear}
             onChange={(e) => setExpireYear(e.target.value)}
-            placeholder="YY"
+            placeholder="YYYY"
             maxLength={4}
+            inputMode="numeric"
             className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
           />
           <input
