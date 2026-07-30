@@ -134,6 +134,32 @@ function isOccupied(status: VillaDayOccupancy): boolean {
 }
 
 /**
+ * Yeni giriş gününden hemen önceki boş gün (çıkış) ile bitişik eski dolu blok,
+ * takvimde o günü de kapalı gösterir (turnover / çıkış üçgeni).
+ * Yeni kapatma yapılırken bu bitişik önceki gece(ler)i açar.
+ */
+export function collectBookedNightsBeforeCheckInToClear(
+  startKey: string,
+  existingOccupancyByDateKey: ReadonlyMap<string, VillaDayOccupancy>
+): string[] {
+  const dayBeforeCheckIn = offsetDateKey(startKey, -1);
+  const statusBefore = existingOccupancyByDateKey.get(dayBeforeCheckIn) ?? "EMPTY";
+  if (statusBefore !== "EMPTY") return [];
+
+  const keys: string[] = [];
+  let cursor = offsetDateKey(startKey, -2);
+
+  while (true) {
+    const status = existingOccupancyByDateKey.get(cursor) ?? "EMPTY";
+    if (!isOccupied(status)) break;
+    keys.push(cursor);
+    cursor = offsetDateKey(cursor, -1);
+  }
+
+  return keys;
+}
+
+/**
  * OPSİYON komutu: DOLU ile aynı giriş–çıkış mantığını izler.
  * - İç geceler (başlangıç .. bitiş-1) OPTION olur.
  * - Son gün ÇIKIŞ kabul edilir: mevcut GİRİŞ/opsiyon girişi korunur,

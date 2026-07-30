@@ -1,5 +1,5 @@
 /**
- * Villa Hayal Duo: yanlış 4 Ağustos BOOKED kaydını açar (6–9 bloğu korunur).
+ * Villa Hayal Duo: 1–4 Ağustos hatalı dolu kaydını açar, 6–9 bloğunu korur.
  * Çalıştır: npx tsx scripts/fix-villa-1220-august-occupancy.ts
  */
 import { PrismaClient } from "@prisma/client";
@@ -19,8 +19,8 @@ async function main() {
     where: {
       villaId: villa.id,
       date: {
-        gte: dateKeyToDbDate("2026-08-04"),
-        lte: dateKeyToDbDate("2026-08-10"),
+        gte: dateKeyToDbDate("2026-08-01"),
+        lte: dateKeyToDbDate("2026-08-12"),
       },
     },
     orderBy: { date: "asc" },
@@ -32,24 +32,37 @@ async function main() {
     before.map((d) => `${dbDateToDateKey(d.date)}:${d.occupancyStatus}`)
   );
 
-  if (before.some((d) => dbDateToDateKey(d.date) === "2026-08-04" && d.occupancyStatus === "BOOKED")) {
+  const hasPriorBlock = before.some(
+    (d) =>
+      dbDateToDateKey(d.date) >= "2026-08-01" &&
+      dbDateToDateKey(d.date) <= "2026-08-04" &&
+      d.occupancyStatus === "BOOKED"
+  );
+
+  if (hasPriorBlock) {
     await applyVillaPeriodDaysOccupancy(
       villa.id,
-      "2026-08-04",
+      "2026-08-01",
       "2026-08-04",
       "EMPTY"
     );
-    console.log("4 Ağustos açıldı");
-  } else {
-    console.log("4 Ağustos zaten dolu değil, atlandı");
+    console.log("1–4 Ağustos açıldı");
   }
+
+  await applyVillaPeriodDaysOccupancy(
+    villa.id,
+    "2026-08-06",
+    "2026-08-09",
+    "BOOKED"
+  );
+  console.log("6–9 Ağustos doğrulandı");
 
   const after = await prisma.villaPricePeriodDay.findMany({
     where: {
       villaId: villa.id,
       date: {
-        gte: dateKeyToDbDate("2026-08-04"),
-        lte: dateKeyToDbDate("2026-08-10"),
+        gte: dateKeyToDbDate("2026-08-01"),
+        lte: dateKeyToDbDate("2026-08-12"),
       },
     },
     orderBy: { date: "asc" },

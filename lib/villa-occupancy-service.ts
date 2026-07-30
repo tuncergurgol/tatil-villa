@@ -8,6 +8,7 @@ import {
   buildBookedOccupancyForStay,
   buildEmptyOccupancyForRange,
   buildOptionOccupancyForStay,
+  collectBookedNightsBeforeCheckInToClear,
   enumerateDateKeysInRange,
   normalizeDateRange,
   offsetDateKey,
@@ -23,18 +24,26 @@ export async function applyVillaPeriodDaysOccupancy(
 ): Promise<{ updatedDays: number }> {
   const { start, end } = normalizeDateRange(startDateKey, endDateKey);
   const rangeDateKeys = enumerateDateKeysInRange(start, end);
-  const lookupDateKeys = [
-    ...new Set([
-      ...rangeDateKeys,
-      offsetDateKey(start, -1),
-      offsetDateKey(end, 1),
-    ]),
-  ];
+  const lookupDateKeys = new Set<string>([
+    ...rangeDateKeys,
+    offsetDateKey(start, -1),
+    offsetDateKey(end, 1),
+  ]);
+
+  if (mode === "BOOKED") {
+    let cursor = offsetDateKey(start, -2);
+    for (let index = 0; index < 62; index++) {
+      lookupDateKeys.add(cursor);
+      cursor = offsetDateKey(cursor, -1);
+    }
+  }
 
   const existingDays = await prisma.villaPricePeriodDay.findMany({
     where: {
       villaId,
-      date: { in: lookupDateKeys.map((dateKey) => dateKeyToDbDate(dateKey)) },
+      date: {
+        in: [...lookupDateKeys].map((dateKey) => dateKeyToDbDate(dateKey)),
+      },
     },
     select: {
       date: true,
@@ -56,6 +65,15 @@ export async function applyVillaPeriodDaysOccupancy(
       : mode === "OPTION"
         ? buildOptionOccupancyForStay(start, end, existingOccupancyByDateKey)
         : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey);
+
+  if (mode === "BOOKED") {
+    for (const dateKey of collectBookedNightsBeforeCheckInToClear(
+      start,
+      existingOccupancyByDateKey
+    )) {
+      occupancyByDateKey.set(dateKey, "EMPTY");
+    }
+  }
 
   const updates = [...occupancyByDateKey.entries()]
     .filter(([dateKey, occupancyStatus]) => {

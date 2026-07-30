@@ -2,7 +2,7 @@
  * Admin takvim kapatma: giriş–çıkış günleri doğru yazılır.
  * Çalıştır: npx tsx scripts/smoke-period-occupancy-close.ts
  */
-import { buildBookedOccupancyForStay } from "../lib/villa-period-selection";
+import { buildBookedOccupancyForStay, collectBookedNightsBeforeCheckInToClear } from "../lib/villa-period-selection";
 import {
   buildOccupancyMap,
 } from "../lib/booking-calendar-selection";
@@ -39,6 +39,23 @@ assert(
 assert(
   dbDateToDateKey(new Date("2026-08-06T00:00:00.000Z")) === "2026-08-06",
   "dbDateToDateKey UTC gece yarısı kaydırmaz"
+);
+
+const withPriorBlock = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-01", "BOOKED"],
+  ["2026-08-02", "BOOKED"],
+  ["2026-08-03", "BOOKED"],
+  ["2026-08-04", "BOOKED"],
+  ["2026-08-05", "EMPTY"],
+  ["2026-08-06", "EMPTY"],
+]);
+const toClear = collectBookedNightsBeforeCheckInToClear(
+  "2026-08-06",
+  withPriorBlock
+);
+assert(
+  toClear.join(",") === "2026-08-04,2026-08-03,2026-08-02,2026-08-01",
+  "6 Ağustos giriş öncesi bitişik dolu blok temizlenir"
 );
 
 console.log("\nTüm period occupancy smoke senaryoları geçti.");
