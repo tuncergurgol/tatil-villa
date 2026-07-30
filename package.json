@@ -62,6 +62,8 @@
     "seed:cms": "tsx scripts/seed-cms-content.ts",
     "seed:car-rental": "tsx scripts/seed-car-rental.ts",
     "seed:tours": "tsx scripts/seed-tours.ts",
+    "migrate:tour-images-r2": "tsx scripts/migrate-tour-images-to-r2.ts",
+    "migrate:tour-images-r2:dry": "tsx scripts/migrate-tour-images-to-r2.ts --dry-run",
     "import:cms": "tsx scripts/import-cms-from-tatildeyiz.ts",
     "import:cms:dry": "tsx scripts/import-cms-from-tatildeyiz.ts --dry-run",
     "import:cms:pages": "tsx scripts/import-cms-from-tatildeyiz.ts --only=pages"
@@ -70,6 +72,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.888.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
