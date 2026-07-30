@@ -47,6 +47,149 @@ function formatPriceFrom(price: number, currency: string) {
   return `${price.toLocaleString("tr-TR")} ${currency}'den`;
 }
 
+function LegacySearchForm({
+  settings,
+  locations,
+  driverAgeOptions,
+}: {
+  settings: CarRentalPageSettingsData;
+  locations: CarRentalLocationItem[];
+  driverAgeOptions: string[];
+}) {
+  const [sameLocation, setSameLocation] = useState(settings.sameLocationDefault);
+  const [pickupId, setPickupId] = useState(locations[0]?.id ?? "");
+  const [returnId, setReturnId] = useState(locations[0]?.id ?? "");
+
+  return (
+    <div className="rounded-2xl bg-white p-4 text-slate-900 shadow-2xl shadow-blue-900/10 ring-1 ring-slate-200/80 sm:p-6 lg:p-7">
+      <div className="grid gap-3 lg:grid-cols-6">
+        <label className="block lg:col-span-2">
+          <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+            {settings.pickupLabel}
+          </span>
+          <select
+            value={pickupId}
+            onChange={(e) => {
+              setPickupId(e.target.value);
+              if (sameLocation) setReturnId(e.target.value);
+            }}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          >
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+                {loc.iataCode ? ` (${loc.iataCode})` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {!sameLocation ? (
+          <label className="block lg:col-span-2">
+            <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+              {settings.returnLabel}
+            </span>
+            <select
+              value={returnId}
+              onChange={(e) => setReturnId(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            >
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                  {loc.iataCode ? ` (${loc.iataCode})` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <label className="block">
+          <span className="mb-1.5 text-xs font-semibold text-slate-500">
+            {settings.pickupDateLabel}
+          </span>
+          <div className="flex gap-1">
+            <input
+              type="date"
+              className="w-full min-w-0 rounded-xl border border-slate-200 px-2 py-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            />
+            <select className="w-[5.5rem] shrink-0 rounded-xl border border-slate-200 px-1 py-3 text-sm outline-none focus:border-sky-400">
+              {TIME_OPTIONS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 text-xs font-semibold text-slate-500">
+            {settings.returnDateLabel}
+          </span>
+          <div className="flex gap-1">
+            <input
+              type="date"
+              className="w-full min-w-0 rounded-xl border border-slate-200 px-2 py-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            />
+            <select className="w-[5.5rem] shrink-0 rounded-xl border border-slate-200 px-1 py-3 text-sm outline-none focus:border-sky-400">
+              {TIME_OPTIONS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        </label>
+
+        <div className="flex items-end lg:col-span-6 xl:col-span-1">
+          <button
+            type="button"
+            className="inline-flex h-[52px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 text-sm font-bold tracking-wide text-white shadow-md shadow-orange-500/25 transition hover:bg-orange-600"
+          >
+            <Car className="h-4 w-4" />
+            {settings.ctaText.toUpperCase()}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        {settings.showSameLocationToggle ? (
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={sameLocation}
+              onChange={(e) => {
+                setSameLocation(e.target.checked);
+                if (e.target.checked) setReturnId(pickupId);
+              }}
+              className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            {settings.sameLocationLabel}
+          </label>
+        ) : (
+          <span />
+        )}
+
+        <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+          <User className="h-4 w-4 text-slate-400" />
+          <span className="font-medium">{settings.driverAgeLabel}:</span>
+          <select
+            defaultValue={settings.defaultDriverAge}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-800 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          >
+            {driverAgeOptions.map((age) => (
+              <option key={age} value={age}>
+                {age}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export default function CarRentalPublicPage({
   settings,
   categories,
@@ -55,12 +198,6 @@ export default function CarRentalPublicPage({
   driverAgeOptions,
   yolcu360Enabled = false,
 }: Props) {
-  const [sameLocation, setSameLocation] = useState(
-    settings.sameLocationDefault
-  );
-  const [pickupId, setPickupId] = useState(locations[0]?.id ?? "");
-  const [returnId, setReturnId] = useState(locations[0]?.id ?? "");
-
   const popularLocations = useMemo(
     () => locations.filter((l) => l.isPopular).slice(0, 6),
     [locations]
@@ -68,186 +205,60 @@ export default function CarRentalPublicPage({
 
   return (
     <div className="bg-slate-50">
-      <section className="relative overflow-hidden bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,0.25),transparent_50%)]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-          <p className="text-sm font-semibold tracking-wide text-teal-200">
-            {settings.heroBadge}
-          </p>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl">
+      <section className="relative overflow-hidden bg-gradient-to-br from-sky-600 via-blue-600 to-blue-700 text-white">
+        <div className="pointer-events-none absolute -right-16 top-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-1/4 h-40 w-40 rounded-full bg-sky-300/20 blur-2xl" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-28 pt-12 sm:px-6 sm:pb-32 sm:pt-16 lg:px-8">
+          {settings.heroBadge ? (
+            <p className="text-sm font-medium text-sky-100/90">{settings.heroBadge}</p>
+          ) : null}
+          <h1 className="mt-2 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
             {settings.heroTitle}
           </h1>
-          <p className="mt-4 max-w-2xl text-base text-teal-100/90 sm:text-lg">
-            {settings.heroSubtitle}
-          </p>
+          {settings.heroSubtitle ? (
+            <p className="mt-3 max-w-xl text-base text-sky-100/90 sm:text-lg">
+              {settings.heroSubtitle}
+            </p>
+          ) : null}
+        </div>
+      </section>
 
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="-mt-20 sm:-mt-24">
           {yolcu360Enabled ? (
             <Yolcu360SearchWidget
               settings={settings}
               driverAgeOptions={driverAgeOptions}
             />
           ) : (
-            <div className="mt-8 rounded-2xl border border-white/15 bg-white/95 p-4 text-slate-900 shadow-xl sm:p-6">
-            {settings.showSameLocationToggle ? (
-              <label className="mb-4 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={sameLocation}
-                  onChange={(e) => {
-                    setSameLocation(e.target.checked);
-                    if (e.target.checked) setReturnId(pickupId);
-                  }}
-                  className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-500"
-                />
-                {settings.sameLocationLabel}
-              </label>
-            ) : null}
-
-            {settings.rentalDaysHint ? (
-              <p className="mb-3 text-xs font-medium text-teal-700">
-                {settings.rentalDaysHint}
-              </p>
-            ) : null}
-
-            <div className="grid gap-3 lg:grid-cols-6">
-              <label className="block lg:col-span-2">
-                <span className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-500">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {settings.pickupLabel}
-                </span>
-                <select
-                  value={pickupId}
-                  onChange={(e) => {
-                    setPickupId(e.target.value);
-                    if (sameLocation) setReturnId(e.target.value);
-                  }}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
-                >
-                  {locations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name}
-                      {loc.iataCode ? ` (${loc.iataCode})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {!sameLocation ? (
-                <label className="block lg:col-span-2">
-                  <span className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-500">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {settings.returnLabel}
-                  </span>
-                  <select
-                    value={returnId}
-                    onChange={(e) => setReturnId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
-                  >
-                    {locations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name}
-                        {loc.iataCode ? ` (${loc.iataCode})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              <label className="block">
-                <span className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-500">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {settings.pickupDateLabel}
-                </span>
-                <div className="flex gap-1">
-                  <input
-                    type="date"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-2 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
-                  />
-                  <select className="w-[5.5rem] shrink-0 rounded-xl border border-slate-200 px-1 py-2.5 text-sm outline-none focus:border-teal-400">
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-500">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {settings.returnDateLabel}
-                </span>
-                <div className="flex gap-1">
-                  <input
-                    type="date"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-2 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
-                  />
-                  <select className="w-[5.5rem] shrink-0 rounded-xl border border-slate-200 px-1 py-2.5 text-sm outline-none focus:border-teal-400">
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-500">
-                  <User className="h-3.5 w-3.5" />
-                  {settings.driverAgeLabel}
-                </span>
-                <select
-                  defaultValue={settings.defaultDriverAge}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
-                >
-                  {driverAgeOptions.map((age) => (
-                    <option key={age} value={age}>
-                      {age}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="flex items-end lg:col-span-6 xl:col-span-1">
-                <button
-                  type="button"
-                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800"
-                >
-                  <Car className="h-4 w-4" />
-                  {settings.ctaText}
-                </button>
-              </div>
-              </div>
-            </div>
+            <LegacySearchForm
+              settings={settings}
+              locations={locations}
+              driverAgeOptions={driverAgeOptions}
+            />
           )}
         </div>
-      </section>
+      </div>
 
       {categories.length > 0 ? (
-        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              {settings.categoriesTitle}
-            </h2>
-            {settings.categoriesSubtitle ? (
-              <p className="mt-2 text-slate-600">{settings.categoriesSubtitle}</p>
-            ) : null}
-          </div>
+        <section className="mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            {settings.categoriesTitle}
+          </h2>
+          {settings.categoriesSubtitle ? (
+            <p className="mt-2 text-slate-600">{settings.categoriesSubtitle}</p>
+          ) : null}
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {categories.map((cat) => (
               <div
                 key={cat.id}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-sky-200 hover:shadow-md"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
                   <Car className="h-5 w-5" />
                 </div>
-                <h3 className="mt-4 text-lg font-bold text-slate-900">
-                  {cat.name}
-                </h3>
-                <p className="mt-1 text-sm font-semibold text-teal-700">
+                <h3 className="mt-4 text-lg font-bold text-slate-900">{cat.name}</h3>
+                <p className="mt-1 text-sm font-semibold text-sky-700">
                   {formatPriceFrom(cat.priceFrom, cat.currency)}
                 </p>
                 {cat.description ? (
@@ -262,16 +273,12 @@ export default function CarRentalPublicPage({
       {popularLocations.length > 0 || locations.length > 0 ? (
         <section className="border-y border-slate-200 bg-white">
           <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                {settings.locationsTitle}
-              </h2>
-              {settings.locationsSubtitle ? (
-                <p className="mt-2 text-slate-600">
-                  {settings.locationsSubtitle}
-                </p>
-              ) : null}
-            </div>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              {settings.locationsTitle}
+            </h2>
+            {settings.locationsSubtitle ? (
+              <p className="mt-2 text-slate-600">{settings.locationsSubtitle}</p>
+            ) : null}
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {(popularLocations.length > 0
                 ? popularLocations
@@ -279,17 +286,24 @@ export default function CarRentalPublicPage({
               ).map((loc) => (
                 <div
                   key={loc.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5"
+                  className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 transition hover:border-sky-200"
                 >
-                  <h3 className="text-lg font-bold text-slate-900">
-                    {loc.city || loc.name}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-600">{loc.name}</p>
-                  {loc.vehicleCountHint ? (
-                    <p className="mt-2 text-xs font-semibold text-teal-700">
-                      {loc.vehicleCountHint}
-                    </p>
-                  ) : null}
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+                      <MapPin className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-slate-900">
+                        {loc.city || loc.name}
+                      </h3>
+                      <p className="mt-0.5 text-sm text-slate-600">{loc.name}</p>
+                      {loc.vehicleCountHint ? (
+                        <p className="mt-2 text-xs font-semibold text-sky-700">
+                          {loc.vehicleCountHint}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -299,14 +313,12 @@ export default function CarRentalPublicPage({
 
       {criteria.length > 0 ? (
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              {settings.criteriaTitle}
-            </h2>
-            {settings.criteriaSubtitle ? (
-              <p className="mt-2 text-slate-600">{settings.criteriaSubtitle}</p>
-            ) : null}
-          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            {settings.criteriaTitle}
+          </h2>
+          {settings.criteriaSubtitle ? (
+            <p className="mt-2 text-slate-600">{settings.criteriaSubtitle}</p>
+          ) : null}
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {criteria.map((item) => {
               const Icon =

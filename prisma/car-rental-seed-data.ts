@@ -2,10 +2,9 @@
 
 export const CAR_RENTAL_PAGE_SETTINGS_SEED = {
   id: "default",
-  heroBadge: "Türkiye'nin #1 Araç Kiralama Platformu",
-  heroTitle: "Hayalinizdeki Araca Birkaç Tıkla Ulaşın",
-  heroSubtitle:
-    "50+ lokasyon, 2000+ araç seçeneği ile Türkiye'nin her yerinde güvenilir ve uygun fiyatlı araç kiralama",
+  heroBadge: "",
+  heroTitle: "Araç Kiralamak Ne Kolaymış!",
+  heroSubtitle: "Ara, karşılaştır, en uygun aracı bul.",
   sameLocationDefault: true,
   showSameLocationToggle: true,
   sameLocationLabel: "Aynı noktadan teslim",
@@ -21,13 +20,13 @@ export const CAR_RENTAL_PAGE_SETTINGS_SEED = {
   ]),
   defaultDriverAge: "25-69 yaş",
   ctaText: "Araç Ara",
-  rentalDaysHint: "7 gün kiralama",
+  rentalDaysHint: "",
   categoriesTitle: "Araç Kategorileri",
-  categoriesSubtitle: "İhtiyacınıza en uygun aracı seçin",
+  categoriesSubtitle: "",
   locationsTitle: "Popüler Lokasyonlar",
-  locationsSubtitle: "En çok tercih edilen araç kiralama noktaları",
+  locationsSubtitle: "",
   criteriaTitle: "Sürücü Kriterleri",
-  criteriaSubtitle: "Kiralama için gereken temel şartlar",
+  criteriaSubtitle: "",
 } as const;
 
 export const CAR_RENTAL_CATEGORIES_SEED = [
