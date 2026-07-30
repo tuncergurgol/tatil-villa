@@ -5,6 +5,8 @@ import {
   getAllCallbackRequests,
   getCallbackRequestCounts,
 } from "@/lib/queries/callback-requests";
+import { listNewBiletallInquiriesForInbox } from "@/lib/queries/integration-inbox";
+import { listNewYolcu360OrdersForInbox } from "@/lib/yolcu360/orders-db";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +25,19 @@ export default async function SiziArayalimPage({ searchParams }: Props) {
         ? (params.durum[0] ?? "")
         : "";
 
-  const [items, counts] = await Promise.all([
+  const [items, counts, yolcu360Orders, biletallInquiries] = await Promise.all([
     getAllCallbackRequests(),
     getCallbackRequestCounts(),
+    listNewYolcu360OrdersForInbox(),
+    listNewBiletallInquiriesForInbox(),
   ]);
 
   return (
     <CallbackRequestManagement
       items={items}
       counts={counts}
+      yolcu360Orders={yolcu360Orders}
+      biletallInquiries={biletallInquiries}
       initialListFilter={initialListFilter}
       listFilterKey={listFilterKey}
     />

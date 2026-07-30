@@ -13,6 +13,30 @@ import {
 import type { CallbackRequestItem } from "@/lib/queries/callback-requests";
 import type { CallbackListFilter } from "@/lib/booking-filter-url";
 import { includesSearchText } from "@/lib/search-text";
+import IntegrationLeadsSidebar from "@/components/admin/callback-requests/IntegrationLeadsSidebar";
+
+type Yolcu360Lead = {
+  id: string;
+  yolcu360OrderId: string;
+  passengerName: string;
+  passengerPhone: string;
+  carBrand: string;
+  carModel: string;
+  vendorName: string;
+  totalAmount: number;
+  currency: string;
+  status: string;
+  createdAt: Date;
+};
+
+type ObiletLead = {
+  id: string;
+  pnr: string;
+  summary: string;
+  sourceSite: string;
+  sourceDomain: string;
+  createdAt: Date;
+};
 
 type StatusFilter =
   | "all"
@@ -31,6 +55,8 @@ interface Props {
     contacted: number;
     closed: number;
   };
+  yolcu360Orders: Yolcu360Lead[];
+  biletallInquiries: ObiletLead[];
   initialListFilter?: CallbackListFilter;
   listFilterKey?: string;
 }
@@ -57,6 +83,8 @@ function formatSiteHint(item: CallbackRequestItem): string | null {
 export default function CallbackRequestManagement({
   items,
   counts,
+  yolcu360Orders,
+  biletallInquiries,
   initialListFilter = "all",
   listFilterKey = "",
 }: Props) {
@@ -105,8 +133,8 @@ export default function CallbackRequestManagement({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] w-full flex-col overflow-hidden lg:h-[calc(100dvh-4rem)]">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex h-[calc(100dvh-3rem)] w-full flex-col gap-4 overflow-hidden lg:h-[calc(100dvh-4rem)] lg:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="shrink-0 space-y-4 border-b border-gray-100 bg-white px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-[180px] items-center gap-2.5">
@@ -271,6 +299,11 @@ export default function CallbackRequestManagement({
           </table>
         </div>
       </div>
+
+      <IntegrationLeadsSidebar
+        yolcu360Orders={yolcu360Orders}
+        biletallInquiries={biletallInquiries}
+      />
     </div>
   );
 }

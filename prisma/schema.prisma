@@ -1704,9 +1704,29 @@ model Yolcu360Order {
   checkOutAt      DateTime?
   searchSnapshot  Json?
   rawOrder        Json?
+  adminSeenAt     DateTime?
+  staffNotifiedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([status])
   @@index([createdAt])
+}
+
+model BiletallInquiry {
+  id              String    @id @default(cuid())
+  sourceSite      String    @default("")
+  sourceDomain    String    @default("")
+  pnr             String    @default("")
+  summary         String    @default("") @db.Text
+  rawQuery        String    @default("") @db.Text
+  status          String    @default("NEW")
+  staffNotifiedAt DateTime?
+  adminSeenAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([pnr])
 }

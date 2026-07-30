@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import BiletallIframe from "@/components/bilet/BiletallIframe";
+import BiletallResultTracker from "@/components/bilet/BiletallResultTracker";
 import BiletShell from "@/components/bilet/BiletShell";
 import BiletSonucFallback from "@/components/bilet/BiletSonucFallback";
 import { getBiletallPageContext } from "@/lib/biletall-page";
 import { hasBiletallResultContext } from "@/lib/biletall-result-context";
+import { parseBiletallResultQuery } from "@/lib/biletall-result-query";
 
 export const metadata: Metadata = {
   title: "Bilet Sonuç / PNR",
@@ -24,6 +26,7 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
   if (!enabled) redirect("/");
 
   const hasResultContext = hasBiletallResultContext(params);
+  const resultQuery = parseBiletallResultQuery(params);
 
   return (
     <BiletShell
@@ -33,7 +36,9 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
       homeUrl={publicHomeUrl}
     >
       {hasResultContext ? (
-        <BiletallIframe
+        <>
+          <BiletallResultTracker query={resultQuery} />
+          <BiletallIframe
           kind="sonuc"
           portalSlug={portalSlug}
           credentials={credentials}
@@ -43,6 +48,7 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
           forwardSessionQuery
           title="Biletall — Bilet Sonuç"
         />
+        </>
       ) : (
         <BiletSonucFallback homeUrl={publicHomeUrl} />
       )}
