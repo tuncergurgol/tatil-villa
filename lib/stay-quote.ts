@@ -73,6 +73,7 @@ export type StayQuote = {
   prepaymentAmount: number;
   checkInPayment: number;
   minStayNights: number | null;
+  belowMinStay: boolean;
   cleaningDayCount: number | null;
   nightLines: StayQuoteNightLine[];
   valid: boolean;
@@ -144,6 +145,7 @@ export function computeStayQuote(
     prepaymentAmount: 0,
     checkInPayment: 0,
     minStayNights: null,
+    belowMinStay: false,
     cleaningDayCount: null,
     nightLines: [],
     valid: false,
@@ -195,11 +197,12 @@ export function computeStayQuote(
     cleaningDayCount: firstDay?.cleaningDayCount,
   });
 
+  const belowMinStay =
+    minStayNights != null && minStayNights > 0 && nights < minStayNights;
+
   let invalidReason: string | null = null;
   if (missingNightKeys.length > 0) {
     invalidReason = "Seçilen tarihler için fiyat bilgisi eksik.";
-  } else if (minStayNights != null && nights < minStayNights) {
-    invalidReason = `Minimum konaklama ${minStayNights} gecedir.`;
   }
 
   const valid = invalidReason == null;
@@ -220,6 +223,7 @@ export function computeStayQuote(
     prepaymentAmount,
     checkInPayment,
     minStayNights,
+    belowMinStay,
     cleaningDayCount,
     nightLines,
     valid,

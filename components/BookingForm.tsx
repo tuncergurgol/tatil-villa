@@ -160,6 +160,7 @@ export default function BookingForm({
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
   const [modalOpen, setModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [minStayInfoVisible, setMinStayInfoVisible] = useState(false);
   const [feeSelections, setFeeSelections] = useState<StayFeeSelections>({});
   const [poolHeatingSelections, setPoolHeatingSelections] =
     useState<PoolHeatingSelections>({});
@@ -194,6 +195,16 @@ export default function BookingForm({
     if (!checkIn || !checkOut || checkIn === checkOut) return null;
     return computeStayQuote(checkIn, checkOut, quoteDaysMap);
   }, [checkIn, checkOut, quoteDaysMap]);
+
+  useEffect(() => {
+    if (!quote?.belowMinStay || quote.minStayNights == null) {
+      setMinStayInfoVisible(false);
+      return;
+    }
+    setMinStayInfoVisible(true);
+    const timer = window.setTimeout(() => setMinStayInfoVisible(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [checkIn, checkOut, quote?.belowMinStay, quote?.minStayNights]);
 
   const periodFees = useMemo<StayPeriodFees>(() => {
     if (!checkIn) return emptyStayPeriodFees();
@@ -612,6 +623,12 @@ export default function BookingForm({
         {state.error && !modalOpen ? (
           <div className="rounded-lg bg-red-50 px-3 py-1.5 text-sm text-red-700">
             {state.error}
+          </div>
+        ) : null}
+
+        {minStayInfoVisible && quote?.belowMinStay && quote.minStayNights ? (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm text-sky-800">
+            Bilgi: Minimum konaklama {quote.minStayNights} gecedir.
           </div>
         ) : null}
 
