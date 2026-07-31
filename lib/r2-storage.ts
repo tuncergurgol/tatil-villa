@@ -51,6 +51,9 @@ export function createR2Client(config: R2Config) {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
     },
+    // AWS SDK 3.729+ varsayılan CRC32 checksum R2 ile uyumsuz.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
 }
 
