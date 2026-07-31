@@ -34,6 +34,7 @@ export type OwnerPaymentReportListItem = AdminBookingListItem & {
   ownerPaymentDueDate: string;
   ownerPayments: ReturnType<typeof normalizeOwnerPayments>;
   missing: string[];
+  paymentStatus: "paid" | "ready" | "incomplete";
   exportable: boolean;
 };
 
@@ -151,6 +152,15 @@ function toExportInput(
   };
 }
 
+function resolveOwnerPaymentStatus(
+  remainingAmount: number,
+  missing: string[]
+): OwnerPaymentReportListItem["paymentStatus"] {
+  if (remainingAmount <= 0) return "paid";
+  if (missing.length === 0) return "ready";
+  return "incomplete";
+}
+
 function mapBookingToListItem(
   booking: OwnerPaymentBookingRecord,
   brandFallback: { brandName: string; domain: string; logoUrl: string }
@@ -188,7 +198,11 @@ function mapBookingToListItem(
     ? new Date(`${ownerPaymentDueDate}T12:00:00`)
     : null;
   const exportInput = toExportInput(booking, remainingAmount);
-  const missing = checkOwnerPaymentMissingFields(exportInput);
+  const rawMissing = checkOwnerPaymentMissingFields(exportInput);
+  const missing =
+    remainingAmount > 0
+      ? rawMissing
+      : rawMissing.filter((field) => field !== "Ödenecek tutar");
   const paymentMethod =
     details.importPaymentMethod?.trim() ||
     details.prepaymentBank?.trim() ||
@@ -240,7 +254,8 @@ function mapBookingToListItem(
     ownerPaymentDueDate,
     ownerPaymentDueAt,
     missing,
-    exportable: missing.length === 0,
+    paymentStatus: resolveOwnerPaymentStatus(remainingAmount, rawMissing),
+    exportable: remainingAmount > 0 && rawMissing.length === 0,
   };
 }
 

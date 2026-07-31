@@ -56,19 +56,32 @@ function refreshItemPayments(
 ): OwnerPaymentReportListItem {
   const paidAmount = ownerPayments.reduce((sum, row) => sum + row.amount, 0);
   const remainingAmount = Math.max(0, item.ownerPayableAmount - paidAmount);
-  const missing = item.missing.filter((field) => field !== "Ödenecek tutar");
-  if (!(remainingAmount > 0) && !missing.includes("Ödenecek tutar")) {
-    missing.push("Ödenecek tutar");
-  }
+  const staticMissing = item.missing.filter(
+    (field) => field !== "Ödenecek tutar"
+  );
+  const rawMissing =
+    remainingAmount > 0
+      ? staticMissing
+      : [...staticMissing, "Ödenecek tutar"];
 
   return {
     ...item,
     ownerPayments,
     paidAmount,
     remainingAmount,
-    missing,
-    exportable: missing.length === 0 && remainingAmount > 0,
+    missing: staticMissing,
+    paymentStatus: resolveOwnerPaymentStatus(remainingAmount, rawMissing),
+    exportable: remainingAmount > 0 && rawMissing.length === 0,
   };
+}
+
+function resolveOwnerPaymentStatus(
+  remainingAmount: number,
+  missing: string[]
+): OwnerPaymentReportListItem["paymentStatus"] {
+  if (remainingAmount <= 0) return "paid";
+  if (missing.length === 0) return "ready";
+  return "incomplete";
 }
 
 export default function OwnerPaymentReportPage({
@@ -330,7 +343,11 @@ export default function OwnerPaymentReportPage({
                           : "—"}
                       </td>
                       <td className="px-3 py-2">
-                        {item.exportable ? (
+                        {item.paymentStatus === "paid" ? (
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                            Ödendi
+                          </span>
+                        ) : item.paymentStatus === "ready" ? (
                           <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                             Hazır
                           </span>
