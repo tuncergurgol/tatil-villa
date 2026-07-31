@@ -16,9 +16,6 @@ export default async function AdminLoginPage({ searchParams }: Props) {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <h1 className="text-2xl font-bold text-gray-900">Admin Girişi</h1>
         <p className="mt-1 text-sm text-gray-500">Tatildeyiz yönetim paneli</p>
-        <p className="mt-3 text-xs text-gray-500">
-          Giriş için WhatsApp ile 5 haneli doğrulama kodu gönderilir.
-        </p>
         <div className="mt-6">
           <AdminLoginForm idleMessage={idleMessage} />
         </div>

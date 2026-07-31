@@ -2,104 +2,29 @@
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useActionState, useEffect, useRef, useState } from "react";
-import {
-  resendAdminLoginOtpAction,
-  startAdminLoginAction,
-  type AdminAuthActionState,
-} from "@/app/actions/admin/admin-auth";
-
-const initialState: AdminAuthActionState = {};
+import { useState } from "react";
 
 type Props = {
   idleMessage?: string;
 };
 
 export default function AdminLoginForm({ idleMessage }: Props) {
-  const [startState, startAction, startPending] = useActionState(
-    startAdminLoginAction,
-    initialState
-  );
-  const [resendState, resendAction, resendPending] = useActionState(
-    resendAdminLoginOtpAction,
-    initialState
-  );
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
-  const [credentials, setCredentials] = useState({
-    email: "",
-    password: "",
-  });
-  const passwordRef = useRef("");
-  const [otpSession, setOtpSession] = useState<{
-    email: string;
-    password: string;
-    phone: string;
-    verificationId: string;
-    channel?: "sms" | "whatsapp";
-    hint?: string;
-  } | null>(null);
-  const [signInError, setSignInError] = useState("");
-  const [signInPending, setSignInPending] = useState(false);
-  const codeInputRef = useRef<HTMLInputElement>(null);
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setError("");
 
-  useEffect(() => {
-    if (
-      startState.needsVerification &&
-      startState.verificationId &&
-      startState.phone &&
-      startState.email
-    ) {
-      setOtpSession({
-        email: startState.email,
-        password: passwordRef.current,
-        phone: startState.phone,
-        verificationId: startState.verificationId,
-        channel: startState.channel,
-        hint: startState.message,
-      });
-    }
-  }, [startState]);
-
-  useEffect(() => {
-    if (
-      resendState.needsVerification &&
-      resendState.verificationId &&
-      resendState.phone &&
-      resendState.email
-    ) {
-      setOtpSession({
-        email: resendState.email,
-        password: passwordRef.current,
-        phone: resendState.phone,
-        verificationId: resendState.verificationId,
-        channel: resendState.channel,
-        hint: resendState.message,
-      });
-    }
-  }, [resendState]);
-
-  useEffect(() => {
-    if (otpSession) {
-      codeInputRef.current?.focus();
-    }
-  }, [otpSession?.verificationId]);
-
-  async function handleOtpSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!otpSession) return;
-
-    setSignInPending(true);
-    setSignInError("");
-
-    const formData = new FormData(e.currentTarget);
-    const otpCode = String(formData.get("otpCode") ?? "").trim();
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
 
     const result = await Promise.race([
       signIn("credentials", {
-        email: otpSession.email,
-        password: otpSession.password,
-        otpCode,
-        verificationId: otpSession.verificationId,
+        email,
+        password,
         redirect: false,
       }),
       new Promise<{ error: string }>((resolve) =>
@@ -113,12 +38,12 @@ export default function AdminLoginForm({ idleMessage }: Props) {
       ),
     ]);
 
-    setSignInPending(false);
+    setPending(false);
 
     if (result?.error) {
-      setSignInError(
+      setError(
         result.error === "CredentialsSignin"
-          ? "Doğrulama kodu hatalı veya süresi doldu"
+          ? "E-posta veya şifre hatalı"
           : result.error
       );
       return;
@@ -127,97 +52,17 @@ export default function AdminLoginForm({ idleMessage }: Props) {
     window.location.assign("/admin");
   }
 
-  if (otpSession) {
-    const error =
-      signInError || startState.error || resendState.error || undefined;
-
-    return (
-      <div className="space-y-4">
-        <div className="rounded-lg border border-teal-100 bg-teal-50 px-3 py-2 text-sm text-teal-900">
-          <p className="font-semibold">WhatsApp doğrulama</p>
-          <p className="mt-1 text-teal-800/90">
-            {otpSession.hint ||
-              `5 haneli kod ${
-                otpSession.channel === "sms" ? "SMS" : "WhatsApp"
-              } ile gönderildi.`}
-          </p>
-        </div>
-
-        <form onSubmit={handleOtpSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">
-              Doğrulama kodu
-            </span>
-            <input
-              ref={codeInputRef}
-              name="otpCode"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={5}
-              required
-              placeholder="•••••"
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-center text-lg font-bold tracking-[0.35em] outline-none focus:border-teal-500"
-            />
-          </label>
-
-          {error ? (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={signInPending}
-            className="w-full rounded-xl bg-teal-600 py-3 text-sm font-bold text-white hover:bg-teal-700 disabled:opacity-60"
-          >
-            {signInPending ? "Giriş yapılıyor..." : "Doğrula ve Giriş Yap"}
-          </button>
-        </form>
-
-        <form action={resendAction} className="flex items-center justify-between">
-          <input type="hidden" name="email" value={otpSession.email} />
-          <input type="hidden" name="password" value={otpSession.password} />
-          <button
-            type="button"
-            onClick={() => setOtpSession(null)}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            Geri dön
-          </button>
-          <button
-            type="submit"
-            disabled={resendPending}
-            className="text-sm font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-60"
-          >
-            {resendPending ? "Gönderiliyor…" : "Kodu tekrar gönder"}
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   return (
-    <form
-      action={startAction}
-      onSubmit={(event) => {
-        const formData = new FormData(event.currentTarget);
-        const email = String(formData.get("email") ?? "");
-        const password = String(formData.get("password") ?? "");
-        passwordRef.current = password;
-        setCredentials({ email, password });
-      }}
-      className="space-y-4"
-    >
+    <form onSubmit={handleSubmit} className="space-y-4">
       {idleMessage ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {idleMessage}
         </div>
       ) : null}
 
-      {startState.error ? (
+      {error ? (
         <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          {startState.error}
+          {error}
         </div>
       ) : null}
 
@@ -228,7 +73,6 @@ export default function AdminLoginForm({ idleMessage }: Props) {
           name="email"
           required
           autoComplete="username"
-          defaultValue={credentials.email}
           placeholder="ornek@firma.com"
           className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
         />
@@ -255,10 +99,10 @@ export default function AdminLoginForm({ idleMessage }: Props) {
 
       <button
         type="submit"
-        disabled={startPending}
+        disabled={pending}
         className="w-full rounded-xl bg-teal-600 py-3 text-sm font-bold text-white hover:bg-teal-700 disabled:opacity-60"
       >
-        {startPending ? "Kod gönderiliyor..." : "Giriş Yap"}
+        {pending ? "Giriş yapılıyor..." : "Giriş Yap"}
       </button>
     </form>
   );

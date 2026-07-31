@@ -6,22 +6,13 @@ import { z } from "zod";
 import { getAdminPanelBaseUrl } from "@/lib/admin-auth-url";
 import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
-import { deliverOtpCode } from "@/lib/otp-delivery";
-import {
-  isValidTurkishMobileE164,
-  normalizePhoneToE164,
-} from "@/lib/phone";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
-  ADMIN_LOGIN_OTP_PURPOSE,
   ADMIN_PASSWORD_RESET_PURPOSE,
   ADMIN_PASSWORD_RESET_TTL_MS,
-  OTP_TTL_MS,
-  createUniqueOtpCode,
   generatePasswordResetToken,
   invalidateActiveOtps,
-  type AdminLoginOtpPayload,
   type AdminPasswordResetPayload,
 } from "@/lib/verification-otp";
 
@@ -29,21 +20,10 @@ export type AdminAuthActionState = {
   success?: boolean;
   error?: string;
   message?: string;
-  needsVerification?: boolean;
-  phone?: string;
-  verificationId?: string;
-  channel?: "sms" | "whatsapp";
-  email?: string;
 };
 
 const GENERIC_RESET_MESSAGE =
   "E-posta kayıtlıysa şifre sıfırlama bağlantısı gönderildi. Gelen kutunuzu ve spam klasörünü kontrol edin.";
-
-function maskPhone(e164: string): string {
-  const digits = e164.replace(/\D/g, "");
-  if (digits.length < 7) return e164;
-  return `****${digits.slice(-4)}`;
-}
 
 async function findActiveAdminUser(email: string) {
   return prisma.user.findUnique({
@@ -57,104 +37,6 @@ async function findActiveAdminUser(email: string) {
       active: true,
     },
   });
-}
-
-const startLoginSchema = z.object({
-  email: z.string().trim().email("Geçerli bir e-posta girin"),
-  password: z.string().min(1, "Şifre gerekli"),
-});
-
-/** E-posta + şifre doğrula, WhatsApp OTP gönder */
-export async function startAdminLoginAction(
-  _prev: AdminAuthActionState,
-  formData: FormData
-): Promise<AdminAuthActionState> {
-  const parsed = startLoginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
-
-  if (!parsed.success) {
-    return {
-      error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi",
-    };
-  }
-
-  const email = parsed.data.email.trim().toLowerCase();
-  const rate = checkRateLimit({
-    key: `admin-login:${email}`,
-    limit: 8,
-    windowMs: 15 * 60 * 1000,
-  });
-  if (!rate.ok) {
-    return { error: "Çok fazla deneme. Lütfen bir süre sonra tekrar deneyin." };
-  }
-
-  const user = await findActiveAdminUser(email);
-  if (!user || !user.active) {
-    return { error: "E-posta veya şifre hatalı" };
-  }
-
-  const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
-  if (!valid) {
-    return { error: "E-posta veya şifre hatalı" };
-  }
-
-  const phone = normalizePhoneToE164(user.phone);
-  if (!phone || !isValidTurkishMobileE164(phone)) {
-    return {
-      error:
-        "WhatsApp doğrulaması için kullanıcı kaydında geçerli cep telefonu tanımlı olmalıdır. Yöneticinizle iletişime geçin.",
-    };
-  }
-
-  const company = await getCompanySettings();
-  const payload: AdminLoginOtpPayload = {
-    userId: user.id,
-    email: user.email,
-    passwordVerifiedAt: new Date().toISOString(),
-  };
-
-  await invalidateActiveOtps(phone, ADMIN_LOGIN_OTP_PURPOSE);
-  const code = await createUniqueOtpCode(phone, ADMIN_LOGIN_OTP_PURPOSE);
-  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-
-  const delivery = await deliverOtpCode(phone, code, ADMIN_LOGIN_OTP_PURPOSE, {
-    brandName: company.brandName || "Bont Yönetim",
-  });
-  if (!delivery.ok) {
-    return { error: delivery.error ?? "Doğrulama kodu gönderilemedi" };
-  }
-
-  const record = await prisma.verificationCode.create({
-    data: {
-      phone,
-      code,
-      purpose: ADMIN_LOGIN_OTP_PURPOSE,
-      expiresAt,
-      channel: delivery.channel,
-      payload: payload as unknown as Prisma.InputJsonValue,
-    },
-  });
-
-  return {
-    needsVerification: true,
-    email: user.email,
-    phone,
-    verificationId: record.id,
-    channel: delivery.channel,
-    message: `Giriş kodu ${
-      delivery.channel === "sms" ? "SMS" : "WhatsApp"
-    } ile ${maskPhone(phone)} numarasına gönderildi.`,
-  };
-}
-
-/** OTP yeniden gönder (şifre tekrar doğrulanır) */
-export async function resendAdminLoginOtpAction(
-  _prev: AdminAuthActionState,
-  formData: FormData
-): Promise<AdminAuthActionState> {
-  return startAdminLoginAction(_prev, formData);
 }
 
 const forgotSchema = z.object({
