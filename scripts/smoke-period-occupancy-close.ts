@@ -2,7 +2,7 @@
  * Admin takvim kapatma: giriş–çıkış günleri doğru yazılır.
  * Çalıştır: npx tsx scripts/smoke-period-occupancy-close.ts
  */
-import { buildBookedOccupancyForStay, collectBookedNightsBeforeCheckInToClear } from "../lib/villa-period-selection";
+import { buildBookedOccupancyForStay } from "../lib/villa-period-selection";
 import {
   buildOccupancyMap,
 } from "../lib/booking-calendar-selection";
@@ -99,13 +99,19 @@ const withPriorBlock = new Map<string, "BOOKED" | "EMPTY">([
   ["2026-08-05", "EMPTY"],
   ["2026-08-06", "EMPTY"],
 ]);
-const toClear = collectBookedNightsBeforeCheckInToClear(
+const close69WithPrior = buildBookedOccupancyForStay(
   "2026-08-06",
+  "2026-08-09",
   withPriorBlock
 );
 assert(
-  toClear.join(",") === "2026-08-04,2026-08-03,2026-08-02,2026-08-01",
-  "6 Ağustos giriş öncesi bitişik dolu blok temizlenir"
+  close69WithPrior.get("2026-08-01") === undefined,
+  "6–9 kapatırken 1–5 Ağustos bloğu dokunulmaz"
 );
+assert(
+  close69WithPrior.get("2026-08-05") === undefined,
+  "6–9 kapatırken önceki çıkış günü (5 Ağustos) dokunulmaz"
+);
+assert(close69WithPrior.get("2026-08-06") === "BOOKED", "6 Ağustos yeni giriş BOOKED");
 
 console.log("\nTüm period occupancy smoke senaryoları geçti.");
