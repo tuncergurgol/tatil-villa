@@ -16,6 +16,7 @@
  * - risusvillatatili.com / KVT (pricing-item + fake-calendar villatarih)
  * - tatilkentim.com (pricing-item gecelik/haftalık + /villa/{id}/calendar)
  * - villasayfam.com (api.villasayfam.com pricePeriods + availability)
+ * - villaoteltatili.com (Bravo/VillaSistem liketablerow + loadDates takvim)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
  */
@@ -57,7 +58,8 @@ export type ScrapedVillaPage = {
     | "yazlikvillaci"
     | "kvt"
     | "tatilkentim"
-    | "villasayfam";
+    | "villasayfam"
+    | "villaoteltatili";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -133,6 +135,11 @@ function normalizeLooseDateKey(raw: string): string | null {
     const m = iso[2]!.padStart(2, "0");
     const d = iso[3]!.padStart(2, "0");
     return `${y}-${m}-${d}`;
+  }
+  const dmyShort = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2})$/);
+  if (dmyShort) {
+    const year = 2000 + Number(dmyShort[3]);
+    return `${year}-${dmyShort[2]!.padStart(2, "0")}-${dmyShort[1]!.padStart(2, "0")}`;
   }
   const dmy = trimmed.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
   if (dmy) {
@@ -2090,6 +2097,302 @@ export function buildYazlikcimSeasonFallbackPeriods(
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
 }
 
+function looksLikeVillaoteltatili(pageUrl: string, html: string): boolean {
+  try {
+    const host = normalizeHost(new URL(pageUrl).hostname);
+    if (host.includes("villaoteltatili")) return true;
+  } catch {
+    // ignore
+  }
+  return (
+    html.includes("bravo_booking_data") &&
+    (html.includes("loadDates") || html.includes("load_dates_url"))
+  );
+}
+
+function extractVillaoteltatiliMeta(html: string): {
+  serviceId: string | null;
+  loadDatesUrl: string | null;
+} {
+  const bravoMatch = html.match(/bravo_booking_data\s*=\s*(\{[\s\S]*?\})\s*[\r\n;]/);
+  if (bravoMatch?.[1]) {
+    try {
+      const data = JSON.parse(bravoMatch[1]) as { id?: number | string };
+      if (data.id != null && String(data.id).trim()) {
+        const loadDatesUrl =
+          html.match(/load_dates_url\s*:\s*['"]([^'"]+)['"]/i)?.[1] ??
+          html.match(
+            /availability\/loadDates["']?\s*,[\s\S]{0,120}?url\s*:\s*["']([^"']+)["']/i
+          )?.[1] ??
+          null;
+        return { serviceId: String(data.id), loadDatesUrl };
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  const hiddenId = html.match(
+    /<input[^>]+name=["']service_id["'][^>]+value=["'](\d+)["']/i
+  )?.[1];
+  const loadDatesUrl =
+    html.match(/load_dates_url\s*:\s*['"]([^'"]+)['"]/i)?.[1] ?? null;
+  return {
+    serviceId: hiddenId?.trim() || null,
+    loadDatesUrl,
+  };
+}
+
+function extractVillaoteltatiliPrepaymentRate(html: string): number | null {
+  const percentMatch = html.match(
+    /"deposit_type"\s*:\s*"percent"[\s\S]{0,80}?"deposit_amount"\s*:\s*"(\d{1,3})"/i
+  );
+  if (percentMatch?.[1]) return parsePercentRate(percentMatch[1]);
+  const percentAlt = html.match(
+    /"deposit_amount"\s*:\s*"(\d{1,3})"[\s\S]{0,80}?"deposit_type"\s*:\s*"percent"/i
+  );
+  if (percentAlt?.[1]) return parsePercentRate(percentAlt[1]);
+  return null;
+}
+
+function parseVillaoteltatiliDateRange(
+  raw: string
+): { start: Date; end: Date } | null {
+  const text = decodeHtmlEntities(raw)
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parts = text.split(/\s*[-–—]\s*/);
+  if (parts.length !== 2) return null;
+
+  const parsePart = (value: string): Date | null => {
+    const key = normalizeLooseDateKey(value.trim());
+    return key ? parseDateKey(key) : null;
+  };
+
+  const start = parsePart(parts[0]!);
+  const end = parsePart(parts[1]!);
+  if (!start || !end || compareDates(start, end) > 0) return null;
+  return { start, end };
+}
+
+export function parseVillaoteltatiliPriceTable(
+  html: string,
+  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
+): MappedVillaPricePeriod[] {
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+
+  const chunks = html.split(
+    /<div[^>]*class=["'][^"']*\bliketablerow\b[^"']*["'][^>]*>/i
+  );
+
+  for (let i = 1; i < chunks.length; i++) {
+    const block = (chunks[i] ?? "").slice(0, 2500);
+    const text = stripTags(block);
+    const rangeMatch = text.match(
+      /(\d{1,2}\.\d{1,2}\.\d{2,4})\s*[-–—]\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/
+    );
+    if (!rangeMatch) continue;
+
+    const range = parseVillaoteltatiliDateRange(
+      `${rangeMatch[1]} - ${rangeMatch[2]}`
+    );
+    if (!range) continue;
+
+    const nightlyMatch =
+      block.match(/(\d[\d.,]*)\s*₺[^<]{0,40}Gecelik/i) ??
+      text.match(/(\d[\d.,]*)\s*₺[^A-Za-z]{0,20}Gecelik/i);
+    if (!nightlyMatch?.[1]) continue;
+
+    const nightlyPrice = parseTurkishMoneyAmount(nightlyMatch[1]);
+    if (!nightlyPrice) continue;
+
+    const weeklyMatch =
+      block.match(/(\d[\d.,]*)\s*₺[^<]{0,40}Haftal/i) ??
+      text.match(/(\d[\d.,]*)\s*₺[^A-Za-z]{0,20}Haftal/i);
+    const weeklyPrice = weeklyMatch?.[1]
+      ? parseTurkishMoneyAmount(weeklyMatch[1])
+      : null;
+
+    const dedupeKey = `${toDateKey(range.start)}|${toDateKey(range.end)}|${nightlyPrice}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate: range.start,
+        endDate: range.end,
+        nightlyPrice,
+        currency: "TL",
+        weeklyPrice,
+        damageDeposit: damageDeposit?.amount ?? null,
+        damageDepositCurrency: damageDeposit?.currency ?? "TL",
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+type VillaoteltatiliCalendarEvent = {
+  start?: string;
+  start_date?: string;
+  end?: string;
+  price?: string | number;
+  active?: number;
+  event?: string;
+  title?: string;
+  is_default?: boolean;
+  classNames?: string[];
+};
+
+function villaoteltatiliEventDateKey(
+  event: VillaoteltatiliCalendarEvent
+): string | null {
+  const raw =
+    event.start ??
+    (typeof event.start_date === "string" ? event.start_date.slice(0, 10) : "");
+  return normalizeLooseDateKey(String(raw ?? ""));
+}
+
+function isVillaoteltatiliBlockedEvent(
+  event: VillaoteltatiliCalendarEvent
+): boolean {
+  if (event.is_default) return false;
+  if (event.active !== 0) return false;
+  const label = String(event.event ?? event.title ?? "");
+  if (/engellen/i.test(label)) return true;
+  return (event.classNames ?? []).some((name) => /blocked/i.test(name));
+}
+
+export function parseVillaoteltatiliOccupancy(
+  events: VillaoteltatiliCalendarEvent[]
+): Map<string, VillaDayOccupancy> {
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  for (const event of events) {
+    if (!isVillaoteltatiliBlockedEvent(event)) continue;
+    const key = villaoteltatiliEventDateKey(event);
+    if (!key) continue;
+    occupancyByDateKey.set(key, "BOOKED");
+  }
+  return occupancyByDateKey;
+}
+
+export function parseVillaoteltatiliDailyPrices(
+  events: VillaoteltatiliCalendarEvent[]
+): { dateKeys: string[]; prices: number[] } {
+  const sorted = [...events].sort((a, b) =>
+    String(a.start ?? a.start_date ?? "").localeCompare(
+      String(b.start ?? b.start_date ?? "")
+    )
+  );
+  const dateKeys: string[] = [];
+  const prices: number[] = [];
+
+  for (const event of sorted) {
+    if (event.active !== 1) continue;
+    const price = Number(event.price);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const key = villaoteltatiliEventDateKey(event);
+    if (!key) continue;
+    dateKeys.push(key);
+    prices.push(Math.round(price));
+  }
+
+  return { dateKeys, prices };
+}
+
+async function fetchVillaoteltatiliLoadDates(
+  pageUrl: string,
+  serviceId: string,
+  loadDatesUrl: string
+): Promise<VillaoteltatiliCalendarEvent[]> {
+  const startDate = startOfDay(new Date());
+  const endDate = new Date(startDate);
+  endDate.setFullYear(endDate.getFullYear() + 1);
+
+  const url = new URL(loadDatesUrl, originFromUrl(pageUrl));
+  url.searchParams.set("id", serviceId);
+  url.searchParams.set("start", toDateKey(startDate));
+  url.searchParams.set("end", toDateKey(endDate));
+
+  const body = await fetchText(url.toString(), { referer: pageUrl });
+  const parsed = JSON.parse(body) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error("loadDates yanıtı dizi değil");
+  }
+  return parsed as VillaoteltatiliCalendarEvent[];
+}
+
+async function scrapeVillaoteltatiliFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeVillaoteltatili(pageUrl, html)) return null;
+
+  const meta = extractVillaoteltatiliMeta(html);
+  if (!meta.serviceId) {
+    warnings.push("VillaOtelTatili service id bulunamadı");
+    return null;
+  }
+
+  const deposit = extractDamageDeposit(html);
+  let periods = parseVillaoteltatiliPriceTable(html, deposit);
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const prepaymentRate = extractVillaoteltatiliPrepaymentRate(html);
+  const loadDatesUrl =
+    meta.loadDatesUrl ??
+    `${originFromUrl(pageUrl)}/user/kiralik-villa/availability/loadDates`;
+
+  try {
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    const events = await fetchVillaoteltatiliLoadDates(
+      pageUrl,
+      meta.serviceId,
+      loadDatesUrl
+    );
+    const occ = parseVillaoteltatiliOccupancy(events);
+    for (const [key, status] of occ) occupancyByDateKey.set(key, status);
+
+    if (periods.length === 0) {
+      const { dateKeys, prices } = parseVillaoteltatiliDailyPrices(events);
+      periods = collapseDailyPricesToPeriods(dateKeys, prices, "TL");
+      if (periods.length > 0) {
+        warnings.push(
+          "Dönem listesi HTML'de yoktu; takvim günlük fiyatlarından birleştirildi"
+        );
+      }
+    }
+  } catch (error) {
+    warnings.push(
+      error instanceof Error
+        ? `VillaOtelTatili loadDates başarısız: ${error.message}`
+        : "VillaOtelTatili loadDates başarısız"
+    );
+  }
+
+  if (periods.length === 0) return null;
+
+  if (prepaymentRate) {
+    for (const period of periods) {
+      if (!period.prepaymentRate) period.prepaymentRate = prepaymentRate;
+    }
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "villaoteltatili",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 async function scrapeBoceksoft(
   pageUrl: string,
   html: string,
@@ -3805,6 +4108,13 @@ export async function scrapeExternalVillaPage(
   );
   if (tatilkentim) return finalizeScrapedPage(tatilkentim, html);
 
+  const villaoteltatili = await scrapeVillaoteltatiliFromPage(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (villaoteltatili) return finalizeScrapedPage(villaoteltatili, html);
+
   const bocek = await scrapeBoceksoft(parsed.toString(), html, warnings);
   if (bocek) return finalizeScrapedPage(bocek, html);
 
@@ -3844,6 +4154,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
