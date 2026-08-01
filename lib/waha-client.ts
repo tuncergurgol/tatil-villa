@@ -346,6 +346,103 @@ export async function requestWahaPairingCode(
   return data?.code?.trim() || null;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function isWahaSessionAvailabilityError(message: string) {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("session status is not as expected") ||
+    lower.includes("session not found") ||
+    lower.includes("session is not working")
+  );
+}
+
+export function translateWahaUserError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("session status is not as expected")) {
+    return "Bildirim WhatsApp oturumu hazır değil. Admin → Acente → Bildirim WhatsApp sayfasından bağlantıyı kontrol edin veya oturumu yeniden başlatın.";
+  }
+  if (lower.includes("scan_qr_code") || lower.includes("scan qr")) {
+    return "WhatsApp yeniden eşleştirme gerekiyor. Bildirim WhatsApp sayfasından QR kodu okutun.";
+  }
+  return message;
+}
+
+export function isWahaSessionReady(
+  connection: NormalizedWahaConnection | null | undefined
+) {
+  if (!connection) return false;
+  return connection.status === "WORKING" || Boolean(connection.phoneId);
+}
+
+export async function waitForWahaSessionReady(
+  baseUrl: string,
+  apiKey: string,
+  sessionName: string,
+  options?: { attempts?: number; delayMs?: number }
+) {
+  const attempts = options?.attempts ?? 10;
+  const delayMs = options?.delayMs ?? 1000;
+
+  for (let index = 0; index < attempts; index += 1) {
+    const connection = await getWahaConnectionState(baseUrl, apiKey, sessionName);
+    if (isWahaSessionReady(connection)) {
+      return connection;
+    }
+    if (connection?.status === "FAILED") {
+      return connection;
+    }
+    await sleep(delayMs);
+  }
+
+  return getWahaConnectionState(baseUrl, apiKey, sessionName);
+}
+
+export async function recoverWahaSessionForSend(
+  baseUrl: string,
+  apiKey: string,
+  sessionName: string,
+  webhookUrl?: string,
+  webhookSecret?: string
+) {
+  const current = await getWahaConnectionState(baseUrl, apiKey, sessionName);
+
+  if (isWahaSessionReady(current)) {
+    return current;
+  }
+
+  if (!current || current.status === "STOPPED" || current.status === "FAILED") {
+    try {
+      await ensureWahaSession(
+        baseUrl,
+        apiKey,
+        sessionName,
+        webhookUrl,
+        webhookSecret
+      );
+    } catch {
+      try {
+        await startWahaSession(baseUrl, apiKey, sessionName);
+      } catch {
+        // ignore
+      }
+    }
+  } else {
+    try {
+      await restartWahaSession(baseUrl, apiKey, sessionName);
+    } catch {
+      // ignore
+    }
+  }
+
+  return waitForWahaSessionReady(baseUrl, apiKey, sessionName, {
+    attempts: 12,
+    delayMs: 1000,
+  });
+}
+
 /** WAHA API ile bireysel WhatsApp metin mesajı */
 export async function sendWahaTextMessage(
   baseUrl: string,
@@ -364,4 +461,47 @@ export async function sendWahaTextMessage(
       text,
     }),
   });
+}
+
+export async function sendWahaTextMessageWithRecovery(
+  baseUrl: string,
+  apiKey: string,
+  sessionName: string,
+  number: string,
+  text: string,
+  options?: {
+    webhookUrl?: string;
+    webhookSecret?: string;
+  }
+) {
+  const send = () =>
+    sendWahaTextMessage(baseUrl, apiKey, sessionName, number, text);
+
+  try {
+    await send();
+    return;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!isWahaSessionAvailabilityError(message)) {
+      throw error;
+    }
+  }
+
+  const recovered = await recoverWahaSessionForSend(
+    baseUrl,
+    apiKey,
+    sessionName,
+    options?.webhookUrl,
+    options?.webhookSecret
+  );
+
+  if (!isWahaSessionReady(recovered)) {
+    throw new Error(
+      translateWahaUserError(
+        "Session status is not as expected. Try again later or restart the session"
+      )
+    );
+  }
+
+  await send();
 }

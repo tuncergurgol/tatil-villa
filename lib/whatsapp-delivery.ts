@@ -7,7 +7,7 @@ import {
 } from "@/lib/phone";
 import { getEvolutionWhatsappAdminData } from "@/lib/queries/evolution-whatsapp";
 import { getWahaWhatsappAdminData } from "@/lib/queries/waha-whatsapp";
-import { sendWahaTextMessage } from "@/lib/waha-client";
+import { sendWahaTextMessageWithRecovery, translateWahaUserError } from "@/lib/waha-client";
 
 export type WhatsAppSendResult = {
   ok: boolean;
@@ -40,7 +40,7 @@ export async function sendCustomerNotificationWhatsApp(
   }
 
   try {
-    await sendWahaTextMessage(
+    await sendWahaTextMessageWithRecovery(
       waha.wahaBaseUrl,
       waha.wahaApiKey,
       waha.wahaSessionName,
@@ -49,12 +49,11 @@ export async function sendCustomerNotificationWhatsApp(
     );
     return { ok: true };
   } catch (error) {
+    const raw =
+      error instanceof Error ? error.message : "WhatsApp mesajı gönderilemedi";
     return {
       ok: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "WhatsApp mesajı gönderilemedi",
+      error: translateWahaUserError(raw),
     };
   }
 }
