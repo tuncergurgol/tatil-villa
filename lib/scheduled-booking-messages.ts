@@ -11,7 +11,7 @@ import { parseBookingDetails, type BookingDetails } from "@/lib/booking-form-det
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
-  isValidTurkishMobileE164,
+  isValidWhatsAppPhoneE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
 import {
@@ -254,7 +254,7 @@ export async function sendScheduledBookingMessage(
 
   if (phone) {
     const e164 = normalizePhoneToE164(phone);
-    if (e164 && isValidTurkishMobileE164(e164) && waBody.trim()) {
+    if (e164 && isValidWhatsAppPhoneE164(e164) && waBody.trim()) {
       const rendered = renderAgencyMessageTemplate(waBody, templateValues);
       const message = ensureWhatsAppRawConfirmationUrl(
         appendBookingSiteFooter(rendered, siteBrand.siteInfo)

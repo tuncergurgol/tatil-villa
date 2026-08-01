@@ -1,35 +1,20 @@
+import { buildE164Phone, parseStoredPhone } from "@/lib/phone-countries";
+
 /**
- * Turkish phone numbers are normalized to E.164 (+905xxxxxxxxx).
+ * Telefon numarasını E.164 formatına çevirir.
+ * + ile başlayan uluslararası numaralar korunur; yerel TR formları +90'a dönüşür.
  */
 export function normalizePhoneToE164(phone: string): string {
   const trimmed = phone.trim();
   if (!trimmed) return "";
 
-  const hasPlus = trimmed.startsWith("+");
-  const digits = trimmed.replace(/\D/g, "");
-  if (!digits) return "";
-
-  if (hasPlus) {
-    return `+${digits}`;
+  if (trimmed.startsWith("+")) {
+    const digits = trimmed.replace(/\D/g, "");
+    return digits ? `+${digits}` : "";
   }
 
-  if (digits.startsWith("90") && digits.length >= 12) {
-    return `+${digits}`;
-  }
-
-  if (digits.startsWith("0") && digits.length >= 11) {
-    return `+90${digits.slice(1)}`;
-  }
-
-  if (digits.length === 10 && digits.startsWith("5")) {
-    return `+90${digits}`;
-  }
-
-  if (digits.startsWith("90")) {
-    return `+${digits}`;
-  }
-
-  return `+90${digits}`;
+  const parsed = parseStoredPhone(trimmed);
+  return buildE164Phone(parsed.country, parsed.national);
 }
 
 /** wa.me and similar APIs expect digits only, without + prefix. */
@@ -44,4 +29,9 @@ export function isValidTurkishMobileE164(e164: string): boolean {
 /** Cep veya sabit hat (+90 + 10 hane) — operasyonel WhatsApp için */
 export function isValidTurkishPhoneE164(e164: string): boolean {
   return /^\+90\d{10}$/.test(e164);
+}
+
+/** WhatsApp gönderimi için geçerli E.164 (ITU-T: 8–15 rakam) */
+export function isValidWhatsAppPhoneE164(e164: string): boolean {
+  return /^\+\d{8,15}$/.test(e164);
 }

@@ -1,5 +1,5 @@
 import {
-  isValidTurkishMobileE164,
+  isValidWhatsAppPhoneE164,
   normalizePhoneToE164,
   toWhatsAppRecipient,
 } from "@/lib/phone";
@@ -24,10 +24,10 @@ export function buildWaMeUrl(
     return { ok: false, error: "Geçersiz telefon numarası" };
   }
 
-  if (!isValidTurkishMobileE164(e164)) {
+  if (!isValidWhatsAppPhoneE164(e164)) {
     return {
       ok: false,
-      error: "Geçersiz telefon numarası. Türkiye cep numarası girin",
+      error: "Geçersiz telefon numarası",
     };
   }
 

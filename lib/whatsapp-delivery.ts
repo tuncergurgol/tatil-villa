@@ -1,7 +1,7 @@
 import { sendEvolutionTextMessage } from "@/lib/evolution-client";
 import {
-  isValidTurkishMobileE164,
   isValidTurkishPhoneE164,
+  isValidWhatsAppPhoneE164,
   normalizePhoneToE164,
   toWhatsAppRecipient,
 } from "@/lib/phone";
@@ -23,10 +23,10 @@ export async function sendCustomerNotificationWhatsApp(
   text: string
 ): Promise<WhatsAppSendResult> {
   const e164 = normalizePhoneToE164(phone);
-  if (!e164 || !isValidTurkishMobileE164(e164)) {
+  if (!e164 || !isValidWhatsAppPhoneE164(e164)) {
     return {
       ok: false,
-      error: "Geçersiz telefon numarası. Türkiye cep numarası girin",
+      error: "Geçersiz telefon numarası",
     };
   }
 
