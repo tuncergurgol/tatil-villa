@@ -44,11 +44,16 @@ export function renderAgencyMessageTemplate(
     normalizedValues[normalizeAgencyPlaceholderKey(key)] = value;
   }
 
-  return template.replace(/##([^#]+)##/g, (match, rawKey: string) => {
-    const key = normalizeAgencyPlaceholderKey(rawKey);
-    if (key in normalizedValues) return normalizedValues[key];
-    return match;
-  });
+  const normalizedTemplate = normalizeLegacyAgencyMessageTemplate(template);
+
+  return normalizedTemplate.replace(
+    /##([^#\]]+?)(?:##|##\])/g,
+    (match, rawKey: string) => {
+      const key = normalizeAgencyPlaceholderKey(rawKey);
+      if (key in normalizedValues) return normalizedValues[key] ?? "";
+      return match;
+    }
+  );
 }
 
 /**
@@ -66,6 +71,57 @@ export function stripZeroAmountLines(text: string): string {
 
 export function normalizeAgencyPlaceholderKey(key: string): string {
   return key.trim().replace(/\s+/g, "").toLocaleUpperCase("tr-TR");
+}
+
+/** HH:MM — villa giriş/çıkış saatleri */
+export function normalizeVillaTimeHHMM(raw: string | null | undefined): string {
+  const trimmed = (raw ?? "").trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return trimmed || "10:00";
+  const hour = Math.min(23, Math.max(0, Number(match[1])));
+  const minute = Math.min(59, Math.max(0, Number(match[2])));
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+/** Çıkış saati aralığı — bitiş villa çıkış saati, başlangıç 1 saat önce */
+export function formatVillaCheckoutTimeRange(
+  checkOutTime: string | null | undefined
+): string {
+  const end = normalizeVillaTimeHHMM(checkOutTime);
+  const [hourRaw, minuteRaw] = end.split(":");
+  const endMinutes = Number(hourRaw) * 60 + Number(minuteRaw);
+  const startMinutes = Math.max(0, endMinutes - 60);
+  const startHour = String(Math.floor(startMinutes / 60)).padStart(2, "0");
+  const startMinute = String(startMinutes % 60).padStart(2, "0");
+  return `${startHour}:${startMinute}-${end}`;
+}
+
+/** Orijinal tesis adı boşsa parantez bloğu gösterilmez */
+export function formatVillaOriginalNameBlock(
+  originalName: string | null | undefined
+): string {
+  const trimmed = (originalName ?? "").trim();
+  return trimmed ? ` (${trimmed})` : "";
+}
+
+/** Eski şablonlardaki ##:## ve hatalı ##] kapanışlarını normalize eder */
+export function normalizeLegacyAgencyMessageTemplate(template: string): string {
+  return template
+    .replace(/\(##:##-##:##\)/g, "##CIKISSAATARALIGI##")
+    .replace(/##:##/g, "##CIKISSAATI##");
+}
+
+/** Render sonrası boş parantez ve çözülemeyen placeholder kalıntılarını temizler */
+export function cleanupAgencyMessageRenderedText(text: string): string {
+  return text
+    .replace(/\s*\(\s*\)/g, "")
+    .replace(/\(\s*\]/g, "")
+    .replace(/\(\s*(?=[,.;!\s]|$)/g, "")
+    .replace(/##[^#\n]*?##\]?/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -523,8 +579,16 @@ export function buildNewReservationRequestTemplateValues(input: {
   setAlias(values, ["CIKISTARIHI", "ÇIKIŞTARİHİ", "TARIH2"], formatAgencyBookingDate(input.checkOut));
   setAlias(values, ["GIRISGUNU", "GİRİŞGÜNÜ"], checkInDay);
   setAlias(values, ["CIKISGUNU", "ÇIKIŞGÜNÜ", "CIKISGUNI"], checkOutDay);
-  setAlias(values, ["VILLACHECKIN", "GIRISSAATI"], input.villaCheckInTime || "16:00");
-  setAlias(values, ["VILLACHECKOUT", "CIKISSAATI"], input.villaCheckOutTime || "10:00");
+  const checkInTime = normalizeVillaTimeHHMM(input.villaCheckInTime || "16:00");
+  const checkOutTime = normalizeVillaTimeHHMM(input.villaCheckOutTime || "10:00");
+  const checkOutRange = formatVillaCheckoutTimeRange(checkOutTime);
+  setAlias(values, ["VILLACHECKIN", "GIRISSAATI"], checkInTime);
+  setAlias(values, ["VILLACHECKOUT", "CIKISSAATI"], checkOutTime);
+  setAlias(
+    values,
+    ["CIKISSAATARALIGI", "CIKISSAATIARALIK", "CIKISSAATARALIK"],
+    checkOutRange
+  );
   setAlias(values, ["YETISKIN", "YETİŞKİN", "ADULTS"], String(input.adults));
   setAlias(values, ["COCUK", "ÇOCUK", "CHILDREN"], String(input.children));
   setAlias(values, ["BEBEK", "BABIES"], String(input.babies));
@@ -699,12 +763,8 @@ export function buildCheckInInfoShareTemplateValues(input: {
   const greeterName = (input.greeterName ?? "").trim();
   const greeterPhone = (input.greeterPhone ?? "").trim();
   const villaOriginalName = (input.villaOriginalName ?? "").trim();
+  const greeterLabel = greeterName || recipientName;
 
-  setAlias(
-    values,
-    ["MUSTERIADI", "MÜŞTERİADI", "MISAFIRADI", "MİSAFİRADI"],
-    recipientName
-  );
   setAlias(
     values,
     [
@@ -738,10 +798,14 @@ export function buildCheckInInfoShareTemplateValues(input: {
       "MÜŞTERİKARŞILAYAN",
       "MUSTERIKARSILAYAN",
       "KARSILAYANADI",
+      "KARSILAYAN",
+      "KARŞILAYAN",
       "YETKILIADI",
       "YETKİLİADI",
+      "ALICIADI",
+      "HITAPADI",
     ],
-    greeterName || recipientName
+    greeterLabel
   );
   setAlias(
     values,
@@ -760,8 +824,26 @@ export function buildCheckInInfoShareTemplateValues(input: {
   );
   setAlias(
     values,
-    ["VILLAORJINALADI", "VILLAORIGINALADI", "ORJINALADI", "ORIGINALADI"],
-    villaOriginalName || input.villaName
+    [
+      "VILLAORJINALADI",
+      "VILLAORIGINALADI",
+      "ORJINALADI",
+      "ORIGINALADI",
+      "TESISORJINALADI",
+      "TESİSORJİNALADI",
+      "TESISORJINALADISADE",
+      "TESİSORJİNALADISADE",
+    ],
+    villaOriginalName
+  );
+  setAlias(
+    values,
+    [
+      "TESISORJINALADIBLOK",
+      "TESISORJINALADIPARENTEZ",
+      "TESISORJINALADIPARANTEZ",
+    ],
+    formatVillaOriginalNameBlock(villaOriginalName)
   );
 
   return values;

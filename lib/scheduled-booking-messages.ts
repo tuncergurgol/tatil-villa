@@ -20,6 +20,7 @@ import {
 } from "@/lib/whatsapp-delivery";
 import {
   buildCheckInInfoShareTemplateValues,
+  cleanupAgencyMessageRenderedText,
   ensureWhatsAppRawConfirmationUrl,
   renderAgencyMessageTemplate,
   resolveCheckInInfoShareCode,
@@ -194,9 +195,8 @@ export async function sendScheduledBookingMessage(
   const guestPhone = booking.guestPhone.trim();
   const guestEmail = booking.guestEmail.trim();
   const ownerPhone = greeterPhone;
-  const ownerEmail = booking.villa.owner?.email?.trim() || "";
   const phone = audience === "guest" ? guestPhone : ownerPhone;
-  const email = audience === "guest" ? guestEmail : ownerEmail;
+  const email = audience === "guest" ? guestEmail : "";
   const recipientName =
     audience === "guest"
       ? booking.guestName
@@ -255,7 +255,9 @@ export async function sendScheduledBookingMessage(
   if (phone) {
     const e164 = normalizePhoneToE164(phone);
     if (e164 && isValidWhatsAppPhoneE164(e164) && waBody.trim()) {
-      const rendered = renderAgencyMessageTemplate(waBody, templateValues);
+      const rendered = cleanupAgencyMessageRenderedText(
+        renderAgencyMessageTemplate(waBody, templateValues)
+      );
       const message = ensureWhatsAppRawConfirmationUrl(
         appendBookingSiteFooter(rendered, siteBrand.siteInfo)
       );
@@ -272,14 +274,15 @@ export async function sendScheduledBookingMessage(
   }
 
   if (
+    audience === "guest" &&
     email &&
     !isImportedPlaceholderEmail(email) &&
     company.smtpEnabled &&
     mailBody.trim()
   ) {
     try {
-      const rendered = stripZeroAmountLines(
-        renderAgencyMessageTemplate(mailBody, templateValues)
+      const rendered = cleanupAgencyMessageRenderedText(
+        stripZeroAmountLines(renderAgencyMessageTemplate(mailBody, templateValues))
       );
       await sendCompanyMail(company, {
         to: email,

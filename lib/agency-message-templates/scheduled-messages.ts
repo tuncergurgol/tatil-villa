@@ -37,12 +37,9 @@ export const CHECKOUT_REMINDER_GUEST_MESSAGE_NAME = "Çıkıştan 1 Gün Önce";
 
 export const CHECKOUT_REMINDER_GUEST_WHATSAPP_BODY = `Sayın ##MUSTERIADI##,
 
-##REZID## nolu ##TESISADI## rezervasyonunuzda yarın çıkış yapılacaktır.
-
-Çıkış tarihi: ##CIKISTARIHI##
-Çıkış saati: ##CIKISSAATI##
-
-Keyifli günler dileriz.
+##TESISADI## tatiliniz YARIN sona erecektir.
+Çıkış saatimiz ##CIKISSAATARALIGI## arasındadır.
+Tesis çıkış kurallarını uymanızı rica ederiz.
 
 ##SITEADI##`;
 
@@ -50,13 +47,13 @@ export const CHECKOUT_REMINDER_GUEST_MAIL_BODY = CHECKOUT_REMINDER_GUEST_WHATSAP
 
 export const CHECKOUT_REMINDER_OWNER_MESSAGE_NAME = "Çıkıştan 1 Gün Önce";
 
-export const CHECKOUT_REMINDER_OWNER_WHATSAPP_BODY = `Sayın ##MUSTERIADI##,
+export const CHECKOUT_REMINDER_OWNER_WHATSAPP_BODY = `Sayın ##KARŞILAYAN##,
 
-##REZID## nolu ##VVILLAADI## / ##VILLAORJINALADI## rezervasyonunda yarın çıkış yapılacaktır.
+##TESISADI####TESISORJINALADIBLOK## konaklayan misafirimiz ##MUSTERIADI##'ın tatili yarın sona erecektir.
 
 Misafir: ##MUSTERIADI##
 Çıkış: ##CIKISTARIHI## — ##CIKISSAATI##
 
 ##SITEADI##`;
 
-export const CHECKOUT_REMINDER_OWNER_MAIL_BODY = CHECKOUT_REMINDER_OWNER_WHATSAPP_BODY;
+export const CHECKOUT_REMINDER_OWNER_MAIL_BODY = "";
