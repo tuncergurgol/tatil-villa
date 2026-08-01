@@ -33,6 +33,7 @@ import {
   type VillaListStatusFilter,
   type VillaListTypeFilter,
 } from "@/lib/villa-list-filters";
+import { downloadVillaPriceReportExcel } from "@/lib/villa-price-report";
 import VillaRegionTreeFilter from "@/components/admin/villas/VillaRegionTreeFilter";
 
 type StatusFilter = VillaListStatusFilter;
@@ -226,6 +227,7 @@ export default function VillaManagement({
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isReportPending, startReportTransition] = useTransition();
   const [openMenuVillaId, setOpenMenuVillaId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -319,6 +321,41 @@ export default function VillaManagement({
     });
   }
 
+  function handleExportReport() {
+    if (filteredVillas.length === 0) {
+      window.alert("Filtreye uygun villa bulunamadı.");
+      return;
+    }
+
+    startReportTransition(async () => {
+      const params = buildVillaListSearchParams({
+        ...filters,
+        q: search,
+      });
+      const response = await fetch(
+        `/api/admin/villa-price-report?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        window.alert("Excel raporu oluşturulamadı.");
+        return;
+      }
+
+      const data = (await response.json()) as {
+        rows: (string | number)[][];
+        filename: string;
+        rowCount: number;
+      };
+
+      if (data.rowCount === 0) {
+        window.alert("Dışa aktarılacak kayıt bulunamadı.");
+        return;
+      }
+
+      await downloadVillaPriceReportExcel(data.rows, data.filename);
+    });
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -332,11 +369,12 @@ export default function VillaManagement({
 
           <button
             type="button"
-            onClick={() => window.alert("Rapor indirme yakında eklenecek.")}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            onClick={handleExportReport}
+            disabled={isReportPending}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" />
-            Rapor
+            {isReportPending ? "Hazırlanıyor…" : "Rapor"}
           </button>
 
           <div className="relative min-w-[180px] flex-1">

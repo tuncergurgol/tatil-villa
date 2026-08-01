@@ -1,5 +1,5 @@
 import {
-  isValidWhatsAppPhoneE164,
+  isValidTurkishMobileE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
 import { isSmsOtpEnabled, sendSmsOtpStub } from "@/lib/sms-otp";
@@ -46,11 +46,11 @@ export async function deliverOtpCode(
   options?: { brandName?: string }
 ): Promise<OtpDeliveryResult> {
   const e164 = normalizePhoneToE164(phoneRaw);
-  if (!e164 || !isValidWhatsAppPhoneE164(e164)) {
+  if (!e164 || !isValidTurkishMobileE164(e164)) {
     return {
       ok: false,
       channel: "whatsapp",
-      error: "Geçerli bir telefon numarası girin",
+      error: "Geçerli bir cep telefonu girin (05xx…)",
     };
   }
 
