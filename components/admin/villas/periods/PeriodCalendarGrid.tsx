@@ -7,7 +7,6 @@ import {
   formatPlainPrice,
   getMonthLabel,
   getWeekdayLabels,
-  parseDateKey,
   toDateKey,
 } from "@/lib/villa-period-calendar";
 import {
@@ -17,7 +16,7 @@ import {
 } from "@/lib/villa-period-selection";
 import {
   getVillaDayVisualStyle,
-  resolveVillaDayVisual,
+  resolveVillaDayVisualFromMap,
 } from "@/lib/villa-period-day-visual";
 import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
@@ -73,14 +72,14 @@ function hasDiscount(display: PeriodCalendarDayDisplay): boolean {
   );
 }
 
-function getNeighborOccupancy(
-  dateKey: string,
-  offset: -2 | -1 | 1,
+function buildOccupancyMapFromDisplay(
   dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>
-): VillaDayOccupancy | undefined {
-  const date = parseDateKey(dateKey);
-  date.setDate(date.getDate() + offset);
-  return dayDisplayByDate.get(toDateKey(date))?.occupancyStatus;
+): Map<string, VillaDayOccupancy> {
+  const map = new Map<string, VillaDayOccupancy>();
+  for (const [dateKey, display] of dayDisplayByDate) {
+    map.set(dateKey, display.occupancyStatus ?? "EMPTY");
+  }
+  return map;
 }
 
 type DayCellProps = {
@@ -88,6 +87,7 @@ type DayCellProps = {
   activeDateKeys: ReadonlySet<string>;
   selectableDateKeys: ReadonlySet<string>;
   dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>;
+  occupancyByDate: ReadonlyMap<string, VillaDayOccupancy>;
   today?: Date;
   minCellHeight: string;
   emphasizeCurrentMonth: boolean;
@@ -102,6 +102,7 @@ function CalendarDayCell({
   activeDateKeys,
   selectableDateKeys,
   dayDisplayByDate,
+  occupancyByDate,
   today,
   minCellHeight,
   emphasizeCurrentMonth,
@@ -145,12 +146,7 @@ function CalendarDayCell({
       : 0;
 
   const visualKind = isPeriodDay
-    ? resolveVillaDayVisual(
-        display.occupancyStatus,
-        getNeighborOccupancy(dateKey, -1, dayDisplayByDate),
-        getNeighborOccupancy(dateKey, 1, dayDisplayByDate),
-        getNeighborOccupancy(dateKey, -2, dayDisplayByDate)
-      )
+    ? resolveVillaDayVisualFromMap(dateKey, occupancyByDate)
     : "empty";
 
   const visualStyle = getVillaDayVisualStyle(visualKind);
@@ -302,10 +298,16 @@ export default function PeriodCalendarGrid({
 
   const minCellHeight = compact ? "min-h-[72px]" : "min-h-[96px]";
 
+  const occupancyByDate = useMemo(
+    () => buildOccupancyMapFromDisplay(dayDisplayByDate),
+    [dayDisplayByDate]
+  );
+
   const sharedCellProps = {
     activeDateKeys,
     selectableDateKeys: effectiveSelectableDateKeys,
     dayDisplayByDate,
+    occupancyByDate,
     today,
     minCellHeight,
     selectedRange,

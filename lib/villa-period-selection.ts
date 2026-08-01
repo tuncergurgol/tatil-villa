@@ -112,20 +112,8 @@ export function buildBookedOccupancyForStayMerged(
   map.set(firstDayKey, firstDayStatus);
 
   const lastDayKey = keys[keys.length - 1]!;
-  const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
-  const dayAfterLast = getOccupancy(
-    existingOccupancyByDateKey,
-    offsetDateKey(lastDayKey, 1)
-  );
-
-  const endStatus: VillaDayOccupancy =
-    isOccupied(existingEnd) && isOccupied(dayAfterLast)
-      ? "EMPTY"
-      : isOccupied(existingEnd)
-        ? existingEnd
-        : "EMPTY";
-
-  map.set(lastDayKey, endStatus);
+  // Seçilen bitiş tarihi her zaman çıkış günüdür (EMPTY).
+  map.set(lastDayKey, "EMPTY");
   return map;
 }
 

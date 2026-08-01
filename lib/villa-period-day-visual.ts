@@ -42,14 +42,43 @@ function isBlockingOccupancy(value?: VillaDayOccupancy): boolean {
   return status === "BOOKED" || status === "OPTION";
 }
 
-/** İki dolu blok arasındaki boş gün (kaynak: yazlikvillaci giriscikis). */
+/** EMPTY günden hemen önceki bitişik dolu gece sayısı. */
+export function countBookedNightsImmediatelyBefore(
+  dateKey: string,
+  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>
+): number {
+  let count = 0;
+  let cursor = offsetDateKey(dateKey, -1);
+  while (isBlockingOccupancy(occupancyMap.get(cursor))) {
+    count += 1;
+    cursor = offsetDateKey(cursor, -1);
+  }
+  return count;
+}
+
+/**
+ * Aynı gün çıkış+giriş (giriscikis): EMPTY gün, önce/sonra dolu.
+ * Bitişik iki ayrı blok (ör. 1–5 çıkış + 6–9 giriş) turnover değildir:
+ * önceki dolu zincir uzunsa (≥3 gece) çıkış günü olarak kalır.
+ */
 export function isTurnoverOccupancyDay(
   current?: VillaDayOccupancy,
   prev?: VillaDayOccupancy,
-  next?: VillaDayOccupancy
+  next?: VillaDayOccupancy,
+  context?: {
+    dateKey: string;
+    occupancyMap: ReadonlyMap<string, VillaDayOccupancy>;
+  }
 ): boolean {
   if (normalizeOccupancy(current) !== "EMPTY") return false;
-  return isBlockingOccupancy(prev) && isBlockingOccupancy(next);
+  if (!isBlockingOccupancy(prev)) return false;
+  if (!isBlockingOccupancy(next)) return false;
+  if (!context) return false;
+  const nightsBefore = countBookedNightsImmediatelyBefore(
+    context.dateKey,
+    context.occupancyMap
+  );
+  return nightsBefore > 0 && nightsBefore <= 2;
 }
 
 /**
@@ -73,7 +102,11 @@ export function resolveVillaDayVisual(
   current?: VillaDayOccupancy,
   prev?: VillaDayOccupancy,
   next?: VillaDayOccupancy,
-  prevPrev?: VillaDayOccupancy
+  prevPrev?: VillaDayOccupancy,
+  context?: {
+    dateKey: string;
+    occupancyMap: ReadonlyMap<string, VillaDayOccupancy>;
+  }
 ): VillaDayVisualKind {
   const currentStatus = normalizeOccupancy(current);
   const prevStatus = normalizeOccupancy(prev);
@@ -84,7 +117,7 @@ export function resolveVillaDayVisual(
   // Çıkış görseli konaklanan son gecenin ertesindeki BOŞ günde gösterilir.
   // Aynı gün çıkış+giriş: iki dolu blok arasındaki BOŞ günde (giriscikis) gösterilir.
   if (currentStatus === "EMPTY") {
-    if (isTurnoverOccupancyDay(current, prev, next)) {
+    if (isTurnoverOccupancyDay(current, prev, next, context)) {
       if (prevStatus === "OPTION" && nextStatus === "OPTION") {
         return "turnover_booked";
       }
@@ -104,7 +137,18 @@ export function resolveVillaDayVisual(
   if (currentStatus === "BOOKED") {
     if (prevStatus === "OPTION") return "option_out_booked_in";
     if (prevStatus === "EMPTY") {
-      if (isBlockingOccupancy(prevPrev)) return "full";
+      if (isBlockingOccupancy(prevPrev) && context) {
+        const prevDayKey = offsetDateKey(context.dateKey, -1);
+        if (
+          isTurnoverOccupancyDay(prev, prevPrev, current, {
+            dateKey: prevDayKey,
+            occupancyMap: context.occupancyMap,
+          })
+        ) {
+          return "full";
+        }
+        return "check_in";
+      }
       return "check_in";
     }
     return "full";
@@ -133,7 +177,8 @@ export function resolveVillaDayVisualFromMap(
     occupancyMap.get(dateKey),
     occupancyMap.get(offsetDateKey(dateKey, -1)),
     occupancyMap.get(offsetDateKey(dateKey, 1)),
-    occupancyMap.get(offsetDateKey(dateKey, -2))
+    occupancyMap.get(offsetDateKey(dateKey, -2)),
+    { dateKey, occupancyMap }
   );
 }
 

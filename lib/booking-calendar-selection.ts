@@ -39,7 +39,8 @@ export function isOccupancyNightBlocked(
   return isTurnoverOccupancyDay(
     status,
     occupancyMap.get(offsetDateKey(dateKey, -1)),
-    occupancyMap.get(offsetDateKey(dateKey, 1))
+    occupancyMap.get(offsetDateKey(dateKey, 1)),
+    { dateKey, occupancyMap }
   );
 }
 

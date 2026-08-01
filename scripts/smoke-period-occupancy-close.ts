@@ -114,4 +114,34 @@ assert(
 );
 assert(close69WithPrior.get("2026-08-06") === "BOOKED", "6 Ağustos yeni giriş BOOKED");
 
+const existing69 = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-06", "BOOKED"],
+  ["2026-08-07", "BOOKED"],
+  ["2026-08-08", "BOOKED"],
+  ["2026-08-09", "EMPTY"],
+]);
+const close15After69 = buildBookedOccupancyForStay(
+  "2026-08-01",
+  "2026-08-05",
+  existing69
+);
+const adjacentMap = buildOccupancyMap(
+  [...existing69, ...close15After69.entries()].map(([date, occupancyStatus]) => ({
+    date,
+    occupancyStatus,
+  }))
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-05", adjacentMap) === "check_out",
+  "6–9 kapalıyken 1–5 kapatınca 5 Ağustos çıkış görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-06", adjacentMap) === "check_in",
+  "6–9 kapalıyken 1–5 kapatınca 6 Ağustos giriş görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-05", adjacentMap) !== "turnover_booked",
+  "bitişik iki blok arasında turnover değil ayrı çıkış/giriş"
+);
+
 console.log("\nTüm period occupancy smoke senaryoları geçti.");
