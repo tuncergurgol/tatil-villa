@@ -2750,8 +2750,17 @@ export async function scrapeVillavillamFromPage(
   );
 
   const entityMeta = extractVillaApiEntityMeta(entity.result);
+  const emptyDefaults: ScrapedVillaPeriodDefaults = {
+    prepaymentRate: null,
+    commissionRate: null,
+    cleaningDayCount: null,
+    cleaningFee: null,
+    cleaningFeeCurrency: "TL",
+    damageDeposit: null,
+    damageDepositCurrency: "TL",
+  };
   for (const period of periods) {
-    applyMetaToPeriod(period, entityMeta, {});
+    applyMetaToPeriod(period, entityMeta, emptyDefaults);
   }
 
   if (periods.length === 0 && availability) {
