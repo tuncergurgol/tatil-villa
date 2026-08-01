@@ -5,6 +5,7 @@ import BiletallResultTracker from "@/components/bilet/BiletallResultTracker";
 import BiletShell from "@/components/bilet/BiletShell";
 import BiletSonucFallback from "@/components/bilet/BiletSonucFallback";
 import { getBiletallPageContext } from "@/lib/biletall-page";
+import { resolveBiletallIframeSrc } from "@/lib/biletall";
 import { hasBiletallResultContext } from "@/lib/biletall-result-context";
 import { parseBiletallResultQuery } from "@/lib/biletall-result-query";
 
@@ -21,12 +22,27 @@ type BiletSonucPageProps = {
 
 export default async function BiletSonucPage({ searchParams }: BiletSonucPageProps) {
   const params = await searchParams;
-  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl, siteHostname } =
-    await getBiletallPageContext();
+  const {
+    enabled,
+    portalSlug,
+    credentials,
+    routes,
+    iframeOrigin,
+    iframeSiteHostname,
+    publicHomeUrl,
+  } = await getBiletallPageContext();
   if (!enabled) redirect("/");
 
   const hasResultContext = hasBiletallResultContext(params);
   const resultQuery = parseBiletallResultQuery(params);
+  const iframeSrc = resolveBiletallIframeSrc(
+    "sonuc",
+    portalSlug,
+    credentials,
+    routes,
+    iframeOrigin,
+    iframeSiteHostname
+  );
 
   return (
     <BiletShell
@@ -40,11 +56,7 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
           <BiletallResultTracker query={resultQuery} />
           <BiletallIframe
           kind="sonuc"
-          portalSlug={portalSlug}
-          credentials={credentials}
-          routes={routes}
-          publicOrigin={publicOrigin}
-          siteHostname={siteHostname}
+          src={iframeSrc}
           forwardSessionQuery
           title="Biletall — Bilet Sonuç"
         />

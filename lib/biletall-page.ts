@@ -1,9 +1,10 @@
 import type { BiletallCredentials } from "@/lib/biletall";
+import { resolveBiletallPublicOrigin } from "@/lib/biletall-callbacks";
 import { parseBiletallRoutesJson } from "@/lib/biletall-routes";
 import {
-  resolveBiletallRequestHostname,
   resolveBiletallRequestOrigin,
 } from "@/lib/biletall-request-origin.server";
+import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export async function getBiletallPageContext() {
@@ -12,9 +13,12 @@ export async function getBiletallPageContext() {
     username: settings.biletallUsername,
     password: settings.biletallPassword,
   };
-  const publicOrigin = await resolveBiletallRequestOrigin(settings.domain);
-  const publicHomeUrl = `${publicOrigin.replace(/\/+$/, "")}/`;
-  const siteHostname = await resolveBiletallRequestHostname(settings.domain);
+  const requestOrigin = await resolveBiletallRequestOrigin(settings.domain);
+  const publicHomeUrl = `${requestOrigin.replace(/\/+$/, "")}/`;
+  // Biletall portalında kayıtlı ana domain (SiteAdres + callback URL'leri).
+  // Alt marka hostları (tatilvillacisi.com vb.) iframe'de boş ekrana yol açar.
+  const iframeOrigin = resolveBiletallPublicOrigin(settings.domain);
+  const iframeSiteHostname = sanitizePublicBookingDomain(settings.domain);
   const routes = parseBiletallRoutesJson(settings.biletallRoutesJson);
 
   return {
@@ -22,8 +26,8 @@ export async function getBiletallPageContext() {
     portalSlug: settings.biletallPortalSlug,
     credentials,
     routes,
-    publicOrigin,
+    iframeOrigin,
+    iframeSiteHostname,
     publicHomeUrl,
-    siteHostname,
   };
 }

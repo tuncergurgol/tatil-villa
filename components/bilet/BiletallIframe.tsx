@@ -13,6 +13,8 @@ import type { BiletallRouteRecord } from "@/lib/biletall-routes";
 
 type BiletallIframeProps = {
   kind: BiletallIframeKind;
+  /** Sunucuda üretilmiş iframe src (tercih edilir; kimlik bilgileri istemciye taşınmaz). */
+  src?: string;
   portalSlug?: string | null;
   credentials?: BiletallCredentials;
   routes?: BiletallRouteRecord[];
@@ -37,6 +39,7 @@ const ENLARGED_ARA_LAYOUT = { maxWidth: "36rem", height: 480 };
 
 export default function BiletallIframe({
   kind,
+  src: srcProp,
   portalSlug,
   credentials,
   routes,
@@ -52,31 +55,38 @@ export default function BiletallIframe({
       ? { ...FRAME_LAYOUT.ara, ...ENLARGED_ARA_LAYOUT }
       : FRAME_LAYOUT[kind];
 
-  const baseSrc = useMemo(
-    () =>
-      resolveBiletallIframeSrc(
-        kind,
-        portalSlug,
-        credentials,
-        routes,
-        publicOrigin,
-        siteHostname
-      ),
-    [kind, portalSlug, credentials, routes, publicOrigin, siteHostname]
-  );
+  const resolvedSrc = useMemo(() => {
+    if (srcProp) return srcProp;
+    return resolveBiletallIframeSrc(
+      kind,
+      portalSlug,
+      credentials,
+      routes,
+      publicOrigin,
+      siteHostname
+    );
+  }, [
+    srcProp,
+    kind,
+    portalSlug,
+    credentials,
+    routes,
+    publicOrigin,
+    siteHostname,
+  ]);
 
   const [src, setSrc] = useState<string | null>(
-    forwardSessionQuery ? null : baseSrc
+    forwardSessionQuery ? null : resolvedSrc
   );
 
   useEffect(() => {
     if (!forwardSessionQuery) {
-      setSrc(baseSrc);
+      setSrc(resolvedSrc);
       return;
     }
 
-    setSrc(appendRawBiletallForwardSearch(baseSrc, window.location.search));
-  }, [baseSrc, forwardSessionQuery]);
+    setSrc(appendRawBiletallForwardSearch(resolvedSrc, window.location.search));
+  }, [resolvedSrc, forwardSessionQuery]);
 
   return (
     <div

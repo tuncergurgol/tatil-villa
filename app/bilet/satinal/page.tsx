@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import BiletallIframe from "@/components/bilet/BiletallIframe";
 import BiletShell from "@/components/bilet/BiletShell";
+import { resolveBiletallIframeSrc } from "@/lib/biletall";
 import { getBiletallPageContext } from "@/lib/biletall-page";
 
 export const metadata: Metadata = {
@@ -12,9 +13,25 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BiletSatinalPage() {
-  const { enabled, portalSlug, credentials, routes, publicOrigin, publicHomeUrl, siteHostname } =
-    await getBiletallPageContext();
+  const {
+    enabled,
+    portalSlug,
+    credentials,
+    routes,
+    iframeOrigin,
+    iframeSiteHostname,
+    publicHomeUrl,
+  } = await getBiletallPageContext();
   if (!enabled) redirect("/");
+
+  const iframeSrc = resolveBiletallIframeSrc(
+    "satinal",
+    portalSlug,
+    credentials,
+    routes,
+    iframeOrigin,
+    iframeSiteHostname
+  );
 
   return (
     <BiletShell
@@ -25,11 +42,7 @@ export default async function BiletSatinalPage() {
     >
       <BiletallIframe
         kind="satinal"
-        portalSlug={portalSlug}
-        credentials={credentials}
-        routes={routes}
-        publicOrigin={publicOrigin}
-        siteHostname={siteHostname}
+        src={iframeSrc}
         forwardSessionQuery
         title="Biletall — Bilet Satın Al"
       />
