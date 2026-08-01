@@ -134,4 +134,12 @@ assert.equal(sorted.at(-1)?.code, "C1");
 const sortedDesc = sortCarResults(mockCars, "highest_price_first");
 assert.equal(sortedDesc[0]?.code, "C1");
 
+const sortedVendor = sortCarResults(mockCars, "vendor_az");
+assert.equal(sortedVendor[0]?.code, "A1");
+assert.equal(sortedVendor[1]?.code, "B1");
+assert.equal(sortedVendor[2]?.code, "C1");
+
+const vendorSortRoundTrip = parseFilterParams({ sb: "vendor_az" });
+assert.equal(vendorSortRoundTrip.sortBy, "vendor_az");
+
 console.log("smoke-yolcu360-search-filters: OK");

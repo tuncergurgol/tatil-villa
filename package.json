@@ -61,6 +61,7 @@
     "sync:external-links:force": "tsx scripts/sync-villa-external-links.ts --force",
     "seed:cms": "tsx scripts/seed-cms-content.ts",
     "seed:car-rental": "tsx scripts/seed-car-rental.ts",
+    "smoke:yolcu360-filters": "tsx scripts/smoke-yolcu360-search-filters.ts",
     "seed:tours": "tsx scripts/seed-tours.ts",
     "migrate:tour-images-r2": "tsx scripts/migrate-tour-images-to-r2.ts",
     "migrate:tour-images-r2:dry": "tsx scripts/migrate-tour-images-to-r2.ts --dry-run",

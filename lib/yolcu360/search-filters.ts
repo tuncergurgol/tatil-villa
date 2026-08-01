@@ -9,7 +9,8 @@ import type { Yolcu360CarResult } from "@/lib/yolcu360/types";
 export type CarSearchSortBy =
   | "lowest_price_first"
   | "highest_price_first"
-  | "brand_az";
+  | "brand_az"
+  | "vendor_az";
 
 export type CarSearchFilterState = {
   sortBy: CarSearchSortBy;
@@ -378,6 +379,13 @@ export function sortCarResults(
       if (modelCompare !== 0) return modelCompare;
     }
 
+    if (sortBy === "vendor_az") {
+      const vendorA = a.vendor?.displayName ?? a.vendor?.name ?? "";
+      const vendorB = b.vendor?.displayName ?? b.vendor?.name ?? "";
+      const vendorCompare = compareStrings(vendorA, vendorB);
+      if (vendorCompare !== 0) return vendorCompare;
+    }
+
     const priceA = getCarTotalPrice(a);
     const priceB = getCarTotalPrice(b);
 
@@ -397,7 +405,9 @@ export function parseFilterParams(
 ): CarSearchFilterState {
   const sortRaw = params[FILTER_PARAM_KEYS.sortBy];
   const sortBy: CarSearchSortBy =
-    sortRaw === "highest_price_first" || sortRaw === "brand_az"
+    sortRaw === "highest_price_first" ||
+    sortRaw === "brand_az" ||
+    sortRaw === "vendor_az"
       ? sortRaw
       : "lowest_price_first";
 

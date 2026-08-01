@@ -27,6 +27,7 @@ const SORT_OPTIONS: Array<{ value: CarSearchSortBy; label: string }> = [
   { value: "lowest_price_first", label: "En düşük fiyat" },
   { value: "highest_price_first", label: "En yüksek fiyat" },
   { value: "brand_az", label: "Marka (A-Z)" },
+  { value: "vendor_az", label: "Şirket (A-Z)" },
 ];
 
 function pickBaseSearchParams(params: SearchParams): SearchParams {
