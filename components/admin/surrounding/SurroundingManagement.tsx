@@ -23,6 +23,7 @@ import type {
   SurroundingCategoryItem,
   SurroundingLocationItem,
 } from "@/lib/queries/surrounding";
+import { compareSurroundingNames } from "@/lib/surrounding-utils";
 import { includesSearchText } from "@/lib/search-text";
 
 interface SurroundingManagementProps {
@@ -51,9 +52,11 @@ export default function SurroundingManagement({
   const filteredCategories = useMemo(() => {
     return categories
       .map((category) => {
-        const locations = category.locations.filter((location) =>
-          includesSearchText(location.name, search)
-        );
+        const locations = category.locations
+          .filter((location) => includesSearchText(location.name, search))
+          .sort((left, right) =>
+            compareSurroundingNames(left.name, right.name)
+          );
 
         return { ...category, locations };
       })
