@@ -9,7 +9,7 @@ import {
   logoutWahaSession,
   normalizePhoneNumberForWaha,
   requestWahaPairingCode,
-  sendWahaTextMessage,
+  sendWahaTextMessageToPhone,
 } from "@/lib/waha-client";
 
 export const dynamic = "force-dynamic";
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
           )
         );
       }
-      await sendWahaTextMessage(
+      await sendWahaTextMessageToPhone(
         config.baseUrl,
         config.apiKey,
         config.sessionName,

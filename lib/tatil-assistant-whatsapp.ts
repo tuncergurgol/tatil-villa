@@ -2,7 +2,7 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAssistantWahaConfig } from "@/lib/queries/tatil-assistant";
 import {
   normalizePhoneNumberForWaha,
-  sendWahaTextMessage,
+  sendWahaTextMessageToPhone,
 } from "@/lib/waha-client";
 
 export async function sendAssistantWhatsAppMessage(
@@ -21,7 +21,7 @@ export async function sendAssistantWhatsAppMessage(
     throw new Error("Geçersiz telefon numarası");
   }
 
-  await sendWahaTextMessage(
+  await sendWahaTextMessageToPhone(
     config.baseUrl,
     config.apiKey,
     config.sessionName,

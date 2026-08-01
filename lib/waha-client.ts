@@ -359,15 +359,130 @@ export function isWahaSessionAvailabilityError(message: string) {
   );
 }
 
-export function translateWahaUserError(message: string) {
+export function isWahaLidResolutionError(message: string) {
   const lower = message.toLowerCase();
+  return lower.includes("no lid for user");
+}
+
+export function parseWahaUserFacingError(message: string): string {
+  const trimmed = message.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return trimmed;
+  }
+
+  try {
+    const json = JSON.parse(trimmed) as {
+      message?: string | string[];
+      exception?: { message?: string };
+      response?: { error?: string; message?: string };
+    };
+
+    const candidates = [
+      json.exception?.message,
+      json.response?.error,
+      typeof json.response?.message === "string"
+        ? json.response.message
+        : undefined,
+      Array.isArray(json.message) ? json.message.join(", ") : json.message,
+    ].filter((value): value is string => Boolean(value?.trim()));
+
+    if (candidates.length > 0) {
+      return candidates[0]!;
+    }
+  } catch {
+    // ignore JSON parse errors
+  }
+
+  return trimmed.length > 180 ? "WhatsApp mesajı gönderilemedi" : trimmed;
+}
+
+export function translateWahaUserError(message: string) {
+  const parsed = parseWahaUserFacingError(message);
+  const lower = parsed.toLowerCase();
+
   if (lower.includes("session status is not as expected")) {
     return "Bildirim WhatsApp oturumu hazır değil. Admin → Acente → Bildirim WhatsApp sayfasından bağlantıyı kontrol edin veya oturumu yeniden başlatın.";
   }
   if (lower.includes("scan_qr_code") || lower.includes("scan qr")) {
     return "WhatsApp yeniden eşleştirme gerekiyor. Bildirim WhatsApp sayfasından QR kodu okutun.";
   }
-  return message;
+  if (isWahaLidResolutionError(parsed)) {
+    return "WhatsApp bu numaraya mesaj gönderemedi. Ülke kodunu kontrol edin; numara WhatsApp'ta kayıtlı olmalıdır.";
+  }
+  if (
+    lower.includes("numberexists") &&
+    lower.includes("false")
+  ) {
+    return "Bu numara WhatsApp'ta kayıtlı görünmüyor. Ülke kodunu ve numarayı kontrol edin.";
+  }
+
+  return parsed;
+}
+
+type WahaCheckExistsResponse = {
+  numberExists?: boolean;
+  chatId?: string;
+};
+
+type WahaLidLookupResponse = {
+  lid?: string;
+};
+
+export type ResolveWahaChatIdResult =
+  | { ok: true; chatId: string }
+  | { ok: false; error: string };
+
+export async function resolveWahaOutboundChatId(
+  baseUrl: string,
+  apiKey: string,
+  sessionName: string,
+  phoneDigits: string
+): Promise<ResolveWahaChatIdResult> {
+  const digits = phoneDigits.replace(/\D/g, "");
+  if (!digits || digits.length < 8) {
+    return { ok: false, error: "Geçersiz telefon numarası" };
+  }
+
+  try {
+    const check = await wahaRequest<WahaCheckExistsResponse>(
+      baseUrl,
+      apiKey,
+      `/api/contacts/check-exists?session=${encodeURIComponent(sessionName)}&phone=${encodeURIComponent(digits)}`
+    );
+
+    if (check.numberExists === false) {
+      return {
+        ok: false,
+        error:
+          "Bu numara WhatsApp'ta kayıtlı görünmüyor. Telefon alanındaki ülke kodunu ve numarayı kontrol edin.",
+      };
+    }
+
+    if (check.chatId?.trim()) {
+      return { ok: true, chatId: check.chatId.trim() };
+    }
+  } catch {
+    // check-exists başarısızsa lid / @c.us fallback
+  }
+
+  try {
+    const lidResponse = await wahaRequest<WahaLidLookupResponse>(
+      baseUrl,
+      apiKey,
+      `/api/${encodeURIComponent(sessionName)}/lids/pn/${encodeURIComponent(digits)}`
+    );
+    const lid = lidResponse.lid?.trim();
+    if (lid) {
+      return {
+        ok: true,
+        chatId: lid.includes("@") ? lid : `${lid}@lid`,
+      };
+    }
+  } catch {
+    // ignore
+  }
+
+  return { ok: true, chatId: `${digits}@c.us` };
 }
 
 export function isWahaSessionReady(
@@ -448,19 +563,72 @@ export async function sendWahaTextMessage(
   baseUrl: string,
   apiKey: string,
   sessionName: string,
-  number: string,
+  chatId: string,
   text: string
 ) {
-  const digits = number.replace(/\D/g, "");
-  const chatId = digits.includes("@") ? digits : `${digits}@c.us`;
+  const normalizedChatId = chatId.includes("@")
+    ? chatId
+    : `${chatId.replace(/\D/g, "")}@c.us`;
+
   return wahaRequest(baseUrl, apiKey, "/api/sendText", {
     method: "POST",
     body: JSON.stringify({
       session: sessionName,
-      chatId,
+      chatId: normalizedChatId,
       text,
     }),
   });
+}
+
+export async function sendWahaTextMessageToPhone(
+  baseUrl: string,
+  apiKey: string,
+  sessionName: string,
+  phoneDigits: string,
+  text: string
+) {
+  const resolved = await resolveWahaOutboundChatId(
+    baseUrl,
+    apiKey,
+    sessionName,
+    phoneDigits
+  );
+  if (!resolved.ok) {
+    throw new Error(resolved.error);
+  }
+
+  try {
+    await sendWahaTextMessage(
+      baseUrl,
+      apiKey,
+      sessionName,
+      resolved.chatId,
+      text
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!isWahaLidResolutionError(message)) {
+      throw error;
+    }
+
+    const retry = await resolveWahaOutboundChatId(
+      baseUrl,
+      apiKey,
+      sessionName,
+      phoneDigits
+    );
+    if (!retry.ok) {
+      throw new Error(retry.error);
+    }
+
+    await sendWahaTextMessage(
+      baseUrl,
+      apiKey,
+      sessionName,
+      retry.chatId,
+      text
+    );
+  }
 }
 
 export async function sendWahaTextMessageWithRecovery(
@@ -475,7 +643,13 @@ export async function sendWahaTextMessageWithRecovery(
   }
 ) {
   const send = () =>
-    sendWahaTextMessage(baseUrl, apiKey, sessionName, number, text);
+    sendWahaTextMessageToPhone(
+      baseUrl,
+      apiKey,
+      sessionName,
+      number.replace(/\D/g, ""),
+      text
+    );
 
   try {
     await send();
