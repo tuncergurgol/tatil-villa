@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import {
   extractScrapedPeriodDefaults,
   finalizeScrapedPeriods,
+  scrapeExternalVillaPage,
 } from "../lib/external-villa-page-scrape";
 import type { MappedVillaPricePeriod } from "../lib/tatildeyiz-period-import";
 
+async function main() {
 const sampleHtml = `
 <ul>
   <li>Hasar Depozito : <span data-doviz="tl" data-price="5000">5.000 TL</span></li>
@@ -18,6 +20,16 @@ assert.equal(defaults.damageDeposit, 5000);
 assert.equal(defaults.prepaymentRate, 50);
 assert.equal(defaults.cleaningDayCount, 7);
 assert.equal(defaults.cleaningFee, 3500);
+
+const noisyHtml = `
+<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"data":{"gece":"3","subTitle":"Minimum 2 gece","sozlesme":"komisyon alma suretiyle"}}}}</script>
+<ul>
+  <li>Kiralama Kaporası : <span>% 40</span></li>
+</ul>
+`;
+const noisyDefaults = extractScrapedPeriodDefaults(noisyHtml);
+assert.equal(noisyDefaults.prepaymentRate, 40);
+assert.equal(noisyDefaults.commissionRate, null);
 
 const basePeriod = {
   sourceId: 1,
@@ -69,4 +81,20 @@ assert.equal(finalized[0]?.damageDeposit, 5000);
 assert.equal(finalized[0]?.cleaningFee, 3500);
 assert.equal(finalized[0]?.cleaningDayCount, 7);
 
+const villacim = await scrapeExternalVillaPage(
+  "https://www.villacim.com.tr/villa-tuana-kayakoy"
+);
+assert.equal(villacim.periods.length > 0, true);
+for (const period of villacim.periods) {
+  assert.equal(period.cleaningDayCount, 7);
+  assert.equal(period.prepaymentRate, null);
+  assert.equal(period.commissionRate, null);
+}
+
 console.log("smoke-external-villa-period-meta: OK");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

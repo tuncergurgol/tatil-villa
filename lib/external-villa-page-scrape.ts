@@ -110,7 +110,15 @@ function decodeHtmlEntities(input: string): string {
 }
 
 function stripTags(html: string): string {
-  return decodeHtmlEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  return decodeHtmlEntities(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function normalizeHost(hostname: string): string {
@@ -445,10 +453,10 @@ function extractDamageDeposit(html: string): {
 function extractPrepaymentRate(html: string): number | null {
   const text = stripTags(html);
   const patterns = [
-    /kiralama\s+kaporas[ıi][^%0-9]{0,30}%?\s*(\d{1,3})/i,
-    /ön\s*ödeme(?:\s*oran[ıi])?[^%0-9]{0,30}%?\s*(\d{1,3})/i,
-    /on\s*odeme(?:\s*orani)?[^%0-9]{0,30}%?\s*(\d{1,3})/i,
-    /kapora[^%0-9]{0,30}%?\s*(\d{1,3})/i,
+    /kiralama\s+kaporas[ıi][^%]{0,40}%\s*(\d{1,3})/i,
+    /ön\s*ödeme(?:\s*oran[ıi])?[^%]{0,40}%\s*(\d{1,3})/i,
+    /on\s*odeme(?:\s*orani)?[^%]{0,40}%\s*(\d{1,3})/i,
+    /kapora[^%]{0,40}%\s*(\d{1,3})/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
@@ -461,8 +469,8 @@ function extractPrepaymentRate(html: string): number | null {
 function extractCommissionRate(html: string): number | null {
   const text = stripTags(html);
   const patterns = [
-    /komisyon\s*oran[ıi]?[^%0-9]{0,30}%?\s*(\d{1,3})/i,
-    /komisyon[^%0-9]{0,20}%?\s*(\d{1,3})/i,
+    /komisyon\s*oran[ıi]?[^%]{0,40}%\s*(\d{1,3})/i,
+    /komisyon[^%]{0,30}%\s*(\d{1,3})/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
@@ -2314,6 +2322,59 @@ function extractVillaApiEntity(html: string): {
   };
 }
 
+function extractVillaApiEntityMeta(
+  result: Record<string, unknown>
+): ScrapedVillaPeriodMeta {
+  const prepaymentRate = parsePercentRate(
+    String(
+      result.onOdemeOrani ??
+        result.onodemeorani ??
+        result.onOdeme ??
+        result.kaporaOrani ??
+        result.prepaymentRate ??
+        ""
+    )
+  );
+  const commissionRate = parsePercentRate(
+    String(
+      result.komisyonOrani ??
+        result.komisyonorani ??
+        result.komisyon ??
+        result.commissionRate ??
+        ""
+    )
+  );
+  const cleaningDayCount = positiveInt(
+    Number(
+      result.temizlikGun ??
+        result.temizlikgun ??
+        result.temizlikGunSayisi ??
+        result.temizlikGece ??
+        result.temizlikgece ??
+        result.cleaningDayCount ??
+        NaN
+    )
+  );
+  const cleaningFee = positiveInt(
+    Number(
+      result.temizlikFiyat ??
+        result.temizlikfiyat ??
+        result.temizlik_fiyat ??
+        NaN
+    )
+  );
+
+  return {
+    prepaymentRate,
+    commissionRate,
+    cleaningDayCount,
+    cleaningFee,
+    cleaningFeeCurrency: cleaningFee != null ? "TL" : undefined,
+    damageDeposit: null,
+    damageDepositCurrency: undefined,
+  };
+}
+
 /** @deprecated extractVillaApiEntity kullanın */
 function extractVillavillamEntity(html: string) {
   return extractVillaApiEntity(html);
@@ -2484,6 +2545,9 @@ function parseVillavillamPriceList(
     const cleaningFee = Number(
       o.temizlikFiyat ?? o.temizlikfiyat ?? o.temizlik_fiyat
     );
+    const infoCleaning = parseCleaningRuleText(
+      typeof o.info === "string" ? o.info : null
+    );
     const prepaymentRate = parsePercentRate(
       String(
         o.onOdemeOrani ??
@@ -2496,9 +2560,29 @@ function parseVillavillamPriceList(
     const commissionRate = parsePercentRate(
       String(o.komisyonOrani ?? o.komisyonorani ?? o.komisyon ?? "")
     );
-    const cleaningDayCount = positiveInt(
-      Number(o.temizlikGun ?? o.temizlikgun ?? o.cleaningDayCount ?? NaN)
+    let cleaningDayCount = positiveInt(
+      Number(
+        o.temizlikGun ??
+          o.temizlikgun ??
+          o.temizlikGece ??
+          o.temizlikgece ??
+          o.cleaningDayCount ??
+          NaN
+      )
     );
+    if (cleaningDayCount == null) {
+      cleaningDayCount = infoCleaning.cleaningDayCount;
+    }
+    const resolvedCleaningFee =
+      Number.isFinite(cleaningFee) && cleaningFee > 0
+        ? Math.round(cleaningFee)
+        : infoCleaning.cleaningFee;
+    const resolvedCleaningFeeCurrency =
+      Number.isFinite(cleaningFee) && cleaningFee > 0
+        ? currency
+        : resolvedCleaningFee != null
+          ? infoCleaning.cleaningFeeCurrency
+          : currency;
     periods.push(
       buildMappedPeriod({
         sourceId: sourceId++,
@@ -2514,11 +2598,8 @@ function parseVillavillamPriceList(
         prepaymentRate,
         commissionRate,
         cleaningDayCount,
-        cleaningFee:
-          Number.isFinite(cleaningFee) && cleaningFee > 0
-            ? Math.round(cleaningFee)
-            : null,
-        cleaningFeeCurrency: currency,
+        cleaningFee: resolvedCleaningFee,
+        cleaningFeeCurrency: resolvedCleaningFeeCurrency,
         damageDeposit,
         damageDepositCurrency: currency,
         discount1Rate,
@@ -2667,6 +2748,11 @@ export async function scrapeVillavillamFromPage(
     currency,
     entity.damageDeposit
   );
+
+  const entityMeta = extractVillaApiEntityMeta(entity.result);
+  for (const period of periods) {
+    applyMetaToPeriod(period, entityMeta, {});
+  }
 
   if (periods.length === 0 && availability) {
     periods = collapseDailyPricesToPeriods(
