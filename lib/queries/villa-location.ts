@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { compareSurroundingNames } from "@/lib/surrounding-utils";
 import type {
   RegionPickerOption,
   SurroundingLocationOption,
@@ -40,7 +41,6 @@ export async function getVillaLocationFormData(villaId: string) {
             name: true,
             sortOrder: true,
           },
-          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         },
       },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -56,12 +56,14 @@ export async function getVillaLocationFormData(villaId: string) {
 
   const surroundingLocations: SurroundingLocationOption[] =
     surroundingCategories.flatMap((category) =>
-      category.locations.map((location) => ({
-        id: location.id,
-        name: location.name,
-        categoryName: category.name,
-        sortOrder: category.sortOrder * 1000 + location.sortOrder,
-      }))
+      [...category.locations]
+        .sort((left, right) => compareSurroundingNames(left.name, right.name))
+        .map((location) => ({
+          id: location.id,
+          name: location.name,
+          categoryName: category.name,
+          sortOrder: category.sortOrder * 1000 + location.sortOrder,
+        }))
     );
 
   const distanceByLocationId = new Map(

@@ -12,6 +12,7 @@ import {
   buildRegionSelectionLabel,
   resolveRegionHierarchy,
 } from "@/lib/villa-location-helpers";
+import { compareSurroundingNames } from "@/lib/surrounding-utils";
 
 interface VillaLocationTabProps {
   villa: Villa;
@@ -88,6 +89,26 @@ export default function VillaLocationTab({
     mahalleId,
     location
   );
+
+  const surroundingGroups = useMemo(() => {
+    const groups = new Map<string, SurroundingLocationOption[]>();
+    const order: string[] = [];
+
+    for (const item of surroundingLocations) {
+      if (!groups.has(item.categoryName)) {
+        groups.set(item.categoryName, []);
+        order.push(item.categoryName);
+      }
+      groups.get(item.categoryName)!.push(item);
+    }
+
+    return order.map((categoryName) => ({
+      categoryName,
+      locations: [...(groups.get(categoryName) ?? [])].sort((left, right) =>
+        compareSurroundingNames(left.name, right.name)
+      ),
+    }));
+  }, [surroundingLocations]);
 
   function openMap() {
     const lat = parseFloat(latitude);
@@ -233,21 +254,34 @@ export default function VillaLocationTab({
       </div>
 
       <SectionCard title="Çevre ve Konum Mesafeleri">
-        {surroundingLocations.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {surroundingLocations.map((locationItem) => (
-              <label key={locationItem.id} className="block">
-                <span className={labelClass}>{locationItem.name} (km)</span>
-                <input
-                  name={`distance_${locationItem.id}`}
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  defaultValue={distanceByLocationId[locationItem.id] ?? ""}
-                  placeholder="0"
-                  className={`mt-1.5 ${inputClass}`}
-                />
-              </label>
+        {surroundingGroups.length > 0 ? (
+          <div className="space-y-6">
+            {surroundingGroups.map((group) => (
+              <div key={group.categoryName}>
+                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                  {group.categoryName}
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {group.locations.map((locationItem) => (
+                    <label key={locationItem.id} className="block">
+                      <span className={labelClass}>
+                        {locationItem.name} (km)
+                      </span>
+                      <input
+                        name={`distance_${locationItem.id}`}
+                        type="number"
+                        min={0}
+                        step="0.1"
+                        defaultValue={
+                          distanceByLocationId[locationItem.id] ?? ""
+                        }
+                        placeholder="0"
+                        className={`mt-1.5 ${inputClass}`}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
