@@ -213,6 +213,15 @@ function buildPeriodFormState(
   const base = source ? periodToFormState(source) : emptyFormState();
 
   if (period) {
+    const range = options?.prefillDateRange;
+    if (range?.startDate && range?.endDate) {
+      return {
+        ...base,
+        actionStartDate: range.startDate,
+        actionEndDate: range.endDate,
+        occupancySelection: "",
+      };
+    }
     return { ...base, occupancySelection: "" };
   }
 
