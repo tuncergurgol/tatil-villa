@@ -1,12 +1,12 @@
-import CrmVillaFeatureImportManagement from "@/components/admin/villas/CrmVillaFeatureImportManagement";
+import VillaFeatureTransferManagement from "@/components/admin/villas/VillaFeatureTransferManagement";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { getCrmVillaFeatureImportRows } from "@/lib/queries/crm-villa-feature-import";
+import { getVillaFeatureTransferRows } from "@/lib/queries/villa-feature-transfer";
 
 export const dynamic = "force-dynamic";
 
-export default async function CrmVillaFeatureImportPage() {
+export default async function VillaFeatureTransferPage() {
   await requireAdmin();
-  const rows = await getCrmVillaFeatureImportRows();
+  const rows = await getVillaFeatureTransferRows();
 
-  return <CrmVillaFeatureImportManagement rows={rows} />;
+  return <VillaFeatureTransferManagement rows={rows} />;
 }
