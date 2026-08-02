@@ -373,6 +373,10 @@ model Villa {
   externalSyncLastMessage2   String    @default("")
   externalSyncLastMessage3   String    @default("")
   externalSyncLastMessage4   String    @default("")
+  descriptionAiUpdatedAt     DateTime?
+  descriptionAiReport        String    @default("") @db.Text
+  seoAiUpdatedAt             DateTime?
+  seoAiReport                String    @default("") @db.Text
   surroundingDistances  VillaSurroundingDistance[]
   icalSources           VillaIcalSource[]
   icalSyncEvents        VillaIcalSyncEvent[]

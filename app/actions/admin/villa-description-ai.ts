@@ -107,6 +107,56 @@ function buildDistances(
     }));
 }
 
+export async function generateVillaDescriptionForVillaId(
+  villaId: string,
+  extraInfo = ""
+): Promise<VillaDescriptionAiActionState> {
+  await requireAdmin();
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: {
+      name: true,
+      guests: true,
+      extraCapacity: true,
+      livingRooms: true,
+      bedrooms: true,
+      bathrooms: true,
+      amenities: true,
+      allowChildren: true,
+      category: true,
+      region: {
+        select: {
+          name: true,
+          parent: {
+            select: {
+              name: true,
+              parent: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!villa) return { error: "Villa bulunamadı" };
+
+  return generateVillaDescriptionWithAI({
+    villaId,
+    name: villa.name,
+    region: formatVillaRegionLabel(villa.region),
+    extraInfo,
+    guests: villa.guests,
+    extraCapacity: villa.extraCapacity,
+    livingRooms: villa.livingRooms,
+    bedrooms: villa.bedrooms,
+    bathrooms: villa.bathrooms,
+    amenityCount: villa.amenities.length,
+    childFriendly: villa.allowChildren,
+    facilityType: villa.category,
+  });
+}
+
 export async function generateVillaDescriptionWithAI(
   input: VillaDescriptionAiInput
 ): Promise<VillaDescriptionAiActionState> {
