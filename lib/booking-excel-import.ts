@@ -1,8 +1,9 @@
 import * as XLSX from "xlsx";
-import { BookingStatus } from "@prisma/client";
+import { BookingStatus, StayStatus } from "@prisma/client";
+import type { BookingDetails } from "@/lib/booking-form-details";
 
 export const DEFAULT_BOOKING_EXCEL_PATH =
-  "g:/Drive'ım/Rezervasyonlar/Rezervasyon Takip - 2026 yeni.xlsx";
+  "G:/Drive'ım/Rezervasyonlar/Rezervasyon Takip - 2026.xlsx";
 
 export const BOOKING_SHEET_NAME = "Rezervasyon";
 export const BOOKING_HEADER_ROW_INDEX = 3;
@@ -20,13 +21,80 @@ export type ExcelBookingRow = {
   nights: number;
   guestCount: number;
   facilityName: string;
+  grossAmount: number | null;
+  discountAmount: number | null;
   netAmount: number | null;
   prepaymentAmount: number | null;
+  balanceAmount: number | null;
+  cleaningFee: number | null;
+  heatingFee: number | null;
+  invoiceAmount: number | null;
+  paymentMethod: string;
+  agencyName: string;
+  salesRep: string;
   reservationStatus: string;
   stayStatus: string;
-  paymentMethod: string;
-  salesRep: string;
+  ownerAccountingCode: string;
+  ownerName: string;
+  welcomeMode: string;
+  workMode: string;
+  commissionRate: number | null;
 };
+
+/** Excel Rezervasyon sayfası sütun → veritabanı alan eşlemesi (raporlama için). */
+export const BOOKING_EXCEL_COLUMN_MAP = [
+  { column: "A", index: 0, header: "REZERVASYON KODU", target: "Booking.externalCode" },
+  { column: "B", index: 1, header: "REZERVASYON TARİHİ", target: "Booking.createdAt" },
+  { column: "C", index: 2, header: "ADI SOYADI", target: "Booking.guestName" },
+  { column: "D", index: 3, header: "GİRİŞ TARİHİ", target: "Booking.checkIn" },
+  { column: "E", index: 4, header: "ÇIKIŞ TARİHİ", target: "Booking.checkOut" },
+  { column: "F", index: 5, header: "GECE SAYISI", target: "(bilgi) nights" },
+  { column: "G", index: 6, header: "KİŞİ SAYISI", target: "Booking.adults" },
+  { column: "H", index: 7, header: "TESİS ADI", target: "Booking.villaId (lookup)" },
+  {
+    column: "I",
+    index: 8,
+    header: "BRÜT REZERVASYON TUTARI",
+    target: "details.grossPrice",
+  },
+  { column: "J", index: 9, header: "İNDİRİM", target: "details.discountAmount" },
+  { column: "K", index: 10, header: "NET REZERVASYON TUTARI", target: "Booking.totalPrice" },
+  { column: "L", index: 11, header: "ÖN ÖDEME", target: "details.prepaymentAmount" },
+  {
+    column: "M",
+    index: 12,
+    header: "REZERVASYON BAKİYESİ",
+    target: "details.checkInPayment",
+  },
+  { column: "N", index: 13, header: "TEMİZLİK BEDELİ", target: "details.cleaningFee" },
+  { column: "O", index: 14, header: "ISITMA BEDELİ", target: "details.heatingFee" },
+  { column: "P", index: 15, header: "FATURA TUTARI", target: "details.invoiceAmount" },
+  {
+    column: "Q",
+    index: 16,
+    header: "ÖN ÖDEME YÖNTEMİ",
+    target: "details.importPaymentMethod",
+  },
+  { column: "R", index: 17, header: "ACENTE", target: "details.agencyName" },
+  { column: "S", index: 18, header: "SATIŞ TEMSİLCİSİ", target: "details.salesRepName" },
+  { column: "T", index: 19, header: "REZERVASYON SON DURUM", target: "Booking.status" },
+  { column: "U", index: 20, header: "KONAKLAMA DURUMU", target: "Booking.stayStatus" },
+  {
+    column: "V",
+    index: 21,
+    header: "VİLLA SAHİBİ MUHASEBE KODU",
+    target: "details.importOwnerAccountingCode",
+  },
+  {
+    column: "W",
+    index: 22,
+    header: "VİLLA SAHİBİ ADI",
+    target: "details.importOwnerName",
+  },
+  { column: "X", index: 23, header: "KARŞILAMA", target: "details.importWelcomeMode" },
+  { column: "Y", index: 24, header: "ÇALIŞMA ŞEKLİ", target: "details.importWorkMode" },
+  { column: "Z", index: 25, header: "KOMİSYON ORANI", target: "details.commissionRate" },
+] as const;
 
 export type BookingExcelFormat = "standard" | "weekly";
 
@@ -127,8 +195,144 @@ export function mapReservationStatus(value: string): BookingStatus {
   return BookingStatus.NEW;
 }
 
+export function isConfirmedExcelReservationStatus(value: string): boolean {
+  return mapReservationStatus(value) === BookingStatus.CONFIRMED;
+}
+
+export function mapStayStatus(value: string): StayStatus {
+  const text = normalizeFacilityName(value);
+  if (text.includes("yapilmadi")) return StayStatus.YAPILMADI;
+  if (text.includes("yapildi")) return StayStatus.YAPILDI;
+  return StayStatus.BEKLENIYOR;
+}
+
 export function buildImportedGuestEmail(reservationCode: number): string {
   return `import-${reservationCode}@tatildeyiz.local`;
+}
+
+export type BookingImportPayload = {
+  villaId: string;
+  externalCode: number;
+  checkIn: Date;
+  checkOut: Date;
+  adults: number;
+  children: number;
+  babies: number;
+  pets: number;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  totalPrice: number | null;
+  status: BookingStatus;
+  stayStatus: StayStatus;
+  createdAt: Date;
+  details: BookingDetails & Record<string, unknown>;
+};
+
+export function buildBookingImportPayload(
+  row: ExcelBookingRow,
+  villaId: string,
+  format: BookingExcelFormat,
+  guest: { guestName: string; guestEmail: string; guestPhone: string }
+): BookingImportPayload {
+  const commissionAmount =
+    row.invoiceAmount != null ? Math.max(0, Math.round(row.invoiceAmount)) : null;
+
+  return {
+    villaId,
+    externalCode: row.reservationCode,
+    checkIn: row.checkIn!,
+    checkOut: row.checkOut!,
+    adults: Math.max(row.guestCount, 1),
+    children: 0,
+    babies: 0,
+    pets: 0,
+    guestName: guest.guestName,
+    guestEmail: guest.guestEmail,
+    guestPhone: guest.guestPhone,
+    totalPrice: row.netAmount,
+    status: mapReservationStatus(row.reservationStatus),
+    stayStatus: mapStayStatus(row.stayStatus),
+    createdAt: row.reservationDate ?? row.checkIn!,
+    details: {
+      source: "excel-import",
+      importSource: format,
+      grossPrice: row.grossAmount,
+      discountAmount: row.discountAmount,
+      prepaymentAmount: row.prepaymentAmount,
+      checkInPayment: row.balanceAmount,
+      cleaningFee: row.cleaningFee,
+      heatingFee: row.heatingFee,
+      invoiceAmount: row.invoiceAmount,
+      commissionAmount,
+      commissionRate: row.commissionRate,
+      importPaymentMethod: row.paymentMethod,
+      paymentMethod: row.paymentMethod,
+      agencyName: row.agencyName,
+      salesRepName: row.salesRep,
+      importOwnerAccountingCode: row.ownerAccountingCode,
+      importOwnerName: row.ownerName,
+      importWelcomeMode: row.welcomeMode,
+      importWorkMode: row.workMode,
+      activityLogs: [
+        {
+          id: crypto.randomUUID(),
+          at: new Date().toISOString(),
+          action: "status_changed",
+          message: "Excel import ile onaylandı",
+          actorName: "Sistem",
+          meta: { from: "NEW", to: "CONFIRMED", source: "excel-import" },
+        },
+      ],
+    },
+  };
+}
+
+function parseRowFromStandardCells(
+  cells: unknown[],
+  rowNumber: number
+): ExcelBookingRow | null {
+  const reservationCode = parseIntField(cells[0]);
+  const guestName = cleanText(cells[2]);
+  const facilityName = cleanText(cells[7]);
+  const checkIn = excelSerialToDate(cells[3]);
+  const checkOut = excelSerialToDate(cells[4]);
+
+  if (!reservationCode || !guestName || !facilityName || !checkIn || !checkOut) {
+    return null;
+  }
+
+  return {
+    rowNumber,
+    reservationCode,
+    reservationDate: excelSerialToDate(cells[1]),
+    guestName,
+    guestPhone: "",
+    guestEmail: "",
+    checkIn,
+    checkOut,
+    nights: parseIntField(cells[5]),
+    guestCount: parseIntField(cells[6], 1),
+    facilityName,
+    grossAmount: parseAmount(cells[8]),
+    discountAmount: parseAmount(cells[9]),
+    netAmount: parseAmount(cells[10]),
+    prepaymentAmount: parseAmount(cells[11]),
+    balanceAmount: parseAmount(cells[12]),
+    cleaningFee: parseAmount(cells[13]),
+    heatingFee: parseAmount(cells[14]),
+    invoiceAmount: parseAmount(cells[15]),
+    paymentMethod: cleanText(cells[16]),
+    agencyName: cleanText(cells[17]),
+    salesRep: cleanText(cells[18]),
+    reservationStatus: cleanText(cells[19]),
+    stayStatus: cleanText(cells[20]),
+    ownerAccountingCode: cleanText(cells[21]),
+    ownerName: cleanText(cells[22]),
+    welcomeMode: cleanText(cells[23]),
+    workMode: cleanText(cells[24]),
+    commissionRate: parseAmount(cells[25]),
+  };
 }
 
 function isHeaderLikeRow(cells: unknown[]): boolean {
@@ -165,36 +369,13 @@ export function readBookingRowsFromWorkbook(
       continue;
     }
 
-    const reservationCode = parseIntField(cells[0]);
-    const guestName = cleanText(cells[2]);
-    const facilityName = cleanText(cells[7]);
-    const checkIn = excelSerialToDate(cells[3]);
-    const checkOut = excelSerialToDate(cells[4]);
-
-    if (!reservationCode || !guestName || !facilityName || !checkIn || !checkOut) {
+    const row = parseRowFromStandardCells(cells, index + 1);
+    if (!row) {
       skippedRows += 1;
       continue;
     }
 
-    rows.push({
-      rowNumber: index + 1,
-      reservationCode,
-      reservationDate: excelSerialToDate(cells[1]),
-      guestName,
-      guestPhone: "",
-      guestEmail: "",
-      checkIn,
-      checkOut,
-      nights: parseIntField(cells[5]),
-      guestCount: parseIntField(cells[6], 1),
-      facilityName,
-      netAmount: parseAmount(cells[10]),
-      prepaymentAmount: parseAmount(cells[11]),
-      reservationStatus: cleanText(cells[19]),
-      stayStatus: cleanText(cells[20]),
-      paymentMethod: cleanText(cells[16]),
-      salesRep: cleanText(cells[18]),
-    });
+    rows.push(row);
   }
 
   return { rows, skippedRows };
@@ -281,12 +462,24 @@ export function readWeeklyBookingRowsFromWorkbook(
       nights: parseIntField(cells[6]),
       guestCount: parseIntField(cells[7], 1),
       facilityName: cleanText(cells[8]),
+      grossAmount: parseAmount(cells[10]),
+      discountAmount: parseAmount(cells[11]),
       netAmount: parseAmount(cells[12]),
       prepaymentAmount: parseAmount(cells[13]),
+      balanceAmount: parseAmount(cells[14]),
+      cleaningFee: parseAmount(cells[15]),
+      heatingFee: parseAmount(cells[16]),
+      invoiceAmount: parseAmount(cells[17]),
+      paymentMethod: cleanText(cells[18]),
+      agencyName: cleanText(cells[22]),
+      salesRep: cleanText(cells[23]),
       reservationStatus: cleanText(cells[24]),
       stayStatus: cleanText(cells[25]),
-      paymentMethod: cleanText(cells[18]),
-      salesRep: cleanText(cells[23]),
+      ownerAccountingCode: "",
+      ownerName: "",
+      welcomeMode: "",
+      workMode: "",
+      commissionRate: null,
     });
   }
 
