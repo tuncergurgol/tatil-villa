@@ -12,6 +12,7 @@ import { getStayNightKeys } from "@/lib/stay-quote";
 import { calculateNights } from "@/lib/stay-nights";
 import { offsetDateKey } from "@/lib/villa-period-selection";
 import { syncBookingStayOccupancy } from "@/lib/villa-occupancy-service";
+import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
 
 export { calculateNights };
 
@@ -263,6 +264,10 @@ export async function createAdminBooking(data: {
     guestPhone: data.guestPhone,
   });
 
+  if (data.status === BookingStatus.CONFIRMED) {
+    await handleBookingConfirmedTransition(booking.id, null);
+  }
+
   return booking;
 }
 
@@ -287,6 +292,11 @@ export async function updateAdminBooking(
   if (data.checkOut <= data.checkIn) {
     throw new Error("Çıkış tarihi giriş tarihinden sonra olmalıdır.");
   }
+
+  const existing = await prisma.booking.findUnique({
+    where: { id },
+    select: { status: true },
+  });
 
   const booking = await prisma.booking.update({
     where: { id },
@@ -314,6 +324,13 @@ export async function updateAdminBooking(
     guestEmail: data.guestEmail,
     guestPhone: data.guestPhone,
   });
+
+  if (
+    data.status === BookingStatus.CONFIRMED &&
+    existing?.status !== BookingStatus.CONFIRMED
+  ) {
+    await handleBookingConfirmedTransition(id, existing?.status ?? null);
+  }
 
   return booking;
 }
@@ -386,6 +403,13 @@ export async function updateBookingDetail(data: {
     guestPhone: data.guestPhone,
   });
 
+  if (
+    data.status === BookingStatus.CONFIRMED &&
+    existing.status !== BookingStatus.CONFIRMED
+  ) {
+    await handleBookingConfirmedTransition(data.id, existing.status);
+  }
+
   return booking;
 }
 
@@ -435,6 +459,13 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
       checkOut: existing.checkOut,
     },
   });
+
+  if (
+    status === BookingStatus.CONFIRMED &&
+    existing.status !== BookingStatus.CONFIRMED
+  ) {
+    await handleBookingConfirmedTransition(id, existing.status);
+  }
 
   return booking;
 }

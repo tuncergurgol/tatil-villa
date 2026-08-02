@@ -17,6 +17,7 @@ import { getBookingForPublicConfirmation } from "@/lib/queries/booking-confirmat
 import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
 import { sendReservationDocumentNotifications } from "@/lib/reservation-document-mail";
 import { getRequestClientIp } from "@/lib/request-client-ip";
 import {
@@ -304,6 +305,8 @@ export async function confirmBookingGuestInfoAction(
     dbDateToDateKey(updated.checkOut),
     "BOOKED"
   );
+
+  await handleBookingConfirmedTransition(booking.id, booking.status);
 
   // Konfirme belgesi (PDF mail + Evolution WA) hata verse bile onay success
   try {

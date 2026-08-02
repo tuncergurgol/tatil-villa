@@ -98,6 +98,10 @@ export type BookingDetails = {
   /** Public talep: card | transfer */
   paymentMethod?: string;
   paymentAmount?: string;
+  /** Excel takip dosyasına yazıldığı zaman */
+  excelExportedAt?: string | null;
+  excelExportRow?: number | null;
+  excelExportNote?: string | null;
   adultGuests?: BookingGuestEntry[];
   childGuests?: BookingGuestEntry[];
   babyGuests?: BookingGuestEntry[];
