@@ -6,8 +6,10 @@
  *   npx tsx scripts/update-villa-period-rates.ts --names-file villalar.txt
  *   npx tsx scripts/update-villa-period-rates.ts --excel "G:/Drive'ım/.../Rezervasyon Takip - 2026.xlsx"
  *   npx tsx scripts/update-villa-period-rates.ts --prefix "Villa"
+ *   npx tsx scripts/update-villa-period-rates.ts --names-file list.txt --commission-only
  *
  * Varsayılan: --prefix "Villa" (adı Villa ile başlayan tüm villalar)
+ * --commission-only: yalnızca komisyon oranını günceller (ön ödeme oranına dokunmaz)
  */
 import { readFileSync } from "node:fs";
 import * as XLSX from "xlsx";
@@ -21,11 +23,13 @@ type Args = {
   dryRun: boolean;
   names: string[];
   prefix: string | null;
+  commissionOnly: boolean;
 };
 
 function parseArgs(): Args {
   const argv = process.argv.slice(2);
   const dryRun = argv.includes("--dry-run");
+  const commissionOnly = argv.includes("--commission-only");
   const namesFileIdx = argv.indexOf("--names-file");
   const excelIdx = argv.indexOf("--excel");
   const prefixIdx = argv.indexOf("--prefix");
@@ -50,7 +54,7 @@ function parseArgs(): Args {
     prefix = argv[prefixIdx + 1] ?? "Villa";
   }
 
-  return { dryRun, names, prefix };
+  return { dryRun, names, prefix, commissionOnly };
 }
 
 function loadVillaNamesFromExcel(filePath: string): string[] {
@@ -146,7 +150,11 @@ async function main() {
   console.log("Villa sayısı:", villas.length);
   console.log("Periyot sayısı:", periodCount);
   console.log("Gün kaydı sayısı:", dayCount);
-  console.log("Hedef oranlar: prepaymentRate=%d, commissionRate=%d", RATE, RATE);
+  if (args.commissionOnly) {
+    console.log("Hedef: commissionRate=%d (ön ödeme oranı değişmeyecek)", RATE);
+  } else {
+    console.log("Hedef oranlar: prepaymentRate=%d, commissionRate=%d", RATE, RATE);
+  }
   console.log("Mod:", args.dryRun ? "DRY-RUN" : "UYGULA");
 
   for (const villa of villas) {
@@ -158,20 +166,21 @@ async function main() {
     return;
   }
 
+  const periodData = args.commissionOnly
+    ? { commissionRate: RATE }
+    : { prepaymentRate: RATE, commissionRate: RATE };
+  const dayData = args.commissionOnly
+    ? { commissionRate: RATE }
+    : { prepaymentRate: RATE, commissionRate: RATE };
+
   const periodResult = await prisma.villaPricePeriod.updateMany({
     where: { villaId: { in: villaIds } },
-    data: {
-      prepaymentRate: RATE,
-      commissionRate: RATE,
-    },
+    data: periodData,
   });
 
   const dayResult = await prisma.villaPricePeriodDay.updateMany({
     where: { villaId: { in: villaIds } },
-    data: {
-      prepaymentRate: RATE,
-      commissionRate: RATE,
-    },
+    data: dayData,
   });
 
   const [periodWithoutCommission, dayWithoutCommission] = await Promise.all([
