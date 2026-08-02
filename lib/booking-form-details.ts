@@ -95,6 +95,10 @@ export type BookingDetails = {
   /** Talebin geldiği host/domain (www.balayivillacisi.com vb.) */
   originDomain?: string;
   importPaymentMethod?: string;
+  importOwnerAccountingCode?: string;
+  importOwnerName?: string;
+  importWelcomeMode?: string;
+  importWorkMode?: string;
   /** Public talep: card | transfer */
   paymentMethod?: string;
   paymentAmount?: string;
