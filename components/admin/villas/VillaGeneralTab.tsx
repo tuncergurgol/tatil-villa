@@ -269,7 +269,8 @@ export default function VillaGeneralTab({
           </button>
         </div>
         <p className="mb-3 text-xs text-gray-500">
-          * En iyi sonuç için önce tüm villa bilgilerini doldurun.
+          AI açıklama; konum, öne çıkan özellikler, kapasite ve mesafeleri kullanır.
+          En iyi sonuç için önce tüm sekmeleri kaydedin.
         </p>
         <RichTextEditor
           key={descriptionKey}

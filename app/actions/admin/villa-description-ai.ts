@@ -3,6 +3,7 @@
 import { requireAdmin } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
 import {
+  buildVillaDescriptionPreview,
   buildVillaDescriptionPrompt,
   formatDescriptionDistanceKm,
   generateVillaDescriptionTemplate,
@@ -10,6 +11,7 @@ import {
   parseVillaDescriptionAiResponse,
   type VillaDescriptionContext,
   type VillaDescriptionDistance,
+  type VillaDescriptionPreview,
 } from "@/lib/villa-description-generator";
 import { formatVillaRegionLabel } from "@/lib/villa-location-helpers";
 
@@ -17,6 +19,7 @@ export type VillaDescriptionAiActionState = {
   error?: string;
   description?: string;
   source?: "ai" | "template";
+  preview?: VillaDescriptionPreview;
 };
 
 export type VillaDescriptionAiInput = {
@@ -46,12 +49,12 @@ async function generateWithOpenAI(prompt: string): Promise<string | null> {
     },
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-      temperature: 0.65,
+      temperature: 0.55,
       messages: [
         {
           role: "system",
           content:
-            "Tatil konaklama açıklamaları üreten yardımcı bir asistansın. Verilen şablonun üslubunu takip ederek her villa için özgün HTML açıklamalar yazarsın.",
+            "Sen Türkiye'deki tatil konaklama siteleri için villa açıklamaları yazan uzman bir metin yazarısın. Verilen referans şablonun sıcak, yalın ve ikna edici üslubunu takip edersin. Her villa için özgün, SEO uyumlu ve okunması kolay HTML açıklamalar üretirsin. Uydurma bilgi eklemezsin.",
         },
         { role: "user", content: prompt },
       ],
@@ -107,61 +110,9 @@ function buildDistances(
     }));
 }
 
-export async function generateVillaDescriptionForVillaId(
-  villaId: string,
-  extraInfo = ""
-): Promise<VillaDescriptionAiActionState> {
-  await requireAdmin();
-
-  const villa = await prisma.villa.findUnique({
-    where: { id: villaId },
-    select: {
-      name: true,
-      guests: true,
-      extraCapacity: true,
-      livingRooms: true,
-      bedrooms: true,
-      bathrooms: true,
-      amenities: true,
-      allowChildren: true,
-      category: true,
-      region: {
-        select: {
-          name: true,
-          parent: {
-            select: {
-              name: true,
-              parent: { select: { name: true } },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!villa) return { error: "Villa bulunamadı" };
-
-  return generateVillaDescriptionWithAI({
-    villaId,
-    name: villa.name,
-    region: formatVillaRegionLabel(villa.region),
-    extraInfo,
-    guests: villa.guests,
-    extraCapacity: villa.extraCapacity,
-    livingRooms: villa.livingRooms,
-    bedrooms: villa.bedrooms,
-    bathrooms: villa.bathrooms,
-    amenityCount: villa.amenities.length,
-    childFriendly: villa.allowChildren,
-    facilityType: villa.category,
-  });
-}
-
-export async function generateVillaDescriptionWithAI(
+async function loadVillaDescriptionContext(
   input: VillaDescriptionAiInput
-): Promise<VillaDescriptionAiActionState> {
-  await requireAdmin();
-
+): Promise<VillaDescriptionContext | { error: string }> {
   const villa = await prisma.villa.findUnique({
     where: { id: input.villaId },
     select: {
@@ -234,7 +185,7 @@ export async function generateVillaDescriptionWithAI(
   const regionLabel = formatVillaRegionLabel(villa.region);
   const regionParts = regionLabel.split(" - ");
 
-  const context: VillaDescriptionContext = {
+  return {
     name: input.name.trim() || "Villa",
     region: input.region.trim() || regionLabel,
     regionMahalle: regionParts[2] ?? villa.region.name,
@@ -258,13 +209,35 @@ export async function generateVillaDescriptionWithAI(
     location: villa.location,
     distances: buildDistances(villa.surroundingDistances),
   };
+}
+
+export async function getVillaDescriptionAiPreview(
+  input: VillaDescriptionAiInput
+): Promise<{ preview?: VillaDescriptionPreview; error?: string }> {
+  await requireAdmin();
+
+  const context = await loadVillaDescriptionContext(input);
+  if ("error" in context) return { error: context.error };
+
+  return { preview: buildVillaDescriptionPreview(context) };
+}
+
+export async function generateVillaDescriptionWithAI(
+  input: VillaDescriptionAiInput
+): Promise<VillaDescriptionAiActionState> {
+  await requireAdmin();
+
+  const context = await loadVillaDescriptionContext(input);
+  if ("error" in context) return { error: context.error };
+
+  const preview = buildVillaDescriptionPreview(context);
 
   try {
     const aiDescription = await generateWithOpenAI(
       buildVillaDescriptionPrompt(context)
     );
     if (aiDescription) {
-      return { description: aiDescription, source: "ai" };
+      return { description: aiDescription, source: "ai", preview };
     }
   } catch {
     // OpenAI başarısız olursa şablon üreticiye düş.
@@ -273,5 +246,6 @@ export async function generateVillaDescriptionWithAI(
   return {
     description: generateVillaDescriptionTemplate(context),
     source: "template",
+    preview,
   };
 }

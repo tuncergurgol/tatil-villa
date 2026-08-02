@@ -2,6 +2,7 @@ import type { VillaCategory } from "@prisma/client";
 import { facilityTypeLabel } from "@/lib/facility-type";
 import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 
+/** Üslup ve paragraf akışı referansı — metin kopyalanmaz, yalnızca ton için kullanılır. */
 export const VILLA_DESCRIPTION_STYLE_TEMPLATE = `Kalkanın en özel doğa rotalarından biri olan İslamlar Köyünde yer alan bu kubbe konsept villalar balayı tatilini sıradanlıktan çıkarıp bambaşka bir atmosfere taşımak isteyen çiftler için hazırlanmış seçkin bir kiralık villa konseptidir. KAŞ DOMES İSLAMLAR KÖYÜ etabımızda bulunan toplam 5 adet kubbe villamız 1+0 plan düzeninde tasarlanmış olup 2 kişilik kapasitesiyle çiftlere özel bir villa kiralama deneyimi sunar.
 
 Bu tesisin farkı yalnızca özel havuzlu olması değil; glamping kültürünü gerçek bir mimari konseptle birleştirmesidir. Türkiyede ilk defa bu ölçekte üretilen kubbe villalarımız 7 metre çapında 4.30 metre kubbe yüksekliğinde ve toplam 38 m ahşap yapıda inşa edilmiştir. doğa içinde olmasına rağmen güvenlik ve iklim şartları gözetilerek tasarlandığı için konaklama boyunca konfor ve huzur aynı anda yaşanır. ayrıca her villanın ayrı havuz terasına sahip olması tatilinizi tamamen size ait hale getirir.
@@ -51,6 +52,26 @@ export interface VillaDescriptionContext {
   distances: VillaDescriptionDistance[];
 }
 
+export type VillaDescriptionPreview = {
+  capacitySummary: string;
+  locationSummary: string;
+  featuredAmenities: string[];
+  distances: VillaDescriptionDistance[];
+  rulesSummary: string;
+  minStayNights: number | null;
+  warnings: string[];
+};
+
+type FeaturedBuckets = {
+  pool: string[];
+  spa: string[];
+  interior: string[];
+  kitchen: string[];
+  exterior: string[];
+  standout: string[];
+  other: string[];
+};
+
 export function isFeaturedAmenityCategory(category: string) {
   return (
     category.localeCompare("Öne Çıkanlar", "tr", { sensitivity: "base" }) === 0
@@ -60,35 +81,32 @@ export function isFeaturedAmenityCategory(category: string) {
 export function formatDescriptionDistanceKm(km: number) {
   if (km < 1) {
     const meters = Math.round(km * 1000);
-    return `${meters} Metre`;
+    return `${meters} metre`;
   }
   const rounded = Number.isInteger(km) ? km.toFixed(0) : km.toFixed(1);
-  return `${rounded} Km`;
+  return `${rounded} km`;
 }
 
 function buildPlanLabel(bedrooms: number, livingRooms: number) {
   return `${bedrooms}+${livingRooms}`;
 }
 
-function formatDistanceLines(distances: VillaDescriptionDistance[]) {
-  if (distances.length === 0) return "Belirtilmedi";
-  return distances
-    .map((item) => `${item.name}: ${item.distanceLabel}`)
-    .join("\n");
+function joinNatural(items: string[]): string {
+  const cleaned = items.map((item) => item.trim()).filter(Boolean);
+  if (cleaned.length === 0) return "";
+  if (cleaned.length === 1) return cleaned[0]!;
+  if (cleaned.length === 2) return `${cleaned[0]} ve ${cleaned[1]}`;
+  return `${cleaned.slice(0, -1).join(", ")} ve ${cleaned[cleaned.length - 1]}`;
 }
 
-function formatFeaturedLines(featuredAmenities: string[]) {
-  if (featuredAmenities.length === 0) return "Belirtilmedi";
-  return featuredAmenities.join(", ");
-}
-
-function formatRulesSummary(context: VillaDescriptionContext) {
-  const rules: string[] = [];
-  if (!context.childFriendly) rules.push("Çocuk kabul edilmez");
-  if (!context.allowPets) rules.push("Evcil hayvan kabul edilmez");
-  if (!context.allowSmoking) rules.push("Sigara içilmez");
-  if (context.customRules.length > 0) rules.push(...context.customRules);
-  return rules.length > 0 ? rules.join("; ") : "Belirtilmedi";
+function buildLocationLabel(context: VillaDescriptionContext) {
+  return (
+    [context.regionMahalle, context.regionIlce, context.regionIl]
+      .filter(Boolean)
+      .join(", ") ||
+    context.region ||
+    context.location
+  );
 }
 
 function buildCapacitySummary(context: VillaDescriptionContext) {
@@ -107,18 +125,150 @@ function buildCapacitySummary(context: VillaDescriptionContext) {
   return `${plan} plan, ${capacity}, ${rooms}`;
 }
 
+export function buildRulesSummary(context: VillaDescriptionContext) {
+  const rules: string[] = [];
+  if (!context.childFriendly) rules.push("çocuk kabul edilmez");
+  if (!context.allowPets) rules.push("evcil hayvan kabul edilmez");
+  if (!context.allowSmoking) rules.push("sigara içilmez");
+  if (context.customRules.length > 0) rules.push(...context.customRules);
+  return rules.length > 0 ? rules.join("; ") : "";
+}
+
+function formatDistanceLines(distances: VillaDescriptionDistance[]) {
+  if (distances.length === 0) return "Belirtilmedi";
+  return distances
+    .map((item) => `${item.category} / ${item.name}: ${item.distanceLabel}`)
+    .join("\n");
+}
+
+function formatFeaturedLines(featuredAmenities: string[]) {
+  if (featuredAmenities.length === 0) return "Belirtilmedi";
+  return featuredAmenities.join(", ");
+}
+
+function categorizeFeaturedAmenities(featured: string[]): FeaturedBuckets {
+  const buckets: FeaturedBuckets = {
+    pool: [],
+    spa: [],
+    interior: [],
+    kitchen: [],
+    exterior: [],
+    standout: [],
+    other: [],
+  };
+
+  for (const item of featured) {
+    const lower = item.toLocaleLowerCase("tr-TR");
+    if (/kamelya|manzara|kubbe|dome|glamping|konsept/i.test(lower)) {
+      buckets.standout.push(item);
+    } else if (/havuz|pool/i.test(lower)) {
+      buckets.pool.push(item);
+    } else if (/jakuzi|hidromasaj|spa/i.test(lower)) {
+      buckets.spa.push(item);
+    } else if (
+      /mutfak|buzdolab|bulaşık|çamaşır|ocak|fırın|mikrodalga|davlumbaz|buklet/i.test(
+        lower
+      )
+    ) {
+      buckets.kitchen.push(item);
+    } else if (
+      /tv|klima|yatak|banyo|gardrop|vantilat|oturma|koltuk|sehpa/i.test(lower)
+    ) {
+      buckets.interior.push(item);
+    } else if (
+      /şezlong|şemsiye|salıncak|teras|bahçe|otopark|wifi|barbekü|mangal|ışık/i.test(
+        lower
+      )
+    ) {
+      buckets.exterior.push(item);
+    } else {
+      buckets.other.push(item);
+    }
+  }
+
+  return buckets;
+}
+
+function pickStandoutFeature(buckets: FeaturedBuckets, featured: string[]) {
+  return (
+    buckets.standout[0] ??
+    buckets.spa[0] ??
+    buckets.exterior.find((item) => /kamelya|salıncak|teras/i.test(item)) ??
+    featured.find((item) => /kamelya|jakuzi|manzara|kubbe|dome/i.test(item)) ??
+    featured[0] ??
+    null
+  );
+}
+
+function buildDistanceParagraph(
+  distances: VillaDescriptionDistance[],
+  locationNote: string
+) {
+  if (distances.length === 0) return "";
+
+  const phrases = distances
+    .slice(0, 8)
+    .map((item) => `${item.name} yaklaşık ${item.distanceLabel}`);
+
+  const locationTail = locationNote.trim()
+    ? ` ${locationNote.trim()}`
+    : " Çevredeki market ve restoranlara kolay erişim sayesinde tatilinizi villadan çıkmadan da rahatlıkla planlayabilirsiniz.";
+
+  return `Konum olarak ${joinNatural(phrases)} mesafededir.${locationTail}`;
+}
+
+function buildSeoKeywords(context: VillaDescriptionContext, typeLabel: string) {
+  const location = buildLocationLabel(context);
+  const keywords = [
+    `${location} kiralık ${typeLabel}`,
+    `${context.guests} kişilik kiralık villa`,
+    context.featuredAmenities
+      .filter((item) => /havuz|jakuzi|doğa|balayı/i.test(item))
+      .slice(0, 2)
+      .join(", "),
+  ].filter(Boolean);
+
+  return joinNatural(keywords);
+}
+
+export function buildVillaDescriptionPreview(
+  context: VillaDescriptionContext
+): VillaDescriptionPreview {
+  const warnings: string[] = [];
+
+  if (context.featuredAmenities.length === 0) {
+    warnings.push(
+      "Öne çıkan özellik bulunamadı. Olanaklar sekmesinde “Öne Çıkanlar” grubuna özellik ekleyin."
+    );
+  }
+  if (context.distances.length === 0) {
+    warnings.push(
+      "Mesafe bilgisi yok. Konum & Çevre sekmesinden mesafeleri kaydedin."
+    );
+  }
+  if (!buildLocationLabel(context)) {
+    warnings.push("Bölge veya konum bilgisi eksik görünüyor.");
+  }
+
+  return {
+    capacitySummary: buildCapacitySummary(context),
+    locationSummary: buildLocationLabel(context),
+    featuredAmenities: context.featuredAmenities,
+    distances: context.distances,
+    rulesSummary: buildRulesSummary(context),
+    minStayNights: context.minStayNights,
+    warnings,
+  };
+}
+
 export function buildVillaDescriptionPrompt(context: VillaDescriptionContext) {
   const typeLabel = facilityTypeLabel(context.facilityType);
-  const locationLine =
-    [context.regionMahalle, context.regionIlce, context.regionIl]
-      .filter(Boolean)
-      .join(", ") ||
-    context.region ||
-    context.location;
+  const locationLine = buildLocationLabel(context);
+  const seoHint = buildSeoKeywords(context, typeLabel.toLocaleLowerCase("tr-TR"));
 
-  return `Türkiye'de tatil konaklama sitesi için villa açıklaması yaz.
+  return `Türkiye'de tatil konaklama sitesi için SEO uyumlu, sıcak ve yalın dille villa açıklaması yaz.
 
-Aşağıdaki REFERANS METİN yalnızca üslup, paragraf akışı ve anlatım tarzı için şablondur. Metni kopyalama; her villa için aşağıdaki verilere göre özgün metin üret.
+Aşağıdaki REFERANS METİN yalnızca üslup, paragraf akışı ve anlatım tarzı için şablondur. Metni kopyalama; her villa için aşağıdaki verilere göre tamamen özgün metin üret.
 
 --- REFERANS ŞABLON (üslup ve yapı) ---
 ${VILLA_DESCRIPTION_STYLE_TEMPLATE}
@@ -131,44 +281,33 @@ VİLLA VERİLERİ:
 - Adres / konum notu: ${context.location || "Belirtilmedi"}
 - Ev tipi: ${typeLabel}
 - Kapasite ve plan: ${buildCapacitySummary(context)}
-- Öne çıkan özellikler (ÖNE ÇIKANLAR): ${formatFeaturedLines(context.featuredAmenities)}
-- Diğer olanaklar: ${context.amenities.slice(0, 20).join(", ") || "Belirtilmedi"}
+- Öne çıkan özellikler (ÖNE ÇIKANLAR — metnin ana donanım kaynağı): ${formatFeaturedLines(context.featuredAmenities)}
+- Diğer olanaklar (yalnızca gerekirse, az kullan): ${context.amenities.slice(0, 12).join(", ") || "Yok"}
 - Mesafeler:
 ${formatDistanceLines(context.distances)}
-- Kurallar: ${formatRulesSummary(context)}
+- Kurallar: ${buildRulesSummary(context) || "Belirtilmedi"}
 - Minimum konaklama: ${context.minStayNights ? `${context.minStayNights} gece` : "Belirtilmedi"}
 - Ek notlar: ${context.extraInfo || "Yok"}
 
-Kurallar:
-- Türkçe yaz
-- Referans şablondaki gibi 7-9 paragraflık akıcı bir metin oluştur (giriş/konum, konsept, iç mekân, dış alan/havuz, ayırt edici detay, kurallar, mesafeler/konum avantajı, kapanış SEO)
-- Yalnızca verilen villa bilgilerini kullan; şablondaki özel ölçü, marka veya başka villaya ait detayları uydurma
-- Öne çıkan özellikleri metnin gövdesine doğal şekilde yedir; ayrı madde listesi kullanma
-- Mesafe bilgilerini konum paragrafında doğal cümlelerle geçir
-- Kapasite ve plan bilgisini giriş veya konsept paragrafında belirt
-- HTML formatında döndür (yalnızca <p> etiketleri; h2/ul kullanma)
-- Abartılı vaatlerden kaçın, profesyonel ve ikna edici ton kullan
-- Villa adını ve bölgeyi SEO için doğal biçimde geçir
-- Sadece HTML içeriği döndür, açıklama veya markdown kullanma`;
-}
-
-function pickFeaturedBuckets(featuredAmenities: string[]) {
-  const lower = featuredAmenities.map((item) => item.toLocaleLowerCase("tr-TR"));
-  const has = (pattern: RegExp) =>
-    featuredAmenities.filter((_, index) => pattern.test(lower[index] ?? ""));
-
-  return {
-    pool: has(/havuz|jakuzi|pool/i),
-    interior: has(/tv|klima|mutfak|buzdolab|bulaşık|çamaşır|yatak|banyo|gardrop|vantilat/i),
-    exterior: has(/şezlong|şemsiye|salıncak|kamelya|teras|bahçe|otopark|wifi|barbekü|mangal/i),
-    concept: has(/kubbe|dome|glamping|ahşap|doğa|jakuzi|hidromasaj/i),
-    other: featuredAmenities.filter(
-      (item) =>
-        !/(havuz|jakuzi|pool|tv|klima|mutfak|buzdolab|bulaşık|çamaşır|yatak|banyo|gardrop|vantilat|şezlong|şemsiye|salıncak|kamelya|teras|bahçe|otopark|wifi|barbekü|mangal|kubbe|dome|glamping|ahşap|doğa|hidromasaj)/i.test(
-          item
-        )
-    ),
-  };
+Yazım kuralları:
+- Türkçe, sıcak, samimi ama profesyonel bir dil kullan
+- Referans şablondaki gibi 7-9 paragraflık akıcı metin yaz:
+  1) Giriş: konum + villa adı + kapasite/plan
+  2) Konsept ve fark yaratan yön (öne çıkan özelliklerden)
+  3) İç mekân donanımı (öne çıkanlardan)
+  4) Dış alan / havuz / teras (öne çıkanlardan)
+  5) Villayı ayıran özel detay (kamelya, jakuzi, manzara vb.)
+  6) Konaklama kuralları (varsa)
+  7) Konum avantajı ve mesafeler (doğal cümlelerle)
+  8) Minimum konaklama (varsa)
+  9) SEO kapanış: ${seoHint}
+- Öne çıkan özellikleri metnin gövdesine doğal şekilde yedir; madde listesi kullanma
+- Mesafe bilgilerini “yaklaşık X km/metre” şeklinde akıcı cümlelerle geçir
+- Yalnızca verilen villa bilgilerini kullan; şablondaki ölçü, marka veya başka villaya ait detayları uydurma
+- Abartılı vaatlerden kaçın; okuyucuya güven veren, yalın bir anlatım tercih et
+- HTML formatında döndür (yalnızca <p> etiketleri; h2/ul/li kullanma)
+- Villa adını, bölgeyi ve “kiralık villa” ifadesini SEO için doğal biçimde geçir
+- Sadece HTML içeriği döndür; açıklama, markdown veya kod bloğu kullanma`;
 }
 
 export function generateVillaDescriptionTemplate(
@@ -177,79 +316,82 @@ export function generateVillaDescriptionTemplate(
   const typeLabel = facilityTypeLabel(context.facilityType).toLocaleLowerCase(
     "tr-TR"
   );
-  const region =
-    [context.regionMahalle, context.regionIlce, context.regionIl]
-      .filter(Boolean)
-      .join(", ") ||
-    context.region ||
-    context.location;
+  const location = buildLocationLabel(context);
   const plan = buildPlanLabel(context.bedrooms, context.livingRooms);
-  const buckets = pickFeaturedBuckets(context.featuredAmenities);
+  const buckets = categorizeFeaturedAmenities(context.featuredAmenities);
+  const standout = pickStandoutFeature(buckets, context.featuredAmenities);
   const paragraphs: string[] = [];
 
+  const audience =
+    context.guests <= 2 && !context.childFriendly
+      ? "çiftlere özel bir konaklama deneyimi"
+      : `${context.guests} kişilik konforlu bir konaklama deneyimi`;
+
   paragraphs.push(
-    `<p><strong>${context.name}</strong>, ${region} bölgesinde konumlanan seçkin bir kiralık ${typeLabel} seçeneğidir. ${plan} plan düzeninde tasarlanan evimiz ${context.guests} kişilik kapasitesiyle konforlu bir konaklama sunar.</p>`
+    `<p><strong>${context.name}</strong>, ${location} bölgesinde yer alan seçkin bir kiralık ${typeLabel} seçeneğidir. ${plan} plan düzeninde tasarlanan evimiz ${context.guests} kişilik kapasitesiyle ${audience} sunar.</p>`
   );
 
   const conceptBits = [
-    ...new Set([
-      ...buckets.concept,
-      ...buckets.pool.slice(0, 2),
-      ...buckets.other.slice(0, 2),
-    ]),
-  ].filter(Boolean);
+    ...buckets.standout,
+    ...buckets.pool,
+    ...buckets.spa,
+    ...buckets.other,
+  ].slice(0, 4);
+
   if (conceptBits.length > 0) {
     paragraphs.push(
-      `<p>Bu ${typeLabel}nın öne çıkan yönü ${conceptBits.join(", ")} gibi özellikleriyle misafirlere farklı bir tatil deneyimi sunmasıdır. Doğa içinde konforlu ve huzurlu bir ortam arayanlar için özenle hazırlanmıştır.</p>`
+      `<p>Bu ${typeLabel}nın öne çıkan yönü, ${joinNatural(conceptBits)} gibi özellikleriyle misafirlere sıradan bir tatilden öte, özenle planlanmış bir atmosfer sunmasıdır. Doğayla iç içe konfor arayanlar için her detay düşünülmüştür.</p>`
     );
   }
 
-  const interiorBits = buckets.interior.slice(0, 8);
+  const interiorBits = [...buckets.interior, ...buckets.kitchen].slice(0, 8);
   if (interiorBits.length > 0) {
     paragraphs.push(
-      `<p>İç mekânda misafirlerin rahatlığı için ${interiorBits.join(", ")} gibi donanımlar bulunur. ${context.bedrooms} yatak odası ve ${context.bathrooms} banyo ile düzenli bir yaşam alanı sunulur.</p>`
+      `<p>İç mekânda misafirlerin rahatlığı için ${joinNatural(interiorBits)} gibi donanımlar bulunur. ${context.bedrooms} yatak odası ve ${context.bathrooms} banyo ile düzenli, ferah bir yaşam alanı sunulur.</p>`
     );
   }
 
-  const exteriorBits = buckets.exterior.slice(0, 8);
-  if (exteriorBits.length > 0 || buckets.pool.length > 0) {
+  const exteriorBits = [
+    ...buckets.pool,
+    ...buckets.spa,
+    ...buckets.exterior,
+  ].slice(0, 8);
+  if (exteriorBits.length > 0) {
     paragraphs.push(
-      `<p>Dış alanda ${[...buckets.pool, ...exteriorBits].slice(0, 8).join(", ")} gibi imkânlarla tatilin keyfini villanızda çıkarabilirsiniz.</p>`
+      `<p>Dış alanda ${joinNatural(exteriorBits)} gibi imkânlarla tatilin keyfini villanızda çıkarabilirsiniz. Özel alanlar sayesinde konaklamanız boyunca mahremiyet ve huzur bir arada yaşanır.</p>`
     );
   }
 
-  const highlight =
-    buckets.other.find((item) => /kamelya|teras|manzara|jakuzi/i.test(item)) ??
-    context.featuredAmenities[0];
-  if (highlight) {
+  if (standout) {
     paragraphs.push(
-      `<p>${highlight} gibi detaylar bu ${typeLabel}yı benzer seçeneklerden ayıran önemli artılardan biridir.</p>`
+      `<p>${standout}, bu ${typeLabel}yı benzer seçeneklerden ayıran önemli detaylardan biridir. Gün içinde dinlenmek veya akşam saatlerinde keyifli vakit geçirmek isteyen misafirler için gerçek bir artı değer yaratır.</p>`
     );
   }
 
-  const rules = formatRulesSummary(context);
-  if (rules !== "Belirtilmedi") {
-    paragraphs.push(`<p>Konaklama kuralları: ${rules}.</p>`);
-  }
-
-  if (context.distances.length > 0) {
-    const distanceText = context.distances
-      .slice(0, 6)
-      .map((item) => `${item.name} yaklaşık ${item.distanceLabel}`)
-      .join(", ");
+  const rules = buildRulesSummary(context);
+  if (rules) {
     paragraphs.push(
-      `<p>Konum avantajı açısından ${distanceText} mesafededir. ${context.location ? `${context.location} ` : ""}çevresindeki ihtiyaç noktalarına kolay erişim sağlar.</p>`
+      `<p>Konaklama kuralları kapsamında ${rules}. Lütfen rezervasyon öncesi kuralları gözden geçirin.</p>`
     );
+  }
+
+  const distanceParagraph = buildDistanceParagraph(
+    context.distances,
+    context.location
+  );
+  if (distanceParagraph) {
+    paragraphs.push(`<p>${distanceParagraph}</p>`);
   }
 
   if (context.minStayNights) {
     paragraphs.push(
-      `<p>Minimum konaklama süresi ${context.minStayNights} gecedir.</p>`
+      `<p>Minimum konaklama süresi ${context.minStayNights} gecedir. Bu yönüyle planlı ve konforlu bir tatil için uygun bir seçenektir.</p>`
     );
   }
 
+  const seoBits = context.featuredAmenities.slice(0, 4);
   paragraphs.push(
-    `<p>${region} bölgesinde ${context.guests} kişilik kapasiteye sahip bu kiralık ${typeLabel}, ${context.featuredAmenities.slice(0, 4).join(", ") || "konforlu donanımı"} ile unutulmaz bir tatil deneyimi sunar.</p>`
+    `<p>${location} bölgesinde ${context.guests} kişilik kapasiteye sahip bu kiralık ${typeLabel}, ${joinNatural(seoBits) || "konforlu donanımı"} ile unutulmaz bir villa kiralama deneyimi sunar. ${context.name} arayan misafirler için hem konumu hem de sunduğu imkânlar açısından güçlü bir tercihtir.</p>`
   );
 
   const extra = context.extraInfo.trim()
