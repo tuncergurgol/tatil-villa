@@ -9,7 +9,7 @@
  * Varsayılan: yalnızca REZERVASYON SON DURUM = Onaylandı satırları,
  * externalCode (A sütunu) veritabanında yoksa kayıt oluşturur.
  */
-import { PrismaClient } from "@prisma/client";
+import { BookingStatus, Prisma, PrismaClient, StayStatus } from "@prisma/client";
 import { existsSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import {
