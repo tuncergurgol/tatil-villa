@@ -9,7 +9,7 @@
  * Varsayılan: yalnızca REZERVASYON SON DURUM = Onaylandı satırları,
  * externalCode (A sütunu) veritabanında yoksa kayıt oluşturur.
  */
-import { BookingStatus, Prisma, PrismaClient, StayStatus } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { existsSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import {
@@ -187,7 +187,12 @@ async function main() {
 
   if (!dryRun) {
     for (const data of creates) {
-      const created = await prisma.booking.create({ data });
+      const created = await prisma.booking.create({
+        data: {
+          ...data,
+          details: data.details as Prisma.InputJsonValue,
+        },
+      });
       await syncBookingStayOccupancy({
         villaId: data.villaId,
         previous: {
@@ -224,7 +229,7 @@ async function main() {
           totalPrice: data.totalPrice,
           status: data.status,
           stayStatus: data.stayStatus,
-          details: data.details,
+          details: data.details as Prisma.InputJsonValue,
         },
       });
 
