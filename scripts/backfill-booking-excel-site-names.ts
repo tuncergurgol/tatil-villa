@@ -3,7 +3,7 @@
  *
  *   npx tsx scripts/backfill-booking-excel-site-names.ts
  *   npx tsx scripts/backfill-booking-excel-site-names.ts --dry-run
- *   npx tsx scripts/backfill-booking-excel-site-names.ts "G:/path/to/file.xlsx"
+ *   npx tsx scripts/backfill-booking-excel-site-names.ts --from-row=46
  */
 import * as XLSX from "xlsx";
 import { prisma } from "../lib/db";
@@ -17,17 +17,39 @@ import {
 } from "../lib/booking-excel-import";
 import { formatBookingSiteNameForExcel } from "../lib/booking-excel-rows";
 
+function isFilledSiteCell(value: unknown): boolean {
+  const text = String(value ?? "").trim();
+  if (!text) return false;
+  if (typeof value === "number" && Number.isFinite(value) && value > 30000 && value < 60000) {
+    return false;
+  }
+  if (/^\d+(\.\d+)?$/.test(text)) {
+    const numeric = Number(text);
+    if (Number.isFinite(numeric) && numeric > 30000 && numeric < 60000) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function parseArgs() {
   const dryRun = process.argv.includes("--dry-run");
   const fileArg = process.argv.find((arg) => !arg.startsWith("-") && arg.endsWith(".xlsx"));
+  const fromRowArg = process.argv.find((arg) => arg.startsWith("--from-row="));
+  const fromExcelRow = fromRowArg
+    ? Number.parseInt(fromRowArg.slice("--from-row=".length), 10)
+    : BOOKING_DATA_START_ROW_INDEX + 1;
   return {
     dryRun,
     filePath: fileArg ?? DEFAULT_BOOKING_EXCEL_PATH,
+    startRowIndex: Number.isFinite(fromExcelRow) && fromExcelRow > 0
+      ? fromExcelRow - 1
+      : BOOKING_DATA_START_ROW_INDEX,
   };
 }
 
 async function main() {
-  const { dryRun, filePath } = parseArgs();
+  const { dryRun, filePath, startRowIndex } = parseArgs();
   const workbook = XLSX.readFile(filePath, { cellDates: false });
   const sheet = workbook.Sheets[BOOKING_SHEET_NAME];
   if (!sheet) {
@@ -55,12 +77,14 @@ async function main() {
   let skipped = 0;
   let missing = 0;
 
-  for (let rowIndex = BOOKING_DATA_START_ROW_INDEX; rowIndex < matrix.length; rowIndex++) {
+  console.log(`Satır ${startRowIndex + 1}'den itibaren işleniyor...`);
+
+  for (let rowIndex = startRowIndex; rowIndex < matrix.length; rowIndex++) {
     const cells = matrix[rowIndex] ?? [];
     const code = Number.parseInt(String(cells[0] ?? "").trim(), 10);
     if (!Number.isFinite(code) || code <= 0) continue;
 
-    const existingSite = String(cells[1] ?? "").trim();
+    const existingSite = isFilledSiteCell(cells[1]);
     if (existingSite) {
       skipped += 1;
       continue;
