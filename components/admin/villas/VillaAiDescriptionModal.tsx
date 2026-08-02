@@ -8,6 +8,7 @@ import { facilityTypeLabel } from "@/lib/facility-type";
 
 export interface VillaAiFormSnapshot {
   guests: number;
+  extraCapacity: number;
   livingRooms: number;
   bedrooms: number;
   bathrooms: number;
@@ -77,6 +78,7 @@ export default function VillaAiDescriptionModal({
     setRegion(initialRegion);
     setSnapshot({
       guests: readFormInt("guests", formSnapshot.guests),
+      extraCapacity: readFormInt("extraCapacity", formSnapshot.extraCapacity),
       livingRooms: readFormInt("livingRooms", formSnapshot.livingRooms),
       bedrooms: readFormInt("bedrooms", formSnapshot.bedrooms),
       bathrooms: readFormInt("bathrooms", formSnapshot.bathrooms),
@@ -98,6 +100,7 @@ export default function VillaAiDescriptionModal({
         region,
         extraInfo,
         guests: snapshot.guests,
+        extraCapacity: snapshot.extraCapacity,
         livingRooms: snapshot.livingRooms,
         bedrooms: snapshot.bedrooms,
         bathrooms: snapshot.bathrooms,
@@ -118,11 +121,12 @@ export default function VillaAiDescriptionModal({
 
   const formItems = [
     `${snapshot.guests} Kişi`,
+    snapshot.extraCapacity > 0 ? `+${snapshot.extraCapacity} Ekstra` : null,
     snapshot.livingRooms > 0 ? `${snapshot.livingRooms} Salon` : null,
     `${snapshot.bedrooms} Yatak Odası`,
     `${snapshot.bathrooms} Banyo`,
     `${snapshot.amenityCount} Olanak`,
-    snapshot.childFriendly ? "Çocuk Dostu" : null,
+    snapshot.childFriendly ? "Çocuk Dostu" : "Yetişkin Konsepti",
     facilityTypeLabel(snapshot.facilityType),
   ].filter(Boolean);
 
@@ -138,7 +142,7 @@ export default function VillaAiDescriptionModal({
               </h2>
             </div>
             <p className="mt-1 text-sm text-violet-600">
-              SEO Uyumlu • Yapay Zeka Destekli
+              Konum, öne çıkan özellikler, kapasite ve mesafelere göre özel metin
             </p>
           </div>
           <button
@@ -180,7 +184,7 @@ export default function VillaAiDescriptionModal({
                   value={extraInfo}
                   onChange={(event) => setExtraInfo(event.target.value)}
                   rows={4}
-                  placeholder="Öne çıkarmak istediğiniz özellikler, konum detayları, özel notlar..."
+                  placeholder="Vurgulanmasını istediğiniz ek detaylar (opsiyonel). Konum, öne çıkan özellikler ve mesafeler otomatik alınır."
                   className={`mt-1.5 ${inputClass} resize-y`}
                 />
               </label>
@@ -189,7 +193,12 @@ export default function VillaAiDescriptionModal({
 
           <div className="rounded-xl border border-violet-100 bg-white/80 p-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Formdan alınan
+              Otomatik kullanılacak veriler
+            </p>
+            <p className="mb-3 text-xs text-gray-500">
+              Özellikler sekmesindeki <strong>Öne Çıkanlar</strong> ve Konum &
+              Çevre sekmesindeki <strong>mesafeler</strong> kayıtlı veriden
+              okunur.
             </p>
             <div className="flex flex-wrap gap-2">
               {formItems.map((item) => (

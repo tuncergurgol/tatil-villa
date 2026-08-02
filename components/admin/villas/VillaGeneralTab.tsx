@@ -286,6 +286,7 @@ export default function VillaGeneralTab({
         initialRegion={regionBreadcrumb}
         formSnapshot={{
           guests: villa.guests,
+          extraCapacity: villa.extraCapacity,
           livingRooms: villa.livingRooms,
           bedrooms: villa.bedrooms,
           bathrooms: villa.bathrooms,
