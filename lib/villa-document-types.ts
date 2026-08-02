@@ -22,6 +22,13 @@ export function getTourismDocumentLabel(type: TourismDocumentType | null) {
   return TOURISM_DOCUMENT_TYPES.find((item) => item.value === type)?.label ?? "";
 }
 
+/** KTB vatandas.ktb.gov.tr/konut-belge linki yalnızca Konut Belgesi (7464 S.K.) için geçerlidir. */
+export function isKonutBelgesiDocumentType(
+  documentType: TourismDocumentType | null | undefined
+) {
+  return documentType === "KONUT_BELGESI";
+}
+
 export function hasVillaTourismDocument(villa: {
   documentType: TourismDocumentType | null;
   documentNo: string;

@@ -231,7 +231,10 @@ export default function VillaDetailView({
                   />
                 </div>
                 {villa.documentNo ? (
-                  <TourismPermitBadge documentNo={villa.documentNo} />
+                  <TourismPermitBadge
+                    documentNo={villa.documentNo}
+                    documentType={villa.documentType}
+                  />
                 ) : null}
               </div>
 

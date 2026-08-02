@@ -1,9 +1,13 @@
+import type { TourismDocumentType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   buildKonutBelgeCheckUrl,
   type KonutBelgeCheckStatus,
 } from "@/lib/konut-belge-check";
-import { inferKonutBelgesiType } from "@/lib/villa-document-types";
+import {
+  inferKonutBelgesiType,
+  isKonutBelgesiDocumentType,
+} from "@/lib/villa-document-types";
 
 export type KonutBelgeCheckRow = {
   villaId: string;
@@ -18,13 +22,11 @@ export type KonutBelgeCheckRow = {
 };
 
 function isKonutBelgesiVilla(villa: {
-  documentType: string | null;
+  documentType: TourismDocumentType | null;
   documentNo: string;
 }) {
-  if (villa.documentType === "KONUT_BELGESI") return true;
-  if (villa.documentType && villa.documentType !== "KONUT_BELGESI") {
-    return false;
-  }
+  if (isKonutBelgesiDocumentType(villa.documentType)) return true;
+  if (villa.documentType) return false;
   return inferKonutBelgesiType(villa.documentNo) === "KONUT_BELGESI";
 }
 

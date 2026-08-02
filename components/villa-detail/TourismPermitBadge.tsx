@@ -1,25 +1,29 @@
 import { BadgeCheck } from "lucide-react";
+import type { TourismDocumentType } from "@prisma/client";
+import { isKonutBelgesiDocumentType } from "@/lib/villa-document-types";
+import { buildKonutBelgeCheckUrl } from "@/lib/konut-belge-check";
 
 type TourismPermitBadgeProps = {
   documentNo: string;
+  documentType?: TourismDocumentType | null;
 };
 
 export default function TourismPermitBadge({
   documentNo,
+  documentType = null,
 }: TourismPermitBadgeProps) {
   const trimmed = documentNo.trim();
   if (!trimmed) return null;
 
-  const href = `https://vatandas.ktb.gov.tr/konut-belge/${encodeURIComponent(trimmed)}`;
+  const isLinkable = isKonutBelgesiDocumentType(documentType);
+  const className =
+    "group flex min-w-0 flex-wrap items-center gap-2.5 rounded-xl bg-slate-100/90 px-3 py-2.5 sm:gap-3.5 sm:px-4 sm:py-3 " +
+    (isLinkable
+      ? "cursor-pointer transition hover:bg-slate-200/80 hover:ring-2 hover:ring-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+      : "");
 
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Turizm belgesi doğrula: ${trimmed}`}
-      className="group flex min-w-0 cursor-pointer flex-wrap items-center gap-2.5 rounded-xl bg-slate-100/90 px-3 py-2.5 transition hover:bg-slate-200/80 hover:ring-2 hover:ring-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 sm:gap-3.5 sm:px-4 sm:py-3"
-    >
+  const content = (
+    <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/kultur-turizm-bakanligi.png"
@@ -29,7 +33,11 @@ export default function TourismPermitBadge({
         className="h-14 w-auto max-w-[16rem] shrink-0 object-contain object-left sm:h-[3.85rem]"
       />
 
-      <div className="flex items-center gap-2 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1.5 shadow-sm transition group-hover:border-sky-200">
+      <div
+        className={`flex items-center gap-2 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1.5 shadow-sm ${
+          isLinkable ? "transition group-hover:border-sky-200" : ""
+        }`}
+      >
         <BadgeCheck
           className="h-7 w-7 shrink-0 text-sky-600"
           strokeWidth={1.75}
@@ -42,6 +50,22 @@ export default function TourismPermitBadge({
           </p>
         </div>
       </div>
+    </>
+  );
+
+  if (!isLinkable) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <a
+      href={buildKonutBelgeCheckUrl(trimmed)}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Turizm belgesi doğrula: ${trimmed}`}
+      className={className}
+    >
+      {content}
     </a>
   );
 }
