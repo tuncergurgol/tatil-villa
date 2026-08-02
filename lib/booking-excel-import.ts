@@ -39,6 +39,30 @@ export type ExcelBookingRow = {
   welcomeMode: string;
   workMode: string;
   commissionRate: number | null;
+  commissionAmount: number | null;
+  ownerPayableAmount: number | null;
+  ownerCollectFromGuest: number | null;
+  ownerPaymentDueDate: string;
+  ownerPaymentDate: string;
+  ownerPaidAmount: number | null;
+  agencyCommissionRate: number | null;
+  agencyCommissionEarned: number | null;
+  agencyExpectedAmount: number | null;
+  agencyAccountingCode: string;
+  agencyReceivedDate: string;
+  agencyReceivedAmount: number | null;
+  invoiceDate: string;
+  invoiceNo: string;
+  invoiceTitle: string;
+  issuedInvoiceAmount: number | null;
+  salesRepCommissionEarned: number | null;
+  invoiceDifference: number | null;
+  invoiceAmountDifference: number | null;
+  kbsReportable: string;
+  commissionInvoiceDifference: number | null;
+  guestNationality: string;
+  guestNationalId: string;
+  guestBirthDate: string;
 };
 
 /** Excel Rezervasyon sayfası sütun → veritabanı alan eşlemesi (raporlama için). */
@@ -66,8 +90,8 @@ export const BOOKING_EXCEL_COLUMN_MAP = [
     header: "REZERVASYON BAKİYESİ",
     target: "details.checkInPayment",
   },
-  { column: "N", index: 13, header: "TEMİZLİK BEDELİ", target: "details.cleaningFee" },
-  { column: "O", index: 14, header: "ISITMA BEDELİ", target: "details.heatingFee" },
+  { column: "N", index: 13, header: "MÜŞTERİDEN ALINACAK TEMİZLİK BEDELİ", target: "details.cleaningFee" },
+  { column: "O", index: 14, header: "MÜŞTERİDEN ALINACAK ISITMA BEDELİ", target: "details.heatingFee" },
   { column: "P", index: 15, header: "FATURA TUTARI", target: "details.invoiceAmount" },
   {
     column: "Q",
@@ -94,6 +118,102 @@ export const BOOKING_EXCEL_COLUMN_MAP = [
   { column: "X", index: 23, header: "KARŞILAMA", target: "details.importWelcomeMode" },
   { column: "Y", index: 24, header: "ÇALIŞMA ŞEKLİ", target: "details.importWorkMode" },
   { column: "Z", index: 25, header: "KOMİSYON ORANI", target: "details.commissionRate" },
+  { column: "AA", index: 26, header: "KOMİSYON TUTARI", target: "details.commissionAmount" },
+  {
+    column: "AB",
+    index: 27,
+    header: "VİLLA SAHİBİNE ÖDENECEK PARA",
+    target: "details.ownerPayableAmount",
+  },
+  {
+    column: "AC",
+    index: 28,
+    header: "VİLLA SAHİBİNİN MÜŞTERİDEN ALACAĞI PARA",
+    target: "details.ownerCollectFromGuest",
+  },
+  {
+    column: "AD",
+    index: 29,
+    header: "VİLLA SAHİBİ ÖDEME YAPILACAK TARİH",
+    target: "details.ownerPaymentDueDate",
+  },
+  {
+    column: "AE",
+    index: 30,
+    header: "VİLLA SAHİBİNE ÖDENEN TARİHİ",
+    target: "details.ownerPaymentDate",
+  },
+  {
+    column: "AF",
+    index: 31,
+    header: "VİLLA SAHİBİNE ÖDENEN PARA",
+    target: "details.ownerPaidAmount",
+  },
+  {
+    column: "AG",
+    index: 32,
+    header: "ACENTE KOMİSYON ORANI",
+    target: "details.agencyCommissionRate",
+  },
+  {
+    column: "AH",
+    index: 33,
+    header: "ACENTEYE ÖDENECEK KOMİSYON TUTARI",
+    target: "details.agencyCommissionEarned",
+  },
+  {
+    column: "AI",
+    index: 34,
+    header: "ACENTEDEN GELECEK PARA",
+    target: "details.agencyExpectedAmount",
+  },
+  {
+    column: "AJ",
+    index: 35,
+    header: "ACENTE MUHASEBE KODU",
+    target: "details.importAgencyAccountingCode",
+  },
+  {
+    column: "AK",
+    index: 36,
+    header: "ACENTEDEN GELEN PARA TARİHİ",
+    target: "details.agencyReceivedDate",
+  },
+  {
+    column: "AL",
+    index: 37,
+    header: "ACENTEDEN GELEN PARA TUTARI",
+    target: "details.agencyReceivedAmount",
+  },
+  { column: "AM", index: 38, header: "FATURA TARİHİ", target: "details.invoiceDate" },
+  { column: "AN", index: 39, header: "FATURA NO", target: "details.invoiceNo" },
+  { column: "AO", index: 40, header: "ADI SOYADI", target: "details.invoiceTitle" },
+  {
+    column: "AP",
+    index: 41,
+    header: "FATURA TUTARI",
+    target: "details.issuedInvoiceAmount",
+  },
+  { column: "AQ", index: 42, header: "PRİM", target: "details.salesRepCommissionEarned" },
+  { column: "AR", index: 43, header: "FARK", target: "details.invoiceDifference" },
+  { column: "AS", index: 44, header: " FATURA FARK", target: "details.invoiceAmountDifference" },
+  { column: "AT", index: 45, header: "KBS ", target: "villa.kbsReportable" },
+  {
+    column: "AU",
+    index: 46,
+    header: "Komisyon-Fatura FarkI",
+    target: "(computed) commissionInvoiceDifference",
+  },
+  { column: "AV", index: 47, header: "TELEFON", target: "Booking.guestPhone" },
+  { column: "AW", index: 48, header: "E-POSTA", target: "Booking.guestEmail" },
+  { column: "AX", index: 49, header: "UYRUK", target: "details.adultGuests[0].nationality" },
+  {
+    column: "AY",
+    index: 50,
+    header: "TC KİMLİK / PASAPORT NO",
+    target: "details.guestTc / adultGuests[0].nationalId",
+  },
+  { column: "AZ", index: 51, header: "DOĞUM TARİHİ", target: "(reserved)" },
 ] as const;
 
 export const BOOKING_EXCEL_HEADERS = BOOKING_EXCEL_COLUMN_MAP.map(
@@ -171,6 +291,12 @@ export function excelSerialToDate(value: unknown): Date | null {
   }
   const iso = new Date(text);
   return Number.isNaN(iso.getTime()) ? null : iso;
+}
+
+function excelCellToDateKey(value: unknown): string {
+  const date = excelSerialToDate(value);
+  if (!date) return "";
+  return date.toISOString().slice(0, 10);
 }
 
 export const BOOKING_FACILITY_ALIASES: Record<string, string> = {
@@ -259,7 +385,22 @@ export function buildBookingImportPayload(
   guest: { guestName: string; guestEmail: string; guestPhone: string }
 ): BookingImportPayload {
   const commissionAmount =
-    row.invoiceAmount != null ? Math.max(0, Math.round(row.invoiceAmount)) : null;
+    row.commissionAmount ??
+    (row.invoiceAmount != null ? Math.max(0, Math.round(row.invoiceAmount)) : null);
+
+  const guestTc = row.guestNationalId || undefined;
+  const adultGuests =
+    guestTc || row.guestNationality
+      ? [
+          {
+            name: guest.guestName.split(" ")[0] ?? guest.guestName,
+            surname: guest.guestName.split(" ").slice(1).join(" "),
+            nationalId: guestTc,
+            plate: "",
+            nationality: row.guestNationality || "TC",
+          },
+        ]
+      : undefined;
 
   return {
     villaId,
@@ -297,6 +438,27 @@ export function buildBookingImportPayload(
       importOwnerName: row.ownerName,
       importWelcomeMode: row.welcomeMode,
       importWorkMode: row.workMode,
+      ownerPayableAmount: row.ownerPayableAmount,
+      ownerCollectFromGuest: row.ownerCollectFromGuest,
+      ownerPaymentDueDate: row.ownerPaymentDueDate,
+      ownerPaymentDate: row.ownerPaymentDate,
+      ownerPaidAmount: row.ownerPaidAmount,
+      agencyCommissionRate: row.agencyCommissionRate,
+      agencyCommissionEarned: row.agencyCommissionEarned,
+      agencyExpectedAmount: row.agencyExpectedAmount,
+      importAgencyAccountingCode: row.agencyAccountingCode,
+      agencyReceivedDate: row.agencyReceivedDate,
+      agencyReceivedAmount: row.agencyReceivedAmount,
+      invoiceDate: row.invoiceDate,
+      invoiceNo: row.invoiceNo,
+      invoiceTitle: row.invoiceTitle,
+      issuedInvoiceAmount: row.issuedInvoiceAmount,
+      salesRepCommissionEarned: row.salesRepCommissionEarned,
+      invoiceDifference: row.invoiceDifference,
+      invoiceAmountDifference: row.invoiceAmountDifference,
+      guestTc,
+      guestCountry: row.guestNationality || undefined,
+      adultGuests,
       activityLogs: [
         {
           id: crypto.randomUUID(),
@@ -330,8 +492,8 @@ function parseRowFromStandardCells(
     reservationCode,
     reservationDate: excelSerialToDate(cells[1]),
     guestName,
-    guestPhone: "",
-    guestEmail: "",
+    guestPhone: cleanText(cells[47]),
+    guestEmail: cleanText(cells[48]),
     checkIn,
     checkOut,
     nights: parseIntField(cells[5]),
@@ -355,6 +517,30 @@ function parseRowFromStandardCells(
     welcomeMode: cleanText(cells[23]),
     workMode: cleanText(cells[24]),
     commissionRate: parseAmount(cells[25]),
+    commissionAmount: parseAmount(cells[26]),
+    ownerPayableAmount: parseAmount(cells[27]),
+    ownerCollectFromGuest: parseAmount(cells[28]),
+    ownerPaymentDueDate: excelCellToDateKey(cells[29]),
+    ownerPaymentDate: excelCellToDateKey(cells[30]),
+    ownerPaidAmount: parseAmount(cells[31]),
+    agencyCommissionRate: parseAmount(cells[32]),
+    agencyCommissionEarned: parseAmount(cells[33]),
+    agencyExpectedAmount: parseAmount(cells[34]),
+    agencyAccountingCode: cleanText(cells[35]),
+    agencyReceivedDate: excelCellToDateKey(cells[36]),
+    agencyReceivedAmount: parseAmount(cells[37]),
+    invoiceDate: excelCellToDateKey(cells[38]),
+    invoiceNo: cleanText(cells[39]),
+    invoiceTitle: cleanText(cells[40]),
+    issuedInvoiceAmount: parseAmount(cells[41]),
+    salesRepCommissionEarned: parseAmount(cells[42]),
+    invoiceDifference: parseAmount(cells[43]),
+    invoiceAmountDifference: parseAmount(cells[44]),
+    kbsReportable: cleanText(cells[45]),
+    commissionInvoiceDifference: parseAmount(cells[46]),
+    guestNationality: cleanText(cells[49]),
+    guestNationalId: cleanText(cells[50]),
+    guestBirthDate: excelCellToDateKey(cells[51]),
   };
 }
 
@@ -503,6 +689,30 @@ export function readWeeklyBookingRowsFromWorkbook(
       welcomeMode: "",
       workMode: "",
       commissionRate: null,
+      commissionAmount: null,
+      ownerPayableAmount: null,
+      ownerCollectFromGuest: null,
+      ownerPaymentDueDate: "",
+      ownerPaymentDate: "",
+      ownerPaidAmount: null,
+      agencyCommissionRate: null,
+      agencyCommissionEarned: null,
+      agencyExpectedAmount: null,
+      agencyAccountingCode: "",
+      agencyReceivedDate: "",
+      agencyReceivedAmount: null,
+      invoiceDate: "",
+      invoiceNo: "",
+      invoiceTitle: "",
+      issuedInvoiceAmount: null,
+      salesRepCommissionEarned: null,
+      invoiceDifference: null,
+      invoiceAmountDifference: null,
+      kbsReportable: "",
+      commissionInvoiceDifference: null,
+      guestNationality: "",
+      guestNationalId: "",
+      guestBirthDate: "",
     });
   }
 

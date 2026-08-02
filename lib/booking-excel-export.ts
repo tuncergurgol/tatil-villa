@@ -3,14 +3,16 @@ import * as XLSX from "xlsx";
 import { BookingStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseBookingDetails } from "@/lib/booking-form-details";
-import { calculateNights } from "@/lib/stay-nights";
-import { getStayStatusLabel } from "@/lib/stay-status";
 import {
   BOOKING_DATA_START_ROW_INDEX,
   BOOKING_SHEET_NAME,
   DEFAULT_BOOKING_EXCEL_PATH,
-  formatBookingStatusForExcel,
 } from "@/lib/booking-excel-import";
+import {
+  buildBookingExcelRowValues,
+} from "@/lib/booking-excel-rows";
+
+export { buildBookingExcelRowValues } from "@/lib/booking-excel-rows";
 
 export type BookingExcelExportResult =
   | { ok: true; action: "appended" | "skipped"; reason?: string; row?: number }
@@ -24,78 +26,6 @@ export function isBookingExcelExportAvailable(
   filePath = getBookingExcelPath()
 ): boolean {
   return Boolean(filePath) && existsSync(filePath);
-}
-
-function dateToExcelSerial(date: Date): number {
-  const utc = Date.UTC(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate()
-  );
-  return (utc - Date.UTC(1899, 11, 30)) / 86_400_000;
-}
-
-function formatSalesTypeLabel(value: string | null | undefined): string {
-  const text = (value ?? "").trim().toLowerCase();
-  if (text === "kiralama") return "KİRALAMA";
-  return "KOMİSYON";
-}
-
-export function buildBookingExcelRowValues(input: {
-  externalCode: number | null;
-  createdAt: Date;
-  guestName: string;
-  checkIn: Date;
-  checkOut: Date;
-  adults: number;
-  children: number;
-  facilityName: string;
-  totalPrice: number | null;
-  status: BookingStatus;
-  stayStatus: string;
-  details: ReturnType<typeof parseBookingDetails>;
-  ownerAccountingCode?: string | null;
-  ownerName?: string | null;
-  salesType?: string | null;
-}): unknown[] {
-  const details = input.details;
-  const guestCount = Math.max(input.adults + input.children, 1);
-  const nights = calculateNights(input.checkIn, input.checkOut);
-  const grossPrice = details.grossPrice ?? null;
-  const discountAmount = details.discountAmount ?? null;
-  const prepaymentAmount = details.prepaymentAmount ?? null;
-  const balanceAmount = details.checkInPayment ?? null;
-
-  return [
-    input.externalCode ?? "",
-    dateToExcelSerial(input.createdAt),
-    input.guestName,
-    dateToExcelSerial(input.checkIn),
-    dateToExcelSerial(input.checkOut),
-    nights,
-    guestCount,
-    input.facilityName,
-    grossPrice ?? "",
-    discountAmount ?? "",
-    input.totalPrice ?? "",
-    prepaymentAmount ?? "",
-    balanceAmount ?? "",
-    details.cleaningFee ?? "",
-    details.heatingFee ?? "",
-    details.invoiceAmount ?? "",
-    details.importPaymentMethod || details.paymentMethod || "",
-    details.agencyName || "Tatil Villacısı",
-    details.salesRepName || "",
-    formatBookingStatusForExcel(input.status),
-    getStayStatusLabel(
-      input.stayStatus as Parameters<typeof getStayStatusLabel>[0]
-    ),
-    details.importOwnerAccountingCode || input.ownerAccountingCode || "",
-    details.importOwnerName || input.ownerName || "",
-    details.importWelcomeMode || "KENDİSİ",
-    details.importWorkMode || formatSalesTypeLabel(input.salesType),
-    details.commissionRate ?? "",
-  ];
 }
 
 function findReservationCodeRow(
@@ -117,6 +47,8 @@ function findNextDataRow(matrix: unknown[][]): number {
   return matrix.length;
 }
 
+const EXCEL_DATE_COLUMNS = new Set([1, 3, 4, 29, 30, 36, 38]);
+
 function writeRowToSheet(
   sheet: XLSX.WorkSheet,
   rowIndex: number,
@@ -130,7 +62,7 @@ function writeRowToSheet(
       continue;
     }
     if (typeof value === "number" && Number.isFinite(value)) {
-      if (column === 1 || column === 3 || column === 4) {
+      if (EXCEL_DATE_COLUMNS.has(column)) {
         sheet[address] = { t: "n", v: value, z: "dd/mm/yyyy" };
       } else {
         sheet[address] = { t: "n", v: value };
@@ -167,6 +99,8 @@ export async function exportConfirmedBookingToExcel(
       stayStatus: true,
       createdAt: true,
       guestName: true,
+      guestPhone: true,
+      guestEmail: true,
       checkIn: true,
       checkOut: true,
       adults: true,
@@ -178,6 +112,7 @@ export async function exportConfirmedBookingToExcel(
           name: true,
           originalName: true,
           salesType: true,
+          kbsReportable: true,
           owner: {
             select: {
               name: true,
@@ -257,6 +192,8 @@ export async function exportConfirmedBookingToExcel(
     externalCode: booking.externalCode,
     createdAt: booking.createdAt,
     guestName: booking.guestName,
+    guestPhone: booking.guestPhone,
+    guestEmail: booking.guestEmail,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
     adults: booking.adults,
@@ -269,6 +206,7 @@ export async function exportConfirmedBookingToExcel(
     ownerAccountingCode: booking.villa.owner?.accountingCode,
     ownerName: booking.villa.owner?.name,
     salesType: booking.villa.salesType,
+    kbsReportable: booking.villa.kbsReportable,
   });
 
   writeRowToSheet(sheet, rowIndex, values);

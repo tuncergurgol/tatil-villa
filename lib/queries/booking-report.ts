@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { parseBookingDetails } from "@/lib/booking-form-details";
-import { buildBookingExcelRowValues } from "@/lib/booking-excel-export";
+import { buildBookingExcelRowValues } from "@/lib/booking-excel-rows";
 import { BOOKING_EXCEL_HEADERS } from "@/lib/booking-excel-import";
 
 function buildReportFilename() {
@@ -18,6 +18,7 @@ export async function generateBookingReportExport(bookingIds: string[]) {
           name: true,
           originalName: true,
           salesType: true,
+          kbsReportable: true,
           owner: {
             select: {
               name: true,
@@ -38,6 +39,8 @@ export async function generateBookingReportExport(bookingIds: string[]) {
       externalCode: booking.externalCode,
       createdAt: booking.createdAt,
       guestName: booking.guestName,
+      guestPhone: booking.guestPhone,
+      guestEmail: booking.guestEmail,
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
       adults: booking.adults,
@@ -50,6 +53,7 @@ export async function generateBookingReportExport(bookingIds: string[]) {
       ownerAccountingCode: booking.villa.owner?.accountingCode,
       ownerName: booking.villa.owner?.name,
       salesType: booking.villa.salesType,
+      kbsReportable: booking.villa.kbsReportable,
     });
 
     rows.push(

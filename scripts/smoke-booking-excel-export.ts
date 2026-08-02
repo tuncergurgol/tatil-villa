@@ -3,7 +3,10 @@
  *
  *   npx tsx scripts/smoke-booking-excel-export.ts
  */
-import { buildBookingExcelRowValues } from "../lib/booking-excel-export";
+import {
+  buildBookingExcelRowValues,
+  BOOKING_EXCEL_COLUMN_COUNT,
+} from "../lib/booking-excel-rows";
 import { BookingStatus, StayStatus } from "@prisma/client";
 
 function assert(condition: unknown, message: string) {
@@ -15,6 +18,8 @@ function main() {
     externalCode: 115999,
     createdAt: new Date("2026-07-20T00:00:00.000Z"),
     guestName: "Test Misafir",
+    guestPhone: "+905321112233",
+    guestEmail: "test@example.com",
     checkIn: new Date("2026-08-10T00:00:00.000Z"),
     checkOut: new Date("2026-08-15T00:00:00.000Z"),
     adults: 2,
@@ -32,10 +37,21 @@ function main() {
       agencyName: "Tatil Villacısı",
       salesRepName: "Nejla Gürgöl",
       commissionRate: 20,
+      guestTc: "12345678901",
+      adultGuests: [
+        {
+          name: "Test",
+          surname: "Misafir",
+          nationalId: "12345678901",
+          plate: "",
+          nationality: "TC",
+        },
+      ],
     },
     ownerAccountingCode: "320.01.209",
     ownerName: "Test Sahip",
     salesType: "komisyon",
+    kbsReportable: false,
   });
 
   assert(row[0] === 115999, "externalCode");
@@ -44,7 +60,13 @@ function main() {
   assert(row[10] === 32000, "totalPrice");
   assert(row[19] === "Onayladı", "status label");
   assert(row[20] === "Bekleniyor", "stay status label");
-  assert(row.length === 26, "26 columns");
+  assert(row[26] === 6400, "commission amount");
+  assert(row[27] === 4800, "owner payable");
+  assert(row[45] === "HAYIR", "kbs");
+  assert(row[47] === "+905321112233", "phone");
+  assert(row[48] === "test@example.com", "email");
+  assert(row[50] === "12345678901", "national id");
+  assert(row.length === BOOKING_EXCEL_COLUMN_COUNT, "full column count");
 
   console.log("smoke-booking-excel-export: OK");
 }

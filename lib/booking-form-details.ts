@@ -100,6 +100,9 @@ export type BookingDetails = {
   importOwnerName?: string;
   importWelcomeMode?: string;
   importWorkMode?: string;
+  importAgencyAccountingCode?: string;
+  invoiceDifference?: number | null;
+  invoiceAmountDifference?: number | null;
   /** Public talep: card | transfer */
   paymentMethod?: string;
   paymentAmount?: string;
