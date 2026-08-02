@@ -17,7 +17,7 @@ const sampleContext: VillaDescriptionContext = {
   regionIlce: "Kaş",
   regionIl: "Antalya",
   extraInfo: "",
-  facilityType: "VILLA",
+  facilityType: "villa",
   guests: 2,
   extraCapacity: 0,
   livingRooms: 0,
