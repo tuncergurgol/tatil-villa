@@ -3,6 +3,7 @@ import { facilityTypeOptions } from "@/lib/facility-type";
 import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { buildRegionTree } from "@/lib/regions-tree";
 import { getRegionTreeFlat } from "@/lib/queries/region-tree";
+import { resolveVillaDocumentType } from "@/lib/villa-document-types";
 
 type RegionWithParents = {
   id: string;

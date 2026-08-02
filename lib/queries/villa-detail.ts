@@ -12,6 +12,7 @@ import {
   isVillaVisibleOnPublicSite,
   withPublicSiteVillaFilter,
 } from "@/lib/public-villa-site-filter";
+import { resolveVillaDocumentType } from "@/lib/villa-document-types";
 
 function startOfTodayUtc() {
   const now = new Date();
@@ -313,7 +314,10 @@ export async function getVillaDetailBySlug(
     livingRooms: villa.livingRooms,
     pricePerNight: villa.pricePerNight,
     documentNo: villa.documentNo?.trim() || "",
-    documentType: villa.documentType,
+    documentType: resolveVillaDocumentType(
+      villa.documentNo?.trim() || "",
+      villa.documentType
+    ),
     images,
     image: images[0] ?? villa.image,
     description: villa.description,

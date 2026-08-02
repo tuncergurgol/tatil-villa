@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { inferKonutBelgesiType } from "@/lib/villa-document-types";
+import { inferKonutBelgesiType, resolveVillaDocumentType } from "@/lib/villa-document-types";
 import { verifyKonutBelgeOnline } from "@/lib/konut-belge-check";
 
 export type VillaDocumentActionState = {
@@ -84,8 +84,10 @@ export async function getVillaDocumentData(villaId: string) {
 
   if (!villa) return null;
 
-  const resolvedDocumentType =
-    villa.documentType ?? inferKonutBelgesiType(villa.documentNo);
+  const resolvedDocumentType = resolveVillaDocumentType(
+    villa.documentNo,
+    villa.documentType
+  );
 
   return {
     ...villa,
@@ -156,8 +158,10 @@ export async function saveVillaDocument(
       ? `48-${Math.floor(10000 + Math.random() * 89999)}`
       : "");
 
-  const documentType =
-    parsed.data.documentType || inferKonutBelgesiType(documentNo);
+  const documentType = resolveVillaDocumentType(
+    documentNo,
+    parsed.data.documentType
+  );
 
   if (!documentType) {
     return { error: "Belge türü seçilmelidir" };

@@ -16,6 +16,7 @@ import {
 } from "@/lib/konut-belge-check";
 import {
   inferKonutBelgesiType,
+  resolveVillaDocumentType,
   TOURISM_DOCUMENT_TYPES,
 } from "@/lib/villa-document-types";
 import type { TourismDocumentType } from "@prisma/client";
@@ -69,11 +70,11 @@ export default function VillaDocumentModal({
           setLoadError("Villa bulunamadı");
           return;
         }
-        const loadedType = data.documentType ?? "";
         const loadedDocumentNo = data.documentNo ?? "";
-        const inferredType = inferKonutBelgesiType(loadedDocumentNo);
+        const loadedType =
+          resolveVillaDocumentType(loadedDocumentNo, data.documentType) ?? "";
 
-        setDocumentType(loadedType || inferredType || "");
+        setDocumentType(loadedType);
         setOwnerName(data.documentOwnerName);
         setAddress(data.documentAddress);
         setRoomCapacity(String(data.documentRoomCapacity ?? ""));
@@ -97,15 +98,14 @@ export default function VillaDocumentModal({
     setDocumentNo(value);
     setCheckStatus(null);
     setCheckMessage(null);
-    if (!documentType && inferKonutBelgesiType(value)) {
+    if (inferKonutBelgesiType(value)) {
       setDocumentType("KONUT_BELGESI");
     }
   }
 
   function canCheckDocument() {
     if (!documentNo.trim()) return false;
-    const resolvedType = documentType || inferKonutBelgesiType(documentNo);
-    return resolvedType === "KONUT_BELGESI";
+    return resolveVillaDocumentType(documentNo, documentType || null) === "KONUT_BELGESI";
   }
 
   function handleDocumentCheck() {

@@ -37,38 +37,6 @@ export function isKonutBelgesiDocumentType(
   return documentType === "KONUT_BELGESI";
 }
 
-export function isKonutBelgeLinkable(villa: {
-  documentType: TourismDocumentType | null | undefined;
-  documentNo: string;
-}) {
-  const documentNo = villa.documentNo.trim();
-  if (!documentNo) return false;
-
-  if (
-    villa.documentType &&
-    (NON_KONUT_BELGE_DOCUMENT_TYPES as readonly string[]).includes(
-      villa.documentType
-    )
-  ) {
-    return false;
-  }
-
-  if (isKonutBelgesiDocumentType(villa.documentType)) return true;
-
-  if (!villa.documentType) {
-    return inferKonutBelgesiType(documentNo) === "KONUT_BELGESI";
-  }
-
-  return false;
-}
-
-export function hasVillaTourismDocument(villa: {
-  documentType: TourismDocumentType | null;
-  documentNo: string;
-}) {
-  return Boolean(villa.documentType || villa.documentNo.trim());
-}
-
 export function inferKonutBelgesiType(
   documentNo: string
 ): TourismDocumentType | null {
@@ -79,6 +47,38 @@ export function inferKonutBelgesiType(
     return "KONUT_BELGESI";
   }
   return null;
+}
+
+/** Belge no önekine göre türü çözümler; 07-/35-/48-/54- ile başlayanlar Konut Belgesi sayılır. */
+export function resolveVillaDocumentType(
+  documentNo: string,
+  documentType: TourismDocumentType | null | undefined
+): TourismDocumentType | null {
+  const inferred = inferKonutBelgesiType(documentNo);
+  if (inferred) return inferred;
+  return documentType ?? null;
+}
+
+export function isKonutBelgeLinkable(villa: {
+  documentType: TourismDocumentType | null | undefined;
+  documentNo: string;
+}) {
+  const documentNo = villa.documentNo.trim();
+  if (!documentNo) return false;
+
+  return (
+    resolveVillaDocumentType(documentNo, villa.documentType) === "KONUT_BELGESI"
+  );
+}
+
+export function hasVillaTourismDocument(villa: {
+  documentType: TourismDocumentType | null;
+  documentNo: string;
+}) {
+  return Boolean(
+    resolveVillaDocumentType(villa.documentNo, villa.documentType) ||
+      villa.documentNo.trim()
+  );
 }
 
 export function parseDocumentNoParts(documentNo: string) {
