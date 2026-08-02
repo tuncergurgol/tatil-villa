@@ -2,6 +2,7 @@ import { BookingStatus } from "@prisma/client";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import {
   computeSalesRepCommissionEarned,
+  normalizeBookingSiteInfo,
   parseBookingDetails,
   resolveBookingCommissionAmount,
   type BookingDetails,
@@ -66,6 +67,12 @@ export function resolveBookingGuestIdentity(input: {
   };
 }
 
+export function formatBookingSiteNameForExcel(
+  siteInfo: string | null | undefined
+): string {
+  return normalizeBookingSiteInfo(siteInfo);
+}
+
 export function buildBookingExcelRowValues(input: {
   externalCode: number | null;
   createdAt: Date;
@@ -123,6 +130,7 @@ export function buildBookingExcelRowValues(input: {
 
   return [
     input.externalCode ?? "",
+    formatBookingSiteNameForExcel(input.details.siteInfo),
     dateToExcelSerial(input.createdAt),
     input.guestName,
     dateToExcelSerial(input.checkIn),

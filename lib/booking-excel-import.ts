@@ -12,6 +12,7 @@ export const BOOKING_DATA_START_ROW_INDEX = 4;
 export type ExcelBookingRow = {
   rowNumber: number;
   reservationCode: number;
+  siteName: string;
   reservationDate: Date | null;
   guestName: string;
   guestPhone: string;
@@ -68,152 +69,153 @@ export type ExcelBookingRow = {
 /** Excel Rezervasyon sayfası sütun → veritabanı alan eşlemesi (raporlama için). */
 export const BOOKING_EXCEL_COLUMN_MAP = [
   { column: "A", index: 0, header: "REZERVASYON KODU", target: "Booking.externalCode" },
-  { column: "B", index: 1, header: "REZERVASYON TARİHİ", target: "Booking.createdAt" },
-  { column: "C", index: 2, header: "ADI SOYADI", target: "Booking.guestName" },
-  { column: "D", index: 3, header: "GİRİŞ TARİHİ", target: "Booking.checkIn" },
-  { column: "E", index: 4, header: "ÇIKIŞ TARİHİ", target: "Booking.checkOut" },
-  { column: "F", index: 5, header: "GECE SAYISI", target: "(bilgi) nights" },
-  { column: "G", index: 6, header: "KİŞİ SAYISI", target: "Booking.adults" },
-  { column: "H", index: 7, header: "TESİS ADI", target: "Booking.villa.name" },
+  { column: "B", index: 1, header: "SİTE ADI", target: "details.siteInfo" },
+  { column: "C", index: 2, header: "REZERVASYON TARİHİ", target: "Booking.createdAt" },
+  { column: "D", index: 3, header: "ADI SOYADI", target: "Booking.guestName" },
+  { column: "E", index: 4, header: "GİRİŞ TARİHİ", target: "Booking.checkIn" },
+  { column: "F", index: 5, header: "ÇIKIŞ TARİHİ", target: "Booking.checkOut" },
+  { column: "G", index: 6, header: "GECE SAYISI", target: "(bilgi) nights" },
+  { column: "H", index: 7, header: "KİŞİ SAYISI", target: "Booking.adults" },
+  { column: "I", index: 8, header: "TESİS ADI", target: "Booking.villa.name" },
   {
-    column: "I",
-    index: 8,
+    column: "J",
+    index: 9,
     header: "BRÜT REZERVASYON TUTARI",
     target: "details.grossPrice",
   },
-  { column: "J", index: 9, header: "İNDİRİM", target: "details.discountAmount" },
-  { column: "K", index: 10, header: "NET REZERVASYON TUTARI", target: "Booking.totalPrice" },
-  { column: "L", index: 11, header: "ÖN ÖDEME", target: "details.prepaymentAmount" },
+  { column: "K", index: 10, header: "İNDİRİM", target: "details.discountAmount" },
+  { column: "L", index: 11, header: "NET REZERVASYON TUTARI", target: "Booking.totalPrice" },
+  { column: "M", index: 12, header: "ÖN ÖDEME", target: "details.prepaymentAmount" },
   {
-    column: "M",
-    index: 12,
+    column: "N",
+    index: 13,
     header: "REZERVASYON BAKİYESİ",
     target: "details.checkInPayment",
   },
-  { column: "N", index: 13, header: "MÜŞTERİDEN ALINACAK TEMİZLİK BEDELİ", target: "details.cleaningFee" },
-  { column: "O", index: 14, header: "MÜŞTERİDEN ALINACAK ISITMA BEDELİ", target: "details.heatingFee" },
-  { column: "P", index: 15, header: "FATURA TUTARI", target: "details.invoiceAmount" },
+  { column: "O", index: 14, header: "MÜŞTERİDEN ALINACAK TEMİZLİK BEDELİ", target: "details.cleaningFee" },
+  { column: "P", index: 15, header: "MÜŞTERİDEN ALINACAK ISITMA BEDELİ", target: "details.heatingFee" },
+  { column: "Q", index: 16, header: "FATURA TUTARI", target: "details.invoiceAmount" },
   {
-    column: "Q",
-    index: 16,
+    column: "R",
+    index: 17,
     header: "ÖN ÖDEME YÖNTEMİ",
     target: "details.importPaymentMethod",
   },
-  { column: "R", index: 17, header: "ACENTE", target: "details.agencyName" },
-  { column: "S", index: 18, header: "SATIŞ TEMSİLCİSİ", target: "details.salesRepName" },
-  { column: "T", index: 19, header: "REZERVASYON SON DURUM", target: "Booking.status" },
-  { column: "U", index: 20, header: "KONAKLAMA DURUMU", target: "Booking.stayStatus" },
+  { column: "S", index: 18, header: "ACENTE", target: "details.agencyName" },
+  { column: "T", index: 19, header: "SATIŞ TEMSİLCİSİ", target: "details.salesRepName" },
+  { column: "U", index: 20, header: "REZERVASYON SON DURUM", target: "Booking.status" },
+  { column: "V", index: 21, header: "KONAKLAMA DURUMU", target: "Booking.stayStatus" },
   {
-    column: "V",
-    index: 21,
+    column: "W",
+    index: 22,
     header: "VİLLA SAHİBİ MUHASEBE KODU",
     target: "details.importOwnerAccountingCode",
   },
   {
-    column: "W",
-    index: 22,
+    column: "X",
+    index: 23,
     header: "VİLLA SAHİBİ ADI",
     target: "details.importOwnerName",
   },
-  { column: "X", index: 23, header: "KARŞILAMA", target: "details.importWelcomeMode" },
-  { column: "Y", index: 24, header: "ÇALIŞMA ŞEKLİ", target: "details.importWorkMode" },
-  { column: "Z", index: 25, header: "KOMİSYON ORANI", target: "details.commissionRate" },
-  { column: "AA", index: 26, header: "KOMİSYON TUTARI", target: "details.commissionAmount" },
+  { column: "Y", index: 24, header: "KARŞILAMA", target: "details.importWelcomeMode" },
+  { column: "Z", index: 25, header: "ÇALIŞMA ŞEKLİ", target: "details.importWorkMode" },
+  { column: "AA", index: 26, header: "KOMİSYON ORANI", target: "details.commissionRate" },
+  { column: "AB", index: 27, header: "KOMİSYON TUTARI", target: "details.commissionAmount" },
   {
-    column: "AB",
-    index: 27,
+    column: "AC",
+    index: 28,
     header: "VİLLA SAHİBİNE ÖDENECEK PARA",
     target: "details.ownerPayableAmount",
   },
   {
-    column: "AC",
-    index: 28,
+    column: "AD",
+    index: 29,
     header: "VİLLA SAHİBİNİN MÜŞTERİDEN ALACAĞI PARA",
     target: "details.ownerCollectFromGuest",
   },
   {
-    column: "AD",
-    index: 29,
+    column: "AE",
+    index: 30,
     header: "VİLLA SAHİBİ ÖDEME YAPILACAK TARİH",
     target: "details.ownerPaymentDueDate",
   },
   {
-    column: "AE",
-    index: 30,
+    column: "AF",
+    index: 31,
     header: "VİLLA SAHİBİNE ÖDENEN TARİHİ",
     target: "details.ownerPaymentDate",
   },
   {
-    column: "AF",
-    index: 31,
+    column: "AG",
+    index: 32,
     header: "VİLLA SAHİBİNE ÖDENEN PARA",
     target: "details.ownerPaidAmount",
   },
   {
-    column: "AG",
-    index: 32,
+    column: "AH",
+    index: 33,
     header: "ACENTE KOMİSYON ORANI",
     target: "details.agencyCommissionRate",
   },
   {
-    column: "AH",
-    index: 33,
+    column: "AI",
+    index: 34,
     header: "ACENTEYE ÖDENECEK KOMİSYON TUTARI",
     target: "details.agencyCommissionEarned",
   },
   {
-    column: "AI",
-    index: 34,
+    column: "AJ",
+    index: 35,
     header: "ACENTEDEN GELECEK PARA",
     target: "details.agencyExpectedAmount",
   },
   {
-    column: "AJ",
-    index: 35,
+    column: "AK",
+    index: 36,
     header: "ACENTE MUHASEBE KODU",
     target: "details.importAgencyAccountingCode",
   },
   {
-    column: "AK",
-    index: 36,
+    column: "AL",
+    index: 37,
     header: "ACENTEDEN GELEN PARA TARİHİ",
     target: "details.agencyReceivedDate",
   },
   {
-    column: "AL",
-    index: 37,
+    column: "AM",
+    index: 38,
     header: "ACENTEDEN GELEN PARA TUTARI",
     target: "details.agencyReceivedAmount",
   },
-  { column: "AM", index: 38, header: "FATURA TARİHİ", target: "details.invoiceDate" },
-  { column: "AN", index: 39, header: "FATURA NO", target: "details.invoiceNo" },
-  { column: "AO", index: 40, header: "ADI SOYADI", target: "details.invoiceTitle" },
+  { column: "AN", index: 39, header: "FATURA TARİHİ", target: "details.invoiceDate" },
+  { column: "AO", index: 40, header: "FATURA NO", target: "details.invoiceNo" },
+  { column: "AP", index: 41, header: "ADI SOYADI", target: "details.invoiceTitle" },
   {
-    column: "AP",
-    index: 41,
+    column: "AQ",
+    index: 42,
     header: "FATURA TUTARI",
     target: "details.issuedInvoiceAmount",
   },
-  { column: "AQ", index: 42, header: "PRİM", target: "details.salesRepCommissionEarned" },
-  { column: "AR", index: 43, header: "FARK", target: "details.invoiceDifference" },
-  { column: "AS", index: 44, header: " FATURA FARK", target: "details.invoiceAmountDifference" },
-  { column: "AT", index: 45, header: "KBS ", target: "villa.kbsReportable" },
+  { column: "AR", index: 43, header: "PRİM", target: "details.salesRepCommissionEarned" },
+  { column: "AS", index: 44, header: "FARK", target: "details.invoiceDifference" },
+  { column: "AT", index: 45, header: " FATURA FARK", target: "details.invoiceAmountDifference" },
+  { column: "AU", index: 46, header: "KBS ", target: "villa.kbsReportable" },
   {
-    column: "AU",
-    index: 46,
+    column: "AV",
+    index: 47,
     header: "Komisyon-Fatura FarkI",
     target: "(computed) commissionInvoiceDifference",
   },
-  { column: "AV", index: 47, header: "TELEFON", target: "Booking.guestPhone" },
-  { column: "AW", index: 48, header: "E-POSTA", target: "Booking.guestEmail" },
-  { column: "AX", index: 49, header: "UYRUK", target: "details.adultGuests[0].nationality" },
+  { column: "AW", index: 48, header: "TELEFON", target: "Booking.guestPhone" },
+  { column: "AX", index: 49, header: "E-POSTA", target: "Booking.guestEmail" },
+  { column: "AY", index: 50, header: "UYRUK", target: "details.adultGuests[0].nationality" },
   {
-    column: "AY",
-    index: 50,
+    column: "AZ",
+    index: 51,
     header: "TC KİMLİK / PASAPORT NO",
     target: "details.guestTc / adultGuests[0].nationalId",
   },
-  { column: "AZ", index: 51, header: "DOĞUM TARİHİ", target: "(reserved)" },
+  { column: "BA", index: 52, header: "DOĞUM TARİHİ", target: "(reserved)" },
 ] as const;
 
 export const BOOKING_EXCEL_HEADERS = BOOKING_EXCEL_COLUMN_MAP.map(
@@ -458,6 +460,7 @@ export function buildBookingImportPayload(
       invoiceAmountDifference: row.invoiceAmountDifference,
       guestTc,
       guestCountry: row.guestNationality || undefined,
+      siteInfo: row.siteName || undefined,
       adultGuests,
       activityLogs: [
         {
@@ -475,13 +478,15 @@ export function buildBookingImportPayload(
 
 function parseRowFromStandardCells(
   cells: unknown[],
-  rowNumber: number
+  rowNumber: number,
+  hasSiteColumn: boolean
 ): ExcelBookingRow | null {
+  const offset = hasSiteColumn ? 1 : 0;
   const reservationCode = parseIntField(cells[0]);
-  const guestName = cleanText(cells[2]);
-  const facilityName = cleanText(cells[7]);
-  const checkIn = excelSerialToDate(cells[3]);
-  const checkOut = excelSerialToDate(cells[4]);
+  const guestName = cleanText(cells[2 + offset]);
+  const facilityName = cleanText(cells[7 + offset]);
+  const checkIn = excelSerialToDate(cells[3 + offset]);
+  const checkOut = excelSerialToDate(cells[4 + offset]);
 
   if (!reservationCode || !guestName || !facilityName || !checkIn || !checkOut) {
     return null;
@@ -490,63 +495,69 @@ function parseRowFromStandardCells(
   return {
     rowNumber,
     reservationCode,
-    reservationDate: excelSerialToDate(cells[1]),
+    siteName: hasSiteColumn ? cleanText(cells[1]) : "",
+    reservationDate: excelSerialToDate(cells[1 + offset]),
     guestName,
-    guestPhone: cleanText(cells[47]),
-    guestEmail: cleanText(cells[48]),
+    guestPhone: cleanText(cells[47 + offset]),
+    guestEmail: cleanText(cells[48 + offset]),
     checkIn,
     checkOut,
-    nights: parseIntField(cells[5]),
-    guestCount: parseIntField(cells[6], 1),
+    nights: parseIntField(cells[5 + offset]),
+    guestCount: parseIntField(cells[6 + offset], 1),
     facilityName,
-    grossAmount: parseAmount(cells[8]),
-    discountAmount: parseAmount(cells[9]),
-    netAmount: parseAmount(cells[10]),
-    prepaymentAmount: parseAmount(cells[11]),
-    balanceAmount: parseAmount(cells[12]),
-    cleaningFee: parseAmount(cells[13]),
-    heatingFee: parseAmount(cells[14]),
-    invoiceAmount: parseAmount(cells[15]),
-    paymentMethod: cleanText(cells[16]),
-    agencyName: cleanText(cells[17]),
-    salesRep: cleanText(cells[18]),
-    reservationStatus: cleanText(cells[19]),
-    stayStatus: cleanText(cells[20]),
-    ownerAccountingCode: cleanText(cells[21]),
-    ownerName: cleanText(cells[22]),
-    welcomeMode: cleanText(cells[23]),
-    workMode: cleanText(cells[24]),
-    commissionRate: parseAmount(cells[25]),
-    commissionAmount: parseAmount(cells[26]),
-    ownerPayableAmount: parseAmount(cells[27]),
-    ownerCollectFromGuest: parseAmount(cells[28]),
-    ownerPaymentDueDate: excelCellToDateKey(cells[29]),
-    ownerPaymentDate: excelCellToDateKey(cells[30]),
-    ownerPaidAmount: parseAmount(cells[31]),
-    agencyCommissionRate: parseAmount(cells[32]),
-    agencyCommissionEarned: parseAmount(cells[33]),
-    agencyExpectedAmount: parseAmount(cells[34]),
-    agencyAccountingCode: cleanText(cells[35]),
-    agencyReceivedDate: excelCellToDateKey(cells[36]),
-    agencyReceivedAmount: parseAmount(cells[37]),
-    invoiceDate: excelCellToDateKey(cells[38]),
-    invoiceNo: cleanText(cells[39]),
-    invoiceTitle: cleanText(cells[40]),
-    issuedInvoiceAmount: parseAmount(cells[41]),
-    salesRepCommissionEarned: parseAmount(cells[42]),
-    invoiceDifference: parseAmount(cells[43]),
-    invoiceAmountDifference: parseAmount(cells[44]),
-    kbsReportable: cleanText(cells[45]),
-    commissionInvoiceDifference: parseAmount(cells[46]),
-    guestNationality: cleanText(cells[49]),
-    guestNationalId: cleanText(cells[50]),
-    guestBirthDate: excelCellToDateKey(cells[51]),
+    grossAmount: parseAmount(cells[8 + offset]),
+    discountAmount: parseAmount(cells[9 + offset]),
+    netAmount: parseAmount(cells[10 + offset]),
+    prepaymentAmount: parseAmount(cells[11 + offset]),
+    balanceAmount: parseAmount(cells[12 + offset]),
+    cleaningFee: parseAmount(cells[13 + offset]),
+    heatingFee: parseAmount(cells[14 + offset]),
+    invoiceAmount: parseAmount(cells[15 + offset]),
+    paymentMethod: cleanText(cells[16 + offset]),
+    agencyName: cleanText(cells[17 + offset]),
+    salesRep: cleanText(cells[18 + offset]),
+    reservationStatus: cleanText(cells[19 + offset]),
+    stayStatus: cleanText(cells[20 + offset]),
+    ownerAccountingCode: cleanText(cells[21 + offset]),
+    ownerName: cleanText(cells[22 + offset]),
+    welcomeMode: cleanText(cells[23 + offset]),
+    workMode: cleanText(cells[24 + offset]),
+    commissionRate: parseAmount(cells[25 + offset]),
+    commissionAmount: parseAmount(cells[26 + offset]),
+    ownerPayableAmount: parseAmount(cells[27 + offset]),
+    ownerCollectFromGuest: parseAmount(cells[28 + offset]),
+    ownerPaymentDueDate: excelCellToDateKey(cells[29 + offset]),
+    ownerPaymentDate: excelCellToDateKey(cells[30 + offset]),
+    ownerPaidAmount: parseAmount(cells[31 + offset]),
+    agencyCommissionRate: parseAmount(cells[32 + offset]),
+    agencyCommissionEarned: parseAmount(cells[33 + offset]),
+    agencyExpectedAmount: parseAmount(cells[34 + offset]),
+    agencyAccountingCode: cleanText(cells[35 + offset]),
+    agencyReceivedDate: excelCellToDateKey(cells[36 + offset]),
+    agencyReceivedAmount: parseAmount(cells[37 + offset]),
+    invoiceDate: excelCellToDateKey(cells[38 + offset]),
+    invoiceNo: cleanText(cells[39 + offset]),
+    invoiceTitle: cleanText(cells[40 + offset]),
+    issuedInvoiceAmount: parseAmount(cells[41 + offset]),
+    salesRepCommissionEarned: parseAmount(cells[42 + offset]),
+    invoiceDifference: parseAmount(cells[43 + offset]),
+    invoiceAmountDifference: parseAmount(cells[44 + offset]),
+    kbsReportable: cleanText(cells[45 + offset]),
+    commissionInvoiceDifference: parseAmount(cells[46 + offset]),
+    guestNationality: cleanText(cells[49 + offset]),
+    guestNationalId: cleanText(cells[50 + offset]),
+    guestBirthDate: excelCellToDateKey(cells[51 + offset]),
   };
 }
 
-function isHeaderLikeRow(cells: unknown[]): boolean {
+export function standardExcelHasSiteColumn(headerRow: unknown[] | undefined): boolean {
+  const header = cleanText(headerRow?.[1]).toLocaleUpperCase("tr-TR");
+  return header.includes("SİTE ADI") || header.includes("SITE ADI");
+}
+
+function isHeaderLikeRow(cells: unknown[], hasSiteColumn: boolean): boolean {
   const first = cleanText(cells[0]);
-  const facility = cleanText(cells[7]);
+  const facility = cleanText(cells[7 + (hasSiteColumn ? 1 : 0)]);
   if (!first && !facility) return true;
   if (first.toLocaleUpperCase("tr-TR").includes("REZERVASYON KODU")) return true;
   if (/^[1-9]\d{0,2}$/.test(first) && !facility) return true;
@@ -568,17 +579,18 @@ export function readBookingRowsFromWorkbook(
     raw: true,
   }) as unknown[][];
 
+  const hasSiteColumn = standardExcelHasSiteColumn(matrix[BOOKING_HEADER_ROW_INDEX]);
   const rows: ExcelBookingRow[] = [];
   let skippedRows = 0;
 
   for (let index = BOOKING_DATA_START_ROW_INDEX; index < matrix.length; index++) {
     const cells = matrix[index] ?? [];
-    if (isHeaderLikeRow(cells)) {
+    if (isHeaderLikeRow(cells, hasSiteColumn)) {
       skippedRows += 1;
       continue;
     }
 
-    const row = parseRowFromStandardCells(cells, index + 1);
+    const row = parseRowFromStandardCells(cells, index + 1, hasSiteColumn);
     if (!row) {
       skippedRows += 1;
       continue;
@@ -662,6 +674,7 @@ export function readWeeklyBookingRowsFromWorkbook(
     rows.push({
       rowNumber: index + 1,
       reservationCode: parseIntField(cells[0]),
+      siteName: "",
       reservationDate: excelSerialToDate(cells[2]),
       guestName: cleanText(cells[3]),
       guestPhone: cleanText(cells[20]),

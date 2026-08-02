@@ -16,7 +16,7 @@ function assert(condition: unknown, message: string) {
 }
 
 function main() {
-  assert(BOOKING_EXCEL_COLUMN_MAP.length === 52, "52 sütun eşlemesi bekleniyor");
+  assert(BOOKING_EXCEL_COLUMN_MAP.length === 53, "53 sütun eşlemesi bekleniyor");
   assert(
     isConfirmedExcelReservationStatus("Onayladı"),
     "Onayladı onaylı sayılmalı"

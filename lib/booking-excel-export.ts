@@ -47,7 +47,7 @@ function findNextDataRow(matrix: unknown[][]): number {
   return matrix.length;
 }
 
-const EXCEL_DATE_COLUMNS = new Set([1, 3, 4, 29, 30, 36, 38]);
+const EXCEL_DATE_COLUMNS = new Set([2, 4, 5, 30, 31, 37, 39]);
 
 function writeRowToSheet(
   sheet: XLSX.WorkSheet,

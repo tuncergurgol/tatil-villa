@@ -29,6 +29,7 @@ function main() {
     status: BookingStatus.CONFIRMED,
     stayStatus: StayStatus.BEKLENIYOR,
     details: {
+      siteInfo: "Tatil Villacısı",
       prepaymentAmount: 11200,
       checkInPayment: 20800,
       cleaningFee: 4500,
@@ -55,17 +56,18 @@ function main() {
   });
 
   assert(row[0] === 115999, "externalCode");
-  assert(row[2] === "Test Misafir", "guestName");
-  assert(row[5] === 5, "nights");
-  assert(row[10] === 32000, "totalPrice");
-  assert(row[19] === "Onayladı", "status label");
-  assert(row[20] === "Bekleniyor", "stay status label");
-  assert(row[26] === 6400, "commission amount");
-  assert(row[27] === 4800, "owner payable");
-  assert(row[45] === "HAYIR", "kbs");
-  assert(row[47] === "+905321112233", "phone");
-  assert(row[48] === "test@example.com", "email");
-  assert(row[50] === "12345678901", "national id");
+  assert(row[1] === "Tatil Villacısı", "site name");
+  assert(row[3] === "Test Misafir", "guestName");
+  assert(row[6] === 5, "nights");
+  assert(row[11] === 32000, "totalPrice");
+  assert(row[20] === "Onayladı", "status label");
+  assert(row[21] === "Bekleniyor", "stay status label");
+  assert(row[27] === 6400, "commission amount");
+  assert(row[28] === 4800, "owner payable");
+  assert(row[46] === "HAYIR", "kbs");
+  assert(row[48] === "+905321112233", "phone");
+  assert(row[49] === "test@example.com", "email");
+  assert(row[51] === "12345678901", "national id");
   assert(row.length === BOOKING_EXCEL_COLUMN_COUNT, "full column count");
 
   console.log("smoke-booking-excel-export: OK");
