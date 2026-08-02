@@ -9,6 +9,7 @@
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
  * - villavakti.com (sezon fiyat tablosu)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
+ * - mustakilvillam.com (routingData id + api.mustakilvillam.com PriceList/Availability)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - tatilvillamda.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
  * - kaskavilla.com (Nuxt __NUXT__ priceTable + frontapi/periyotlar takvim)
@@ -53,6 +54,7 @@ export type ScrapedVillaPage = {
     | "villapaketi"
     | "villaciniz"
     | "villayolu"
+    | "mustakilvillam"
     | "akdenizvillam"
     | "villavakti"
     | "product_detail_rsc"
@@ -2539,6 +2541,7 @@ const TATILPREMIUM_API = "https://api.tatilpremium.com";
 const VILLAPAKETI_API = "https://api.villapaketi.com";
 const VILLACINIZ_API = "https://api.villaciniz.com.tr";
 const VILLAYOLU_API = "https://api.villayolu.com";
+const MUSTAKILVILLAM_API = "https://api.mustakilvillam.com";
 
 type VillaApiSiteConfig = {
   apiHost: string;
@@ -2549,7 +2552,8 @@ type VillaApiSiteConfig = {
     | "tatilpremium"
     | "villapaketi"
     | "villaciniz"
-    | "villayolu";
+    | "villayolu"
+    | "mustakilvillam";
 };
 
 function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
@@ -2595,6 +2599,13 @@ function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
         apiHost: VILLAYOLU_API,
         origin: "https://www.villayolu.com",
         hostKey: "villayolu",
+      };
+    }
+    if (host.includes("mustakilvillam")) {
+      return {
+        apiHost: MUSTAKILVILLAM_API,
+        origin: "https://www.mustakilvillam.com",
+        hostKey: "mustakilvillam",
       };
     }
   } catch {
@@ -3013,7 +3024,8 @@ export async function scrapeVillavillamFromPage(
     (site.hostKey === "tatilpremium" ||
       site.hostKey === "villapaketi" ||
       site.hostKey === "villaciniz" ||
-      site.hostKey === "villayolu")
+      site.hostKey === "villayolu" ||
+      site.hostKey === "mustakilvillam")
   ) {
     entity = extractTatilpremiumRoutingEntity(html, pageUrl);
   }
@@ -3076,13 +3088,22 @@ export async function scrapeVillavillamFromPage(
     }
   }
 
-  if (!availability || availability.occupancyByDateKey.size === 0) {
+  const hasAvailabilityCalendar = (parsed: {
+    occupancyByDateKey: Map<string, VillaDayOccupancy>;
+    dailyDateKeys: string[];
+  } | null): boolean =>
+    Boolean(
+      parsed &&
+        (parsed.occupancyByDateKey.size > 0 || parsed.dailyDateKeys.length > 0)
+    );
+
+  if (!hasAvailabilityCalendar(availability)) {
     availability =
       parseVillavillamAvailabilityFromResult(entity.result, entity.symbol) ??
       availability;
   }
 
-  if (!availability || availability.occupancyByDateKey.size === 0) {
+  if (!hasAvailabilityCalendar(availability)) {
     warnings.push(
       `${site.hostKey} Availability API boş döndü; sayfa verisinden müsaitlik okunamadı`
     );
@@ -3130,7 +3151,10 @@ export async function scrapeVillavillamFromPage(
 
   const occupancyByDateKey =
     availability?.occupancyByDateKey ?? new Map<string, VillaDayOccupancy>();
-  if (occupancyByDateKey.size === 0) {
+  if (
+    occupancyByDateKey.size === 0 &&
+    (availability?.dailyDateKeys.length ?? 0) === 0
+  ) {
     warnings.push(
       `${site.hostKey} fiyatları alındı; müsaitlik takvimi bulunamadı (tüm günler boş kabul edildi)`
     );
@@ -3149,6 +3173,8 @@ export async function scrapeVillavillamFromPage(
               ? "villaciniz"
               : site.hostKey === "villayolu"
                 ? "villayolu"
+                : site.hostKey === "mustakilvillam"
+                  ? "mustakilvillam"
                 : "villavillam",
     pageTitle: entity.title ?? extractPageTitle(html),
     periods,
