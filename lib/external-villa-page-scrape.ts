@@ -10,6 +10,8 @@
  * - villavakti.com (sezon fiyat tablosu)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
+ * - tatilvillamda.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
+ * - kaskavilla.com (Nuxt __NUXT__ priceTable + frontapi/periyotlar takvim)
  * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
  * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
  * - yazlikcim.com.tr (Boceksoft takvim; günlük fiyat yoksa schema/sezon fallback)
@@ -59,7 +61,9 @@ export type ScrapedVillaPage = {
     | "kvt"
     | "tatilkentim"
     | "villasayfam"
-    | "villaoteltatili";
+    | "villaoteltatili"
+    | "tatilvillamda"
+    | "kaskavilla";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -348,6 +352,31 @@ async function fetchText(
   return response.text();
 }
 
+async function fetchJson(
+  url: string,
+  options?: { referer?: string }
+): Promise<unknown> {
+  const headers: Record<string, string> = {
+    ...(FETCH_HEADERS as Record<string, string>),
+    Accept: "application/json, text/plain, */*",
+    "X-Requested-With": "XMLHttpRequest",
+  };
+  if (options?.referer) headers.Referer = options.referer;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error(`JSON alınamadı (${response.status}): ${url}`);
+  }
+
+  return response.json() as Promise<unknown>;
+}
+
 function extractPageTitle(html: string): string | null {
   const og = html.match(
     /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i
@@ -379,7 +408,10 @@ function parsePercentRate(raw: string | null | undefined): number | null {
 }
 
 function parseTurkishMoneyAmount(raw: string): number | null {
-  const s = raw.trim().replace(/\s/g, "");
+  const s = raw
+    .trim()
+    .replace(/\s/g, "")
+    .replace(/[^\d.,]/g, "");
   if (!s) return null;
   if (/^\d{1,3}(?:\.\d{3})+$/.test(s)) {
     return Number(s.replace(/\./g, ""));
@@ -3803,6 +3835,354 @@ export function scrapeVillakalkanFromHtml(
   };
 }
 
+function looksLikeTatilvillamda(pageUrl: string, html: string): boolean {
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  if (host.includes("tatilvillamda")) return true;
+  return html.includes("fiyat_yazilan_tarihler");
+}
+
+function extractEmbeddedJsArray(html: string, varName: string): unknown | null {
+  const marker = new RegExp(`(?:var\\s+)?${varName}\\s*=\\s*\\[`);
+  const match = marker.exec(html);
+  if (!match || match.index == null) return null;
+
+  const start = match.index + match[0].length - 1;
+  let depth = 0;
+  for (let index = start; index < html.length; index++) {
+    const char = html[index];
+    if (char === "[") depth++;
+    else if (char === "]") {
+      depth--;
+      if (depth === 0) {
+        const expr = html.slice(start, index + 1);
+        try {
+          return Function(`"use strict"; return ${expr}`)();
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function extractTatilvillamdaMinStayNights(html: string): number | null {
+  const text = stripTags(html);
+  const match = text.match(/minimum\s*kiralama\s*:?\s*(\d+)\s*gece/i);
+  return match ? positiveInt(Number(match[1])) : null;
+}
+
+export function parseTatilvillamdaPeriods(
+  html: string
+): MappedVillaPricePeriod[] {
+  const rows = extractEmbeddedJsArray(html, "fiyat_yazilan_tarihler");
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const deposit = extractDamageDeposit(html);
+  const defaultMinStay = extractTatilvillamdaMinStayNights(html);
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+
+  for (const raw of rows) {
+    if (!Array.isArray(raw) || raw.length < 3) continue;
+    const startKey = normalizeLooseDateKey(String(raw[0] ?? ""));
+    const endKey = normalizeLooseDateKey(String(raw[1] ?? ""));
+    if (!startKey || !endKey) continue;
+    const startDate = parseDateKey(startKey);
+    const endDate = parseDateKey(endKey);
+    if (!startDate || !endDate || compareDates(startDate, endDate) > 0) continue;
+
+    const nightlyPrice = parseTurkishMoneyAmount(String(raw[2] ?? ""));
+    if (!nightlyPrice || nightlyPrice <= 0) continue;
+
+    const rowMinStay = positiveInt(Number(String(raw[3] ?? "").trim()));
+    const minStayNights = rowMinStay ?? defaultMinStay;
+    const dedupeKey = `${startKey}_${endKey}_${nightlyPrice}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate,
+        endDate,
+        nightlyPrice,
+        currency: mapCurrencyCode(String(raw[2] ?? "")),
+        minStayNights,
+        damageDeposit: deposit.amount,
+        damageDepositCurrency: deposit.currency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+export function parseTatilvillamdaOccupancy(
+  html: string
+): Map<string, VillaDayOccupancy> {
+  const occupancy = new Map<string, VillaDayOccupancy>();
+  const dolu = extractEmbeddedJsArray(html, "dolutarihler");
+  if (!Array.isArray(dolu)) return occupancy;
+
+  for (const raw of dolu) {
+    const key = normalizeLooseDateKey(String(raw ?? ""));
+    if (!key) continue;
+    occupancy.set(key, "BOOKED");
+  }
+
+  return occupancy;
+}
+
+export function scrapeTatilvillamdaFromHtml(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): ScrapedVillaPage | null {
+  if (!looksLikeTatilvillamda(pageUrl, html)) return null;
+
+  const periods = parseTatilvillamdaPeriods(html);
+  const occupancyByDateKey = parseTatilvillamdaOccupancy(html);
+
+  if (periods.length === 0) {
+    if (occupancyByDateKey.size > 0) {
+      warnings.push(
+        "Tatilvillamda takvimi okundu ancak fiyat_yazilan_tarihler bulunamadı"
+      );
+    }
+    return null;
+  }
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "Tatilvillamda fiyatları alındı; dolutarihler takvimi boş"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "tatilvillamda",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
+function looksLikeKaskavilla(pageUrl: string): boolean {
+  try {
+    return normalizeHost(new URL(pageUrl).hostname).includes("kaskavilla");
+  } catch {
+    return false;
+  }
+}
+
+function parseKaskavillaDmyDate(raw: string): Date | null {
+  const key = normalizeLooseDateKey(raw.trim());
+  return key ? parseDateKey(key) : null;
+}
+
+type KaskavillaPriceSets = {
+  prepaymentRate: number | null;
+  commissionRate: number | null;
+  cleaningFee: number | null;
+  cleaningFeeCurrency: VillaPeriodCurrency;
+  damageDeposit: number | null;
+  damageDepositCurrency: VillaPeriodCurrency;
+  minStayNights: number | null;
+};
+
+function parseKaskavillaPriceSets(raw: unknown): KaskavillaPriceSets {
+  const o =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const currency = mapCurrencyCode(String(o.vil_currency ?? "TL"));
+  return {
+    prepaymentRate: positiveInt(Number(o.vil_kaparo)),
+    commissionRate: positiveInt(Number(o.vil_komisyon)),
+    cleaningFee: positiveInt(Number(o.vil_extra_tem)),
+    cleaningFeeCurrency: currency,
+    damageDeposit: positiveInt(Number(o.vil_depozito)),
+    damageDepositCurrency: currency,
+    minStayNights: positiveInt(Number(o.vil_enaz)),
+  };
+}
+
+export function parseKaskavillaPriceTable(
+  priceTable: unknown,
+  priceSets: KaskavillaPriceSets
+): MappedVillaPricePeriod[] {
+  if (!Array.isArray(priceTable) || priceTable.length === 0) return [];
+
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+
+  for (const raw of priceTable) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = raw as Record<string, unknown>;
+    const startDate = parseKaskavillaDmyDate(String(row.fiy_start ?? ""));
+    const endDate = parseKaskavillaDmyDate(String(row.fiy_end ?? ""));
+    if (!startDate || !endDate || compareDates(startDate, endDate) > 0) continue;
+
+    const priceRaw = row.fiy_fiyat;
+    const listedPrice =
+      typeof priceRaw === "number"
+        ? priceRaw
+        : parseTurkishMoneyAmount(String(priceRaw ?? ""));
+    if (!listedPrice || listedPrice <= 0) continue;
+
+    const minStayNights =
+      positiveInt(Number(row.fiy_enaz)) ?? priceSets.minStayNights;
+    const priceType = positiveInt(Number(row.fiy_tur));
+    const isWeekly = priceType === 1 || (minStayNights != null && minStayNights >= 7);
+    const weeklyPrice = isWeekly ? listedPrice : null;
+    const nightlyPrice = isWeekly
+      ? deriveNightlyFromWeekly(listedPrice)
+      : listedPrice;
+    if (!nightlyPrice || nightlyPrice <= 0) continue;
+
+    const dedupeKey = `${toDateKey(startDate)}_${toDateKey(endDate)}_${nightlyPrice}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate,
+        endDate,
+        nightlyPrice,
+        weeklyPrice,
+        currency: priceSets.damageDepositCurrency,
+        minStayNights,
+        prepaymentRate: priceSets.prepaymentRate,
+        commissionRate: priceSets.commissionRate,
+        cleaningFee: priceSets.cleaningFee,
+        cleaningFeeCurrency: priceSets.cleaningFeeCurrency,
+        damageDeposit: priceSets.damageDeposit,
+        damageDepositCurrency: priceSets.damageDepositCurrency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+function addKaskavillaOccupancyDates(
+  occupancy: Map<string, VillaDayOccupancy>,
+  dates: unknown,
+  status: VillaDayOccupancy
+) {
+  if (!Array.isArray(dates)) return;
+  for (const raw of dates) {
+    const key = normalizeLooseDateKey(String(raw ?? ""));
+    if (!key) continue;
+    if (status === "BOOKED") {
+      occupancy.set(key, "BOOKED");
+      continue;
+    }
+    if (!occupancy.has(key) || occupancy.get(key) !== "BOOKED") {
+      occupancy.set(key, status);
+    }
+  }
+}
+
+export function parseKaskavillaOccupancyFromPeriyotlar(
+  payload: unknown
+): Map<string, VillaDayOccupancy> {
+  const occupancy = new Map<string, VillaDayOccupancy>();
+  if (!payload || typeof payload !== "object") return occupancy;
+
+  const o = payload as Record<string, unknown>;
+  addKaskavillaOccupancyDates(occupancy, o.kapali, "BOOKED");
+  addKaskavillaOccupancyDates(occupancy, o.kapaliGiris, "BOOKED");
+  addKaskavillaOccupancyDates(occupancy, o.ortakKapali, "BOOKED");
+  addKaskavillaOccupancyDates(occupancy, o.opsiyon, "OPTION");
+  addKaskavillaOccupancyDates(occupancy, o.opsiyonGiris, "OPTION");
+  addKaskavillaOccupancyDates(occupancy, o.ortakOpsiyon, "OPTION");
+
+  return occupancy;
+}
+
+export async function scrapeKaskavillaFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeKaskavilla(pageUrl)) return null;
+
+  const nuxt = parseNuxtPayload(html);
+  if (!nuxt || typeof nuxt !== "object") {
+    warnings.push("Kaskavilla window.__NUXT__ okunamadı");
+    return null;
+  }
+
+  const data0 = (nuxt as { data?: unknown[] }).data?.[0];
+  if (!data0 || typeof data0 !== "object") {
+    warnings.push("Kaskavilla __NUXT__ data[0] yok");
+    return null;
+  }
+
+  const vil = (data0 as { vil?: unknown }).vil;
+  if (!vil || typeof vil !== "object") {
+    warnings.push("Kaskavilla __NUXT__ vil yok");
+    return null;
+  }
+
+  const villa = vil as Record<string, unknown>;
+  const vilId = positiveInt(Number(villa.id));
+  const priceSets = parseKaskavillaPriceSets(villa.price_sets ?? villa.priceSets);
+  const priceTable = villa.priceTable ?? villa.price;
+  const periods = parseKaskavillaPriceTable(priceTable, priceSets);
+
+  let occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  if (vilId) {
+    try {
+      await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+      const payload = await fetchJson(
+        `https://panel.kaskavilla.com/frontapi/periyotlar/${vilId}`,
+        { referer: pageUrl }
+      );
+      occupancyByDateKey = parseKaskavillaOccupancyFromPeriyotlar(payload);
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `Kaskavilla takvim API hatası: ${error.message}`
+          : "Kaskavilla takvim API hatası"
+      );
+    }
+  } else {
+    warnings.push("Kaskavilla villa id bulunamadı; takvim atlandı");
+  }
+
+  if (periods.length === 0) {
+    if (occupancyByDateKey.size > 0) {
+      warnings.push(
+        "Kaskavilla takvimi okundu ancak priceTable bulunamadı"
+      );
+    }
+    return null;
+  }
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "Kaskavilla fiyatları alındı; müsaitlik takvimi boş veya okunamadı"
+    );
+  }
+
+  const title =
+    typeof villa.vil_adi === "string" ? villa.vil_adi.trim() : null;
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "kaskavilla",
+    pageTitle: title || extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 function looksLikeYazlikvillaci(pageUrl: string, html: string): boolean {
   const host = normalizeHost(new URL(pageUrl).hostname);
   if (host.includes("yazlikvillaci")) return true;
@@ -4060,6 +4440,13 @@ export async function scrapeExternalVillaPage(
   const heryer = scrapeHeryervillamFromHtml(parsed.toString(), html, warnings);
   if (heryer) return finalizeScrapedPage(heryer, html);
 
+  const tatilvillamda = scrapeTatilvillamdaFromHtml(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (tatilvillamda) return finalizeScrapedPage(tatilvillamda, html);
+
   const yazlikvillaci = await scrapeYazlikvillaciFromPage(
     parsed.toString(),
     html,
@@ -4101,6 +4488,13 @@ export async function scrapeExternalVillaPage(
     warnings
   );
   if (villakalkan) return finalizeScrapedPage(villakalkan, html);
+
+  const kaskavilla = await scrapeKaskavillaFromPage(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (kaskavilla) return finalizeScrapedPage(kaskavilla, html);
 
   const kvt = await scrapeKvtFromPage(parsed.toString(), html, warnings);
   if (kvt) return finalizeScrapedPage(kvt, html);
@@ -4165,6 +4559,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, tatilvillamda.com, kaskavilla.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
