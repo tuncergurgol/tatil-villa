@@ -49,6 +49,7 @@ export type BookingDetails = {
   /** Public talep ekranından gelen kalemler admin’de period birim ücretiyle ezilmesin */
   feesFromQuote?: boolean;
   source?: string;
+  importSource?: string;
   commissionRate?: number | null;
   commissionAmount?: number | null;
   guestTc?: string;
