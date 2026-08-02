@@ -395,7 +395,7 @@ export function buildBookingImportPayload(
           {
             name: guest.guestName.split(" ")[0] ?? guest.guestName,
             surname: guest.guestName.split(" ").slice(1).join(" "),
-            nationalId: guestTc,
+            nationalId: guestTc || "",
             plate: "",
             nationality: row.guestNationality || "TC",
           },
