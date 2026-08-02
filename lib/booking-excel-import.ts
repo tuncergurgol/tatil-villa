@@ -96,6 +96,29 @@ export const BOOKING_EXCEL_COLUMN_MAP = [
   { column: "Z", index: 25, header: "KOMİSYON ORANI", target: "details.commissionRate" },
 ] as const;
 
+export const BOOKING_EXCEL_HEADERS = BOOKING_EXCEL_COLUMN_MAP.map(
+  (column) => column.header
+);
+
+export function formatBookingStatusForExcel(status: BookingStatus): string {
+  switch (status) {
+    case BookingStatus.CONFIRMED:
+      return "Onayladı";
+    case BookingStatus.CANCELLED:
+      return "İptal";
+    case BookingStatus.COMPENSATION:
+      return "Tazminat";
+    case BookingStatus.CONFIRMATION_SENT:
+      return "Konfirme";
+    case BookingStatus.PREPAYMENT:
+      return "Ön Ödeme";
+    case BookingStatus.NEW:
+      return "Yeni";
+    default:
+      return status;
+  }
+}
+
 export type BookingExcelFormat = "standard" | "weekly";
 
 export const WEEKLY_BOOKING_SHEET_NAME = "Table1";

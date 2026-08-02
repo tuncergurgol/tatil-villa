@@ -4,7 +4,7 @@
  *   npx tsx scripts/smoke-booking-excel-export.ts
  */
 import { buildBookingExcelRowValues } from "../lib/booking-excel-export";
-import { StayStatus } from "@/lib/stay-status";
+import { BookingStatus, StayStatus } from "@prisma/client";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -21,6 +21,7 @@ function main() {
     children: 0,
     facilityName: "Villa Test",
     totalPrice: 32000,
+    status: BookingStatus.CONFIRMED,
     stayStatus: StayStatus.BEKLENIYOR,
     details: {
       prepaymentAmount: 11200,

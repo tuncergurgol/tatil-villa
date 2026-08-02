@@ -9,6 +9,7 @@ import {
   BOOKING_DATA_START_ROW_INDEX,
   BOOKING_SHEET_NAME,
   DEFAULT_BOOKING_EXCEL_PATH,
+  formatBookingStatusForExcel,
 } from "@/lib/booking-excel-import";
 
 export type BookingExcelExportResult =
@@ -34,10 +35,6 @@ function dateToExcelSerial(date: Date): number {
   return (utc - Date.UTC(1899, 11, 30)) / 86_400_000;
 }
 
-function formatReservationStatusLabel(): string {
-  return "Onayladı";
-}
-
 function formatSalesTypeLabel(value: string | null | undefined): string {
   const text = (value ?? "").trim().toLowerCase();
   if (text === "kiralama") return "KİRALAMA";
@@ -45,7 +42,7 @@ function formatSalesTypeLabel(value: string | null | undefined): string {
 }
 
 export function buildBookingExcelRowValues(input: {
-  externalCode: number;
+  externalCode: number | null;
   createdAt: Date;
   guestName: string;
   checkIn: Date;
@@ -54,6 +51,7 @@ export function buildBookingExcelRowValues(input: {
   children: number;
   facilityName: string;
   totalPrice: number | null;
+  status: BookingStatus;
   stayStatus: string;
   details: ReturnType<typeof parseBookingDetails>;
   ownerAccountingCode?: string | null;
@@ -69,7 +67,7 @@ export function buildBookingExcelRowValues(input: {
   const balanceAmount = details.checkInPayment ?? null;
 
   return [
-    input.externalCode,
+    input.externalCode ?? "",
     dateToExcelSerial(input.createdAt),
     input.guestName,
     dateToExcelSerial(input.checkIn),
@@ -88,7 +86,7 @@ export function buildBookingExcelRowValues(input: {
     details.importPaymentMethod || details.paymentMethod || "",
     details.agencyName || "Tatil Villacısı",
     details.salesRepName || "",
-    formatReservationStatusLabel(),
+    formatBookingStatusForExcel(input.status),
     getStayStatusLabel(
       input.stayStatus as Parameters<typeof getStayStatusLabel>[0]
     ),
@@ -265,6 +263,7 @@ export async function exportConfirmedBookingToExcel(
     children: booking.children,
     facilityName: booking.villa.originalName || booking.villa.name,
     totalPrice: booking.totalPrice,
+    status: booking.status,
     stayStatus: booking.stayStatus,
     details,
     ownerAccountingCode: booking.villa.owner?.accountingCode,

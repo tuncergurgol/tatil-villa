@@ -148,6 +148,7 @@ export default function BookingManagement({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<AdminPageSize>(10);
+  const [isExporting, startExport] = useTransition();
 
   const activeFilterCount = countActiveBookingFilters(filters);
 
@@ -197,6 +198,56 @@ export default function BookingManagement({
 
   function refreshList() {
     router.refresh();
+  }
+
+  async function downloadBookingReportExcel(
+    rows: (string | number)[][],
+    fileName: string
+  ) {
+    const XLSX = await import("xlsx");
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rezervasyon");
+    XLSX.writeFile(workbook, fileName);
+  }
+
+  function handleExportReport() {
+    if (filteredBookings.length === 0) {
+      window.alert("Filtreye uygun kayıt bulunamadı.");
+      return;
+    }
+
+    startExport(async () => {
+      try {
+        const response = await fetch("/api/admin/booking-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookingIds: filteredBookings.map((booking) => booking.id),
+          }),
+        });
+
+        if (!response.ok) {
+          window.alert("Rezervasyon raporu oluşturulamadı.");
+          return;
+        }
+
+        const data = (await response.json()) as {
+          rows: (string | number)[][];
+          filename: string;
+          count: number;
+        };
+
+        if (data.count === 0) {
+          window.alert("Dışa aktarılacak kayıt bulunamadı.");
+          return;
+        }
+
+        await downloadBookingReportExcel(data.rows, data.filename);
+      } catch {
+        window.alert("Rezervasyon raporu indirilemedi.");
+      }
+    });
   }
 
   useEffect(() => {
@@ -263,10 +314,12 @@ export default function BookingManagement({
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            onClick={handleExportReport}
+            disabled={isExporting}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <FileText className="h-4 w-4" />
-            Rezervasyon Raporu
+            {isExporting ? "Hazırlanıyor..." : "Rezervasyon Raporu"}
           </button>
           <button
             type="button"
