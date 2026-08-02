@@ -4,10 +4,7 @@ import {
   buildKonutBelgeCheckUrl,
   type KonutBelgeCheckStatus,
 } from "@/lib/konut-belge-check";
-import {
-  inferKonutBelgesiType,
-  isKonutBelgesiDocumentType,
-} from "@/lib/villa-document-types";
+import { isKonutBelgeLinkable } from "@/lib/villa-document-types";
 
 export type KonutBelgeCheckRow = {
   villaId: string;
@@ -25,9 +22,7 @@ function isKonutBelgesiVilla(villa: {
   documentType: TourismDocumentType | null;
   documentNo: string;
 }) {
-  if (isKonutBelgesiDocumentType(villa.documentType)) return true;
-  if (villa.documentType) return false;
-  return inferKonutBelgesiType(villa.documentNo) === "KONUT_BELGESI";
+  return isKonutBelgeLinkable(villa);
 }
 
 export async function getKonutBelgeCheckRows() {

@@ -22,11 +22,44 @@ export function getTourismDocumentLabel(type: TourismDocumentType | null) {
   return TOURISM_DOCUMENT_TYPES.find((item) => item.value === type)?.label ?? "";
 }
 
+export const NON_KONUT_BELGE_DOCUMENT_TYPES = [
+  "TURIZM_ISLETME_BELGESI",
+  "KISMI_TURIZM_ISLETME_BELGESI",
+  "TURIZM_YATIRIMI_BELGESI",
+  "BASIT_KONAKLAMA",
+  "PLAJ_ISLETMESI",
+] as const satisfies readonly TourismDocumentType[];
+
 /** KTB vatandas.ktb.gov.tr/konut-belge linki yalnızca Konut Belgesi (7464 S.K.) için geçerlidir. */
 export function isKonutBelgesiDocumentType(
   documentType: TourismDocumentType | null | undefined
 ) {
   return documentType === "KONUT_BELGESI";
+}
+
+export function isKonutBelgeLinkable(villa: {
+  documentType: TourismDocumentType | null | undefined;
+  documentNo: string;
+}) {
+  const documentNo = villa.documentNo.trim();
+  if (!documentNo) return false;
+
+  if (
+    villa.documentType &&
+    (NON_KONUT_BELGE_DOCUMENT_TYPES as readonly string[]).includes(
+      villa.documentType
+    )
+  ) {
+    return false;
+  }
+
+  if (isKonutBelgesiDocumentType(villa.documentType)) return true;
+
+  if (!villa.documentType) {
+    return inferKonutBelgesiType(documentNo) === "KONUT_BELGESI";
+  }
+
+  return false;
 }
 
 export function hasVillaTourismDocument(villa: {

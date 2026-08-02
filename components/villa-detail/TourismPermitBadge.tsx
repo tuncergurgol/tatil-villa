@@ -1,7 +1,7 @@
 import { BadgeCheck } from "lucide-react";
 import type { TourismDocumentType } from "@prisma/client";
-import { isKonutBelgesiDocumentType } from "@/lib/villa-document-types";
 import { buildKonutBelgeCheckUrl } from "@/lib/konut-belge-check";
+import { isKonutBelgeLinkable } from "@/lib/villa-document-types";
 
 type TourismPermitBadgeProps = {
   documentNo: string;
@@ -15,7 +15,11 @@ export default function TourismPermitBadge({
   const trimmed = documentNo.trim();
   if (!trimmed) return null;
 
-  const isLinkable = isKonutBelgesiDocumentType(documentType);
+  const isLinkable = isKonutBelgeLinkable({
+    documentNo: trimmed,
+    documentType,
+  });
+
   const className =
     "group flex min-w-0 flex-wrap items-center gap-2.5 rounded-xl bg-slate-100/90 px-3 py-2.5 sm:gap-3.5 sm:px-4 sm:py-3 " +
     (isLinkable
