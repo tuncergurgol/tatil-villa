@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -74,10 +74,51 @@ function FieldStatus({ filled }: { filled: boolean }) {
   );
 }
 
+function isRowContentComplete(row: VillaContentAiBulkRow) {
+  return (
+    row.hasDescription &&
+    row.hasSeoTitle &&
+    row.hasSeoKeywords &&
+    row.hasSeoDescription
+  );
+}
+
+function SiteNameBadge({
+  label,
+  complete,
+}: {
+  label: string;
+  complete: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] font-bold shadow-sm ${
+        complete
+          ? "border-emerald-300 bg-emerald-500 text-white"
+          : "border-red-300 bg-red-500 text-white"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+const TABLE_COLGROUP = (
+  <colgroup>
+    <col className="w-10" />
+    <col className="w-[72px]" />
+    <col className="w-[180px]" />
+    <col className="w-[220px]" />
+    <col className="w-[150px]" />
+    <col className="w-[150px]" />
+    <col className="w-[190px]" />
+    <col className="w-[170px]" />
+    <col className="w-[230px]" />
+  </colgroup>
+);
+
 export default function VillaContentAiBulkManagement({ rows }: Props) {
   const router = useRouter();
-  const headerScrollRef = useRef<HTMLDivElement>(null);
-  const bodyScrollRef = useRef<HTMLDivElement>(null);
   const [columnFilters, setColumnFilters] =
     useState<VillaContentAiColumnFilters>(emptyVillaContentAiColumnFilters);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -163,14 +204,6 @@ export default function VillaContentAiBulkManagement({ rows }: Props) {
     });
   }
 
-  function syncHorizontalScroll(source: "header" | "body") {
-    const header = headerScrollRef.current;
-    const body = bodyScrollRef.current;
-    if (!header || !body) return;
-    if (source === "header") body.scrollLeft = header.scrollLeft;
-    else header.scrollLeft = body.scrollLeft;
-  }
-
   return (
     <div className="space-y-0">
       <div className="sticky top-0 z-30 -mx-6 space-y-5 bg-[#eef0f3] px-6 pb-3 pt-0 lg:-mx-8 lg:px-8">
@@ -253,30 +286,24 @@ export default function VillaContentAiBulkManagement({ rows }: Props) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div
-          ref={headerScrollRef}
-          onScroll={() => syncHorizontalScroll("header")}
-          className="overflow-x-auto border-b border-gray-200"
-        >
-          <table className="min-w-[1400px] w-full text-left text-sm">
-            <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+        <div className="max-h-[calc(100vh-320px)] overflow-auto">
+          <table className="w-full min-w-[1412px] table-fixed text-left text-sm">
+            {TABLE_COLGROUP}
+            <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500 shadow-[0_1px_0_#e5e7eb]">
               <tr>
-                <th className="w-10 px-3 py-3" />
+                <th className="px-3 py-3" />
                 <th className="px-3 py-3">Villa ID</th>
-                <th className="min-w-[180px] px-3 py-3">Villa Adı</th>
-                <th className="min-w-[220px] px-3 py-3">Açıklama</th>
-                <th className="min-w-[160px] px-3 py-3">Meta Başlık</th>
-                <th className="min-w-[160px] px-3 py-3">Anahtar Kelimeler</th>
-                <th className="min-w-[200px] px-3 py-3">Meta Açıklama</th>
-                <th className="min-w-[180px] px-3 py-3">Site Adları</th>
-                <th className="min-w-[220px] px-3 py-3 text-right">
-                  Güncelle / Rapor
-                </th>
+                <th className="px-3 py-3">Villa Adı</th>
+                <th className="px-3 py-3">Açıklama</th>
+                <th className="px-3 py-3">Meta Başlık</th>
+                <th className="px-3 py-3">Anahtar Kelimeler</th>
+                <th className="px-3 py-3">Meta Açıklama</th>
+                <th className="px-3 py-3">Site Adları</th>
+                <th className="px-3 py-3 text-right">Güncelle / Rapor</th>
               </tr>
-              <tr className="border-t border-gray-200 bg-white">
+              <tr className="border-t border-gray-200 bg-white normal-case tracking-normal">
                 <th className="px-3 py-2" />
-                <th className="px-3 py-2" />
-                <th className="px-3 py-2">
+                <th className="px-3 py-2" colSpan={2}>
                   <input
                     type="text"
                     value={columnFilters.villaSearch}
@@ -326,15 +353,6 @@ export default function VillaContentAiBulkManagement({ rows }: Props) {
                 </th>
               </tr>
             </thead>
-          </table>
-        </div>
-
-        <div
-          ref={bodyScrollRef}
-          onScroll={() => syncHorizontalScroll("body")}
-          className="max-h-[calc(100vh-320px)] overflow-x-auto overflow-y-auto"
-        >
-          <table className="min-w-[1400px] w-full text-left text-sm">
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
@@ -348,6 +366,7 @@ export default function VillaContentAiBulkManagement({ rows }: Props) {
               ) : (
                 filteredRows.map((row) => {
                   const isBusy = busyVillaId === row.id;
+                  const contentComplete = isRowContentComplete(row);
                   return (
                     <tr
                       key={row.id}
@@ -410,15 +429,14 @@ export default function VillaContentAiBulkManagement({ rows }: Props) {
                         </p>
                       </td>
                       <td className="px-3 py-3">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1.5">
                           {row.siteLabels.length > 0 ? (
                             row.siteLabels.map((label) => (
-                              <span
+                              <SiteNameBadge
                                 key={label}
-                                className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700"
-                              >
-                                {label}
-                              </span>
+                                label={label}
+                                complete={contentComplete}
+                              />
                             ))
                           ) : (
                             <span className="text-xs text-gray-400">—</span>
