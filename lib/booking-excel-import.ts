@@ -74,7 +74,7 @@ export const BOOKING_EXCEL_COLUMN_MAP = [
   { column: "E", index: 4, header: "ÇIKIŞ TARİHİ", target: "Booking.checkOut" },
   { column: "F", index: 5, header: "GECE SAYISI", target: "(bilgi) nights" },
   { column: "G", index: 6, header: "KİŞİ SAYISI", target: "Booking.adults" },
-  { column: "H", index: 7, header: "TESİS ADI", target: "Booking.villaId (lookup)" },
+  { column: "H", index: 7, header: "TESİS ADI", target: "Booking.villa.name" },
   {
     column: "I",
     index: 8,

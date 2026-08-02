@@ -198,7 +198,7 @@ export async function exportConfirmedBookingToExcel(
     checkOut: booking.checkOut,
     adults: booking.adults,
     children: booking.children,
-    facilityName: booking.villa.originalName || booking.villa.name,
+    facilityName: booking.villa.name,
     totalPrice: booking.totalPrice,
     status: booking.status,
     stayStatus: booking.stayStatus,
