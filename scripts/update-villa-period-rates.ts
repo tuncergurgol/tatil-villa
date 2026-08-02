@@ -7,9 +7,9 @@
  *   npx tsx scripts/update-villa-period-rates.ts --excel "G:/Drive'ım/.../Rezervasyon Takip - 2026.xlsx"
  *   npx tsx scripts/update-villa-period-rates.ts --prefix "Villa"
  *   npx tsx scripts/update-villa-period-rates.ts --names-file list.txt --commission-only
- *   npx tsx scripts/update-villa-period-rates.ts --names-file list.txt --prepayment-only
+ *   npx tsx scripts/update-villa-period-rates.ts --names-file list.txt --prepayment-only --rate 35
  *
- * Varsayılan: --prefix "Villa" (adı Villa ile başlayan tüm villalar)
+ * Varsayılan: --prefix "Villa" (adı Villa ile başlayan tüm villalar), --rate 20
  * --commission-only: yalnızca komisyon oranını günceller (ön ödeme oranına dokunmaz)
  * --prepayment-only: yalnızca ön ödeme oranını günceller (komisyon oranına dokunmaz)
  */
@@ -19,7 +19,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const RATE = 20;
+const DEFAULT_RATE = 20;
 
 type Args = {
   dryRun: boolean;
@@ -27,13 +27,27 @@ type Args = {
   prefix: string | null;
   commissionOnly: boolean;
   prepaymentOnly: boolean;
+  rate: number;
 };
+
+function parseRate(argv: string[]): number {
+  const rateIdx = argv.indexOf("--rate");
+  if (rateIdx < 0) return DEFAULT_RATE;
+  const raw = argv[rateIdx + 1];
+  if (!raw) throw new Error("--rate için değer gerekli");
+  const value = Number(raw.replace(",", "."));
+  if (!Number.isFinite(value) || value <= 0 || value > 100) {
+    throw new Error("Geçersiz oran: 1-100 arası tam sayı olmalı");
+  }
+  return Math.round(value);
+}
 
 function parseArgs(): Args {
   const argv = process.argv.slice(2);
   const dryRun = argv.includes("--dry-run");
   const commissionOnly = argv.includes("--commission-only");
   const prepaymentOnly = argv.includes("--prepayment-only");
+  const rate = parseRate(argv);
   if (commissionOnly && prepaymentOnly) {
     throw new Error("--commission-only ve --prepayment-only birlikte kullanılamaz");
   }
@@ -61,7 +75,7 @@ function parseArgs(): Args {
     prefix = argv[prefixIdx + 1] ?? "Villa";
   }
 
-  return { dryRun, names, prefix, commissionOnly, prepaymentOnly };
+  return { dryRun, names, prefix, commissionOnly, prepaymentOnly, rate };
 }
 
 function loadVillaNamesFromExcel(filePath: string): string[] {
@@ -157,12 +171,13 @@ async function main() {
   console.log("Villa sayısı:", villas.length);
   console.log("Periyot sayısı:", periodCount);
   console.log("Gün kaydı sayısı:", dayCount);
+  const rate = args.rate;
   if (args.commissionOnly) {
-    console.log("Hedef: commissionRate=%d (ön ödeme oranı değişmeyecek)", RATE);
+    console.log("Hedef: commissionRate=%d (ön ödeme oranı değişmeyecek)", rate);
   } else if (args.prepaymentOnly) {
-    console.log("Hedef: prepaymentRate=%d (komisyon oranı değişmeyecek)", RATE);
+    console.log("Hedef: prepaymentRate=%d (komisyon oranı değişmeyecek)", rate);
   } else {
-    console.log("Hedef oranlar: prepaymentRate=%d, commissionRate=%d", RATE, RATE);
+    console.log("Hedef oranlar: prepaymentRate=%d, commissionRate=%d", rate, rate);
   }
   console.log("Mod:", args.dryRun ? "DRY-RUN" : "UYGULA");
 
@@ -176,15 +191,15 @@ async function main() {
   }
 
   const periodData = args.commissionOnly
-    ? { commissionRate: RATE }
+    ? { commissionRate: rate }
     : args.prepaymentOnly
-      ? { prepaymentRate: RATE }
-      : { prepaymentRate: RATE, commissionRate: RATE };
+      ? { prepaymentRate: rate }
+      : { prepaymentRate: rate, commissionRate: rate };
   const dayData = args.commissionOnly
-    ? { commissionRate: RATE }
+    ? { commissionRate: rate }
     : args.prepaymentOnly
-      ? { prepaymentRate: RATE }
-      : { prepaymentRate: RATE, commissionRate: RATE };
+      ? { prepaymentRate: rate }
+      : { prepaymentRate: rate, commissionRate: rate };
 
   const periodResult = await prisma.villaPricePeriod.updateMany({
     where: { villaId: { in: villaIds } },
@@ -202,12 +217,12 @@ async function main() {
     [periodWithoutCommission, dayWithoutCommission] = await Promise.all([
       prisma.$executeRaw`
         UPDATE "VillaPricePeriod"
-        SET "nightlyPriceWithoutCommission" = ROUND("nightlyPrice" - ("nightlyPrice" * ${RATE} / 100.0))
+        SET "nightlyPriceWithoutCommission" = ROUND("nightlyPrice" - ("nightlyPrice" * ${rate} / 100.0))
         WHERE "villaId" IN (${Prisma.join(villaIds)})
       `,
       prisma.$executeRaw`
         UPDATE "VillaPricePeriodDay"
-        SET "nightlyPriceWithoutCommission" = ROUND("nightlyPrice" - ("nightlyPrice" * ${RATE} / 100.0))
+        SET "nightlyPriceWithoutCommission" = ROUND("nightlyPrice" - ("nightlyPrice" * ${rate} / 100.0))
         WHERE "villaId" IN (${Prisma.join(villaIds)})
       `,
     ]);
