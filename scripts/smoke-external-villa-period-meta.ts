@@ -31,6 +31,14 @@ const noisyDefaults = extractScrapedPeriodDefaults(noisyHtml);
 assert.equal(noisyDefaults.prepaymentRate, 40);
 assert.equal(noisyDefaults.commissionRate, null);
 
+const villavaktiFaqHtml = `
+Rezervasyonunuzu tamamlamak için % 20 ön ödeme yapmanız gerekir.
+Yurt dışından misafirlerimiz WESTERN UNİON kanalıyla % 20 ön ödemelerini yapabilmektedirler.
+Kalan % 80 lik tutar villaya girişte nakit olarak ödenir.
+`;
+const villavaktiDefaults = extractScrapedPeriodDefaults(villavaktiFaqHtml);
+assert.equal(villavaktiDefaults.prepaymentRate, 20);
+
 const basePeriod = {
   sourceId: 1,
   startDate: new Date("2026-06-15"),

@@ -459,16 +459,27 @@ function extractDamageDeposit(html: string): {
 
 function extractPrepaymentRate(html: string): number | null {
   const text = stripTags(html);
+
+  // Villavakti vb.: "Rezervasyon için % 20 ön ödeme" — en güvenilir kaynak
+  for (const match of text.matchAll(/%\s*(\d{1,3})\s*ön\s*ödeme/gi)) {
+    const value = parsePercentRate(match[1] ?? null);
+    if (value != null) return value;
+  }
+
   const patterns = [
-    /kiralama\s+kaporas[ıi][^%]{0,40}%\s*(\d{1,3})/i,
-    /ön\s*ödeme(?:\s*oran[ıi])?[^%]{0,40}%\s*(\d{1,3})/i,
-    /on\s*odeme(?:\s*orani)?[^%]{0,40}%\s*(\d{1,3})/i,
-    /kapora[^%]{0,40}%\s*(\d{1,3})/i,
+    /kiralama\s+kaporas[ıi][^%]{0,40}%\s*(\d{1,3})/gi,
+    /ön\s*ödeme(?:\s*oran[ıi])?[^%]{0,40}%\s*(\d{1,3})/gi,
+    /on\s*odeme(?:\s*orani)?[^%]{0,40}%\s*(\d{1,3})/gi,
+    /kapora[^%]{0,40}%\s*(\d{1,3})/gi,
   ];
   for (const pattern of patterns) {
-    const match = text.match(pattern);
-    const value = parsePercentRate(match?.[1] ?? null);
-    if (value != null) return value;
+    for (const match of text.matchAll(pattern)) {
+      const snippet = match[0] ?? "";
+      // "ön ödemelerini ... Kalan % 80" girişte ödeme oranıdır, kapora değil
+      if (/kalan/i.test(snippet)) continue;
+      const value = parsePercentRate(match[1] ?? null);
+      if (value != null) return value;
+    }
   }
   return null;
 }
