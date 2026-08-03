@@ -65,6 +65,111 @@ function formatVillaMetaLine(villa: VillaTakvimSearchItem) {
   return parts.length > 0 ? `(${parts.join(" · ")})` : null;
 }
 
+function formatTakvimPrice(
+  value: number | null,
+  currency: VillaTakvimSearchItem["displayPriceCurrency"]
+) {
+  if (value == null || value <= 0) return "—";
+  return `${value.toLocaleString("tr-TR")}${
+    currency === "TL" ? "₺" : ` ${currency}`
+  }`;
+}
+
+function formatFuturePriceRange(villa: VillaTakvimSearchItem) {
+  const { minFuturePrice, maxFuturePrice, displayPriceCurrency } = villa;
+  if (minFuturePrice == null && maxFuturePrice == null) {
+    return formatTakvimPrice(villa.displayPrice, displayPriceCurrency);
+  }
+  if (
+    minFuturePrice != null &&
+    maxFuturePrice != null &&
+    minFuturePrice !== maxFuturePrice
+  ) {
+    return `${formatTakvimPrice(minFuturePrice, displayPriceCurrency)} – ${formatTakvimPrice(maxFuturePrice, displayPriceCurrency)}`;
+  }
+  return formatTakvimPrice(
+    minFuturePrice ?? maxFuturePrice ?? villa.displayPrice,
+    displayPriceCurrency
+  );
+}
+
+function VillaCardMobile({
+  villa,
+  actionLabel,
+  actionIcon,
+}: {
+  villa: VillaTakvimSearchItem;
+  actionLabel: string;
+  actionIcon: "calendar" | "price";
+}) {
+  const ActionIcon = actionIcon === "price" ? Zap : Calendar;
+  const originalName = villa.originalName.trim();
+  const documentNo = villa.documentNo.trim();
+
+  return (
+    <Link
+      href={villaTakvimPath(villa)}
+      className="flex gap-3 rounded-xl border border-gray-200/80 bg-white p-3 shadow-sm transition active:bg-indigo-50/40"
+    >
+      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+        {villa.image ? (
+          <Image
+            src={villa.image}
+            alt={villa.name}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[11px] text-gray-400">
+            Görsel yok
+          </div>
+        )}
+        <span className="absolute left-1 top-1 rounded bg-indigo-600/95 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+          {villa.periodCount} periyot
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-bold leading-snug text-gray-900">
+            {villa.name}
+          </p>
+          <StatusBadge active={villa.active} />
+        </div>
+
+        {originalName ? (
+          <p className="text-xs leading-snug text-gray-600">{originalName}</p>
+        ) : (
+          <p className="text-xs italic text-gray-400">Orjinal ad yok</p>
+        )}
+
+        <div className="grid grid-cols-1 gap-0.5 text-[11px] text-gray-500">
+          <p>
+            <span className="font-semibold text-gray-600">Villa ID:</span>{" "}
+            {villa.villaId != null ? villa.villaId : "—"}
+          </p>
+          <p>
+            <span className="font-semibold text-gray-600">Belge No:</span>{" "}
+            {documentNo || "—"}
+          </p>
+          <p>
+            <span className="font-semibold text-gray-600">Fiyat (bugünden):</span>{" "}
+            <span className="font-bold text-indigo-600">
+              {formatFuturePriceRange(villa)}
+            </span>
+          </p>
+        </div>
+
+        <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600">
+          <ActionIcon className="h-3.5 w-3.5" />
+          {actionLabel}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 function VillaCard({
   villa,
   actionLabel,
@@ -126,10 +231,7 @@ function VillaCard({
         </div>
         {villa.displayPrice != null ? (
           <p className="shrink-0 text-sm font-bold text-indigo-600">
-            {villa.displayPrice.toLocaleString("tr-TR")}
-            {villa.displayPriceCurrency === "TL"
-              ? "₺"
-              : ` ${villa.displayPriceCurrency}`}
+            {formatFuturePriceRange(villa)}
           </p>
         ) : (
           <p className="shrink-0 text-xs text-gray-400">—</p>
@@ -251,11 +353,11 @@ export default function TakvimVillaGrid({
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col bg-[#f4f6fb]">
-      <div className="border-b border-gray-200/80 bg-white px-6 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="flex min-h-[calc(100dvh-5.5rem)] flex-col bg-[#f4f6fb] md:min-h-[calc(100dvh-3rem)]">
+      <div className="border-b border-gray-200/80 bg-white px-4 py-4 md:px-6 md:py-5">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-xl font-bold tracking-tight text-gray-900 md:text-2xl">
               {title}
             </h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -263,7 +365,7 @@ export default function TakvimVillaGrid({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex rounded-xl border border-gray-200 bg-white p-1">
               {(
                 [
@@ -276,7 +378,7 @@ export default function TakvimVillaGrid({
                   key={value}
                   type="button"
                   onClick={() => updateStatus(value)}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition sm:flex-none sm:px-4 sm:text-sm ${
                     status === value
                       ? "bg-indigo-600 text-white shadow-sm"
                       : "text-gray-600 hover:bg-gray-50"
@@ -287,7 +389,7 @@ export default function TakvimVillaGrid({
               ))}
             </div>
 
-            <div className="relative w-full min-w-[220px] sm:w-72">
+            <div className="relative w-full sm:w-72">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="search"
@@ -304,18 +406,30 @@ export default function TakvimVillaGrid({
         </div>
       </div>
 
-      <div className="flex-1 px-6 py-6">
+      <div className="flex-1 px-3 py-4 md:px-6 md:py-6">
         {visibleVillas.length > 0 ? (
-          <div className="mx-auto grid w-full max-w-[1680px] grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-6">
-            {visibleVillas.map((villa) => (
-              <VillaCard
-                key={villa.id}
-                villa={villa}
-                actionLabel={actionLabel}
-                actionIcon={actionIcon}
-              />
-            ))}
-          </div>
+          <>
+            <div className="space-y-3 md:hidden">
+              {visibleVillas.map((villa) => (
+                <VillaCardMobile
+                  key={villa.id}
+                  villa={villa}
+                  actionLabel={actionLabel}
+                  actionIcon={actionIcon}
+                />
+              ))}
+            </div>
+            <div className="mx-auto hidden w-full max-w-[1680px] grid-cols-2 gap-5 sm:grid-cols-3 md:grid lg:grid-cols-6">
+              {visibleVillas.map((villa) => (
+                <VillaCard
+                  key={villa.id}
+                  villa={villa}
+                  actionLabel={actionLabel}
+                  actionIcon={actionIcon}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white text-sm text-gray-500">
             Eşleşen tesis bulunamadı.
@@ -323,7 +437,7 @@ export default function TakvimVillaGrid({
         )}
       </div>
 
-      <div className="border-t border-gray-200/80 bg-white px-6 py-4">
+      <div className="border-t border-gray-200/80 bg-white px-4 py-3 md:px-6 md:py-4">
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
           <Pagination
             page={currentPage}
