@@ -22,7 +22,10 @@ import VillaFeaturesTab from "@/components/admin/villas/VillaFeaturesTab";
 import VillaIcalTab from "@/components/admin/villas/VillaIcalTab";
 import VillaLocationTab from "@/components/admin/villas/VillaLocationTab";
 import VillaMetaSeoTab from "@/components/admin/villas/VillaMetaSeoTab";
-import VillaPersonelTab from "@/components/admin/villas/VillaPersonelTab";
+import VillaPersonelTab, {
+  type VillaPersonelTabHandle,
+} from "@/components/admin/villas/VillaPersonelTab";
+import VillaOwnerFormModal from "@/components/admin/villa-owners/VillaOwnerFormModal";
 import VillaRulesTab from "@/components/admin/villas/VillaRulesTab";
 import type { VillaPoolWithPeriods } from "@/components/admin/villas/VillaPoolManager";
 import type { AmenityCategoryItem } from "@/lib/queries/amenities";
@@ -108,7 +111,9 @@ export default function VillaEditForm({
     [searchParams]
   );
   const contentRef = useRef<HTMLDivElement>(null);
+  const personelTabRef = useRef<VillaPersonelTabHandle>(null);
   const [activeTab, setActiveTab] = useState<TabId>("genel");
+  const [ownerModalOpen, setOwnerModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [bedroomDraft, setBedroomDraft] = useState(villa.bedrooms);
@@ -123,6 +128,9 @@ export default function VillaEditForm({
   }, [villa.bedrooms]);
 
   function switchTab(tabId: TabId) {
+    if (tabId !== "personel") {
+      setOwnerModalOpen(false);
+    }
     setActiveTab(tabId);
     contentRef.current?.scrollTo({ top: 0 });
   }
@@ -329,9 +337,11 @@ export default function VillaEditForm({
             ) : null}
             {activeTab === "personel" ? (
               <VillaPersonelTab
+                ref={personelTabRef}
                 villa={villa}
                 activeOwners={activeOwners}
                 provinces={provinces}
+                onOpenOwnerModal={() => setOwnerModalOpen(true)}
               />
             ) : null}
             {activeTab === "ical" ? (
@@ -367,6 +377,17 @@ export default function VillaEditForm({
           </div>
         </form>
       </div>
+
+      {ownerModalOpen ? (
+        <VillaOwnerFormModal
+          key="villa-owner-create"
+          provinces={provinces}
+          onClose={() => setOwnerModalOpen(false)}
+          onCreated={async (ownerId) => {
+            await personelTabRef.current?.assignCreatedOwner(ownerId);
+          }}
+        />
+      ) : null}
 
       <VillaBedroomReduceModal
         open={bedroomReduceConfirm !== null}

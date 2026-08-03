@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { VillaOwnerType } from "@prisma/client";
 import { X } from "lucide-react";
@@ -21,7 +21,7 @@ interface VillaOwnerFormModalProps {
   owner?: VillaOwnerListItem;
   provinces: TurkeyProvince[];
   onClose: () => void;
-  onCreated?: (ownerId: string) => void;
+  onCreated?: (ownerId: string) => void | Promise<void>;
 }
 
 function Field({
@@ -100,6 +100,8 @@ export default function VillaOwnerFormModal({
   const [tcKimlikNo, setTcKimlikNo] = useState(owner?.tcKimlikNo ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<
     VillaOwnerActionState,
     FormData
@@ -114,17 +116,33 @@ export default function VillaOwnerFormModal({
   }, []);
 
   useEffect(() => {
-    if (state.success) {
-      if (!isEdit && state.id) onCreated?.(state.id);
-      onClose();
-    }
-  }, [isEdit, onClose, onCreated, state.id, state.success]);
+    if (!state.success || isCompleting) return;
+
+    let cancelled = false;
+    setIsCompleting(true);
+
+    void (async () => {
+      try {
+        if (!isEdit && state.id) {
+          await onCreated?.(state.id);
+        }
+        if (!cancelled) onClose();
+      } catch {
+        if (!cancelled) setIsCompleting(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCompleting, isEdit, onClose, onCreated, state.id, state.success]);
 
   if (!mounted) return null;
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSaveClick() {
+    if (!formRef.current) return;
+
     if (!tcAcceptable) {
-      event.preventDefault();
       if (tcRequired && !tcKimlikNo.trim()) {
         setClientError("TC Kimlik No gerekli");
         return;
@@ -132,7 +150,17 @@ export default function VillaOwnerFormModal({
       setClientError("Geçerli bir TC Kimlik No girin");
       return;
     }
+
     setClientError(null);
+    formAction(new FormData(formRef.current));
+  }
+
+  function handleFormKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== "Enter" || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    event.preventDefault();
+    handleSaveClick();
   }
 
   return createPortal(
@@ -152,9 +180,10 @@ export default function VillaOwnerFormModal({
         </div>
 
         <form
-          action={formAction}
+          ref={formRef}
           className="flex min-h-0 flex-1 flex-col"
-          onSubmit={handleSubmit}
+          onSubmit={(event) => event.preventDefault()}
+          onKeyDown={handleFormKeyDown}
         >
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
           {owner && <input type="hidden" name="id" value={owner.id} />}
@@ -344,11 +373,12 @@ export default function VillaOwnerFormModal({
               İptal
             </button>
             <button
-              type="submit"
-              disabled={pending}
+              type="button"
+              disabled={pending || isCompleting}
+              onClick={handleSaveClick}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {pending ? "Kaydediliyor..." : "Kaydet"}
+              {pending || isCompleting ? "Kaydediliyor..." : "Kaydet"}
             </button>
           </div>
         </form>
