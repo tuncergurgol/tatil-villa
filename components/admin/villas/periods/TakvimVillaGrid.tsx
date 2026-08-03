@@ -54,17 +54,6 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
-function formatVillaMetaLine(villa: VillaTakvimSearchItem) {
-  const parts: string[] = [];
-  const originalName = villa.originalName.trim();
-  const documentNo = villa.documentNo.trim();
-
-  if (originalName) parts.push(originalName);
-  if (documentNo) parts.push(`Belge ${documentNo}`);
-
-  return parts.length > 0 ? `(${parts.join(" · ")})` : null;
-}
-
 function formatTakvimPrice(
   value: number | null,
   currency: VillaTakvimSearchItem["displayPriceCurrency"]
@@ -180,14 +169,16 @@ function VillaCard({
   actionIcon: "calendar" | "price";
 }) {
   const ActionIcon = actionIcon === "price" ? Zap : Calendar;
-  const metaLine = formatVillaMetaLine(villa);
+  const originalName = villa.originalName.trim();
+  const documentNo = villa.documentNo.trim();
+  const priceRange = formatFuturePriceRange(villa);
 
   return (
     <Link
       href={villaTakvimPath(villa)}
       className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_8px_30px_rgba(99,102,241,0.18)]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
+      <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
         {villa.image ? (
           <Image
             src={villa.image}
@@ -217,25 +208,43 @@ function VillaCard({
         </div>
       </div>
 
-      <div className="flex items-end justify-between gap-2 px-3.5 py-3.5">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">
+      <div className="flex flex-1 flex-col gap-2 px-3 py-3">
+        <div className="min-w-0 space-y-0.5">
+          <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900">
             {villa.name}
           </p>
-          {metaLine ? (
-            <p className="mt-0.5 truncate text-xs text-gray-500">{metaLine}</p>
-          ) : null}
-          <p className="mt-0.5 text-xs font-medium text-indigo-500">
-            {villa.villaId != null ? `#${villa.villaId}` : `#${villa.slug}`}
+          {originalName ? (
+            <p className="line-clamp-1 text-xs text-gray-600" title={originalName}>
+              {originalName}
+            </p>
+          ) : (
+            <p className="text-xs italic text-gray-400">Orjinal ad yok</p>
+          )}
+        </div>
+
+        <dl className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px]">
+          <div className="min-w-0">
+            <dt className="font-semibold text-gray-500">Villa ID</dt>
+            <dd className="font-medium text-gray-800">
+              {villa.villaId != null ? villa.villaId : "—"}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="font-semibold text-gray-500">Belge No</dt>
+            <dd className="truncate font-medium text-gray-800" title={documentNo}>
+              {documentNo || "—"}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="mt-auto rounded-lg bg-indigo-50 px-2.5 py-2">
+          <p className="text-[10px] font-semibold tracking-wide text-indigo-500 uppercase">
+            Fiyat (bugünden)
+          </p>
+          <p className="mt-0.5 text-xs font-bold leading-snug text-indigo-700">
+            {priceRange}
           </p>
         </div>
-        {villa.displayPrice != null ? (
-          <p className="shrink-0 text-sm font-bold text-indigo-600">
-            {formatFuturePriceRange(villa)}
-          </p>
-        ) : (
-          <p className="shrink-0 text-xs text-gray-400">—</p>
-        )}
       </div>
     </Link>
   );
@@ -419,7 +428,7 @@ export default function TakvimVillaGrid({
                 />
               ))}
             </div>
-            <div className="mx-auto hidden w-full max-w-[1680px] grid-cols-2 gap-5 sm:grid-cols-3 md:grid lg:grid-cols-6">
+            <div className="mx-auto hidden w-full max-w-[1680px] grid-cols-2 gap-4 md:grid lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {visibleVillas.map((villa) => (
                 <VillaCard
                   key={villa.id}
