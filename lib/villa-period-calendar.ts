@@ -78,6 +78,36 @@ export function formatPlainPrice(price: number, currency = "TL"): string {
   return `${formatNightlyAmount(rounded)} ${currency}`;
 }
 
+export type CompactCalendarPriceParts = {
+  amount: string;
+  currency: string;
+};
+
+/** Takvim hücresi için kısa fiyat: 19.200 → "19,2 K", para birimi ayrı satırda. */
+export function formatCompactCalendarPriceParts(
+  price: number,
+  currency: VillaPeriodCurrency | string = "TL"
+): CompactCalendarPriceParts {
+  const rounded = Math.round(price);
+  const currencyLabel = currency === "TL" ? "TL" : String(currency);
+
+  if (rounded >= 1000) {
+    const inK = rounded / 1000;
+    return {
+      amount: `${inK.toLocaleString("tr-TR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 1,
+      })} K`,
+      currency: currencyLabel,
+    };
+  }
+
+  return {
+    amount: rounded.toLocaleString("tr-TR", { maximumFractionDigits: 0 }),
+    currency: currencyLabel,
+  };
+}
+
 export function getDisplayNightlyPrice(period: VillaPricePeriodItem): number {
   return period.discountedNightlyPrice ?? period.nightlyPrice;
 }

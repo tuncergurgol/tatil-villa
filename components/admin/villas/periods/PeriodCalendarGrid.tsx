@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import {
   buildMonthGrid,
   buildNextMonthFirstWeekRow,
+  formatCompactCalendarPriceParts,
   formatPlainPrice,
   getMonthLabel,
   getWeekdayLabels,
@@ -91,6 +92,7 @@ type DayCellProps = {
   today?: Date;
   minCellHeight: string;
   emphasizeCurrentMonth: boolean;
+  compact?: boolean;
   selectedRange?: PeriodCalendarSelectionRange | null;
   isDragging?: boolean;
   onSelectionStart?: (dateKey: string) => void;
@@ -106,6 +108,7 @@ function CalendarDayCell({
   today,
   minCellHeight,
   emphasizeCurrentMonth,
+  compact = false,
   selectedRange,
   isDragging,
   onSelectionStart,
@@ -167,9 +170,97 @@ function CalendarDayCell({
       ? "text-white/90"
       : "text-blue-500";
 
-  const daySizeClass = isCurrentMonthDay ? "text-lg" : "text-xs";
-  const priceSizeClass = isCurrentMonthDay ? "text-base" : "text-[10px]";
-  const strikePriceSizeClass = isCurrentMonthDay ? "text-xs" : "text-[9px]";
+  const daySizeClass = compact
+    ? isCurrentMonthDay
+      ? "text-sm"
+      : "text-[10px]"
+    : isCurrentMonthDay
+      ? "text-lg"
+      : "text-xs";
+  const priceSizeClass = compact
+    ? isCurrentMonthDay
+      ? "text-[9px]"
+      : "text-[8px]"
+    : isCurrentMonthDay
+      ? "text-base"
+      : "text-[10px]";
+  const strikePriceSizeClass = compact
+    ? "text-[7px]"
+    : isCurrentMonthDay
+      ? "text-xs"
+      : "text-[9px]";
+  const cellPaddingClass = compact ? "p-1" : "p-2";
+
+  function renderPrice(display: PeriodCalendarDayDisplay) {
+    if (compact) {
+      const main = formatCompactCalendarPriceParts(
+        getDisplayPrice(display),
+        display.nightlyPriceCurrency
+      );
+
+      if (hasDiscount(display)) {
+        const original = formatCompactCalendarPriceParts(
+          display.nightlyPrice,
+          display.nightlyPriceCurrency
+        );
+        return (
+          <div className="mt-auto self-start leading-none">
+            <div
+              className={`font-medium line-through opacity-70 ${strikePriceSizeClass} ${priceClass}`}
+            >
+              <div>{original.amount}</div>
+              <div>{original.currency}</div>
+            </div>
+            <div className={`font-semibold ${priceSizeClass} ${priceClass}`}>
+              <div>{main.amount}</div>
+              <div className="font-medium opacity-90">{main.currency}</div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div
+          className={`mt-auto self-start leading-none ${priceSizeClass} ${priceClass}`}
+        >
+          <div className="font-semibold">{main.amount}</div>
+          <div className="font-medium opacity-90">{main.currency}</div>
+        </div>
+      );
+    }
+
+    if (hasDiscount(display)) {
+      return (
+        <div
+          className={`flex flex-wrap items-baseline gap-x-1.5 leading-tight ${priceSizeClass} ${priceClass}`}
+        >
+          <span
+            className={`font-medium line-through opacity-70 ${strikePriceSizeClass}`}
+          >
+            {formatPlainPrice(
+              display.nightlyPrice,
+              display.nightlyPriceCurrency
+            )}
+          </span>
+          <span className="font-semibold">
+            {formatPlainPrice(
+              getDisplayPrice(display),
+              display.nightlyPriceCurrency
+            )}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`font-semibold ${priceSizeClass} ${priceClass}`}>
+        {formatPlainPrice(
+          getDisplayPrice(display),
+          display.nightlyPriceCurrency
+        )}
+      </div>
+    );
+  }
 
   const background = isPeriodDay
     ? visualStyle.background
@@ -190,7 +281,7 @@ function CalendarDayCell({
 
   return (
     <div
-      className={`${minCellHeight} relative flex flex-col overflow-hidden rounded-lg p-2 ${
+      className={`${minCellHeight} relative flex flex-col overflow-hidden rounded-lg ${cellPaddingClass} ${
         isToday ? "ring-2 ring-inset ring-indigo-400" : ""
       } ${isInSelection ? "ring-2 ring-inset ring-blue-500 z-[1]" : ""} ${
         isSelectable ? "cursor-pointer select-none" : ""
@@ -212,37 +303,7 @@ function CalendarDayCell({
       </div>
 
       {isPeriodDay ? (
-        <div
-          className={`mt-auto self-start pb-0.5 text-left leading-tight ${priceClass}`}
-        >
-          {hasDiscount(display) ? (
-            <div
-              className={`flex flex-wrap items-baseline gap-x-1.5 leading-tight ${priceSizeClass}`}
-            >
-              <span
-                className={`font-medium line-through opacity-70 ${strikePriceSizeClass}`}
-              >
-                {formatPlainPrice(
-                  display.nightlyPrice,
-                  display.nightlyPriceCurrency
-                )}
-              </span>
-              <span className="font-semibold">
-                {formatPlainPrice(
-                  getDisplayPrice(display),
-                  display.nightlyPriceCurrency
-                )}
-              </span>
-            </div>
-          ) : (
-            <div className={`font-semibold ${priceSizeClass}`}>
-              {formatPlainPrice(
-                getDisplayPrice(display),
-                display.nightlyPriceCurrency
-              )}
-            </div>
-          )}
-        </div>
+        <div className="text-left leading-tight">{renderPrice(display)}</div>
       ) : null}
     </div>
   );
@@ -296,7 +357,7 @@ export default function PeriodCalendarGrid({
     [year, month]
   );
 
-  const minCellHeight = compact ? "min-h-[72px]" : "min-h-[96px]";
+  const minCellHeight = compact ? "min-h-[68px]" : "min-h-[96px]";
 
   const occupancyByDate = useMemo(
     () => buildOccupancyMapFromDisplay(dayDisplayByDate),
@@ -312,6 +373,7 @@ export default function PeriodCalendarGrid({
     minCellHeight,
     selectedRange,
     isDragging,
+    compact,
     onSelectionStart,
     onSelectionUpdate,
   };
@@ -334,7 +396,9 @@ export default function PeriodCalendarGrid({
         {getWeekdayLabels().map((label) => (
           <div
             key={label}
-            className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+            className={`px-1 py-2 text-center font-semibold uppercase tracking-wide text-gray-500 ${
+              compact ? "text-[9px]" : "text-[11px] py-2.5"
+            }`}
           >
             {label}
           </div>
