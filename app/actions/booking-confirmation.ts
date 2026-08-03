@@ -18,6 +18,7 @@ import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
+import { notifyBookingConfirmedByGuest } from "@/lib/booking-confirmed-notify";
 import { sendReservationDocumentNotifications } from "@/lib/reservation-document-mail";
 import { getRequestClientIp } from "@/lib/request-client-ip";
 import {
@@ -307,6 +308,19 @@ export async function confirmBookingGuestInfoAction(
   );
 
   await handleBookingConfirmedTransition(booking.id, booking.status);
+
+  try {
+    await notifyBookingConfirmedByGuest(booking.id);
+  } catch (error) {
+    console.error(
+      "[confirmBookingGuestInfo] yönetim bildirimi gönderilemedi",
+      {
+        bookingId: booking.id,
+        rezId: booking.rezId,
+        error: error instanceof Error ? error.message : error,
+      }
+    );
+  }
 
   // Konfirme belgesi (PDF mail + Evolution WA) hata verse bile onay success
   try {
