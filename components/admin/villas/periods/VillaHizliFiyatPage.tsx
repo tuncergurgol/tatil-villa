@@ -285,6 +285,249 @@ function formatDiscountLabel(row: PeriodRowState): string {
   return parts.length > 0 ? parts.join(" + ") : "—";
 }
 
+function formatPeriodDateLabel(value: string) {
+  if (!value) return "—";
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
+  return `${day}.${month}.${year}`;
+}
+
+type PeriodCardProps = {
+  row: PeriodRowState;
+  index: number;
+  pricing: ReturnType<typeof resolveRowDisplayPricing>;
+  selected: boolean;
+  isPending: boolean;
+  onToggleSelect: () => void;
+  onUpdate: (
+    patch: Partial<PeriodRowState>,
+    recalc?: boolean
+  ) => void;
+  onAdvancedEdit: () => void;
+  onDelete: () => void;
+};
+
+function HizliFiyatPeriodMobileCard({
+  row,
+  index,
+  pricing,
+  selected,
+  isPending,
+  onToggleSelect,
+  onUpdate,
+  onAdvancedEdit,
+  onDelete,
+}: PeriodCardProps) {
+  return (
+    <article
+      className={`rounded-xl border border-gray-200 bg-white p-3 shadow-sm ${dirtyRowClass(row.dirty)}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <label className="flex min-w-0 flex-1 items-start gap-2">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            className="mt-1 rounded border-gray-300"
+          />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              {row.dirty ? (
+                <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-violet-500" />
+              ) : null}
+              <p className="text-sm font-bold text-gray-900">
+                Periyot {index + 1}
+              </p>
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {formatPeriodDateLabel(row.startDate)} –{" "}
+              {formatPeriodDateLabel(row.endDate)}
+            </p>
+          </div>
+        </label>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={onAdvancedEdit}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600"
+            aria-label="Gelişmiş düzenle"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={isPending}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-600 disabled:opacity-50"
+            aria-label="Sil"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <label className="block text-[11px] font-medium text-gray-500">
+          Başlangıç
+          <input
+            type="date"
+            value={row.startDate}
+            onChange={(event) => onUpdate({ startDate: event.target.value })}
+            className={`${rowInputClass(row.dirty)} mt-1`}
+          />
+        </label>
+        <label className="block text-[11px] font-medium text-gray-500">
+          Bitiş
+          <input
+            type="date"
+            value={row.endDate}
+            onChange={(event) => onUpdate({ endDate: event.target.value })}
+            className={`${rowInputClass(row.dirty)} mt-1`}
+          />
+        </label>
+        <label className="block text-[11px] font-medium text-gray-500">
+          Komisyon %
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={row.commissionRate}
+            onChange={(event) =>
+              onUpdate({ commissionRate: event.target.value }, true)
+            }
+            className={`${rowInputClass(row.dirty)} mt-1`}
+          />
+        </label>
+        <label className="block text-[11px] font-medium text-gray-500">
+          Ön Ödeme %
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={row.prepaymentRate}
+            onChange={(event) =>
+              onUpdate({ prepaymentRate: event.target.value })
+            }
+            className={`${rowInputClass(row.dirty)} mt-1`}
+          />
+        </label>
+        <label className="col-span-2 block text-[11px] font-medium text-gray-500">
+          Gecelik Fiyat
+          <input
+            type="text"
+            inputMode="numeric"
+            value={row.nightlyPrice}
+            onChange={(event) =>
+              onUpdate(
+                { nightlyPrice: sanitizeAmountInput(event.target.value) },
+                true
+              )
+            }
+            className={`${rowInputClass(row.dirty)} mt-1 text-base font-semibold`}
+          />
+        </label>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+          <p className="text-[10px] font-medium text-gray-500">Komsz.</p>
+          <p className="font-semibold text-gray-800">
+            {formatMoneyAmount(pricing.nightlyPriceWithoutCommission)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+          <p className="text-[10px] font-medium text-gray-500">Haftalık</p>
+          <p className="font-semibold text-gray-800">
+            {formatMoneyAmount(pricing.weeklyPrice)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+          <p className="text-[10px] font-medium text-gray-500">İndirim</p>
+          <p className="font-medium text-gray-700">{formatDiscountLabel(row)}</p>
+        </div>
+        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+          <p className="text-[10px] font-medium text-gray-500">Para Birimi</p>
+          <select
+            value={row.nightlyPriceCurrency}
+            onChange={(event) =>
+              onUpdate({
+                nightlyPriceCurrency: event.target.value as VillaPeriodCurrency,
+              })
+            }
+            className={`${rowInputClass(row.dirty)} mt-0.5 py-1 text-xs`}
+          >
+            {VILLA_PERIOD_CURRENCIES.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <details className="mt-2">
+        <summary className="cursor-pointer text-xs font-semibold text-violet-600">
+          Diğer alanlar
+        </summary>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="block text-[11px] font-medium text-gray-500">
+            Min Gece
+            <input
+              type="number"
+              min={1}
+              value={row.minStayNights}
+              onChange={(event) =>
+                onUpdate({ minStayNights: event.target.value })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
+          <label className="block text-[11px] font-medium text-gray-500">
+            Temiz. Gün
+            <input
+              type="number"
+              min={0}
+              value={row.cleaningDayCount}
+              onChange={(event) =>
+                onUpdate({ cleaningDayCount: event.target.value })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
+          <label className="block text-[11px] font-medium text-gray-500">
+            Temiz. Bedel
+            <input
+              type="text"
+              inputMode="numeric"
+              value={row.cleaningFee}
+              onChange={(event) =>
+                onUpdate({
+                  cleaningFee: sanitizeAmountInput(event.target.value),
+                })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
+          <label className="block text-[11px] font-medium text-gray-500">
+            Hasar Dep.
+            <input
+              type="text"
+              inputMode="numeric"
+              value={row.damageDeposit}
+              onChange={(event) =>
+                onUpdate({
+                  damageDeposit: sanitizeAmountInput(event.target.value),
+                })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
+        </div>
+      </details>
+    </article>
+  );
+}
+
 /** KOMSZ. ve haftalık fiyatı her zaman güncel FİYAT alanından türetir. */
 function resolveRowDisplayPricing(row: PeriodRowState) {
   return resolveVillaPeriodPricing({
@@ -523,28 +766,28 @@ export default function VillaHizliFiyatPage({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] flex-col gap-4">
-      <div className="shrink-0 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+    <div className="-mx-3 -mt-3 flex min-h-[calc(100dvh-4.5rem)] flex-col gap-3 bg-[#f4f6fb] px-3 pb-3 md:mx-0 md:mt-0 md:h-[calc(100dvh-3rem)] md:gap-4 md:bg-transparent md:px-0 md:pb-0">
+      <div className="shrink-0 rounded-2xl border border-gray-200 bg-white px-3 py-3 shadow-sm md:px-5 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:justify-between">
+          <div className="flex items-start gap-2 md:gap-3">
             <Link
               href="/admin/villalar"
-              className="mt-0.5 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 md:mt-0.5 md:px-3 md:text-sm"
             >
               <ArrowLeft className="h-4 w-4" />
               Geri
             </Link>
-            <div>
-              <p className="text-xs font-semibold tracking-[0.2em] text-gray-400 uppercase">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold tracking-[0.18em] text-gray-400 uppercase md:text-xs">
                 Hızlı Fiyat
               </p>
-              <h1 className="mt-1 text-2xl font-bold text-gray-900">
+              <h1 className="mt-0.5 text-lg font-bold text-gray-900 md:mt-1 md:text-2xl">
                 {villa.name}
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-0.5 text-xs text-gray-500 md:mt-1 md:text-sm">
                 {rows.length} periyot
                 {routeVilla.villaId != null ? (
-                  <span className="ml-2 text-gray-400">
+                  <span className="ml-1 text-gray-400 md:ml-2">
                     · Villa ID {routeVilla.villaId}
                   </span>
                 ) : null}
@@ -552,11 +795,11 @@ export default function VillaHizliFiyatPage({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center">
             <button
               type="button"
               onClick={() => setExcelImportOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              className="hidden items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 md:inline-flex"
             >
               <FileSpreadsheet className="h-4 w-4" />
               Excel&apos;den İçeri Al
@@ -564,20 +807,20 @@ export default function VillaHizliFiyatPage({
             <button
               type="button"
               onClick={() => openAdvancedModal()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             >
               <Plus className="h-4 w-4" />
               Yeni Periyot
             </button>
             <Link
               href={villaTakvimPath(routeVilla)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             >
               Takvim
             </Link>
             <Link
               href={villaAdminEditPath(routeVilla)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
             >
               Düzenle
             </Link>
@@ -585,18 +828,12 @@ export default function VillaHizliFiyatPage({
               type="button"
               onClick={handleSaveAll}
               disabled={isPending || dirtyCount === 0}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-1"
             >
               <Save className="h-4 w-4" />
               Tümünü Kaydet ({dirtyCount})
             </button>
           </div>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          Fiyat girdiğinizde komisyonsuz fiyat otomatik hesaplanır. Tümünü
-          Kaydet ile toplu kayıt yapın. Değiştirdiğiniz satırlar mor işaretle
-          vurgulanır; kaydetmeden sayfadan ayrılmayın.
         </div>
       </div>
 
@@ -606,8 +843,8 @@ export default function VillaHizliFiyatPage({
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="hidden flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 md:flex">
           <div className="flex flex-1 flex-wrap items-center gap-2">
             <button
               type="button"
@@ -674,7 +911,56 @@ export default function VillaHizliFiyatPage({
           </div>
         </div>
 
-        <div className="h-[calc(100%-3.25rem)] overflow-auto">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 md:hidden">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+            <input
+              type="checkbox"
+              checked={rows.length > 0 && selectedIds.size === rows.length}
+              onChange={toggleSelectAll}
+              className="rounded border-gray-300"
+            />
+            Tümünü seç
+          </label>
+          <button
+            type="button"
+            onClick={handleDeleteSelected}
+            disabled={isPending || selectedIds.size === 0}
+            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-50"
+          >
+            Sil ({selectedIds.size})
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 md:hidden">
+          {rows.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-200 px-4 py-12 text-center text-sm text-gray-500">
+              Henüz periyot yok. Yeni periyot ekleyerek başlayın.
+            </div>
+          ) : (
+            rows.map((row, index) => {
+              const pricing = resolveRowDisplayPricing(row);
+              return (
+                <HizliFiyatPeriodMobileCard
+                  key={row.id}
+                  row={row}
+                  index={index}
+                  pricing={pricing}
+                  selected={selectedIds.has(row.id)}
+                  isPending={isPending}
+                  onToggleSelect={() => toggleSelect(row.id)}
+                  onUpdate={(patch, recalc) => updateRow(row.id, patch, recalc)}
+                  onAdvancedEdit={() => {
+                    const period = periods.find((p) => p.id === row.id);
+                    if (period) openAdvancedModal(period);
+                  }}
+                  onDelete={() => handleDeleteRow(row.id)}
+                />
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden h-[calc(100%-3.25rem)] overflow-auto md:block">
           <table className="min-w-[1200px] w-full text-left text-sm">
             <thead className="sticky top-0 z-10 bg-gray-50/95 text-[11px] font-semibold tracking-wide text-gray-500 uppercase backdrop-blur">
               <tr>
