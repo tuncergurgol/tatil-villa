@@ -49,6 +49,7 @@ export default function VillaPersonelTab({
   const [savedOwnerId, setSavedOwnerId] = useState(villa.ownerId ?? "");
   const [owners, setOwners] = useState(activeOwners);
   const [ownerError, setOwnerError] = useState<string | null>(null);
+  const [ownerSuccess, setOwnerSuccess] = useState<string | null>(null);
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [isSavingOwner, startSaveOwner] = useTransition();
   const [isLoadingOwners, startLoadOwners] = useTransition();
@@ -83,6 +84,7 @@ export default function VillaPersonelTab({
     openSelector?: boolean;
   }) {
     setOwnerError(null);
+    setOwnerSuccess(null);
     startLoadOwners(async () => {
       const result = await getActiveVillaOwnersAction();
       if (result.error || !result.owners) {
@@ -128,6 +130,7 @@ export default function VillaPersonelTab({
     }
 
     setOwnerError(null);
+    setOwnerSuccess(null);
     startSaveOwner(async () => {
       const result = await assignVillaOwner(villa.id, ownerId);
       if (result.error) {
@@ -136,13 +139,37 @@ export default function VillaPersonelTab({
       }
       setSavedOwnerId(ownerId);
       setIsSelectingOwner(false);
+      setOwnerSuccess("Villa sahibi villaya bağlandı.");
       router.refresh();
     });
   }
 
   function handleOwnerCreated(ownerId: string) {
-    setShowOwnerModal(false);
-    refreshOwners({ selectOwnerId: ownerId, openSelector: true });
+    setOwnerError(null);
+    setOwnerSuccess(null);
+    startSaveOwner(async () => {
+      const assignResult = await assignVillaOwner(villa.id, ownerId);
+      if (assignResult.error) {
+        setOwnerError(assignResult.error);
+        refreshOwners({ selectOwnerId: ownerId, openSelector: true });
+        return;
+      }
+
+      setSavedOwnerId(ownerId);
+      setSelectedOwnerId(ownerId);
+      setIsSelectingOwner(false);
+      setOwnerSuccess("Yeni villa sahibi kaydedildi ve bu villaya bağlandı.");
+
+      startLoadOwners(async () => {
+        const result = await getActiveVillaOwnersAction();
+        if (result.error || !result.owners) {
+          setOwnerError(result.error ?? "Villa sahipleri yüklenemedi");
+          return;
+        }
+        setOwners(result.owners);
+        router.refresh();
+      });
+    });
   }
 
   return (
@@ -150,6 +177,11 @@ export default function VillaPersonelTab({
       <SectionCard title="Villa Sahibi">
         {!isSelectingOwner && savedOwner ? (
           <div className="space-y-4">
+            {ownerSuccess ? (
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {ownerSuccess}
+              </p>
+            ) : null}
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4">
               <p className="text-sm font-semibold text-gray-900">
                 {savedOwner.name}
@@ -232,6 +264,12 @@ export default function VillaPersonelTab({
                 </p>
               )}
             </div>
+
+            {ownerSuccess ? (
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {ownerSuccess}
+              </p>
+            ) : null}
 
             {ownerError ? (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -320,6 +358,7 @@ export default function VillaPersonelTab({
 
       {showOwnerModal ? (
         <VillaOwnerFormModal
+          key={`villa-owner-create-${showOwnerModal}`}
           provinces={provinces}
           onClose={() => setShowOwnerModal(false)}
           onCreated={handleOwnerCreated}
