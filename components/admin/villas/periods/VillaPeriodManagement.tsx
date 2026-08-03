@@ -11,7 +11,6 @@ import PeriodCalendarGrid, {
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
 import { VILLA_DAY_VISUAL_LEGEND } from "@/lib/villa-period-day-visual";
 import VillaPeriodSidebar from "@/components/admin/villas/periods/VillaPeriodSidebar";
-import { useIsMobile } from "@/hooks/use-is-mobile";
 import { villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
@@ -59,7 +58,6 @@ export default function VillaPeriodManagement({
   embedded = false,
 }: VillaPeriodManagementProps) {
   const router = useRouter();
-  const isMobile = useIsMobile();
   const today = todayDate();
   const normalizedPeriods = useMemo(() => normalizePeriods(periods), [periods]);
 

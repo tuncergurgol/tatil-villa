@@ -170,64 +170,55 @@ function CalendarDayCell({
       ? "text-white/90"
       : "text-blue-500";
 
-  const daySizeClass = compact
-    ? isCurrentMonthDay
-      ? "text-sm"
-      : "text-[10px]"
-    : isCurrentMonthDay
-      ? "text-lg"
-      : "text-xs";
-  const priceSizeClass = compact
-    ? isCurrentMonthDay
-      ? "text-[9px]"
-      : "text-[8px]"
-    : isCurrentMonthDay
-      ? "text-base"
-      : "text-[10px]";
-  const strikePriceSizeClass = compact
-    ? "text-[7px]"
-    : isCurrentMonthDay
-      ? "text-xs"
-      : "text-[9px]";
-  const cellPaddingClass = compact ? "p-1" : "p-2";
+  const daySizeClass = isCurrentMonthDay
+    ? "text-sm md:text-lg"
+    : "text-[10px] md:text-xs";
+  const cellPaddingClass = "p-1 md:p-2";
 
-  function renderPrice(display: PeriodCalendarDayDisplay) {
-    if (compact) {
-      const main = formatCompactCalendarPriceParts(
-        getDisplayPrice(display),
+  function renderCompactPrice(display: PeriodCalendarDayDisplay) {
+    const main = formatCompactCalendarPriceParts(
+      getDisplayPrice(display),
+      display.nightlyPriceCurrency
+    );
+    const priceSizeClass = isCurrentMonthDay
+      ? "text-[9px]"
+      : "text-[8px]";
+    const strikePriceSizeClass = "text-[7px]";
+
+    if (hasDiscount(display)) {
+      const original = formatCompactCalendarPriceParts(
+        display.nightlyPrice,
         display.nightlyPriceCurrency
       );
-
-      if (hasDiscount(display)) {
-        const original = formatCompactCalendarPriceParts(
-          display.nightlyPrice,
-          display.nightlyPriceCurrency
-        );
-        return (
-          <div className="mt-auto self-start leading-none">
-            <div
-              className={`font-medium line-through opacity-70 ${strikePriceSizeClass} ${priceClass}`}
-            >
-              <div>{original.amount}</div>
-              <div>{original.currency}</div>
-            </div>
-            <div className={`font-semibold ${priceSizeClass} ${priceClass}`}>
-              <div>{main.amount}</div>
-              <div className="font-medium opacity-90">{main.currency}</div>
-            </div>
-          </div>
-        );
-      }
-
       return (
-        <div
-          className={`mt-auto self-start leading-none ${priceSizeClass} ${priceClass}`}
-        >
-          <div className="font-semibold">{main.amount}</div>
-          <div className="font-medium opacity-90">{main.currency}</div>
+        <div className="mt-auto self-start leading-none">
+          <div
+            className={`font-medium line-through opacity-70 ${strikePriceSizeClass} ${priceClass}`}
+          >
+            <div>{original.amount}</div>
+            <div>{original.currency}</div>
+          </div>
+          <div className={`font-semibold ${priceSizeClass} ${priceClass}`}>
+            <div>{main.amount}</div>
+            <div className="font-medium opacity-90">{main.currency}</div>
+          </div>
         </div>
       );
     }
+
+    return (
+      <div
+        className={`mt-auto self-start leading-none ${priceSizeClass} ${priceClass}`}
+      >
+        <div className="font-semibold">{main.amount}</div>
+        <div className="font-medium opacity-90">{main.currency}</div>
+      </div>
+    );
+  }
+
+  function renderFullPrice(display: PeriodCalendarDayDisplay) {
+    const priceSizeClass = isCurrentMonthDay ? "text-base" : "text-[10px]";
+    const strikePriceSizeClass = isCurrentMonthDay ? "text-xs" : "text-[9px]";
 
     if (hasDiscount(display)) {
       return (
@@ -303,7 +294,10 @@ function CalendarDayCell({
       </div>
 
       {isPeriodDay ? (
-        <div className="text-left leading-tight">{renderPrice(display)}</div>
+        <div className="text-left leading-tight">
+          <div className="md:hidden">{renderCompactPrice(display)}</div>
+          <div className="hidden md:block">{renderFullPrice(display)}</div>
+        </div>
       ) : null}
     </div>
   );
@@ -357,7 +351,7 @@ export default function PeriodCalendarGrid({
     [year, month]
   );
 
-  const minCellHeight = compact ? "min-h-[68px]" : "min-h-[96px]";
+  const minCellHeight = "min-h-[68px] md:min-h-[96px]";
 
   const occupancyByDate = useMemo(
     () => buildOccupancyMapFromDisplay(dayDisplayByDate),
@@ -396,9 +390,7 @@ export default function PeriodCalendarGrid({
         {getWeekdayLabels().map((label) => (
           <div
             key={label}
-            className={`px-1 py-2 text-center font-semibold uppercase tracking-wide text-gray-500 ${
-              compact ? "text-[9px]" : "text-[11px] py-2.5"
-            }`}
+            className={`px-1 py-2 text-center text-[9px] font-semibold uppercase tracking-wide text-gray-500 md:py-2.5 md:text-[11px]`}
           >
             {label}
           </div>
