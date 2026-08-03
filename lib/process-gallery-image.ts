@@ -3,40 +3,40 @@ import sharp from "sharp";
 export const MAX_VILLA_GALLERY_BYTES = 100 * 1024;
 const MIN_WEBP_QUALITY = 15;
 
-function pickStartEdge(longestEdge: number, byteLength: number) {
-  if (byteLength > 4_000_000 || longestEdge > 2800) return 960;
-  if (byteLength > 2_000_000 || longestEdge > 2200) return 1100;
-  if (byteLength > 900_000 || longestEdge > 1600) return 1200;
-  if (longestEdge > 0) return Math.min(longestEdge, 1200);
-  return 1100;
-}
+type EncodeStep = { edge: number; quality: number };
 
-function buildResizedPipeline(buffer: Buffer, maxEdge: number) {
-  return sharp(buffer, { failOn: "none", sequentialRead: true })
+const FAST_CLIENT_STEPS: EncodeStep[] = [
+  { edge: 1280, quality: 50 },
+  { edge: 1100, quality: 40 },
+  { edge: 900, quality: 30 },
+  { edge: 720, quality: 22 },
+];
+
+const HEAVY_STEPS: EncodeStep[] = [
+  { edge: 1200, quality: 48 },
+  { edge: 960, quality: 38 },
+  { edge: 760, quality: 28 },
+  { edge: 560, quality: 20 },
+  { edge: 400, quality: MIN_WEBP_QUALITY },
+];
+
+async function encodeStep(buffer: Buffer, step: EncodeStep, maxBytes: number) {
+  const encoded = await sharp(buffer, { failOn: "none", sequentialRead: true })
     .rotate()
     .resize({
-      width: maxEdge,
-      height: maxEdge,
+      width: step.edge,
+      height: step.edge,
       fit: "inside",
       withoutEnlargement: true,
-    });
-}
+    })
+    .webp({
+      quality: step.quality,
+      effort: 0,
+      smartSubsample: true,
+    })
+    .toBuffer();
 
-async function encodeWebp(
-  buffer: Buffer,
-  maxEdge: number,
-  qualities: readonly number[],
-  maxBytes: number
-) {
-  const pipeline = buildResizedPipeline(buffer, maxEdge);
-  for (const quality of qualities) {
-    const encoded = await pipeline
-      .clone()
-      .webp({ quality, effort: 2, smartSubsample: true })
-      .toBuffer();
-    if (encoded.length <= maxBytes) return encoded;
-  }
-  return null;
+  return encoded.length <= maxBytes ? encoded : null;
 }
 
 /** Villa galeri görsellerini WebP'ye çevirir; hedef 100 KB altı. */
@@ -44,29 +44,20 @@ export async function processGalleryImageToWebp(
   buffer: Buffer,
   maxBytes = MAX_VILLA_GALLERY_BYTES
 ) {
-  const metadata = await sharp(buffer, { failOn: "none" }).metadata();
-  const longestEdge = Math.max(metadata.width ?? 0, metadata.height ?? 0);
-  const startEdge = pickStartEdge(longestEdge, buffer.length);
-  const fastQualities = [56, 40, 28, MIN_WEBP_QUALITY] as const;
-  const fallbackQualities = [36, 24, MIN_WEBP_QUALITY] as const;
+  const steps =
+    buffer.length <= 1_200_000 ? FAST_CLIENT_STEPS : HEAVY_STEPS;
 
-  const primary = await encodeWebp(buffer, startEdge, fastQualities, maxBytes);
-  if (primary) return primary;
-
-  const fallbackEdge = Math.max(280, Math.round(startEdge * 0.72));
-  if (fallbackEdge < startEdge) {
-    const fallback = await encodeWebp(
-      buffer,
-      fallbackEdge,
-      fallbackQualities,
-      maxBytes
-    );
-    if (fallback) return fallback;
+  for (const step of steps) {
+    const encoded = await encodeStep(buffer, step, maxBytes);
+    if (encoded) return encoded;
   }
 
-  const emergency = await buildResizedPipeline(buffer, 240)
-    .webp({ quality: MIN_WEBP_QUALITY, effort: 2, smartSubsample: true })
+  const emergency = await sharp(buffer, { failOn: "none", sequentialRead: true })
+    .rotate()
+    .resize({ width: 280, height: 280, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: MIN_WEBP_QUALITY, effort: 0, smartSubsample: true })
     .toBuffer();
+
   if (emergency.length <= maxBytes) return emergency;
 
   throw new Error(

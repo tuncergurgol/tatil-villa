@@ -11,7 +11,7 @@ import {
 import { revalidateVillaGallery } from "@/lib/villa-gallery-revalidate.server";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = Math.min(12, Math.max(6, os.cpus().length));
+const UPLOAD_CONCURRENCY = Math.min(24, Math.max(12, os.cpus().length * 2));
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/jpg",

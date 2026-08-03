@@ -19,11 +19,16 @@ import {
   updateVillaGalleryOrder,
 } from "@/app/actions/admin/villa-gallery";
 import GalleryImage from "@/components/GalleryImage";
+import {
+  estimateUploadBytes,
+  preprocessGalleryImageFiles,
+} from "@/lib/client-gallery-image-preprocess";
 import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
 import { getNextGallerySequence } from "@/lib/villa-gallery-filename";
 
-const UPLOAD_BATCH_SIZE = 25;
-const PARALLEL_UPLOADS = 3;
+const UPLOAD_BATCH_SIZE = 30;
+const PARALLEL_UPLOADS = 6;
+const MAX_SINGLE_UPLOAD_BYTES = 42 * 1024 * 1024;
 
 function chunkFiles<T>(items: T[], size: number) {
   const chunks: T[][] = [];
@@ -131,48 +136,65 @@ export default function VillaGalleryTab({
     setError(null);
     setSuccessMessage(null);
     const fileList = Array.from(files);
-    const batches = chunkFiles(fileList, UPLOAD_BATCH_SIZE);
-    let nextSequence = getNextGallerySequence(images);
-    const batchPlans = batches.map((batch) => {
-      const plan = { batch, startSequence: nextSequence };
-      nextSequence += batch.length;
-      return plan;
-    });
 
     startTransition(async () => {
       try {
+        setUploadProgress(`0/${fileList.length} görsel hazırlanıyor...`);
+        const prepared = await preprocessGalleryImageFiles(
+          fileList,
+          (done, total) => {
+            setUploadProgress(`${done}/${total} görsel hazırlanıyor...`);
+          }
+        );
+
         const uploadedUrls: string[] = [];
+        const startSequence = getNextGallerySequence(images);
+        const totalBytes = estimateUploadBytes(prepared);
 
-        for (
-          let waveStart = 0;
-          waveStart < batchPlans.length;
-          waveStart += PARALLEL_UPLOADS
-        ) {
-          const wave = batchPlans.slice(waveStart, waveStart + PARALLEL_UPLOADS);
-          const waveResults = await Promise.all(
-            wave.map(({ batch, startSequence }) =>
-              uploadGalleryBatch(batch, {
-                startSequence,
-                deferPersist: true,
-              })
-            )
-          );
+        if (totalBytes <= MAX_SINGLE_UPLOAD_BYTES) {
+          setUploadProgress(`${prepared.length} görsel yükleniyor...`);
+          const urls = await uploadGalleryBatch(prepared, { startSequence });
+          uploadedUrls.push(...urls);
+        } else {
+          const batches = chunkFiles(prepared, UPLOAD_BATCH_SIZE);
+          let nextSequence = startSequence;
+          const batchPlans = batches.map((batch) => {
+            const plan = { batch, startSequence: nextSequence };
+            nextSequence += batch.length;
+            return plan;
+          });
 
-          for (const urls of waveResults) {
-            uploadedUrls.push(...urls);
+          for (
+            let waveStart = 0;
+            waveStart < batchPlans.length;
+            waveStart += PARALLEL_UPLOADS
+          ) {
+            const wave = batchPlans.slice(waveStart, waveStart + PARALLEL_UPLOADS);
+            const waveResults = await Promise.all(
+              wave.map(({ batch, startSequence: batchStart }) =>
+                uploadGalleryBatch(batch, {
+                  startSequence: batchStart,
+                  deferPersist: true,
+                })
+              )
+            );
+
+            for (const urls of waveResults) {
+              uploadedUrls.push(...urls);
+            }
+
+            setUploadProgress(
+              `${uploadedUrls.length}/${prepared.length} görsel yüklendi...`
+            );
           }
 
-          setUploadProgress(
-            `${uploadedUrls.length}/${fileList.length} görsel işlendi...`
+          const appendResult = await appendVillaGalleryImages(
+            villaId,
+            uploadedUrls
           );
-        }
-
-        const appendResult = await appendVillaGalleryImages(
-          villaId,
-          uploadedUrls
-        );
-        if (appendResult.error) {
-          throw new Error(appendResult.error);
+          if (appendResult.error) {
+            throw new Error(appendResult.error);
+          }
         }
 
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -369,7 +391,8 @@ export default function VillaGalleryTab({
           <span className="text-xs font-medium text-blue-700">{uploadProgress}</span>
         ) : null}
         <span className="text-xs text-gray-500">
-          JPG, PNG, WEBP — 100 KB altında WebP olarak kaydedilir (Tatildeyiz-Villa-Adı-1.webp)
+          JPG, PNG, WEBP — tarayıcıda küçültülür, sunucuda 100 KB altı WebP olarak
+          kaydedilir
         </span>
       </div>
 
