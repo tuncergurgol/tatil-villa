@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { uploadVillaGalleryFiles } from "@/lib/villa-gallery-upload.server";
 
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -29,7 +29,10 @@ export async function POST(request: Request) {
     .getAll("files")
     .filter((entry): entry is File => entry instanceof File);
 
-  const result = await uploadVillaGalleryFiles(villaId, files);
+  const skipRevalidate = formData.get("skipRevalidate") === "true";
+  const result = await uploadVillaGalleryFiles(villaId, files, {
+    revalidate: !skipRevalidate,
+  });
   if (result.error) {
     return NextResponse.json(result, { status: 400 });
   }

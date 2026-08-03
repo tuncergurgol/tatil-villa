@@ -10,7 +10,7 @@ import {
 import { revalidateVillaGallery } from "@/lib/villa-gallery-revalidate.server";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 4;
+const UPLOAD_CONCURRENCY = 8;
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/jpg",
@@ -44,7 +44,8 @@ async function persistGalleryOrder(villaId: string, orderedUrls: string[]) {
 
 export async function uploadVillaGalleryFiles(
   villaId: string,
-  files: File[]
+  files: File[],
+  options?: { revalidate?: boolean }
 ): Promise<VillaGalleryUploadResult> {
   const validFiles = files.filter((file) => file.size > 0);
 
@@ -108,7 +109,9 @@ export async function uploadVillaGalleryFiles(
 
     const nextImages = [...currentImages, ...uploadedUrls];
     await persistGalleryOrder(villaId, nextImages);
-    await revalidateVillaGallery(villaId, villa.slug);
+    if (options?.revalidate !== false) {
+      await revalidateVillaGallery(villaId, villa.slug);
+    }
 
     return { success: true, urls: uploadedUrls };
   } catch (error) {

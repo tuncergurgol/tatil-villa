@@ -49,9 +49,15 @@ export default function VillaGalleryTab({
 
   const busy = isPending || isImporting || Boolean(uploadProgress);
 
-  async function uploadGalleryBatch(files: File[]) {
+  async function uploadGalleryBatch(
+    files: File[],
+    options?: { skipRevalidate?: boolean }
+  ) {
     const formData = new FormData();
     formData.append("villaId", villaId);
+    if (options?.skipRevalidate) {
+      formData.append("skipRevalidate", "true");
+    }
     files.forEach((file) => formData.append("files", file));
 
     const response = await fetch("/api/admin/villa-gallery/upload", {
@@ -107,16 +113,17 @@ export default function VillaGalleryTab({
     setError(null);
     setSuccessMessage(null);
     const fileList = Array.from(files);
-    const batchSize = 5;
+    const batchSize = 20;
 
     startTransition(async () => {
       try {
         for (let index = 0; index < fileList.length; index += batchSize) {
           const batch = fileList.slice(index, index + batchSize);
           const done = Math.min(index + batch.length, fileList.length);
+          const isLastBatch = done >= fileList.length;
           setUploadProgress(`${done}/${fileList.length} görsel işleniyor...`);
 
-          await uploadGalleryBatch(batch);
+          await uploadGalleryBatch(batch, { skipRevalidate: !isLastBatch });
         }
 
         if (fileInputRef.current) fileInputRef.current.value = "";
