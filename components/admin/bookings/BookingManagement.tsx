@@ -283,7 +283,7 @@ export default function BookingManagement({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
             R
@@ -291,18 +291,18 @@ export default function BookingManagement({
           <button
             type="button"
             onClick={refreshList}
-            className="text-left text-2xl font-bold text-gray-900 transition hover:text-indigo-700"
+            className="text-left text-xl font-bold text-gray-900 transition hover:text-indigo-700 sm:text-2xl"
             title="Listeyi yenile"
           >
             Rezervasyonlar
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <button
             type="button"
             onClick={() => setFilterModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:px-4"
           >
             <Filter className="h-4 w-4" />
             FİLTRE
@@ -316,7 +316,7 @@ export default function BookingManagement({
             type="button"
             onClick={handleExportReport}
             disabled={isExporting}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-1 sm:px-4"
           >
             <FileText className="h-4 w-4" />
             {isExporting ? "Hazırlanıyor..." : "Rezervasyon Raporu"}
@@ -324,7 +324,7 @@ export default function BookingManagement({
           <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
+            className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 sm:col-span-1 sm:px-4"
           >
             <Plus className="h-4 w-4" />
             Yeni Kayıt
@@ -361,7 +361,7 @@ export default function BookingManagement({
       />
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-[1100px] w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
@@ -500,6 +500,82 @@ export default function BookingManagement({
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="divide-y divide-gray-100 md:hidden">
+          {visibleBookings.length > 0 ? (
+            visibleBookings.map((booking) => {
+              const stay = formatStaySummary(booking.checkIn, booking.checkOut);
+              const guests = formatGuestCounts(booking);
+              const prepayment = resolveBookingPrepaymentAmount(booking);
+              const reservationNo = formatBookingReservationNo(booking);
+              const meta = BOOKING_STATUS_META[booking.status];
+
+              return (
+                <div
+                  key={booking.id}
+                  className="space-y-3 p-4"
+                  onClick={() => setSelectedId(booking.id)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openReservationForm(booking);
+                        }}
+                        className="text-left text-base font-bold text-blue-600"
+                      >
+                        {reservationNo}
+                      </button>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {booking.siteDomain || siteDomain}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${meta.className}`}
+                    >
+                      {meta.label}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-sm">
+                    <p className="font-semibold text-gray-900">{booking.villa.name}</p>
+                    <p className="text-gray-600">{stay.range}</p>
+                    <p className="text-xs text-gray-500">
+                      {stay.nights} · {guests.summary}
+                    </p>
+                  </div>
+
+                  <div className="flex items-end justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">
+                        {prepayment != null
+                          ? formatMoneyPlain(prepayment)
+                          : "Teklif"}
+                      </p>
+                      <p className="text-xs text-gray-500">{booking.guestName}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openReservationForm(booking);
+                      }}
+                      className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white"
+                    >
+                      Formu Aç
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="px-4 py-16 text-center text-sm text-gray-500">
+              Filtrelere uygun rezervasyon bulunamadı.
+            </div>
+          )}
         </div>
 
         <AdminTablePaginationBar

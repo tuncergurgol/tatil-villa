@@ -307,7 +307,7 @@ export default function AvailabilitySearchPage({
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-full flex-col gap-3">
+    <div className="flex min-h-[calc(100dvh-5.5rem)] w-full min-w-0 max-w-full flex-col gap-3 md:min-h-[calc(100vh-4rem)]">
       <section className="min-w-0 rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-col gap-2 rounded-t-xl border-b border-gray-100 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <div className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-900">

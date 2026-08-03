@@ -948,10 +948,10 @@ export default function BookingDetailModal({
   const activityLogRows = resolveActivityLogRows(details.activityLogs, booking);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3">
-      <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-          <h2 className="text-lg font-bold text-gray-900">
+    <div className="fixed inset-0 z-50 flex bg-black/45 sm:items-center sm:justify-center sm:p-3">
+      <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[92vh] sm:max-w-6xl sm:rounded-xl">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-5 sm:py-4">
+          <h2 className="min-w-0 pr-2 text-base font-bold text-gray-900 sm:text-lg">
             {reservationNo} Nolu Rezervasyon Düzenleme Formu
           </h2>
           <button
@@ -964,9 +964,9 @@ export default function BookingDetailModal({
         </div>
 
         {booking && !loading ? (
-          <div className="shrink-0 border-b border-gray-200 bg-white px-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 gap-0.5 pb-px">
+          <div className="shrink-0 border-b border-gray-200 bg-white px-4 sm:px-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+              <div className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {BOOKING_DETAIL_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
                   return (
@@ -1018,7 +1018,7 @@ export default function BookingDetailModal({
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-20 text-gray-500">
               <Loader2 className="h-5 w-5 animate-spin" />

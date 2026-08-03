@@ -14,35 +14,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  BarChart3,
-  BedDouble,
-  Bot,
   Building2,
-  Bus,
-  CalendarCheck,
-  CalendarDays,
-  Car,
   ChevronDown,
-  Compass,
-  FileCheck2,
-  Home,
-  Import,
-  ListTree,
-  Megaphone,
-  MessageCircle,
-  MessageSquare,
-  Newspaper,
   PanelLeftClose,
   PanelLeftOpen,
-  Phone,
-  Search,
-  Settings,
-  Shield,
-  Ticket,
-  User,
-  Users,
-  type LucideIcon,
 } from "lucide-react";
+import AdminNavIconView from "./AdminNavIcon";
 import AdminSignOut from "./AdminSignOut";
 import {
   adminAgencyNav,
@@ -52,34 +29,6 @@ import {
   type NavLink,
 } from "@/lib/admin-nav";
 
-const iconMap: Record<AdminNavIcon, LucideIcon> = {
-  bed: BedDouble,
-  search: Search,
-  "calendar-check": CalendarCheck,
-  home: Home,
-  calendar: CalendarDays,
-  "list-tree": ListTree,
-  settings: Settings,
-  users: Users,
-  user: User,
-  "bar-chart": BarChart3,
-  "file-check": FileCheck2,
-  compass: Compass,
-  bus: Bus,
-  car: Car,
-  ticket: Ticket,
-  building: Building2,
-  import: Import,
-  "message-circle": MessageCircle,
-  "message-square": MessageSquare,
-  shield: Shield,
-  newspaper: Newspaper,
-  chart: BarChart3,
-  megaphone: Megaphone,
-  phone: Phone,
-  bot: Bot,
-};
-
 function NavIcon({
   name,
   className = "h-4 w-4",
@@ -87,10 +36,7 @@ function NavIcon({
   name?: AdminNavIcon;
   className?: string;
 }) {
-  if (!name) return null;
-  const Icon = iconMap[name];
-  if (!Icon) return null;
-  return <Icon className={className} aria-hidden />;
+  return <AdminNavIconView name={name} className={className} />;
 }
 
 function isPathActive(pathname: string, href: string) {
@@ -536,7 +482,7 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className={`flex shrink-0 flex-col border-r border-slate-200/90 bg-[#f4f5f7] text-slate-700 transition-[width] duration-200 ease-out ${
+      className={`hidden shrink-0 flex-col border-r border-slate-200/90 bg-[#f4f5f7] text-slate-700 transition-[width] duration-200 ease-out md:flex ${
         collapsed ? "w-[4.25rem]" : "w-64"
       }`}
       data-collapsed={collapsed ? "true" : "false"}
