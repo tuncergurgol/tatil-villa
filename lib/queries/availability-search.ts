@@ -27,6 +27,7 @@ import {
 } from "@/lib/stay-quote";
 import type { PublicExchangeRates } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
+import { formatVillaRegionLabelMahalleIlceIl } from "@/lib/villa-location-helpers";
 import type { PeriodCalendarDayDisplay } from "@/components/admin/villas/periods/PeriodCalendarGrid";
 import type {
   HeatedPoolOption,
@@ -396,7 +397,17 @@ export async function searchAvailability(
         amenities: true,
         popular: true,
         recommended: true,
-        region: { select: { name: true } },
+        region: {
+          select: {
+            name: true,
+            parent: {
+              select: {
+                name: true,
+                parent: { select: { name: true } },
+              },
+            },
+          },
+        },
       },
     }),
     prisma.amenity.findMany({
@@ -609,7 +620,7 @@ export async function searchAvailability(
       name: villa.name,
       image: getVillaShowcaseImage(villa),
       location: villa.location,
-      regionName: villa.region.name,
+      regionName: formatVillaRegionLabelMahalleIlceIl(villa.region),
       guests: villa.guests,
       extraCapacity: villa.extraCapacity,
       bedrooms: villa.bedrooms,

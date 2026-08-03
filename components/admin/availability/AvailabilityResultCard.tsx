@@ -307,8 +307,7 @@ export default function AvailabilityResultCard({
               {result.villaId != null ? (
                 <p>VillaID {result.villaId}</p>
               ) : null}
-              {result.location.trim() ? <p>{result.location}</p> : null}
-              <p>{result.regionName}</p>
+              {result.regionName.trim() ? <p>{result.regionName}</p> : null}
               <p>
                 Kişi : {result.guests}
                 {result.extraCapacity > 0 ? `+${result.extraCapacity}` : ""}
