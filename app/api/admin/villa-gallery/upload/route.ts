@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { uploadVillaGalleryFiles } from "@/lib/villa-gallery-upload.server";
 
-export const maxDuration = 180;
+export const maxDuration = 300;
+
+function parsePositiveInt(value: FormDataEntryValue | null) {
+  if (value == null || value === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) return undefined;
+  return parsed;
+}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -29,9 +36,14 @@ export async function POST(request: Request) {
     .getAll("files")
     .filter((entry): entry is File => entry instanceof File);
 
+  const deferPersist = formData.get("deferPersist") === "true";
   const skipRevalidate = formData.get("skipRevalidate") === "true";
+  const startSequence = parsePositiveInt(formData.get("startSequence"));
+
   const result = await uploadVillaGalleryFiles(villaId, files, {
-    revalidate: !skipRevalidate,
+    persist: !deferPersist,
+    revalidate: !skipRevalidate && !deferPersist,
+    startSequence,
   });
   if (result.error) {
     return NextResponse.json(result, { status: 400 });

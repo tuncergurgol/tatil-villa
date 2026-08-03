@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import {
+  appendVillaGalleryImages,
   deleteAllVillaGalleryImages,
   deleteVillaGalleryImages,
   importVillaGalleryFromTatildeyizAction,
@@ -19,6 +20,18 @@ import {
 } from "@/app/actions/admin/villa-gallery";
 import GalleryImage from "@/components/GalleryImage";
 import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
+import { getNextGallerySequence } from "@/lib/villa-gallery-filename";
+
+const UPLOAD_BATCH_SIZE = 25;
+const PARALLEL_UPLOADS = 3;
+
+function chunkFiles<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
 
 interface VillaGalleryTabProps {
   villaId: string;
@@ -51,12 +64,15 @@ export default function VillaGalleryTab({
 
   async function uploadGalleryBatch(
     files: File[],
-    options?: { skipRevalidate?: boolean }
-  ) {
+    options?: { startSequence?: number; deferPersist?: boolean }
+  ): Promise<string[]> {
     const formData = new FormData();
     formData.append("villaId", villaId);
-    if (options?.skipRevalidate) {
-      formData.append("skipRevalidate", "true");
+    if (options?.deferPersist) {
+      formData.append("deferPersist", "true");
+    }
+    if (options?.startSequence != null) {
+      formData.append("startSequence", String(options.startSequence));
     }
     files.forEach((file) => formData.append("files", file));
 
@@ -65,7 +81,7 @@ export default function VillaGalleryTab({
       body: formData,
     });
 
-    let payload: { error?: string; success?: boolean } = {};
+    let payload: { error?: string; success?: boolean; urls?: string[] } = {};
     try {
       payload = await response.json();
     } catch {
@@ -77,6 +93,8 @@ export default function VillaGalleryTab({
         payload.error ?? `Yükleme başarısız (HTTP ${response.status})`
       );
     }
+
+    return payload.urls ?? [];
   }
 
   const allSelected = images.length > 0 && selected.size === images.length;
@@ -113,17 +131,48 @@ export default function VillaGalleryTab({
     setError(null);
     setSuccessMessage(null);
     const fileList = Array.from(files);
-    const batchSize = 20;
+    const batches = chunkFiles(fileList, UPLOAD_BATCH_SIZE);
+    let nextSequence = getNextGallerySequence(images);
+    const batchPlans = batches.map((batch) => {
+      const plan = { batch, startSequence: nextSequence };
+      nextSequence += batch.length;
+      return plan;
+    });
 
     startTransition(async () => {
       try {
-        for (let index = 0; index < fileList.length; index += batchSize) {
-          const batch = fileList.slice(index, index + batchSize);
-          const done = Math.min(index + batch.length, fileList.length);
-          const isLastBatch = done >= fileList.length;
-          setUploadProgress(`${done}/${fileList.length} görsel işleniyor...`);
+        const uploadedUrls: string[] = [];
 
-          await uploadGalleryBatch(batch, { skipRevalidate: !isLastBatch });
+        for (
+          let waveStart = 0;
+          waveStart < batchPlans.length;
+          waveStart += PARALLEL_UPLOADS
+        ) {
+          const wave = batchPlans.slice(waveStart, waveStart + PARALLEL_UPLOADS);
+          const waveResults = await Promise.all(
+            wave.map(({ batch, startSequence }) =>
+              uploadGalleryBatch(batch, {
+                startSequence,
+                deferPersist: true,
+              })
+            )
+          );
+
+          for (const urls of waveResults) {
+            uploadedUrls.push(...urls);
+          }
+
+          setUploadProgress(
+            `${uploadedUrls.length}/${fileList.length} görsel işlendi...`
+          );
+        }
+
+        const appendResult = await appendVillaGalleryImages(
+          villaId,
+          uploadedUrls
+        );
+        if (appendResult.error) {
+          throw new Error(appendResult.error);
         }
 
         if (fileInputRef.current) fileInputRef.current.value = "";

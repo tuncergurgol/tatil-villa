@@ -5,7 +5,10 @@ import path from "path";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { importVillaGalleryFromTatildeyiz } from "@/lib/tatildeyiz-gallery-import-runner";
-import { uploadVillaGalleryFiles } from "@/lib/villa-gallery-upload.server";
+import {
+  appendVillaGalleryUrls,
+  uploadVillaGalleryFiles,
+} from "@/lib/villa-gallery-upload.server";
 import { revalidateVillaGallery } from "@/lib/villa-gallery-revalidate.server";
 
 export type VillaGalleryActionState = {
@@ -70,6 +73,14 @@ export async function uploadVillaGalleryImages(
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
   return uploadVillaGalleryFiles(villaId, files);
+}
+
+export async function appendVillaGalleryImages(
+  villaId: string,
+  imageUrls: string[]
+): Promise<VillaGalleryActionState> {
+  await requireAdmin();
+  return appendVillaGalleryUrls(villaId, imageUrls);
 }
 
 export async function updateVillaGalleryOrder(

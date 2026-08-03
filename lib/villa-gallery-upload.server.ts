@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "fs/promises";
+import os from "os";
 import path from "path";
 import { prisma } from "@/lib/db";
 import { mapWithConcurrency } from "@/lib/map-with-concurrency";
@@ -10,7 +11,7 @@ import {
 import { revalidateVillaGallery } from "@/lib/villa-gallery-revalidate.server";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 8;
+const UPLOAD_CONCURRENCY = Math.min(12, Math.max(6, os.cpus().length));
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/jpg",
@@ -22,6 +23,12 @@ export type VillaGalleryUploadResult = {
   error?: string;
   success?: boolean;
   urls?: string[];
+};
+
+export type VillaGalleryUploadOptions = {
+  revalidate?: boolean;
+  persist?: boolean;
+  startSequence?: number;
 };
 
 function normalizeGalleryImages(images: string[], coverImage: string) {
@@ -42,10 +49,42 @@ async function persistGalleryOrder(villaId: string, orderedUrls: string[]) {
   });
 }
 
+export async function appendVillaGalleryUrls(
+  villaId: string,
+  newUrls: string[]
+): Promise<VillaGalleryUploadResult> {
+  if (newUrls.length === 0) {
+    return { success: true, urls: [] };
+  }
+
+  try {
+    const villa = await prisma.villa.findUnique({
+      where: { id: villaId },
+      select: { id: true, slug: true, images: true, image: true },
+    });
+
+    if (!villa) {
+      return { error: "Villa bulunamadı" };
+    }
+
+    const currentImages = normalizeGalleryImages(villa.images, villa.image);
+    const nextImages = [...currentImages, ...newUrls];
+    await persistGalleryOrder(villaId, nextImages);
+    await revalidateVillaGallery(villaId, villa.slug);
+    return { success: true, urls: newUrls };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Galeri kaydı tamamlanamadı";
+    return { error: message };
+  }
+}
+
 export async function uploadVillaGalleryFiles(
   villaId: string,
   files: File[],
-  options?: { revalidate?: boolean }
+  options?: VillaGalleryUploadOptions
 ): Promise<VillaGalleryUploadResult> {
   const validFiles = files.filter((file) => file.size > 0);
 
@@ -73,7 +112,8 @@ export async function uploadVillaGalleryFiles(
     );
     await mkdir(uploadDir, { recursive: true });
 
-    let sequence = getNextGallerySequence(currentImages);
+    let sequence =
+      options?.startSequence ?? getNextGallerySequence(currentImages);
 
     type PreparedFile = {
       file: File;
@@ -94,23 +134,33 @@ export async function uploadVillaGalleryFiles(
       sequence += 1;
     }
 
-    const uploadedUrls = await mapWithConcurrency(
+    const preparedWithBuffers = await mapWithConcurrency(
       prepared,
       UPLOAD_CONCURRENCY,
-      async ({ file, sequence: fileSequence }) => {
+      async (item) => ({
+        ...item,
+        buffer: Buffer.from(await item.file.arrayBuffer()),
+      })
+    );
+
+    const uploadedUrls = await mapWithConcurrency(
+      preparedWithBuffers,
+      UPLOAD_CONCURRENCY,
+      async ({ buffer, sequence: fileSequence }) => {
         const fileName = buildSeoGalleryFileName(villa.name, fileSequence);
         const outputPath = path.join(uploadDir, fileName);
-        const sourceBuffer = Buffer.from(await file.arrayBuffer());
-        const webpBuffer = await processGalleryImageToWebp(sourceBuffer);
+        const webpBuffer = await processGalleryImageToWebp(buffer);
         await writeFile(outputPath, webpBuffer);
         return `/uploads/villas/${villaId}/${fileName}`;
       }
     );
 
-    const nextImages = [...currentImages, ...uploadedUrls];
-    await persistGalleryOrder(villaId, nextImages);
-    if (options?.revalidate !== false) {
-      await revalidateVillaGallery(villaId, villa.slug);
+    if (options?.persist !== false) {
+      const nextImages = [...currentImages, ...uploadedUrls];
+      await persistGalleryOrder(villaId, nextImages);
+      if (options?.revalidate !== false) {
+        await revalidateVillaGallery(villaId, villa.slug);
+      }
     }
 
     return { success: true, urls: uploadedUrls };
