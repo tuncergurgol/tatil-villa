@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Zap } from "lucide-react";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
@@ -11,6 +11,7 @@ import PeriodCalendarGrid, {
 } from "@/components/admin/villas/periods/PeriodCalendarGrid";
 import { VILLA_DAY_VISUAL_LEGEND } from "@/lib/villa-period-day-visual";
 import VillaPeriodSidebar from "@/components/admin/villas/periods/VillaPeriodSidebar";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
@@ -24,7 +25,6 @@ import {
   todayDate,
 } from "@/lib/villa-period-calendar";
 import { normalizeDateRange } from "@/lib/villa-period-selection";
-import { importVillaPeriodsFromTatildeyizAction } from "@/app/actions/admin/villa-period-import";
 
 interface VillaPeriodManagementProps {
   villa: {
@@ -59,6 +59,7 @@ export default function VillaPeriodManagement({
   embedded = false,
 }: VillaPeriodManagementProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const today = todayDate();
   const normalizedPeriods = useMemo(() => normalizePeriods(periods), [periods]);
 
@@ -79,9 +80,6 @@ export default function VillaPeriodManagement({
     useState<PeriodCalendarSelectionRange | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const selectionCompletedRef = useRef(false);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [isImporting, startImport] = useTransition();
 
   const dayDisplayByDate = useMemo(() => {
     const map = new Map<string, PeriodCalendarDayDisplay>();
@@ -166,26 +164,6 @@ export default function VillaPeriodManagement({
     router.refresh();
   }
 
-  function handleImportFromTatildeyiz() {
-    const confirmMessage =
-      normalizedPeriods.length > 0
-        ? "Mevcut fiyat periyotları ve müsaitlik silinip Tatildeyiz'den yeniden aktarılacak. Devam edilsin mi?"
-        : "Tatildeyiz'den fiyat periyotları ve müsaitlik takvimi aktarılsın mı?";
-    if (!confirm(confirmMessage)) return;
-
-    setImportMessage(null);
-    setImportError(null);
-    startImport(async () => {
-      const result = await importVillaPeriodsFromTatildeyizAction(villa.id);
-      if (!result.success) {
-        setImportError(result.message);
-        return;
-      }
-      setImportMessage(result.message);
-      router.refresh();
-    });
-  }
-
   function clearSelection() {
     setSelectedRange(null);
     setIsDragging(false);
@@ -234,7 +212,13 @@ export default function VillaPeriodManagement({
   const originalName = villa.originalName || "—";
 
   return (
-    <div className={embedded ? "mt-4 flex min-h-0 flex-1 flex-col" : "flex h-[calc(100dvh-3rem)] flex-col"}>
+    <div
+      className={
+        embedded
+          ? "flex min-h-0 flex-1 flex-col"
+          : "flex h-[calc(100dvh-3rem)] flex-col"
+      }
+    >
       {!embedded ? (
         <div className="shrink-0 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
@@ -266,90 +250,83 @@ export default function VillaPeriodManagement({
           embedded ? "" : "mt-4"
         }`}
       >
-        <div className="shrink-0 border-b border-gray-200 px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={goToToday}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Bugün
-              </button>
-              <button
-                type="button"
-                onClick={goToPreviousMonth}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Önceki
-              </button>
-              <button
-                type="button"
-                onClick={goToNextMonth}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Sonraki
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <h2 className="ml-2 text-xl font-bold text-gray-900">
-                {getMonthLabel(viewYear, viewMonth)}
-              </h2>
-            </div>
+        <div className="shrink-0 border-b border-gray-200 px-3 py-3 md:px-5 md:py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={goToToday}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 md:px-4 md:text-sm"
+            >
+              Bugün
+            </button>
+            <button
+              type="button"
+              onClick={goToPreviousMonth}
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 md:px-3 md:text-sm"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Önceki
+            </button>
+            <button
+              type="button"
+              onClick={goToNextMonth}
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 md:px-3 md:text-sm"
+            >
+              Sonraki
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <h2 className="text-base font-bold text-gray-900 md:ml-2 md:text-xl">
+              {getMonthLabel(viewYear, viewMonth)}
+            </h2>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-              {VILLA_DAY_VISUAL_LEGEND.map((item) => (
+          <div className="mt-2 flex gap-2 md:hidden">
+            <Link
+              href={hizliFiyatPath}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
+            >
+              <Zap className="h-4 w-4" />
+              Hızlı Fiyat
+            </Link>
+            <button
+              type="button"
+              onClick={() => openCreateModal(true)}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              <Plus className="h-4 w-4" />
+              Periyot Ekle
+            </button>
+          </div>
+
+          <div className="mt-3 flex gap-3 overflow-x-auto pb-1 text-[11px] text-gray-600 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:text-xs [&::-webkit-scrollbar]:hidden">
+            {VILLA_DAY_VISUAL_LEGEND.map((item) => (
+              <span
+                key={item.kind}
+                className="inline-flex shrink-0 items-center gap-1.5"
+              >
                 <span
-                  key={item.kind}
-                  className="inline-flex items-center gap-1.5"
-                >
-                  <span
-                    className="h-3 w-3 rounded-sm border border-gray-200"
-                    style={item.swatchStyle}
-                  />
-                  {item.label}
-                </span>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleImportFromTatildeyiz}
-                disabled={isImporting}
-                className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm font-semibold text-teal-800 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${isImporting ? "animate-spin" : ""}`}
+                  className="h-3 w-3 rounded-sm border border-gray-200"
+                  style={item.swatchStyle}
                 />
-                {isImporting ? "Güncelleniyor..." : "TATİLDEYİZDEN GÜNCELLE"}
-              </button>
-              <button
-                type="button"
-                onClick={() => openCreateModal(true)}
-                disabled={isImporting}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Plus className="h-4 w-4" />
-                Periyot Ekle Devam Et
-              </button>
-            </div>
+                {item.label}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-3 hidden flex-wrap items-center justify-end gap-2 md:flex">
+            <button
+              type="button"
+              onClick={() => openCreateModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              <Plus className="h-4 w-4" />
+              Periyot Ekle Devam Et
+            </button>
           </div>
         </div>
 
-        {importMessage ? (
-          <div className="shrink-0 border-b border-green-200 bg-green-50 px-5 py-3 text-sm text-green-800">
-            {importMessage}
-          </div>
-        ) : null}
-        {importError ? (
-          <div className="shrink-0 border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-800">
-            {importError}
-          </div>
-        ) : null}
-
         <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[1fr_320px]">
-          <div className="min-h-0 overflow-y-auto border-b border-gray-200 p-4 xl:border-b-0 xl:border-r">
+          <div className="min-h-[min(520px,58dvh)] overflow-y-auto border-b border-gray-200 p-3 xl:min-h-0 xl:border-b-0 xl:border-r xl:p-4">
             <PeriodCalendarGrid
               year={viewYear}
               month={viewMonth}
@@ -365,7 +342,7 @@ export default function VillaPeriodManagement({
             />
           </div>
 
-          <div className="min-h-0 p-4">
+          <div className="max-h-[40dvh] min-h-0 overflow-y-auto p-3 xl:max-h-none xl:p-4">
             <VillaPeriodSidebar
               villaId={villa.id}
               hizliFiyatPath={hizliFiyatPath}

@@ -54,7 +54,7 @@ export default function VillaPeriodSidebar({
       <div className="border-b border-gray-200 bg-white px-4 py-4">
         <Link
           href={hizliFiyatPath}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
+          className="hidden w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 md:inline-flex"
         >
           <Zap className="h-4 w-4" />
           Hızlı Fiyat
