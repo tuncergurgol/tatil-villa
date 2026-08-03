@@ -20,6 +20,8 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_2 = 21;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_201 = 201;
 /** Misafir konfirmasyon onayı yönetim bildirimi (rowNo: 202) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_202 = 202;
+/** iyzico tahsilat alındı yönetim bildirimi (UI: 20.3, rowNo: 203) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_20_3 = 203;
 /** Ön ödeme — Banka Havale/Eft (UI: 10.2) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_10_2 = 102;
 /** Ön ödeme — Kredi Kartı/Sanal POS (UI: 10.3) */

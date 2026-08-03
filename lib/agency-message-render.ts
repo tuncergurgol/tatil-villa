@@ -650,6 +650,78 @@ export function buildNewReservationRequestTemplateValues(input: {
   return values;
 }
 
+/** iyzico / online tahsilat yönetim bildirimi (Mesaj İçeriği 20.3 / 203) */
+export function buildPaymentReceivedTemplateValues(input: {
+  reservationCode: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  villaName: string;
+  villaRegion: string;
+  villaCheckInTime: string;
+  villaCheckOutTime: string;
+  checkIn: Date;
+  checkOut: Date;
+  adults: number;
+  children: number;
+  babies: number;
+  pets: number;
+  details: BookingDetails;
+  totalPrice: number | null;
+  paidAmount: number;
+  paymentId?: string | null;
+  paymentProvider?: string;
+  company: {
+    agencyName: string;
+    brandName: string;
+    companyTitle: string;
+    domain: string;
+    logoUrl: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
+}): Record<string, string> {
+  const values = buildNewReservationRequestTemplateValues({
+    reservationCode: input.reservationCode,
+    guestName: input.guestName,
+    guestEmail: input.guestEmail,
+    guestPhone: input.guestPhone,
+    villaName: input.villaName,
+    villaRegion: input.villaRegion,
+    villaCheckInTime: input.villaCheckInTime,
+    villaCheckOutTime: input.villaCheckOutTime,
+    checkIn: input.checkIn,
+    checkOut: input.checkOut,
+    adults: input.adults,
+    children: input.children,
+    babies: input.babies,
+    pets: input.pets,
+    details: input.details,
+    totalPrice: input.totalPrice,
+    company: input.company,
+  });
+
+  const tahsilatText = formatAgencyMoney(input.paidAmount);
+  const paymentId = input.paymentId?.trim() || "—";
+  const provider = input.paymentProvider?.trim() || "iyzico";
+
+  setAlias(
+    values,
+    ["TAHSILATTUTAR", "ODENENTUTAR", "ODEMETUTAR", "TAHSILAT"],
+    tahsilatText
+  );
+  setAlias(values, ["ODEMEID", "IYZICOID", "PAYMENTID"], paymentId);
+  setAlias(values, ["ODEMEPROVIDER", "ODEMEKANALI", "ODEMESAGLAYICI"], provider);
+  setAlias(
+    values,
+    ["ODEMETIPI"],
+    getCompanyPaymentTypeLabel("credit_card")
+  );
+
+  return values;
+}
+
 /** CompanySettings.logoUrl → e-posta için mutlak URL */
 export function resolveCompanyLogoUrl(
   logoUrl: string | null | undefined,

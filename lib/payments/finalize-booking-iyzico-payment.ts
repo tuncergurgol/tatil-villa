@@ -10,6 +10,7 @@ import { getActiveIyzicoProvider } from "@/lib/payments/booking-iyzico-checkout"
 import { verifyIyzicoCfRetrieveSignature } from "@/lib/payments/iyzico-auth";
 import { iyzicoCheckoutFormRetrieve } from "@/lib/payments/iyzico-client";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { notifyIyzicoPaymentReceived } from "@/lib/iyzico-payment-received-notify";
 
 export async function finalizeBookingIyzicoPayment(input: {
   token: string;
@@ -150,6 +151,19 @@ export async function finalizeBookingIyzicoPayment(input: {
         channel: "credit_card",
       },
     });
+
+    try {
+      await notifyIyzicoPaymentReceived({
+        bookingId: booking.id,
+        paidAmount,
+        paymentId: retrieve.paymentId ?? null,
+      });
+    } catch (error) {
+      console.error(
+        "[finalize-booking-iyzico-payment] tahsilat bildirimi gönderilemedi",
+        error
+      );
+    }
   }
 
   return {
