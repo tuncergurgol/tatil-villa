@@ -1,5 +1,6 @@
 import type { PublicCheckInInfoPage } from "@/lib/queries/check-in-info";
 import CheckInContactActions from "@/components/check-in-info/CheckInContactActions";
+import VillaHtmlContent from "@/components/villa-detail/VillaHtmlContent";
 
 function SectionCard({
   title,
@@ -322,9 +323,10 @@ export default function CheckInInfoGuestView({
 
       {page.description.trim() ? (
         <SectionCard title="Villa Hakkında">
-          <p className="text-sm leading-relaxed text-slate-600 line-clamp-6">
-            {page.description}
-          </p>
+          <VillaHtmlContent
+            html={page.description}
+            className="text-sm line-clamp-6"
+          />
         </SectionCard>
       ) : null}
 
