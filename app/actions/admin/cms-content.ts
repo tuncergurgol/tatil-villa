@@ -326,6 +326,10 @@ export async function deleteGuestReviewAction(id: string): Promise<CmsActionStat
   return { success: true };
 }
 
+function parseFormBoolean(value: FormDataEntryValue | null): boolean {
+  return value === "on" || value === "true";
+}
+
 const menuItemSchema = z.object({
   menuId: z.string().min(1),
   label: z.string().min(1),
@@ -351,8 +355,8 @@ export async function saveSiteMenuItemAction(
         sortRaw === null || sortRaw === ""
           ? 0
           : Number(sortRaw),
-      active: formData.get("active") === "on",
-      openInNewTab: formData.get("openInNewTab") === "on",
+      active: parseFormBoolean(formData.get("active")),
+      openInNewTab: parseFormBoolean(formData.get("openInNewTab")),
       parentId: String(formData.get("parentId") ?? "").trim() || undefined,
     });
     if (!parsed.success) {
@@ -364,7 +368,7 @@ export async function saveSiteMenuItemAction(
       label: parsed.data.label.trim(),
       href: parsed.data.href.trim(),
       sortOrder: parsed.data.sortOrder ?? 0,
-      active: parsed.data.active ?? true,
+      active: id ? parsed.data.active : parsed.data.active ?? true,
       openInNewTab: parsed.data.openInNewTab ?? false,
       parentId: parsed.data.parentId || null,
     };
