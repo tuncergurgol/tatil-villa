@@ -24,6 +24,25 @@ export type PreReservationSubmitPayload = {
   acceptMarketing: boolean;
   couponCode?: string;
   couponDiscountAmount?: number;
+  loyaltyVoucherId?: string;
+  couponBalanceAmount?: number;
+  memberDiscountLabel?: string;
+};
+
+export type PreReservationMemberBenefits = {
+  loggedIn: boolean;
+  guest?: {
+    fullName: string;
+    email: string;
+    phone: string;
+  };
+  autoDiscount?: {
+    amount: number;
+    label: string;
+    couponCode?: string;
+    loyaltyVoucherId?: string;
+    couponBalanceAmount?: number;
+  };
 };
 
 type PreReservationModalProps = {
@@ -48,6 +67,7 @@ type PreReservationModalProps = {
   };
   quote: StayQuote;
   brandName?: string;
+  memberBenefits?: PreReservationMemberBenefits | null;
 };
 
 function formatMoney(value: number) {
@@ -115,6 +135,7 @@ export default function PreReservationModal({
   guests,
   quote,
   brandName = "tatildeyiz",
+  memberBenefits = null,
 }: PreReservationModalProps) {
   const [mounted, setMounted] = useState(false);
   const [guestName, setGuestName] = useState("");
@@ -129,6 +150,9 @@ export default function PreReservationModal({
   const [hasCoupon, setHasCoupon] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponDiscountAmount, setCouponDiscountAmount] = useState(0);
+  const [loyaltyVoucherId, setLoyaltyVoucherId] = useState("");
+  const [couponBalanceAmount, setCouponBalanceAmount] = useState(0);
+  const [memberDiscountLabel, setMemberDiscountLabel] = useState("");
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponPending, setCouponPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -136,6 +160,25 @@ export default function PreReservationModal({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    if (memberBenefits?.guest) {
+      setGuestName(memberBenefits.guest.fullName);
+      setGuestEmail(memberBenefits.guest.email);
+      setGuestPhone(memberBenefits.guest.phone);
+    }
+    if (memberBenefits?.autoDiscount) {
+      const discount = memberBenefits.autoDiscount;
+      setHasCoupon(true);
+      setCouponDiscountAmount(discount.amount);
+      setCouponCode(discount.couponCode ?? "");
+      setLoyaltyVoucherId(discount.loyaltyVoucherId ?? "");
+      setCouponBalanceAmount(discount.couponBalanceAmount ?? 0);
+      setMemberDiscountLabel(discount.label);
+      setCouponError(null);
+    }
+  }, [open, memberBenefits]);
 
   useEffect(() => {
     if (!open) return;
@@ -178,11 +221,17 @@ export default function PreReservationModal({
       });
       if (result.error || !result.discountAmount) {
         setCouponDiscountAmount(0);
+        setLoyaltyVoucherId("");
+        setCouponBalanceAmount(0);
+        setMemberDiscountLabel("");
         setCouponError(result.error ?? "Kupon uygulanamadı");
         return;
       }
       setCouponDiscountAmount(result.discountAmount);
       setCouponCode(result.couponCode ?? couponCode);
+      setLoyaltyVoucherId("");
+      setCouponBalanceAmount(0);
+      setMemberDiscountLabel("Üye kuponu");
     } finally {
       setCouponPending(false);
     }
@@ -223,9 +272,22 @@ export default function PreReservationModal({
       paymentAmount,
       acceptTerms,
       acceptMarketing,
-      couponCode: couponDiscountAmount > 0 ? couponCode : undefined,
+      couponCode:
+        couponDiscountAmount > 0 && couponCode.trim()
+          ? couponCode
+          : undefined,
       couponDiscountAmount:
         couponDiscountAmount > 0 ? couponDiscountAmount : undefined,
+      loyaltyVoucherId:
+        couponDiscountAmount > 0 && loyaltyVoucherId
+          ? loyaltyVoucherId
+          : undefined,
+      couponBalanceAmount:
+        couponDiscountAmount > 0 && couponBalanceAmount > 0
+          ? couponBalanceAmount
+          : undefined,
+      memberDiscountLabel:
+        couponDiscountAmount > 0 ? memberDiscountLabel : undefined,
     });
   }
 
@@ -357,6 +419,9 @@ export default function PreReservationModal({
                       if (!event.target.checked) {
                         setCouponCode("");
                         setCouponDiscountAmount(0);
+                        setLoyaltyVoucherId("");
+                        setCouponBalanceAmount(0);
+                        setMemberDiscountLabel("");
                         setCouponError(null);
                       }
                     }}
@@ -386,7 +451,13 @@ export default function PreReservationModal({
                 ) : null}
                 {couponDiscountAmount > 0 ? (
                   <p className="mt-2 text-xs font-semibold text-emerald-700">
-                    Kupon indirimi: -{formatMoneyLira(couponDiscountAmount)}
+                    {memberDiscountLabel || "Üye indirimi"}: -
+                    {formatMoneyLira(couponDiscountAmount)}
+                  </p>
+                ) : null}
+                {memberBenefits?.loggedIn && memberBenefits.autoDiscount ? (
+                  <p className="mt-2 text-xs text-teal-700">
+                    Üye avantajınız otomatik uygulandı.
                   </p>
                 ) : null}
               </div>

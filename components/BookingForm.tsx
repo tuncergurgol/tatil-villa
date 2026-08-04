@@ -11,6 +11,8 @@ import {
   Share2,
 } from "lucide-react";
 import { submitBooking, type BookingActionState } from "@/app/actions/booking";
+import { getMemberBookingBenefitsAction } from "@/app/actions/member-booking-benefits";
+import type { PreReservationMemberBenefits } from "@/components/PreReservationModal";
 import FloatingPanel from "@/components/FloatingPanel";
 import GuestPicker from "@/components/GuestPicker";
 import { useIsMobile } from "@/hooks/use-is-mobile";
@@ -159,6 +161,8 @@ export default function BookingForm({
 }: BookingFormProps) {
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
   const [modalOpen, setModalOpen] = useState(false);
+  const [memberBenefits, setMemberBenefits] =
+    useState<PreReservationMemberBenefits | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [minStayInfoVisible, setMinStayInfoVisible] = useState(false);
   const [feeSelections, setFeeSelections] = useState<StayFeeSelections>({});
@@ -527,10 +531,18 @@ export default function BookingForm({
     }
   }
 
-  function handleOpenModal() {
+  async function handleOpenModal() {
     if (!canOpenModal) return;
     setDatesOpen(false);
     setGuestsOpen(false);
+    if (quote?.valid) {
+      const benefits = await getMemberBookingBenefitsAction(
+        quote.accommodationTotal
+      );
+      setMemberBenefits(benefits);
+    } else {
+      setMemberBenefits(null);
+    }
     setModalOpen(true);
   }
 
@@ -554,6 +566,12 @@ export default function BookingForm({
     if (payload.couponCode) formData.set("couponCode", payload.couponCode);
     if (payload.couponDiscountAmount) {
       formData.set("couponDiscountAmount", String(payload.couponDiscountAmount));
+    }
+    if (payload.loyaltyVoucherId) {
+      formData.set("loyaltyVoucherId", payload.loyaltyVoucherId);
+    }
+    if (payload.couponBalanceAmount) {
+      formData.set("couponBalanceAmount", String(payload.couponBalanceAmount));
     }
     formData.set("feeSelections", JSON.stringify(feeSelections));
     formData.set(
@@ -823,6 +841,7 @@ export default function BookingForm({
               pricingTotals?.checkInPayment ?? quote.checkInPayment,
           }}
           brandName={brandName}
+          memberBenefits={memberBenefits}
         />
       ) : null}
     </div>

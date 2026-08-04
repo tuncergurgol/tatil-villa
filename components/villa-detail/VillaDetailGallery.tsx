@@ -1,28 +1,29 @@
 "use client";
 
 import GalleryImage from "@/components/GalleryImage";
+import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Heart,
   Images,
   Share2,
   X,
 } from "lucide-react";
 
 type VillaDetailGalleryProps = {
+  villaId: string;
   name: string;
   images: string[];
 };
 
 export default function VillaDetailGallery({
+  villaId,
   name,
   images,
 }: VillaDetailGalleryProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [favorited, setFavorited] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [mobileSlide, setMobileSlide] = useState(0);
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
@@ -84,19 +85,7 @@ export default function VillaDetailGallery({
 
   const actionButtons = (
     <div className="absolute right-3 top-3 z-10 flex gap-2">
-      <button
-        type="button"
-        onClick={() => setFavorited((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2 text-sm font-semibold text-slate-800 shadow-md backdrop-blur hover:bg-white"
-        aria-pressed={favorited}
-      >
-        <Heart
-          className={`h-4 w-4 ${
-            favorited ? "fill-rose-500 text-rose-500" : "text-slate-700"
-          }`}
-        />
-        Favori
-      </button>
+      <MemberFavoriteButton villaId={villaId} variant="pill" />
       <button
         type="button"
         onClick={handleShare}

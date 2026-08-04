@@ -1,7 +1,10 @@
 import { randomBytes } from "crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { upsertCustomerFromBooking } from "@/lib/customer-from-booking";
+import {
+  findCustomerForBookingGuest,
+  upsertCustomerFromBooking,
+} from "@/lib/customer-from-booking";
 import { LOYALTY_RULES } from "@/lib/loyalty-config";
 
 const INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -44,11 +47,20 @@ export async function linkMemberToCustomer(memberId: string) {
   });
   if (!member || member.customerId) return member?.customerId ?? null;
 
-  const result = await upsertCustomerFromBooking({
+  const existingCustomer = await findCustomerForBookingGuest({
     guestName: member.fullName,
     guestPhone: member.phone,
     guestEmail: member.email,
   });
+
+  const result =
+    existingCustomer
+      ? { created: false, id: existingCustomer.id }
+      : await upsertCustomerFromBooking({
+          guestName: member.fullName,
+          guestPhone: member.phone,
+          guestEmail: member.email,
+        });
   if (!result) return null;
 
   await prisma.memberAccount.update({

@@ -179,7 +179,11 @@ export default function VillaDetailView({
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 lg:px-8">
-        <VillaDetailGallery name={villa.name} images={villa.images} />
+        <VillaDetailGallery
+          villaId={villa.id}
+          name={villa.name}
+          images={villa.images}
+        />
 
         <VillaDetailSectionNav
           items={navItems}

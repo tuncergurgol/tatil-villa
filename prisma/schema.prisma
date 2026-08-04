@@ -319,6 +319,10 @@ enum MemberReferralStatus {
   REWARDED
 }
 
+enum MemberFavoriteItemType {
+  VILLA
+}
+
 model MemberAccount {
   id                    String           @id @default(cuid())
   customerId            String?          @unique
@@ -350,6 +354,7 @@ model MemberAccount {
   loyaltyVouchers       LoyaltyVoucher[]
   couponRedemptions     CouponRedemption[]
   bookings              Booking[]
+  favorites             MemberFavorite[]
 
   @@index([email])
   @@index([inviteCode])
@@ -387,6 +392,19 @@ model LoyaltyVoucher {
   @@index([memberId])
   @@index([expiresAt])
   @@index([bookingId])
+}
+
+model MemberFavorite {
+  id        String                 @id @default(cuid())
+  memberId  String
+  member    MemberAccount          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  itemType  MemberFavoriteItemType
+  itemId    String
+  createdAt DateTime               @default(now())
+
+  @@unique([memberId, itemType, itemId])
+  @@index([memberId])
+  @@index([itemType, itemId])
 }
 
 model MemberReferral {

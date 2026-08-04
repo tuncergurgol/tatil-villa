@@ -4,10 +4,10 @@ import {
   Bath,
   BedDouble,
   CheckCircle2,
-  Heart,
   MapPin,
   Users,
 } from "lucide-react";
+import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
 import type { Villa } from "@/lib/types";
 import { categoryLabel, formatPrice } from "@/lib/utils";
 import { villaPublicPath } from "@/lib/villa-public-path";
@@ -47,13 +47,9 @@ export default function VillaResultCard({
               sizes="(max-width: 640px) 100vw, 320px"
             />
           </Link>
-          <button
-            type="button"
-            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-gray-500 shadow-sm transition hover:text-rose-500"
-            aria-label="Favorilere ekle"
-          >
-            <Heart className="h-4 w-4" />
-          </button>
+          <div className="absolute right-3 top-3 z-10">
+            <MemberFavoriteButton villaId={villa.id} />
+          </div>
         </div>
 
         <div className="flex flex-1 flex-col gap-3 p-4 sm:flex-row sm:p-5">

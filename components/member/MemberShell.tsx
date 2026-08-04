@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Gift,
+  Heart,
+  Home,
   KeyRound,
   LogOut,
   Ticket,
@@ -12,11 +14,17 @@ import {
 import { logoutMemberAction } from "@/app/actions/member-auth";
 
 const navItems = [
+  { href: "/", label: "Ana Sayfa", icon: Home, external: true },
   { href: "/uye/hesabim/profil", label: "Kişisel Bilgiler", icon: UserRound },
   {
     href: "/uye/hesabim/rezervasyonlar",
     label: "Rezervasyonlarım",
     icon: Ticket,
+  },
+  {
+    href: "/uye/hesabim/begendiklerim",
+    label: "Beğendiklerim",
+    icon: Heart,
   },
   { href: "/uye/hesabim/uyelik", label: "Üyelik Seviyesi", icon: Gift },
   { href: "/uye/hesabim/davet", label: "Davet Kodu", icon: KeyRound },
@@ -60,7 +68,7 @@ export default function MemberShell({
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="space-y-2">
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active = !item.external && pathname === item.href;
             const Icon = item.icon;
             return (
               <Link

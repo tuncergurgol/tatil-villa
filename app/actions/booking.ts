@@ -22,6 +22,12 @@ import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { resolveVillaStayQuote } from "@/lib/queries/villa-stay-quote";
 import { validateCouponForBooking } from "@/lib/coupon-service";
 import { getCurrentMember } from "@/lib/member-session.server";
+import { linkMemberToCustomer } from "@/lib/member-account";
+import { resolveMemberContactProfile } from "@/lib/member-profile";
+import {
+  applyMemberDiscountAfterBooking,
+  validateMemberDiscountSubmission,
+} from "@/lib/member-discount-apply";
 import { prisma } from "@/lib/db";
 import {
   buildStayBookingFeeDetails,
@@ -54,6 +60,8 @@ const bookingSchema = z.object({
     .transform((value) => value === "true" || value === "on"),
   couponCode: z.string().trim().optional(),
   couponDiscountAmount: z.coerce.number().min(0).optional(),
+  loyaltyVoucherId: z.string().trim().optional(),
+  couponBalanceAmount: z.coerce.number().min(0).optional(),
 });
 
 export type BookingActionState = {
@@ -102,6 +110,8 @@ export async function submitBooking(
     acceptMarketing: formData.get("acceptMarketing") ?? "",
     couponCode: formData.get("couponCode")?.toString() || "",
     couponDiscountAmount: formData.get("couponDiscountAmount") ?? "",
+    loyaltyVoucherId: formData.get("loyaltyVoucherId")?.toString() || "",
+    couponBalanceAmount: formData.get("couponBalanceAmount") ?? "",
   });
 
   if (!parsed.success) {
@@ -121,6 +131,8 @@ export async function submitBooking(
     acceptMarketing,
     couponCode,
     couponDiscountAmount: couponDiscountAmountRaw,
+    loyaltyVoucherId,
+    couponBalanceAmount: couponBalanceAmountRaw,
     villaId,
     adults,
     children,
@@ -187,8 +199,29 @@ export async function submitBooking(
 
   let agencyDiscountAmount = 0;
   let appliedCouponCode: string | null = null;
+  let appliedLoyaltyVoucherId: string | null = null;
+  let appliedCouponBalance = 0;
   const member = await getCurrentMember();
-  if (couponCode?.trim()) {
+  const requestedDiscount = couponDiscountAmountRaw ?? 0;
+
+  if (member && requestedDiscount > 0) {
+    const discountResult = await validateMemberDiscountSubmission(
+      member.id,
+      accommodationTotal,
+      site.key,
+      {
+        requestedAmount: requestedDiscount,
+        couponCode: couponCode?.trim() || undefined,
+        loyaltyVoucherId: loyaltyVoucherId?.trim() || undefined,
+        couponBalanceAmount: couponBalanceAmountRaw ?? undefined,
+      }
+    );
+    if (!discountResult.ok) return { error: discountResult.error };
+    agencyDiscountAmount = discountResult.discount.amount;
+    appliedCouponCode = discountResult.discount.couponCode ?? null;
+    appliedLoyaltyVoucherId = discountResult.discount.loyaltyVoucherId ?? null;
+    appliedCouponBalance = discountResult.discount.couponBalanceAmount ?? 0;
+  } else if (couponCode?.trim()) {
     const couponResult = await validateCouponForBooking(
       async (code) =>
         prisma.coupon.findFirst({
@@ -272,6 +305,8 @@ export async function submitBooking(
           agencyDiscountAmount,
           couponCode: appliedCouponCode,
           couponDiscountAmount: agencyDiscountAmount,
+          loyaltyVoucherId: appliedLoyaltyVoucherId,
+          couponBalanceAmount: appliedCouponBalance > 0 ? appliedCouponBalance : undefined,
         },
         buildActivityLogEntry({
           action: "booking_created",
@@ -290,13 +325,28 @@ export async function submitBooking(
   }
 
   if (member) {
+    const profile = await resolveMemberContactProfile(member.id);
     await prisma.booking.update({
       where: { id: booking.id },
-      data: { memberId: member.id, customerId: member.customerId ?? undefined },
+      data: {
+        memberId: member.id,
+        customerId: profile?.customerId ?? member.customerId ?? undefined,
+        guestName: profile?.fullName || guestName,
+        guestEmail: profile?.email || guestEmail,
+        guestPhone: profile?.phone || guestPhone,
+      },
     });
+    await linkMemberToCustomer(member.id);
   }
 
-  if (appliedCouponCode && agencyDiscountAmount > 0) {
+  if (member && agencyDiscountAmount > 0) {
+    await applyMemberDiscountAfterBooking(member.id, booking.id, {
+      amount: agencyDiscountAmount,
+      couponCode: appliedCouponCode ?? undefined,
+      loyaltyVoucherId: appliedLoyaltyVoucherId ?? undefined,
+      couponBalanceAmount: appliedCouponBalance > 0 ? appliedCouponBalance : undefined,
+    });
+  } else if (appliedCouponCode && agencyDiscountAmount > 0) {
     const coupon = await prisma.coupon.findFirst({
       where: { code: { equals: appliedCouponCode, mode: "insensitive" } },
     });
