@@ -83,9 +83,12 @@ export default function Header({
     "tatil-villacisi": "h-12 max-w-[190px]",
   }[siteKey];
 
+  const whatsAppButtonClass =
+    "flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#20BD5A] md:py-2";
+
   return (
-    <header className="relative z-50 border-b border-gray-200 bg-white text-gray-900 shadow-sm sticky top-0">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 md:gap-4 md:px-6 md:py-3.5 lg:px-8">
+    <header className="relative z-50 sticky top-0 border-b border-gray-200 bg-white text-gray-900 shadow-sm">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 md:gap-4 md:px-6 md:py-3 lg:px-8">
         <Link
           href="/"
           className="flex min-w-0 max-w-[calc(100%-3.25rem)] shrink-0 flex-col gap-0 leading-tight md:max-w-none md:gap-0.5"
@@ -96,7 +99,7 @@ export default function Header({
               alt={brandName}
               width={504}
               height={130}
-              className={`w-auto object-contain object-left md:h-[5.85rem] md:max-w-[504px] ${mobileLogoClass}`}
+              className={`w-auto object-contain object-left md:h-[5.25rem] md:max-w-[420px] lg:h-[5.85rem] lg:max-w-[504px] ${mobileLogoClass}`}
               priority
             />
           ) : (
@@ -109,7 +112,7 @@ export default function Header({
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 xl:flex">
+        <nav className="hidden flex-1 items-center justify-center gap-5 xl:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -121,24 +124,26 @@ export default function Header({
           ))}
         </nav>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex lg:max-w-lg xl:max-w-md">
-          <HeaderVillaSearch className="w-full max-w-[340px]" />
-          <Link
-            href="/uye"
-            className="shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50"
-          >
-            Üye Girişi
-          </Link>
+        <div className="hidden shrink-0 flex-col items-stretch gap-2 md:flex md:w-[250px] lg:w-[300px] xl:w-[320px]">
+          <div className="flex justify-end">
+            <Link
+              href="/uye"
+              className="shrink-0 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50 lg:px-4 lg:py-2 lg:text-sm"
+            >
+              Üye Girişi
+            </Link>
+          </div>
           <a
             href={waHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex shrink-0 items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#20BD5A]"
+            className={whatsAppButtonClass}
             aria-label={`WhatsApp ile yazın: ${displayPhone}`}
           >
-            <WhatsAppIcon className="h-4 w-4 text-white" />
-            {displayPhone}
+            <WhatsAppIcon className="h-4 w-4 shrink-0 text-white" />
+            <span className="truncate">{displayPhone}</span>
           </a>
+          <HeaderVillaSearch className="w-full" />
         </div>
 
         <button
@@ -153,9 +158,21 @@ export default function Header({
 
       <div
         id="header-villa-search-section"
-        className="border-t border-gray-100 px-4 pb-3 pt-2 md:hidden"
+        className="border-t border-gray-100 bg-slate-50/70 px-4 py-3 md:hidden"
       >
-        <HeaderVillaSearch className="w-full" />
+        <div className="mx-auto flex max-w-7xl flex-col gap-2.5">
+          <a
+            href={waHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={whatsAppButtonClass}
+            aria-label={`WhatsApp ile yazın: ${displayPhone}`}
+          >
+            <WhatsAppIcon className="h-4 w-4 shrink-0 text-white" />
+            <span>{displayPhone}</span>
+          </a>
+          <HeaderVillaSearch className="w-full" />
+        </div>
       </div>
 
       {mobileOpen && (
@@ -178,16 +195,6 @@ export default function Header({
             >
               Üye Girişi
             </Link>
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 flex items-center gap-2 rounded-xl bg-[#25D366] px-3 py-2.5 text-sm font-semibold text-white"
-              aria-label={`WhatsApp ile yazın: ${displayPhone}`}
-            >
-              <WhatsAppIcon className="h-4 w-4 text-white" />
-              {displayPhone}
-            </a>
           </nav>
         </div>
       )}
