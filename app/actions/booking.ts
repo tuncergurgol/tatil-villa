@@ -20,6 +20,9 @@ import { getRequestClientIp } from "@/lib/request-client-ip";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { resolveVillaStayQuote } from "@/lib/queries/villa-stay-quote";
+import { validateCouponForBooking } from "@/lib/coupon-service";
+import { getCurrentMember } from "@/lib/member-session.server";
+import { prisma } from "@/lib/db";
 import {
   buildStayBookingFeeDetails,
   type PoolHeatingSelections,
@@ -49,6 +52,8 @@ const bookingSchema = z.object({
     .enum(["true", "false", "on", "off", ""])
     .optional()
     .transform((value) => value === "true" || value === "on"),
+  couponCode: z.string().trim().optional(),
+  couponDiscountAmount: z.coerce.number().min(0).optional(),
 });
 
 export type BookingActionState = {
@@ -95,6 +100,8 @@ export async function submitBooking(
     poolHeatingSelections:
       formData.get("poolHeatingSelections")?.toString() || undefined,
     acceptMarketing: formData.get("acceptMarketing") ?? "",
+    couponCode: formData.get("couponCode")?.toString() || "",
+    couponDiscountAmount: formData.get("couponDiscountAmount") ?? "",
   });
 
   if (!parsed.success) {
@@ -112,6 +119,8 @@ export async function submitBooking(
     feeSelections: feeSelectionsRaw,
     poolHeatingSelections: poolHeatingSelectionsRaw,
     acceptMarketing,
+    couponCode,
+    couponDiscountAmount: couponDiscountAmountRaw,
     villaId,
     adults,
     children,
@@ -171,14 +180,46 @@ export async function submitBooking(
     0
   );
   const accommodationTotal = verifiedPricing.quote.accommodationTotal;
-  const verifiedTotal = accommodationTotal + verifiedExtraTotal;
-  const verifiedPrepayment = verifiedPricing.quote.prepaymentAmount;
-  const resolvedCheckIn = Math.max(0, verifiedTotal - verifiedPrepayment);
-
   const companyPaymentType = mapPublicPaymentMethodToCompanyType(paymentMethod);
   const clientIp = await getRequestClientIp();
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
+
+  let agencyDiscountAmount = 0;
+  let appliedCouponCode: string | null = null;
+  const member = await getCurrentMember();
+  if (couponCode?.trim()) {
+    const couponResult = await validateCouponForBooking(
+      async (code) =>
+        prisma.coupon.findFirst({
+          where: { code: { equals: code, mode: "insensitive" } },
+        }),
+      {
+        code: couponCode,
+        accommodationTotal,
+        siteKey: site.key,
+        memberId: member?.id ?? null,
+      }
+    );
+    if (!couponResult.ok) return { error: couponResult.error };
+    if (
+      couponDiscountAmountRaw != null &&
+      couponDiscountAmountRaw > 0 &&
+      couponDiscountAmountRaw !== couponResult.discountAmount
+    ) {
+      return { error: "Kupon tutarı güncellendi, lütfen tekrar deneyin" };
+    }
+    agencyDiscountAmount = couponResult.discountAmount;
+    appliedCouponCode = couponResult.coupon.code;
+  }
+
+  const verifiedTotal = accommodationTotal + verifiedExtraTotal;
+  const verifiedPrepayment = Math.max(
+    0,
+    verifiedPricing.quote.prepaymentAmount - agencyDiscountAmount
+  );
+  const resolvedCheckIn = Math.max(0, verifiedTotal - verifiedPrepayment);
+
   const siteInfo = normalizeBookingSiteInfo(site.brandName);
   const originDomain = site.domain?.trim() || company.domain?.trim() || "";
 
@@ -228,6 +269,9 @@ export async function submitBooking(
           },
           acceptMarketing: acceptMarketing ?? false,
           source: "public_pre_reservation",
+          agencyDiscountAmount,
+          couponCode: appliedCouponCode,
+          couponDiscountAmount: agencyDiscountAmount,
         },
         buildActivityLogEntry({
           action: "booking_created",
@@ -243,6 +287,35 @@ export async function submitBooking(
     return {
       error: e instanceof Error ? e.message : "Rezervasyon oluşturulamadı",
     };
+  }
+
+  if (member) {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { memberId: member.id, customerId: member.customerId ?? undefined },
+    });
+  }
+
+  if (appliedCouponCode && agencyDiscountAmount > 0) {
+    const coupon = await prisma.coupon.findFirst({
+      where: { code: { equals: appliedCouponCode, mode: "insensitive" } },
+    });
+    if (coupon) {
+      await prisma.$transaction([
+        prisma.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: { increment: 1 } },
+        }),
+        prisma.couponRedemption.create({
+          data: {
+            couponId: coupon.id,
+            memberId: member?.id,
+            bookingId: booking.id,
+            discountAmount: agencyDiscountAmount,
+          },
+        }),
+      ]);
+    }
   }
 
   await notifyNewReservationRequest(booking);

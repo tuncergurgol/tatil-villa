@@ -285,10 +285,167 @@ model Customer {
   active           Boolean                 @default(true)
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
+  memberAccount    MemberAccount?
+  bookings         Booking[]
 
   @@index([active])
   @@index([phone])
   @@index([fullName])
+  @@index([email])
+}
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum CouponDiscountType {
+  FIXED
+  PERCENT
+}
+
+enum LoyaltyVoucherType {
+  TIER_STAY
+  REFERRAL_REWARD
+  WELCOME
+  MANUAL
+}
+
+enum MemberReferralStatus {
+  PENDING
+  COMPLETED
+  REWARDED
+}
+
+model MemberAccount {
+  id                    String           @id @default(cuid())
+  customerId            String?          @unique
+  customer              Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  fullName              String
+  phone                 String           @unique
+  email                 String           @default("")
+  passwordHash          String           @default("")
+  inviteCode            String           @unique
+  referredByMemberId    String?
+  referredBy            MemberAccount?   @relation("MemberReferrals", fields: [referredByMemberId], references: [id], onDelete: SetNull)
+  referrals             MemberAccount[]  @relation("MemberReferrals")
+  loyaltyTier           LoyaltyTier      @default(BRONZE)
+  completedStays        Int              @default(0)
+  couponBalance         Int              @default(0)
+  lastStayCompletedAt   DateTime?
+  marketingConsent      Boolean          @default(false)
+  kvkkAcceptedAt        DateTime?
+  membershipAcceptedAt  DateTime?
+  phoneVerifiedAt       DateTime?
+  emailVerifiedAt       DateTime?
+  registeredSiteKey     String           @default("tatildeyiz")
+  active                Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  sessions              MemberSession[]
+  inviterReferrals      MemberReferral[] @relation("InviterReferrals")
+  invitedReferral       MemberReferral?  @relation("InvitedReferral")
+  loyaltyVouchers       LoyaltyVoucher[]
+  couponRedemptions     CouponRedemption[]
+  bookings              Booking[]
+
+  @@index([email])
+  @@index([inviteCode])
+  @@index([loyaltyTier])
+  @@index([active])
+}
+
+model MemberSession {
+  id         String        @id @default(cuid())
+  memberId   String
+  member     MemberAccount @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tokenHash  String        @unique
+  expiresAt  DateTime
+  createdAt  DateTime      @default(now())
+  lastUsedAt DateTime      @default(now())
+
+  @@index([memberId])
+  @@index([expiresAt])
+}
+
+model LoyaltyVoucher {
+  id              String             @id @default(cuid())
+  memberId        String
+  member          MemberAccount      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  amount          Int
+  remainingAmount Int
+  discountPercent Int?
+  type            LoyaltyVoucherType
+  expiresAt       DateTime
+  usedAt          DateTime?
+  bookingId       String?
+  booking         Booking?           @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt       DateTime           @default(now())
+
+  @@index([memberId])
+  @@index([expiresAt])
+  @@index([bookingId])
+}
+
+model MemberReferral {
+  id              String               @id @default(cuid())
+  inviterMemberId String
+  inviter         MemberAccount        @relation("InviterReferrals", fields: [inviterMemberId], references: [id], onDelete: Cascade)
+  invitedMemberId String               @unique
+  invited         MemberAccount        @relation("InvitedReferral", fields: [invitedMemberId], references: [id], onDelete: Cascade)
+  status          MemberReferralStatus @default(PENDING)
+  rewardAmount    Int                  @default(0)
+  firstBookingId  String?
+  firstBooking    Booking?             @relation(fields: [firstBookingId], references: [id], onDelete: SetNull)
+  completedAt     DateTime?
+  rewardedAt      DateTime?
+  createdAt       DateTime             @default(now())
+
+  @@index([inviterMemberId])
+  @@index([status])
+}
+
+model Coupon {
+  id                   String             @id @default(cuid())
+  code                 String             @unique
+  discountType         CouponDiscountType
+  discountValue        Int
+  minBookingMultiplier Int                @default(10)
+  maxDiscountAmount    Int?
+  accommodationOnly    Boolean            @default(true)
+  validFrom            DateTime?
+  validTo              DateTime?
+  usageLimit           Int?
+  usedCount            Int                @default(0)
+  memberOnly           Boolean            @default(false)
+  welcomeCoupon        Boolean            @default(false)
+  referralCoupon       Boolean            @default(false)
+  siteKey              String?
+  active               Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  redemptions          CouponRedemption[]
+
+  @@index([active])
+  @@index([siteKey])
+}
+
+model CouponRedemption {
+  id             String         @id @default(cuid())
+  couponId       String
+  coupon         Coupon         @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  memberId       String?
+  member         MemberAccount? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  bookingId      String?
+  booking        Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  discountAmount Int
+  createdAt      DateTime       @default(now())
+
+  @@index([couponId])
+  @@index([memberId])
+  @@index([bookingId])
 }
 
 model Villa {
@@ -846,6 +1003,10 @@ model Booking {
   externalCode       Int?                @unique
   villaId            String
   villa              Villa               @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  customerId         String?
+  customer           Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  memberId           String?
+  member             MemberAccount?      @relation(fields: [memberId], references: [id], onDelete: SetNull)
   checkIn            DateTime            @db.Date
   checkOut           DateTime            @db.Date
   adults             Int                 @default(1)
@@ -866,6 +1027,9 @@ model Booking {
   guestReviewInvitation GuestReviewInvitation?
   guestReview           GuestReview?
   scheduledMessageLogs  BookingScheduledMessageLog[]
+  loyaltyVouchers       LoyaltyVoucher[]
+  couponRedemptions     CouponRedemption[]
+  memberReferrals       MemberReferral[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -875,6 +1039,8 @@ model Booking {
   @@index([checkIn, checkOut])
   @@index([externalCode])
   @@index([optionExpiresAt])
+  @@index([customerId])
+  @@index([memberId])
 }
 
 model BookingPrepayment {

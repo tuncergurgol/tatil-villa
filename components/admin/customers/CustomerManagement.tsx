@@ -18,6 +18,7 @@ import CustomerFormModal from "@/components/admin/customers/CustomerFormModal";
 import type { CustomerListItem } from "@/lib/queries/customers";
 import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
 import { includesSearchText } from "@/lib/search-text";
+import { LOYALTY_TIER_META } from "@/lib/loyalty-config";
 
 type StatusFilter = "all" | "active" | "passive";
 
@@ -183,11 +184,12 @@ export default function CustomerManagement({
           ) : null}
         </div>
 
-        <div className="hidden shrink-0 grid-cols-[48px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_88px_72px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-3 text-sm font-medium text-gray-500 xl:grid">
+        <div className="hidden shrink-0 grid-cols-[48px_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_88px_72px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-3 text-sm font-medium text-gray-500 xl:grid">
           <div>#</div>
           <div>Ad Soyad</div>
           <div>Telefon</div>
           <div>E-posta</div>
+          <div>Üyelik</div>
           <div>Ulaşım Kanalı</div>
           <div>Kayıt / Güncelleme</div>
           <div>Durum</div>
@@ -199,7 +201,7 @@ export default function CustomerManagement({
             visibleCustomers.map((customer, index) => (
               <div
                 key={customer.id}
-                className="grid gap-3 border-b border-gray-100 px-5 py-4 last:border-0 xl:grid-cols-[48px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_88px_72px] xl:items-center xl:gap-3"
+                className="grid gap-3 border-b border-gray-100 px-5 py-4 last:border-0 xl:grid-cols-[48px_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_88px_72px] xl:items-center xl:gap-3"
               >
                 <div className="text-sm font-semibold text-gray-500">
                   {(currentPage - 1) * pageSize + index + 1}
@@ -228,6 +230,26 @@ export default function CustomerManagement({
                   <p className="truncate text-sm text-gray-700">
                     {customer.email || "-"}
                   </p>
+                </div>
+
+                <div>
+                  <span className="text-xs font-medium text-gray-400 xl:hidden">
+                    Üyelik
+                  </span>
+                  {customer.memberAccount ? (
+                    <div className="text-sm text-gray-700">
+                      <p className="font-semibold text-teal-700">
+                        {LOYALTY_TIER_META[customer.memberAccount.loyaltyTier].emoji}{" "}
+                        {LOYALTY_TIER_META[customer.memberAccount.loyaltyTier].label}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {customer.memberAccount.completedStays} konaklama ·{" "}
+                        {customer.memberAccount.couponBalance.toLocaleString("tr-TR")} TL
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">Üye değil</p>
+                  )}
                 </div>
 
                 <div>

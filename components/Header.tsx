@@ -17,6 +17,7 @@ const defaultNavLinks = [
   { href: "/villalar?filter=deal", label: "Fırsatlar" },
   { href: "/#bolgeler", label: "Bölgeler" },
   { href: "/#kampanyalar", label: "Kampanyalar" },
+  { href: "/sadakat", label: "Sadakat Programı" },
 ];
 
 type NavLink = { href: string; label: string };
@@ -122,6 +123,12 @@ export default function Header({
 
         <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex lg:max-w-lg xl:max-w-md">
           <HeaderVillaSearch className="w-full max-w-[340px]" />
+          <Link
+            href="/uye"
+            className="shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            Üye Girişi
+          </Link>
           <a
             href={waHref}
             target="_blank"
@@ -164,6 +171,13 @@ export default function Header({
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/uye"
+              className="rounded-xl px-3 py-2.5 text-[15px] font-semibold text-teal-700 hover:bg-teal-50"
+              onClick={() => setMobileOpen(false)}
+            >
+              Üye Girişi
+            </Link>
             <a
               href={waHref}
               target="_blank"

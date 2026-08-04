@@ -36,7 +36,9 @@
     "evolution",
     "public/uploads",
     "scripts/match-villavillam-by-document.ts",
-    "scripts/apply-villavillam-external-sync.ts"
+    "scripts/apply-villavillam-external-sync.ts",
+    "scripts/_tmp*.ts",
+    "scripts/_smoke*.ts"
   ]
 }
 

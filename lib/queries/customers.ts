@@ -16,6 +16,15 @@ const customerSelect = {
       name: true,
     },
   },
+  memberAccount: {
+    select: {
+      id: true,
+      loyaltyTier: true,
+      inviteCode: true,
+      completedStays: true,
+      couponBalance: true,
+    },
+  },
 } as const;
 
 export async function getCustomerListData() {

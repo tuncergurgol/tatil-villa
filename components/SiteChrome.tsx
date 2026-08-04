@@ -26,6 +26,7 @@ const defaultHeaderLinks = [
   { href: "/villalar?filter=deal", label: "Fırsatlar" },
   { href: "/#bolgeler", label: "Bölgeler" },
   { href: "/#kampanyalar", label: "Kampanyalar" },
+  { href: "/sadakat", label: "Sadakat Programı" },
 ];
 
 const defaultQuickLinks = [

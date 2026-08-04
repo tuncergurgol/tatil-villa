@@ -13,6 +13,8 @@ import { calculateNights } from "@/lib/stay-nights";
 import { offsetDateKey } from "@/lib/villa-period-selection";
 import { syncBookingStayOccupancy } from "@/lib/villa-occupancy-service";
 import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
+import { processCompletedStayRewards } from "@/lib/loyalty-rewards";
+import { normalizePhoneToE164 } from "@/lib/phone";
 
 export { calculateNights };
 
@@ -355,6 +357,8 @@ export async function updateBookingDetail(data: {
     where: { id: data.id },
     select: {
       status: true,
+      stayStatus: true,
+      memberId: true,
       villaId: true,
       checkIn: true,
       checkOut: true,
@@ -408,6 +412,46 @@ export async function updateBookingDetail(data: {
     existing.status !== BookingStatus.CONFIRMED
   ) {
     await handleBookingConfirmedTransition(data.id, existing.status);
+  }
+
+  if (
+    data.stayStatus === StayStatus.YAPILDI &&
+    existing.stayStatus !== StayStatus.YAPILDI
+  ) {
+    let memberId = booking.memberId ?? existing.memberId;
+    if (!memberId) {
+      const phone = normalizePhoneToE164(data.guestPhone);
+      if (phone) {
+        const member = await prisma.memberAccount.findUnique({
+          where: { phone },
+          select: { id: true, customerId: true },
+        });
+        if (member) {
+          memberId = member.id;
+          await prisma.booking.update({
+            where: { id: data.id },
+            data: {
+              memberId: member.id,
+              customerId: member.customerId ?? undefined,
+            },
+          });
+        }
+      }
+    }
+
+    if (memberId) {
+      const existingReward = await prisma.loyaltyVoucher.findFirst({
+        where: { bookingId: data.id, type: "TIER_STAY" },
+      });
+      if (!existingReward) {
+        const rewardedBooking = await prisma.booking.findUnique({
+          where: { id: data.id },
+        });
+        if (rewardedBooking?.memberId) {
+          await processCompletedStayRewards(rewardedBooking);
+        }
+      }
+    }
   }
 
   return booking;

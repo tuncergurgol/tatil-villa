@@ -551,6 +551,10 @@ export default function BookingForm({
     formData.set("paymentMethod", payload.paymentMethod);
     formData.set("paymentAmount", payload.paymentAmount);
     formData.set("acceptMarketing", payload.acceptMarketing ? "true" : "false");
+    if (payload.couponCode) formData.set("couponCode", payload.couponCode);
+    if (payload.couponDiscountAmount) {
+      formData.set("couponDiscountAmount", String(payload.couponDiscountAmount));
+    }
     formData.set("feeSelections", JSON.stringify(feeSelections));
     formData.set(
       "poolHeatingSelections",

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { X } from "lucide-react";
+import { validateCouponAction } from "@/app/actions/validate-coupon";
 import TurkishPhoneField, {
   normalizeTurkishPhoneFieldValue,
 } from "@/components/admin/ui/TurkishPhoneField";
@@ -21,6 +22,8 @@ export type PreReservationSubmitPayload = {
   paymentAmount: PreReservationPaymentAmount;
   acceptTerms: boolean;
   acceptMarketing: boolean;
+  couponCode?: string;
+  couponDiscountAmount?: number;
 };
 
 type PreReservationModalProps = {
@@ -123,6 +126,11 @@ export default function PreReservationModal({
     useState<PreReservationPaymentAmount>("prepayment");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptMarketing, setAcceptMarketing] = useState(false);
+  const [hasCoupon, setHasCoupon] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponDiscountAmount, setCouponDiscountAmount] = useState(0);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponPending, setCouponPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -154,11 +162,31 @@ export default function PreReservationModal({
     `${villa.bedrooms} Yatak Odası`,
   ].join(" · ");
 
-  const total = quote.total;
-  const prepayment = quote.prepaymentAmount;
-  const remainder = quote.checkInPayment;
+  const total = Math.max(0, quote.total - couponDiscountAmount);
+  const prepayment = Math.max(0, quote.prepaymentAmount - couponDiscountAmount);
+  const remainder = Math.max(0, quote.checkInPayment);
   const payNow =
     paymentAmount === "prepayment" ? prepayment : total;
+
+  async function applyCoupon() {
+    setCouponError(null);
+    setCouponPending(true);
+    try {
+      const result = await validateCouponAction({
+        code: couponCode,
+        accommodationTotal: quote.accommodationTotal,
+      });
+      if (result.error || !result.discountAmount) {
+        setCouponDiscountAmount(0);
+        setCouponError(result.error ?? "Kupon uygulanamadı");
+        return;
+      }
+      setCouponDiscountAmount(result.discountAmount);
+      setCouponCode(result.couponCode ?? couponCode);
+    } finally {
+      setCouponPending(false);
+    }
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -195,6 +223,9 @@ export default function PreReservationModal({
       paymentAmount,
       acceptTerms,
       acceptMarketing,
+      couponCode: couponDiscountAmount > 0 ? couponCode : undefined,
+      couponDiscountAmount:
+        couponDiscountAmount > 0 ? couponDiscountAmount : undefined,
     });
   }
 
@@ -316,6 +347,49 @@ export default function PreReservationModal({
                   {formatMoneyLira(payNow)}
                 </span>
               </p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={hasCoupon}
+                    onChange={(event) => {
+                      setHasCoupon(event.target.checked);
+                      if (!event.target.checked) {
+                        setCouponCode("");
+                        setCouponDiscountAmount(0);
+                        setCouponError(null);
+                      }
+                    }}
+                  />
+                  KUPONUM VAR
+                </label>
+                {hasCoupon ? (
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      value={couponCode}
+                      onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                      placeholder="Kupon kodu"
+                      className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={couponPending || !couponCode.trim()}
+                      className="shrink-0 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                    >
+                      Uygula
+                    </button>
+                  </div>
+                ) : null}
+                {couponError ? (
+                  <p className="mt-2 text-xs text-red-600">{couponError}</p>
+                ) : null}
+                {couponDiscountAmount > 0 ? (
+                  <p className="mt-2 text-xs font-semibold text-emerald-700">
+                    Kupon indirimi: -{formatMoneyLira(couponDiscountAmount)}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </aside>
 
