@@ -13,6 +13,7 @@ import {
   withPublicSiteVillaFilter,
 } from "@/lib/public-villa-site-filter";
 import { resolveVillaDocumentType } from "@/lib/villa-document-types";
+import { getVillaPriceInclusionItems } from "@/lib/queries/price-inclusion";
 
 function startOfTodayUtc() {
   const now = new Date();
@@ -119,13 +120,7 @@ export async function getVillaDetailBySlug(
 
   const [priceInclusions, reviewAgg, siteReviewAgg, siteFallbackReviews, amenityRows, calendarDays] =
     await Promise.all([
-      priceInclusionIds.length > 0
-        ? prisma.priceInclusionItem.findMany({
-            where: { id: { in: priceInclusionIds }, active: true },
-            orderBy: [{ type: "asc" }, { sortOrder: "asc" }],
-            select: { id: true, description: true, type: true },
-          })
-        : Promise.resolve([]),
+      getVillaPriceInclusionItems(priceInclusionIds),
       prisma.guestReview.aggregate({
         where: { villaId: villa.id, approved: true },
         _avg: { rating: true },
