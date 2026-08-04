@@ -497,6 +497,7 @@ export default function VillaDetailView({
                 allowPets={villa.allowPets}
                 allowSmoking={villa.allowSmoking}
                 allowEvents={villa.allowEvents}
+                showNaturePestNotice={villa.showNaturePestNotice}
                 customRules={villa.customRules}
                 priceIncluded={villa.priceIncluded}
                 priceExcluded={villa.priceExcluded}

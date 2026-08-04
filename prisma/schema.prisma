@@ -354,6 +354,7 @@ model Villa {
   allowEvents           Boolean @default(false)
   allowSmoking          Boolean @default(false)
   allowPets             Boolean @default(false)
+  showNaturePestNotice  Boolean @default(true)
   customRules           String[] @default([])
   latitude              Float    @default(0)
   longitude             Float    @default(0)

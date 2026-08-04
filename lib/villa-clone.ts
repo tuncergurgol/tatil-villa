@@ -114,6 +114,7 @@ function villaScalarsForClone(
     allowEvents: source.allowEvents,
     allowSmoking: source.allowSmoking,
     allowPets: source.allowPets,
+    showNaturePestNotice: source.showNaturePestNotice,
     customRules: [...source.customRules],
     latitude: source.latitude,
     longitude: source.longitude,

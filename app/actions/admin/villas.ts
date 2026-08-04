@@ -513,6 +513,7 @@ export async function updateVillaRules(id: string, formData: FormData) {
       allowEvents: parseBool(formData.get("allowEvents")),
       allowSmoking: parseBool(formData.get("allowSmoking")),
       allowPets: parseBool(formData.get("allowPets")),
+      showNaturePestNotice: parseBool(formData.get("showNaturePestNotice")),
       customRules,
     },
   });

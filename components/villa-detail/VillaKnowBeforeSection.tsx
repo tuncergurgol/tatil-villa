@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { formatNightlyAmount } from "@/lib/villa-period-calendar";
+import { VILLA_NATURE_PEST_NOTICE } from "@/lib/villa-nature-pest-notice";
 
 type PriceItem = {
   id: string;
@@ -32,6 +33,7 @@ type VillaKnowBeforeSectionProps = {
   allowPets: boolean;
   allowSmoking: boolean;
   allowEvents: boolean;
+  showNaturePestNotice: boolean;
   customRules: string[];
   priceIncluded: PriceItem[];
   priceExcluded: PriceItem[];
@@ -170,6 +172,7 @@ export default function VillaKnowBeforeSection({
   allowPets,
   allowSmoking,
   allowEvents,
+  showNaturePestNotice,
   customRules,
   priceIncluded,
   priceExcluded,
@@ -324,6 +327,28 @@ export default function VillaKnowBeforeSection({
           )}
         </div>
       </div>
+
+      {showNaturePestNotice ? (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 px-5 py-6 sm:px-6">
+          <h3 className="text-lg font-bold text-slate-900">
+            {VILLA_NATURE_PEST_NOTICE.title}
+          </h3>
+          <p className="mt-3 text-[15px] leading-relaxed text-slate-600">
+            {VILLA_NATURE_PEST_NOTICE.intro}
+          </p>
+          <div className="mt-5 space-y-4">
+            {VILLA_NATURE_PEST_NOTICE.items.map((item) => (
+              <p
+                key={item.label}
+                className="text-[15px] leading-relaxed text-slate-700"
+              >
+                <span className="font-bold text-slate-900">{item.label}:</span>{" "}
+                {item.text}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
