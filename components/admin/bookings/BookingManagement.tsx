@@ -197,7 +197,8 @@ export default function BookingManagement({
     !filterModalOpen && !formModalOpen && !viewBookingId;
 
   function refreshList() {
-    router.refresh();
+    setFilters(emptyBookingFilters());
+    router.push("/admin/rezervasyonlar");
   }
 
   async function downloadBookingReportExcel(
