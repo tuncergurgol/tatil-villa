@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
 import { villaRentalFaqSeedData } from "./cms-faq-seed-data";
+import {
+  buildVillaNaturePestNoticeExcerpt,
+  buildVillaNaturePestNoticeHtml,
+  VILLA_NATURE_PEST_NOTICE,
+} from "@/lib/villa-nature-pest-notice";
 
 export const corporatePageSeeds = [
   { slug: "iletisim", title: "İletişim", pageType: "CORPORATE" as const, sortOrder: 1 },
@@ -71,6 +76,18 @@ export const blogCategorySeeds = [
     sortOrder: 4,
   },
 ];
+
+export const naturePestNoticeBlogPostSeed = {
+  slug: "doga-icinde-konaklama-ve-ilaclama-bilgilendirmesi",
+  title: "Doğa İçinde Konaklama ve İlaçlama Bilgilendirmesi",
+  categorySlug: "tatil-ipuclari",
+  excerpt: buildVillaNaturePestNoticeExcerpt(),
+  content: `<h2>${VILLA_NATURE_PEST_NOTICE.title}</h2>\n${buildVillaNaturePestNoticeHtml()}`,
+  seoTitle: "Doğa İçinde Konaklama ve İlaçlama Bilgilendirmesi | Tatildeyiz",
+  seoDescription: buildVillaNaturePestNoticeExcerpt(160),
+  seoKeywords:
+    "villa ilaçlama, doğa içinde konaklama, böcek bilgilendirmesi, villa tatil ipuçları",
+};
 
 export const defaultMenuSeeds = {
   header: {
@@ -194,6 +211,34 @@ export async function seedCmsContent() {
       where: { slug: category.slug },
       create: { ...category, active: true },
       update: { ...category, active: true },
+    });
+  }
+
+  const naturePestCategory = await prisma.blogCategory.findUnique({
+    where: { slug: naturePestNoticeBlogPostSeed.categorySlug },
+    select: { id: true },
+  });
+  if (naturePestCategory) {
+    const publishedAt = new Date();
+    const blogData = {
+      title: naturePestNoticeBlogPostSeed.title,
+      excerpt: naturePestNoticeBlogPostSeed.excerpt,
+      content: naturePestNoticeBlogPostSeed.content,
+      seoTitle: naturePestNoticeBlogPostSeed.seoTitle,
+      seoDescription: naturePestNoticeBlogPostSeed.seoDescription,
+      seoKeywords: naturePestNoticeBlogPostSeed.seoKeywords,
+      categoryId: naturePestCategory.id,
+      published: true,
+      publishedAt,
+      authorName: "Tatildeyiz",
+    };
+    await prisma.blogPost.upsert({
+      where: { slug: naturePestNoticeBlogPostSeed.slug },
+      create: {
+        slug: naturePestNoticeBlogPostSeed.slug,
+        ...blogData,
+      },
+      update: blogData,
     });
   }
 

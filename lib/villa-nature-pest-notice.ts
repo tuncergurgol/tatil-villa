@@ -17,3 +17,20 @@ export const VILLA_NATURE_PEST_NOTICE = {
     },
   ],
 } as const;
+
+export function buildVillaNaturePestNoticeHtml() {
+  const itemsHtml = VILLA_NATURE_PEST_NOTICE.items
+    .map(
+      (item) =>
+        `<p><strong>${item.label}:</strong> ${item.text}</p>`
+    )
+    .join("\n");
+
+  return `<p>${VILLA_NATURE_PEST_NOTICE.intro}</p>\n${itemsHtml}`;
+}
+
+export function buildVillaNaturePestNoticeExcerpt(max = 180) {
+  const text = `${VILLA_NATURE_PEST_NOTICE.intro} ${VILLA_NATURE_PEST_NOTICE.items[0]?.text ?? ""}`.trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}

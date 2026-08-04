@@ -43,6 +43,7 @@ const checkInInfoInclude = {
       amenities: true,
       checkInTime: true,
       checkOutTime: true,
+      showNaturePestNotice: true,
       documentAddress: true,
       greeterName: true,
       greeterPhone: true,
@@ -200,6 +201,7 @@ export type PublicCheckInInfoPage = {
   depositLines: CheckInInfoPaymentLine[];
   ownerPaymentLines: CheckInInfoPaymentLine[];
   contactActionsEnabled: boolean;
+  showNaturePestNotice: boolean;
 };
 
 function formatTrDay(date: Date): string {
@@ -727,6 +729,7 @@ export async function getPublicCheckInInfo(input: {
     depositLines,
     ownerPaymentLines,
     contactActionsEnabled: revealed,
+    showNaturePestNotice: booking.villa.showNaturePestNotice,
   };
 
   return { ok: true, page };

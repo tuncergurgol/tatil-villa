@@ -1,6 +1,7 @@
 import type { PublicCheckInInfoPage } from "@/lib/queries/check-in-info";
 import CheckInContactActions from "@/components/check-in-info/CheckInContactActions";
 import VillaHtmlContent from "@/components/villa-detail/VillaHtmlContent";
+import VillaNaturePestNoticeBlock from "@/components/villa-detail/VillaNaturePestNoticeBlock";
 
 function SectionCard({
   title,
@@ -172,6 +173,10 @@ export default function CheckInInfoGuestView({
           </div>
         </div>
       </SectionCard>
+
+      {page.showNaturePestNotice ? (
+        <VillaNaturePestNoticeBlock className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5 shadow-sm sm:p-6" />
+      ) : null}
 
       <SectionCard title="Rezervasyon Özeti">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
