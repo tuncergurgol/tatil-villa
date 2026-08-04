@@ -66,5 +66,8 @@ next-env.d.ts
 /scripts/rezervasyon-takip-*.xlsx
 /.tmp-*
 
+# generated villa list screenshots (local scratch)
+/tmp-villa-list/
+
 # broken local symlink created by a font-lookup step (pdfkit)
 /assets/

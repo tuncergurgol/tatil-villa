@@ -1,0 +1,25 @@
+﻿# Bağımlılıklar ve derleme çıktıları
+node_modules/
+.next/
+out/
+build/
+coverage/
+.vercel/
+
+# Geçici / üretilmiş dosyalar
+tmp-villa-list/
+scripts/_*
+scripts/*.log
+scripts/*-report.*
+scripts/*-catalog-cache.json
+scripts/*-pilot-*.json
+scripts/*-smoke-*.json
+scripts/aylik-ilan-raporu-*.xlsx
+scripts/haftalikkayit*.xlsx
+scripts/rezervasyon-takip-*.xlsx
+.tmp-*
+
+# Kullanıcı yüklemeleri ve runtime verisi
+public/uploads/
+waha/
+assets/
