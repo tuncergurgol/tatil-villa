@@ -29,10 +29,12 @@ export default function HeaderVillaSearch({
   initialQuery = "",
   className = "",
   inputId = HEADER_VILLA_SEARCH_INPUT_ID,
+  compact = false,
 }: {
   initialQuery?: string;
   className?: string;
   inputId?: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const listId = useId();
@@ -165,7 +167,11 @@ export default function HeaderVillaSearch({
             aria-autocomplete="list"
             aria-controls={listId}
             aria-expanded={showPanel}
-            className="w-full rounded-full border border-gray-200 bg-gray-50 py-[7px] pl-9 pr-3 text-base text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 sm:py-2.5 sm:text-sm"
+            className={`w-full rounded-full border border-gray-200 bg-gray-50 pl-9 pr-3 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 ${
+              compact
+                ? "py-1.5 text-sm"
+                : "py-[7px] text-base sm:py-2.5 sm:text-sm"
+            }`}
             autoComplete="off"
           />
         </form>

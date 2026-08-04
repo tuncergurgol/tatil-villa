@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, UserRound, X } from "lucide-react";
 import HeaderVillaSearch from "@/components/HeaderVillaSearch";
 import { siteConfig } from "@/lib/data";
 import {
@@ -51,6 +51,18 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 const DEFAULT_LOGO = "/uploads/company/logo-1783080885848.svg";
 
+const memberLinkClass =
+  "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50 sm:px-3";
+
+function MemberLoginLink({ className = "" }: { className?: string }) {
+  return (
+    <Link href="/uye" className={`${memberLinkClass} ${className}`}>
+      <UserRound className="h-3.5 w-3.5 text-slate-600" aria-hidden />
+      <span className="whitespace-nowrap">Üye Girişi</span>
+    </Link>
+  );
+}
+
 export default function Header({
   navLinks = defaultNavLinks,
   phone = siteConfig.phone,
@@ -78,20 +90,20 @@ export default function Header({
   const logoSrc = logoUrl?.trim() || (useDefaultLogo ? DEFAULT_LOGO : "");
   const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
   const mobileLogoClass = {
-    tatildeyiz: "h-14 max-w-[165px]",
-    "balayi-villacisi": "h-12 max-w-[84px]",
-    "tatil-villacisi": "h-12 max-w-[190px]",
+    tatildeyiz: "h-11 max-w-[148px]",
+    "balayi-villacisi": "h-10 max-w-[76px]",
+    "tatil-villacisi": "h-10 max-w-[170px]",
   }[siteKey];
 
   const whatsAppButtonClass =
-    "flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#20BD5A] md:py-2";
+    "flex w-full items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#20BD5A] sm:text-sm";
 
   return (
     <header className="relative z-50 sticky top-0 border-b border-gray-200 bg-white text-gray-900 shadow-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 md:gap-4 md:px-6 md:py-3 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-1.5 md:gap-3 md:px-6 md:py-2 lg:px-8">
         <Link
           href="/"
-          className="flex min-w-0 max-w-[calc(100%-3.25rem)] shrink-0 flex-col gap-0 leading-tight md:max-w-none md:gap-0.5"
+          className="flex min-w-0 max-w-[calc(100%-2.75rem)] shrink-0 flex-col gap-0 leading-tight md:max-w-none"
         >
           {logoSrc ? (
             <Image
@@ -99,40 +111,32 @@ export default function Header({
               alt={brandName}
               width={504}
               height={130}
-              className={`w-auto object-contain object-left md:h-[5.25rem] md:max-w-[420px] lg:h-[5.85rem] lg:max-w-[504px] ${mobileLogoClass}`}
+              className={`w-auto object-contain object-left md:h-[4.25rem] md:max-w-[360px] lg:h-[4.75rem] lg:max-w-[420px] ${mobileLogoClass}`}
               priority
             />
           ) : (
-            <span className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+            <span className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
               {brandName}
             </span>
           )}
-          <span className="max-w-[245px] truncate text-[9px] leading-snug text-gray-500 md:max-w-none md:text-[11px]">
+          <span className="max-w-[220px] truncate text-[9px] leading-snug text-gray-500 md:max-w-none md:text-[10px]">
             {agencyLine}
           </span>
         </Link>
 
-        <nav className="hidden flex-1 items-center justify-center gap-5 xl:flex">
+        <nav className="hidden flex-1 items-center justify-center gap-4 xl:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-[15px] font-normal text-gray-800 transition hover:text-sky-600"
+              className="text-sm font-normal text-gray-800 transition hover:text-sky-600"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden shrink-0 flex-col items-stretch gap-2 md:flex md:w-[250px] lg:w-[300px] xl:w-[320px]">
-          <div className="flex justify-end">
-            <Link
-              href="/uye"
-              className="shrink-0 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50 lg:px-4 lg:py-2 lg:text-sm"
-            >
-              Üye Girişi
-            </Link>
-          </div>
+        <div className="hidden shrink-0 flex-col gap-1.5 md:flex md:w-[272px] lg:w-[320px] xl:w-[340px]">
           <a
             href={waHref}
             target="_blank"
@@ -140,27 +144,30 @@ export default function Header({
             className={whatsAppButtonClass}
             aria-label={`WhatsApp ile yazın: ${displayPhone}`}
           >
-            <WhatsAppIcon className="h-4 w-4 shrink-0 text-white" />
+            <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-white" />
             <span className="truncate">{displayPhone}</span>
           </a>
-          <HeaderVillaSearch className="w-full" />
+          <div className="flex min-w-0 items-center gap-2">
+            <MemberLoginLink />
+            <HeaderVillaSearch className="min-w-0 flex-1" compact />
+          </div>
         </div>
 
         <button
           type="button"
-          className="rounded-xl p-2 text-gray-700 hover:bg-gray-100 md:hidden"
+          className="rounded-lg p-1.5 text-gray-700 hover:bg-gray-100 md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Menü"
         >
-          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       <div
         id="header-villa-search-section"
-        className="border-t border-gray-100 bg-slate-50/70 px-4 py-3 md:hidden"
+        className="border-t border-gray-100 bg-slate-50/80 px-4 py-2 md:hidden"
       >
-        <div className="mx-auto flex max-w-7xl flex-col gap-2.5">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2">
           <a
             href={waHref}
             target="_blank"
@@ -168,33 +175,29 @@ export default function Header({
             className={whatsAppButtonClass}
             aria-label={`WhatsApp ile yazın: ${displayPhone}`}
           >
-            <WhatsAppIcon className="h-4 w-4 shrink-0 text-white" />
+            <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-white" />
             <span>{displayPhone}</span>
           </a>
-          <HeaderVillaSearch className="w-full" />
+          <div className="flex min-w-0 items-center gap-2">
+            <MemberLoginLink />
+            <HeaderVillaSearch className="min-w-0 flex-1" compact />
+          </div>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-gray-100 px-4 py-4 md:hidden">
-          <nav className="flex flex-col gap-1">
+        <div className="border-t border-gray-100 px-4 py-3 md:hidden">
+          <nav className="flex flex-col gap-0.5">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-xl px-3 py-2.5 text-[15px] font-normal text-gray-800 hover:bg-gray-50"
+                className="rounded-lg px-3 py-2 text-sm font-normal text-gray-800 hover:bg-gray-50"
                 onClick={() => setMobileOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/uye"
-              className="rounded-xl px-3 py-2.5 text-[15px] font-semibold text-teal-700 hover:bg-teal-50"
-              onClick={() => setMobileOpen(false)}
-            >
-              Üye Girişi
-            </Link>
           </nav>
         </div>
       )}
