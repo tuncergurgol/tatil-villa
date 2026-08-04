@@ -19,7 +19,7 @@ export default async function MemberReservationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden lg:block">
         <h2 className="text-xl font-bold text-slate-900">Rezervasyonlarım</h2>
         <p className="mt-1 text-sm text-slate-600">
           Telefon veya e-posta ile eşleşen tüm rezervasyonlarınız.

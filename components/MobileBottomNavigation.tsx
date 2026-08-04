@@ -45,6 +45,7 @@ export default function MobileBottomNavigation({
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/giris-bilgilendirme") ||
     pathname?.startsWith("/rezervasyon-onay") ||
+    pathname?.startsWith("/uye/hesabim") ||
     pathname === "/onay";
 
   if (hidden) return null;

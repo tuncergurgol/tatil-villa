@@ -15,7 +15,7 @@ export default async function MemberLoyaltyPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden lg:block">
         <h2 className="text-xl font-bold text-slate-900">Üyelik Seviyesi</h2>
         <p className="mt-1 text-sm text-slate-600">
           Tamamlanan konaklamalarınıza göre seviye ve sadakat çekleri kazanırsınız.

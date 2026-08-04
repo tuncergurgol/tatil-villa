@@ -12,7 +12,7 @@ export default async function MemberInvitePage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden lg:block">
         <h2 className="text-xl font-bold text-slate-900">Davet Kodu</h2>
         <p className="mt-1 text-sm text-slate-600">
           Arkadaşlarınızı davet edin; ilk rezervasyonlarında 1.000 TL hoş geldin

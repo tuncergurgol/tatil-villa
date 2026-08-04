@@ -8,7 +8,7 @@ export default async function MemberFavoritesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden lg:block">
         <h2 className="text-xl font-bold text-slate-900">Beğendiklerim</h2>
         <p className="mt-1 text-sm text-slate-600">
           Favori villalarınızı buradan hızlıca açabilirsiniz.

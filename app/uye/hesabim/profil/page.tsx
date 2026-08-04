@@ -10,7 +10,7 @@ export default async function MemberProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden lg:block">
         <h2 className="text-xl font-bold text-slate-900">Kişisel Bilgiler</h2>
         <p className="mt-1 text-sm text-slate-600">
           Bilgileriniz üye hesabınız ve müşteri kaydınızla eşleştirilir; rezervasyon
