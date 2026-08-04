@@ -11,6 +11,7 @@
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
  * - mustakilvillam.com / myvillacity.com / villakilavuzu.com (routingData id + api PriceList/Availability)
  * - luxuryvillam.com (window.VILLA_CALENDAR gömülü günlük fiyat + müsaitlik)
+ * - hepsivilla.com (price_block haftalık/gecelik + AJAX cal.do takvim)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - tatilvillamda.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
  * - kaskavilla.com (Nuxt __NUXT__ priceTable + frontapi/periyotlar takvim)
@@ -62,6 +63,7 @@ export type ScrapedVillaPage = {
     | "akdenizvillam"
     | "villavakti"
     | "product_detail_rsc"
+    | "hepsivilla"
     | "villakalkan"
     | "yazlikvillaci"
     | "kvt"
@@ -3711,6 +3713,229 @@ function scrapeProductDetailRscFromHtml(
   };
 }
 
+function looksLikeHepsivilla(pageUrl: string, html: string): boolean {
+  try {
+    if (normalizeHost(new URL(pageUrl).hostname).includes("hepsivilla")) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return (
+    html.includes('class="pb price_block"') && html.includes("url_ajax_cal")
+  );
+}
+
+function extractHepsivillaCalendarItemId(html: string): string | null {
+  const fromJs = html.match(/\bid_item\s*=\s*(\d+)/)?.[1];
+  if (fromJs) return fromJs;
+  return (
+    html.match(/name=["']pid["'][^>]*value=["'](\d+)["']/i)?.[1] ??
+    html.match(/value=["'](\d+)["'][^>]*name=["']pid["']/i)?.[1] ??
+    html.match(/name=["']id["'][^>]*value=["'](\d+)["']/i)?.[1] ??
+    null
+  );
+}
+
+function extractHepsivillaCalendarUrl(html: string, pageUrl: string): string {
+  const fromJs = html.match(/\burl_ajax_cal\s*=\s*["']([^"']+)["']/)?.[1];
+  if (fromJs) {
+    return fromJs.startsWith("http")
+      ? fromJs
+      : `${originFromUrl(pageUrl)}${fromJs.startsWith("/") ? "" : "/"}${fromJs}`;
+  }
+  return `${originFromUrl(pageUrl)}/ajax/cal.do`;
+}
+
+function parseHepsivillaDateRange(raw: string): { start: Date; end: Date } | null {
+  const text = decodeHtmlEntities(raw)
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parts = text.split(/\s*[-–—~]\s*/);
+  if (parts.length !== 2) return null;
+  const start = parseTurkishLongDate(parts[0]!);
+  const end = parseTurkishLongDate(parts[1]!);
+  if (!start || !end || compareDates(start, end) > 0) return null;
+  return { start, end };
+}
+
+/** hepsivilla.com — `.pb.price_block` (data-day1 / data-week1 + ty tarih aralığı). */
+export function parseHepsivillaPriceBlocks(
+  html: string,
+  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
+): MappedVillaPricePeriod[] {
+  const periods: MappedVillaPricePeriod[] = [];
+  const blockRe =
+    /<div class="pb price_block"([^>]*)>[\s\S]*?<span class="ty">([\s\S]*?)<\/span>[\s\S]*?<span class="tv">([\s\S]*?)<\/span>/gi;
+  let match: RegExpExecArray | null;
+  let sourceId = 1;
+
+  while ((match = blockRe.exec(html)) !== null) {
+    const attrs = match[1] ?? "";
+    const rangeText = stripTags(match[2] ?? "");
+    const range = parseHepsivillaDateRange(rangeText);
+    if (!range) continue;
+
+    const nightlyRaw =
+      attrs.match(/data-day1=["']([^"']+)["']/i)?.[1] ??
+      stripTags(match[3] ?? "");
+    const weeklyRaw = attrs.match(/data-week1=["']([^"']+)["']/i)?.[1];
+    const nightlyParsed = parseMoneyWithCurrency(nightlyRaw);
+    const weeklyParsed = weeklyRaw
+      ? parseMoneyWithCurrency(weeklyRaw)
+      : { amount: null, currency: nightlyParsed.currency };
+
+    if (!nightlyParsed.amount || nightlyParsed.amount <= 0) continue;
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate: range.start,
+        endDate: range.end,
+        nightlyPrice: nightlyParsed.amount,
+        currency: nightlyParsed.currency,
+        weeklyPrice: weeklyParsed.amount,
+        damageDeposit: damageDeposit?.amount ?? null,
+        damageDepositCurrency:
+          damageDeposit?.currency ?? nightlyParsed.currency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+/** hepsivilla.com `/ajax/cal.do` HTML — `booked` / `onhold` sınıfları. */
+export function parseHepsivillaCalendarOccupancy(
+  html: string
+): Map<string, VillaDayOccupancy> {
+  const occupancy = new Map<string, VillaDayOccupancy>();
+  const liRe = /<li\b([^>]*)\bid=["'](\d{4}-\d{2}-\d{2})["']([^>]*)>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = liRe.exec(html)) !== null) {
+    const attrs = `${match[1] ?? ""} ${match[3] ?? ""}`;
+    const key = match[2]!;
+    const classMatch = attrs.match(/\bclass=["']([^"']+)["']/i)?.[1] ?? "";
+    const classes = classMatch.split(/\s+/).filter(Boolean);
+
+    const isFullBooked = classes.some(
+      (c) => c === "booked" || c === "bg_redish"
+    );
+    const isFullOption = classes.some(
+      (c) =>
+        c === "onhold" ||
+        c === "bg_dark_yellow" ||
+        c === "booked_pr"
+    );
+    const isPartial = classes.some((c) =>
+      /^(booked_am|booked_pm|onhold_am|onhold_pm)$/.test(c)
+    );
+
+    if (isPartial && !isFullBooked && !isFullOption) continue;
+
+    if (isFullBooked) {
+      occupancy.set(key, "BOOKED");
+    } else if (isFullOption) {
+      if (!occupancy.has(key) || occupancy.get(key) !== "BOOKED") {
+        occupancy.set(key, "OPTION");
+      }
+    }
+  }
+
+  return occupancy;
+}
+
+async function fetchHepsivillaCalendarOccupancy(
+  pageUrl: string,
+  html: string,
+  itemId: string,
+  warnings: string[]
+): Promise<Map<string, VillaDayOccupancy>> {
+  const calBase = extractHepsivillaCalendarUrl(html, pageUrl);
+  const occupancy = new Map<string, VillaDayOccupancy>();
+  const today = startOfDay(new Date());
+  let year = today.getFullYear();
+  let month = today.getMonth() + 1;
+
+  for (let i = 0; i < 24; i++) {
+    if (i > 0) await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    const url = `${calBase}?id_item=${encodeURIComponent(itemId)}&month=${month}&year=${year}&lang=tr&t=${Date.now()}`;
+    try {
+      const calHtml = await fetchText(url, { referer: pageUrl });
+      for (const [key, value] of parseHepsivillaCalendarOccupancy(calHtml)) {
+        const existing = occupancy.get(key);
+        if (value === "BOOKED" || existing !== "BOOKED") {
+          occupancy.set(key, value);
+        }
+      }
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `Hepsivilla takvim ${year}-${String(month).padStart(2, "0")} alınamadı: ${error.message}`
+          : `Hepsivilla takvim ${year}-${String(month).padStart(2, "0")} alınamadı`
+      );
+    }
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+
+  return occupancy;
+}
+
+async function scrapeHepsivillaFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeHepsivilla(pageUrl, html)) return null;
+
+  const deposit = extractDamageDeposit(html);
+  const periods = parseHepsivillaPriceBlocks(html, deposit);
+  const itemId = extractHepsivillaCalendarItemId(html);
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+
+  if (itemId) {
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    for (const [key, value] of await fetchHepsivillaCalendarOccupancy(
+      pageUrl,
+      html,
+      itemId,
+      warnings
+    )) {
+      occupancyByDateKey.set(key, value);
+    }
+  } else {
+    warnings.push("Hepsivilla takvim id_item bulunamadı");
+  }
+
+  if (periods.length === 0) {
+    if (occupancyByDateKey.size > 0) {
+      warnings.push("Hepsivilla takvim okundu ancak price_block bulunamadı");
+    }
+    return null;
+  }
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "Hepsivilla fiyatları alındı; müsaitlik takvimi okunamadı veya boş"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "hepsivilla",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 function looksLikeVillakalkan(pageUrl: string): boolean {
   try {
     return normalizeHost(new URL(pageUrl).hostname).includes("villakalkan");
@@ -4659,6 +4884,13 @@ export async function scrapeExternalVillaPage(
   );
   if (productDetailRsc) return finalizeScrapedPage(productDetailRsc, html);
 
+  const hepsivilla = await scrapeHepsivillaFromPage(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (hepsivilla) return finalizeScrapedPage(hepsivilla, html);
+
   const villakalkan = scrapeVillakalkanFromHtml(
     parsed.toString(),
     html,
@@ -4736,6 +4968,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
