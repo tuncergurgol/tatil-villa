@@ -63,6 +63,9 @@ type PeriodRowState = {
   cleaningDayCount: string;
   cleaningFee: string;
   damageDeposit: string;
+  extraBedFee: string;
+  petDamageDeposit: string;
+  petCleaningFee: string;
   nightlyPriceCurrency: VillaPeriodCurrency;
   discount1Rate: string;
   discount2Rate: string;
@@ -135,6 +138,9 @@ function periodToRow(period: VillaPricePeriodItem): PeriodRowState {
       period.cleaningDayCount != null ? String(period.cleaningDayCount) : "",
     cleaningFee: formatAmountInput(period.cleaningFee),
     damageDeposit: formatAmountInput(period.damageDeposit),
+    extraBedFee: formatAmountInput(period.extraBedFee),
+    petDamageDeposit: formatAmountInput(period.petDamageDeposit),
+    petCleaningFee: formatAmountInput(period.petCleaningFee),
     nightlyPriceCurrency: period.nightlyPriceCurrency,
     discount1Rate:
       period.discount1Rate != null ? String(period.discount1Rate) : "",

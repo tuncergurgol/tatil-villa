@@ -90,7 +90,10 @@ export async function getAdminVillaListData() {
       image: getVillaShowcaseImage(villa),
       active: villa.active,
       documentNo: villa.documentNo,
-      documentType: villa.documentType,
+      documentType: resolveVillaDocumentType(
+        villa.documentNo ?? "",
+        villa.documentType
+      ),
       location: villa.location,
       regionId: villa.region.id,
       regionSlug: villa.region.slug,
