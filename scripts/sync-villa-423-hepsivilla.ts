@@ -19,7 +19,6 @@ async function main() {
   await setVillaExternalSyncUrl(villa.id, 1, url);
   const result = await syncVillaExternalLinkSlot(villa.id, 1);
   console.log(result.ok ? "OK" : "FAIL", result.message);
-  if (result.details) console.log(result.details);
 }
 
 main()
