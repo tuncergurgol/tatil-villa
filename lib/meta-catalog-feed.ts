@@ -173,16 +173,8 @@ ${itemXml}
 `;
 }
 
-export function readMetaCatalogFeedSecret(request: Request): string | null {
-  return (
-    request.headers.get("x-meta-catalog-token") ||
-    new URL(request.url).searchParams.get("token") ||
-    new URL(request.url).searchParams.get("secret")
-  );
-}
-
-export function isMetaCatalogFeedAuthorized(request: Request): boolean {
-  const expected = process.env.META_CATALOG_FEED_SECRET?.trim();
-  if (!expected) return true;
-  return readMetaCatalogFeedSecret(request) === expected;
+export function isMetaCatalogFeedAuthorized(_request: Request): boolean {
+  // Meta Commerce Manager feed doğrulayıcısı token/query olmadan GET atar.
+  // Katalog verisi public sitedeki ilanlarla aynıdır; feed herkese açıktır.
+  return true;
 }

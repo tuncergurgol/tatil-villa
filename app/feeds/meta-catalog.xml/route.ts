@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  buildMetaCatalogFeedXml,
-  isMetaCatalogFeedAuthorized,
-} from "@/lib/meta-catalog-feed";
+import { buildMetaCatalogFeedXml } from "@/lib/meta-catalog-feed";
 import {
   getPublicSiteProfileByKey,
   getRequestHostname,
@@ -15,10 +12,6 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(request: Request) {
-  if (!isMetaCatalogFeedAuthorized(request)) {
-    return NextResponse.json({ ok: false, message: "Yetkisiz" }, { status: 401 });
-  }
-
   try {
     const settings = await getCompanySettings();
     const siteParam = new URL(request.url).searchParams.get("site")?.trim();
@@ -38,14 +31,18 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
+        "Content-Disposition": "inline; filename=meta-catalog.xml",
         "Cache-Control": "public, max-age=3600, s-maxage=3600",
       },
     });
   } catch (error) {
     console.error("[meta-catalog-feed]", error);
-    return NextResponse.json(
-      { ok: false, message: "Katalog beslemesi oluşturulamadı" },
-      { status: 500 }
-    );
+    const errorXml = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel><title>Feed Error</title></channel></rss>`;
+    return new NextResponse(errorXml, {
+      status: 500,
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+      },
+    });
   }
 }

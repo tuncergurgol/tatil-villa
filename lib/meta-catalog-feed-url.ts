@@ -19,12 +19,10 @@ export function buildMetaCatalogFeedUrl(
     .replace(/^https?:\/\//i, "")
     .replace(/\/+$/, "");
   const origin = `https://${cleaned || "www.tatildeyiz.com.tr"}`;
-  const params = new URLSearchParams();
-  const token = process.env.META_CATALOG_FEED_SECRET?.trim();
-  if (token) params.set("token", token);
-  if (siteKey) params.set("site", siteKey);
-  const query = params.toString();
-  return `${origin}/feeds/meta-catalog.xml${query ? `?${query}` : ""}`;
+  // Meta Scheduled Feed URL doğrulayıcısı query token ile JSON 401 dönebiliyor;
+  // domain bazlı herkese açık XML kullanılır (içerik zaten public sitede).
+  void siteKey;
+  return `${origin}/feeds/meta-catalog.xml`;
 }
 
 export function getMetaCatalogFeedUrls(): MetaCatalogFeedUrlRow[] {

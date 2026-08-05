@@ -114,9 +114,8 @@ export default function AnalyticsSettingsFields({
           Meta / WhatsApp Katalog Beslemesi
         </h3>
         <p className="mt-1 text-xs leading-relaxed text-violet-800/90">
-          Commerce Manager → Veri Kaynakları → Zamanlanmış Akış (Scheduled Feed)
-          alanına aşağıdaki XML URL&apos;yi yapıştırın. Meta saatte bir veya günde
-          bir kez otomatik çeker.
+          Commerce Manager → Veri kaynakları → Veri beslemesi → URL kullanın.
+          Her site için kendi domain URL&apos;sini yapıştırın (token gerekmez).
         </p>
         <div className="mt-4 space-y-3">
           {metaCatalogFeedUrls.map((feed) => (
