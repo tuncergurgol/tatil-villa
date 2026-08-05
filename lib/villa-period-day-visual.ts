@@ -265,7 +265,7 @@ export function resolveVillaDayVisualFromMap(
   );
 }
 
-/** Public sitede RESERVED yeşil gösterilmez; BOOKED ile aynı görünür. */
+/** Public sitede RESERVED dolu (BOOKED) gibi görünür; çapraz geçişler buna göre eşlenir. */
 export function toPublicCalendarVisualKind(
   kind: VillaDayVisualKind
 ): VillaDayVisualKind {
@@ -279,9 +279,8 @@ export function toPublicCalendarVisualKind(
     case "turnover_reserved":
       return "turnover_booked";
     case "booked_out_reserved_in":
-      return "booked_out_option_in";
     case "reserved_out_booked_in":
-      return "option_out_booked_in";
+      return "turnover_booked";
     case "reserved_out_option_in":
       return "booked_out_option_in";
     case "option_out_reserved_in":

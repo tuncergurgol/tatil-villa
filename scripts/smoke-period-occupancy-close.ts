@@ -7,7 +7,7 @@ import {
   buildReservedOccupancyForStay,
 } from "../lib/villa-period-selection";
 import { buildOccupancyMap } from "../lib/booking-calendar-selection";
-import { resolveVillaDayVisualFromMap } from "../lib/villa-period-day-visual";
+import { resolveVillaDayVisualFromMap, getPublicVillaDayVisualStyle } from "../lib/villa-period-day-visual";
 import { dbDateToDateKey } from "../lib/villa-period-calendar";
 
 function assert(condition: boolean, label: string) {
@@ -218,6 +218,15 @@ assert(
 assert(
   resolveVillaDayVisualFromMap("2026-08-08", overlayMap) === "turnover_booked",
   "8 Ağustos giriş-çıkış"
+);
+
+const aug10Public = getPublicVillaDayVisualStyle(
+  resolveVillaDayVisualFromMap("2026-08-10", villa1397Map610)
+);
+assert(
+  aug10Public.statusLabel === "Giriş+Çıkış" &&
+    !aug10Public.background.includes("#fcd34d"),
+  "public 10 Ağustos sarı opsiyon değil, pembe giriş-çıkış"
 );
 
 const priorCheckout = new Map<string, "BOOKED" | "EMPTY">([
