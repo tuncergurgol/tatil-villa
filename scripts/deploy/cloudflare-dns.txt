@@ -23,3 +23,8 @@ tatilvillacisi.com         -> 185.184.210.96   # www yönlendirmesi
 
 # Real IP (nginx logları için) — Cloudflare IP aralıkları zaten nginx real_ip modülü ile
 # scripts/deploy/nginx-tatildeyiz.conf içinde tanımlı
+
+# Meta katalog feed — Cloudflare bot allowlist
+# Otomatik: CLOUDFLARE_API_TOKEN ile scripts/deploy/05-cloudflare-feed-bot-allowlist.sh
+# Manuel adımlar: scripts/deploy/cloudflare-feed-waf.md
+# Meta için önerilen R2 URL: https://r2.tatildeyiz.com.tr/feeds/meta-catalog/{siteKey}.xml

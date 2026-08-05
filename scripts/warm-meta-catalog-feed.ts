@@ -38,7 +38,7 @@ async function main() {
     const site = minimalSiteProfile(siteKey);
     const result = await warmMetaCatalogFeedCache(site);
     console.log(
-      `[warm-meta-catalog-feed] ${result.siteKey}: ${result.itemHint} item, ${result.bytes} bytes`
+      `[warm-meta-catalog-feed] ${result.siteKey}: ${result.itemHint} item, ${result.bytes} bytes${result.r2Url ? `, r2=${result.r2Url}` : ""}`
     );
   }
 }

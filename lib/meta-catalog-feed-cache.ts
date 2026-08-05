@@ -2,6 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { buildMetaCatalogFeedXml } from "@/lib/meta-catalog-feed";
+import { publishMetaCatalogFeedToR2 } from "@/lib/meta-catalog-feed-r2";
 import type { PublicSiteProfile } from "@/lib/public-site-profile";
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -70,14 +71,24 @@ export async function getMetaCatalogFeedXml(
 
 export async function warmMetaCatalogFeedCache(
   site: PublicSiteProfile
-): Promise<{ siteKey: string; bytes: number; itemHint: number }> {
+): Promise<{
+  siteKey: string;
+  bytes: number;
+  itemHint: number;
+  r2Url: string | null;
+}> {
   const xml = await buildMetaCatalogFeedXml(site);
   remember(site.key, xml);
   await writeDiskCache(site.key, xml);
+  const r2Url = await publishMetaCatalogFeedToR2(site.key, xml).catch((error) => {
+    console.warn("[meta-catalog-feed-cache] R2 publish failed", error);
+    return null;
+  });
   const itemHint = (xml.match(/<item>/g) ?? []).length;
   return {
     siteKey: site.key,
     bytes: Buffer.byteLength(xml, "utf8"),
     itemHint,
+    r2Url,
   };
 }

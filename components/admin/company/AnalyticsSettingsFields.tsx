@@ -115,7 +115,8 @@ export default function AnalyticsSettingsFields({
         </h3>
         <p className="mt-1 text-xs leading-relaxed text-violet-800/90">
           Commerce Manager → Veri kaynakları → Veri beslemesi → URL kullanın.
-          Her site için kendi domain URL&apos;sini yapıştırın (token gerekmez).
+          Meta için önce R2 URL&apos;sini deneyin (Cloudflare bot korumasından
+          etkilenmez). Token gerekmez.
         </p>
         <div className="mt-4 space-y-3">
           {metaCatalogFeedUrls.map((feed) => (

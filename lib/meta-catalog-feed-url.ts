@@ -3,26 +3,33 @@ import {
   PUBLIC_SITE_META,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
+import { buildMetaCatalogFeedR2Url } from "@/lib/meta-catalog-feed-r2";
 
 export type MetaCatalogFeedUrlRow = {
   siteKey: PublicSiteKey;
   label: string;
   url: string;
+  siteUrl: string;
 };
 
-export function buildMetaCatalogFeedUrl(
-  domain: string,
-  siteKey?: PublicSiteKey
-): string {
+export function buildMetaCatalogSiteFeedUrl(domain: string): string {
   const cleaned = domain
     .trim()
     .replace(/^https?:\/\//i, "")
     .replace(/\/+$/, "");
   const origin = `https://${cleaned || "www.tatildeyiz.com.tr"}`;
-  // Meta Scheduled Feed URL doğrulayıcısı query token ile JSON 401 dönebiliyor;
-  // domain bazlı herkese açık XML kullanılır (içerik zaten public sitede).
-  void siteKey;
   return `${origin}/feeds/meta-catalog.xml`;
+}
+
+export function buildMetaCatalogFeedUrl(
+  domain: string,
+  siteKey?: PublicSiteKey
+): string {
+  if (siteKey) {
+    const r2Url = buildMetaCatalogFeedR2Url(siteKey);
+    if (r2Url) return r2Url;
+  }
+  return buildMetaCatalogSiteFeedUrl(domain);
 }
 
 export function getMetaCatalogFeedUrls(): MetaCatalogFeedUrlRow[] {
@@ -30,5 +37,6 @@ export function getMetaCatalogFeedUrls(): MetaCatalogFeedUrlRow[] {
     siteKey,
     label: PUBLIC_SITE_META[siteKey].label,
     url: buildMetaCatalogFeedUrl(PUBLIC_SITE_META[siteKey].domain, siteKey),
+    siteUrl: buildMetaCatalogSiteFeedUrl(PUBLIC_SITE_META[siteKey].domain),
   }));
 }
