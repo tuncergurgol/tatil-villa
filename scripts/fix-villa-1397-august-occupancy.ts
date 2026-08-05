@@ -1,6 +1,5 @@
 /**
- * Bungalov Masal 2 (villaId 1397): onaylı rezervasyon doluluklarını yeniden yazar.
- * Kapama (BOOKED) onaylı rezervasyonla çakıştığı için yalnızca RESERVED senkronu yapılır.
+ * Bungalov Masal 2 (villaId 1397): Ağustos doluluk kayıtlarını düzeltir.
  * Çalıştır: npx tsx scripts/fix-villa-1397-august-occupancy.ts
  */
 import { PrismaClient } from "@prisma/client";
@@ -27,6 +26,22 @@ async function main() {
     "RESERVED"
   );
   console.log("31 Tem–5 Ağu RESERVED");
+
+  await applyVillaPeriodDaysOccupancy(
+    villa.id,
+    "2026-08-05",
+    "2026-08-09",
+    "BOOKED"
+  );
+  console.log("5–9 Ağu kapama");
+
+  await applyVillaPeriodDaysOccupancy(
+    villa.id,
+    "2026-08-08",
+    "2026-08-10",
+    "BOOKED"
+  );
+  console.log("8–10 Ağu kapama (8 Ağu turnover)");
 
   await applyVillaPeriodDaysOccupancy(
     villa.id,
@@ -59,9 +74,15 @@ async function main() {
     "sonra",
     after.map((d) => `${dbDateToDateKey(d.date)}:${d.occupancyStatus}`)
   );
-  console.log("5 Ağu görsel:", resolveVillaDayVisualFromMap("2026-08-05", map));
-  console.log("10 Ağu görsel:", resolveVillaDayVisualFromMap("2026-08-10", map));
-  console.log("11 Ağu görsel:", resolveVillaDayVisualFromMap("2026-08-11", map));
+  for (const key of [
+    "2026-08-05",
+    "2026-08-06",
+    "2026-08-08",
+    "2026-08-10",
+    "2026-08-11",
+  ]) {
+    console.log(`${key} görsel:`, resolveVillaDayVisualFromMap(key, map));
+  }
 }
 
 main()

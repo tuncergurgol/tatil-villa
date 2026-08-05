@@ -24,7 +24,9 @@ export async function applyVillaPeriodDaysOccupancy(
   mode: OccupancyApplyMode
 ): Promise<{ updatedDays: number }> {
   if (mode !== "RESERVED") {
-    await assertNoConfirmedBookingOverlap(villaId, startDateKey, endDateKey);
+    await assertNoConfirmedBookingOverlap(villaId, startDateKey, endDateKey, {
+      applyMode: mode === "BOOKED" || mode === "OPTION" ? mode : "EMPTY",
+    });
   }
 
   const { start, end } = normalizeDateRange(startDateKey, endDateKey);

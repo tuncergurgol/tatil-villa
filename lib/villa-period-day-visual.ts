@@ -125,6 +125,13 @@ export function isTurnoverOccupancyDay(
   if (!isBlockingOccupancy(next)) return false;
   if (!context) return false;
 
+  if (
+    normalizeOccupancy(prev) === "RESERVED" &&
+    normalizeOccupancy(next) === "BOOKED"
+  ) {
+    return true;
+  }
+
   const nightsBefore = countBookedNightsImmediatelyBefore(
     context.dateKey,
     context.occupancyMap
@@ -172,6 +179,9 @@ export function resolveVillaDayVisual(
   const prevPrevStatus = normalizeOccupancy(prevPrev);
 
   if (currentStatus === "EMPTY") {
+    if (prevStatus === "RESERVED" && nextStatus === "BOOKED") {
+      return "reserved_out_booked_in";
+    }
     if (isTurnoverOccupancyDay(current, prev, next, context)) {
       return resolveTurnoverVisualKind(prev, next);
     }
@@ -185,7 +195,6 @@ export function resolveVillaDayVisual(
     if (prevStatus === "RESERVED") return "reserved_out_booked_in";
     if (prevStatus === "OPTION") return "option_out_booked_in";
     if (prevStatus === "EMPTY") {
-      if (prevPrevStatus === "RESERVED") return "reserved_out_booked_in";
       if (isBlockingOccupancy(prevPrev) && context) {
         const prevDayKey = offsetDateKey(context.dateKey, -1);
         if (

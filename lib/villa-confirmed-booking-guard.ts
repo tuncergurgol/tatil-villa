@@ -78,14 +78,21 @@ export class ConfirmedBookingOccupancyLockedError extends Error {
 export async function assertNoConfirmedBookingOverlap(
   villaId: string,
   startDateKey: string,
-  endDateKey: string
+  endDateKey: string,
+  options?: { applyMode?: "EMPTY" | "BOOKED" | "OPTION" }
 ): Promise<void> {
   const overlap = await findConfirmedBookingOverlap(
     villaId,
     startDateKey,
     endDateKey
   );
-  if (overlap) {
-    throw new ConfirmedBookingOccupancyLockedError(overlap);
+  if (!overlap) return;
+
+  // Kapama: onaylı rezervasyon çıkış/giriş gününde turnover (aynı gün çıkış+giriş).
+  if (options?.applyMode === "BOOKED") {
+    if (overlap.checkOutKey === startDateKey) return;
+    if (overlap.checkInKey === endDateKey) return;
   }
+
+  throw new ConfirmedBookingOccupancyLockedError(overlap);
 }

@@ -189,6 +189,37 @@ assert(
   "11 Ağustos tam rezervasyon (giriş değil)"
 );
 
+// 5–9 + 8–10 kapama üst üste: 8 Ağu turnover
+const close59ForOverlay = buildBookedOccupancyForStay(
+  "2026-08-05",
+  "2026-08-09",
+  resMap
+);
+const overlayBase = new Map([...resMap, ...close59ForOverlay]);
+const close810overlay = buildBookedOccupancyForStay(
+  "2026-08-08",
+  "2026-08-10",
+  overlayBase
+);
+const overlayMap = buildOccupancyMap(
+  [...overlayBase, ...close810overlay.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-05", overlayMap) ===
+    "reserved_out_booked_in",
+  "5 Ağustos yeşil çıkış + kırmızı giriş (overlay)"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-06", overlayMap) === "full",
+  "6 Ağustos tam kapama"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-08", overlayMap) === "turnover_booked",
+  "8 Ağustos giriş-çıkış"
+);
+
 const priorCheckout = new Map<string, "BOOKED" | "EMPTY">([
   ["2026-07-31", "BOOKED"],
   ["2026-08-01", "EMPTY"],
