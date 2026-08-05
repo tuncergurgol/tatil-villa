@@ -163,6 +163,20 @@ else
   echo "           pm2 logs $PM2_NAME --lines 50"
 fi
 
+echo ""
+echo "==> [7b/8] Meta katalog feed onbellek isitma"
+if npx tsx scripts/warm-meta-catalog-feed.ts; then
+  for FEED_URL in \
+    "https://www.tatildeyiz.com.tr/feeds/meta-catalog.xml" \
+    "https://www.tatilvillacisi.com/feeds/meta-catalog.xml" \
+    "https://www.balayivillacisi.com/feeds/meta-catalog.xml"; do
+  FEED_STATS="$(curl -s -o /dev/null -w '%{http_code} %{time_total}s' "$FEED_URL" || echo '000 0s')"
+  echo "    $FEED_URL -> $FEED_STATS"
+  done
+else
+  echo "    UYARI: Meta feed warm atlandi"
+fi
+
 # ---- 8) Cron (blog AI dahil) ------------------------------------------------
 echo ""
 echo "==> [8/8] Cron guncelleniyor (blog-generate dahil)"

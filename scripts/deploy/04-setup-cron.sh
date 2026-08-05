@@ -48,6 +48,8 @@ cat >> "$CRON_FILE" <<EOF
 5 * * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/blog-generate" >>"${LOG_DIR}/blog-generate.log" 2>&1
 # tatil-villa cron — zamanlanmış rezervasyon mesajları (saat başı; 11.4 yorum, 40.2 havuz ısıtma vb.)
 0 * * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/booking-scheduled-messages" >>"${LOG_DIR}/booking-scheduled-messages.log" 2>&1
+# tatil-villa cron — Meta katalog feed önbellek (saatte bir; Commerce Manager doğrulayıcısı için hızlı XML)
+45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1
 EOF
 
 crontab "$CRON_FILE"
@@ -68,4 +70,5 @@ echo "  Log: ${LOG_DIR}/"
 echo "  Takvim/fiyat: her 15 dakikada bir tetiklenir."
 echo "  Blog AI    : saatte bir tetiklenir (sıklık admin ayarından)."
 echo "  Zamanlı msg: saat başı tetiklenir (11.4 yorum 11:00, 40.2 havuz 14:00 vb.)."
+echo "  Meta feed  : saat :45'te önbellek yenilenir."
 echo "=========================================================="

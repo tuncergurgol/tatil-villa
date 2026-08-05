@@ -71,3 +71,6 @@ next-env.d.ts
 
 # broken local symlink created by a font-lookup step (pdfkit)
 /assets/
+
+# generated Meta catalog feed cache (runtime)
+/data/meta-catalog-feed/
