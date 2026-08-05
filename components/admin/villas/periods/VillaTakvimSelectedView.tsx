@@ -3,21 +3,19 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import VillaPeriodManagement from "@/components/admin/villas/periods/VillaPeriodManagement";
-import TakvimVillaGrid from "@/components/admin/villas/periods/TakvimVillaGrid";
 import TakvimVillaSearch from "@/components/admin/villas/periods/TakvimVillaSearch";
 import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 
-interface VillaTakvimPageProps {
+interface VillaTakvimSelectedViewProps {
   villas: VillaTakvimSearchItem[];
   selected: {
     villa: VillaTakvimSearchItem;
     periods: VillaPricePeriodItem[];
     periodDays: VillaPricePeriodDayItem[];
-  } | null;
-  selectedVillaParam?: string;
+  };
 }
 
 function formatPriceRange(villa: VillaTakvimSearchItem) {
@@ -35,16 +33,11 @@ function formatPriceRange(villa: VillaTakvimSearchItem) {
   return "—";
 }
 
-export default function VillaTakvimPage({
+export default function VillaTakvimSelectedView({
   villas,
   selected,
-}: VillaTakvimPageProps) {
+}: VillaTakvimSelectedViewProps) {
   const router = useRouter();
-
-  if (!selected) {
-    return <TakvimVillaGrid villas={villas} />;
-  }
-
   const activeVilla = selected.villa;
   const periodCount = selected.periods.length;
   const originalName = activeVilla.originalName.trim();

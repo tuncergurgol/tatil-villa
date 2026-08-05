@@ -1,7 +1,19 @@
+import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
-import VillaTakvimPage from "@/components/admin/villas/periods/VillaTakvimPage";
+import TakvimVillaGrid from "@/components/admin/villas/periods/TakvimVillaGrid";
 import { getVillaTakvimPageData } from "@/lib/queries/villa-takvim";
 import { villaTakvimRouteParam } from "@/lib/villa-takvim-path";
+
+const VillaTakvimSelectedView = nextDynamic(
+  () => import("@/components/admin/villas/periods/VillaTakvimSelectedView"),
+  {
+    loading: () => (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">
+        Takvim yükleniyor…
+      </div>
+    ),
+  }
+);
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +36,9 @@ export default async function TakvimPage({ searchParams }: PageProps) {
     }
   }
 
-  return (
-    <VillaTakvimPage
-      villas={data.villas}
-      selected={data.selected}
-      selectedVillaParam={villaParam}
-    />
-  );
+  if (!data.selected) {
+    return <TakvimVillaGrid villas={data.villas} />;
+  }
+
+  return <VillaTakvimSelectedView villas={data.villas} selected={data.selected} />;
 }
