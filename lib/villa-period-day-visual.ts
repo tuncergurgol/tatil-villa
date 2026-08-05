@@ -29,7 +29,7 @@ export type VillaDayVisualKind =
 const COLORS = {
   white: "#ffffff",
   red: "#dc2626",
-  green: "#16a34a",
+  lilac: "#8b5cf6",
   yellow: "#facc15",
 } as const;
 
@@ -317,19 +317,19 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
       };
     case "reserved_check_in":
       return {
-        background: diagonal(COLORS.green, COLORS.white),
+        background: diagonal(COLORS.lilac, COLORS.white),
         useLightText: false,
       };
     case "reserved_full":
-      return { background: COLORS.green, useLightText: true };
+      return { background: COLORS.lilac, useLightText: true };
     case "reserved_check_out":
       return {
-        background: diagonal(COLORS.white, COLORS.green),
+        background: diagonal(COLORS.white, COLORS.lilac),
         useLightText: false,
       };
     case "turnover_reserved":
       return {
-        background: turnoverDiagonal(COLORS.green, COLORS.green),
+        background: turnoverDiagonal(COLORS.lilac, COLORS.lilac),
         useLightText: true,
       };
     case "option_check_in":
@@ -361,22 +361,22 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
       };
     case "booked_out_reserved_in":
       return {
-        background: turnoverDiagonal(COLORS.green, COLORS.red),
+        background: turnoverDiagonal(COLORS.lilac, COLORS.red),
         useLightText: false,
       };
     case "reserved_out_booked_in":
       return {
-        background: turnoverDiagonal(COLORS.red, COLORS.green),
+        background: turnoverDiagonal(COLORS.red, COLORS.lilac),
         useLightText: false,
       };
     case "reserved_out_option_in":
       return {
-        background: turnoverDiagonal(COLORS.yellow, COLORS.green),
+        background: turnoverDiagonal(COLORS.yellow, COLORS.lilac),
         useLightText: false,
       };
     case "option_out_reserved_in":
       return {
-        background: turnoverDiagonal(COLORS.green, COLORS.yellow),
+        background: turnoverDiagonal(COLORS.lilac, COLORS.yellow),
         useLightText: false,
       };
     default:
@@ -503,17 +503,17 @@ export const VILLA_DAY_VISUAL_LEGEND: {
   {
     kind: "reserved_check_in",
     label: "Rezervasyon Giriş",
-    swatchStyle: { background: diagonal(COLORS.green, COLORS.white) },
+    swatchStyle: { background: diagonal(COLORS.lilac, COLORS.white) },
   },
   {
     kind: "reserved_full",
     label: "Bizim Rezervasyon",
-    swatchStyle: { background: COLORS.green },
+    swatchStyle: { background: COLORS.lilac },
   },
   {
     kind: "reserved_check_out",
     label: "Rezervasyon Çıkış",
-    swatchStyle: { background: diagonal(COLORS.white, COLORS.green) },
+    swatchStyle: { background: diagonal(COLORS.white, COLORS.lilac) },
   },
   {
     kind: "option_check_in",
