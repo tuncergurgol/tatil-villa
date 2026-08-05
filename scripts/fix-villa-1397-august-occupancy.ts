@@ -1,5 +1,6 @@
 /**
- * Bungalov Masal 2 (villaId 1397): Ağustos doluluk kayıtlarını yeniden yazar.
+ * Bungalov Masal 2 (villaId 1397): onaylı rezervasyon doluluklarını yeniden yazar.
+ * Kapama (BOOKED) onaylı rezervasyonla çakıştığı için yalnızca RESERVED senkronu yapılır.
  * Çalıştır: npx tsx scripts/fix-villa-1397-august-occupancy.ts
  */
 import { PrismaClient } from "@prisma/client";
@@ -26,14 +27,6 @@ async function main() {
     "RESERVED"
   );
   console.log("31 Tem–5 Ağu RESERVED");
-
-  await applyVillaPeriodDaysOccupancy(
-    villa.id,
-    "2026-08-05",
-    "2026-08-09",
-    "BOOKED"
-  );
-  console.log("5–9 Ağu kapama BOOKED");
 
   await applyVillaPeriodDaysOccupancy(
     villa.id,
