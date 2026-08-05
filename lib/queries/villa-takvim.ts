@@ -330,38 +330,166 @@ async function resolveVillaTakvimInternalId(routeParam: string) {
   return villa?.id ?? null;
 }
 
+export type TakvimGridStatus = "all" | "active" | "passive";
+
+export async function getVillaTakvimGridPage({
+  page = 1,
+  pageSize = 18,
+  status = "all",
+  q = "",
+}: {
+  page?: number;
+  pageSize?: number;
+  status?: TakvimGridStatus;
+  q?: string;
+}) {
+  const trimmed = q.trim();
+  const where: Prisma.VillaWhereInput = {};
+
+  if (status === "active") where.active = true;
+  if (status === "passive") where.active = false;
+
+  if (trimmed) {
+    const parsedVillaId = Number.parseInt(trimmed, 10);
+    const orFilters: Prisma.VillaWhereInput[] = [
+      { name: { contains: trimmed, mode: "insensitive" } },
+      { originalName: { contains: trimmed, mode: "insensitive" } },
+      { documentNo: { contains: trimmed, mode: "insensitive" } },
+      { slug: { contains: trimmed, mode: "insensitive" } },
+    ];
+    if (Number.isInteger(parsedVillaId) && parsedVillaId > 0) {
+      orFilters.push({ villaId: parsedVillaId });
+    }
+    where.OR = orFilters;
+  }
+
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.min(50, Math.max(1, pageSize));
+
+  const [total, villas] = await Promise.all([
+    prisma.villa.count({ where }),
+    prisma.villa.findMany({
+      where,
+      skip: (safePage - 1) * safePageSize,
+      take: safePageSize,
+      select: {
+        id: true,
+        villaId: true,
+        slug: true,
+        name: true,
+        originalName: true,
+        documentNo: true,
+        image: true,
+        images: true,
+        active: true,
+        pricePerNight: true,
+        _count: { select: { pricePeriods: true } },
+      },
+      orderBy: [{ villaId: { sort: "desc", nulls: "last" } }, { name: "asc" }],
+    }),
+  ]);
+
+  if (villas.length === 0) {
+    return {
+      villas: [] as VillaTakvimSearchItem[],
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+    };
+  }
+
+  const villaIds = villas.map((villa) => villa.id);
+  const [periodStats, futurePriceStats] = await Promise.all([
+    prisma.villaPricePeriod.groupBy({
+      by: ["villaId"],
+      where: { villaId: { in: villaIds } },
+      _min: { nightlyPrice: true, discountedNightlyPrice: true },
+    }),
+    prisma.$queryRaw<
+      Array<{
+        villaId: string;
+        min_price: number | null;
+        max_price: number | null;
+      }>
+    >(Prisma.sql`
+      SELECT
+        "villaId",
+        MIN(COALESCE(NULLIF("discountedNightlyPrice", 0), "nightlyPrice"))::int AS min_price,
+        MAX(COALESCE(NULLIF("discountedNightlyPrice", 0), "nightlyPrice"))::int AS max_price
+      FROM "VillaPricePeriodDay"
+      WHERE "date" >= CURRENT_DATE
+        AND "villaId" IN (${Prisma.join(villaIds)})
+      GROUP BY "villaId"
+    `),
+  ]);
+
+  const futurePriceByVillaId = new Map(
+    futurePriceStats.map((item) => [
+      item.villaId,
+      {
+        minFuturePrice: item.min_price,
+        maxFuturePrice: item.max_price,
+      },
+    ])
+  );
+  const priceByVillaId = new Map(
+    periodStats.map((item) => [
+      item.villaId,
+      {
+        nightlyPrice: item._min.nightlyPrice,
+        discountedNightlyPrice: item._min.discountedNightlyPrice,
+      },
+    ])
+  );
+
+  return {
+    villas: villas.map((villa) =>
+      mapVillaToTakvimSearchItem(
+        { ...villa, image: villa.image ?? "" },
+        priceByVillaId,
+        futurePriceByVillaId
+      )
+    ),
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+  };
+}
+
+export async function getVillaTakvimDetailData(routeParam: string) {
+  const internalId = await resolveVillaTakvimInternalId(routeParam);
+  if (!internalId) return null;
+
+  const periodData = await getVillaPeriodPageData(internalId);
+  if (!periodData) return null;
+
+  const villaSummary = await getVillaTakvimSummary(
+    internalId,
+    periodData.periods.length
+  );
+  if (!villaSummary) return null;
+
+  return {
+    villa: villaSummary,
+    periods: periodData.periods,
+    periodDays: periodData.periodDays,
+  };
+}
+
 export async function getVillaTakvimPageData(routeParam?: string) {
   if (!routeParam) {
     const villas = await getVillaTakvimSearchOptions();
     return { villas, selected: null };
   }
 
-  const internalId = await resolveVillaTakvimInternalId(routeParam);
-  if (!internalId) {
+  const selected = await getVillaTakvimDetailData(routeParam);
+  if (!selected) {
     return { villas: [], selected: null };
   }
 
-  const periodData = await getVillaPeriodPageData(internalId);
-  if (!periodData) {
-    return { villas: [], selected: null };
-  }
-
-  const villaSummary = await getVillaTakvimSummary(
-    internalId,
-    periodData.periods.length
-  );
-  if (!villaSummary) {
-    return { villas: [], selected: null };
-  }
-
-  return {
-    villas: [],
-    selected: {
-      villa: villaSummary,
-      periods: periodData.periods,
-      periodDays: periodData.periodDays,
-    },
-  };
+  return { villas: [], selected };
 }
 
 export type VillaTakvimSelectedData = {

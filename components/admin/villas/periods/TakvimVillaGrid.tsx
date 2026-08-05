@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Calendar,
   ChevronLeft,
@@ -10,30 +10,16 @@ import {
   Search,
   Zap,
 } from "lucide-react";
-import { includesSearchText } from "@/lib/search-text";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
 
 export type TakvimStatusFilter = "all" | "active" | "passive";
 
-const PAGE_SIZE = 18;
-
 type TakvimVillaGridProps = {
-  villas: VillaTakvimSearchItem[];
   title?: string;
   actionLabel?: string;
   actionIcon?: "calendar" | "price";
 };
-
-function matchesTakvimQuery(villa: VillaTakvimSearchItem, query: string) {
-  return [
-    villa.name,
-    villa.originalName,
-    villa.documentNo,
-    villa.villaId != null ? String(villa.villaId) : "",
-    villa.slug,
-  ].some((value) => includesSearchText(value, query));
-}
 
 function StatusBadge({ active }: { active: boolean }) {
   return (
@@ -328,7 +314,6 @@ function Pagination({
 }
 
 export default function TakvimVillaGrid({
-  villas,
   title = "Villa Takvimi",
   actionLabel = "Takvim Aç",
   actionIcon = "calendar",
@@ -336,25 +321,62 @@ export default function TakvimVillaGrid({
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<TakvimStatusFilter>("all");
   const [page, setPage] = useState(1);
+  const [villas, setVillas] = useState<VillaTakvimSearchItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredVillas = useMemo(() => {
-    return villas.filter((villa) => {
-      const matchesQuery = matchesTakvimQuery(villa, search);
-      const matchesStatus =
-        status === "all" ||
-        (status === "active" && villa.active) ||
-        (status === "passive" && !villa.active);
-      return matchesQuery && matchesStatus;
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({
+      page: String(page),
+      status,
     });
-  }, [search, status, villas]);
+    if (search.trim()) {
+      params.set("q", search.trim());
+    }
 
-  const totalPages = Math.max(1, Math.ceil(filteredVillas.length / PAGE_SIZE));
+    const timer = window.setTimeout(() => {
+      fetch(`/api/admin/konaklama/takvim-grid?${params.toString()}`, {
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error ?? "Tesis listesi alınamadı");
+          }
+          setVillas(data.villas ?? []);
+          setTotal(data.total ?? 0);
+          setTotalPages(Math.max(1, data.totalPages ?? 1));
+        })
+        .catch((fetchError) => {
+          if ((fetchError as Error).name === "AbortError") return;
+          setVillas([]);
+          setTotal(0);
+          setTotalPages(1);
+          setError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Tesis listesi alınamadı"
+          );
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }, search.trim() ? 250 : 0);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [page, search, status]);
+
   const currentPage = Math.min(page, totalPages);
-
-  const visibleVillas = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredVillas.slice(start, start + PAGE_SIZE);
-  }, [currentPage, filteredVillas]);
+  const visibleVillas = villas;
 
   function updateStatus(next: TakvimStatusFilter) {
     setStatus(next);
@@ -370,7 +392,7 @@ export default function TakvimVillaGrid({
               {title}
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              {filteredVillas.length} tesis
+              {total} tesis
             </p>
           </div>
 
@@ -416,7 +438,15 @@ export default function TakvimVillaGrid({
       </div>
 
       <div className="flex-1 px-3 py-4 md:px-6 md:py-6">
-        {visibleVillas.length > 0 ? (
+        {loading ? (
+          <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white text-sm text-gray-500">
+            Tesisler yükleniyor…
+          </div>
+        ) : error ? (
+          <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-red-200 bg-white text-sm text-red-600">
+            {error}
+          </div>
+        ) : visibleVillas.length > 0 ? (
           <>
             <div className="space-y-3 md:hidden">
               {visibleVillas.map((villa) => (
@@ -454,7 +484,7 @@ export default function TakvimVillaGrid({
             onChange={setPage}
           />
           <p className="text-sm text-gray-500">
-            Toplam {filteredVillas.length} tesis
+            Toplam {total} tesis
           </p>
         </div>
       </div>
