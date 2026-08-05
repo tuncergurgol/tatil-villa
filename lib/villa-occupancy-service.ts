@@ -5,8 +5,11 @@ import {
   dbDateToDateKey,
 } from "@/lib/villa-period-calendar";
 import {
+  buildBookedOccupancyForInclusiveRange,
   buildBookedOccupancyForStay,
+  buildEmptyOccupancyForInclusiveRange,
   buildEmptyOccupancyForRange,
+  buildOptionOccupancyForInclusiveRange,
   buildOptionOccupancyForStay,
   enumerateDateKeysInRange,
   normalizeDateRange,
@@ -15,20 +18,28 @@ import {
 
 export type OccupancyApplyMode = "EMPTY" | "BOOKED" | "OPTION";
 
+/** inclusive: komutun yazdığı günler birebir uygulanır; stay: rezervasyon giriş–çıkış kuralı */
+export type OccupancyRangeSemantics = "inclusive" | "stay";
+
 export async function applyVillaPeriodDaysOccupancy(
   villaId: string,
   startDateKey: string,
   endDateKey: string,
-  mode: OccupancyApplyMode
+  mode: OccupancyApplyMode,
+  semantics: OccupancyRangeSemantics = "inclusive"
 ): Promise<{ updatedDays: number }> {
   const { start, end } = normalizeDateRange(startDateKey, endDateKey);
   const rangeDateKeys = enumerateDateKeysInRange(start, end);
   const rangeDateKeySet = new Set(rangeDateKeys);
-  const lookupDateKeys = new Set<string>([
-    ...rangeDateKeys,
-    offsetDateKey(start, -1),
-    offsetDateKey(end, 1),
-  ]);
+  const lookupDateKeys = new Set<string>(
+    semantics === "stay"
+      ? [
+          ...rangeDateKeys,
+          offsetDateKey(start, -1),
+          offsetDateKey(end, 1),
+        ]
+      : rangeDateKeys
+  );
 
   const existingDays = await prisma.villaPricePeriodDay.findMany({
     where: {
@@ -52,11 +63,17 @@ export async function applyVillaPeriodDaysOccupancy(
   }
 
   const occupancyByDateKey: Map<string, VillaDayOccupancy> =
-    mode === "BOOKED"
-      ? buildBookedOccupancyForStay(start, end, existingOccupancyByDateKey)
-      : mode === "OPTION"
-        ? buildOptionOccupancyForStay(start, end, existingOccupancyByDateKey)
-        : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey);
+    semantics === "stay"
+      ? mode === "BOOKED"
+        ? buildBookedOccupancyForStay(start, end, existingOccupancyByDateKey)
+        : mode === "OPTION"
+          ? buildOptionOccupancyForStay(start, end, existingOccupancyByDateKey)
+          : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey)
+      : mode === "BOOKED"
+        ? buildBookedOccupancyForInclusiveRange(start, end)
+        : mode === "OPTION"
+          ? buildOptionOccupancyForInclusiveRange(start, end)
+          : buildEmptyOccupancyForInclusiveRange(start, end);
 
   const updates = [...occupancyByDateKey.entries()]
     .filter(([dateKey, occupancyStatus]) => {
@@ -114,7 +131,8 @@ export async function syncBookingStayOccupancy(input: {
       input.villaId,
       prevIn,
       prevOut,
-      "EMPTY"
+      "EMPTY",
+      "stay"
     );
     return;
   }
@@ -125,13 +143,15 @@ export async function syncBookingStayOccupancy(input: {
       input.villaId,
       prevIn,
       prevOut,
-      "EMPTY"
+      "EMPTY",
+      "stay"
     );
     await applyVillaPeriodDaysOccupancy(
       input.villaId,
       nextIn,
       nextOut,
-      "BOOKED"
+      "BOOKED",
+      "stay"
     );
     return;
   }
@@ -141,7 +161,8 @@ export async function syncBookingStayOccupancy(input: {
       input.villaId,
       nextIn,
       nextOut,
-      "BOOKED"
+      "BOOKED",
+      "stay"
     );
   }
 }
