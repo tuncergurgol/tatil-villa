@@ -183,18 +183,27 @@ export function buildReservedOccupancyForStayMerged(
   }
 
   const firstDayKey = keys[0]!;
-  const dayBeforeFirst = getOccupancy(
-    existingOccupancyByDateKey,
-    offsetDateKey(firstDayKey, -1)
-  );
+  const prevNightKey = offsetDateKey(firstDayKey, -1);
+  const dayBeforeFirst = getOccupancy(existingOccupancyByDateKey, prevNightKey);
   const existingFirst = getOccupancy(existingOccupancyByDateKey, firstDayKey);
-  const firstDayStatus: VillaDayOccupancy = isOccupied(dayBeforeFirst)
-    ? "EMPTY"
-    : isOccupied(existingFirst)
-      ? existingFirst === "OPTION"
-        ? "OPTION"
-        : "RESERVED"
-      : "RESERVED";
+  let firstDayStatus: VillaDayOccupancy;
+  if (isOccupied(dayBeforeFirst)) {
+    // Kapama son gece BOOKED iken ertesi gün rezervasyon girişi: RESERVED (10 Ağu senaryosu).
+    // Önceki gece RESERVED ise aynı gün çıkış+giriş: EMPTY (5 Ağu rezervasyon çıkışı).
+    if (
+      dayBeforeFirst === "BOOKED" &&
+      firstDayKey === offsetDateKey(prevNightKey, 1)
+    ) {
+      firstDayStatus = "RESERVED";
+    } else {
+      firstDayStatus = "EMPTY";
+    }
+  } else if (isOccupied(existingFirst)) {
+    firstDayStatus =
+      existingFirst === "OPTION" ? "OPTION" : "RESERVED";
+  } else {
+    firstDayStatus = "RESERVED";
+  }
   map.set(firstDayKey, firstDayStatus);
 
   const lastDayKey = keys[keys.length - 1]!;

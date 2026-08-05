@@ -182,8 +182,10 @@ export function resolveVillaDayVisual(
   }
 
   if (currentStatus === "BOOKED") {
+    if (prevStatus === "RESERVED") return "reserved_out_booked_in";
     if (prevStatus === "OPTION") return "option_out_booked_in";
     if (prevStatus === "EMPTY") {
+      if (prevPrevStatus === "RESERVED") return "reserved_out_booked_in";
       if (isBlockingOccupancy(prevPrev) && context) {
         const prevDayKey = offsetDateKey(context.dateKey, -1);
         if (

@@ -2,7 +2,10 @@
  * Takvim kapatma: bitiş tarihi çıkış günü (giriş–çıkış kuralı).
  * Çalıştır: npx tsx scripts/smoke-period-occupancy-close.ts
  */
-import { buildBookedOccupancyForStay } from "../lib/villa-period-selection";
+import {
+  buildBookedOccupancyForStay,
+  buildReservedOccupancyForStay,
+} from "../lib/villa-period-selection";
 import { buildOccupancyMap } from "../lib/booking-calendar-selection";
 import { resolveVillaDayVisualFromMap } from "../lib/villa-period-day-visual";
 import { dbDateToDateKey } from "../lib/villa-period-calendar";
@@ -107,6 +110,84 @@ assert(
 
 const close810 = buildBookedOccupancyForStay("2026-08-08", "2026-08-10", new Map());
 assert(close810.get("2026-08-10") === "EMPTY", "10 Ağustos çıkış günü EMPTY");
+
+// Villa 1397 senaryosu: 31 Tem–5 Ağu rezervasyon + 5–9 kapama + 10–13 rezervasyon
+
+const resJul31Aug5 = buildReservedOccupancyForStay(
+  "2026-07-31",
+  "2026-08-05",
+  new Map()
+);
+assert(resJul31Aug5.get("2026-08-05") === "EMPTY", "31 Tem–5 Ağu çıkış EMPTY");
+assert(resJul31Aug5.get("2026-08-04") === "RESERVED", "4 Ağustos RESERVED");
+
+const resMap = new Map(resJul31Aug5);
+const close5to9 = buildBookedOccupancyForStay(
+  "2026-08-05",
+  "2026-08-09",
+  resMap
+);
+assert(
+  close5to9.get("2026-08-05") === "EMPTY",
+  "5 Ağustos rezervasyon çıkışı + kapama girişi turnover EMPTY"
+);
+assert(close5to9.get("2026-08-06") === "BOOKED", "6 Ağustos kapama BOOKED");
+
+const afterCloseMap = new Map([...resMap, ...close5to9]);
+const resAug10to13 = buildReservedOccupancyForStay(
+  "2026-08-10",
+  "2026-08-13",
+  afterCloseMap
+);
+assert(
+  resAug10to13.get("2026-08-10") === "RESERVED",
+  "10 Ağustos rezervasyon girişi RESERVED (11 değil)"
+);
+assert(resAug10to13.get("2026-08-11") === "RESERVED", "11 Ağustos RESERVED");
+assert(resAug10to13.get("2026-08-13") === "EMPTY", "13 Ağustos çıkış EMPTY");
+
+const villa1397Map = buildOccupancyMap(
+  [...afterCloseMap, ...resAug10to13.entries()].map(([date, occupancyStatus]) => ({
+    date,
+    occupancyStatus,
+  }))
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-05", villa1397Map) ===
+    "reserved_out_booked_in",
+  "5 Ağustos yeşil çıkış + kırmızı giriş"
+);
+
+// Kapama 6–10 (çıkış 10 Ağu) + aynı gün rezervasyon girişi
+const close6to10 = buildBookedOccupancyForStay(
+  "2026-08-06",
+  "2026-08-10",
+  resMap
+);
+const afterClose610Map = new Map([...resMap, ...close6to10]);
+const resAug10after610 = buildReservedOccupancyForStay(
+  "2026-08-10",
+  "2026-08-13",
+  afterClose610Map
+);
+assert(
+  resAug10after610.get("2026-08-10") === "RESERVED",
+  "6–10 kapama sonrası 10 Ağustos RESERVED"
+);
+const villa1397Map610 = buildOccupancyMap(
+  [...afterClose610Map, ...resAug10after610.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-10", villa1397Map610) ===
+    "booked_out_reserved_in",
+  "10 Ağustos kırmızı çıkış + yeşil giriş"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-11", villa1397Map610) === "reserved_full",
+  "11 Ağustos tam rezervasyon (giriş değil)"
+);
 
 const priorCheckout = new Map<string, "BOOKED" | "EMPTY">([
   ["2026-07-31", "BOOKED"],
