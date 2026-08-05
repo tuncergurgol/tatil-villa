@@ -103,11 +103,11 @@ export function buildBookedOccupancyForStayMerged(
     offsetDateKey(firstDayKey, -1)
   );
   const existingFirst = getOccupancy(existingOccupancyByDateKey, firstDayKey);
-  const firstDayStatus: VillaDayOccupancy =
-    isOccupied(dayBeforeFirst) || isOccupied(existingFirst)
-      ? isOccupied(existingFirst)
-        ? existingFirst
-        : "EMPTY"
+  // Önceki gece doluysa ilk gün her zaman EMPTY (aynı gün çıkış+giriş / turnover).
+  const firstDayStatus: VillaDayOccupancy = isOccupied(dayBeforeFirst)
+    ? "EMPTY"
+    : isOccupied(existingFirst)
+      ? existingFirst
       : "BOOKED";
   map.set(firstDayKey, firstDayStatus);
 
@@ -142,6 +142,111 @@ export function buildBookedOccupancyForStay(
 
 function isOccupied(status: VillaDayOccupancy): boolean {
   return status === "BOOKED" || status === "OPTION";
+}
+
+/** EMPTY günden hemen önceki bitişik dolu gece sayısı. */
+function countBookedNightsImmediatelyBefore(
+  dateKey: string,
+  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>
+): number {
+  let count = 0;
+  let cursor = offsetDateKey(dateKey, -1);
+  while (isOccupied(getOccupancy(occupancyMap, cursor))) {
+    count += 1;
+    cursor = offsetDateKey(cursor, -1);
+  }
+  return count;
+}
+
+/** BOOKED zincirinin çıkış (EMPTY) gününü bulur. */
+export function findBookedStayCheckoutDateKey(
+  fromBookedDateKey: string,
+  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>
+): string {
+  let cursor = fromBookedDateKey;
+  while (isOccupied(getOccupancy(occupancyMap, cursor))) {
+    cursor = offsetDateKey(cursor, 1);
+  }
+  return cursor;
+}
+
+/**
+ * Kapatma aralığının takvimdeki ilk günü (giriş veya turnover EMPTY günü).
+ */
+export function findCloseRangeMinKey(
+  bookedDateKey: string,
+  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>
+): string {
+  const checkoutDateKey = findBookedStayCheckoutDateKey(
+    bookedDateKey,
+    occupancyMap
+  );
+  const prevKey = offsetDateKey(bookedDateKey, -1);
+  const bookedRange = enumerateDateKeysInRange(bookedDateKey, checkoutDateKey);
+
+  const fromBooked = buildBookedOccupancyForStay(
+    bookedDateKey,
+    checkoutDateKey,
+    occupancyMap
+  );
+  const bookedOnlyMatches = bookedRange.every(
+    (dateKey) =>
+      fromBooked.get(dateKey) === getOccupancy(occupancyMap, dateKey)
+  );
+
+  const priorCheckoutBeforeBooked =
+    normalizeOccupancy(getOccupancy(occupancyMap, prevKey)) === "EMPTY" &&
+    isOccupied(getOccupancy(occupancyMap, offsetDateKey(prevKey, -1)));
+
+  if (priorCheckoutBeforeBooked) {
+    const fromPrev = buildBookedOccupancyForStay(
+      prevKey,
+      checkoutDateKey,
+      occupancyMap
+    );
+    const fullRange = enumerateDateKeysInRange(prevKey, checkoutDateKey);
+    const fullMatches = fullRange.every(
+      (dateKey) =>
+        fromPrev.get(dateKey) === getOccupancy(occupancyMap, dateKey)
+    );
+
+    if (fullMatches) {
+      if (bookedOnlyMatches) {
+        const nightsBeforePrev = countBookedNightsImmediatelyBefore(
+          prevKey,
+          occupancyMap
+        );
+        const newBookedNights = bookedRange.filter(
+          (dateKey) =>
+            dateKey !== checkoutDateKey &&
+            isOccupied(getOccupancy(occupancyMap, dateKey))
+        ).length;
+
+        // Aynı gün yeniden kapatma (10–13 önceki 1–10 çıkışı üzerine): önceki blok
+        // belirgin şekilde uzunsa turnover günü prevKey'tir.
+        // Bitişik ertesi gün blok (5 çıkış + 6–9 giriş): kapatma bookedDateKey'ten başlar.
+        if (nightsBeforePrev > newBookedNights + 1) {
+          return prevKey;
+        }
+        return bookedDateKey;
+      }
+
+      return prevKey;
+    }
+  }
+
+  if (bookedOnlyMatches) {
+    return bookedDateKey;
+  }
+
+  return bookedDateKey;
+}
+
+function normalizeOccupancy(
+  value: VillaDayOccupancy
+): "EMPTY" | "BOOKED" | "OPTION" {
+  if (!value || value === "EMPTY") return "EMPTY";
+  return value;
 }
 
 /**

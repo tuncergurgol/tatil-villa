@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
 import type { VillaDayOccupancy } from "@prisma/client";
-import { offsetDateKey } from "@/lib/villa-period-selection";
+import {
+  findCloseRangeMinKey,
+  offsetDateKey,
+} from "@/lib/villa-period-selection";
 
 export type VillaDayVisualKind =
   | "empty"
@@ -58,8 +61,7 @@ export function countBookedNightsImmediatelyBefore(
 
 /**
  * Aynı gün çıkış+giriş (giriscikis): EMPTY gün, önce/sonra dolu.
- * Bitişik iki ayrı blok (ör. 1–5 çıkış + 6–9 giriş) turnover değildir:
- * önceki dolu zincir uzunsa (≥3 gece) çıkış günü olarak kalır.
+ * Bitişik ayrı bloklar (1–5 çıkış + ertesi gün 6–9 giriş) turnover değildir.
  */
 export function isTurnoverOccupancyDay(
   current?: VillaDayOccupancy,
@@ -74,11 +76,19 @@ export function isTurnoverOccupancyDay(
   if (!isBlockingOccupancy(prev)) return false;
   if (!isBlockingOccupancy(next)) return false;
   if (!context) return false;
+
   const nightsBefore = countBookedNightsImmediatelyBefore(
     context.dateKey,
     context.occupancyMap
   );
-  return nightsBefore > 0 && nightsBefore <= 2;
+  if (nightsBefore <= 0) return false;
+  if (nightsBefore <= 2) return true;
+
+  const nextDayKey = offsetDateKey(context.dateKey, 1);
+  return (
+    context.dateKey ===
+    findCloseRangeMinKey(nextDayKey, context.occupancyMap)
+  );
 }
 
 /**
