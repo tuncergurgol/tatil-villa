@@ -21,7 +21,7 @@ import {
   toDateKey,
 } from "@/lib/villa-period-calendar";
 import { countNightsBetween } from "@/lib/villa-period-selection";
-import { CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE } from "@/lib/villa-confirmed-booking-guard";
+import { CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE } from "@/lib/villa-confirmed-booking-guard.constants";
 import {
   VILLA_PERIOD_CURRENCIES,
   calculateCommissionAmount,

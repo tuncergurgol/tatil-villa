@@ -5,23 +5,10 @@ import type { VillaPeriodCurrency } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
+import type { VillaTakvimSearchItem } from "@/lib/villa-takvim-types";
 import { getVillaPeriodPageData } from "@/lib/queries/villa-periods";
 
-export type VillaTakvimSearchItem = {
-  id: string;
-  villaId: number | null;
-  slug: string;
-  name: string;
-  originalName: string;
-  documentNo: string;
-  image: string;
-  active: boolean;
-  periodCount: number;
-  displayPrice: number | null;
-  displayPriceCurrency: VillaPeriodCurrency;
-  minFuturePrice: number | null;
-  maxFuturePrice: number | null;
-};
+export type { VillaTakvimSearchItem } from "@/lib/villa-takvim-types";
 
 function resolveDisplayPrice(
   nightlyPrice: number | null,

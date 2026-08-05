@@ -11,7 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
-import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
+import type { VillaTakvimSearchItem } from "@/lib/villa-takvim-types";
 
 export type TakvimStatusFilter = "all" | "active" | "passive";
 

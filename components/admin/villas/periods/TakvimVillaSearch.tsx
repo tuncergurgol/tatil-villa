@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { includesSearchText } from "@/lib/search-text";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
-import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
+import type { VillaTakvimSearchItem } from "@/lib/villa-takvim-types";
 
 function matchesTakvimVillaSearch(villa: VillaTakvimSearchItem, query: string) {
   return [

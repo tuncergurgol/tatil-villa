@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/db";
+import { CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE } from "@/lib/villa-confirmed-booking-guard.constants";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { normalizeDateRange } from "@/lib/villa-period-selection";
 
-export const CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE =
-  "CONFIRMED_BOOKING_OCCUPANCY_LOCKED" as const;
+export { CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE };
 
 export type ConfirmedBookingOverlap = {
   bookingLabel: string;

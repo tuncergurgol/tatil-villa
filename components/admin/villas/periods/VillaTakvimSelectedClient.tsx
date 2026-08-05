@@ -1,11 +1,23 @@
 "use client";
 
+import nextDynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import VillaTakvimSelectedView from "@/components/admin/villas/periods/VillaTakvimSelectedView";
-import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
+import type { VillaTakvimSearchItem } from "@/lib/villa-takvim-types";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
+
+const VillaTakvimSelectedView = nextDynamic(
+  () => import("@/components/admin/villas/periods/VillaTakvimSelectedView"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">
+        Takvim arayüzü yükleniyor…
+      </div>
+    ),
+  }
+);
 
 type SelectedPayload = {
   villa: VillaTakvimSearchItem;

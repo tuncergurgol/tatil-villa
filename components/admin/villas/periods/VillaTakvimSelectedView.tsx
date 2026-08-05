@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import VillaPeriodManagement from "@/components/admin/villas/periods/VillaPeriodManagement";
 import TakvimVillaSearch from "@/components/admin/villas/periods/TakvimVillaSearch";
-import type { VillaTakvimSearchItem } from "@/lib/queries/villa-takvim";
+import type { VillaTakvimSearchItem } from "@/lib/villa-takvim-types";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
