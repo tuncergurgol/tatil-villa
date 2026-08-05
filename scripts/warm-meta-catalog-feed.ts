@@ -2,16 +2,40 @@
  * Meta katalog feed önbelleğini ısıtır (deploy / cron).
  * Çalıştır: npx tsx scripts/warm-meta-catalog-feed.ts
  */
-import { PUBLIC_SITE_KEYS } from "../lib/public-site-keys";
 import { warmMetaCatalogFeedCache } from "../lib/meta-catalog-feed-cache";
-import { getPublicSiteProfileByKey } from "../lib/public-site-profile";
-import { getCompanySettings } from "../lib/queries/company-settings";
+import {
+  PUBLIC_SITE_KEYS,
+  PUBLIC_SITE_META,
+  type PublicSiteKey,
+} from "../lib/public-site-keys";
+import type { PublicSiteProfile } from "../lib/public-site-profile";
+
+const BRAND_NAMES: Record<PublicSiteKey, string> = {
+  tatildeyiz: "Tatildeyiz",
+  "balayi-villacisi": "Balayı Villacısı",
+  "tatil-villacisi": "Tatil Villacısı",
+};
+
+function minimalSiteProfile(siteKey: PublicSiteKey): PublicSiteProfile {
+  const meta = PUBLIC_SITE_META[siteKey];
+  return {
+    key: siteKey,
+    domain: meta.domain,
+    brandName: BRAND_NAMES[siteKey],
+    logoUrl: "",
+    faviconUrl: "",
+    ogImageUrl: "",
+    seoTitle: "",
+    seoDescription: "",
+    heroTitle: "",
+    heroImageUrl: "",
+    useDefaultLogo: siteKey === "tatildeyiz",
+  };
+}
 
 async function main() {
-  const settings = await getCompanySettings();
-
   for (const siteKey of PUBLIC_SITE_KEYS) {
-    const site = getPublicSiteProfileByKey(settings, siteKey);
+    const site = minimalSiteProfile(siteKey);
     const result = await warmMetaCatalogFeedCache(site);
     console.log(
       `[warm-meta-catalog-feed] ${result.siteKey}: ${result.itemHint} item, ${result.bytes} bytes`

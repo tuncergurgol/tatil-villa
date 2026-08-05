@@ -49,7 +49,7 @@ cat >> "$CRON_FILE" <<EOF
 # tatil-villa cron — zamanlanmış rezervasyon mesajları (saat başı; 11.4 yorum, 40.2 havuz ısıtma vb.)
 0 * * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/booking-scheduled-messages" >>"${LOG_DIR}/booking-scheduled-messages.log" 2>&1
 # tatil-villa cron — Meta katalog feed önbellek (saatte bir; Commerce Manager doğrulayıcısı için hızlı XML)
-45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1
+45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1 && for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do curl -fsS -m 180 -H "Host: \${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" >/dev/null; done
 EOF
 
 crontab "$CRON_FILE"
