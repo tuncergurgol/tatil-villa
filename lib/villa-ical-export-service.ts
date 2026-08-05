@@ -107,7 +107,7 @@ export async function generateVillaIcalFeed(villaId: string, token: string) {
   const days = await prisma.villaPricePeriodDay.findMany({
     where: {
       villaId: villa.id,
-      occupancyStatus: { in: ["BOOKED", "OPTION"] },
+      occupancyStatus: { in: ["BOOKED", "RESERVED", "OPTION"] },
       date: { gte: parseDateKey(todayKey) },
     },
     orderBy: { date: "asc" },
@@ -119,7 +119,10 @@ export async function generateVillaIcalFeed(villaId: string, token: string) {
 
   const occupancyDays = days.map((day) => ({
     dateKey: dbDateToDateKey(day.date),
-    status: day.occupancyStatus as "BOOKED" | "OPTION",
+    status:
+      day.occupancyStatus === "OPTION"
+        ? ("OPTION" as const)
+        : ("BOOKED" as const),
   }));
 
   const ranges = mergeOccupancyRanges(occupancyDays);

@@ -33,6 +33,7 @@ enum VillaPeriodCurrency {
 enum VillaDayOccupancy {
   EMPTY
   BOOKED
+  RESERVED
   OPTION
 }
 

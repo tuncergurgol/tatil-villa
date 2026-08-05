@@ -3,6 +3,7 @@ import { WhatsappCalendarMessageStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { ConfirmedBookingOccupancyLockedError } from "@/lib/villa-confirmed-booking-guard";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import {
   mapIntentToOccupancyMode,
@@ -374,13 +375,20 @@ async function applyOccupancyToVillas(
   }> = [];
 
   for (const villa of villas) {
-    const { updatedDays } = await applyVillaPeriodDaysOccupancy(
-      villa.id,
-      startDateKey,
-      endDateKey,
-      mode
-    );
-    applied.push({ villa, updatedDays });
+    try {
+      const { updatedDays } = await applyVillaPeriodDaysOccupancy(
+        villa.id,
+        startDateKey,
+        endDateKey,
+        mode
+      );
+      applied.push({ villa, updatedDays });
+    } catch (error) {
+      if (error instanceof ConfirmedBookingOccupancyLockedError) {
+        continue;
+      }
+      throw error;
+    }
   }
 
   return applied;

@@ -267,6 +267,19 @@ export async function createAdminBooking(data: {
   });
 
   if (data.status === BookingStatus.CONFIRMED) {
+    await syncBookingStayOccupancy({
+      villaId: booking.villaId,
+      previous: {
+        status: BookingStatus.NEW,
+        checkIn: data.checkIn,
+        checkOut: data.checkOut,
+      },
+      next: {
+        status: BookingStatus.CONFIRMED,
+        checkIn: data.checkIn,
+        checkOut: data.checkOut,
+      },
+    });
     await handleBookingConfirmedTransition(booking.id, null);
   }
 
@@ -297,7 +310,12 @@ export async function updateAdminBooking(
 
   const existing = await prisma.booking.findUnique({
     where: { id },
-    select: { status: true },
+    select: {
+      status: true,
+      villaId: true,
+      checkIn: true,
+      checkOut: true,
+    },
   });
 
   const booking = await prisma.booking.update({
@@ -326,6 +344,22 @@ export async function updateAdminBooking(
     guestEmail: data.guestEmail,
     guestPhone: data.guestPhone,
   });
+
+  if (existing) {
+    await syncBookingStayOccupancy({
+      villaId: existing.villaId,
+      previous: {
+        status: existing.status,
+        checkIn: existing.checkIn,
+        checkOut: existing.checkOut,
+      },
+      next: {
+        status: data.status,
+        checkIn: data.checkIn,
+        checkOut: data.checkOut,
+      },
+    });
+  }
 
   if (
     data.status === BookingStatus.CONFIRMED &&

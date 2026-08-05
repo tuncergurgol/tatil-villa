@@ -10,7 +10,13 @@ export type AllowStayRange = {
 };
 
 export function toOccupancyStatus(value?: string | null): VillaDayOccupancy {
-  if (value === "BOOKED" || value === "OPTION") return value;
+  if (
+    value === "BOOKED" ||
+    value === "RESERVED" ||
+    value === "OPTION"
+  ) {
+    return value;
+  }
   return "EMPTY";
 }
 
@@ -35,7 +41,9 @@ export function isOccupancyNightBlocked(
 ): boolean {
   if (isNightInAllowStay(dateKey, allowStay)) return false;
   const status = occupancyMap.get(dateKey) ?? "EMPTY";
-  if (status === "BOOKED" || status === "OPTION") return true;
+  if (status === "BOOKED" || status === "RESERVED" || status === "OPTION") {
+    return true;
+  }
   return isTurnoverOccupancyDay(
     status,
     occupancyMap.get(offsetDateKey(dateKey, -1)),

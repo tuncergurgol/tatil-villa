@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type VillaDayOccupancy } from "@prisma/client";
 import {
   buildDaySnapshotsForPeriod,
   buildOccupancyByDateKey,
@@ -105,7 +105,7 @@ async function resolveTargetSlugs(options: ImportOptions): Promise<string[]> {
 
 function countOccupancyDays(
   periods: ReturnType<typeof mapTatildeyizPropertyPeriods>,
-  occupancyByDateKey: Map<string, "EMPTY" | "BOOKED" | "OPTION">
+  occupancyByDateKey: Map<string, VillaDayOccupancy>
 ) {
   let dayCount = 0;
   let bookedDays = 0;

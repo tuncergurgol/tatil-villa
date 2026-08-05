@@ -298,13 +298,11 @@ export async function confirmBookingGuestInfoAction(
     select: { villaId: true, checkIn: true, checkOut: true },
   });
 
-  // Onaylı rezervasyon: konaklama gecelerini takvimde BOOKED yap
-  // (check-in dahil, check-out hariç — mevcut doluluk kuralı)
   await applyVillaPeriodDaysOccupancy(
     updated.villaId,
     dbDateToDateKey(updated.checkIn),
     dbDateToDateKey(updated.checkOut),
-    "BOOKED"
+    "RESERVED"
   );
 
   await handleBookingConfirmedTransition(booking.id, booking.status);

@@ -11,15 +11,25 @@ export type VillaDayVisualKind =
   | "full"
   | "check_out"
   | "turnover_booked"
+  | "reserved_check_in"
+  | "reserved_full"
+  | "reserved_check_out"
+  | "turnover_reserved"
   | "option_check_in"
   | "option_full"
   | "option_check_out"
+  | "turnover_option"
   | "option_out_booked_in"
-  | "booked_out_option_in";
+  | "booked_out_option_in"
+  | "booked_out_reserved_in"
+  | "reserved_out_booked_in"
+  | "reserved_out_option_in"
+  | "option_out_reserved_in";
 
 const COLORS = {
   white: "#ffffff",
   red: "#dc2626",
+  green: "#16a34a",
   yellow: "#facc15",
 } as const;
 
@@ -33,16 +43,16 @@ const SOFT_COLORS = {
   available: "#ecfdf5", // emerald-50
 } as const;
 
-function normalizeOccupancy(
-  value?: VillaDayOccupancy
-): "EMPTY" | "BOOKED" | "OPTION" {
+type NormalizedOccupancy = "EMPTY" | "BOOKED" | "RESERVED" | "OPTION";
+
+function normalizeOccupancy(value?: VillaDayOccupancy): NormalizedOccupancy {
   if (!value || value === "EMPTY") return "EMPTY";
   return value;
 }
 
 function isBlockingOccupancy(value?: VillaDayOccupancy): boolean {
   const status = normalizeOccupancy(value);
-  return status === "BOOKED" || status === "OPTION";
+  return status === "BOOKED" || status === "RESERVED" || status === "OPTION";
 }
 
 /** EMPTY günden hemen önceki bitişik dolu gece sayısı. */
@@ -57,6 +67,44 @@ export function countBookedNightsImmediatelyBefore(
     cursor = offsetDateKey(cursor, -1);
   }
   return count;
+}
+
+function resolveTurnoverVisualKind(
+  prev?: VillaDayOccupancy,
+  next?: VillaDayOccupancy
+): VillaDayVisualKind {
+  const prevStatus = normalizeOccupancy(prev);
+  const nextStatus = normalizeOccupancy(next);
+
+  if (prevStatus === "OPTION" && nextStatus === "OPTION") {
+    return "turnover_option";
+  }
+  if (prevStatus === "BOOKED" && nextStatus === "BOOKED") {
+    return "turnover_booked";
+  }
+  if (prevStatus === "RESERVED" && nextStatus === "RESERVED") {
+    return "turnover_reserved";
+  }
+  if (prevStatus === "RESERVED" && nextStatus === "BOOKED") {
+    return "reserved_out_booked_in";
+  }
+  if (prevStatus === "BOOKED" && nextStatus === "RESERVED") {
+    return "booked_out_reserved_in";
+  }
+  if (prevStatus === "RESERVED" && nextStatus === "OPTION") {
+    return "reserved_out_option_in";
+  }
+  if (prevStatus === "OPTION" && nextStatus === "RESERVED") {
+    return "option_out_reserved_in";
+  }
+  if (prevStatus === "BOOKED" && nextStatus === "OPTION") {
+    return "booked_out_option_in";
+  }
+  if (prevStatus === "OPTION" && nextStatus === "BOOKED") {
+    return "option_out_booked_in";
+  }
+
+  return "turnover_booked";
 }
 
 /**
@@ -123,23 +171,12 @@ export function resolveVillaDayVisual(
   const nextStatus = normalizeOccupancy(next);
   const prevPrevStatus = normalizeOccupancy(prevPrev);
 
-  // Rezervasyon geceleri: check-in günü dahil, check-out sabahı hariç.
-  // Çıkış görseli konaklanan son gecenin ertesindeki BOŞ günde gösterilir.
-  // Aynı gün çıkış+giriş: iki dolu blok arasındaki BOŞ günde (giriscikis) gösterilir.
   if (currentStatus === "EMPTY") {
     if (isTurnoverOccupancyDay(current, prev, next, context)) {
-      if (prevStatus === "OPTION" && nextStatus === "OPTION") {
-        return "turnover_booked";
-      }
-      if (prevStatus === "BOOKED" && nextStatus === "OPTION") {
-        return "booked_out_option_in";
-      }
-      if (prevStatus === "OPTION" && nextStatus === "BOOKED") {
-        return "option_out_booked_in";
-      }
-      return "turnover_booked";
+      return resolveTurnoverVisualKind(prev, next);
     }
     if (prevStatus === "BOOKED") return "check_out";
+    if (prevStatus === "RESERVED") return "reserved_check_out";
     if (prevStatus === "OPTION") return "option_check_out";
     return "empty";
   }
@@ -164,11 +201,36 @@ export function resolveVillaDayVisual(
     return "full";
   }
 
+  if (currentStatus === "RESERVED") {
+    if (prevStatus === "BOOKED") return "booked_out_reserved_in";
+    if (prevStatus === "OPTION") return "option_out_reserved_in";
+    if (prevStatus === "EMPTY") {
+      if (isBlockingOccupancy(prevPrev) && context) {
+        const prevDayKey = offsetDateKey(context.dateKey, -1);
+        if (
+          isTurnoverOccupancyDay(prev, prevPrev, current, {
+            dateKey: prevDayKey,
+            occupancyMap: context.occupancyMap,
+          })
+        ) {
+          return "reserved_full";
+        }
+        return "reserved_check_in";
+      }
+      return "reserved_check_in";
+    }
+    return "reserved_full";
+  }
+
   if (currentStatus === "OPTION") {
     if (prevStatus === "BOOKED") return "booked_out_option_in";
     if (prevStatus === "EMPTY" && nextStatus === "EMPTY") return "option_full";
     if (prevStatus === "EMPTY") {
-      if (prevPrevStatus === "BOOKED" || prevPrevStatus === "OPTION") {
+      if (
+        prevPrevStatus === "BOOKED" ||
+        prevPrevStatus === "RESERVED" ||
+        prevPrevStatus === "OPTION"
+      ) {
         return "option_full";
       }
       return "option_check_in";
@@ -192,6 +254,32 @@ export function resolveVillaDayVisualFromMap(
   );
 }
 
+/** Public sitede RESERVED yeşil gösterilmez; BOOKED ile aynı görünür. */
+export function toPublicCalendarVisualKind(
+  kind: VillaDayVisualKind
+): VillaDayVisualKind {
+  switch (kind) {
+    case "reserved_check_in":
+      return "check_in";
+    case "reserved_full":
+      return "full";
+    case "reserved_check_out":
+      return "check_out";
+    case "turnover_reserved":
+      return "turnover_booked";
+    case "booked_out_reserved_in":
+      return "booked_out_option_in";
+    case "reserved_out_booked_in":
+      return "option_out_booked_in";
+    case "reserved_out_option_in":
+      return "booked_out_option_in";
+    case "option_out_reserved_in":
+      return "option_out_booked_in";
+    default:
+      return kind;
+  }
+}
+
 export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
   background: string;
   useLightText: boolean;
@@ -201,7 +289,6 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
       return { background: COLORS.white, useLightText: false };
     case "check_in":
       return {
-        // Giriş: yeni konaklama sağ alt üçgende görünür.
         background: diagonal(COLORS.red, COLORS.white),
         useLightText: false,
       };
@@ -209,13 +296,29 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
       return { background: COLORS.red, useLightText: true };
     case "check_out":
       return {
-        // Çıkış: önceki konaklama sol üst üçgende görünür.
         background: diagonal(COLORS.white, COLORS.red),
         useLightText: false,
       };
     case "turnover_booked":
       return {
         background: turnoverDiagonal(COLORS.red, COLORS.red),
+        useLightText: true,
+      };
+    case "reserved_check_in":
+      return {
+        background: diagonal(COLORS.green, COLORS.white),
+        useLightText: false,
+      };
+    case "reserved_full":
+      return { background: COLORS.green, useLightText: true };
+    case "reserved_check_out":
+      return {
+        background: diagonal(COLORS.white, COLORS.green),
+        useLightText: false,
+      };
+    case "turnover_reserved":
+      return {
+        background: turnoverDiagonal(COLORS.green, COLORS.green),
         useLightText: true,
       };
     case "option_check_in":
@@ -230,6 +333,11 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
         background: diagonal(COLORS.white, COLORS.yellow),
         useLightText: false,
       };
+    case "turnover_option":
+      return {
+        background: turnoverDiagonal(COLORS.yellow, COLORS.yellow),
+        useLightText: false,
+      };
     case "option_out_booked_in":
       return {
         background: turnoverDiagonal(COLORS.red, COLORS.yellow),
@@ -238,6 +346,26 @@ export function getVillaDayVisualStyle(kind: VillaDayVisualKind): {
     case "booked_out_option_in":
       return {
         background: turnoverDiagonal(COLORS.yellow, COLORS.red),
+        useLightText: false,
+      };
+    case "booked_out_reserved_in":
+      return {
+        background: turnoverDiagonal(COLORS.green, COLORS.red),
+        useLightText: false,
+      };
+    case "reserved_out_booked_in":
+      return {
+        background: turnoverDiagonal(COLORS.red, COLORS.green),
+        useLightText: false,
+      };
+    case "reserved_out_option_in":
+      return {
+        background: turnoverDiagonal(COLORS.yellow, COLORS.green),
+        useLightText: false,
+      };
+    case "option_out_reserved_in":
+      return {
+        background: turnoverDiagonal(COLORS.green, COLORS.yellow),
         useLightText: false,
       };
     default:
@@ -252,7 +380,9 @@ export function getPublicVillaDayVisualStyle(kind: VillaDayVisualKind): {
   showPrice: boolean;
   statusLabel: string | null;
 } {
-  switch (kind) {
+  const publicKind = toPublicCalendarVisualKind(kind);
+
+  switch (publicKind) {
     case "empty":
       return {
         background: SOFT_COLORS.available,
@@ -350,14 +480,29 @@ export const VILLA_DAY_VISUAL_LEGEND: {
   { kind: "empty", label: "Boş", swatchStyle: { background: COLORS.white } },
   {
     kind: "check_in",
-    label: "Giriş",
+    label: "Kapama Giriş",
     swatchStyle: { background: diagonal(COLORS.red, COLORS.white) },
   },
-  { kind: "full", label: "Dolu", swatchStyle: { background: COLORS.red } },
+  { kind: "full", label: "Kapama (Dolu)", swatchStyle: { background: COLORS.red } },
   {
     kind: "check_out",
-    label: "Çıkış",
+    label: "Kapama Çıkış",
     swatchStyle: { background: diagonal(COLORS.white, COLORS.red) },
+  },
+  {
+    kind: "reserved_check_in",
+    label: "Rezervasyon Giriş",
+    swatchStyle: { background: diagonal(COLORS.green, COLORS.white) },
+  },
+  {
+    kind: "reserved_full",
+    label: "Bizim Rezervasyon",
+    swatchStyle: { background: COLORS.green },
+  },
+  {
+    kind: "reserved_check_out",
+    label: "Rezervasyon Çıkış",
+    swatchStyle: { background: diagonal(COLORS.white, COLORS.green) },
   },
   {
     kind: "option_check_in",

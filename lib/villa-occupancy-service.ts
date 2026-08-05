@@ -4,16 +4,18 @@ import {
   dateKeyToDbDate,
   dbDateToDateKey,
 } from "@/lib/villa-period-calendar";
+import { assertNoConfirmedBookingOverlap } from "@/lib/villa-confirmed-booking-guard";
 import {
   buildBookedOccupancyForStay,
   buildEmptyOccupancyForRange,
   buildOptionOccupancyForStay,
+  buildReservedOccupancyForStay,
   enumerateDateKeysInRange,
   normalizeDateRange,
   offsetDateKey,
 } from "@/lib/villa-period-selection";
 
-export type OccupancyApplyMode = "EMPTY" | "BOOKED" | "OPTION";
+export type OccupancyApplyMode = "EMPTY" | "BOOKED" | "RESERVED" | "OPTION";
 
 export async function applyVillaPeriodDaysOccupancy(
   villaId: string,
@@ -21,6 +23,10 @@ export async function applyVillaPeriodDaysOccupancy(
   endDateKey: string,
   mode: OccupancyApplyMode
 ): Promise<{ updatedDays: number }> {
+  if (mode !== "RESERVED") {
+    await assertNoConfirmedBookingOverlap(villaId, startDateKey, endDateKey);
+  }
+
   const { start, end } = normalizeDateRange(startDateKey, endDateKey);
   const rangeDateKeys = enumerateDateKeysInRange(start, end);
   const rangeDateKeySet = new Set(rangeDateKeys);
@@ -54,9 +60,11 @@ export async function applyVillaPeriodDaysOccupancy(
   const occupancyByDateKey: Map<string, VillaDayOccupancy> =
     mode === "BOOKED"
       ? buildBookedOccupancyForStay(start, end, existingOccupancyByDateKey)
-      : mode === "OPTION"
-        ? buildOptionOccupancyForStay(start, end, existingOccupancyByDateKey)
-        : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey);
+      : mode === "RESERVED"
+        ? buildReservedOccupancyForStay(start, end, existingOccupancyByDateKey)
+        : mode === "OPTION"
+          ? buildOptionOccupancyForStay(start, end, existingOccupancyByDateKey)
+          : buildEmptyOccupancyForRange(start, end, existingOccupancyByDateKey);
 
   const updates = [...occupancyByDateKey.entries()]
     .filter(([dateKey, occupancyStatus]) => {
@@ -131,7 +139,7 @@ export async function syncBookingStayOccupancy(input: {
       input.villaId,
       nextIn,
       nextOut,
-      "BOOKED"
+      "RESERVED"
     );
     return;
   }
@@ -141,7 +149,7 @@ export async function syncBookingStayOccupancy(input: {
       input.villaId,
       nextIn,
       nextOut,
-      "BOOKED"
+      "RESERVED"
     );
   }
 }

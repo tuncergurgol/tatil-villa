@@ -80,8 +80,11 @@ export function buildBookedOccupancyForStayMerged(
       offsetDateKey(onlyKey, 1)
     );
 
-    if (existing === "BOOKED" || existing === "OPTION") {
-      map.set(onlyKey, "BOOKED");
+    if (existing === "BOOKED" || existing === "OPTION" || existing === "RESERVED") {
+      map.set(
+        onlyKey,
+        existing === "RESERVED" ? "RESERVED" : "BOOKED"
+      );
     } else {
       map.set(
         onlyKey,
@@ -140,8 +143,90 @@ export function buildBookedOccupancyForStay(
   return result;
 }
 
+/**
+ * Onaylı rezervasyon: BOOKED ile aynı giriş–çıkış kuralı; günler RESERVED yazılır.
+ */
+export function buildReservedOccupancyForStayMerged(
+  startKey: string,
+  endKey: string,
+  existingOccupancyByDateKey: ReadonlyMap<string, VillaDayOccupancy>
+): Map<string, VillaDayOccupancy> {
+  const { start, end } = normalizeDateRange(startKey, endKey);
+  const keys = enumerateDateKeys(start, end);
+  const map = new Map<string, VillaDayOccupancy>();
+
+  if (keys.length === 0) return map;
+
+  if (keys.length === 1) {
+    const onlyKey = keys[0]!;
+    const existing = getOccupancy(existingOccupancyByDateKey, onlyKey);
+    const next = getOccupancy(
+      existingOccupancyByDateKey,
+      offsetDateKey(onlyKey, 1)
+    );
+
+    if (isOccupied(existing)) {
+      map.set(onlyKey, existing === "OPTION" ? "OPTION" : "RESERVED");
+    } else {
+      map.set(
+        onlyKey,
+        isOccupied(next) ? "RESERVED" : "EMPTY"
+      );
+    }
+    return map;
+  }
+
+  for (let index = 0; index < keys.length - 1; index++) {
+    if (index > 0) {
+      map.set(keys[index]!, "RESERVED");
+    }
+  }
+
+  const firstDayKey = keys[0]!;
+  const dayBeforeFirst = getOccupancy(
+    existingOccupancyByDateKey,
+    offsetDateKey(firstDayKey, -1)
+  );
+  const existingFirst = getOccupancy(existingOccupancyByDateKey, firstDayKey);
+  const firstDayStatus: VillaDayOccupancy = isOccupied(dayBeforeFirst)
+    ? "EMPTY"
+    : isOccupied(existingFirst)
+      ? existingFirst === "OPTION"
+        ? "OPTION"
+        : "RESERVED"
+      : "RESERVED";
+  map.set(firstDayKey, firstDayStatus);
+
+  const lastDayKey = keys[keys.length - 1]!;
+  map.set(lastDayKey, "EMPTY");
+  return map;
+}
+
+export function buildReservedOccupancyForStay(
+  startKey: string,
+  endKey: string,
+  existingOccupancyByDateKey?: ReadonlyMap<string, VillaDayOccupancy>
+): Map<string, VillaDayOccupancy> {
+  if (existingOccupancyByDateKey) {
+    return buildReservedOccupancyForStayMerged(
+      startKey,
+      endKey,
+      existingOccupancyByDateKey
+    );
+  }
+
+  const { start, end } = normalizeDateRange(startKey, endKey);
+  const result = new Map<string, VillaDayOccupancy>();
+
+  for (const key of enumerateDateKeys(start, end)) {
+    result.set(key, key === end ? "EMPTY" : "RESERVED");
+  }
+
+  return result;
+}
+
 function isOccupied(status: VillaDayOccupancy): boolean {
-  return status === "BOOKED" || status === "OPTION";
+  return status === "BOOKED" || status === "RESERVED" || status === "OPTION";
 }
 
 /** EMPTY günden hemen önceki bitişik dolu gece sayısı. */
@@ -244,7 +329,7 @@ export function findCloseRangeMinKey(
 
 function normalizeOccupancy(
   value: VillaDayOccupancy
-): "EMPTY" | "BOOKED" | "OPTION" {
+): "EMPTY" | "BOOKED" | "RESERVED" | "OPTION" {
   if (!value || value === "EMPTY") return "EMPTY";
   return value;
 }

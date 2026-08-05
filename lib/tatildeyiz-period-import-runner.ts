@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { VillaDayOccupancy } from "@prisma/client";
 import {
   buildDaySnapshotsForPeriod,
   buildOccupancyByDateKey,
@@ -20,7 +21,7 @@ export type VillaPeriodImportResult = {
 
 function countOccupancyDays(
   periods: ReturnType<typeof mapTatildeyizPropertyPeriods>,
-  occupancyByDateKey: Map<string, "EMPTY" | "BOOKED" | "OPTION">
+  occupancyByDateKey: Map<string, VillaDayOccupancy>
 ) {
   let dayCount = 0;
   let bookedDays = 0;

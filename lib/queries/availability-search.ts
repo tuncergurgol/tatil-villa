@@ -99,7 +99,7 @@ export type AvailabilitySearchPageData = {
 };
 
 function isBlockingOccupancy(status: VillaDayOccupancy): boolean {
-  return status === "BOOKED";
+  return status === "BOOKED" || status === "RESERVED" || status === "OPTION";
 }
 
 async function resolveRegionIds(slugs: string[]): Promise<string[]> {

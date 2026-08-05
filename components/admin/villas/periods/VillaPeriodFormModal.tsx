@@ -21,6 +21,7 @@ import {
   toDateKey,
 } from "@/lib/villa-period-calendar";
 import { countNightsBetween } from "@/lib/villa-period-selection";
+import { CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE } from "@/lib/villa-confirmed-booking-guard";
 import {
   VILLA_PERIOD_CURRENCIES,
   calculateCommissionAmount,
@@ -436,6 +437,9 @@ export default function VillaPeriodFormModal({
 }: VillaPeriodFormModalProps) {
   const [form, setForm] = useState<PeriodFormState>(emptyFormState);
   const [error, setError] = useState<string | null>(null);
+  const [confirmedLockMessage, setConfirmedLockMessage] = useState<string | null>(
+    null
+  );
   const [isPending, startTransition] = useTransition();
   const [availabilityPending, setAvailabilityPending] = useState(false);
   const [discountPending, setDiscountPending] = useState(false);
@@ -449,6 +453,7 @@ export default function VillaPeriodFormModal({
       })
     );
     setError(null);
+    setConfirmedLockMessage(null);
   }, [open, period, prefillDateRange, templatePeriod]);
 
   const occupancyStayPreview = useMemo(() => {
@@ -646,6 +651,10 @@ export default function VillaPeriodFormModal({
       );
 
       if (result?.error) {
+        if (result.code === CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE) {
+          setConfirmedLockMessage(result.error);
+          return;
+        }
         setError(result.error);
         return;
       }
@@ -758,10 +767,11 @@ export default function VillaPeriodFormModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/40"
-      onClick={onClose}
-    >
+    <>
+      <div
+        className="fixed inset-0 z-50 flex justify-end bg-black/40"
+        onClick={onClose}
+      >
       <div
         className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
@@ -1365,5 +1375,34 @@ export default function VillaPeriodFormModal({
         </form>
       </div>
     </div>
+
+      {confirmedLockMessage ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirmed-booking-lock-title"
+          >
+            <h3
+              id="confirmed-booking-lock-title"
+              className="text-lg font-semibold text-gray-900"
+            >
+              Onaylı rezervasyon koruması
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              {confirmedLockMessage}
+            </p>
+            <button
+              type="button"
+              onClick={() => setConfirmedLockMessage(null)}
+              className="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

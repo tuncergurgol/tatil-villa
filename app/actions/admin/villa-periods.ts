@@ -13,6 +13,10 @@ import {
 } from "@/lib/villa-period-calendar";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import {
+  CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE,
+  ConfirmedBookingOccupancyLockedError,
+} from "@/lib/villa-confirmed-booking-guard";
+import {
   syncVillaPricePeriodDays,
 } from "@/lib/villa-period-day-sync";
 import {
@@ -31,6 +35,7 @@ import {
 export type VillaPeriodActionState = {
   success?: boolean;
   error?: string;
+  code?: string;
 };
 
 export type VillaPeriodExcelImportRow = {
@@ -870,6 +875,12 @@ export async function updateVillaPeriodDaysOccupancy(
     await revalidatePeriodPaths(villaId);
     return { success: true };
   } catch (error) {
+    if (error instanceof ConfirmedBookingOccupancyLockedError) {
+      return {
+        error: error.message,
+        code: CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE,
+      };
+    }
     return {
       error:
         error instanceof Error
