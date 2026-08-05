@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { PublicSiteTrackingRow } from "@/lib/queries/public-site-tracking";
 import { PUBLIC_SITE_KEYS } from "@/lib/public-site-keys";
+import type { MetaCatalogFeedUrlRow } from "@/lib/meta-catalog-feed-url";
 
 function AnalyticsField({
   label,
@@ -61,10 +62,12 @@ function fieldName(siteKey: string, field: string) {
 
 interface AnalyticsSettingsFieldsProps {
   siteTrackings: PublicSiteTrackingRow[];
+  metaCatalogFeedUrls: MetaCatalogFeedUrlRow[];
 }
 
 export default function AnalyticsSettingsFields({
   siteTrackings,
+  metaCatalogFeedUrls,
 }: AnalyticsSettingsFieldsProps) {
   const byKey = new Map(siteTrackings.map((row) => [row.siteKey, row]));
   const [activeKey, setActiveKey] = useState<(typeof PUBLIC_SITE_KEYS)[number]>(
@@ -103,6 +106,35 @@ export default function AnalyticsSettingsFields({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-violet-200 bg-violet-50/60 px-5 py-4">
+        <h3 className="text-sm font-semibold text-violet-900">
+          Meta / WhatsApp Katalog Beslemesi
+        </h3>
+        <p className="mt-1 text-xs leading-relaxed text-violet-800/90">
+          Commerce Manager → Veri Kaynakları → Zamanlanmış Akış (Scheduled Feed)
+          alanına aşağıdaki XML URL&apos;yi yapıştırın. Meta saatte bir veya günde
+          bir kez otomatik çeker.
+        </p>
+        <div className="mt-4 space-y-3">
+          {metaCatalogFeedUrls.map((feed) => (
+            <label
+              key={feed.siteKey}
+              className="block rounded-xl border border-violet-200 bg-white px-4 py-3"
+            >
+              <span className="text-xs font-medium text-violet-700">
+                {feed.label}
+              </span>
+              <input
+                readOnly
+                value={feed.url}
+                className="mt-1.5 w-full bg-transparent font-mono text-[11px] text-gray-800 outline-none"
+                onFocus={(event) => event.currentTarget.select()}
+              />
+            </label>
+          ))}
         </div>
       </div>
 

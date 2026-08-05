@@ -6,6 +6,7 @@ import { getCompanyBankAccountAdminData } from "@/lib/queries/company-bank-accou
 import { getAgencySiteAdminData } from "@/lib/queries/agency-sites";
 import { getPaymentProviderAdminData } from "@/lib/queries/payment-providers";
 import CompanySettingsForm from "@/components/admin/company/CompanySettingsForm";
+import { getMetaCatalogFeedUrls } from "@/lib/meta-catalog-feed-url";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export default async function SirketPage({
     <CompanySettingsForm
       settings={settings}
       siteTrackings={siteTrackings}
+      metaCatalogFeedUrls={getMetaCatalogFeedUrls()}
       initialTab={tab}
       prepayment={prepayment}
       contactChannels={contactChannels}

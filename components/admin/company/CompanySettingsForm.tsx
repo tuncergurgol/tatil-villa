@@ -45,6 +45,7 @@ import type { CustomerContactChannelItem } from "@/lib/queries/customer-contact-
 import type { CompanyBankAccountItem } from "@/lib/queries/company-bank-accounts";
 import type { AgencySiteItem } from "@/lib/queries/agency-sites";
 import type { PaymentProviderItem } from "@/lib/queries/payment-providers";
+import type { MetaCatalogFeedUrlRow } from "@/lib/meta-catalog-feed-url";
 
 const tabs = [
   { id: "genel", label: "Genel Bilgiler", icon: Building2 },
@@ -86,6 +87,7 @@ type TabId = (typeof tabs)[number]["id"];
 interface CompanySettingsFormProps {
   settings: CompanySettings;
   siteTrackings: PublicSiteTrackingRow[];
+  metaCatalogFeedUrls: MetaCatalogFeedUrlRow[];
   initialTab?: string;
   prepayment: {
     items: PrepaymentPaymentTypeItem[];
@@ -227,6 +229,7 @@ const initialState: CompanySettingsActionState = {};
 export default function CompanySettingsForm({
   settings,
   siteTrackings,
+  metaCatalogFeedUrls,
   initialTab,
   prepayment,
   contactChannels,
@@ -473,7 +476,10 @@ export default function CompanySettingsForm({
           </TabPanel>
 
           <TabPanel active={activeTab === "analytics"}>
-            <AnalyticsSettingsFields siteTrackings={siteTrackings} />
+            <AnalyticsSettingsFields
+              siteTrackings={siteTrackings}
+              metaCatalogFeedUrls={metaCatalogFeedUrls}
+            />
           </TabPanel>
 
           <TabPanel active={activeTab === "loading"}>

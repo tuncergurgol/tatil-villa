@@ -123,3 +123,27 @@ export function resolvePublicSiteKey(hostname: string): PublicSiteProfile["key"]
 export async function getRequestPublicSiteKey(): Promise<PublicSiteProfile["key"]> {
   return resolvePublicSiteKey(await getRequestHostname());
 }
+
+export function getPublicSiteProfileByKey(
+  company: CompanyBrandSource,
+  siteKey: PublicSiteProfile["key"]
+): PublicSiteProfile {
+  const branded = BRANDED_SITES.find((entry) => entry.profile.key === siteKey);
+  if (branded) {
+    return { ...branded.profile, useDefaultLogo: false };
+  }
+
+  return {
+    key: "tatildeyiz",
+    domain: company.domain,
+    brandName: company.brandName,
+    logoUrl: company.logoUrl,
+    faviconUrl: company.faviconUrl,
+    ogImageUrl: company.ogImageUrl,
+    seoTitle: company.seoTitle,
+    seoDescription: company.seoDescription,
+    heroTitle: "Yeni Maceranı Keşfet",
+    heroImageUrl: DEFAULT_HERO_IMAGE_URL,
+    useDefaultLogo: true,
+  };
+}
