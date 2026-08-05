@@ -156,8 +156,7 @@ export async function syncVillaIcalSource(
         source.villaId,
         dbDateToDateKey(block.startDate),
         dbDateToDateKey(block.endDate),
-        "EMPTY",
-        "stay"
+        "EMPTY"
       );
       updatedDays += result.updatedDays;
       await prisma.villaIcalImportedBlock.delete({ where: { id: block.id } });
@@ -180,8 +179,7 @@ export async function syncVillaIcalSource(
           source.villaId,
           dbDateToDateKey(existing.startDate),
           dbDateToDateKey(existing.endDate),
-          "EMPTY",
-          "stay"
+          "EMPTY"
         );
         updatedDays += clearResult.updatedDays;
       }
@@ -190,8 +188,7 @@ export async function syncVillaIcalSource(
         source.villaId,
         event.startDateKey,
         event.endDateKey,
-        "BOOKED",
-        "stay"
+        "BOOKED"
       );
       updatedDays += applyResult.updatedDays;
 

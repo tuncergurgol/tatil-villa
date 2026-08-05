@@ -117,48 +117,6 @@ export function buildBookedOccupancyForStayMerged(
   return map;
 }
 
-/**
- * Manuel kapatma / WhatsApp: seçilen her gün BOOKED olur (dahil aralık).
- */
-export function buildBookedOccupancyForInclusiveRange(
-  startKey: string,
-  endKey: string
-): Map<string, VillaDayOccupancy> {
-  const map = new Map<string, VillaDayOccupancy>();
-  for (const key of enumerateDateKeysInRange(startKey, endKey)) {
-    map.set(key, "BOOKED");
-  }
-  return map;
-}
-
-/**
- * Manuel opsiyon / WhatsApp: seçilen her gün OPTION olur (dahil aralık).
- */
-export function buildOptionOccupancyForInclusiveRange(
-  startKey: string,
-  endKey: string
-): Map<string, VillaDayOccupancy> {
-  const map = new Map<string, VillaDayOccupancy>();
-  for (const key of enumerateDateKeysInRange(startKey, endKey)) {
-    map.set(key, "OPTION");
-  }
-  return map;
-}
-
-/**
- * Manuel açma / WhatsApp: seçilen her gün EMPTY olur (dahil aralık).
- */
-export function buildEmptyOccupancyForInclusiveRange(
-  startKey: string,
-  endKey: string
-): Map<string, VillaDayOccupancy> {
-  const map = new Map<string, VillaDayOccupancy>();
-  for (const key of enumerateDateKeysInRange(startKey, endKey)) {
-    map.set(key, "EMPTY");
-  }
-  return map;
-}
-
 export function buildBookedOccupancyForStay(
   startKey: string,
   endKey: string,

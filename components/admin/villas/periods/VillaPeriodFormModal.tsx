@@ -20,7 +20,7 @@ import {
   parseDateKey,
   toDateKey,
 } from "@/lib/villa-period-calendar";
-import { enumerateDateKeysInRange } from "@/lib/villa-period-selection";
+import { countNightsBetween } from "@/lib/villa-period-selection";
 import {
   VILLA_PERIOD_CURRENCIES,
   calculateCommissionAmount,
@@ -451,20 +451,20 @@ export default function VillaPeriodFormModal({
     setError(null);
   }, [open, period, prefillDateRange, templatePeriod]);
 
-  const occupancyRangePreview = useMemo(() => {
+  const occupancyStayPreview = useMemo(() => {
     if (!form.actionStartDate || !form.actionEndDate) return null;
     if (form.actionStartDate > form.actionEndDate) return null;
 
-    const days = enumerateDateKeysInRange(
+    const nights = countNightsBetween(
       form.actionStartDate,
       form.actionEndDate
-    ).length;
-    if (days <= 0) return null;
+    );
+    if (nights <= 0) return null;
 
     return {
-      days,
-      startLabel: formatPeriodDate(parseDateKey(form.actionStartDate)),
-      endLabel: formatPeriodDate(parseDateKey(form.actionEndDate)),
+      nights,
+      checkInLabel: formatPeriodDate(parseDateKey(form.actionStartDate)),
+      checkOutLabel: formatPeriodDate(parseDateKey(form.actionEndDate)),
     };
   }, [form.actionStartDate, form.actionEndDate]);
 
@@ -827,20 +827,20 @@ export default function VillaPeriodFormModal({
 
                 {period ? (
                   <p className={helpClass}>
-                    Seçilen tüm günler uygulanır. Örn. 8–10 Ağustos = 3 gün
-                    kapatılır veya açılır.
+                    Bitiş tarihi çıkış günüdür (sabah boşalır). Örn. 10–13
+                    Ağustos = 3 gece (10, 11, 12 konaklama; 13 çıkış).
                   </p>
                 ) : null}
 
-                {period && occupancyRangePreview ? (
+                {period && occupancyStayPreview ? (
                   <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
                     <span className="font-semibold">
-                      {occupancyRangePreview.days} gün
+                      {occupancyStayPreview.nights} gece
                     </span>
                     <span className="text-blue-800">
                       {" "}
-                      — {occupancyRangePreview.startLabel} –{" "}
-                      {occupancyRangePreview.endLabel}
+                      — giriş {occupancyStayPreview.checkInLabel}, çıkış{" "}
+                      {occupancyStayPreview.checkOutLabel}
                     </span>
                   </div>
                 ) : null}

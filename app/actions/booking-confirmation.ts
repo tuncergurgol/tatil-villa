@@ -304,8 +304,7 @@ export async function confirmBookingGuestInfoAction(
     updated.villaId,
     dbDateToDateKey(updated.checkIn),
     dbDateToDateKey(updated.checkOut),
-    "BOOKED",
-    "stay"
+    "BOOKED"
   );
 
   await handleBookingConfirmedTransition(booking.id, booking.status);
