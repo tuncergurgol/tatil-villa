@@ -2,7 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // pdfkit/fontkit: webpack vendor-chunks Helvetica.afm yolunu bozar (ENOENT .next/.../data/)
-  serverExternalPackages: ["node-ical", "pdfkit", "fontkit"],
+  serverExternalPackages: [
+    "@prisma/client",
+    "node-ical",
+    "pdfkit",
+    "fontkit",
+  ],
   outputFileTracingExcludes: {
     "*": ["public/uploads/**"],
   },
