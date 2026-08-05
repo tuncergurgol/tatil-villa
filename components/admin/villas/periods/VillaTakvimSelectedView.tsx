@@ -10,7 +10,6 @@ import type { VillaPricePeriodDayItem } from "@/lib/villa-period-days";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 
 interface VillaTakvimSelectedViewProps {
-  villas: VillaTakvimSearchItem[];
   selected: {
     villa: VillaTakvimSearchItem;
     periods: VillaPricePeriodItem[];
@@ -34,7 +33,6 @@ function formatPriceRange(villa: VillaTakvimSearchItem) {
 }
 
 export default function VillaTakvimSelectedView({
-  villas,
   selected,
 }: VillaTakvimSelectedViewProps) {
   const router = useRouter();
@@ -88,7 +86,7 @@ export default function VillaTakvimSelectedView({
             <p className="text-gray-500">{periodCount} periyot</p>
           </div>
 
-          <TakvimVillaSearch villas={villas} />
+          <TakvimVillaSearch remote />
         </div>
       </div>
 

@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "*": ["public/uploads/**"],
   },
+  experimental: {
+    serverMinification: false,
+  },
   async headers() {
     const securityHeaders = [
       { key: "X-Frame-Options", value: "SAMEORIGIN" },

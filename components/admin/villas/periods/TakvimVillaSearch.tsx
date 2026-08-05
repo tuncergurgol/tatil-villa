@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { includesSearchText } from "@/lib/search-text";
@@ -17,23 +17,68 @@ function matchesTakvimVillaSearch(villa: VillaTakvimSearchItem, query: string) {
   ].some((value) => includesSearchText(value, query));
 }
 
-export default function TakvimVillaSearch({
-  villas,
-}: {
-  villas: VillaTakvimSearchItem[];
-}) {
+type TakvimVillaSearchProps =
+  | { villas: VillaTakvimSearchItem[]; remote?: false }
+  | { villas?: undefined; remote: true };
+
+export default function TakvimVillaSearch(props: TakvimVillaSearchProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [remoteOptions, setRemoteOptions] = useState<VillaTakvimSearchItem[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
 
-  const options = useMemo(() => {
-    return villas
+  useEffect(() => {
+    if (!props.remote) return;
+
+    const query = search.trim();
+    if (!query) {
+      setRemoteOptions([]);
+      setRemoteLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setRemoteLoading(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/admin/konaklama/takvim-search?q=${encodeURIComponent(query)}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          setRemoteOptions([]);
+          return;
+        }
+        const data = (await response.json()) as { villas?: VillaTakvimSearchItem[] };
+        setRemoteOptions(data.villas ?? []);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setRemoteOptions([]);
+        }
+      } finally {
+        setRemoteLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [props.remote, search]);
+
+  const localOptions = useMemo(() => {
+    if (props.remote || !props.villas) return [];
+    return props.villas
       .filter((villa) => villa.active)
       .filter((villa) => matchesTakvimVillaSearch(villa, search))
       .sort((left, right) =>
         left.name.localeCompare(right.name, "tr", { sensitivity: "base" })
       )
       .slice(0, 12);
-  }, [search, villas]);
+  }, [props, search]);
+
+  const options = props.remote ? remoteOptions : localOptions;
 
   function selectVilla(villa: VillaTakvimSearchItem) {
     router.push(villaTakvimPath(villa));
@@ -52,7 +97,11 @@ export default function TakvimVillaSearch({
       />
       {search.trim() ? (
         <div className="absolute z-30 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
-          {options.length > 0 ? (
+          {remoteLoading ? (
+            <p className="px-4 py-6 text-center text-sm text-gray-500">
+              Aranıyor…
+            </p>
+          ) : options.length > 0 ? (
             options.map((villa) => (
               <button
                 key={villa.id}
