@@ -127,6 +127,7 @@ echo "==> [4/7] Prisma generate + migrate deploy"
 npx prisma generate
 npx prisma migrate deploy
 npx tsx scripts/seed-agency-message-scheduled-templates.ts || echo "    UYARI: zamanlanmış mesaj şablon seed atlandı"
+npx tsx scripts/migrate-customer-crm.ts || echo "    UYARI: CRM müşteri migrasyonu atlandı"
 
 # ---- 5) Build --------------------------------------------------------------
 echo ""

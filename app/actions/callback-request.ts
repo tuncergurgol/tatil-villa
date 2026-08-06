@@ -10,6 +10,7 @@ import type {
 import { prisma } from "@/lib/db";
 import { deliverOtpCode } from "@/lib/otp-delivery";
 import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
+import { syncCustomerFromCallback } from "@/lib/customer-crm";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
@@ -241,6 +242,11 @@ export async function verifyCallbackRequestOtpAction(
   });
 
   if (createdRecord) {
+    await syncCustomerFromCallback({
+      name: payload.name,
+      phone: payload.phone,
+      firstContactAt: now,
+    });
     await notifyNewCallbackRequest(createdRecord);
   }
 

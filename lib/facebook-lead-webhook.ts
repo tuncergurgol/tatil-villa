@@ -7,6 +7,7 @@ import {
   type GraphLeadResponse,
 } from "@/lib/facebook-lead-graph";
 import { notifyFacebookLead } from "@/lib/facebook-lead-notify";
+import { syncCustomerFromFacebookLead } from "@/lib/customer-crm";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 function mapGraphLeadToFields(graph: GraphLeadResponse) {
@@ -104,6 +105,14 @@ export async function processFacebookLeadgenWebhookValue(
   });
 
   if (!existing) {
+    if (lead.phone?.trim()) {
+      await syncCustomerFromFacebookLead({
+        fullName: lead.fullName,
+        phone: lead.phone,
+        email: lead.email,
+        firstContactAt: lead.createdAt,
+      });
+    }
     await notifyFacebookLead(lead);
   }
 

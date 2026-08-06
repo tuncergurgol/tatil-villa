@@ -36,6 +36,18 @@ function formatAdminDate(value: Date | string) {
   return new Date(value).toISOString().slice(0, 10);
 }
 
+function formatAdminDateTime(value: Date | string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  return date.toLocaleString("tr-TR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
@@ -184,14 +196,15 @@ export default function CustomerManagement({
           ) : null}
         </div>
 
-        <div className="hidden shrink-0 grid-cols-[48px_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_88px_72px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-3 text-sm font-medium text-gray-500 xl:grid">
+        <div className="hidden shrink-0 grid-cols-[48px_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.9fr)_88px_72px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-3 text-sm font-medium text-gray-500 xl:grid">
           <div>#</div>
           <div>Ad Soyad</div>
           <div>Telefon</div>
           <div>E-posta</div>
           <div>Üyelik</div>
-          <div>Ulaşım Kanalı</div>
-          <div>Kayıt / Güncelleme</div>
+          <div>İlk Kayıt Kanalı</div>
+          <div>Etiketler</div>
+          <div>İlk Kayıt / Güncelleme</div>
           <div>Durum</div>
           <div className="text-right">İşlem</div>
         </div>
@@ -201,7 +214,7 @@ export default function CustomerManagement({
             visibleCustomers.map((customer, index) => (
               <div
                 key={customer.id}
-                className="grid gap-3 border-b border-gray-100 px-5 py-4 last:border-0 xl:grid-cols-[48px_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_88px_72px] xl:items-center xl:gap-3"
+                className="grid gap-3 border-b border-gray-100 px-5 py-4 last:border-0 xl:grid-cols-[48px_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,0.9fr)_88px_72px] xl:items-center xl:gap-3"
               >
                 <div className="text-sm font-semibold text-gray-500">
                   {(currentPage - 1) * pageSize + index + 1}
@@ -254,7 +267,7 @@ export default function CustomerManagement({
 
                 <div>
                   <span className="text-xs font-medium text-gray-400 xl:hidden">
-                    Ulaşım Kanalı
+                    İlk Kayıt Kanalı
                   </span>
                   <p className="text-sm text-gray-700">
                     {customer.contactChannel?.name ?? "-"}
@@ -263,10 +276,30 @@ export default function CustomerManagement({
 
                 <div>
                   <span className="text-xs font-medium text-gray-400 xl:hidden">
-                    Kayıt / Güncelleme
+                    Etiketler
+                  </span>
+                  {customer.tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {customer.tags.map((entry) => (
+                        <span
+                          key={entry.tag.id}
+                          className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800"
+                        >
+                          {entry.tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">-</p>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-xs font-medium text-gray-400 xl:hidden">
+                    İlk Kayıt / Güncelleme
                   </span>
                   <div className="text-sm text-gray-700">
-                    <p>{formatAdminDate(customer.createdAt)}</p>
+                    <p>{formatAdminDateTime(customer.firstContactAt ?? customer.createdAt)}</p>
                     <p className="text-gray-500">
                       {formatAdminDate(customer.updatedAt)}
                     </p>

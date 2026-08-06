@@ -187,6 +187,30 @@ model CustomerContactChannel {
   @@index([sortOrder])
 }
 
+model CustomerTag {
+  id        String                  @id @default(cuid())
+  name      String                  @unique
+  sortOrder Int                     @default(0)
+  active    Boolean                 @default(true)
+  customers CustomerTagOnCustomer[]
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model CustomerTagOnCustomer {
+  customerId String
+  tagId      String
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag        CustomerTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assignedAt DateTime    @default(now())
+
+  @@id([customerId, tagId])
+  @@index([tagId])
+}
+
 model AgencySite {
   id        String   @id @default(cuid())
   name      String
@@ -283,16 +307,19 @@ model Customer {
   email            String                  @default("")
   contactChannelId String?
   contactChannel   CustomerContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  firstContactAt   DateTime?
   active           Boolean                 @default(true)
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   memberAccount    MemberAccount?
   bookings         Booking[]
+  tags             CustomerTagOnCustomer[]
 
   @@index([active])
   @@index([phone])
   @@index([fullName])
   @@index([email])
+  @@index([firstContactAt])
 }
 
 enum LoyaltyTier {

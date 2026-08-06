@@ -18,6 +18,9 @@ import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
+import {
+  syncCustomerFromBookingGuest,
+} from "@/lib/customer-crm";
 import { notifyBookingConfirmedByGuest } from "@/lib/booking-confirmed-notify";
 import { sendReservationDocumentNotifications } from "@/lib/reservation-document-mail";
 import { getRequestClientIp } from "@/lib/request-client-ip";
@@ -306,6 +309,20 @@ export async function confirmBookingGuestInfoAction(
   );
 
   await handleBookingConfirmedTransition(booking.id, booking.status);
+
+  const customerSync = await syncCustomerFromBookingGuest({
+    guestName,
+    guestEmail: booking.guestEmail,
+    guestPhone: booking.guestPhone,
+    assignConfirmedTags: true,
+    checkIn: updated.checkIn,
+  });
+  if (customerSync?.id) {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { customerId: customerSync.id },
+    });
+  }
 
   try {
     await notifyBookingConfirmedByGuest(booking.id);

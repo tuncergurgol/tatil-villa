@@ -5,6 +5,10 @@ import { isOccupancyNightBlocked } from "@/lib/booking-calendar-selection";
 import { withAllocatedBookingNumber } from "@/lib/booking-number";
 import { upsertCustomerFromBooking } from "@/lib/customer-from-booking";
 import {
+  assignConfirmedBookingCustomerTags,
+  syncCustomerFromBookingGuest,
+} from "@/lib/customer-crm";
+import {
   dateKeyToDbDate,
   dbDateToDateKey,
 } from "@/lib/villa-period-calendar";
@@ -19,11 +23,76 @@ import { normalizePhoneToE164 } from "@/lib/phone";
 export { calculateNights };
 
 async function syncBookingGuestToCustomer(data: {
+  bookingId?: string;
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  status?: BookingStatus;
+  checkIn?: Date | string;
+  firstContactAt?: Date;
 }) {
-  await upsertCustomerFromBooking(data);
+  const result = await syncCustomerFromBookingGuest({
+    guestName: data.guestName,
+    guestEmail: data.guestEmail,
+    guestPhone: data.guestPhone,
+    firstContactAt: data.firstContactAt,
+    assignConfirmedTags: data.status === BookingStatus.CONFIRMED,
+    checkIn: data.checkIn,
+  });
+
+  if (!result && data.guestPhone?.trim()) {
+    const fallback = await upsertCustomerFromBooking({
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+      firstContactAt: data.firstContactAt,
+      assignConfirmedTags: data.status === BookingStatus.CONFIRMED,
+      checkIn: data.checkIn,
+    });
+    if (fallback && data.bookingId) {
+      await prisma.booking.update({
+        where: { id: data.bookingId },
+        data: { customerId: fallback.id },
+      });
+    }
+    return fallback;
+  }
+
+  if (result?.id && data.bookingId) {
+    await prisma.booking.update({
+      where: { id: data.bookingId },
+      data: { customerId: result.id },
+    });
+  }
+
+  return result;
+}
+
+async function applyConfirmedBookingCustomerTags(data: {
+  customerId?: string | null;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  checkIn: Date | string;
+}) {
+  let customerId = data.customerId ?? null;
+  if (!customerId) {
+    const synced = await syncBookingGuestToCustomer({
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+      status: BookingStatus.CONFIRMED,
+      checkIn: data.checkIn,
+    });
+    customerId = synced?.id ?? null;
+  }
+
+  if (customerId) {
+    await assignConfirmedBookingCustomerTags({
+      customerId,
+      checkIn: data.checkIn,
+    });
+  }
 }
 
 function toStayDateKey(value: Date | string): string {
@@ -196,9 +265,13 @@ export async function createBooking(data: {
 
   if (hasRealContact) {
     await syncBookingGuestToCustomer({
+      bookingId: booking.id,
       guestName: data.guestName,
       guestEmail: data.guestEmail,
       guestPhone: data.guestPhone,
+      status: BookingStatus.NEW,
+      checkIn: data.checkIn,
+      firstContactAt: booking.createdAt,
     });
   }
 
@@ -261,9 +334,13 @@ export async function createAdminBooking(data: {
   );
 
   await syncBookingGuestToCustomer({
+    bookingId: booking.id,
     guestName: data.guestName,
     guestEmail: data.guestEmail,
     guestPhone: data.guestPhone,
+    status: data.status,
+    checkIn: data.checkIn,
+    firstContactAt: booking.createdAt,
   });
 
   if (data.status === BookingStatus.CONFIRMED) {
@@ -339,10 +416,14 @@ export async function updateAdminBooking(
     },
   });
 
-  await syncBookingGuestToCustomer({
+  const customerSync = await syncBookingGuestToCustomer({
+    bookingId: booking.id,
     guestName: data.guestName,
     guestEmail: data.guestEmail,
     guestPhone: data.guestPhone,
+    status: data.status,
+    checkIn: data.checkIn,
+    firstContactAt: booking.createdAt,
   });
 
   if (existing) {
@@ -366,6 +447,13 @@ export async function updateAdminBooking(
     existing?.status !== BookingStatus.CONFIRMED
   ) {
     await handleBookingConfirmedTransition(id, existing?.status ?? null);
+    await applyConfirmedBookingCustomerTags({
+      customerId: customerSync?.id,
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+      checkIn: data.checkIn,
+    });
   }
 
   return booking;
@@ -435,10 +523,14 @@ export async function updateBookingDetail(data: {
     },
   });
 
-  await syncBookingGuestToCustomer({
+  const customerSync = await syncBookingGuestToCustomer({
+    bookingId: booking.id,
     guestName: data.guestName,
     guestEmail: data.guestEmail,
     guestPhone: data.guestPhone,
+    status: data.status,
+    checkIn: data.checkIn,
+    firstContactAt: booking.createdAt,
   });
 
   if (
@@ -446,6 +538,13 @@ export async function updateBookingDetail(data: {
     existing.status !== BookingStatus.CONFIRMED
   ) {
     await handleBookingConfirmedTransition(data.id, existing.status);
+    await applyConfirmedBookingCustomerTags({
+      customerId: customerSync?.id,
+      guestName: data.guestName,
+      guestEmail: data.guestEmail,
+      guestPhone: data.guestPhone,
+      checkIn: data.checkIn,
+    });
   }
 
   if (

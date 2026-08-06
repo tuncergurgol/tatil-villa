@@ -10,6 +10,7 @@ import type {
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
+import { syncCustomerFromCallback } from "@/lib/customer-crm";
 
 const DAYS: CallbackPreferredDay[] = [
   "TODAY",
@@ -84,6 +85,11 @@ export async function createCallbackRequestAdmin(
   });
 
   if (status !== "PENDING") {
+    await syncCustomerFromCallback({
+      name: item.name,
+      phone: item.phone,
+      firstContactAt: item.verifiedAt ?? item.createdAt,
+    });
     await notifyNewCallbackRequest({
       name: item.name,
       phone: item.phone,

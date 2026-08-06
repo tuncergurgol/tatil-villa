@@ -48,6 +48,7 @@ function toCustomerData(parsed: z.infer<typeof customerSchema>) {
     phone: normalizeStoredTurkishPhone(parsed.phone),
     email: parsed.email.trim(),
     contactChannelId: parsed.contactChannelId || null,
+    firstContactAt: new Date(),
     active: parsed.active,
   };
 }

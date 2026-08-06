@@ -22,6 +22,7 @@ import {
   PUBLIC_SITE_META,
 } from "@/lib/public-site-keys";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
+import { syncCustomerFromAvailabilitySearch } from "@/lib/customer-crm";
 
 const searchFiltersSchema = z.object({
   phone: z.string().min(1, "Telefon numarası zorunlu"),
@@ -93,6 +94,12 @@ export async function searchAvailabilityAction(
     const results = await searchAvailability({
       ...parsed.data,
       sort: parsed.data.sort as AvailabilitySearchSort,
+    });
+
+    await syncCustomerFromAvailabilitySearch({
+      guestName: parsed.data.guestName,
+      phone: parsed.data.phone,
+      guestEmail: parsed.data.guestEmail,
     });
 
     const enrichedResults = await Promise.all(
@@ -266,6 +273,14 @@ export async function sendAvailabilityOfferAction(input: {
   }
 
   const data = parsed.data;
+  if (data.guestPhone) {
+    await syncCustomerFromAvailabilitySearch({
+      guestName: data.guestName || "Misafir",
+      phone: data.guestPhone,
+      guestEmail: data.guestEmail,
+    });
+  }
+
   const villa = await prisma.villa.findUnique({
     where: { id: data.villaId },
     select: { name: true, slug: true },

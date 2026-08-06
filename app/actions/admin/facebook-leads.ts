@@ -6,6 +6,7 @@ import type { FacebookLeadStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { notifyFacebookLead } from "@/lib/facebook-lead-notify";
+import { syncCustomerFromFacebookLead } from "@/lib/customer-crm";
 import { updateCompanySettings } from "@/lib/queries/company-settings";
 
 const STATUSES: FacebookLeadStatus[] = [
@@ -167,6 +168,15 @@ export async function createManualFacebookLeadAction(formData: FormData) {
       isTest: false,
     },
   });
+
+  if (phone) {
+    await syncCustomerFromFacebookLead({
+      fullName,
+      phone,
+      email,
+      firstContactAt: lead.createdAt,
+    });
+  }
 
   revalidateFacebookLeadPaths();
   return { ok: true as const, id: lead.id };

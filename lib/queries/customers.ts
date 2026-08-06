@@ -9,12 +9,25 @@ const customerSelect = {
   active: true,
   createdAt: true,
   updatedAt: true,
+  firstContactAt: true,
   contactChannelId: true,
   contactChannel: {
     select: {
       id: true,
       name: true,
     },
+  },
+  tags: {
+    select: {
+      assignedAt: true,
+      tag: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: { assignedAt: "asc" },
   },
   memberAccount: {
     select: {

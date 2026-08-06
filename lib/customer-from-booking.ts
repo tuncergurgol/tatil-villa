@@ -8,34 +8,31 @@ import {
 } from "@/lib/booking-guest-contact";
 import { readBookingRowsFromFileAuto } from "@/lib/booking-excel-import";
 import {
-  normalizeStoredTurkishPhone,
-  normalizeTurkishPhoneDigits,
-} from "@/lib/phone-utils";
+  findCustomerByPhone,
+  syncCustomerFromBookingGuest,
+} from "@/lib/customer-crm";
 
 export type BookingGuestInput = {
   guestName: string;
   guestEmail?: string;
   guestPhone?: string;
   contactChannelId?: string | null;
+  firstContactAt?: Date;
+  assignConfirmedTags?: boolean;
+  checkIn?: Date | string;
 };
 
 export { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 
 export async function findCustomerForBookingGuest(input: BookingGuestInput) {
-  const contact = resolveGuestContact(input);
-  if (!contact) return null;
-
-  const digits = normalizeTurkishPhoneDigits(contact.phone);
-  if (digits.length === 10) {
-    const stored = normalizeStoredTurkishPhone(contact.phone);
-    const byPhone = await prisma.customer.findFirst({
-      where: {
-        OR: [{ phone: stored }, { phone: { endsWith: digits } }],
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+  const phone = input.guestPhone?.trim() ?? "";
+  if (phone) {
+    const byPhone = await findCustomerByPhone(phone);
     if (byPhone) return byPhone;
   }
+
+  const contact = resolveGuestContact(input);
+  if (!contact) return null;
 
   if (contact.email) {
     const byEmail = await prisma.customer.findFirst({
@@ -69,6 +66,18 @@ function mergeContact(
 export async function upsertCustomerFromBooking(
   input: BookingGuestInput
 ): Promise<{ created: boolean; id: string } | null> {
+  const phone = input.guestPhone?.trim() ?? "";
+  if (phone) {
+    return syncCustomerFromBookingGuest({
+      guestName: input.guestName,
+      guestEmail: input.guestEmail,
+      guestPhone: phone,
+      firstContactAt: input.firstContactAt,
+      assignConfirmedTags: input.assignConfirmedTags,
+      checkIn: input.checkIn,
+    });
+  }
+
   const contact = resolveGuestContact(input);
   if (!contact) return null;
 
@@ -82,8 +91,6 @@ export async function upsertCustomerFromBooking(
         fullName: contact.fullName,
         phone: merged.phone,
         email: merged.email,
-        contactChannelId:
-          input.contactChannelId ?? existing.contactChannelId ?? null,
         active: true,
       },
     });
@@ -96,6 +103,7 @@ export async function upsertCustomerFromBooking(
       phone: contact.phone,
       email: contact.email,
       contactChannelId: input.contactChannelId ?? null,
+      firstContactAt: input.firstContactAt ?? new Date(),
       active: true,
     },
   });
