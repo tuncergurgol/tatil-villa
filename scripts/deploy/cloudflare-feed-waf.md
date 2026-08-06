@@ -58,3 +58,18 @@ https://r2.tatildeyiz.com.tr/feeds/meta-catalog/balayi-villacisi.xml
 ```
 
 Saatte bir `scripts/warm-meta-catalog-feed.ts` ile güncellenir.
+
+## Meta App gizlilik sayfası (tatilvillacisi.com)
+
+Meta crawler `/meta/*` yollarında Bot Fight Mode'a takılabilir:
+
+```bash
+export CLOUDFLARE_API_TOKEN="..."
+bash scripts/deploy/06-cloudflare-meta-legal-bot-allowlist.sh
+```
+
+Statik HTML alternatif URL:
+
+```
+https://www.tatilvillacisi.com/meta/gizlilik-politikasi.html
+```
