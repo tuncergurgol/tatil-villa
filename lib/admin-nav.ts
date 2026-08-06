@@ -244,6 +244,11 @@ export const adminAgencyNav: NavGroup = {
   items: [
     { label: "Şirket", href: "/admin/acente/sirket", icon: "building" },
     {
+      label: "Toplu Mesaj",
+      href: "/admin/acente/toplu-mesaj",
+      icon: "megaphone",
+    },
+    {
       label: "Takvim Import",
       href: "/admin/acente/takvim-import",
       icon: "import",
