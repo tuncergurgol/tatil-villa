@@ -82,7 +82,7 @@ export async function buildMetaPrivacyPolicyHtml(): Promise<string> {
   </p>
 
   <h2>Verilerin silinmesini talep etme</h2>
-  <p>
+  <p id="veri-silme">
     KVKK kapsamındaki haklarınızı kullanabilir ve kişisel verilerinizin silinmesini talep edebilirsiniz.
     Silme talebi için aşağıdaki yöntemlerden birini kullanın:
   </p>
