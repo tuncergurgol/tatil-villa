@@ -18,6 +18,16 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   return {
     rules: [
       {
+        userAgent: [
+          "facebookexternalhit",
+          "Facebot",
+          "Meta-ExternalAgent",
+          "facebookcatalog",
+        ],
+        allow: ["/", "/privacy.html", "/meta/"],
+        disallow: [],
+      },
+      {
         userAgent: "*",
         allow: "/",
         disallow: [
