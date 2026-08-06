@@ -10,20 +10,21 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-function legalPageShell(title: string, body: string): string {
+function legalPageShell(title: string, body: string, description: string): string {
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}" />
   <meta name="robots" content="index,follow" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.6; color: #111; max-width: 48rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
     h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
     h2 { font-size: 1.125rem; margin-top: 1.75rem; }
     p, li { font-size: 1rem; }
-    ul { padding-left: 1.25rem; }
+    ul, ol { padding-left: 1.25rem; }
     a { color: #0d9488; }
     .meta { color: #555; font-size: 0.95rem; }
   </style>
@@ -44,14 +45,19 @@ export async function buildMetaPrivacyPolicyHtml(): Promise<string> {
   const domain = site.domain || company.domain;
 
   const body = `
-  <h1>Gizlilik Politikası</h1>
+  <h1>Privacy Policy / Gizlilik Politikası</h1>
   <p class="meta">${escapeHtml(companyTitle)} — ${escapeHtml(brand)} (${escapeHtml(domain)})</p>
+  <p>
+    This privacy policy explains what personal data we collect through the ${escapeHtml(brand)}
+    website and Facebook/Instagram Lead Ads forms, how we process it, and how you can request
+    deletion of your data.
+  </p>
   <p>
     Bu gizlilik politikası, ${escapeHtml(brand)} web sitesi ve Facebook/Instagram reklam formları
     (Lead Ads) aracılığıyla toplanan kişisel verilerin nasıl işlendiğini açıklar.
   </p>
 
-  <h2>Toplanan veriler</h2>
+  <h2>Data we collect / Toplanan veriler</h2>
   <ul>
     <li>Ad, soyad</li>
     <li>E-posta adresi</li>
@@ -88,7 +94,7 @@ export async function buildMetaPrivacyPolicyHtml(): Promise<string> {
   </p>
   <ul>
     <li>E-posta: <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></li>
-    <li>Veri silme sayfamız: <a href="https://${escapeHtml(domain)}/kurumsal/veri-silme">https://${escapeHtml(domain)}/kurumsal/veri-silme</a></li>
+    <li>Veri silme sayfamız: <a href="https://${escapeHtml(domain)}/meta/veri-silme">https://${escapeHtml(domain)}/meta/veri-silme</a></li>
     <li>İletişim formu: <a href="https://${escapeHtml(domain)}/kurumsal/iletisim">https://${escapeHtml(domain)}/kurumsal/iletisim</a></li>
   </ul>
   <p>
@@ -104,7 +110,11 @@ export async function buildMetaPrivacyPolicyHtml(): Promise<string> {
   </p>
   <p><small>Son güncelleme: Ağustos 2026</small></p>`;
 
-  return legalPageShell("Gizlilik Politikası", body);
+  return legalPageShell(
+    "Privacy Policy | Gizlilik Politikası",
+    body,
+    "Privacy policy for Tatil Villacisi. Personal data collected via Facebook Lead Ads, usage purposes, and data deletion instructions."
+  );
 }
 
 export async function buildMetaDataDeletionHtml(): Promise<string> {
@@ -154,5 +164,9 @@ export async function buildMetaDataDeletionHtml(): Promise<string> {
     bakabilirsiniz.
   </p>`;
 
-  return legalPageShell("Kullanıcı Verisi Silme Talebi", body);
+  return legalPageShell(
+    "Data Deletion Instructions | Veri Silme",
+    body,
+    "Instructions for requesting deletion of personal data collected via Facebook and Instagram Lead Ads."
+  );
 }
