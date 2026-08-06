@@ -109,13 +109,16 @@ export async function getDashboardUnansweredCallbackCount(): Promise<number> {
 export type DashboardIntegrationLeadStats = {
   newObiletInquiries: number;
   newYolcu360Orders: number;
+  newFacebookLeads: number;
 };
 
 export async function getDashboardIntegrationLeadStats(): Promise<DashboardIntegrationLeadStats> {
-  const [newObiletInquiries, newYolcu360Orders] = await Promise.all([
-    prisma.biletallInquiry.count({ where: { adminSeenAt: null } }),
-    prisma.yolcu360Order.count({ where: { adminSeenAt: null } }),
-  ]);
+  const [newObiletInquiries, newYolcu360Orders, newFacebookLeads] =
+    await Promise.all([
+      prisma.biletallInquiry.count({ where: { adminSeenAt: null } }),
+      prisma.yolcu360Order.count({ where: { adminSeenAt: null } }),
+      prisma.facebookLead.count({ where: { adminSeenAt: null } }),
+    ]);
 
-  return { newObiletInquiries, newYolcu360Orders };
+  return { newObiletInquiries, newYolcu360Orders, newFacebookLeads };
 }

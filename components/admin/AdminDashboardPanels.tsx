@@ -9,6 +9,7 @@ import {
   Clock3,
   DoorOpen,
   LogOut,
+  Megaphone,
   PhoneIncoming,
   Sparkles,
   Wallet,
@@ -191,7 +192,7 @@ export default function AdminDashboardPanels({
 
       <section className="space-y-3">
         <SectionTitle>Yeni rezervasyonlar</SectionTitle>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <DashboardStatCard
             href={buildCallbackRequestsHref("unanswered")}
             label="Sizi Arayalım"
@@ -200,6 +201,15 @@ export default function AdminDashboardPanels({
             iconWrapClass="bg-orange-100 text-orange-700"
             accentClass="border-orange-100 hover:border-orange-300"
             linkClass="text-orange-700"
+          />
+          <DashboardStatCard
+            href="/admin/pazarlama/facebook-lead"
+            label="Facebook Lead"
+            value={integrationLeads.newFacebookLeads}
+            icon={Megaphone}
+            iconWrapClass="bg-blue-100 text-blue-700"
+            accentClass="border-blue-100 hover:border-blue-300"
+            linkClass="text-blue-700"
           />
           <DashboardStatCard
             href="/admin/obilet/talepler"

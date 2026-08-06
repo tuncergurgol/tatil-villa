@@ -110,6 +110,12 @@ export const DEFAULT_COMPANY_SETTINGS = {
   calendarPriceAutoUpdateCriteriaJson:
     '["ical","link1","link2","link3"]',
   calendarPriceAutoUpdateLastRunAt: null,
+  facebookLeadEnabled: false,
+  facebookLeadAppId: "",
+  facebookLeadAppSecret: "",
+  facebookLeadVerifyToken: "",
+  facebookLeadPageId: "",
+  facebookLeadPageAccessToken: "",
 };
 
 export async function getCompanySettings() {

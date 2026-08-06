@@ -1223,6 +1223,12 @@ model CompanySettings {
   googleReviewUrl                   String   @default("")
   guestReviewInvitesEnabled         Boolean  @default(true)
   scheduledBookingMessagesEnabled   Boolean  @default(true)
+  facebookLeadEnabled               Boolean  @default(false)
+  facebookLeadAppId                 String   @default("")
+  facebookLeadAppSecret             String   @default("")
+  facebookLeadVerifyToken           String   @default("")
+  facebookLeadPageId                String   @default("")
+  facebookLeadPageAccessToken       String   @default("") @db.Text
 
   updatedAt DateTime @updatedAt
 }
@@ -1525,6 +1531,61 @@ model SiteMenuItem {
 enum CampaignDisplayType {
   SLIDER
   BOX
+}
+
+enum FacebookLeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+  SPAM
+}
+
+model FacebookLead {
+  id               String             @id @default(cuid())
+  externalLeadId   String             @unique
+  formId           String             @default("")
+  formName         String             @default("")
+  pageId           String             @default("")
+  pageName         String             @default("")
+  adId             String             @default("")
+  adName           String             @default("")
+  campaignId       String             @default("")
+  campaignName     String             @default("")
+  fullName         String             @default("")
+  email            String             @default("")
+  phone            String             @default("")
+  customFieldsJson Json?
+  status           FacebookLeadStatus @default(NEW)
+  adminNote        String             @default("") @db.Text
+  contactAttempts  Int                @default(0)
+  lastContactAt    DateTime?
+  nextFollowUpAt   DateTime?
+  contactedBy      String             @default("")
+  adminSeenAt      DateTime?
+  isTest           Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  contactLogs      FacebookLeadContactLog[]
+
+  @@index([status, createdAt])
+  @@index([adminSeenAt])
+  @@index([nextFollowUpAt])
+  @@index([createdAt])
+  @@index([phone])
+}
+
+model FacebookLeadContactLog {
+  id        String       @id @default(cuid())
+  leadId    String
+  lead      FacebookLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  channel   String
+  message   String       @db.Text
+  createdBy String       @default("")
+  createdAt DateTime     @default(now())
+
+  @@index([leadId, createdAt])
 }
 
 enum CallbackPreferredDay {

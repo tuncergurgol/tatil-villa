@@ -9,7 +9,7 @@ export const INTEGRATION_LEAD_NOTIFY_EMAIL =
 export const INTEGRATION_LEAD_NOTIFY_WHATSAPP =
   process.env.CALLBACK_NOTIFY_WHATSAPP?.trim() || "+902526180108";
 
-export type IntegrationLeadKind = "callback" | "yolcu360" | "obilet";
+export type IntegrationLeadKind = "callback" | "yolcu360" | "obilet" | "facebook";
 
 export type IntegrationLeadNotifyInput = {
   kind: IntegrationLeadKind;

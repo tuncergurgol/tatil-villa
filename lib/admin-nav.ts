@@ -174,6 +174,17 @@ export const adminNavSections: NavSection[] = [
     ],
   },
   {
+    label: "Pazarlama",
+    icon: "megaphone",
+    items: [
+      {
+        label: "Facebook Lead",
+        href: "/admin/pazarlama/facebook-lead",
+        icon: "megaphone",
+      },
+    ],
+  },
+  {
     label: "Müşteri Yönetimi",
     icon: "users",
     items: [
