@@ -88,7 +88,7 @@ export async function buildMetaPrivacyPolicyHtml(): Promise<string> {
   </p>
   <ul>
     <li>E-posta: <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></li>
-    <li>Veri silme sayfamız: <a href="https://${escapeHtml(domain)}/meta/veri-silme">https://${escapeHtml(domain)}/meta/veri-silme</a></li>
+    <li>Veri silme sayfamız: <a href="https://${escapeHtml(domain)}/kurumsal/veri-silme">https://${escapeHtml(domain)}/kurumsal/veri-silme</a></li>
     <li>İletişim formu: <a href="https://${escapeHtml(domain)}/kurumsal/iletisim">https://${escapeHtml(domain)}/kurumsal/iletisim</a></li>
   </ul>
   <p>
