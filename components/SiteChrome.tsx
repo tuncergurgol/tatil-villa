@@ -20,6 +20,7 @@ import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 import { getFooterRegionLinks } from "@/lib/queries/regions";
 import { siteConfig } from "@/lib/data";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { buildCompanySocialLinks } from "@/lib/social-links";
 
 const defaultHeaderLinks = [
   { href: "/villalar", label: "Villalar" },
@@ -89,6 +90,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
 
   const brandName = site.brandName?.trim() || siteConfig.name;
   const phone = company.phone?.trim() || siteConfig.phone;
+  const socialLinks = buildCompanySocialLinks(company);
 
   return (
     <>
@@ -117,6 +119,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
         corporateLinks={corporateLinks}
         popularRegions={footerRegions.popular}
         mahalleRegions={footerRegions.mahalles}
+        socialLinks={socialLinks}
         contact={{
           phone,
           email: company.email,

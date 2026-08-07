@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
+import SocialIconLinks from "@/components/SocialIconLinks";
 import { siteConfig } from "@/lib/data";
+import type { SocialLink } from "@/lib/social-links";
 import {
   formatStoredTurkishPhoneDisplay,
   normalizeStoredTurkishPhone,
@@ -57,12 +59,14 @@ export default function Footer({
   popularRegions = [],
   mahalleRegions = [],
   contact,
+  socialLinks = [],
 }: {
   quickLinks?: FooterLink[];
   corporateLinks?: FooterLink[];
   popularRegions?: FooterRegionLink[];
   mahalleRegions?: FooterRegionLink[];
   contact?: FooterContact;
+  socialLinks?: SocialLink[];
 }) {
   const phone = contact?.phone?.trim() || siteConfig.phone;
   const email = contact?.email?.trim() || siteConfig.email;
@@ -197,6 +201,9 @@ export default function Footer({
               </li>
             ))}
           </ul>
+          {socialLinks.length > 0 ? (
+            <SocialIconLinks links={socialLinks} className="mt-6" />
+          ) : null}
         </div>
 
         <div>
