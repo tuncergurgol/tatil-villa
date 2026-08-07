@@ -11,11 +11,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const year = Number(searchParams.get("year"));
   const month = Number(searchParams.get("month"));
+  const siteIds = (searchParams.get("sites") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
     return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
   }
 
-  const data = await getMonthlyListingReportData(year, month);
+  const data = await getMonthlyListingReportData(year, month, siteIds);
   return NextResponse.json(data);
 }

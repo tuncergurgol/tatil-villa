@@ -1,3 +1,6 @@
+import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
+import { villaPublicPath } from "@/lib/villa-public-path";
+
 export const REPORT_BASE_YEAR = 2026;
 export const REPORT_YEAR_COUNT = 6;
 
@@ -25,6 +28,7 @@ export type MonthlyListingReportRow = {
   listingAddress: string;
   housingPermitNo: string;
   listingFee: string;
+  siteName?: string;
 };
 
 function pad2(value: number) {
@@ -61,12 +65,10 @@ export function formatAgencyLabel(input: {
 }
 
 export function formatListingUrl(domain: string, slug: string) {
-  const host = domain
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/+$/g, "");
-  const cleanSlug = slug.replace(/^\/+/, "");
-  return host ? `${host}/${cleanSlug}` : cleanSlug;
+  const host = sanitizePublicBookingDomain(domain);
+  const path = villaPublicPath(slug).replace(/^\/+/, "");
+  if (host && path) return `${host}/${path}`;
+  return host || path;
 }
 
 export function getMonthLabel(month: number) {

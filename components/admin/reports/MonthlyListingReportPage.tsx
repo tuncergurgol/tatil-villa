@@ -2,6 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { BarChart3, Download, Search } from "lucide-react";
+import AgencySiteMultiSelect, {
+  type AgencySiteOption,
+} from "@/components/admin/reports/AgencySiteMultiSelect";
 import {
   getMonthLabel,
   getReportYearOptions,
@@ -15,11 +18,14 @@ type ReportData = {
   agencyLabel: string;
   listingDateRange: string;
   rows: MonthlyListingReportRow[];
+  selectedSiteIds?: string[];
 };
 
 interface MonthlyListingReportPageProps {
   initialYear: number;
   initialMonth: number;
+  initialSiteIds: string[];
+  agencySites: AgencySiteOption[];
   initialData: ReportData;
 }
 
@@ -62,11 +68,14 @@ async function downloadExcel(rows: MonthlyListingReportRow[], fileName: string) 
 export default function MonthlyListingReportPage({
   initialYear,
   initialMonth,
+  initialSiteIds,
+  agencySites,
   initialData,
 }: MonthlyListingReportPageProps) {
   const yearOptions = useMemo(() => getReportYearOptions(), []);
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
+  const [selectedSiteIds, setSelectedSiteIds] = useState(initialSiteIds);
   const [report, setReport] = useState<ReportData>(initialData);
   const [isPending, startTransition] = useTransition();
 
@@ -76,6 +85,9 @@ export default function MonthlyListingReportPage({
         year: String(year),
         month: String(month),
       });
+      if (selectedSiteIds.length > 0) {
+        params.set("sites", selectedSiteIds.join(","));
+      }
       const response = await fetch(`/api/admin/monthly-listing-report?${params}`);
       if (!response.ok) {
         window.alert("Rapor yüklenemedi.");
@@ -83,6 +95,13 @@ export default function MonthlyListingReportPage({
       }
       const data = (await response.json()) as ReportData;
       setReport(data);
+      const nextParams = new URLSearchParams(params);
+      const query = nextParams.toString();
+      window.history.replaceState(
+        null,
+        "",
+        query ? `?${query}` : window.location.pathname
+      );
     });
   }
 
@@ -109,10 +128,25 @@ export default function MonthlyListingReportPage({
             </h1>
             <p className="mt-1 text-sm text-gray-500">
               {report.rows.length} kayıt - {report.listingDateRange}
+              {selectedSiteIds.length > 0
+                ? ` — ${selectedSiteIds.length} site seçili`
+                : ""}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex w-full flex-col gap-3 lg:w-auto">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-500">
+                Site Adı
+              </span>
+              <AgencySiteMultiSelect
+                options={agencySites}
+                selectedIds={selectedSiteIds}
+                onChange={setSelectedSiteIds}
+              />
+            </label>
+
+            <div className="flex flex-wrap items-end gap-3">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-gray-500">
                 Yıl
@@ -166,6 +200,7 @@ export default function MonthlyListingReportPage({
               <Download className="h-4 w-4" />
               EXCEL İNDİR
             </button>
+            </div>
           </div>
         </div>
 
@@ -192,7 +227,7 @@ export default function MonthlyListingReportPage({
               {report.rows.length > 0 ? (
                 report.rows.map((row, index) => (
                   <tr
-                    key={`${row.listingUrl}-${index}`}
+                    key={`${row.siteName ?? "default"}-${row.listingUrl}-${row.housingPermitNo}-${index}`}
                     className="border-b border-gray-100 odd:bg-white even:bg-gray-50/60"
                   >
                     <td className="px-3 py-3 text-gray-500">{index + 1}</td>

@@ -3,12 +3,13 @@ import {
   getReportYearOptions,
   REPORT_BASE_YEAR,
 } from "@/lib/monthly-listing-report";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getMonthlyListingReportData } from "@/lib/queries/monthly-listing-report";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  searchParams: Promise<{ year?: string; month?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; sites?: string }>;
 };
 
 function parseYear(value: string | undefined) {
@@ -30,16 +31,29 @@ function parseMonth(value: string | undefined) {
   return parsed;
 }
 
+function parseSiteIds(value: string | undefined) {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default async function AylikIlanRaporuPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const year = parseYear(params.year);
   const month = parseMonth(params.month);
-  const initialData = await getMonthlyListingReportData(year, month);
+  const siteIds = parseSiteIds(params.sites);
+  const [initialData, agencySites] = await Promise.all([
+    getMonthlyListingReportData(year, month, siteIds),
+    getAgencySitesForPicker(),
+  ]);
 
   return (
     <MonthlyListingReportPage
       initialYear={year}
       initialMonth={month}
+      initialSiteIds={siteIds}
+      agencySites={agencySites}
       initialData={initialData}
     />
   );
