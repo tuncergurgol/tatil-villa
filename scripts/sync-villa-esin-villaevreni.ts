@@ -1,9 +1,3 @@
-/**
- * Villa Esin — villaevreni.com link1 ayarı ve ilk senkron.
- *
- *   npx tsx scripts/sync-villa-esin-villaevreni.ts
- *   npx tsx scripts/sync-villa-esin-villaevreni.ts --dry-run
- */
 import { prisma } from "../lib/db";
 import { sleep } from "../lib/tatildeyiz-gallery";
 import {
@@ -16,13 +10,15 @@ const URL =
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  const listOnly = process.argv.includes("--list");
 
-  const villa = await prisma.villa.findFirst({
+  const candidates = await prisma.villa.findMany({
     where: {
       OR: [
-        { name: { contains: "Esin", mode: "insensitive" } },
-        { slug: { contains: "esin", mode: "insensitive" } },
-        { originalName: { contains: "Esin", mode: "insensitive" } },
+        { name: { equals: "Villa Esin", mode: "insensitive" } },
+        { slug: { equals: "villa-esin", mode: "insensitive" } },
+        { slug: { contains: "villa-esin-" } },
+        { name: { contains: "Villa Esin", mode: "insensitive" } },
       ],
     },
     select: {
@@ -35,12 +31,47 @@ async function main() {
     orderBy: [{ villaId: "asc" }],
   });
 
+  console.log("Aday villalar:");
+  for (const row of candidates) {
+    console.log(
+      `- ${row.villaId ?? "-"} | ${row.name} | ${row.slug} | link1=${row.externalSyncUrl1 || "(boş)"}`
+    );
+  }
+
+  if (listOnly) return;
+
+  const villa =
+    candidates.find((row) => row.slug === "villa-esin") ??
+    candidates.find(
+      (row) =>
+        row.slug.startsWith("villa-esin-") &&
+        !row.name.toLowerCase().includes("esinti")
+    ) ??
+    candidates.find((row) => row.name.toLowerCase() === "villa esin");
+
   if (!villa) {
-    throw new Error("Villa Esin kaydı bulunamadı");
+    throw new Error("Villa Esin bulunamadı — --list ile adayları kontrol edin");
+  }
+
+  const wrong = await prisma.villa.findFirst({
+    where: {
+      externalSyncUrl1: URL,
+      NOT: { id: villa.id },
+    },
+    select: { id: true, villaId: true, name: true, slug: true },
+  });
+
+  if (wrong) {
+    console.log(
+      `\nYanlış eşleşme temizleniyor: ${wrong.villaId} ${wrong.name} (${wrong.slug})`
+    );
+    if (!dryRun) {
+      await setVillaExternalSyncUrl(wrong.id, 1, "");
+    }
   }
 
   console.log(
-    `Villa: ${villa.villaId ?? "-"} ${villa.name} (${villa.slug})\nEski link1: ${villa.externalSyncUrl1 || "(boş)"}\nYeni link1: ${URL}`
+    `\nHedef villa: ${villa.villaId ?? "-"} ${villa.name} (${villa.slug})\nYeni link1: ${URL}`
   );
 
   if (dryRun) {
@@ -49,11 +80,8 @@ async function main() {
   }
 
   const saved = await setVillaExternalSyncUrl(villa.id, 1, URL);
-  if (!saved.ok) {
-    throw new Error(saved.message);
-  }
+  if (!saved.ok) throw new Error(saved.message);
 
-  console.log("Link1 kaydedildi, senkron başlıyor...");
   await sleep(800);
   const result = await syncVillaExternalLinkSlot(villa.id, 1, {
     urlOverride: URL,
