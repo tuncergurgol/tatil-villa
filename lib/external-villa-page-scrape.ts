@@ -15,6 +15,7 @@
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - tatilvillamda.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
  * - kaskavilla.com (Nuxt __NUXT__ priceTable + frontapi/periyotlar takvim)
+ * - villaevreni.com (aynı panel altyapısı)
  * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
  * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
  * - yazlikcim.com.tr (Boceksoft takvim; günlük fiyat yoksa schema/sezon fallback)
@@ -71,7 +72,8 @@ export type ScrapedVillaPage = {
     | "villasayfam"
     | "villaoteltatili"
     | "tatilvillamda"
-    | "kaskavilla";
+    | "kaskavilla"
+    | "villaevreni";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -4365,12 +4367,29 @@ export function scrapeLuxuryvillamFromHtml(
   };
 }
 
-function looksLikeKaskavilla(pageUrl: string): boolean {
+function looksLikeKaskavillaPanelFamily(pageUrl: string, html?: string): {
+  host: string;
+  apiBase: string;
+} | null {
   try {
-    return normalizeHost(new URL(pageUrl).hostname).includes("kaskavilla");
+    const host = normalizeHost(new URL(pageUrl).hostname);
+    if (host.includes("kaskavilla")) {
+      return { host, apiBase: "https://panel.kaskavilla.com" };
+    }
+    if (host.includes("villaevreni")) {
+      return { host, apiBase: "https://panel.villaevreni.com" };
+    }
+    if (html?.includes("panel.villaevreni.com")) {
+      return { host: "villaevreni.com", apiBase: "https://panel.villaevreni.com" };
+    }
+    return null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function looksLikeKaskavilla(pageUrl: string): boolean {
+  return looksLikeKaskavillaPanelFamily(pageUrl) != null;
 }
 
 function parseKaskavillaDmyDate(raw: string): Date | null {
@@ -4504,23 +4523,24 @@ export async function scrapeKaskavillaFromPage(
   html: string,
   warnings: string[]
 ): Promise<ScrapedVillaPage | null> {
-  if (!looksLikeKaskavilla(pageUrl)) return null;
+  const family = looksLikeKaskavillaPanelFamily(pageUrl, html);
+  if (!family) return null;
 
   const nuxt = parseNuxtPayload(html);
   if (!nuxt || typeof nuxt !== "object") {
-    warnings.push("Kaskavilla window.__NUXT__ okunamadı");
+    warnings.push(`${family.host} window.__NUXT__ okunamadı`);
     return null;
   }
 
   const data0 = (nuxt as { data?: unknown[] }).data?.[0];
   if (!data0 || typeof data0 !== "object") {
-    warnings.push("Kaskavilla __NUXT__ data[0] yok");
+    warnings.push(`${family.host} __NUXT__ data[0] yok`);
     return null;
   }
 
   const vil = (data0 as { vil?: unknown }).vil;
   if (!vil || typeof vil !== "object") {
-    warnings.push("Kaskavilla __NUXT__ vil yok");
+    warnings.push(`${family.host} __NUXT__ vil yok`);
     return null;
   }
 
@@ -4535,25 +4555,25 @@ export async function scrapeKaskavillaFromPage(
     try {
       await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
       const payload = await fetchJson(
-        `https://panel.kaskavilla.com/frontapi/periyotlar/${vilId}`,
+        `${family.apiBase}/frontapi/periyotlar/${vilId}`,
         { referer: pageUrl }
       );
       occupancyByDateKey = parseKaskavillaOccupancyFromPeriyotlar(payload);
     } catch (error) {
       warnings.push(
         error instanceof Error
-          ? `Kaskavilla takvim API hatası: ${error.message}`
-          : "Kaskavilla takvim API hatası"
+          ? `${family.host} takvim API hatası: ${error.message}`
+          : `${family.host} takvim API hatası`
       );
     }
   } else {
-    warnings.push("Kaskavilla villa id bulunamadı; takvim atlandı");
+    warnings.push(`${family.host} villa id bulunamadı; takvim atlandı`);
   }
 
   if (periods.length === 0) {
     if (occupancyByDateKey.size > 0) {
       warnings.push(
-        "Kaskavilla takvimi okundu ancak priceTable bulunamadı"
+        `${family.host} takvimi okundu ancak priceTable bulunamadı`
       );
     }
     return null;
@@ -4561,16 +4581,22 @@ export async function scrapeKaskavillaFromPage(
 
   if (occupancyByDateKey.size === 0) {
     warnings.push(
-      "Kaskavilla fiyatları alındı; müsaitlik takvimi boş veya okunamadı"
+      `${family.host} fiyatları alındı; müsaitlik takvimi boş veya okunamadı`
     );
   }
 
   const title =
     typeof villa.vil_adi === "string" ? villa.vil_adi.trim() : null;
 
+  const strategy: ScrapedVillaPage["strategy"] = family.host.includes(
+    "villaevreni"
+  )
+    ? "villaevreni"
+    : "kaskavilla";
+
   return {
     sourceHost: normalizeHost(new URL(pageUrl).hostname),
-    strategy: "kaskavilla",
+    strategy,
     pageTitle: title || extractPageTitle(html),
     periods,
     occupancyByDateKey,
@@ -4968,6 +4994,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
