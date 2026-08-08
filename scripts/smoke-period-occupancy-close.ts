@@ -285,4 +285,31 @@ assert(
   "villavillam: 26 Ağustos giriş görünür"
 );
 
+const villavillamOpaline = parseVillavillamAvailability({
+  Symbol: "₺",
+  data: {
+    doluGirisler: ["2026-08-08", "2026-08-12"],
+    doluGunler: [
+      "2026-08-09",
+      "2026-08-10",
+      "2026-08-11",
+      "2026-08-13",
+      "2026-08-14",
+      "2026-08-15",
+    ],
+    odemeGunler: [],
+    fiyatlarTarihler: [],
+    fiyatlar: [],
+  },
+});
+const opalineMap = villavillamOpaline.occupancyByDateKey;
+assert(
+  opalineMap.get("2026-08-12") === "BOOKED",
+  "villavillam Opaline: 12 Ağustos ikinci blok giriş gecesi dolu"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-12", opalineMap) === "full",
+  "villavillam Opaline: 12 Ağustos çıkış değil, dolu görünür"
+);
+
 console.log("\nTüm period occupancy smoke senaryoları geçti.");
