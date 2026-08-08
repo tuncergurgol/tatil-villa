@@ -75,7 +75,8 @@ export type ScrapedVillaPage = {
     | "tatilvillamda"
     | "kaskavilla"
     | "villaevreni"
-    | "tatilvillasi";
+    | "tatilvillasi"
+    | "villajoye";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -217,15 +218,26 @@ function positiveInt(value: number | null | undefined): number | null {
   return Math.round(value);
 }
 
-/** `46,200.00` (US), `46.200,00` (TR) veya `46857,142857` (Boceksoft) → number */
+/** `46,200.00` (US), `46.200,00` (TR), `14.000` / `14,000` veya `46857,142857` → number */
 function parseLocalizedMoney(raw: string): number {
   const s = raw.trim().replace(/\s/g, "");
   if (!s) return NaN;
   if (/\d\.\d{2}$/.test(s) && s.includes(",")) {
     return Number(s.replace(/,/g, ""));
   }
-  // Ondalık virgül: 46857,1428571429 veya 46.200,00
-  if (/^\d{1,3}(?:\.\d{3})*,\d+$/.test(s) || /^\d+,\d+$/.test(s)) {
+  // Binlik nokta, ondalık yok: 14.000 / 46.200
+  if (/^\d{1,3}(?:\.\d{3})+$/.test(s)) {
+    return Number(s.replace(/\./g, ""));
+  }
+  // Binlik virgül, ondalık yok: 14,000 / 20,000
+  if (/^\d{1,3}(?:,\d{3})+$/.test(s)) {
+    return Number(s.replace(/,/g, ""));
+  }
+  // Ondalık virgül: 46.200,00 veya 46857,1428571429
+  if (/^\d{1,3}(?:\.\d{3})*,\d+$/.test(s)) {
+    return Number(s.replace(/\./g, "").replace(",", "."));
+  }
+  if (/^\d+,\d+$/.test(s)) {
     return Number(s.replace(/\./g, "").replace(",", "."));
   }
   if (/\d,\d{2}$/.test(s)) {
@@ -1483,6 +1495,171 @@ export function parseKvtPricingItems(
   }
 
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+function looksLikeVillajoye(pageUrl: string, html: string): boolean {
+  try {
+    const host = normalizeHost(new URL(pageUrl).hostname);
+    if (!host.includes("villajoye")) return false;
+    return (
+      html.includes("_Api_avalbooked.php") ||
+      html.includes("form_listing_id") ||
+      html.includes("fiyat_hesaplama.php")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractVillajoyePropertyId(html: string): string | null {
+  const fromApi = html.match(/_Api_avalbooked\.php\?pro_id=\s*(\d+)/i)?.[1];
+  if (fromApi) return fromApi;
+  const fromForm = html.match(/form_listing_id["']\s*:\s*(\d+)/i)?.[1];
+  return fromForm?.trim() || null;
+}
+
+/** villajoye.com — dönemsel fiyat kartları (zazen / sazen). */
+export function parseVillajoyeHtmlPeriods(
+  html: string,
+  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
+): MappedVillaPricePeriod[] {
+  const deposit = damageDeposit ?? extractDamageDeposit(html);
+  const prepaymentRate = parsePercentRate(
+    html.match(/Ön Ödeme Tutarı:\s*%?\s*(\d+)/i)?.[1] ?? ""
+  );
+  const periods: MappedVillaPricePeriod[] = [];
+  const blockRe =
+    /<td[^>]*class=['"]zazen['"][^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*class=['"]sazen['"][^>]*>[\s\S]*?Minimum Kiralama:\s*(\d+)\s*gece[\s\S]*?Gecelik<br>\s*([\d.,]+)\s*(TRY|TL|EUR|USD|GBP)/gi;
+  let match: RegExpExecArray | null;
+  let sourceId = 1;
+
+  while ((match = blockRe.exec(html)) !== null) {
+    const range = parseTurkishDateRange(match[1] ?? "");
+    const nightlyPrice = Math.round(parseLocalizedMoney(match[3] ?? ""));
+    const minStayNights = positiveInt(Number(match[2]));
+    if (!range || !Number.isFinite(nightlyPrice) || nightlyPrice <= 0) continue;
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate: range.start,
+        endDate: range.end,
+        nightlyPrice,
+        currency: mapCurrencyCode(match[4] ?? "TRY"),
+        minStayNights,
+        prepaymentRate,
+        damageDeposit: deposit.amount,
+        damageDepositCurrency: deposit.currency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+/** villajoye _Api_avalbooked bookings — giriş dahil, çıkış hariç. */
+export function parseVillajoyeBookingOccupancy(
+  bookings: { checkIn?: string; checkOut?: string }[]
+): Map<string, VillaDayOccupancy> {
+  const map = new Map<string, VillaDayOccupancy>();
+
+  for (const booking of bookings) {
+    const startKey = normalizeLooseDateKey(String(booking.checkIn ?? ""));
+    const endKey = normalizeLooseDateKey(String(booking.checkOut ?? ""));
+    if (!startKey || !endKey) continue;
+
+    let cursor = parseDateKey(startKey);
+    const end = parseDateKey(endKey);
+    while (compareDates(cursor, end) < 0) {
+      map.set(toDateKey(cursor), "BOOKED");
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+
+  return map;
+}
+
+async function scrapeVillajoyeFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeVillajoye(pageUrl, html)) return null;
+
+  const deposit = extractDamageDeposit(html);
+  let periods = parseVillajoyeHtmlPeriods(html, deposit);
+  const propertyId = extractVillajoyePropertyId(html);
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+
+  if (propertyId) {
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    try {
+      const data = (await fetchJson(
+        `${originFromUrl(pageUrl)}/admin/include/_Api_avalbooked.php?pro_id=${encodeURIComponent(propertyId)}`,
+        { referer: pageUrl }
+      )) as unknown;
+
+      if (Array.isArray(data)) {
+        const bookings = Array.isArray(data[1])
+          ? (data[1] as { checkIn?: string; checkOut?: string }[])
+          : [];
+        for (const [key, value] of parseVillajoyeBookingOccupancy(bookings)) {
+          occupancyByDateKey.set(key, value);
+        }
+
+        if (periods.length === 0 && Array.isArray(data[0])) {
+          const dateKeys: string[] = [];
+          const prices: number[] = [];
+          for (const item of data[0] as { date?: string; text?: string }[]) {
+            const key = normalizeLooseDateKey(String(item?.date ?? ""));
+            const price = Math.round(
+              parseLocalizedMoney(
+                stripTags(String(item?.text ?? "")).replace(/[^\d.,]/g, "")
+              )
+            );
+            if (!key || !Number.isFinite(price) || price <= 0) continue;
+            dateKeys.push(key);
+            prices.push(price);
+          }
+          dateKeys.sort();
+          periods = collapseDailyPricesToPeriods(dateKeys, prices, "TL").map(
+            (period) => ({
+              ...period,
+              damageDeposit: deposit.amount,
+              damageDepositCurrency: deposit.currency,
+            })
+          );
+        }
+      } else {
+        warnings.push("villajoye takvim API beklenen formatta değil");
+      }
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `villajoye müsaitlik API başarısız: ${error.message}`
+          : "villajoye müsaitlik API başarısız"
+      );
+    }
+  } else {
+    warnings.push("villajoye ilan id (pro_id) bulunamadı");
+  }
+
+  if (periods.length === 0) return null;
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "villajoye fiyatları alındı; müsaitlik takvimi okunamadı veya boş"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "villajoye",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
 }
 
 async function scrapeKvtFromPage(
@@ -5112,6 +5289,13 @@ export async function scrapeExternalVillaPage(
   const kvt = await scrapeKvtFromPage(parsed.toString(), html, warnings);
   if (kvt) return finalizeScrapedPage(kvt, html);
 
+  const villajoye = await scrapeVillajoyeFromPage(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (villajoye) return finalizeScrapedPage(villajoye, html);
+
   const villasayfam = await scrapeVillasayfamFromPage(
     parsed.toString(),
     html,
@@ -5172,6 +5356,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
