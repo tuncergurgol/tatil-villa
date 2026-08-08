@@ -1518,7 +1518,7 @@ function extractVillajoyePropertyId(html: string): string | null {
   return fromForm?.trim() || null;
 }
 
-/** villajoye.com — dönemsel fiyat kartları (zazen / sazen). */
+/** villajoye.com — dönemsel fiyat kartları (zazen / bazen / sazen). */
 export function parseVillajoyeHtmlPeriods(
   html: string,
   damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
@@ -1529,14 +1529,14 @@ export function parseVillajoyeHtmlPeriods(
   );
   const periods: MappedVillaPricePeriod[] = [];
   const blockRe =
-    /<td[^>]*class=['"]zazen['"][^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*class=['"]sazen['"][^>]*>[\s\S]*?Minimum Kiralama:\s*(\d+)\s*gece[\s\S]*?Gecelik<br>\s*([\d.,]+)\s*(TRY|TL|EUR|USD|GBP)/gi;
+    /<td[^>]*class=['"]zazen['"][^>]*>([^<]+)<\/td>[\s\S]*?bazen[^>]*>[\s\S]*?Gecelik<br>\s*([\d.,]+)\s*(TRY|TL|EUR|USD|GBP)[\s\S]*?<td[^>]*class=['"]sazen['"][^>]*>[\s\S]*?Minimum Kiralama:\s*(\d+)\s*gece/gi;
   let match: RegExpExecArray | null;
   let sourceId = 1;
 
   while ((match = blockRe.exec(html)) !== null) {
     const range = parseTurkishDateRange(match[1] ?? "");
-    const nightlyPrice = Math.round(parseLocalizedMoney(match[3] ?? ""));
-    const minStayNights = positiveInt(Number(match[2]));
+    const nightlyPrice = Math.round(parseLocalizedMoney(match[2] ?? ""));
+    const minStayNights = positiveInt(Number(match[4]));
     if (!range || !Number.isFinite(nightlyPrice) || nightlyPrice <= 0) continue;
 
     periods.push(
@@ -1545,7 +1545,7 @@ export function parseVillajoyeHtmlPeriods(
         startDate: range.start,
         endDate: range.end,
         nightlyPrice,
-        currency: mapCurrencyCode(match[4] ?? "TRY"),
+        currency: mapCurrencyCode(match[3] ?? "TRY"),
         minStayNights,
         prepaymentRate,
         damageDeposit: deposit.amount,
