@@ -26,6 +26,7 @@ async function main() {
         {
           name: { contains: "Mulberry Collection Violet", mode: "insensitive" },
         },
+        { documentNo: "07-2815" },
       ],
     },
     select: {
@@ -33,6 +34,7 @@ async function main() {
       villaId: true,
       name: true,
       slug: true,
+      documentNo: true,
       externalSyncUrl1: true,
     },
     orderBy: [{ villaId: "asc" }],
@@ -41,7 +43,7 @@ async function main() {
   console.log("Aday villalar:");
   for (const row of candidates) {
     console.log(
-      `- ${row.villaId ?? "-"} | ${row.name} | ${row.slug} | link1=${row.externalSyncUrl1 || "(boş)"}`
+      `- ${row.villaId ?? "-"} | ${row.name} | ${row.slug} | belge=${row.documentNo || "-"} | link1=${row.externalSyncUrl1 || "(boş)"}`
     );
   }
 
@@ -54,7 +56,8 @@ async function main() {
     ) ??
     candidates.find(
       (row) => row.name.toLowerCase() === "mulberry collection violet"
-    );
+    ) ??
+    candidates.find((row) => row.documentNo === "07-2815");
 
   if (!villa) {
     throw new Error(
