@@ -50,6 +50,12 @@ function monthKey(year: number, month: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
 
+function addMonthKey(key: string, delta: number): string {
+  const [yearRaw, monthRaw] = key.split("-");
+  const date = new Date(Number(yearRaw), Number(monthRaw) - 1 + delta, 1);
+  return monthKey(date.getFullYear(), date.getMonth());
+}
+
 function formatDayPrice(price: number) {
   return price.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
@@ -253,11 +259,22 @@ export default function VillaAvailabilityCalendar({
     for (const day of days) {
       keys.add(day.date.slice(0, 7));
     }
+
+    const now = new Date();
+    const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 4, 1);
+    for (
+      let cursor = new Date(now.getFullYear(), now.getMonth(), 1);
+      cursor <= rangeEnd;
+      cursor.setMonth(cursor.getMonth() + 1)
+    ) {
+      keys.add(monthKey(cursor.getFullYear(), cursor.getMonth()));
+    }
+
     if (keys.size === 0) {
-      const now = new Date();
       keys.add(monthKey(now.getFullYear(), now.getMonth()));
       keys.add(monthKey(now.getFullYear(), now.getMonth() + 1));
     }
+
     return Array.from(keys).sort();
   }, [days]);
 
@@ -276,8 +293,11 @@ export default function VillaAvailabilityCalendar({
 
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
   const firstKey = months[Math.min(monthIndex, months.length - 1)] ?? months[0];
-  const secondKey =
-    months[Math.min(monthIndex + 1, months.length - 1)] ?? firstKey;
+  const showTwo = !isMobile;
+  const secondKey = showTwo ? addMonthKey(firstKey, 1) : firstKey;
+  const maxMonthIndex = isMobile
+    ? Math.max(0, months.length - 1)
+    : Math.max(0, months.length - 2);
 
   const [y1, m1] = firstKey.split("-");
   const [y2, m2] = secondKey.split("-");
@@ -285,10 +305,6 @@ export default function VillaAvailabilityCalendar({
   const month1 = Number(m1) - 1;
   const year2 = Number(y2);
   const month2 = Number(m2) - 1;
-  const showTwo = !isMobile && firstKey !== secondKey;
-  const maxMonthIndex = isMobile
-    ? Math.max(0, months.length - 1)
-    : Math.max(0, months.length - 2);
 
   return (
     <div>
@@ -320,7 +336,7 @@ export default function VillaAvailabilityCalendar({
         </button>
       </div>
 
-      <div className={`grid gap-6 ${showTwo ? "lg:grid-cols-2" : "grid-cols-1"}`}>
+      <div className={`grid gap-6 ${showTwo ? "sm:grid-cols-2" : "grid-cols-1"}`}>
         <MonthGrid
           year={year1}
           month={month1}
