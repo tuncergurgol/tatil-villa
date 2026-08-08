@@ -3397,18 +3397,36 @@ function parseTatilvillasiAvailabilityPayload(
   return items;
 }
 
-function parseTatilvillasiOccupiedDates(
-  payload: unknown
+function parseTatilvillasiAvailability(
+  items: unknown[]
 ): Map<string, VillaDayOccupancy> {
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
-  if (!payload || typeof payload !== "object") return occupancyByDateKey;
-  const dates = (payload as { dates?: unknown }).dates;
-  if (!Array.isArray(dates)) return occupancyByDateKey;
+  const today = startOfDay(new Date());
 
-  for (const raw of dates) {
-    const date = parseIsoLikeDate(String(raw));
-    if (date) occupancyByDateKey.set(toDateKey(date), "BOOKED");
+  for (const raw of items) {
+    if (!raw || typeof raw !== "object") continue;
+    const wrapper = raw as Record<string, unknown>;
+    const payload =
+      wrapper.json && typeof wrapper.json === "object"
+        ? (wrapper.json as Record<string, unknown>)
+        : wrapper;
+    const status = Number(payload.availabilitys_status ?? payload.status ?? 1);
+    if (status !== 1) continue;
+
+    const checkIn = parseIsoLikeDate(String(payload.check_in ?? ""));
+    const checkOut = parseIsoLikeDate(String(payload.check_out ?? ""));
+    if (!checkIn || !checkOut || compareDates(checkIn, checkOut) > 0) continue;
+    if (compareDates(checkOut, today) <= 0) continue;
+
+    const cursor = new Date(checkIn);
+    while (compareDates(cursor, checkOut) < 0) {
+      if (compareDates(cursor, today) >= 0) {
+        occupancyByDateKey.set(toDateKey(cursor), "BOOKED");
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
   }
+
   return occupancyByDateKey;
 }
 
@@ -3448,25 +3466,11 @@ async function scrapeTatilvillasiFromPage(
       `${origin}/api/availabilitys_function?villas=${encodeURIComponent(villaId)}&token=${encodeURIComponent(token)}`,
       { referer }
     );
-    occupancyByDateKey = parseAkdenizvillamAvailability(
+    occupancyByDateKey = parseTatilvillasiAvailability(
       parseTatilvillasiAvailabilityPayload(availabilityPayload)
     );
-    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
   } catch {
     warnings.push("Tatilvillasi müsaitlik listesi okunamadı");
-  }
-
-  try {
-    const occupiedPayload = await fetchJson(
-      `${origin}/api/availabilitys_function/occupied-dates?token=${encodeURIComponent(token)}&villas=${encodeURIComponent(villaId)}`,
-      { referer }
-    );
-    const occupiedDates = parseTatilvillasiOccupiedDates(occupiedPayload);
-    for (const [dateKey, status] of occupiedDates) {
-      occupancyByDateKey.set(dateKey, status);
-    }
-  } catch {
-    warnings.push("Tatilvillasi dolu gün listesi okunamadı");
   }
 
   if (occupancyByDateKey.size === 0) {
