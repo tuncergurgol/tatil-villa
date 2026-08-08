@@ -7,6 +7,7 @@ import {
   buildReservedOccupancyForStay,
 } from "../lib/villa-period-selection";
 import { buildOccupancyMap } from "../lib/booking-calendar-selection";
+import { parseVillavillamAvailability } from "../lib/external-villa-page-scrape";
 import { resolveVillaDayVisualFromMap, getPublicVillaDayVisualStyle } from "../lib/villa-period-day-visual";
 import { dbDateToDateKey } from "../lib/villa-period-calendar";
 
@@ -216,8 +217,12 @@ assert(
   "6 Ağustos tam kapama"
 );
 assert(
-  resolveVillaDayVisualFromMap("2026-08-08", overlayMap) === "turnover_booked",
-  "8 Ağustos giriş-çıkış"
+  resolveVillaDayVisualFromMap("2026-08-08", overlayMap) === "check_out",
+  "8 Ağustos bitişik bloklarda yalnızca çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-09", overlayMap) === "check_in",
+  "9 Ağustos bitişik bloklarda giriş"
 );
 
 const aug10Public = getPublicVillaDayVisualStyle(
@@ -246,6 +251,38 @@ assert(
 assert(
   dbDateToDateKey(new Date("2026-08-06T00:00:00.000Z")) === "2026-08-06",
   "dbDateToDateKey UTC gece yarısı kaydırmaz"
+);
+
+const villavillamPierre2 = parseVillavillamAvailability({
+  Symbol: "₺",
+  data: {
+    doluGirisler: ["2026-08-26"],
+    doluGunler: [
+      "2026-08-27",
+      "2026-08-28",
+      "2026-08-29",
+      "2026-08-30",
+      "2026-08-31",
+      "2026-09-01",
+    ],
+    odemeGunler: [],
+    fiyatlarTarihler: [],
+    fiyatlar: [],
+  },
+});
+const pierre2Map = villavillamPierre2.occupancyByDateKey;
+assert(
+  (pierre2Map.get("2026-08-25") ?? "EMPTY") === "EMPTY",
+  "villavillam: 25 Ağustos giriş günü değil, boş kalmalı"
+);
+assert(pierre2Map.get("2026-08-26") === "BOOKED", "villavillam: 26 Ağustos giriş gecesi dolu");
+assert(
+  resolveVillaDayVisualFromMap("2026-08-25", pierre2Map) === "empty",
+  "villavillam: 25 Ağustos müsait görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-26", pierre2Map) === "check_in",
+  "villavillam: 26 Ağustos giriş görünür"
 );
 
 console.log("\nTüm period occupancy smoke senaryoları geçti.");

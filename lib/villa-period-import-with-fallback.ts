@@ -14,17 +14,6 @@ export type VillaPeriodImportWithFallbackResult = VillaPeriodImportResult & {
   linkSlot?: ExternalSyncSlot;
 };
 
-function shouldFallbackFromTatildeyiz(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    /periyot bulunamadı/i.test(message) ||
-    /kaynak sayfası bulunamadı/i.test(message) ||
-    /Tatildeyiz kaynağına bağlı değil/i.test(message) ||
-    /Transaction already closed/i.test(message) ||
-    /expired transaction/i.test(message)
-  );
-}
-
 function getExternalLinkUrls(villa: {
   externalSyncUrl1: string;
   externalSyncUrl2: string;
@@ -78,8 +67,8 @@ async function importFromExternalLink(
 }
 
 /**
- * Önce Tatildeyiz slug'ından periyot aktarır; başarısız olursa veya periyot yoksa
- * villa harici linklerinden (1-4) periyot oluşturmayı dener.
+ * Önce villa harici linklerinden (1-4) periyot aktarır; yoksa veya başarısızsa
+ * Tatildeyiz slug'ına düşer. Link tanımlı villalarda kaynak site takvimi otoritatiftir.
  */
 export async function importVillaPeriodsWithFallback(
   villaId: string,
@@ -104,6 +93,14 @@ export async function importVillaPeriodsWithFallback(
   const externalLinks = getExternalLinkUrls(villa);
   let lastError: Error | null = null;
 
+  for (const link of externalLinks) {
+    try {
+      return await importFromExternalLink(villa.id, link.slot, link.url, options);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
   if (villa.slug.trim()) {
     try {
       const result = await importVillaPeriodsFromTatildeyiz(
@@ -118,26 +115,17 @@ export async function importVillaPeriodsWithFallback(
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      if (!shouldFallbackFromTatildeyiz(error) || externalLinks.length === 0) {
-        throw lastError;
-      }
-    }
-  }
-
-  for (const link of externalLinks) {
-    try {
-      return await importFromExternalLink(villa.id, link.slot, link.url, options);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
     }
   }
 
   throw (
     lastError ??
     new Error(
-      villa.slug.trim()
-        ? "Periyot bulunamadı (Tatildeyiz ve harici linkler denendi)"
-        : "Periyot bulunamadı (harici link tanımlı değil)"
+      externalLinks.length > 0
+        ? "Periyot bulunamadı (harici linkler ve Tatildeyiz denendi)"
+        : villa.slug.trim()
+          ? "Periyot bulunamadı (Tatildeyiz ve harici linkler denendi)"
+          : "Periyot bulunamadı (harici link tanımlı değil)"
     )
   );
 }

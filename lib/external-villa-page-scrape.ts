@@ -2994,7 +2994,8 @@ function parseVillavillamPriceList(
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
 }
 
-function parseVillavillamAvailability(payload: {
+/** Villavillam API ailesi: doluGirisler = giriş gecesi, doluGunler = devam eden dolu geceler. */
+export function parseVillavillamAvailability(payload: {
   Symbol?: string;
   data?: Record<string, unknown>;
 }): {
