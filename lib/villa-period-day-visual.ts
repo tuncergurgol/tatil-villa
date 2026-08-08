@@ -132,14 +132,13 @@ export function isTurnoverOccupancyDay(
     return true;
   }
 
-  const nightsBefore = countBookedNightsImmediatelyBefore(
-    context.dateKey,
-    context.occupancyMap
-  );
-  if (nightsBefore <= 0) return false;
-  if (nightsBefore <= 2) return true;
-
   const nextDayKey = offsetDateKey(context.dateKey, 1);
+  if (!isBlockingOccupancy(context.occupancyMap.get(nextDayKey))) {
+    return false;
+  }
+
+  // Bitişik ayrı bloklar (17 çıkış + 18 giriş): sonraki blok ertesi günden başlar → turnover değil.
+  // Aynı gün çıkış+giriş: sonraki blok bu EMPTY günden başlar → turnover.
   return (
     context.dateKey ===
     findCloseRangeMinKey(nextDayKey, context.occupancyMap)
