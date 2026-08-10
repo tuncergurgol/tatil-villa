@@ -132,8 +132,21 @@ npx tsx scripts/migrate-customer-crm.ts || echo "    UYARI: CRM müşteri migras
 # ---- 5) Build --------------------------------------------------------------
 echo ""
 echo "==> [5/7] Next build (npm run build)"
+# PM2 calisirken .next/cache dosyalari kilitlenebilir; once durdur
+if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+  pm2 stop "$PM2_NAME" >/dev/null 2>&1 || true
+fi
 # Onceki basarisiz Turbopack/webpack denemesinden kalan cache'i temizle
-rm -rf .next
+for _ in 1 2 3; do
+  if rm -rf .next 2>/dev/null; then
+    break
+  fi
+  sleep 2
+done
+if [[ -d .next ]]; then
+  echo "    HATA: .next temizlenemedi (PM2 veya dosya kilidi)."
+  exit 1
+fi
 npm run build
 if [[ ! -f .next/BUILD_ID ]]; then
   echo "    HATA: .next/BUILD_ID olusmadi, build basarisiz. pm2 restart atlandi."
