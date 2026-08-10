@@ -29,24 +29,10 @@ export const localeLabels: Record<
   zh: { code: "ZH", name: "Chinese", nativeName: "中文" },
 };
 
-const publicSiteDomains = [
-  "www.tatildeyiz.com.tr",
-  "tatildeyiz.com.tr",
-  "www.balayivillacisi.com",
-  "balayivillacisi.com",
-  "www.tatilvillacisi.com",
-  "tatilvillacisi.com",
-] as const;
-
 export const routing = defineRouting({
   locales: [...locales],
   defaultLocale,
   localePrefix: "as-needed",
   // URL'den locale okunur; cookie/Accept-Language ile /tr/ veya /en/ yönlendirmesi yapılmaz
   localeDetection: false,
-  domains: publicSiteDomains.map((domain) => ({
-    domain,
-    defaultLocale,
-    locales: [...locales],
-  })),
 });

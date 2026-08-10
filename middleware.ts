@@ -8,7 +8,7 @@ import {
   normalizeRequestHostHeader,
   resolveMiddlewarePublicHostname,
   sanitizePublicBookingDomain,
-} from "@/lib/booking-site-brand";
+} from "@/lib/i18n/middleware-host";
 import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
 
 const handleI18nRouting = createIntlMiddleware(routing);
@@ -97,11 +97,14 @@ function normalizePublicRedirectLocation(
   location: string
 ): string {
   const target = new URL(location, req.nextUrl);
-  target.hostname = resolveMiddlewarePublicHostname(
+  const publicHost = resolveMiddlewarePublicHostname(
     req.headers.get("host"),
     req.headers.get("x-forwarded-host"),
     req.nextUrl.host
   );
+  if (target.hostname !== publicHost) {
+    target.hostname = publicHost;
+  }
   target.protocol = "https:";
   target.port = "";
   target.pathname = stripDefaultLocalePrefix(target.pathname);
@@ -111,6 +114,10 @@ function normalizePublicRedirectLocation(
 export default async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const host = req.headers.get("host") || req.nextUrl.host;
+
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
 
   if (isDedicatedAdminHost(host) && !isAdminOnlyPath(pathname)) {
     const redirectUrl = req.nextUrl.clone();
