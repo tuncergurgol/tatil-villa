@@ -77,19 +77,24 @@ function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
   return NextResponse.rewrite(rewriteUrl);
 }
 
+function applyPublicRedirectHost(req: NextRequest, url: URL) {
+  const requestHost = getRequestHostname(req);
+  url.hostname =
+    requestHost && !isNonPublicBookingHost(requestHost)
+      ? requestHost
+      : resolveMiddlewarePublicHostname(
+          req.headers.get("host"),
+          req.headers.get("x-forwarded-host"),
+          req.nextUrl.host
+        );
+  url.protocol = "https:";
+  url.port = "";
+}
+
 function redirectStripTurkishPrefix(req: NextRequest, pathname: string) {
   const redirectUrl = req.nextUrl.clone();
   redirectUrl.pathname = stripDefaultLocalePrefix(pathname);
-  const requestHost = getRequestHostname(req);
-  if (!requestHost || isNonPublicBookingHost(requestHost)) {
-    redirectUrl.hostname = resolveMiddlewarePublicHostname(
-      req.headers.get("host"),
-      req.headers.get("x-forwarded-host"),
-      req.nextUrl.host
-    );
-    redirectUrl.protocol = "https:";
-    redirectUrl.port = "";
-  }
+  applyPublicRedirectHost(req, redirectUrl);
   return NextResponse.redirect(redirectUrl, 301);
 }
 
