@@ -33,5 +33,6 @@ export const routing = defineRouting({
   locales: [...locales],
   defaultLocale,
   localePrefix: "as-needed",
-  localeDetection: true,
+  // URL'den locale okunur; cookie/Accept-Language ile /tr/ veya /en/ yönlendirmesi yapılmaz
+  localeDetection: false,
 });

@@ -5,6 +5,7 @@ import NextAuth from "next-auth";
 import { authConfig } from "@/auth.config";
 import { routing } from "@/i18n/routing";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
+import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
 
 const { auth } = NextAuth(authConfig);
 const handleI18nRouting = createIntlMiddleware(routing);
@@ -58,6 +59,63 @@ function shouldSkipLocaleRouting(pathname: string) {
   return isAdminOnlyPath(pathname);
 }
 
+function normalizePublicRedirectLocation(
+  req: NextRequest,
+  location: string
+): string {
+  const target = new URL(location, req.nextUrl);
+  const requestHost = getHostname(
+    req.headers.get("x-forwarded-host") ||
+      req.headers.get("host") ||
+      req.nextUrl.host
+  );
+  const publicHost = sanitizePublicBookingDomain(requestHost);
+
+  target.hostname = publicHost;
+  target.protocol = "https:";
+  target.port = "";
+  target.pathname = stripDefaultLocalePrefix(target.pathname);
+
+  return target.toString();
+}
+
+function handleLocaleRouting(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+
+  // Eski Türkçe /tr/... bağlantıları → prefix'siz yol
+  if (pathname === "/tr" || pathname.startsWith("/tr/")) {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = stripDefaultLocalePrefix(pathname);
+    redirectUrl.hostname = sanitizePublicBookingDomain(
+      getHostname(
+        req.headers.get("x-forwarded-host") ||
+          req.headers.get("host") ||
+          req.nextUrl.host
+      )
+    );
+    redirectUrl.protocol = "https:";
+    redirectUrl.port = "";
+    return NextResponse.redirect(redirectUrl, 301);
+  }
+
+  const response = handleI18nRouting(req);
+
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get("location");
+    if (location) {
+      const fixed = normalizePublicRedirectLocation(req, location);
+      if (fixed !== location) {
+        return NextResponse.redirect(
+          fixed,
+          response.status as 301 | 302 | 307 | 308
+        );
+      }
+    }
+  }
+
+  return response;
+}
+
 export default auth((req) => {
   const pathname = req.nextUrl.pathname;
   const host = req.headers.get("host") || req.nextUrl.host;
@@ -90,13 +148,14 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  return handleI18nRouting(req as NextRequest);
+  return handleLocaleRouting(req as NextRequest);
 });
 
 export const config = {
   matcher: [
     "/",
-    "/(tr|en|de|fr|es|bg|el|zh)/:path*",
+  // Varsayılan dil (tr) prefix'siz; yalnızca yabancı diller matcher'da
+    "/(en|de|fr|es|bg|el|zh)/:path*",
     "/((?!api|admin|feeds|_next|_vercel|.*\\..*).*)",
     "/admin/:path*",
   ],
