@@ -9,7 +9,7 @@ import {
   resolveMiddlewarePublicHostname,
   sanitizePublicBookingDomain,
 } from "@/lib/i18n/middleware-host";
-import { getAuthSecret } from "@/lib/auth-secret";
+import { getAuthSecret, useSecureAuthCookies } from "@/lib/auth-secret";
 import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
 
 const handleI18nRouting = createIntlMiddleware(routing);
@@ -158,6 +158,7 @@ export default async function middleware(req: NextRequest) {
   const token = await getToken({
     req,
     secret: getAuthSecret(),
+    secureCookie: useSecureAuthCookies(),
   });
   const isLoggedIn = !!token;
 

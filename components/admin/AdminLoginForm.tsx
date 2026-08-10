@@ -21,35 +21,40 @@ export default function AdminLoginForm({ idleMessage }: Props) {
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
 
-    const result = await Promise.race([
-      signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      }),
-      new Promise<{ error: string }>((resolve) =>
-        setTimeout(
-          () =>
-            resolve({
-              error: "Sunucu yanıt vermedi. Lütfen tekrar deneyin.",
-            }),
-          25_000
-        )
-      ),
-    ]);
+    try {
+      const result = await Promise.race([
+        signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        }),
+        new Promise<{ error: string; ok: false }>((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                error: "Sunucu yanıt vermedi. Lütfen tekrar deneyin.",
+                ok: false,
+              }),
+            25_000
+          )
+        ),
+      ]);
 
-    setPending(false);
+      if (!result || result.error || result.ok === false) {
+        setError(
+          result?.error === "CredentialsSignin"
+            ? "E-posta veya şifre hatalı"
+            : result?.error || "Giriş yapılamadı. Lütfen tekrar deneyin."
+        );
+        return;
+      }
 
-    if (result?.error) {
-      setError(
-        result.error === "CredentialsSignin"
-          ? "E-posta veya şifre hatalı"
-          : result.error
-      );
-      return;
+      window.location.assign("/admin");
+    } catch {
+      setError("Bağlantı hatası. Lütfen sayfayı yenileyip tekrar deneyin.");
+    } finally {
+      setPending(false);
     }
-
-    window.location.assign("/admin");
   }
 
   return (
