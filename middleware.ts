@@ -68,9 +68,7 @@ function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
     pathname === "/"
       ? `/${routing.defaultLocale}`
       : `/${routing.defaultLocale}${pathname}`;
-  const response = NextResponse.rewrite(rewriteUrl);
-  response.headers.set("x-locale-mode", "tr-rewrite");
-  return response;
+  return NextResponse.rewrite(rewriteUrl);
 }
 
 function redirectStripTurkishPrefix(req: NextRequest, pathname: string) {
