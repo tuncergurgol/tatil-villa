@@ -1,4 +1,5 @@
 ﻿import type { NextAuthConfig } from "next-auth";
+import { getAuthSecret } from "@/lib/auth-secret";
 
 /**
  * Edge/middleware-safe Auth.js config (no Prisma / Node-only imports).
@@ -31,5 +32,5 @@ export const authConfig = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: getAuthSecret(),
 } satisfies NextAuthConfig;
