@@ -79,6 +79,15 @@ function normalizePublicRedirectLocation(
   return target.toString();
 }
 
+function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
+  const rewriteUrl = req.nextUrl.clone();
+  rewriteUrl.pathname =
+    pathname === "/"
+      ? `/${routing.defaultLocale}`
+      : `/${routing.defaultLocale}${pathname}`;
+  return NextResponse.rewrite(rewriteUrl);
+}
+
 function handleLocaleRouting(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
@@ -104,6 +113,13 @@ function handleLocaleRouting(req: NextRequest) {
     const location = response.headers.get("location");
     if (location) {
       const fixed = normalizePublicRedirectLocation(req, location);
+      const fixedPath = new URL(fixed).pathname;
+
+      // as-needed: prefix'siz TR URL kalir, dahili /tr/... rewrite yapilir
+      if (fixedPath === pathname) {
+        return rewriteDefaultLocalePath(req, pathname);
+      }
+
       if (fixed !== location) {
         return NextResponse.redirect(
           fixed,

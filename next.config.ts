@@ -72,16 +72,6 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/tr",
-        destination: "/",
-        permanent: true,
-      },
-      {
-        source: "/tr/:path*",
-        destination: "/:path*",
-        permanent: true,
-      },
-      {
         source: "/villalar/:slug",
         destination: "/:slug",
         permanent: true,
