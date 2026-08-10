@@ -97,6 +97,28 @@ export function sanitizePublicBookingDomain(
   return host;
 }
 
+/** Proxy zincirinde virgüllü x-forwarded-host değerinin ilk host'unu alır. */
+export function normalizeRequestHostHeader(
+  value: string | null | undefined
+): string {
+  const firstValue = (value ?? "").split(",")[0]?.trim() ?? "";
+  return normalizeHost(firstValue);
+}
+
+/**
+ * Middleware yönlendirmelerinde ziyaret edilen public host'u korur.
+ * Host başlığı (nginx server_name) x-forwarded-host'tan önceliklidir.
+ */
+export function resolveMiddlewarePublicHostname(
+  hostHeader: string | null | undefined,
+  forwardedHost: string | null | undefined,
+  fallbackHost: string
+): string {
+  return sanitizePublicBookingDomain(
+    normalizeRequestHostHeader(hostHeader ?? forwardedHost ?? fallbackHost)
+  );
+}
+
 function findKnownBrand(siteInfo: string) {
   return KNOWN_SITE_BRANDS.find((brand) =>
     brand.names.some((name) => namesMatch(name, siteInfo))

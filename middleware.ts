@@ -3,7 +3,12 @@ import type { NextRequest } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { getToken } from "next-auth/jwt";
 import { routing } from "@/i18n/routing";
-import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
+import {
+  isNonPublicBookingHost,
+  normalizeRequestHostHeader,
+  resolveMiddlewarePublicHostname,
+  sanitizePublicBookingDomain,
+} from "@/lib/booking-site-brand";
 import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
 
 const handleI18nRouting = createIntlMiddleware(routing);
@@ -31,9 +36,9 @@ function getHostname(host: string): string {
 }
 
 function getRequestHostname(req: NextRequest): string {
-  return getHostname(
-    req.headers.get("x-forwarded-host") ||
-      req.headers.get("host") ||
+  return normalizeRequestHostHeader(
+    req.headers.get("host") ??
+      req.headers.get("x-forwarded-host") ??
       req.nextUrl.host
   );
 }
@@ -74,9 +79,16 @@ function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
 function redirectStripTurkishPrefix(req: NextRequest, pathname: string) {
   const redirectUrl = req.nextUrl.clone();
   redirectUrl.pathname = stripDefaultLocalePrefix(pathname);
-  redirectUrl.hostname = sanitizePublicBookingDomain(getRequestHostname(req));
-  redirectUrl.protocol = "https:";
-  redirectUrl.port = "";
+  const requestHost = getRequestHostname(req);
+  if (!requestHost || isNonPublicBookingHost(requestHost)) {
+    redirectUrl.hostname = resolveMiddlewarePublicHostname(
+      req.headers.get("host"),
+      req.headers.get("x-forwarded-host"),
+      req.nextUrl.host
+    );
+    redirectUrl.protocol = "https:";
+    redirectUrl.port = "";
+  }
   return NextResponse.redirect(redirectUrl, 301);
 }
 
@@ -85,7 +97,11 @@ function normalizePublicRedirectLocation(
   location: string
 ): string {
   const target = new URL(location, req.nextUrl);
-  target.hostname = sanitizePublicBookingDomain(getRequestHostname(req));
+  target.hostname = resolveMiddlewarePublicHostname(
+    req.headers.get("host"),
+    req.headers.get("x-forwarded-host"),
+    req.nextUrl.host
+  );
   target.protocol = "https:";
   target.port = "";
   target.pathname = stripDefaultLocalePrefix(target.pathname);
