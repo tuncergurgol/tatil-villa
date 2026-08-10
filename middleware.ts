@@ -1,13 +1,11 @@
 ﻿import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
-import NextAuth from "next-auth";
-import { authConfig } from "@/auth.config";
+import { getToken } from "next-auth/jwt";
 import { routing } from "@/i18n/routing";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
 
-const { auth } = NextAuth(authConfig);
 const handleI18nRouting = createIntlMiddleware(routing);
 
 const FOREIGN_LOCALE_PREFIX = /^\/(en|de|fr|es|bg|el|zh)(\/|$)/;
@@ -70,7 +68,9 @@ function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
     pathname === "/"
       ? `/${routing.defaultLocale}`
       : `/${routing.defaultLocale}${pathname}`;
-  return NextResponse.rewrite(rewriteUrl);
+  const response = NextResponse.rewrite(rewriteUrl);
+  response.headers.set("x-locale-mode", "tr-rewrite");
+  return response;
 }
 
 function redirectStripTurkishPrefix(req: NextRequest, pathname: string) {
@@ -94,7 +94,7 @@ function normalizePublicRedirectLocation(
   return target.toString();
 }
 
-export default auth((req) => {
+export default async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const host = req.headers.get("host") || req.nextUrl.host;
 
@@ -115,7 +115,7 @@ export default auth((req) => {
       return rewriteDefaultLocalePath(req, pathname);
     }
 
-    const intlResponse = handleI18nRouting(req as NextRequest);
+    const intlResponse = handleI18nRouting(req);
     if (intlResponse.status >= 300 && intlResponse.status < 400) {
       const location = intlResponse.headers.get("location");
       if (location) {
@@ -131,9 +131,13 @@ export default auth((req) => {
     return intlResponse;
   }
 
-  const isLoggedIn = !!req.auth;
   const isAdminRoute = pathname.startsWith("/admin");
   const isLoginArea = pathname.startsWith("/admin/login");
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  const isLoggedIn = !!token;
 
   if (isAdminRoute && !isAdminHostAllowed(host)) {
     return NextResponse.redirect(new URL("/", req.nextUrl));
@@ -148,7 +152,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: [
