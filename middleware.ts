@@ -79,6 +79,8 @@ function normalizePublicRedirectLocation(
   return target.toString();
 }
 
+const FOREIGN_LOCALE_PREFIX = /^\/(en|de|fr|es|bg|el|zh)(\/|$)/;
+
 function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
   const rewriteUrl = req.nextUrl.clone();
   rewriteUrl.pathname =
@@ -107,19 +109,17 @@ function handleLocaleRouting(req: NextRequest) {
     return NextResponse.redirect(redirectUrl, 301);
   }
 
+  // Türkçe (varsayılan): prefix yok, dahili /tr/... rewrite
+  if (!FOREIGN_LOCALE_PREFIX.test(pathname)) {
+    return rewriteDefaultLocalePath(req, pathname);
+  }
+
   const response = handleI18nRouting(req);
 
   if (response.status >= 300 && response.status < 400) {
     const location = response.headers.get("location");
     if (location) {
       const fixed = normalizePublicRedirectLocation(req, location);
-      const fixedPath = new URL(fixed).pathname;
-
-      // as-needed: prefix'siz TR URL kalir, dahili /tr/... rewrite yapilir
-      if (fixedPath === pathname) {
-        return rewriteDefaultLocalePath(req, pathname);
-      }
-
       if (fixed !== location) {
         return NextResponse.redirect(
           fixed,
