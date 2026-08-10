@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Menu, UserRound, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import HeaderVillaSearch from "@/components/HeaderVillaSearch";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { Link } from "@/lib/i18n/navigation";
 import { siteConfig } from "@/lib/data";
 import {
   formatStoredTurkishPhoneDisplay,
@@ -12,13 +14,13 @@ import {
 } from "@/lib/phone-utils";
 import { normalizePhoneToE164, toWhatsAppRecipient } from "@/lib/phone";
 
-const defaultNavLinks = [
-  { href: "/villalar", label: "Villalar" },
-  { href: "/villalar?filter=deal", label: "Fırsatlar" },
-  { href: "/#bolgeler", label: "Bölgeler" },
-  { href: "/#kampanyalar", label: "Kampanyalar" },
-  { href: "/sadakat", label: "Sadakat Programı" },
-];
+const defaultNavHrefs = [
+  "/villalar",
+  "/villalar?filter=deal",
+  "/#bolgeler",
+  "/#kampanyalar",
+  "/sadakat",
+] as const;
 
 type NavLink = { href: string; label: string };
 
@@ -54,17 +56,23 @@ const DEFAULT_LOGO = "/uploads/company/logo-1783080885848.svg";
 const memberLinkClass =
   "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-50 sm:px-3";
 
-function MemberLoginLink({ className = "" }: { className?: string }) {
+function MemberLoginLink({
+  className = "",
+  label,
+}: {
+  className?: string;
+  label: string;
+}) {
   return (
     <Link href="/uye" className={`${memberLinkClass} ${className}`}>
       <UserRound className="h-3.5 w-3.5 text-slate-600" aria-hidden />
-      <span className="whitespace-nowrap">Üye Girişi</span>
+      <span className="whitespace-nowrap">{label}</span>
     </Link>
   );
 }
 
 export default function Header({
-  navLinks = defaultNavLinks,
+  navLinks,
   phone = siteConfig.phone,
   brandName = siteConfig.name,
   logoUrl,
@@ -83,6 +91,19 @@ export default function Header({
   agencyName?: string;
   tursabNo?: string;
 }) {
+  const t = useTranslations("nav");
+  const tHeader = useTranslations("header");
+  const resolvedNavLinks = useMemo<NavLink[]>(
+    () =>
+      navLinks ?? [
+        { href: defaultNavHrefs[0], label: t("villas") },
+        { href: defaultNavHrefs[1], label: t("deals") },
+        { href: defaultNavHrefs[2], label: t("regions") },
+        { href: defaultNavHrefs[3], label: t("campaigns") },
+        { href: defaultNavHrefs[4], label: t("loyalty") },
+      ],
+    [navLinks, t]
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
   const rawPhone = phone.trim() || siteConfig.phone;
   const displayPhone = displayPhoneLabel(rawPhone);
@@ -125,7 +146,7 @@ export default function Header({
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-4 xl:flex">
-          {navLinks.map((link) => (
+          {resolvedNavLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -148,7 +169,8 @@ export default function Header({
               <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-white" />
               <span className="truncate">{displayPhone}</span>
             </a>
-            <MemberLoginLink />
+            <MemberLoginLink label={tHeader("memberLogin")} />
+            <LanguageSwitcher />
           </div>
           <HeaderVillaSearch className="w-full" compact />
         </div>
@@ -157,7 +179,7 @@ export default function Header({
           type="button"
           className="rounded-lg p-1.5 text-gray-700 hover:bg-gray-100 md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Menü"
+          aria-label={tHeader("menu")}
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -179,7 +201,8 @@ export default function Header({
               <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-white" />
               <span className="truncate">{displayPhone}</span>
             </a>
-            <MemberLoginLink />
+            <MemberLoginLink label={tHeader("memberLogin")} />
+            <LanguageSwitcher />
           </div>
           <HeaderVillaSearch className="w-full" compact />
         </div>
@@ -188,7 +211,7 @@ export default function Header({
       {mobileOpen && (
         <div className="border-t border-gray-100 px-4 py-3 md:hidden">
           <nav className="flex flex-col gap-0.5">
-            {navLinks.map((link) => (
+            {resolvedNavLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

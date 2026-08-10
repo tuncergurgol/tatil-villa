@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   CalendarCheck,
@@ -11,6 +9,13 @@ import {
   PhoneCall,
   PhoneIncoming,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import {
+  Link,
+  usePathname as useLocalePathname,
+  useRouter,
+} from "@/lib/i18n/navigation";
+import { stripLocalePrefix } from "@/lib/i18n/path";
 import { focusHeaderVillaSearchInput } from "@/lib/mobile-villa-search";
 import { normalizePhoneToE164, toWhatsAppRecipient } from "@/lib/phone";
 
@@ -28,9 +33,11 @@ export default function MobileBottomNavigation({
   phone,
   whatsapp,
 }: MobileBottomNavigationProps) {
-  const pathname = usePathname();
+  const pathname = useLocalePathname();
   const router = useRouter();
+  const t = useTranslations("mobileNav");
   const [isVillaDetail, setIsVillaDetail] = useState(false);
+  const normalizedPath = stripLocalePrefix(pathname || "/");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -42,11 +49,11 @@ export default function MobileBottomNavigation({
   }, [pathname]);
 
   const hidden =
-    pathname?.startsWith("/admin") ||
-    pathname?.startsWith("/giris-bilgilendirme") ||
-    pathname?.startsWith("/rezervasyon-onay") ||
-    pathname?.startsWith("/uye/hesabim") ||
-    pathname === "/onay";
+    normalizedPath.startsWith("/admin") ||
+    normalizedPath.startsWith("/giris-bilgilendirme") ||
+    normalizedPath.startsWith("/rezervasyon-onay") ||
+    normalizedPath.startsWith("/uye/hesabim") ||
+    normalizedPath === "/onay";
 
   if (hidden) return null;
 
@@ -81,13 +88,17 @@ export default function MobileBottomNavigation({
           <Link href="/" className={itemClass}>
             <span
               className={`${iconWrapClass} ${
-                pathname === "/" ? "bg-white text-rose-600 shadow-sm" : ""
+                normalizedPath === "/" ? "bg-white text-rose-600 shadow-sm" : ""
               }`}
             >
               <Home className="h-[22px] w-[22px]" strokeWidth={1.8} />
             </span>
-            <span className={pathname === "/" ? "font-semibold text-rose-700" : ""}>
-              Ana Sayfa
+            <span
+              className={
+                normalizedPath === "/" ? "font-semibold text-rose-700" : ""
+              }
+            >
+              {t("home")}
             </span>
           </Link>
 
@@ -95,7 +106,7 @@ export default function MobileBottomNavigation({
             <span className={iconWrapClass}>
               <PhoneIncoming className="h-[22px] w-[22px]" strokeWidth={1.8} />
             </span>
-            <span>Sizi Arayalım</span>
+            <span>{t("callUs")}</span>
           </Link>
 
           <div className="flex min-w-0 justify-center">
@@ -109,21 +120,21 @@ export default function MobileBottomNavigation({
                   <CalendarCheck className="h-6 w-6" strokeWidth={1.8} />
                 </span>
                 <span className="max-w-[4.7rem] text-center font-semibold leading-tight">
-                  Rezervasyon Yap
+                  {t("reservation")}
                 </span>
               </button>
             ) : (
-            <button
-              type="button"
-              onClick={handleVillaSearch}
-              className={`${itemClass} w-full text-rose-700`}
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-400 text-white shadow-[0_6px_16px_rgba(244,63,94,0.3)]">
-                <CalendarSearch className="h-6 w-6" strokeWidth={1.8} />
-              </span>
-              <span className="font-semibold leading-tight">Villa Ara</span>
-            </button>
-          )}
+              <button
+                type="button"
+                onClick={handleVillaSearch}
+                className={`${itemClass} w-full text-rose-700`}
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-400 text-white shadow-[0_6px_16px_rgba(244,63,94,0.3)]">
+                  <CalendarSearch className="h-6 w-6" strokeWidth={1.8} />
+                </span>
+                <span className="font-semibold leading-tight">{t("search")}</span>
+              </button>
+            )}
           </div>
 
           <a
@@ -134,7 +145,7 @@ export default function MobileBottomNavigation({
             <span className={iconWrapClass}>
               <PhoneCall className="h-[22px] w-[22px]" strokeWidth={1.8} />
             </span>
-            <span>Telefon</span>
+            <span>{t("callUs")}</span>
           </a>
 
           <a
@@ -151,7 +162,7 @@ export default function MobileBottomNavigation({
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 text-emerald-600 shadow-sm">
               <MessageCircle className="h-[22px] w-[22px]" strokeWidth={2} />
             </span>
-            <span>WhatsApp</span>
+            <span>{t("whatsapp")}</span>
           </a>
         </div>
       </nav>

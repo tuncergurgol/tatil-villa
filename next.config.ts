@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   // pdfkit/fontkit: webpack vendor-chunks Helvetica.afm yolunu bozar (ENOENT .next/.../data/)
@@ -74,6 +77,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/:locale(en|de|fr|es|bg|el|zh)/villalar/:slug",
+        destination: "/:locale/:slug",
+        permanent: true,
+      },
+      {
         source: "/ucak-otobus",
         destination: "/bilet/ara",
         permanent: true,
@@ -136,4 +144,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

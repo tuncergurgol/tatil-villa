@@ -1,8 +1,12 @@
-﻿import NextAuth from "next-auth";
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import NextAuth from "next-auth";
 import { authConfig } from "@/auth.config";
+import { routing } from "@/i18n/routing";
 
 const { auth } = NextAuth(authConfig);
+const handleI18nRouting = createIntlMiddleware(routing);
 
 function isAdminHostAllowed(host: string): boolean {
   const configured = (process.env.ADMIN_HOST || "bont.tatildeyiz.com.tr")
@@ -12,7 +16,6 @@ function isAdminHostAllowed(host: string): boolean {
 
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
 
-  // Sunucu içi health check / yerel erişim
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
@@ -25,13 +28,24 @@ function isAdminHostAllowed(host: string): boolean {
   return configured.includes(hostname);
 }
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth;
-  const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
-  const isLoginArea = req.nextUrl.pathname.startsWith("/admin/login");
-  const host = req.headers.get("host") || req.nextUrl.host;
+function shouldSkipLocaleRouting(pathname: string) {
+  return (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/feeds") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/_vercel") ||
+    /\.[^/]+$/.test(pathname)
+  );
+}
 
-  // Public site hostlarında admin paneli açma
+export default auth((req) => {
+  const pathname = req.nextUrl.pathname;
+  const host = req.headers.get("host") || req.nextUrl.host;
+  const isLoggedIn = !!req.auth;
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isLoginArea = pathname.startsWith("/admin/login");
+
   if (isAdminRoute && !isAdminHostAllowed(host)) {
     return NextResponse.redirect(new URL("/", req.nextUrl));
   }
@@ -44,9 +58,18 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/admin", req.nextUrl));
   }
 
-  return NextResponse.next();
+  if (shouldSkipLocaleRouting(pathname)) {
+    return NextResponse.next();
+  }
+
+  return handleI18nRouting(req as NextRequest);
 });
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/",
+    "/(tr|en|de|fr|es|bg|el|zh)/:path*",
+    "/((?!api|admin|feeds|_next|_vercel|.*\\..*).*)",
+    "/admin/:path*",
+  ],
 };

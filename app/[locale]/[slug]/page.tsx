@@ -19,7 +19,7 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
   searchParams: Promise<{
     giristarihi?: string | string[];
     cikistarihi?: string | string[];
