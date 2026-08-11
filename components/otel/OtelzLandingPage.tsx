@@ -12,10 +12,14 @@ import {
 import {
   OTELZ_BANNER_ALT,
   OTELZ_BANNER_IMAGE_URL,
-  buildOtelzSearchUrl,
   type OtelzAffiliateParams,
   type OtelzSalesPage,
 } from "@/lib/otelz";
+import OtelzDestinationSearch from "@/components/otel/OtelzDestinationSearch";
+import {
+  buildOtelzPlaceSearchUrl,
+  type OtelzPlaceSuggestion,
+} from "@/lib/otelz-places";
 
 type OtelzLandingPageProps = {
   affiliate: OtelzAffiliateParams;
@@ -34,15 +38,17 @@ export default function OtelzLandingPage({
   activePage,
   bannerUrl,
 }: OtelzLandingPageProps) {
-  const [destination, setDestination] = useState("");
+  const [destination, setDestination] = useState<OtelzPlaceSuggestion | null>(
+    null
+  );
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
 
   const searchUrl = useMemo(
     () =>
-      buildOtelzSearchUrl({
-        destination,
+      buildOtelzPlaceSearchUrl({
+        place: destination,
         checkIn,
         checkOut,
         guests,
@@ -79,12 +85,9 @@ export default function OtelzLandingPage({
                 <MapPin className="size-4 text-sky-600" />
                 Otel / Bölge
               </span>
-              <input
-                type="text"
+              <OtelzDestinationSearch
                 value={destination}
-                onChange={(event) => setDestination(event.target.value)}
-                placeholder="Şehir, ilçe veya otel adı"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                onChange={setDestination}
               />
             </label>
 
