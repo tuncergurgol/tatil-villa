@@ -10,12 +10,46 @@ import {
 } from "@/lib/airbnb-calendar-scrape";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import {
+  buildBookedOccupancyForStay,
+  enumerateDateKeysInRange,
+  normalizeDateRange,
+} from "@/lib/villa-period-selection";
+import {
   externalIcalSourceName,
   type ExternalSyncSlot,
 } from "@/lib/villa-external-sync";
 
 function stayUid(stay: AirbnbCalendarStay): string {
   return `airbnb:${stay.startDateKey}:${stay.endDateKey}`;
+}
+
+async function stayOccupancyNeedsApply(
+  villaId: string,
+  stay: AirbnbCalendarStay
+): Promise<boolean> {
+  const { start, end } = normalizeDateRange(stay.startDateKey, stay.endDateKey);
+  const dateKeys = enumerateDateKeysInRange(start, end);
+  if (dateKeys.length === 0) return false;
+
+  const expected = buildBookedOccupancyForStay(stay.startDateKey, stay.endDateKey);
+  const rows = await prisma.villaPricePeriodDay.findMany({
+    where: {
+      villaId,
+      date: { in: dateKeys.map((dateKey) => dateKeyToDbDate(dateKey)) },
+    },
+    select: { date: true, occupancyStatus: true },
+  });
+  const actual = new Map(
+    rows.map((row) => [dbDateToDateKey(row.date), row.occupancyStatus])
+  );
+
+  for (const dateKey of dateKeys) {
+    const want = expected.get(dateKey) ?? "EMPTY";
+    const have = actual.get(dateKey) ?? "EMPTY";
+    if (want !== have) return true;
+  }
+
+  return false;
 }
 
 export type AirbnbCalendarImportResult = {
@@ -94,14 +128,15 @@ export async function importAirbnbCalendarOccupancy(
   for (const stay of stays) {
     const uid = stayUid(stay);
     const existingBlock = existingByUid.get(uid);
-    const changed =
+    const datesChanged =
       !existingBlock ||
       dbDateToDateKey(existingBlock.startDate) !== stay.startDateKey ||
       dbDateToDateKey(existingBlock.endDate) !== stay.endDateKey;
+    const occupancyDrift = await stayOccupancyNeedsApply(villaId, stay);
 
-    if (!changed) continue;
+    if (!datesChanged && !occupancyDrift) continue;
 
-    if (existingBlock) {
+    if (existingBlock && datesChanged) {
       const clearResult = await applyVillaPeriodDaysOccupancy(
         villaId,
         dbDateToDateKey(existingBlock.startDate),
