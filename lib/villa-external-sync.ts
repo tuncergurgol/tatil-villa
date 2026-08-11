@@ -1,3 +1,5 @@
+import { importAirbnbCalendarOccupancy } from "@/lib/airbnb-calendar-import-runner";
+import { isAirbnbRoomUrl } from "@/lib/airbnb-calendar-scrape";
 import { prisma } from "@/lib/db";
 import { importVillaPeriodsFromExternalPage } from "@/lib/external-villa-page-import-runner";
 import { importVillaPeriodsFromTatildeyiz } from "@/lib/tatildeyiz-period-import-runner";
@@ -11,6 +13,7 @@ export type ExternalSyncSlot = 1 | 2 | 3 | 4;
 export type ExternalSyncUrlKind =
   | "ical"
   | "tatildeyiz"
+  | "airbnb"
   | "villa_page"
   | "unknown";
 
@@ -74,6 +77,10 @@ export function detectExternalSyncUrlKind(url: string): ExternalSyncUrlKind {
   const host = parsed.hostname.toLowerCase();
   if (host === "tatildeyiz.com.tr" || host.endsWith(".tatildeyiz.com.tr")) {
     return "tatildeyiz";
+  }
+
+  if (isAirbnbRoomUrl(trimmed)) {
+    return "airbnb";
   }
 
   const path = parsed.pathname.toLowerCase();
@@ -252,6 +259,28 @@ async function syncTatildeyizExternalLink(
   }
 }
 
+async function syncAirbnbExternalLink(
+  villaId: string,
+  slot: ExternalSyncSlot,
+  url: string
+): Promise<{ ok: boolean; message: string }> {
+  try {
+    const result = await importAirbnbCalendarOccupancy(villaId, url, slot);
+    return {
+      ok: true,
+      message: `Airbnb ${result.listingId}: ${result.stayCount} kapalı dönem, ${result.blockedDays} dolu gün (${result.importedCount} güncellendi, ${result.removedCount} kaldırıldı; ${result.updatedDays} gün değişti)`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Airbnb takvim aktarımı başarısız",
+    };
+  }
+}
+
 async function syncVillaPageExternalLink(
   villaId: string,
   url: string
@@ -334,13 +363,15 @@ export async function syncVillaExternalLinkSlot(
     outcome = await syncIcalExternalLink(villa.id, slot, url);
   } else if (kind === "tatildeyiz") {
     outcome = await syncTatildeyizExternalLink(villa, url);
+  } else if (kind === "airbnb") {
+    outcome = await syncAirbnbExternalLink(villa.id, slot, url);
   } else if (kind === "villa_page") {
     outcome = await syncVillaPageExternalLink(villa.id, url);
   } else {
     outcome = {
       ok: false,
       message:
-        "Desteklenmeyen link. .ics / iCal, tatildeyiz.com.tr veya public villa sayfası URL'si gerekli.",
+        "Desteklenmeyen link. .ics / iCal, tatildeyiz.com.tr, Airbnb oda linki veya public villa sayfası URL'si gerekli.",
     };
   }
 
@@ -501,8 +532,9 @@ export async function syncAllVillaExternalLinks(options?: {
 
       results.push(await syncVillaExternalLinkSlot(villa.id, slot.slot));
 
-      // Public sayfa scrape'lerinde nazik rate-limit (cron / toplu sync)
-      if (detectExternalSyncUrlKind(slot.url) === "villa_page") {
+      // Public sayfa / Airbnb scrape'lerinde nazik rate-limit (cron / toplu sync)
+      const kind = detectExternalSyncUrlKind(slot.url);
+      if (kind === "villa_page" || kind === "airbnb") {
         await sleep(500);
       }
     }

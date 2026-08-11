@@ -60,6 +60,7 @@ export async function clearVillaExternalSyncUrlAction(
  * Link tipine göre hemen sync:
  * - .ics / iCal → mevcut iCal import
  * - tatildeyiz villa URL → period + occupancy import
+ * - Airbnb oda linki → yalnızca müsaitlik (giriş–çıkış kurallarıyla BOOKED)
  * - diğer http(s) villa sayfası → HTML scrape (fiyat + takvim overwrite)
  */
 export async function syncVillaExternalSyncSlotAction(
