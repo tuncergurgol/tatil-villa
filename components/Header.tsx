@@ -170,9 +170,11 @@ export default function Header({
               <span className="truncate">{displayPhone}</span>
             </a>
             <MemberLoginLink label={tHeader("memberLogin")} />
-            <LanguageSwitcher />
           </div>
-          <HeaderVillaSearch className="w-full" compact />
+          <div className="flex min-w-0 items-center gap-2">
+            <HeaderVillaSearch className="min-w-0 flex-1" compact />
+            <LanguageSwitcher className="shrink-0" />
+          </div>
         </div>
 
         <button
@@ -202,9 +204,11 @@ export default function Header({
               <span className="truncate">{displayPhone}</span>
             </a>
             <MemberLoginLink label={tHeader("memberLogin")} />
-            <LanguageSwitcher />
           </div>
-          <HeaderVillaSearch className="w-full" compact />
+          <div className="flex min-w-0 items-center gap-2">
+            <HeaderVillaSearch className="min-w-0 flex-1" compact />
+            <LanguageSwitcher className="shrink-0" />
+          </div>
         </div>
       </div>
 

@@ -42,6 +42,7 @@ export default function HeaderVillaSearch({
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const skipNextOpenRef = useRef(false);
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -53,6 +54,11 @@ export default function HeaderVillaSearch({
       setResults([]);
       setOpen(false);
       setLoading(false);
+      return;
+    }
+
+    if (skipNextOpenRef.current) {
+      skipNextOpenRef.current = false;
       return;
     }
 
@@ -140,8 +146,10 @@ export default function HeaderVillaSearch({
   }
 
   function selectVilla(villa: SearchResult) {
-    setQuery(villa.name);
+    skipNextOpenRef.current = true;
+    setResults([]);
     setOpen(false);
+    setQuery(villa.name);
     router.push(villaPublicPath(villa.slug));
   }
 
