@@ -2,13 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import {
-  ArrowUpRight,
-  CalendarDays,
-  MapPin,
-  Search,
-  Users,
-} from "lucide-react";
+import { CalendarDays, MapPin, Search, Users } from "lucide-react";
 import {
   OTELZ_BANNER_ALT,
   OTELZ_BANNER_IMAGE_URL,
@@ -23,7 +17,6 @@ import {
 
 type OtelzLandingPageProps = {
   affiliate: OtelzAffiliateParams;
-  salesPages: Array<OtelzSalesPage & { href: string }>;
   activePage: OtelzSalesPage & { href: string };
   bannerUrl: string;
 };
@@ -34,7 +27,6 @@ function openOtelz(url: string) {
 
 export default function OtelzLandingPage({
   affiliate,
-  salesPages,
   activePage,
   bannerUrl,
 }: OtelzLandingPageProps) {
@@ -135,42 +127,14 @@ export default function OtelzLandingPage({
             </label>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <button
-              type="submit"
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#00ACFF] px-5 py-3.5 text-sm font-semibold text-white shadow-md shadow-sky-200 transition hover:bg-[#0096df]"
-            >
-              <Search className="size-4" />
-              Otel Ara
-            </button>
-            <button
-              type="button"
-              onClick={() => openOtelz(activePage.href)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-5 py-3.5 text-sm font-semibold text-sky-800 transition hover:bg-sky-50"
-            >
-              {activePage.label}
-              <ArrowUpRight className="size-4" />
-            </button>
-          </div>
+          <button
+            type="submit"
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#00ACFF] px-5 py-3.5 text-sm font-semibold text-white shadow-md shadow-sky-200 transition hover:bg-[#0096df]"
+          >
+            <Search className="size-4" />
+            Otel Ara
+          </button>
         </form>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          {salesPages
-            .filter((page) => page.id !== activePage.id)
-            .map((page) => (
-              <button
-                key={page.id}
-                type="button"
-                onClick={() => openOtelz(page.href)}
-                className="rounded-2xl border border-white/80 bg-white/90 px-4 py-4 text-left shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-md"
-              >
-                <p className="text-sm font-bold text-slate-900">{page.label}</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  {page.description}
-                </p>
-              </button>
-            ))}
-        </div>
       </div>
 
       <aside className="space-y-4">

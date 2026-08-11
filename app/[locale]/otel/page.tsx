@@ -35,7 +35,6 @@ export default async function OtelPage({ searchParams }: OtelPageProps) {
     >
       <OtelzLandingPage
         affiliate={affiliate}
-        salesPages={salesPages}
         activePage={activePage}
         bannerUrl={bannerUrl}
       />
