@@ -12,8 +12,11 @@ balayivillacisi.com        -> 185.184.210.96   # www yönlendirmesi
 # Zone: tatilvillacisi.com
 # NOT: Eski A/AAAA kayitlari baska bir hosting'e (Plesk) bakiyordu; 185.184.210.96'ya cevrildi.
 # AAAA (IPv6) kayitlari silinmeli; sunucuda IPv6 origin yok.
-www.tatilvillacisi.com     -> 185.184.210.96   # Site 3
-tatilvillacisi.com         -> 185.184.210.96   # www yönlendirmesi
+# ONEMLI: Bu zone, tatildeyiz/balayivillacisi ile AYNI Cloudflare hesabinda olmali.
+# Farkli hesapta "Forwarding URL" / Redirect Rule varsa tatildeyiz.com.tr'ye yonlendirir.
+# Kontrol: Cloudflare → tatilvillacisi.com → Rules → Redirect Rules / Page Rules (kaldirin).
+www.tatilvillacisi.com     -> 185.184.210.96   # Site 3 (proxied)
+tatilvillacisi.com         -> 185.184.210.96   # apex -> www (nginx 301)
 
 # Cloudflare SSL/TLS
 # - Başlangıç: Full

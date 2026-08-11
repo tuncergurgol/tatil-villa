@@ -77,16 +77,20 @@ function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
   return NextResponse.rewrite(rewriteUrl);
 }
 
-function applyPublicRedirectHost(req: NextRequest, url: URL) {
+function resolvePublicHostForRequest(req: NextRequest): string {
   const requestHost = getRequestHostname(req);
-  url.hostname =
-    requestHost && !isNonPublicBookingHost(requestHost)
-      ? requestHost
-      : resolveMiddlewarePublicHostname(
-          req.headers.get("host"),
-          req.headers.get("x-forwarded-host"),
-          req.nextUrl.host
-        );
+  if (requestHost && !isNonPublicBookingHost(requestHost)) {
+    return requestHost;
+  }
+  return resolveMiddlewarePublicHostname(
+    req.headers.get("host"),
+    req.headers.get("x-forwarded-host"),
+    req.nextUrl.host
+  );
+}
+
+function applyPublicRedirectHost(req: NextRequest, url: URL) {
+  url.hostname = resolvePublicHostForRequest(req);
   url.protocol = "https:";
   url.port = "";
 }
@@ -103,11 +107,7 @@ function normalizePublicRedirectLocation(
   location: string
 ): string {
   const target = new URL(location, req.nextUrl);
-  const publicHost = resolveMiddlewarePublicHostname(
-    req.headers.get("host"),
-    req.headers.get("x-forwarded-host"),
-    req.nextUrl.host
-  );
+  const publicHost = resolvePublicHostForRequest(req);
   if (target.hostname !== publicHost) {
     target.hostname = publicHost;
   }
