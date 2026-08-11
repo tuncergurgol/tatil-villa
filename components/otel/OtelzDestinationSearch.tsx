@@ -14,12 +14,14 @@ function normalizeQuery(value: string) {
 type OtelzDestinationSearchProps = {
   value: OtelzPlaceSuggestion | null;
   onChange: (place: OtelzPlaceSuggestion | null) => void;
+  onQueryChange?: (query: string) => void;
   placeholder?: string;
 };
 
 export default function OtelzDestinationSearch({
   value,
   onChange,
+  onQueryChange,
   placeholder = "Şehir, ilçe veya otel adı",
 }: OtelzDestinationSearchProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -102,6 +104,7 @@ export default function OtelzDestinationSearch({
   function handleSelect(place: OtelzPlaceSuggestion) {
     onChange(place);
     setQuery(place.label);
+    onQueryChange?.(place.label);
     setOpen(false);
     setSuggestions([]);
   }
@@ -116,6 +119,7 @@ export default function OtelzDestinationSearch({
           onChange={(event) => {
             const next = event.target.value;
             setQuery(next);
+            onQueryChange?.(next);
             if (value && normalizeQuery(next) !== normalizeQuery(value.label)) {
               onChange(null);
             }

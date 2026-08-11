@@ -48,12 +48,12 @@ export default function TravelAdventureSection() {
           Seyahat Maceranız burada başlıyor
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
-          Villa konaklamanıza ek olarak transfer, araç kiralama ve ulaşım
+          Villa konaklamanıza ek olarak otel, transfer, araç kiralama ve ulaşım
           hizmetlerimizle tatilinizi uçtan uca planlayın.
         </p>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {SERVICES.map((service) => {
           const Icon = service.icon;
           return (

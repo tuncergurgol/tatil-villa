@@ -33,6 +33,7 @@ export default function OtelzLandingPage({
   const [destination, setDestination] = useState<OtelzPlaceSuggestion | null>(
     null
   );
+  const [destinationQuery, setDestinationQuery] = useState("");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
@@ -41,12 +42,13 @@ export default function OtelzLandingPage({
     () =>
       buildOtelzPlaceSearchUrl({
         place: destination,
+        destination: destinationQuery,
         checkIn,
         checkOut,
         guests,
         affiliate,
       }),
-    [affiliate, checkIn, checkOut, destination, guests]
+    [affiliate, checkIn, checkOut, destination, destinationQuery, guests]
   );
 
   function handleSearch(event: React.FormEvent) {
@@ -80,6 +82,7 @@ export default function OtelzLandingPage({
               <OtelzDestinationSearch
                 value={destination}
                 onChange={setDestination}
+                onQueryChange={setDestinationQuery}
               />
             </label>
 

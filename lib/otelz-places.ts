@@ -44,7 +44,8 @@ const OTELZ_SUGGESTIONS_URL =
   "https://www.otelz.com/api/v1/searches/suggestions";
 
 export function isOtelzHotelSuggestion(place: Pick<OtelzPlaceSuggestion, "type" | "group">) {
-  return place.group === 6 || place.type === 614;
+  // Otelz: group 6 = tesis; type 6xx aralığı otel/termal vb.
+  return place.group === 6 || place.type >= 600;
 }
 
 export function mapOtelzPlaceSuggestion(raw: RawOtelzSuggestion): OtelzPlaceSuggestion | null {
@@ -54,7 +55,7 @@ export function mapOtelzPlaceSuggestion(raw: RawOtelzSuggestion): OtelzPlaceSugg
 
   const type = Number(raw.type ?? 0);
   const group = Number(raw.group ?? 0);
-  const isHotel = group === 6 || type === 614;
+  const isHotel = group === 6 || type >= 600;
   const parentName = raw.parentName?.trim() || null;
 
   return {
