@@ -18,7 +18,7 @@
  * - villaevreni.com (aynı panel altyapısı)
  * - tatilvillasi.com.tr (prices_function + availabilitys_function API)
  * - yazlikvillaci.com.tr (pricingTable2 + /calendar müsaitlik)
- * - dalvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
+ * - dalvillalari.com / yazvillalari.com / Boceksoft (HTML dönem + POST /ajax/villatarih)
  * - yazlikcim.com.tr (Boceksoft takvim; günlük fiyat yoksa schema/sezon fallback)
  * - risusvillatatili.com / KVT (pricing-item + fake-calendar villatarih)
  * - tatilkentim.com (pricing-item gecelik/haftalık + /villa/{id}/calendar)
@@ -869,6 +869,7 @@ function extractBoceksoftCalendarMeta(html: string): {
     html.match(
       /<div[^>]+id=["']calendar["'][^>]*data-id=["']([^"']+)["'][^>]*>/i
     ) ??
+    html.match(/\bid=["']calendar["'][^>]*\bdata-id=["']([^"']+)["']/i) ??
     html.match(
       /id=["']fake-calendar["'][^>]*\bdata-id=["'](\d+)["']/i
     ) ??
@@ -2625,6 +2626,32 @@ async function scrapeVillaoteltatiliFromPage(
   };
 }
 
+/** Boceksoft takvim var; HTML'de dönem/fiyat yoksa yedek tek periyot. */
+function buildBoceksoftCalendarFallbackPeriods(
+  html: string,
+  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
+): MappedVillaPricePeriod[] {
+  const priceRange = extractYazlikcimPriceRange(html);
+  const nightly = priceRange?.low ?? priceRange?.high;
+  if (!nightly || nightly <= 0) return [];
+
+  const startDate = startOfDay(new Date());
+  const endDate = new Date(startDate);
+  endDate.setMonth(endDate.getMonth() + 18);
+
+  return [
+    buildMappedPeriod({
+      sourceId: 1,
+      startDate,
+      endDate,
+      nightlyPrice: nightly,
+      currency: priceRange?.currency ?? "TL",
+      damageDeposit: damageDeposit?.amount ?? null,
+      damageDepositCurrency: damageDeposit?.currency ?? "TL",
+    }),
+  ];
+}
+
 async function scrapeBoceksoft(
   pageUrl: string,
   html: string,
@@ -2644,6 +2671,7 @@ async function scrapeBoceksoft(
   const looksBocek =
     host.includes("dalvillalari") ||
     host.includes("kiralikvilladatatil") ||
+    host.includes("yazvillalari") ||
     isYazlikcim ||
     Boolean(meta.villaId) ||
     html.includes("/ajax/villatarih") ||
@@ -2706,6 +2734,15 @@ async function scrapeBoceksoft(
       usedYazlikcimFallback = true;
       warnings.push(
         "Yazlıkçım takviminde günlük fiyat yok; schema.org min-max ve sezon açıklamasından tahmini periyot oluşturuldu"
+      );
+    }
+  }
+
+  if (periods.length === 0 && occupancyByDateKey.size > 0) {
+    periods = buildBoceksoftCalendarFallbackPeriods(html, deposit);
+    if (periods.length > 0) {
+      warnings.push(
+        "Dönem listesi HTML'de yoktu; takvim müsaitliği + schema.org fiyatından yedek periyot oluşturuldu"
       );
     }
   }
@@ -5356,6 +5393,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
