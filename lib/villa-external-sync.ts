@@ -102,6 +102,13 @@ export function detectExternalSyncUrlKind(url: string): ExternalSyncUrlKind {
   return "villa_page";
 }
 
+/** Harici siteden fiyat periyodu aktarımı (Airbnb/iCal yalnızca takvim). */
+export function supportsExternalPeriodImportKind(
+  kind: ExternalSyncUrlKind
+): boolean {
+  return kind === "villa_page";
+}
+
 export function extractTatildeyizSlugFromUrl(url: string): string | null {
   let parsed: URL;
   try {
