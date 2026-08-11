@@ -296,6 +296,12 @@ async function syncVillaPageExternalLink(
     const result = await importVillaPeriodsFromExternalPage(villaId, url);
     const warningSuffix =
       result.warnings.length > 0 ? ` — ${result.warnings[0]}` : "";
+    if (result.periodCount === 0) {
+      return {
+        ok: true,
+        message: `${result.sourceHost} (${result.strategy}): takvim güncellendi (${result.bookedDays} dolu, ${result.optionDays} opsiyon); fiyatlar korundu${warningSuffix}`,
+      };
+    }
     return {
       ok: true,
       message: `${result.sourceHost} (${result.strategy}): ${result.periodCount} periyot, ${result.dayCount} gün (${result.bookedDays} dolu, ${result.optionDays} opsiyon)${warningSuffix}`,

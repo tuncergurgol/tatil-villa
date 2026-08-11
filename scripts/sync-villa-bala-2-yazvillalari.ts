@@ -4,9 +4,11 @@ import {
   setVillaExternalSyncUrl,
   syncVillaExternalLinkSlot,
 } from "../lib/villa-external-sync";
+import { importVillaPeriodsWithFallback } from "../lib/villa-period-import-with-fallback";
 import { dbDateToDateKey } from "../lib/villa-period-calendar";
 
-const URL = "https://www.yazvillalari.com/Villa-Bala-duo";
+const YAZVILLALARI_URL = "https://www.yazvillalari.com/Villa-Bala-duo";
+const KASKAVILLA_URL = "https://kaskavilla.com/kiralik-villa/villa-bala-2";
 
 async function main() {
   const villa = await prisma.villa.findFirst({
@@ -16,12 +18,25 @@ async function main() {
   if (!villa) throw new Error("Villa Bala 2 bulunamadı");
 
   console.log("Sync:", villa.villaId, villa.name);
-  await setVillaExternalSyncUrl(villa.id, 1, URL);
+  await setVillaExternalSyncUrl(villa.id, 1, YAZVILLALARI_URL);
+  await setVillaExternalSyncUrl(villa.id, 2, KASKAVILLA_URL);
   await sleep(800);
-  const result = await syncVillaExternalLinkSlot(villa.id, 1);
-  console.log(result.ok ? "OK" : "FAIL", result.message);
 
-  const days = await prisma.villaPricePeriodDay.findMany({
+  const prices = await importVillaPeriodsWithFallback(villa.id);
+  console.log(
+    "Fiyat:",
+    prices.sourceLabel,
+    prices.periodCount,
+    "periyot",
+    prices.dayCount,
+    "gün"
+  );
+
+  await sleep(800);
+  const calendar = await syncVillaExternalLinkSlot(villa.id, 1);
+  console.log(calendar.ok ? "Takvim OK" : "Takvim FAIL", calendar.message);
+
+  const augDays = await prisma.villaPricePeriodDay.findMany({
     where: {
       villaId: villa.id,
       date: {
@@ -29,12 +44,17 @@ async function main() {
         lte: new Date("2026-08-20T00:00:00.000Z"),
       },
     },
-    select: { date: true, occupancyStatus: true },
+    select: { date: true, occupancyStatus: true, nightlyPrice: true },
     orderBy: { date: "asc" },
   });
   console.log(
-    "DB:",
-    days.map((d) => `${dbDateToDateKey(d.date)}=${d.occupancyStatus}`).join(", ")
+    "DB Ağu 11-20:",
+    augDays
+      .map(
+        (d) =>
+          `${dbDateToDateKey(d.date)}=${d.occupancyStatus}/${d.nightlyPrice}`
+      )
+      .join(", ")
   );
 }
 

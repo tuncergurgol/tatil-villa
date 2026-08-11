@@ -10,6 +10,11 @@ import {
 import { syncVillaIcalSource } from "@/lib/villa-ical-import-service";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import { tryImportVillaPeriodsFromExternalLinks } from "@/lib/villa-period-import-with-fallback";
+import {
+  scrapedPageIsOccupancyOnly,
+  scrapedPageHasReliablePeriods,
+} from "@/lib/external-villa-page-import-runner";
+import { scrapeExternalVillaPage } from "@/lib/external-villa-page-scrape";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 import {
@@ -279,9 +284,37 @@ export async function runCalendarPriceTransferBatchSync(
       { enabled: criteria.link3, slot: 3, url: villa.externalSyncUrl3 },
     ];
 
-  for (const item of linkSlots) {
-    if (!item.enabled || !item.url.trim()) continue;
-    if (!isExternalSyncSlot(item.slot) || item.slot > 3) continue;
+  const activeLinks = linkSlots.filter(
+    (item) => item.enabled && item.url.trim() && isExternalSyncSlot(item.slot) && item.slot <= 3
+  );
+
+  const linkJobs: Array<{
+    slot: ExternalSyncSlot;
+    url: string;
+    occupancyOnly: boolean;
+  }> = [];
+
+  for (const item of activeLinks) {
+    let occupancyOnly = false;
+    try {
+      const scraped = await scrapeExternalVillaPage(item.url.trim());
+      occupancyOnly =
+        scrapedPageIsOccupancyOnly(scraped) ||
+        (!scrapedPageHasReliablePeriods(scraped) &&
+          scraped.occupancyByDateKey.size > 0);
+    } catch {
+      occupancyOnly = false;
+    }
+    linkJobs.push({
+      slot: item.slot,
+      url: item.url.trim(),
+      occupancyOnly,
+    });
+  }
+
+  linkJobs.sort((a, b) => Number(a.occupancyOnly) - Number(b.occupancyOnly));
+
+  for (const item of linkJobs) {
     const result = await syncVillaExternalLinkSlot(villa.id, item.slot);
     if (result.ok) messages.push(`Link ${item.slot}: ${result.message}`);
     else errors.push(`Link ${item.slot}: ${result.message}`);

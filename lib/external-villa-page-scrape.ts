@@ -2626,32 +2626,6 @@ async function scrapeVillaoteltatiliFromPage(
   };
 }
 
-/** Boceksoft takvim var; HTML'de dönem/fiyat yoksa yedek tek periyot. */
-function buildBoceksoftCalendarFallbackPeriods(
-  html: string,
-  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
-): MappedVillaPricePeriod[] {
-  const priceRange = extractYazlikcimPriceRange(html);
-  const nightly = priceRange?.low ?? priceRange?.high;
-  if (!nightly || nightly <= 0) return [];
-
-  const startDate = startOfDay(new Date());
-  const endDate = new Date(startDate);
-  endDate.setMonth(endDate.getMonth() + 18);
-
-  return [
-    buildMappedPeriod({
-      sourceId: 1,
-      startDate,
-      endDate,
-      nightlyPrice: nightly,
-      currency: priceRange?.currency ?? "TL",
-      damageDeposit: damageDeposit?.amount ?? null,
-      damageDepositCurrency: damageDeposit?.currency ?? "TL",
-    }),
-  ];
-}
-
 async function scrapeBoceksoft(
   pageUrl: string,
   html: string,
@@ -2739,15 +2713,12 @@ async function scrapeBoceksoft(
   }
 
   if (periods.length === 0 && occupancyByDateKey.size > 0) {
-    periods = buildBoceksoftCalendarFallbackPeriods(html, deposit);
-    if (periods.length > 0) {
-      warnings.push(
-        "Dönem listesi HTML'de yoktu; takvim müsaitliği + schema.org fiyatından yedek periyot oluşturuldu"
-      );
-    }
+    warnings.push(
+      "Dönem listesi HTML'de yok; yalnızca takvim müsaitliği aktarılacak (fiyatlar korunur)"
+    );
   }
 
-  if (periods.length === 0) return null;
+  if (periods.length === 0 && occupancyByDateKey.size === 0) return null;
 
   return {
     sourceHost: host,

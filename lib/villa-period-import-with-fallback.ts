@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
-import { importVillaPeriodsFromExternalPage } from "@/lib/external-villa-page-import-runner";
+import {
+  importVillaPeriodsFromExternalPage,
+  scoreScrapedPageForPeriodImport,
+  scrapedPageHasReliablePeriods,
+} from "@/lib/external-villa-page-import-runner";
+import { scrapeExternalVillaPage } from "@/lib/external-villa-page-scrape";
 import type { VillaPeriodImportResult } from "@/lib/tatildeyiz-period-import-runner";
 import {
   detectExternalSyncUrlKind,
@@ -88,20 +93,32 @@ export async function importVillaPeriodsWithFallback(
     );
   }
 
+  let bestLink: (typeof capableLinks)[number] | null = null;
+  let bestScore = -1;
   let lastError: Error | null = null;
 
   for (const link of capableLinks) {
     try {
-      return await importFromExternalLink(villa.id, link.slot, link.url, options);
+      const scraped = await scrapeExternalVillaPage(link.url);
+      if (!scrapedPageHasReliablePeriods(scraped)) continue;
+      const score = scoreScrapedPageForPeriodImport(scraped);
+      if (score > bestScore) {
+        bestScore = score;
+        bestLink = link;
+      }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
     }
   }
 
-  throw (
-    lastError ??
-    new Error("Periyot bulunamadı (tanımlı harici fiyat linkleri denendi)")
-  );
+  if (!bestLink) {
+    throw (
+      lastError ??
+      new Error("Periyot bulunamadı (tanımlı harici fiyat linkleri denendi)")
+    );
+  }
+
+  return importFromExternalLink(villa.id, bestLink.slot, bestLink.url, options);
 }
 
 /**
