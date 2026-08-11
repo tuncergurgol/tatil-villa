@@ -161,6 +161,7 @@ export const adminNavSections: NavSection[] = [
     ],
   },
   { label: "Obilet", href: "/admin/obilet", icon: "ticket" },
+  { label: "Otelz", href: "/admin/otelz", icon: "building" },
   {
     label: "Yolcu360",
     icon: "car",

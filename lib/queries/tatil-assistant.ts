@@ -32,7 +32,7 @@ export const DEFAULT_ASSISTANT_RULES = [
   {
     title: "Diğer hizmetler",
     content:
-      "Uçak/otobüs: /bilet/ara | Tur: /tur | Araç kiralama: /arac-kiralama | VIP transfer: /vip-transfer | Feribot: /feribot. Konaklama dışı taleplerde ilgili sayfa linkini paylaş.",
+      "Uçak/otobüs: /bilet/ara | Otel: /otel | Tur: /tur | Araç kiralama: /arac-kiralama | VIP transfer: /vip-transfer | Feribot: /feribot. Konaklama dışı taleplerde ilgili sayfa linkini paylaş.",
     sortOrder: 5,
   },
 ];

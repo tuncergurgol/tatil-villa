@@ -115,6 +115,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "storage.fluxesoft.com",
       },
+      {
+        protocol: "https",
+        hostname: "image.otelz.com",
+      },
     ],
   },
   webpack: (config, { dev }) => {

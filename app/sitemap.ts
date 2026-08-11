@@ -37,6 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/bilet/ara",
     "/bilet/satinal",
     "/bilet/sonuc",
+    "/otel",
     "/feribot",
   ];
 

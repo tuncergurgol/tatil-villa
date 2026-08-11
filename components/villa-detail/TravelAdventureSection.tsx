@@ -1,7 +1,13 @@
 import Link from "next/link";
-import { Bus, Car, Map, Plane, Ship } from "lucide-react";
+import { Building2, Bus, Car, Map, Plane, Ship } from "lucide-react";
 
 const SERVICES = [
+  {
+    href: "/otel",
+    label: "Otel",
+    description: "Otelz ile konforlu konaklama",
+    icon: Building2,
+  },
   {
     href: "/arac-kiralama",
     label: "Araç Kiralama",

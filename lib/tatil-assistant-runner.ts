@@ -124,6 +124,7 @@ ${examplesBlock}
 
 Diğer hizmet linkleri (mutlak path kullan):
 - Uçak/Otobüs: /bilet/ara
+- Otel: /otel
 - Tur: /tur
 - Araç kiralama: /arac-kiralama
 - VIP transfer: /vip-transfer
