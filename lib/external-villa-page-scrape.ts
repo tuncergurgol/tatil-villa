@@ -4804,12 +4804,8 @@ export function parseKaskavillaPriceTable(
 
     const minStayNights =
       positiveInt(Number(row.fiy_enaz)) ?? priceSets.minStayNights;
-    const priceType = positiveInt(Number(row.fiy_tur));
-    const isWeekly = priceType === 1 || (minStayNights != null && minStayNights >= 7);
-    const weeklyPrice = isWeekly ? listedPrice : null;
-    const nightlyPrice = isWeekly
-      ? deriveNightlyFromWeekly(listedPrice)
-      : listedPrice;
+    const nightlyPrice = listedPrice;
+    const weeklyPrice = deriveWeeklyFromNightly(listedPrice);
     if (!nightlyPrice || nightlyPrice <= 0) continue;
 
     const dedupeKey = `${toDateKey(startDate)}_${toDateKey(endDate)}_${nightlyPrice}`;
