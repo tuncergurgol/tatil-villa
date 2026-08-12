@@ -10,9 +10,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: process.env.SKIP_TS_CHECK === "1",
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   // pdfkit/fontkit: webpack vendor-chunks Helvetica.afm yolunu bozar (ENOENT .next/.../data/)
   serverExternalPackages: [
     "@prisma/client",
