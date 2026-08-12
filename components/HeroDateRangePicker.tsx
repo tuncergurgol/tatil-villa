@@ -18,8 +18,15 @@ import {
 } from "@/lib/villa-period-selection";
 import FloatingPanel from "./FloatingPanel";
 
-function formatHeroDate(dateKey: string) {
+function formatHeroDate(dateKey: string, compact = false) {
   const date = parseDateKey(dateKey);
+  if (compact) {
+    return date.toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
   const formattedDate = date.toLocaleDateString("tr-TR", {
     day: "numeric",
     month: "long",
@@ -249,13 +256,15 @@ export default function HeroDateRangePicker({
 
   const checkInFmt = checkIn ? formatHeroDate(checkIn) : null;
   const checkOutFmt = checkOut ? formatHeroDate(checkOut) : null;
+  const checkInCompact = checkIn ? formatHeroDate(checkIn, true) : null;
+  const checkOutCompact = checkOut ? formatHeroDate(checkOut, true) : null;
   const displayNights =
     checkIn && checkOut && checkIn !== checkOut
       ? countNightsBetween(checkIn, checkOut)
       : 0;
 
   return (
-    <div ref={rootRef} className="relative h-full flex-1">
+    <div ref={rootRef} className="relative h-full min-w-0 flex-1">
       <button
         ref={anchorRef}
         type="button"
@@ -285,16 +294,21 @@ export default function HeroDateRangePicker({
             }
           }
         }}
-        className="flex h-14 w-full cursor-pointer items-stretch rounded-xl bg-white text-left outline-none transition hover:shadow-sm focus-visible:ring-2 focus-visible:ring-sky-200 lg:h-full"
+        className="flex h-14 w-full min-w-0 cursor-pointer items-stretch overflow-hidden rounded-xl bg-white text-left outline-none transition hover:shadow-sm focus-visible:ring-2 focus-visible:ring-sky-200 lg:h-full"
       >
-        <div className="flex flex-1 flex-col justify-center px-3 py-2">
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-2.5 py-2 sm:px-3">
           <span className="text-[11px] font-normal leading-none text-gray-500">
             Giriş
           </span>
           {checkInFmt ? (
-            <span className="mt-1 inline-block truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900">
-              {checkInFmt}
-            </span>
+            <>
+              <span className="mt-1 block truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900 sm:hidden">
+                {checkInCompact}
+              </span>
+              <span className="mt-1 hidden truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900 sm:inline-block">
+                {checkInFmt}
+              </span>
+            </>
           ) : (
             <span className="mt-1 text-sm leading-tight text-gray-400">
               Tarih seçin
@@ -303,7 +317,7 @@ export default function HeroDateRangePicker({
         </div>
 
         <div
-          className="flex min-w-9 flex-col items-center justify-center px-2 text-sky-500"
+          className="flex w-9 shrink-0 flex-col items-center justify-center px-1 text-sky-500 sm:min-w-9 sm:px-2"
           aria-label={displayNights > 0 ? `${displayNights} Gece` : undefined}
         >
           <Moon className="h-5 w-5" />
@@ -316,14 +330,19 @@ export default function HeroDateRangePicker({
           )}
         </div>
 
-        <div className="flex flex-1 flex-col justify-center border-l border-gray-100 px-3 py-2">
+        <div className="flex min-w-0 flex-1 flex-col justify-center border-l border-gray-100 px-2.5 py-2 sm:px-3">
           <span className="text-[11px] font-normal leading-none text-gray-500">
             Çıkış
           </span>
           {checkOutFmt ? (
-            <span className="mt-1 inline-block truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900">
-              {checkOutFmt}
-            </span>
+            <>
+              <span className="mt-1 block truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900 sm:hidden">
+                {checkOutCompact}
+              </span>
+              <span className="mt-1 hidden truncate rounded-md bg-sky-50 px-1 text-sm font-semibold leading-tight text-gray-900 sm:inline-block">
+                {checkOutFmt}
+              </span>
+            </>
           ) : (
             <span className="mt-1 text-sm leading-tight text-gray-400">
               Tarih seçin

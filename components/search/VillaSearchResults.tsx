@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import VillaResultCard from "@/components/search/VillaResultCard";
 import {
   buildVillaSearchHref,
@@ -18,6 +19,7 @@ interface VillaSearchResultsProps {
   nights: number;
   currentParams: Record<string, string | undefined>;
   sort: string;
+  className?: string;
 }
 
 export default function VillaSearchResults({
@@ -30,10 +32,21 @@ export default function VillaSearchResults({
   nights,
   currentParams,
   sort,
+  className = "",
 }: VillaSearchResultsProps) {
   const router = useRouter();
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, totalCount);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#villa-arama-sonuclari") return;
+    window.setTimeout(() => {
+      document
+        .getElementById("villa-arama-sonuclari")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }, [currentParams.checkIn, currentParams.checkOut, currentParams.region, page]);
 
   const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
     .filter((pageNumber) => {
@@ -50,7 +63,7 @@ export default function VillaSearchResults({
     }, []);
 
   return (
-    <div className="min-w-0 flex-1">
+    <div id="villa-arama-sonuclari" className={`min-w-0 flex-1 scroll-mt-24 ${className}`}>
       <div className="mb-4">
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
           {titleLabel} için toplam{" "}

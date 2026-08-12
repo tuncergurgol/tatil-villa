@@ -82,6 +82,10 @@ export default function VillaSearchBar({
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
+    setDestinationOpen(false);
+    setDateOpen(false);
+    setGuestOpen(false);
+
     const params = new URLSearchParams();
     if (preserveParams?.category) params.set("category", preserveParams.category);
     if (preserveParams?.facilities) params.set("facilities", preserveParams.facilities);
@@ -97,7 +101,15 @@ export default function VillaSearchBar({
     params.set("children", String(guests.children));
     if (guests.babies) params.set("babies", String(guests.babies));
     if (guests.pets) params.set("pets", String(guests.pets));
-    router.push(`/villalar?${params.toString()}`);
+
+    const href = `/villalar?${params.toString()}`;
+    router.push(href);
+
+    window.setTimeout(() => {
+      document
+        .getElementById("villa-arama-sonuclari")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
   }
 
   const guestTotal = totalGuests(guests);
@@ -107,8 +119,8 @@ export default function VillaSearchBar({
       onSubmit={handleSearch}
       className="rounded-2xl border border-gray-100 bg-white p-1.5 shadow-md"
     >
-      <div className="flex flex-col gap-1.5 lg:h-14 lg:flex-row lg:items-stretch">
-        <div className="h-full sm:min-w-[180px] sm:max-w-[240px] sm:flex-1 lg:max-w-[260px]">
+      <div className="flex min-w-0 flex-col gap-1.5 lg:h-14 lg:flex-row lg:items-stretch">
+        <div className="h-full min-w-0 sm:min-w-[180px] sm:max-w-[240px] sm:flex-1 lg:max-w-[260px]">
           <HeroDestinationSearch
             regions={regions}
             value={destination}
@@ -173,17 +185,22 @@ export default function VillaSearchBar({
             panelRef={guestPanelRef}
             className="rounded-2xl border border-gray-100 bg-white py-2 shadow-2xl"
           >
-            <GuestPicker counts={guests} onChange={setGuests} />
+            <GuestPicker
+              counts={guests}
+              onChange={setGuests}
+              onConfirm={() => setGuestOpen(false)}
+              confirmLabel="KAPAT"
+            />
           </FloatingPanel>
         </div>
 
-        <button
-          type="submit"
-          className="flex h-14 items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 text-sm font-bold text-white transition hover:bg-sky-600 sm:min-w-[100px] sm:shrink-0 lg:h-full"
-        >
-          <Search className="h-4 w-4" />
-          <span className="hidden sm:inline">Ara</span>
-        </button>
+          <button
+            type="submit"
+            className="flex h-14 items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 text-sm font-bold text-white transition hover:bg-sky-600 sm:min-w-[100px] sm:shrink-0 lg:h-full"
+          >
+            <Search className="h-4 w-4" />
+            <span>Ara</span>
+          </button>
       </div>
     </form>
   );

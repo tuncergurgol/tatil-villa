@@ -110,7 +110,7 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
     if (checkOut) params.set("checkOut", checkOut);
     params.set("adults", String(guests.adults));
     params.set("children", String(guests.children));
-    router.push(`/villalar?${params.toString()}`);
+    router.push(`/villalar?${params.toString()}#villa-arama-sonuclari`);
   }
 
   const guestTotal = totalGuests(guests);
@@ -155,8 +155,8 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
         onSubmit={handleSearch}
         className="rounded-2xl bg-[#f5f0ea]/95 p-1.5 shadow-2xl shadow-black/15 backdrop-blur-sm sm:rounded-2xl sm:p-1.5"
       >
-        <div className="flex flex-col gap-1.5 lg:h-14 lg:flex-row lg:items-stretch">
-          <div className="h-full sm:min-w-[180px] sm:max-w-[220px] sm:flex-1 lg:max-w-[240px]">
+        <div className="flex min-w-0 flex-col gap-1.5 lg:h-14 lg:flex-row lg:items-stretch">
+          <div className="h-full min-w-0 sm:min-w-[180px] sm:max-w-[220px] sm:flex-1 lg:max-w-[240px]">
             <HeroDestinationSearch
               regions={regions}
               value={destination}
@@ -218,7 +218,12 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
               panelRef={guestPanelRef}
               className="rounded-2xl border border-gray-100 bg-white py-2 shadow-2xl"
             >
-              <GuestPicker counts={guests} onChange={setGuests} />
+              <GuestPicker
+                counts={guests}
+                onChange={setGuests}
+                onConfirm={() => setGuestOpen(false)}
+                confirmLabel="KAPAT"
+              />
             </FloatingPanel>
           </div>
 
@@ -227,7 +232,7 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
             className="flex h-14 items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 text-sm font-bold text-white transition hover:bg-sky-600 sm:min-w-[100px] sm:shrink-0 lg:h-full"
           >
             <Search className="h-4 w-4" />
-            <span className="hidden sm:inline">Ara</span>
+            <span>Ara</span>
           </button>
         </div>
       </form>

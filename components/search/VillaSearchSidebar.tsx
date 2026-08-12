@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ChevronDown, Map as MapIcon } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { Region } from "@/lib/types";
 import { buildVillaSearchHref } from "@/lib/villa-search-params";
 
@@ -29,11 +29,12 @@ interface VillaSearchSidebarProps {
   facilities: FilterFacility[];
   amenities: FilterAmenity[];
   currentParams: Record<string, string | undefined>;
+  className?: string;
 }
 
 function FilterSection({
   title,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   title: string;
@@ -104,6 +105,7 @@ export default function VillaSearchSidebar({
   facilities,
   amenities,
   currentParams,
+  className = "",
 }: VillaSearchSidebarProps) {
   const router = useRouter();
   const [minPrice, setMinPrice] = useState(currentParams.minPrice ?? "");
@@ -192,29 +194,7 @@ export default function VillaSearchSidebar({
   }
 
   return (
-    <aside className="w-full shrink-0 lg:w-[280px]">
-      <div className="mb-4 overflow-hidden rounded-2xl border border-sky-100 bg-sky-50">
-        <div className="relative flex h-28 items-end bg-[linear-gradient(135deg,#e0f2fe,#f0f9ff)] p-4">
-          <div className="absolute inset-0 opacity-30">
-            <svg viewBox="0 0 200 100" className="h-full w-full text-sky-300">
-              <path
-                d="M0 70 L40 40 L80 55 L120 25 L160 45 L200 20 L200 100 L0 100 Z"
-                fill="currentColor"
-              />
-            </svg>
-          </div>
-          <button
-            type="button"
-            className="relative z-10 w-full rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-50"
-          >
-            <span className="inline-flex items-center gap-2">
-              <MapIcon className="h-4 w-4" />
-              Sonuçları Haritada Gör
-            </span>
-          </button>
-        </div>
-      </div>
-
+    <aside className={`w-full shrink-0 lg:w-[280px] ${className}`}>
       <div className="rounded-2xl border border-gray-100 bg-white px-4 shadow-sm">
         <FilterSection title="Fiyat Aralığı">
           <div className="flex items-center gap-2">
