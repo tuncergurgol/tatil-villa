@@ -50,6 +50,8 @@ cat >> "$CRON_FILE" <<EOF
 0 * * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/booking-scheduled-messages" >>"${LOG_DIR}/booking-scheduled-messages.log" 2>&1
 # tatil-villa cron — planlanmış toplu WhatsApp kampanyaları (5 dakikada bir)
 */5 * * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/bulk-whatsapp" >>"${LOG_DIR}/bulk-whatsapp.log" 2>&1
+# tatil-villa cron — konut belge kontrolü (her gün 07:15; geçersiz belgeleri sil + rapor maili)
+15 7 * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/konut-belge-check" >>"${LOG_DIR}/konut-belge-check.log" 2>&1
 # tatil-villa cron — Meta katalog feed önbellek (saatte bir; Commerce Manager doğrulayıcısı için hızlı XML)
 45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1 && for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do curl -fsS -m 180 -H "Host: \${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" >/dev/null; done
 EOF
@@ -72,5 +74,6 @@ echo "  Log: ${LOG_DIR}/"
 echo "  Takvim/fiyat: her 15 dakikada bir tetiklenir."
 echo "  Blog AI    : saatte bir tetiklenir (sıklık admin ayarından)."
 echo "  Zamanlı msg: saat başı tetiklenir (11.4 yorum 11:00, 40.2 havuz 14:00 vb.)."
+echo "  Belge kontrol: her gün 07:15'te tetiklenir."
 echo "  Meta feed  : saat :45'te önbellek yenilenir."
 echo "=========================================================="
