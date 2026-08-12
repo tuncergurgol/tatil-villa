@@ -47,36 +47,10 @@ function findNextDataRow(matrix: unknown[][]): number {
   return matrix.length;
 }
 
-const EXCEL_DATE_COLUMNS = new Set([2, 4, 5, 30, 31, 37, 39]);
-
-function writeRowToSheet(
-  sheet: XLSX.WorkSheet,
-  rowIndex: number,
-  values: unknown[]
-) {
-  for (let column = 0; column < values.length; column += 1) {
-    const value = values[column];
-    const address = XLSX.utils.encode_cell({ r: rowIndex, c: column });
-    if (value === "" || value == null) {
-      sheet[address] = { t: "s", v: "" };
-      continue;
-    }
-    if (typeof value === "number" && Number.isFinite(value)) {
-      if (EXCEL_DATE_COLUMNS.has(column)) {
-        sheet[address] = { t: "n", v: value, z: "dd/mm/yyyy" };
-      } else {
-        sheet[address] = { t: "n", v: value };
-      }
-      continue;
-    }
-    sheet[address] = { t: "s", v: String(value) };
-  }
-
-  const range = XLSX.utils.decode_range(sheet["!ref"] ?? "A1");
-  if (rowIndex > range.e.r) range.e.r = rowIndex;
-  if (values.length - 1 > range.e.c) range.e.c = values.length - 1;
-  sheet["!ref"] = XLSX.utils.encode_range(range);
-}
+import {
+  buildBookingExcelWorksheet,
+  writeBookingExcelRowToSheet,
+} from "@/lib/booking-excel-sheet";
 
 export async function exportConfirmedBookingToExcel(
   bookingId: string,
@@ -209,7 +183,7 @@ export async function exportConfirmedBookingToExcel(
     kbsReportable: booking.villa.kbsReportable,
   });
 
-  writeRowToSheet(sheet, rowIndex, values);
+  writeBookingExcelRowToSheet(sheet, rowIndex, values);
   XLSX.writeFile(workbook, filePath);
 
   await markBookingExcelExported(bookingId, details, {

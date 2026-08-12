@@ -18,6 +18,7 @@ import {
 } from "@/components/admin/AdminTablePagination";
 import { expirePrepaymentOptionsAction } from "@/app/actions/admin/bookings";
 import { filterBookings } from "@/lib/booking-filters";
+import { buildBookingExcelWorksheet } from "@/lib/booking-excel-sheet";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
@@ -206,7 +207,7 @@ export default function BookingManagement({
     fileName: string
   ) {
     const XLSX = await import("xlsx");
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const worksheet = buildBookingExcelWorksheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Rezervasyon");
     XLSX.writeFile(workbook, fileName);
