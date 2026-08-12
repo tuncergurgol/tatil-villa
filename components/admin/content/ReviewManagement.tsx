@@ -36,15 +36,15 @@ type ReviewRow = {
 
 type StatusFilter = "pending" | "approved" | "rejected";
 
-function isPending(review: ReviewRow) {
+function reviewIsPending(review: ReviewRow) {
   return !review.approved && !review.rejectedReason?.trim();
 }
 
-function isRejected(review: ReviewRow) {
+function reviewIsRejected(review: ReviewRow) {
   return !review.approved && Boolean(review.rejectedReason?.trim());
 }
 
-function isApproved(review: ReviewRow) {
+function reviewIsApproved(review: ReviewRow) {
   return review.approved;
 }
 
@@ -265,7 +265,7 @@ function ReviewEditModal({
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex gap-2">
-              {!review.approved && !isRejected(review) ? (
+              {!review.approved && !reviewIsRejected(review) ? (
                 <>
                   <button
                     type="button"
@@ -344,17 +344,17 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
 
   const counts = useMemo(() => {
     return {
-      pending: reviews.filter(isPending).length,
-      approved: reviews.filter(isApproved).length,
-      rejected: reviews.filter(isRejected).length,
+      pending: reviews.filter(reviewIsPending).length,
+      approved: reviews.filter(reviewIsApproved).length,
+      rejected: reviews.filter(reviewIsRejected).length,
     };
   }, [reviews]);
 
   const filteredReviews = useMemo(() => {
     return reviews.filter((review) => {
-      if (statusFilter === "pending" && !isPending(review)) return false;
-      if (statusFilter === "approved" && !isApproved(review)) return false;
-      if (statusFilter === "rejected" && !isRejected(review)) return false;
+      if (statusFilter === "pending" && !reviewIsPending(review)) return false;
+      if (statusFilter === "approved" && !reviewIsApproved(review)) return false;
+      if (statusFilter === "rejected" && !reviewIsRejected(review)) return false;
       if (
         selectedVillaIds.length > 0 &&
         (!review.villa?.id || !selectedVillaIds.includes(review.villa.id))
