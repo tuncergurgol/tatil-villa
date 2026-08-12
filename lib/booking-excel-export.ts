@@ -8,10 +8,7 @@ import {
   BOOKING_SHEET_NAME,
   DEFAULT_BOOKING_EXCEL_PATH,
 } from "@/lib/booking-excel-import";
-import {
-  buildBookingExcelWorksheet,
-  writeBookingExcelRowToSheet,
-} from "@/lib/booking-excel-sheet";
+import { writeBookingExcelRowToSheet } from "@/lib/booking-excel-sheet";
 import {
   buildBookingExcelRowValues,
 } from "@/lib/booking-excel-rows";
@@ -50,11 +47,6 @@ function findNextDataRow(matrix: unknown[][]): number {
   }
   return matrix.length;
 }
-
-import {
-  buildBookingExcelWorksheet,
-  writeBookingExcelRowToSheet,
-} from "@/lib/booking-excel-sheet";
 
 export async function exportConfirmedBookingToExcel(
   bookingId: string,
