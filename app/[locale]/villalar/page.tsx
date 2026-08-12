@@ -213,7 +213,6 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-6 lg:flex-row">
           <VillaSearchSidebar
-            className="order-2 lg:order-1"
             regions={homeRegions}
             categories={categoryOptions}
             facilities={facilityOptions}
@@ -221,7 +220,6 @@ export default async function VillalarPage({ searchParams }: PageProps) {
             currentParams={currentParams}
           />
           <VillaSearchResults
-            className="order-1 lg:order-2"
             villas={villas}
             totalCount={totalCount}
             page={page}

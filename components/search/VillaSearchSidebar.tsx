@@ -44,18 +44,22 @@ function FilterSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-b border-gray-100 py-4">
+    <div className="border-b border-gray-100 last:border-b-0">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between text-left text-sm font-semibold text-gray-900"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 py-3.5 text-left text-sm font-semibold text-gray-900 transition hover:text-sky-700"
       >
-        {title}
+        <span>{title}</span>
         <ChevronDown
-          className={`h-4 w-4 text-gray-400 transition ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden
         />
       </button>
-      {open ? <div className="mt-3">{children}</div> : null}
+      {open ? <div className="pb-4">{children}</div> : null}
     </div>
   );
 }
