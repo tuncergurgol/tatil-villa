@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { deleteCustomer } from "@/app/actions/admin/customers";
 import CustomerFormModal from "@/components/admin/customers/CustomerFormModal";
+import CustomerStaysModal from "@/components/admin/customers/CustomerStaysModal";
 import type { CustomerListItem } from "@/lib/queries/customers";
 import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
 import { includesSearchText } from "@/lib/search-text";
@@ -136,6 +137,9 @@ export default function CustomerManagement({
   const [pageSize, setPageSize] = useState<AdminPageSize>(10);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItem | null>(
+    null
+  );
+  const [staysCustomer, setStaysCustomer] = useState<CustomerListItem | null>(
     null
   );
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -380,7 +384,17 @@ export default function CustomerManagement({
                         {LOYALTY_TIER_META[customer.loyaltyTier].label}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {customer.stayCount} konaklama
+                        {customer.stayCount > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setStaysCustomer(customer)}
+                            className="font-medium text-teal-700 underline decoration-teal-300 underline-offset-2 hover:text-teal-900"
+                          >
+                            {customer.stayCount} konaklama
+                          </button>
+                        ) : (
+                          <span>{customer.stayCount} konaklama</span>
+                        )}
                         {customer.memberAccount
                           ? ` · ${customer.memberAccount.couponBalance.toLocaleString("tr-TR")} TL`
                           : ""}
@@ -486,6 +500,13 @@ export default function CustomerManagement({
           customer={editingCustomer}
           contactChannels={contactChannels}
           onClose={() => setEditingCustomer(null)}
+        />
+      ) : null}
+      {staysCustomer ? (
+        <CustomerStaysModal
+          customerId={staysCustomer.id}
+          customerName={staysCustomer.fullName}
+          onClose={() => setStaysCustomer(null)}
         />
       ) : null}
     </div>

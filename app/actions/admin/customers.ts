@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { BookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
@@ -122,4 +123,51 @@ export async function lookupCustomerByPhoneAction(phone: string) {
 
   const { lookupCustomerByPhone } = await import("@/lib/queries/customer-lookup");
   return lookupCustomerByPhone(phone);
+}
+
+export type CustomerStayBookingRow = {
+  id: string;
+  reservationNo: string;
+  villaName: string;
+  checkIn: string;
+  checkOut: string;
+};
+
+export async function getCustomerStayBookingsAction(
+  customerId: string
+): Promise<{ ok: true; stays: CustomerStayBookingRow[] } | { ok: false; error: string }> {
+  await requireAdmin();
+
+  const id = customerId.trim();
+  if (!id) return { ok: false, error: "Müşteri bulunamadı" };
+
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: {
+        customerId: id,
+        status: BookingStatus.CONFIRMED,
+      },
+      select: {
+        id: true,
+        externalCode: true,
+        checkIn: true,
+        checkOut: true,
+        villa: { select: { name: true } },
+      },
+      orderBy: [{ checkIn: "desc" }],
+    });
+
+    const stays: CustomerStayBookingRow[] = bookings.map((booking) => ({
+      id: booking.id,
+      reservationNo:
+        booking.externalCode != null ? String(booking.externalCode) : "-",
+      villaName: booking.villa.name,
+      checkIn: booking.checkIn.toISOString().slice(0, 10),
+      checkOut: booking.checkOut.toISOString().slice(0, 10),
+    }));
+
+    return { ok: true, stays };
+  } catch {
+    return { ok: false, error: "Konaklamalar yüklenemedi" };
+  }
 }
