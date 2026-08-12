@@ -52,9 +52,11 @@ if [[ "${DEPLOY_BOOTED:-0}" != "1" ]]; then
   echo "  Dal   : $BRANCH"
   echo "=========================================================="
 
+  # Sadece izlenen dosyalari stash'le — .deploy-*.sha256 gibi untracked
+  # hiz cache dosyalarini (-u ile) silme.
   if ! git diff --quiet || ! git diff --cached --quiet; then
-    git stash push -u -m "pre-deploy-boot-$(date +%F-%H%M%S)" || true
-    echo "    Yerel degisiklikler stash'e alindi"
+    git stash push -m "pre-deploy-boot-$(date +%F-%H%M%S)" || true
+    echo "    Yerel (tracked) degisiklikler stash'e alindi"
   fi
 
   git fetch origin --prune
