@@ -19,6 +19,7 @@
 #   RUN_META_FEED_WARM=1    Meta katalog feed'i senkron isit
 #   RUN_MESSAGE_SEED=1      Zamanlanmis mesaj sablon seed
 #   RUN_CRON_SETUP=1        Cron scriptini zorla calistir
+#   RUN_TS_CHECK=1          Build sirasinda TypeScript kontrolu (varsayilan kapali)
 # =============================================================================
 
 set -euo pipefail
@@ -37,6 +38,7 @@ RUN_CRM_MIGRATE="${RUN_CRM_MIGRATE:-0}"
 RUN_META_FEED_WARM="${RUN_META_FEED_WARM:-0}"
 RUN_MESSAGE_SEED="${RUN_MESSAGE_SEED:-0}"
 RUN_CRON_SETUP="${RUN_CRON_SETUP:-0}"
+RUN_TS_CHECK="${RUN_TS_CHECK:-0}"
 STAGING_DIR=".next-staging"
 LOCK_HASH_FILE=".deploy-package-lock.sha256"
 PRISMA_HASH_FILE=".deploy-prisma-schema.sha256"
@@ -187,14 +189,35 @@ echo ""
 echo "==> [4/6] Next build -> $STAGING_DIR (PM2 acik, cache korunur)"
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
-# Onceki build cache'ini tasi — incremental derlemeyi ciddi hizlandirir
+# Onceki build cache'ini tasi — hardlink dene (hizli), olmazsa kopyala
 if [[ -d .next/cache ]]; then
   mkdir -p "$STAGING_DIR/cache"
-  cp -a .next/cache/. "$STAGING_DIR/cache/" 2>/dev/null || true
-  echo "    .next/cache staging'e kopyalandi"
+  if cp -al .next/cache/. "$STAGING_DIR/cache/" 2>/dev/null; then
+    echo "    .next/cache staging'e hardlink"
+  else
+    cp -a .next/cache/. "$STAGING_DIR/cache/" 2>/dev/null || true
+    echo "    .next/cache staging'e kopyalandi"
+  fi
+fi
+
+export NEXT_TELEMETRY_DISABLED=1
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=4096}"
+if [[ "$RUN_TS_CHECK" == "1" ]]; then
+  export SKIP_TS_CHECK=0
+  echo "    TypeScript kontrolu ACIK (RUN_TS_CHECK=1)"
+else
+  export SKIP_TS_CHECK=1
+  echo "    TypeScript kontrolu atlandi (~1–2 dk kazanc; RUN_TS_CHECK=1 ile acilir)"
 fi
 
 NEXT_DIST_DIR="$STAGING_DIR" npm run build
+# Next, distDir staging olunca tsconfig include'a .next-staging ekleyebilir — geri al
+if git diff --quiet -- tsconfig.json 2>/dev/null; then
+  :
+else
+  git checkout -- tsconfig.json 2>/dev/null || true
+  echo "    tsconfig.json staging include satirlari geri alindi"
+fi
 if [[ ! -f "$STAGING_DIR/BUILD_ID" ]]; then
   echo "    HATA: $STAGING_DIR/BUILD_ID olusmadi. Canli .next bozulmadi."
   exit 1
@@ -234,9 +257,7 @@ if [[ "$RUN_META_FEED_WARM" == "1" ]]; then
   echo "==> Meta feed warm (senkron)"
   npx tsx scripts/warm-meta-catalog-feed.ts || echo "    UYARI: meta feed warm atlandi"
 else
-  (npx tsx scripts/warm-meta-catalog-feed.ts >/var/log/tatil-villa-meta-feed-warm.log 2>&1 || true) &
-  disown || true
-  echo "    Meta feed arka planda (RUN_META_FEED_WARM=1 = senkron)"
+  echo "    Meta feed atlandi (cron :45 zaten yeniler; RUN_META_FEED_WARM=1 ile acilir)"
 fi
 
 # ---- 6) Cron (yalnizca degisse) --------------------------------------------

@@ -323,12 +323,145 @@ function ReviewEditModal({
   );
 }
 
+function ReviewCreateModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-gray-900">
+            Yeni Yorum (Manuel)
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Kapat"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form
+          action={(fd) =>
+            startTransition(async () => {
+              await saveGuestReviewAction(null, fd);
+              onSaved();
+            })
+          }
+          className="space-y-5"
+        >
+          <CmsFormSection title="Temel Bilgiler">
+            <div className="grid gap-4 md:grid-cols-3">
+              <CmsField label="Misafir Adı">
+                <input
+                  name="guestName"
+                  placeholder="Misafir adı"
+                  required
+                  className={cmsInputClass}
+                />
+              </CmsField>
+              <CmsField label="Şehir">
+                <input
+                  name="guestCity"
+                  placeholder="Şehir"
+                  className={cmsInputClass}
+                />
+              </CmsField>
+              <CmsField label="Puan">
+                <input
+                  name="rating"
+                  type="number"
+                  min={1}
+                  max={5}
+                  defaultValue={5}
+                  className={cmsInputClass}
+                />
+              </CmsField>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <CmsField label="Başlık">
+                <input
+                  name="title"
+                  placeholder="Başlık"
+                  className={cmsInputClass}
+                />
+              </CmsField>
+              <CmsField label="Konaklama Zamanı">
+                <input
+                  name="stayMonth"
+                  placeholder="örn. Temmuz 2025"
+                  className={cmsInputClass}
+                />
+              </CmsField>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="approved"
+                  defaultChecked
+                  className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                />
+                Onaylı
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="featured"
+                  className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                />
+                Öne çıkan
+              </label>
+            </div>
+          </CmsFormSection>
+          <CmsFormSection title="İçerik">
+            <CmsField label="Yorum">
+              <textarea
+                name="comment"
+                placeholder="Yorum"
+                required
+                rows={3}
+                className={cmsInputClass}
+              />
+            </CmsField>
+          </CmsFormSection>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Vazgeç
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Ekle
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [selectedVillaIds, setSelectedVillaIds] = useState<string[]>([]);
   const [editing, setEditing] = useState<ReviewRow | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const villaOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -384,7 +517,24 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
   }
 
   return (
-    <div className="space-y-5">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Misafir Yorumları</h1>
+          <p className="mt-0.5 text-sm text-gray-500">
+            Misafir daveti ve manuel yorumları onaylayın, düzenleyin
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="inline-flex items-center rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700"
+        >
+          Yeni Yorum
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
       <div className="flex flex-wrap gap-2">
         {statusButtons.map((button) => {
           const active = statusFilter === button.key;
@@ -514,98 +664,17 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
           </table>
         </div>
       </div>
+      </div>
 
-      <form
-        action={(fd) =>
-          startTransition(async () => {
-            await saveGuestReviewAction(null, fd);
+      {creating ? (
+        <ReviewCreateModal
+          onClose={() => setCreating(false)}
+          onSaved={() => {
+            setCreating(false);
             refresh();
-          })
-        }
-        className="space-y-5 rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-5"
-      >
-        <h2 className="text-sm font-semibold text-gray-800">Yeni Yorum (Manuel)</h2>
-        <CmsFormSection title="Temel Bilgiler">
-          <div className="grid gap-4 md:grid-cols-3">
-            <CmsField label="Misafir Adı">
-              <input
-                name="guestName"
-                placeholder="Misafir adı"
-                required
-                className={cmsInputClass}
-              />
-            </CmsField>
-            <CmsField label="Şehir">
-              <input
-                name="guestCity"
-                placeholder="Şehir"
-                className={cmsInputClass}
-              />
-            </CmsField>
-            <CmsField label="Puan">
-              <input
-                name="rating"
-                type="number"
-                min={1}
-                max={5}
-                defaultValue={5}
-                className={cmsInputClass}
-              />
-            </CmsField>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <CmsField label="Başlık">
-              <input name="title" placeholder="Başlık" className={cmsInputClass} />
-            </CmsField>
-            <CmsField label="Konaklama Zamanı">
-              <input
-                name="stayMonth"
-                placeholder="örn. Temmuz 2025"
-                className={cmsInputClass}
-              />
-            </CmsField>
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="approved"
-                defaultChecked
-                className="h-4 w-4 rounded border-gray-300 text-teal-600"
-              />
-              Onaylı
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="featured"
-                className="h-4 w-4 rounded border-gray-300 text-teal-600"
-              />
-              Öne çıkan
-            </label>
-          </div>
-        </CmsFormSection>
-        <CmsFormSection title="İçerik">
-          <CmsField label="Yorum">
-            <textarea
-              name="comment"
-              placeholder="Yorum"
-              required
-              rows={3}
-              className={cmsInputClass}
-            />
-          </CmsField>
-        </CmsFormSection>
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            Ekle
-          </button>
-        </div>
-      </form>
+          }}
+        />
+      ) : null}
 
       {editing ? (
         <ReviewEditModal
