@@ -5,7 +5,8 @@ import {
   syncVillaExternalLinkSlot,
 } from "../lib/villa-external-sync";
 
-const URL = "https://www.villakilavuzu.com/villa-arna";
+/** Villa Kodu 2657 — sayfa 429 olursa entityId ile API fallback */
+const URL = "https://www.villakilavuzu.com/villa-arna?entityId=2657";
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
@@ -38,12 +39,13 @@ async function main() {
   if (listOnly) return;
 
   const villa =
+    candidates.find((row) => row.slug.toLowerCase() === "villa-arna-demre-1") ??
     candidates.find((row) => row.slug.toLowerCase() === "villa-arna") ??
-    candidates.find((row) => row.slug.toLowerCase().includes("arna")) ??
     candidates.find((row) => {
       const name = row.name.toLowerCase();
-      return name.includes("arna") && name.includes("villa");
-    });
+      return name.includes("arna") && name.includes("demre") && name.includes("1");
+    }) ??
+    candidates.find((row) => row.slug.toLowerCase().includes("arna"));
 
   if (!villa) {
     throw new Error(

@@ -3206,13 +3206,26 @@ export function extractTatilpremiumRoutingEntity(
   };
 }
 
+function usesLowercaseApiCurrency(site: VillaApiSiteConfig): boolean {
+  return (
+    site.hostKey === "villacim" ||
+    site.hostKey === "villakilavuzu" ||
+    site.hostKey === "myvillacity" ||
+    site.hostKey === "mustakilvillam" ||
+    site.hostKey === "villapaketi" ||
+    site.hostKey === "villaciniz" ||
+    site.hostKey === "villayolu" ||
+    site.hostKey === "tatilpremium"
+  );
+}
+
 function apiCurrencyParam(
   site: VillaApiSiteConfig,
   symbol: string | null | undefined,
   currencyCode: string | null | undefined
 ): string {
   const { apiCurrency } = currencyFromVillavillamSymbol(symbol);
-  if (site.hostKey === "villacim") {
+  if (usesLowercaseApiCurrency(site)) {
     if (currencyCode === "TRY" || apiCurrency === "TL") return "tl";
     if (apiCurrency === "EUR") return "eur";
     if (apiCurrency === "USD") return "dolar";
@@ -3220,6 +3233,20 @@ function apiCurrencyParam(
     return "tl";
   }
   return apiCurrency;
+}
+
+/** Sayfa HTML engellenince API için: ?entityId=2657 */
+function extractEntityIdFromPageUrl(pageUrl: string): string | null {
+  try {
+    const parsed = new URL(pageUrl);
+    for (const key of ["entityId", "EntityId", "id", "villaId", "villa_id"]) {
+      const value = parsed.searchParams.get(key)?.trim();
+      if (value && /^\d+$/.test(value)) return value;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function parseVillavillamAvailabilityFromResult(
@@ -3446,9 +3473,10 @@ export async function scrapeVillavillamFromPage(
   const site = resolveVillaApiSite(pageUrl);
   if (!site) return null;
 
-  let entity = extractVillaApiEntity(html);
+  let entity = html.trim() ? extractVillaApiEntity(html) : null;
   if (
     !entity &&
+    html.trim() &&
     (site.hostKey === "tatilpremium" ||
       site.hostKey === "villapaketi" ||
       site.hostKey === "villaciniz" ||
@@ -3458,6 +3486,22 @@ export async function scrapeVillavillamFromPage(
       site.hostKey === "villakilavuzu")
   ) {
     entity = extractTatilpremiumRoutingEntity(html, pageUrl);
+  }
+  if (!entity) {
+    const entityIdFromUrl = extractEntityIdFromPageUrl(pageUrl);
+    if (entityIdFromUrl) {
+      entity = {
+        entityId: entityIdFromUrl,
+        title: null,
+        symbol: "₺",
+        currencyCode: "TRY",
+        damageDeposit: null,
+        result: {},
+      };
+      warnings.push(
+        `${site.hostKey}: entityId URL parametresinden alındı (${entityIdFromUrl})`
+      );
+    }
   }
   if (!entity) {
     warnings.push(
@@ -3477,36 +3521,50 @@ export async function scrapeVillavillamFromPage(
 
   await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
   let priceRows: unknown[] = [];
-  try {
-    const priceJson = await fetchVillaApiJson<{
-      data?: unknown[];
-      error?: string;
-    }>(
-      site,
-      `/PriceList?id=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}&start2=`,
-      pageUrl
-    );
-    priceRows = Array.isArray(priceJson.data) ? priceJson.data : [];
-    if (priceRows.length === 0 && priceJson.error) {
-      warnings.push(`${site.hostKey} PriceList: ${priceJson.error}`);
+  const priceQueries = [
+    `/PriceList?id=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}`,
+    `/PriceList?id=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}&start2=`,
+  ];
+  for (const query of priceQueries) {
+    if (priceRows.length > 0) break;
+    try {
+      const priceJson = await fetchVillaApiJson<{
+        data?: unknown[];
+        error?: string;
+      }>(site, query, pageUrl);
+      priceRows = Array.isArray(priceJson.data) ? priceJson.data : [];
+      if (priceRows.length === 0 && priceJson.error) {
+        warnings.push(`${site.hostKey} PriceList: ${priceJson.error}`);
+      }
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `${site.hostKey} PriceList başarısız: ${error.message}`
+          : `${site.hostKey} PriceList başarısız`
+      );
     }
-  } catch (error) {
-    warnings.push(
-      error instanceof Error
-        ? `${site.hostKey} PriceList başarısız: ${error.message}`
-        : `${site.hostKey} PriceList başarısız`
-    );
   }
 
   await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
   let availability: ReturnType<typeof parseVillavillamAvailability> | null =
     null;
+  const hasAvailabilityCalendar = (parsed: {
+    occupancyByDateKey: Map<string, VillaDayOccupancy>;
+    dailyDateKeys: string[];
+  } | null): boolean =>
+    Boolean(
+      parsed &&
+        (parsed.occupancyByDateKey.size > 0 || parsed.dailyDateKeys.length > 0)
+    );
+
   const availabilityQueries = [
+    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}`,
     `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&start2=`,
+    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}`,
     `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&start2=&currency=${encodeURIComponent(apiCurrency)}`,
   ];
   for (const query of availabilityQueries) {
-    if (availability && availability.occupancyByDateKey.size > 0) break;
+    if (hasAvailabilityCalendar(availability)) break;
     try {
       const availJson = await fetchVillaApiJson<{
         Symbol?: string;
@@ -3517,15 +3575,6 @@ export async function scrapeVillavillamFromPage(
       // Sonraki parametreyle dene
     }
   }
-
-  const hasAvailabilityCalendar = (parsed: {
-    occupancyByDateKey: Map<string, VillaDayOccupancy>;
-    dailyDateKeys: string[];
-  } | null): boolean =>
-    Boolean(
-      parsed &&
-        (parsed.occupancyByDateKey.size > 0 || parsed.dailyDateKeys.length > 0)
-    );
 
   if (!hasAvailabilityCalendar(availability)) {
     availability =
@@ -5419,13 +5468,37 @@ export async function scrapeExternalVillaPage(
     throw new Error("URL http veya https olmalı");
   }
 
-  const html = await fetchText(parsed.toString());
-  await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
-
   const warnings: string[] = [];
+  const normalizedUrl = parsed.toString();
+  const entityIdEarly =
+    looksLikeVillaApiSite(normalizedUrl) &&
+    extractEntityIdFromPageUrl(normalizedUrl);
+
+  let html = "";
+  if (entityIdEarly) {
+    // Cloudflare sayfa 429 sık; entityId varsa doğrudan API ailesine git
+    warnings.push(
+      `entityId=${entityIdEarly} verildi; villa API ailesi için sayfa HTML atlandı`
+    );
+  } else {
+    try {
+      html = await fetchText(normalizedUrl);
+      await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    } catch (error) {
+      const entityIdFallback =
+        looksLikeVillaApiSite(normalizedUrl) &&
+        extractEntityIdFromPageUrl(normalizedUrl);
+      if (!entityIdFallback) throw error;
+      warnings.push(
+        error instanceof Error
+          ? `Sayfa HTML alınamadı (${error.message}); API entityId fallback`
+          : "Sayfa HTML alınamadı; API entityId fallback"
+      );
+    }
+  }
 
   const rezervasyonyap = scrapeRezervasyonyapFromHtml(
-    parsed.toString(),
+    normalizedUrl,
     html,
     warnings
   );
