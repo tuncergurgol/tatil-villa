@@ -196,6 +196,14 @@ export async function getAllReviewsForAdmin() {
   });
 }
 
+export async function getVillasForReviewAdmin() {
+  return prisma.villa.findMany({
+    where: { active: true },
+    select: { id: true, name: true, villaId: true },
+    orderBy: { name: "asc" },
+  });
+}
+
 export async function getFooterCorporatePages() {
   return prisma.cmsPage.findMany({
     where: { published: true, showInFooter: true },

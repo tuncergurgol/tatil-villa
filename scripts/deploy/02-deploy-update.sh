@@ -43,6 +43,7 @@ STAGING_DIR=".next-staging"
 LOCK_HASH_FILE=".deploy-package-lock.sha256"
 PRISMA_HASH_FILE=".deploy-prisma-schema.sha256"
 CRON_HASH_FILE=".deploy-cron-script.sha256"
+MIGRATIONS_HASH_FILE=".deploy-migrations.sha256"
 
 cd "$APP_DIR"
 
@@ -170,7 +171,20 @@ else
   echo "    prisma generate atlandi (schema degismedi)"
 fi
 
-npx prisma migrate deploy
+MIG_HASH="$(find prisma/migrations -type f -name '*.sql' -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | awk '{print $1}')"
+OLD_MIG_HASH=""
+if [[ -f "$MIGRATIONS_HASH_FILE" ]]; then
+  OLD_MIG_HASH="$(tr -d ' \r\n' < "$MIGRATIONS_HASH_FILE" || true)"
+fi
+if [[ -n "$MIG_HASH" && "$MIG_HASH" == "$OLD_MIG_HASH" ]]; then
+  echo "    prisma migrate deploy atlandi (migrations degismedi)"
+else
+  echo "    prisma migrate deploy"
+  npx prisma migrate deploy
+  if [[ -n "$MIG_HASH" ]]; then
+    echo "$MIG_HASH" > "$MIGRATIONS_HASH_FILE"
+  fi
+fi
 
 if [[ "$RUN_MESSAGE_SEED" == "1" ]]; then
   npx tsx scripts/seed-agency-message-scheduled-templates.ts || echo "    UYARI: mesaj seed atlandi"
@@ -201,7 +215,8 @@ if [[ -d .next/cache ]]; then
 fi
 
 export NEXT_TELEMETRY_DISABLED=1
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=4096}"
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
+export UV_THREADPOOL_SIZE="${UV_THREADPOOL_SIZE:-16}"
 if [[ "$RUN_TS_CHECK" == "1" ]]; then
   export SKIP_TS_CHECK=0
   echo "    TypeScript kontrolu ACIK (RUN_TS_CHECK=1)"
@@ -244,13 +259,20 @@ rm -rf .next-prev
 
 echo ""
 echo "==> Saglik kontrolu ($HEALTH_URL)"
-sleep 2
+sleep 1
 HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
 if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "307" ]]; then
   echo "    OK — HTTP $HTTP_CODE"
 else
-  echo "    UYARI: Beklenmeyen HTTP $HTTP_CODE"
-  echo "           pm2 logs $PM2_NAME --lines 50"
+  # App henuz ayaga kalkmadiysa bir kez daha dene
+  sleep 2
+  HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
+  if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "307" ]]; then
+    echo "    OK — HTTP $HTTP_CODE (2. deneme)"
+  else
+    echo "    UYARI: Beklenmeyen HTTP $HTTP_CODE"
+    echo "           pm2 logs $PM2_NAME --lines 50"
+  fi
 fi
 
 if [[ "$RUN_META_FEED_WARM" == "1" ]]; then

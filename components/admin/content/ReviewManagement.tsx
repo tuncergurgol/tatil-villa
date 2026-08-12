@@ -17,6 +17,12 @@ import {
   cmsInputClass,
 } from "@/components/admin/content/CmsFormSections";
 
+type VillaOption = {
+  id: string;
+  name: string;
+  villaId: number | null;
+};
+
 type ReviewRow = {
   id: string;
   guestName: string;
@@ -46,6 +52,73 @@ function reviewIsRejected(review: ReviewRow) {
 
 function reviewIsApproved(review: ReviewRow) {
   return review.approved;
+}
+
+function VillaSelectField({
+  villas,
+  defaultVillaId,
+}: {
+  villas: VillaOption[];
+  defaultVillaId?: string | null;
+}) {
+  const [query, setQuery] = useState("");
+  const [villaId, setVillaId] = useState(defaultVillaId ?? "");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase("tr-TR");
+    if (!q) return villas.slice(0, 80);
+    return villas
+      .filter((villa) => {
+        const name = villa.name.toLocaleLowerCase("tr-TR");
+        const code = villa.villaId != null ? String(villa.villaId) : "";
+        return name.includes(q) || code.includes(q);
+      })
+      .slice(0, 80);
+  }, [villas, query]);
+
+  const selected = villas.find((villa) => villa.id === villaId) ?? null;
+
+  return (
+    <CmsField label="Villa Adı">
+      <input type="hidden" name="villaId" value={villaId} />
+      <div className="space-y-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Villa ara..."
+          className={cmsInputClass}
+        />
+        <select
+          value={villaId}
+          onChange={(event) => setVillaId(event.target.value)}
+          className={cmsInputClass}
+          size={Math.min(8, Math.max(4, filtered.length + 1))}
+        >
+          <option value="">Villa seçilmedi</option>
+          {selected && !filtered.some((villa) => villa.id === selected.id) ? (
+            <option value={selected.id}>
+              {selected.name}
+              {selected.villaId != null ? ` (#${selected.villaId})` : ""}
+            </option>
+          ) : null}
+          {filtered.map((villa) => (
+            <option key={villa.id} value={villa.id}>
+              {villa.name}
+              {villa.villaId != null ? ` (#${villa.villaId})` : ""}
+            </option>
+          ))}
+        </select>
+        {selected ? (
+          <p className="text-xs text-teal-700">
+            Seçili: <span className="font-semibold">{selected.name}</span>
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400">İsteğe bağlı</p>
+        )}
+      </div>
+    </CmsField>
+  );
 }
 
 function VillaNameMultiSelect({
@@ -150,10 +223,12 @@ function VillaNameMultiSelect({
 
 function ReviewEditModal({
   review,
+  villas,
   onClose,
   onSaved,
 }: {
   review: ReviewRow;
+  villas: VillaOption[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -186,6 +261,10 @@ function ReviewEditModal({
           className="space-y-5"
         >
           <CmsFormSection title="Temel Bilgiler">
+            <VillaSelectField
+              villas={villas}
+              defaultVillaId={review.villa?.id ?? null}
+            />
             <div className="grid gap-4 md:grid-cols-3">
               <CmsField label="Misafir Adı">
                 <input
@@ -324,9 +403,11 @@ function ReviewEditModal({
 }
 
 function ReviewCreateModal({
+  villas,
   onClose,
   onSaved,
 }: {
+  villas: VillaOption[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -359,6 +440,7 @@ function ReviewCreateModal({
           className="space-y-5"
         >
           <CmsFormSection title="Temel Bilgiler">
+            <VillaSelectField villas={villas} />
             <div className="grid gap-4 md:grid-cols-3">
               <CmsField label="Misafir Adı">
                 <input
@@ -455,7 +537,13 @@ function ReviewCreateModal({
   );
 }
 
-export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) {
+export default function ReviewManagement({
+  reviews,
+  villas,
+}: {
+  reviews: ReviewRow[];
+  villas: VillaOption[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
@@ -465,6 +553,9 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
 
   const villaOptions = useMemo(() => {
     const map = new Map<string, string>();
+    for (const villa of villas) {
+      map.set(villa.id, villa.name);
+    }
     for (const review of reviews) {
       if (review.villa?.id) {
         map.set(review.villa.id, review.villa.name);
@@ -473,7 +564,7 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "tr"));
-  }, [reviews]);
+  }, [reviews, villas]);
 
   const counts = useMemo(() => {
     return {
@@ -668,6 +759,7 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
 
       {creating ? (
         <ReviewCreateModal
+          villas={villas}
           onClose={() => setCreating(false)}
           onSaved={() => {
             setCreating(false);
@@ -679,6 +771,7 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
       {editing ? (
         <ReviewEditModal
           review={editing}
+          villas={villas}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
