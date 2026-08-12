@@ -21,7 +21,7 @@ function revalidateCmsPaths() {
     "/admin/icerik",
     "/admin/icerik/sss",
     "/admin/icerik/blog",
-    "/admin/icerik/yorumlar",
+    "/admin/musteri-yonetimi/yorumlar",
     "/admin/icerik/kurumsal",
     "/admin/icerik/menuler",
     "/admin/kampanyalar",
@@ -397,7 +397,6 @@ export async function deleteSiteMenuItemAction(id: string): Promise<CmsActionSta
 const KNOWN_MODULE_KEYS = new Set([
   "sss",
   "blog",
-  "yorumlar",
   "kurumsal",
   "menuler",
   "kampanyalar",

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { FileText, Pencil, Plus } from "lucide-react";
 import FaqManagement from "@/components/admin/content/FaqManagement";
 import BlogManagement from "@/components/admin/content/BlogManagement";
-import ReviewManagement from "@/components/admin/content/ReviewManagement";
 import CorporatePageManagement from "@/components/admin/content/CorporatePageManagement";
 import MenuManagement from "@/components/admin/content/MenuManagement";
 import CampaignManagement from "@/components/admin/content/CampaignManagement";
@@ -32,7 +31,6 @@ type BlogCategory = React.ComponentProps<typeof BlogManagement>["categories"][nu
 type BlogPost = React.ComponentProps<typeof BlogManagement>["posts"][number];
 type BlogAiSettings = React.ComponentProps<typeof BlogManagement>["blogAiSettings"];
 type BlogAiTopic = React.ComponentProps<typeof BlogManagement>["blogAiTopics"][number];
-type Review = React.ComponentProps<typeof ReviewManagement>["reviews"][number];
 type CmsPage = React.ComponentProps<typeof CorporatePageManagement>["pages"][number];
 type SiteMenu = React.ComponentProps<typeof MenuManagement>["menus"][number];
 type Campaign = React.ComponentProps<typeof CampaignManagement>["campaigns"][number];
@@ -46,7 +44,6 @@ interface ContentManagementProps {
   blogAiSettings: BlogAiSettings;
   blogAiTopics: BlogAiTopic[];
   blogAiConfigured: boolean;
-  reviews: Review[];
   pages: CmsPage[];
   menus: SiteMenu[];
   campaigns: Campaign[];
@@ -61,7 +58,6 @@ export default function ContentManagement({
   blogAiSettings,
   blogAiTopics,
   blogAiConfigured,
-  reviews,
   pages,
   menus,
   campaigns,
@@ -183,9 +179,6 @@ export default function ContentManagement({
               blogAiConfigured={blogAiConfigured}
             />
           </TabPanel>
-          <TabPanel active={activeModule === "yorumlar"}>
-            <ReviewManagement reviews={reviews} />
-          </TabPanel>
           <TabPanel active={activeModule === "kurumsal"}>
             <CorporatePageManagement pages={pages} />
           </TabPanel>
@@ -200,7 +193,6 @@ export default function ContentManagement({
               ![
                 "sss",
                 "blog",
-                "yorumlar",
                 "kurumsal",
                 "menuler",
                 "kampanyalar",

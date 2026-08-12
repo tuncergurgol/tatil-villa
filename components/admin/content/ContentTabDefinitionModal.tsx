@@ -24,7 +24,6 @@ export type ContentTabDefinition = {
 export const CONTENT_TAB_MODULES = [
   { value: "sss", label: "Sık Sorulan Sorular" },
   { value: "blog", label: "Blog" },
-  { value: "yorumlar", label: "Misafir Yorumları" },
   { value: "kurumsal", label: "Kurumsal" },
   { value: "menuler", label: "Menüler" },
   { value: "kampanyalar", label: "Kampanyalar" },

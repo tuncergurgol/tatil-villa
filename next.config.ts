@@ -4,6 +4,8 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // Deploy sırasında canlı .next'i bozmamak için staging build klasörü
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // pdfkit/fontkit: webpack vendor-chunks Helvetica.afm yolunu bozar (ENOENT .next/.../data/)
   serverExternalPackages: [
     "@prisma/client",

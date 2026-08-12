@@ -12,7 +12,7 @@ export type GuestReviewAdminActionState = {
 };
 
 function revalidateReviewPaths() {
-  revalidatePath("/admin/icerik");
+  revalidatePath("/admin/musteri-yonetimi/yorumlar");
   revalidatePath("/yorumlar");
   revalidatePath("/");
 }

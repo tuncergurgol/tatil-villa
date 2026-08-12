@@ -5,27 +5,17 @@
 #   cd /var/www/tatil-villa
 #   bash scripts/deploy/02-deploy-update.sh
 #
-# Ne yapar (Option A - GitHub pull + migrate + build + pm2 restart):
-#   1. .env yedegi + Postgres dump yedegi alir
-#   2. origin'den ilgili dal'i ceker ve SERT sifirlar (git reset --hard)
-#      -> Sunucudaki elle yapilan yamalar (BookingStatus enum, sed edit'leri)
-#         git'teki dogru surumle DEGISTIRILIR. Bu KASITLIDIR.
-#   3. npm ci ile bagimliliklari kurar
-#   4. prisma generate + prisma migrate deploy (DB migration calisir)
-#   5. next build
-#   6. pm2 restart + save
-#   7. localhost:3000/admin/login dogrulamasi
+# Hiz / zero-downtime:
+#   - Build sirasinda PM2 CALISMAYA DEVAM EDER (site acik kalir)
+#   - Build .next-staging klasorune alinir, sonra atomik swap + kisa restart
+#   - npm ci yalnizca package-lock degistiyse (aksi halde npm install --prefer-offline)
+#   - Agir CRM migrasyonu ve meta feed warm varsayilan olarak atlanir / arka planda
 #
-# Idempotent ve guvenlidir: hata olursa aninda durur (set -euo pipefail).
-#
-# ONEMLI — public/uploads:
-#   Galeri/logo dosyalari Git'te YOKTUR. Bu script git reset --hard yapar ama
-#   ignored public/uploads dosyalarini genelde SILMEZ. Yine de:
-#   - `rm -rf public` veya temiz clone yapmayin
-#   - Yeni sunucu / bos diskte once local'den sync edin:
-#       scripts/deploy/sync-uploads.md
-#       scripts/deploy/sync-uploads.ps1  (PC PowerShell)
-#   - Sync sonrasi: curl -sI http://127.0.0.1:3000/uploads/company/logo-*.svg
+# Ortam bayraklari:
+#   SKIP_DB_DUMP=1          Postgres dump atla (daha hizli)
+#   FORCE_NPM_CI=1          Her zaman temiz npm ci
+#   RUN_CRM_MIGRATE=1       migrate-customer-crm calistir
+#   RUN_META_FEED_WARM=1    Meta katalog feed'i senkron isit
 # =============================================================================
 
 set -euo pipefail
@@ -39,6 +29,12 @@ DB_USER="${DB_USER:-tatil}"
 DB_NAME="${DB_NAME:-tatil_villa}"
 DB_PASS_FILE="${DB_PASS_FILE:-/root/.db_pass}"
 HEALTH_URL="${HEALTH_URL:-http://localhost:3000/admin/login}"
+SKIP_DB_DUMP="${SKIP_DB_DUMP:-0}"
+FORCE_NPM_CI="${FORCE_NPM_CI:-0}"
+RUN_CRM_MIGRATE="${RUN_CRM_MIGRATE:-0}"
+RUN_META_FEED_WARM="${RUN_META_FEED_WARM:-0}"
+STAGING_DIR=".next-staging"
+LOCK_HASH_FILE=".deploy-package-lock.sha256"
 
 STAMP="$(date +%F-%H%M%S)"
 
@@ -62,7 +58,10 @@ else
 fi
 
 DUMP_FILE="/root/pre-deploy-${STAMP}.dump"
-if docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
+if [[ "$SKIP_DB_DUMP" == "1" ]]; then
+  echo "    Postgres dump atlandi (SKIP_DB_DUMP=1)"
+  DUMP_FILE="(atlandi)"
+elif docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
   DB_PASS=""
   if [[ -f "$DB_PASS_FILE" ]]; then
     DB_PASS="$(tr -d '\r\n' < "$DB_PASS_FILE")"
@@ -101,14 +100,37 @@ echo "    HEAD: $(git rev-parse --short HEAD) — $(git log -1 --format='%s' | c
 
 # ---- 3) Bagimliliklar ------------------------------------------------------
 echo ""
-echo "==> [3/7] Bagimliliklar kuruluyor (npm ci)"
-# Eski node_modules / bozuk lock senkronu riskine karsi temiz kurulum
-rm -rf node_modules
-if [[ -f package-lock.json ]]; then
-  npm ci
+echo "==> [3/7] Bagimliliklar kuruluyor"
+NEED_NPM_CI=0
+if [[ "$FORCE_NPM_CI" == "1" ]]; then
+  NEED_NPM_CI=1
+elif [[ ! -d node_modules ]]; then
+  NEED_NPM_CI=1
+elif [[ -f package-lock.json ]]; then
+  NEW_HASH="$(sha256sum package-lock.json | awk '{print $1}')"
+  OLD_HASH=""
+  if [[ -f "$LOCK_HASH_FILE" ]]; then
+    OLD_HASH="$(tr -d ' \r\n' < "$LOCK_HASH_FILE" || true)"
+  fi
+  if [[ "$NEW_HASH" != "$OLD_HASH" ]]; then
+    NEED_NPM_CI=1
+  fi
+fi
+
+if [[ "$NEED_NPM_CI" == "1" ]]; then
+  echo "    npm ci (package-lock degisti veya node_modules yok)"
+  rm -rf node_modules
+  if [[ -f package-lock.json ]]; then
+    npm ci
+    sha256sum package-lock.json | awk '{print $1}' > "$LOCK_HASH_FILE"
+  else
+    echo "    package-lock.json yok, npm install kullaniliyor"
+    npm install
+  fi
 else
-  echo "    package-lock.json yok, npm install kullaniliyor"
-  npm install
+  echo "    package-lock ayni — npm ci atlandi (hizli yol)"
+  # Guvenli tamamlayici: eksik paket varsa tamamla
+  npm install --prefer-offline --no-audit --no-fund 2>/dev/null || true
 fi
 
 EXPECTED_NEXT="$(node -e "console.log(require('./package.json').dependencies.next)" 2>/dev/null || true)"
@@ -127,32 +149,30 @@ echo "==> [4/7] Prisma generate + migrate deploy"
 npx prisma generate
 npx prisma migrate deploy
 npx tsx scripts/seed-agency-message-scheduled-templates.ts || echo "    UYARI: zamanlanmış mesaj şablon seed atlandı"
-npx tsx scripts/migrate-customer-crm.ts || echo "    UYARI: CRM müşteri migrasyonu atlandı"
+if [[ "$RUN_CRM_MIGRATE" == "1" ]]; then
+  npx tsx scripts/migrate-customer-crm.ts || echo "    UYARI: CRM müşteri migrasyonu atlandı"
+else
+  echo "    CRM migrasyonu atlandi (RUN_CRM_MIGRATE=1 ile acilir)"
+fi
 
-# ---- 5) Build --------------------------------------------------------------
+# ---- 5) Build (canli .next dokunulmaz) --------------------------------------
 echo ""
-echo "==> [5/7] Next build (npm run build)"
-# PM2 calisirken .next/cache dosyalari kilitlenebilir; once durdur
-if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
-  pm2 stop "$PM2_NAME" >/dev/null 2>&1 || true
+echo "==> [5/7] Next build -> $STAGING_DIR (PM2 acik kalir)"
+rm -rf "$STAGING_DIR"
+NEXT_DIST_DIR="$STAGING_DIR" npm run build
+if [[ ! -f "$STAGING_DIR/BUILD_ID" ]]; then
+  echo "    HATA: $STAGING_DIR/BUILD_ID olusmadi, build basarisiz. Canli .next bozulmadi."
+  exit 1
 fi
-# Onceki basarisiz Turbopack/webpack denemesinden kalan cache'i temizle
-for _ in 1 2 3; do
-  if rm -rf .next 2>/dev/null; then
-    break
-  fi
-  sleep 2
-done
+echo "    BUILD_ID=$(cat "$STAGING_DIR/BUILD_ID")"
+
+# Atomik swap — kisa kesinti yalnizca burada
+echo "    .next swap + PM2 restart"
+rm -rf .next-prev
 if [[ -d .next ]]; then
-  echo "    HATA: .next temizlenemedi (PM2 veya dosya kilidi)."
-  exit 1
+  mv .next .next-prev
 fi
-npm run build
-if [[ ! -f .next/BUILD_ID ]]; then
-  echo "    HATA: .next/BUILD_ID olusmadi, build basarisiz. pm2 restart atlandi."
-  exit 1
-fi
-echo "    BUILD_ID=$(cat .next/BUILD_ID)"
+mv "$STAGING_DIR" .next
 
 # ---- 6) PM2 restart --------------------------------------------------------
 echo ""
@@ -165,10 +185,13 @@ else
 fi
 pm2 save
 
+# Eski build'i temizle (basarili restart sonrasi)
+rm -rf .next-prev
+
 # ---- 7) Saglik kontrolu ----------------------------------------------------
 echo ""
 echo "==> [7/8] Saglik kontrolu ($HEALTH_URL)"
-sleep 4
+sleep 3
 HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
 if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "307" ]]; then
   echo "    OK — HTTP $HTTP_CODE"
@@ -178,14 +201,20 @@ else
 fi
 
 echo ""
-echo "==> [7b/8] Meta katalog feed onbellek isitma"
-if npx tsx scripts/warm-meta-catalog-feed.ts; then
-  for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do
-    FEED_STATS="$(curl -s -o /dev/null -w '%{http_code} %{time_total}s' -m 180 -H "Host: ${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" || echo '000 0s')"
-    echo "    ${FEED_HOST} -> ${FEED_STATS}"
-  done
+echo "==> [7b/8] Meta katalog feed"
+if [[ "$RUN_META_FEED_WARM" == "1" ]]; then
+  if npx tsx scripts/warm-meta-catalog-feed.ts; then
+    for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do
+      FEED_STATS="$(curl -s -o /dev/null -w '%{http_code} %{time_total}s' -m 180 -H "Host: ${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" || echo '000 0s')"
+      echo "    ${FEED_HOST} -> ${FEED_STATS}"
+    done
+  else
+    echo "    UYARI: Meta feed warm atlandi"
+  fi
 else
-  echo "    UYARI: Meta feed warm atlandi"
+  echo "    Atlandi (RUN_META_FEED_WARM=1 ile acilir) — arka planda tetikleniyor"
+  (npx tsx scripts/warm-meta-catalog-feed.ts >/var/log/tatil-villa-meta-feed-warm.log 2>&1 || true) &
+  disown || true
 fi
 
 # ---- 8) Cron (blog AI dahil) ------------------------------------------------

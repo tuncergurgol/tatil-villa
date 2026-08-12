@@ -204,6 +204,11 @@ export const adminNavSections: NavSection[] = [
         href: "/admin/acente/sizi-arayalim",
         icon: "phone",
       },
+      {
+        label: "Misafir Yorumları",
+        href: "/admin/musteri-yonetimi/yorumlar",
+        icon: "message-square",
+      },
     ],
   },
   {

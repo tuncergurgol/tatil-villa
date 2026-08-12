@@ -1,10 +1,10 @@
+import { redirect } from "next/navigation";
 import ContentManagement from "@/components/admin/content/ContentManagement";
 import {
   getAllBlogCategoriesForAdmin,
   getAllBlogPostsForAdmin,
   getAllCmsPagesForAdmin,
   getAllFaqsForAdmin,
-  getAllReviewsForAdmin,
   getCmsContentTabsForAdmin,
 } from "@/lib/queries/cms-content";
 import {
@@ -23,6 +23,10 @@ export default async function ContentHubPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
+  if (tab === "yorumlar") {
+    redirect("/admin/musteri-yonetimi/yorumlar");
+  }
+
   const contentTabs = await getCmsContentTabsForAdmin();
   const sortedTabs = [...contentTabs].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "tr")
@@ -40,7 +44,6 @@ export default async function ContentHubPage({
     blogPosts,
     blogAiSettings,
     blogAiTopics,
-    reviews,
     pages,
     menus,
     campaigns,
@@ -64,7 +67,6 @@ export default async function ContentHubPage({
           updatedAt: new Date(),
         }),
     activeModule === "blog" ? getBlogAiTopicsForAdmin() : Promise.resolve([]),
-    activeModule === "yorumlar" ? getAllReviewsForAdmin() : Promise.resolve([]),
     activeModule === "kurumsal" ? getAllCmsPagesForAdmin() : Promise.resolve([]),
     activeModule === "menuler" ? getAllSiteMenusForAdmin() : Promise.resolve([]),
     activeModule === "kampanyalar" ? getAllCampaigns() : Promise.resolve([]),
@@ -80,7 +82,6 @@ export default async function ContentHubPage({
       blogAiSettings={blogAiSettings}
       blogAiTopics={blogAiTopics}
       blogAiConfigured={isBlogAiConfigured()}
-      reviews={reviews}
       pages={pages}
       menus={menus}
       campaigns={campaigns}

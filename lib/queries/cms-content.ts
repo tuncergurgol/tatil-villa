@@ -215,13 +215,19 @@ export async function getCorporateMenuPages() {
 const DEFAULT_CONTENT_TABS = [
   { key: "sss", name: "Sık Sorulan Sorular", moduleKey: "sss", sortOrder: 1 },
   { key: "blog", name: "Blog", moduleKey: "blog", sortOrder: 2 },
-  { key: "yorumlar", name: "Misafir Yorumları", moduleKey: "yorumlar", sortOrder: 3 },
-  { key: "kurumsal", name: "Kurumsal", moduleKey: "kurumsal", sortOrder: 4 },
-  { key: "menuler", name: "Menüler", moduleKey: "menuler", sortOrder: 5 },
-  { key: "kampanyalar", name: "Kampanyalar", moduleKey: "kampanyalar", sortOrder: 6 },
+  { key: "kurumsal", name: "Kurumsal", moduleKey: "kurumsal", sortOrder: 3 },
+  { key: "menuler", name: "Menüler", moduleKey: "menuler", sortOrder: 4 },
+  { key: "kampanyalar", name: "Kampanyalar", moduleKey: "kampanyalar", sortOrder: 5 },
 ] as const;
 
 export async function ensureDefaultCmsContentTabs() {
+  // Misafir Yorumları Müşteri Yönetimi altına taşındı
+  await prisma.cmsContentTab.deleteMany({
+    where: {
+      OR: [{ key: "yorumlar" }, { moduleKey: "yorumlar" }],
+    },
+  });
+
   const count = await prisma.cmsContentTab.count();
   if (count > 0) return;
 
