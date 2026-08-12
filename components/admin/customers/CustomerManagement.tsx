@@ -249,15 +249,17 @@ export default function CustomerManagement({
                   <span className="text-xs font-medium text-gray-400 xl:hidden">
                     Üyelik
                   </span>
-                  {customer.memberAccount ? (
+                  {customer.stayCount > 0 || customer.memberAccount ? (
                     <div className="text-sm text-gray-700">
                       <p className="font-semibold text-teal-700">
-                        {LOYALTY_TIER_META[customer.memberAccount.loyaltyTier].emoji}{" "}
-                        {LOYALTY_TIER_META[customer.memberAccount.loyaltyTier].label}
+                        {LOYALTY_TIER_META[customer.loyaltyTier].emoji}{" "}
+                        {LOYALTY_TIER_META[customer.loyaltyTier].label}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {customer.memberAccount.completedStays} konaklama ·{" "}
-                        {customer.memberAccount.couponBalance.toLocaleString("tr-TR")} TL
+                        {customer.stayCount} konaklama
+                        {customer.memberAccount
+                          ? ` · ${customer.memberAccount.couponBalance.toLocaleString("tr-TR")} TL`
+                          : ""}
                       </p>
                     </div>
                   ) : (
