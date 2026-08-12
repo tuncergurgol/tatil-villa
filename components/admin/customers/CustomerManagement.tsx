@@ -2,11 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type { LoyaltyTier } from "@prisma/client";
 import {
   AdminTablePaginationBar,
   type AdminPageSize,
 } from "@/components/admin/AdminTablePagination";
 import {
+  FileSpreadsheet,
   FileText,
   Pencil,
   Plus,
@@ -18,9 +20,13 @@ import CustomerFormModal from "@/components/admin/customers/CustomerFormModal";
 import type { CustomerListItem } from "@/lib/queries/customers";
 import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
 import { includesSearchText } from "@/lib/search-text";
-import { LOYALTY_TIER_META } from "@/lib/loyalty-config";
+import {
+  LOYALTY_TIER_META,
+  LOYALTY_TIER_ORDER,
+} from "@/lib/loyalty-config";
 
 type StatusFilter = "all" | "active" | "passive";
+type LoyaltyFilter = "all" | "none" | LoyaltyTier;
 
 type ContactChannelOption = {
   id: string;
@@ -31,6 +37,15 @@ interface CustomerManagementProps {
   customers: CustomerListItem[];
   contactChannels: ContactChannelOption[];
 }
+
+const LOYALTY_FILTER_OPTIONS: { value: LoyaltyFilter; label: string }[] = [
+  { value: "all", label: "Üyelik: Tümü" },
+  { value: "none", label: "Üye değil" },
+  ...LOYALTY_TIER_ORDER.map((tier) => ({
+    value: tier as LoyaltyFilter,
+    label: LOYALTY_TIER_META[tier].label,
+  })),
+];
 
 function formatAdminDate(value: Date | string) {
   return new Date(value).toISOString().slice(0, 10);
@@ -48,6 +63,15 @@ function formatAdminDateTime(value: Date | string | null | undefined) {
   });
 }
 
+function isNonMemberCustomer(customer: CustomerListItem) {
+  return customer.stayCount <= 0 && !customer.memberAccount;
+}
+
+function customerMembershipLabel(customer: CustomerListItem) {
+  if (isNonMemberCustomer(customer)) return "Üye değil";
+  return LOYALTY_TIER_META[customer.loyaltyTier].label;
+}
+
 function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
@@ -60,6 +84,46 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
+async function downloadCustomerExcel(
+  rows: CustomerListItem[],
+  fileName: string
+) {
+  const XLSX = await import("xlsx");
+  const headers = [
+    "Ad Soyad",
+    "Telefon",
+    "E-posta",
+    "Üyelik",
+    "Konaklama",
+    "Kupon Bakiyesi (TL)",
+    "İlk Kayıt Kanalı",
+    "Etiketler",
+    "İlk Kayıt",
+    "Güncelleme",
+    "Durum",
+  ];
+  const sheetRows = [
+    headers,
+    ...rows.map((customer) => [
+      customer.fullName,
+      formatStoredTurkishPhoneDisplay(customer.phone),
+      customer.email || "",
+      customerMembershipLabel(customer),
+      customer.stayCount,
+      customer.memberAccount?.couponBalance ?? "",
+      customer.contactChannel?.name ?? "",
+      customer.tags.map((entry) => entry.tag.name).join(", "),
+      formatAdminDateTime(customer.firstContactAt ?? customer.createdAt),
+      formatAdminDate(customer.updatedAt),
+      customer.active ? "Aktif" : "Pasif",
+    ]),
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(sheetRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Musteriler");
+  XLSX.writeFile(workbook, fileName);
+}
+
 export default function CustomerManagement({
   customers,
   contactChannels,
@@ -67,6 +131,7 @@ export default function CustomerManagement({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [loyaltyFilter, setLoyaltyFilter] = useState<LoyaltyFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<AdminPageSize>(10);
   const [createOpen, setCreateOpen] = useState(false);
@@ -76,6 +141,7 @@ export default function CustomerManagement({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingCustomerId, setDeletingCustomerId] = useState<string | null>(null);
   const [isDeleting, startDeleteTransition] = useTransition();
+  const [isExporting, startExportTransition] = useTransition();
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((customer) => {
@@ -89,9 +155,16 @@ export default function CustomerManagement({
         (statusFilter === "active" && customer.active) ||
         (statusFilter === "passive" && !customer.active);
 
-      return matchesQuery && matchesStatus;
+      const matchesLoyalty =
+        loyaltyFilter === "all" ||
+        (loyaltyFilter === "none"
+          ? isNonMemberCustomer(customer)
+          : !isNonMemberCustomer(customer) &&
+            customer.loyaltyTier === loyaltyFilter);
+
+      return matchesQuery && matchesStatus && matchesLoyalty;
     });
-  }, [customers, search, statusFilter]);
+  }, [customers, search, statusFilter, loyaltyFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -125,6 +198,25 @@ export default function CustomerManagement({
         setEditingCustomer(null);
       }
       router.refresh();
+    });
+  }
+
+  function handleExportExcel() {
+    if (filteredCustomers.length === 0) {
+      window.alert("Filtreye uygun kayıt bulunamadı.");
+      return;
+    }
+
+    startExportTransition(async () => {
+      try {
+        const stamp = new Date().toISOString().slice(0, 10);
+        await downloadCustomerExcel(
+          filteredCustomers,
+          `musteri-listesi-${stamp}.xlsx`
+        );
+      } catch {
+        window.alert("Excel raporu indirilemedi.");
+      }
     });
   }
 
@@ -178,6 +270,36 @@ export default function CustomerManagement({
                 </button>
               ))}
             </div>
+
+            <div className="flex flex-wrap rounded-xl border border-gray-200 p-1">
+              {LOYALTY_FILTER_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setLoyaltyFilter(value);
+                    setPage(1);
+                  }}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                    loyaltyFilter === value
+                      ? "bg-amber-600 text-white"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-50"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {isExporting ? "Hazırlanıyor..." : "Excel"}
+            </button>
 
             <button
               type="button"
@@ -249,7 +371,9 @@ export default function CustomerManagement({
                   <span className="text-xs font-medium text-gray-400 xl:hidden">
                     Üyelik
                   </span>
-                  {customer.stayCount > 0 || customer.memberAccount ? (
+                  {isNonMemberCustomer(customer) ? (
+                    <p className="text-sm text-gray-400">Üye değil</p>
+                  ) : (
                     <div className="text-sm text-gray-700">
                       <p className="font-semibold text-teal-700">
                         {LOYALTY_TIER_META[customer.loyaltyTier].emoji}{" "}
@@ -262,8 +386,6 @@ export default function CustomerManagement({
                           : ""}
                       </p>
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-400">Üye değil</p>
                   )}
                 </div>
 
