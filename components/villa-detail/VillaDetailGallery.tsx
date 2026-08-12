@@ -103,30 +103,35 @@ export default function VillaDetailGallery({
 
   return (
     <>
-      {/* Mobil: tüm fotoğraflar sırayla kaydırılabilir */}
+      {/* Mobil: kaydırılabilir; yalnızca görünür + komşu slaytları yükle */}
       <div className="relative sm:hidden">
         <div
           ref={mobileTrackRef}
           onScroll={handleMobileScroll}
           className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto rounded-xl [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {images.map((src, index) => (
-            <button
-              key={`mobile-${src}-${index}`}
-              type="button"
-              onClick={() => setLightboxIndex(index)}
-              className="relative aspect-[16/10] w-full shrink-0 snap-center overflow-hidden"
-            >
-              <GalleryImage
-                src={src}
-                alt={`${name} ${index + 1}`}
-                fill
-                priority={index === 0}
-                className="object-cover"
-                sizes="100vw"
-              />
-            </button>
-          ))}
+          {images.map((src, index) => {
+            const shouldLoad = Math.abs(index - mobileSlide) <= 1 || index <= 1;
+            return (
+              <button
+                key={`mobile-${src}-${index}`}
+                type="button"
+                onClick={() => setLightboxIndex(index)}
+                className="relative aspect-[16/10] w-full shrink-0 snap-center overflow-hidden bg-slate-200"
+              >
+                {shouldLoad ? (
+                  <GalleryImage
+                    src={src}
+                    alt={`${name} ${index + 1}`}
+                    fill
+                    priority={index === 0}
+                    className="object-cover"
+                    sizes="100vw"
+                  />
+                ) : null}
+              </button>
+            );
+          })}
         </div>
 
         {actionButtons}
@@ -175,6 +180,7 @@ export default function VillaDetailGallery({
               src={src}
               alt={`${name} ${index + 2}`}
               fill
+              loading="lazy"
               className="object-cover transition duration-300 hover:scale-[1.03]"
               sizes="25vw"
             />
@@ -247,6 +253,7 @@ export default function VillaDetailGallery({
               src={images[lightboxIndex]}
               alt={`${name} ${lightboxIndex + 1}`}
               fill
+              priority
               className="object-contain"
               sizes="100vw"
             />

@@ -10,6 +10,7 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { buildVillaDetailMetadata } from "@/lib/villa-page-metadata";
 import { buildVillaLodgingJsonLd } from "@/lib/villa-json-ld";
+import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
 import {
   resolveVillaStayAdultsFromSearchParams,
   resolveVillaStayDatesFromSearchParams,
@@ -91,9 +92,20 @@ export default async function VillaDetailPage({
     origin,
     brandOgImage: site.ogImageUrl,
   });
+  const heroImage = villa.images[0]
+    ? encodeGalleryImageUrl(villa.images[0])
+    : null;
 
   return (
     <>
+      {heroImage?.startsWith("/uploads/") ? (
+        <link
+          rel="preload"
+          as="image"
+          href={heroImage}
+          fetchPriority="high"
+        />
+      ) : null}
       {lodgingJsonLd ? (
         <script
           type="application/ld+json"
