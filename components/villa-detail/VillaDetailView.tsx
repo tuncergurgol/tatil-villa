@@ -1,4 +1,4 @@
-import Image from "next/image";
+import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import {
   Bath,
@@ -372,7 +372,7 @@ export default function VillaDetailView({
                     >
                       {room.imageUrl ? (
                         <div className="relative aspect-[16/10]">
-                          <Image
+                          <GalleryImage
                             src={room.imageUrl}
                             alt={room.name}
                             fill
