@@ -205,8 +205,8 @@ function VillaNameMultiSelect({
             <p className="px-2 py-3 text-sm text-gray-500">Villa bulunamadı.</p>
           )}
         </div>
-        {selectedIds.length > 0 ? (
-          <div className="border-t border-gray-100 px-2 py-2">
+        <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-2 py-2">
+          {selectedIds.length > 0 ? (
             <button
               type="button"
               onClick={() => onChange([])}
@@ -214,8 +214,17 @@ function VillaNameMultiSelect({
             >
               Seçimi temizle
             </button>
-          </div>
-        ) : null}
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700"
+          >
+            KAPAT
+          </button>
+        </div>
       </div>
     </details>
   );
