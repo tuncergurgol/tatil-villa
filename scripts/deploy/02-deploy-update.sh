@@ -6,21 +6,23 @@
 #   bash scripts/deploy/02-deploy-update.sh
 #
 # Hiz / zero-downtime:
-#   - Build sirasinda PM2 CALISMAYA DEVAM EDER (site acik kalir)
-#   - Build .next-staging klasorune alinir, sonra atomik swap + kisa restart
-#   - npm ci yalnizca package-lock degistiyse (aksi halde npm install --prefer-offline)
-#   - Agir CRM migrasyonu ve meta feed warm varsayilan olarak atlanir / arka planda
+#   1) Once git cekilir, script KENDINI YENIDEN CALISTIRIR (eski kopya kalmaz)
+#   2) Build sirasinda PM2 acik kalir (.next-staging + atomik swap)
+#   3) Next cache korunur (incremental build)
+#   4) npm ci / prisma generate / cron / seed yalnizca degisince
+#   5) DB dump varsayilan KAPALI (RUN_DB_DUMP=1 ile acilir)
 #
 # Ortam bayraklari:
-#   SKIP_DB_DUMP=1          Postgres dump atla (daha hizli)
+#   RUN_DB_DUMP=1           Postgres dump al (varsayilan kapali)
 #   FORCE_NPM_CI=1          Her zaman temiz npm ci
 #   RUN_CRM_MIGRATE=1       migrate-customer-crm calistir
 #   RUN_META_FEED_WARM=1    Meta katalog feed'i senkron isit
+#   RUN_MESSAGE_SEED=1      Zamanlanmis mesaj sablon seed
+#   RUN_CRON_SETUP=1        Cron scriptini zorla calistir
 # =============================================================================
 
 set -euo pipefail
 
-# ---- Ayarlar (gerekirse ortam degiskeni ile ezilebilir) --------------------
 APP_DIR="${APP_DIR:-/var/www/tatil-villa}"
 BRANCH="${BRANCH:-cursor/booking-quick-filters-ui}"
 PM2_NAME="${PM2_NAME:-tatil-villa}"
@@ -29,27 +31,52 @@ DB_USER="${DB_USER:-tatil}"
 DB_NAME="${DB_NAME:-tatil_villa}"
 DB_PASS_FILE="${DB_PASS_FILE:-/root/.db_pass}"
 HEALTH_URL="${HEALTH_URL:-http://localhost:3000/admin/login}"
-SKIP_DB_DUMP="${SKIP_DB_DUMP:-0}"
+RUN_DB_DUMP="${RUN_DB_DUMP:-0}"
 FORCE_NPM_CI="${FORCE_NPM_CI:-0}"
 RUN_CRM_MIGRATE="${RUN_CRM_MIGRATE:-0}"
 RUN_META_FEED_WARM="${RUN_META_FEED_WARM:-0}"
+RUN_MESSAGE_SEED="${RUN_MESSAGE_SEED:-0}"
+RUN_CRON_SETUP="${RUN_CRON_SETUP:-0}"
 STAGING_DIR=".next-staging"
 LOCK_HASH_FILE=".deploy-package-lock.sha256"
+PRISMA_HASH_FILE=".deploy-prisma-schema.sha256"
+CRON_HASH_FILE=".deploy-cron-script.sha256"
+
+cd "$APP_DIR"
+
+# ---- Boot: git guncelle + script'i yeniden calistir -------------------------
+if [[ "${DEPLOY_BOOTED:-0}" != "1" ]]; then
+  echo "=========================================================="
+  echo "  tatildeyiz-app deploy — boot (git + re-exec)"
+  echo "  Dizin : $APP_DIR"
+  echo "  Dal   : $BRANCH"
+  echo "=========================================================="
+
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    git stash push -u -m "pre-deploy-boot-$(date +%F-%H%M%S)" || true
+    echo "    Yerel degisiklikler stash'e alindi"
+  fi
+
+  git fetch origin --prune
+  git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
+  git reset --hard "origin/$BRANCH"
+  echo "    HEAD: $(git rev-parse --short HEAD) — $(git log -1 --format='%s' | cut -c1-70)"
+  echo "    Guncel deploy scripti ile yeniden baslatiliyor..."
+  export DEPLOY_BOOTED=1
+  exec bash "$APP_DIR/scripts/deploy/02-deploy-update.sh" "$@"
+fi
 
 STAMP="$(date +%F-%H%M%S)"
 
 echo "=========================================================="
 echo "  tatildeyiz-app deploy — $STAMP"
 echo "  Dizin : $APP_DIR"
-echo "  Dal   : $BRANCH"
+echo "  Dal   : $BRANCH (zaten guncel)"
 echo "=========================================================="
-
-cd "$APP_DIR"
 
 # ---- 1) Yedekler -----------------------------------------------------------
 echo ""
-echo "==> [1/7] Yedekler aliniyor"
-
+echo "==> [1/6] Yedekler"
 if [[ -f .env ]]; then
   cp .env ".env.bak.$STAMP"
   echo "    .env  ->  .env.bak.$STAMP"
@@ -57,50 +84,34 @@ else
   echo "    UYARI: .env bulunamadi (yedek atlandi)"
 fi
 
-DUMP_FILE="/root/pre-deploy-${STAMP}.dump"
-if [[ "$SKIP_DB_DUMP" == "1" ]]; then
-  echo "    Postgres dump atlandi (SKIP_DB_DUMP=1)"
-  DUMP_FILE="(atlandi)"
-elif docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
-  DB_PASS=""
-  if [[ -f "$DB_PASS_FILE" ]]; then
-    DB_PASS="$(tr -d '\r\n' < "$DB_PASS_FILE")"
-  fi
-  echo "    Postgres dump -> $DUMP_FILE"
-  if docker exec -e PGPASSWORD="$DB_PASS" "$DB_CONTAINER" \
-       pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc > "$DUMP_FILE"; then
-    echo "    Dump tamam ($(du -h "$DUMP_FILE" | cut -f1))"
+DUMP_FILE="(atlandi)"
+if [[ "$RUN_DB_DUMP" == "1" ]]; then
+  DUMP_FILE="/root/pre-deploy-${STAMP}.dump"
+  if docker ps --format '{{.Names}}' | grep -qx "$DB_CONTAINER"; then
+    DB_PASS=""
+    if [[ -f "$DB_PASS_FILE" ]]; then
+      DB_PASS="$(tr -d '\r\n' < "$DB_PASS_FILE")"
+    fi
+    echo "    Postgres dump -> $DUMP_FILE"
+    if docker exec -e PGPASSWORD="$DB_PASS" "$DB_CONTAINER" \
+         pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc > "$DUMP_FILE"; then
+      echo "    Dump tamam ($(du -h "$DUMP_FILE" | cut -f1))"
+    else
+      echo "    HATA: Postgres dump alinamadi. Deploy durduruldu."
+      rm -f "$DUMP_FILE"
+      exit 1
+    fi
   else
-    echo "    HATA: Postgres dump alinamadi. Deploy durduruldu."
-    echo "    (Sifreyi kontrol edin: $DB_PASS_FILE)"
-    rm -f "$DUMP_FILE"
+    echo "    HATA: '$DB_CONTAINER' konteyneri calismiyor. Deploy durduruldu."
     exit 1
   fi
 else
-  echo "    HATA: '$DB_CONTAINER' konteyneri calismiyor. Deploy durduruldu."
-  exit 1
+  echo "    Postgres dump atlandi (hiz icin; RUN_DB_DUMP=1 ile acilir)"
 fi
 
-# ---- 2) Git: cek + sert sifirla --------------------------------------------
+# ---- 2) Bagimliliklar ------------------------------------------------------
 echo ""
-echo "==> [2/7] Git guncelleniyor ($BRANCH)"
-echo "    UYARI: Sunucudaki elle yapilan degisiklikler (git-disi yamalar)"
-echo "           git surumu ile DEGISTIRILECEK."
-
-# Sunucudaki lokal degisiklikleri once bir stash'e alalim (geri donus icin arsiv)
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  git stash push -u -m "pre-deploy-$STAMP" || true
-  echo "    Yerel degisiklikler stash'e alindi (git stash list ile gorebilirsiniz)"
-fi
-
-git fetch origin --prune
-git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
-git reset --hard "origin/$BRANCH"
-echo "    HEAD: $(git rev-parse --short HEAD) — $(git log -1 --format='%s' | cut -c1-70)"
-
-# ---- 3) Bagimliliklar ------------------------------------------------------
-echo ""
-echo "==> [3/7] Bagimliliklar kuruluyor"
+echo "==> [2/6] Bagimliliklar"
 NEED_NPM_CI=0
 if [[ "$FORCE_NPM_CI" == "1" ]]; then
   NEED_NPM_CI=1
@@ -121,52 +132,73 @@ if [[ "$NEED_NPM_CI" == "1" ]]; then
   echo "    npm ci (package-lock degisti veya node_modules yok)"
   rm -rf node_modules
   if [[ -f package-lock.json ]]; then
-    npm ci
+    npm ci --no-audit --no-fund
     sha256sum package-lock.json | awk '{print $1}' > "$LOCK_HASH_FILE"
   else
-    echo "    package-lock.json yok, npm install kullaniliyor"
-    npm install
+    npm install --no-audit --no-fund
   fi
 else
-  echo "    package-lock ayni — npm ci atlandi (hizli yol)"
-  # Guvenli tamamlayici: eksik paket varsa tamamla
-  npm install --prefer-offline --no-audit --no-fund 2>/dev/null || true
+  echo "    package-lock ayni — npm ci atlandi"
 fi
 
 EXPECTED_NEXT="$(node -e "console.log(require('./package.json').dependencies.next)" 2>/dev/null || true)"
 INSTALLED_NEXT="$(node -e "console.log(require('next/package.json').version)" 2>/dev/null || echo 'YOK')"
-echo "    package.json next: ${EXPECTED_NEXT:-?}"
-echo "    kurulu next     : $INSTALLED_NEXT"
+echo "    package.json next: ${EXPECTED_NEXT:-?} | kurulu: $INSTALLED_NEXT"
 if [[ -n "${EXPECTED_NEXT:-}" && "$INSTALLED_NEXT" != "$EXPECTED_NEXT" ]]; then
-  echo "    HATA: Next surumu eslesmiyor (beklenen $EXPECTED_NEXT, kurulu $INSTALLED_NEXT)."
-  echo "    package-lock.json / npm ci sonucunu kontrol edin."
+  echo "    HATA: Next surumu eslesmiyor."
   exit 1
 fi
 
-# ---- 4) Prisma generate + migrate ------------------------------------------
+# ---- 3) Prisma -------------------------------------------------------------
 echo ""
-echo "==> [4/7] Prisma generate + migrate deploy"
-npx prisma generate
+echo "==> [3/6] Prisma"
+SCHEMA_HASH="$(sha256sum prisma/schema.prisma | awk '{print $1}')"
+OLD_SCHEMA_HASH=""
+if [[ -f "$PRISMA_HASH_FILE" ]]; then
+  OLD_SCHEMA_HASH="$(tr -d ' \r\n' < "$PRISMA_HASH_FILE" || true)"
+fi
+
+if [[ "$SCHEMA_HASH" != "$OLD_SCHEMA_HASH" || ! -d node_modules/.prisma ]]; then
+  echo "    prisma generate"
+  npx prisma generate
+  echo "$SCHEMA_HASH" > "$PRISMA_HASH_FILE"
+else
+  echo "    prisma generate atlandi (schema degismedi)"
+fi
+
 npx prisma migrate deploy
-npx tsx scripts/seed-agency-message-scheduled-templates.ts || echo "    UYARI: zamanlanmış mesaj şablon seed atlandı"
+
+if [[ "$RUN_MESSAGE_SEED" == "1" ]]; then
+  npx tsx scripts/seed-agency-message-scheduled-templates.ts || echo "    UYARI: mesaj seed atlandi"
+else
+  echo "    mesaj seed atlandi (RUN_MESSAGE_SEED=1 ile acilir)"
+fi
+
 if [[ "$RUN_CRM_MIGRATE" == "1" ]]; then
-  npx tsx scripts/migrate-customer-crm.ts || echo "    UYARI: CRM müşteri migrasyonu atlandı"
+  npx tsx scripts/migrate-customer-crm.ts || echo "    UYARI: CRM migrasyonu atlandi"
 else
   echo "    CRM migrasyonu atlandi (RUN_CRM_MIGRATE=1 ile acilir)"
 fi
 
-# ---- 5) Build (canli .next dokunulmaz) --------------------------------------
+# ---- 4) Build (canli .next dokunulmaz, cache korunur) ----------------------
 echo ""
-echo "==> [5/7] Next build -> $STAGING_DIR (PM2 acik kalir)"
+echo "==> [4/6] Next build -> $STAGING_DIR (PM2 acik, cache korunur)"
 rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+# Onceki build cache'ini tasi — incremental derlemeyi ciddi hizlandirir
+if [[ -d .next/cache ]]; then
+  mkdir -p "$STAGING_DIR/cache"
+  cp -a .next/cache/. "$STAGING_DIR/cache/" 2>/dev/null || true
+  echo "    .next/cache staging'e kopyalandi"
+fi
+
 NEXT_DIST_DIR="$STAGING_DIR" npm run build
 if [[ ! -f "$STAGING_DIR/BUILD_ID" ]]; then
-  echo "    HATA: $STAGING_DIR/BUILD_ID olusmadi, build basarisiz. Canli .next bozulmadi."
+  echo "    HATA: $STAGING_DIR/BUILD_ID olusmadi. Canli .next bozulmadi."
   exit 1
 fi
 echo "    BUILD_ID=$(cat "$STAGING_DIR/BUILD_ID")"
 
-# Atomik swap — kisa kesinti yalnizca burada
 echo "    .next swap + PM2 restart"
 rm -rf .next-prev
 if [[ -d .next ]]; then
@@ -174,71 +206,65 @@ if [[ -d .next ]]; then
 fi
 mv "$STAGING_DIR" .next
 
-# ---- 6) PM2 restart --------------------------------------------------------
+# ---- 5) PM2 + saglik -------------------------------------------------------
 echo ""
-echo "==> [6/7] PM2 yeniden baslatiliyor ($PM2_NAME)"
+echo "==> [5/6] PM2 yeniden baslatiliyor ($PM2_NAME)"
 if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
   pm2 restart "$PM2_NAME" --update-env
 else
-  echo "    UYARI: '$PM2_NAME' PM2 process bulunamadi, yeni baslatiliyor"
   pm2 start npm --name "$PM2_NAME" -- start
 fi
 pm2 save
-
-# Eski build'i temizle (basarili restart sonrasi)
 rm -rf .next-prev
 
-# ---- 7) Saglik kontrolu ----------------------------------------------------
 echo ""
-echo "==> [7/8] Saglik kontrolu ($HEALTH_URL)"
-sleep 3
+echo "==> Saglik kontrolu ($HEALTH_URL)"
+sleep 2
 HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
 if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "302" || "$HTTP_CODE" == "307" ]]; then
   echo "    OK — HTTP $HTTP_CODE"
 else
-  echo "    UYARI: Beklenmeyen HTTP $HTTP_CODE. Loglari kontrol edin:"
+  echo "    UYARI: Beklenmeyen HTTP $HTTP_CODE"
   echo "           pm2 logs $PM2_NAME --lines 50"
 fi
 
-echo ""
-echo "==> [7b/8] Meta katalog feed"
 if [[ "$RUN_META_FEED_WARM" == "1" ]]; then
-  if npx tsx scripts/warm-meta-catalog-feed.ts; then
-    for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do
-      FEED_STATS="$(curl -s -o /dev/null -w '%{http_code} %{time_total}s' -m 180 -H "Host: ${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" || echo '000 0s')"
-      echo "    ${FEED_HOST} -> ${FEED_STATS}"
-    done
-  else
-    echo "    UYARI: Meta feed warm atlandi"
-  fi
+  echo "==> Meta feed warm (senkron)"
+  npx tsx scripts/warm-meta-catalog-feed.ts || echo "    UYARI: meta feed warm atlandi"
 else
-  echo "    Atlandi (RUN_META_FEED_WARM=1 ile acilir) — arka planda tetikleniyor"
   (npx tsx scripts/warm-meta-catalog-feed.ts >/var/log/tatil-villa-meta-feed-warm.log 2>&1 || true) &
   disown || true
+  echo "    Meta feed arka planda (RUN_META_FEED_WARM=1 = senkron)"
 fi
 
-# ---- 8) Cron (blog AI dahil) ------------------------------------------------
+# ---- 6) Cron (yalnizca degisse) --------------------------------------------
 echo ""
-echo "==> [8/8] Cron guncelleniyor (blog-generate dahil)"
-if [[ -f scripts/deploy/04-setup-cron.sh ]]; then
-  bash scripts/deploy/04-setup-cron.sh
+echo "==> [6/6] Cron"
+CRON_SCRIPT="scripts/deploy/04-setup-cron.sh"
+NEED_CRON=0
+if [[ "$RUN_CRON_SETUP" == "1" ]]; then
+  NEED_CRON=1
+elif [[ -f "$CRON_SCRIPT" ]]; then
+  NEW_CRON_HASH="$(sha256sum "$CRON_SCRIPT" | awk '{print $1}')"
+  OLD_CRON_HASH=""
+  if [[ -f "$CRON_HASH_FILE" ]]; then
+    OLD_CRON_HASH="$(tr -d ' \r\n' < "$CRON_HASH_FILE" || true)"
+  fi
+  if [[ "$NEW_CRON_HASH" != "$OLD_CRON_HASH" ]]; then
+    NEED_CRON=1
+  fi
+fi
+
+if [[ "$NEED_CRON" == "1" && -f "$CRON_SCRIPT" ]]; then
+  bash "$CRON_SCRIPT"
+  sha256sum "$CRON_SCRIPT" | awk '{print $1}' > "$CRON_HASH_FILE"
 else
-  echo "    UYARI: scripts/deploy/04-setup-cron.sh bulunamadi"
+  echo "    Cron setup atlandi (degisiklik yok)"
 fi
 
 echo ""
 echo "=========================================================="
 echo "  DEPLOY TAMAMLANDI — $STAMP"
-echo "  Yedekler:"
-echo "    - .env.bak.$STAMP"
-echo "    - $DUMP_FILE"
-echo "  Geri alma gerekirse dump'i geri yukleyin ve onceki commit'e"
-echo "  git reset --hard <eski_hash> yapip yeniden build alin."
-echo ""
-echo "  Hatirlatma: public/uploads Git'te yoktur."
-echo "  Logo/villa 404 ise PC'den sync-uploads.ps1 calistirin"
-echo "  (bkz. scripts/deploy/sync-uploads.md)."
-if [[ ! -d "$APP_DIR/public/uploads/company" ]]; then
-  echo "  UYARI: public/uploads/company YOK — gorseller icin sync gerekli."
-fi
+echo "  Yedek: .env.bak.$STAMP | dump: $DUMP_FILE"
+echo "  Not: public/uploads Git'te yoktur."
 echo "=========================================================="

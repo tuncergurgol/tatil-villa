@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Check, Pencil, Star, Trash2, X } from "lucide-react";
 import {
   approveGuestReviewAction,
   rejectGuestReviewAction,
@@ -33,124 +34,497 @@ type ReviewRow = {
   villa: { id: string; name: string; villaId: number | null } | null;
 };
 
-function sourceLabel(source: string) {
-  if (source === "guest_invite") return "Misafir daveti";
-  return "Manuel";
+type StatusFilter = "pending" | "approved" | "rejected";
+
+function isPending(review: ReviewRow) {
+  return !review.approved && !review.rejectedReason?.trim();
 }
 
-export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+function isRejected(review: ReviewRow) {
+  return !review.approved && Boolean(review.rejectedReason?.trim());
+}
 
-  const pendingReviews = useMemo(
-    () =>
-      reviews.filter(
-        (review) =>
-          !review.approved &&
-          review.source === "guest_invite" &&
-          !review.rejectedReason?.trim()
-      ),
-    [reviews]
-  );
-  const publishedReviews = useMemo(
-    () => reviews.filter((review) => !pendingReviews.some((p) => p.id === review.id)),
-    [reviews, pendingReviews]
-  );
+function isApproved(review: ReviewRow) {
+  return review.approved;
+}
 
-  function handleApprove(id: string) {
-    startTransition(async () => {
-      await approveGuestReviewAction(id);
-      router.refresh();
-    });
-  }
+function VillaNameMultiSelect({
+  options,
+  selectedIds,
+  onChange,
+}: {
+  options: { id: string; name: string }[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-  function handleReject(id: string) {
-    const reason = window.prompt(
-      "Red nedeni (isteğe bağlı — müşteriyle iletişim için not):"
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("tr-TR");
+    const sorted = [...options].sort((a, b) =>
+      a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
     );
-    if (reason === null) return;
-    startTransition(async () => {
-      await rejectGuestReviewAction(id, reason);
-      router.refresh();
-    });
+    if (!query) return sorted;
+    return sorted.filter((option) =>
+      option.name.toLocaleLowerCase("tr-TR").includes(query)
+    );
+  }, [options, search]);
+
+  function toggle(id: string, checked: boolean) {
+    if (checked) onChange([...selectedIds, id]);
+    else onChange(selectedIds.filter((item) => item !== id));
   }
 
   return (
-    <div className="space-y-6">
-      {pendingReviews.length > 0 ? (
-        <section className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-          <div>
-            <h2 className="text-sm font-semibold text-amber-900">
-              Onay Bekleyen Yorumlar ({pendingReviews.length})
-            </h2>
-            <p className="mt-1 text-xs text-amber-800">
-              Misafir daveti ile gelen yorumlar yayına alınmadan önce incelenir.
-            </p>
-          </div>
-
-          {pendingReviews.map((review) => (
-            <article
-              key={review.id}
-              className="space-y-3 rounded-xl border border-amber-200 bg-white p-4"
+    <details
+      className="group relative min-w-[220px] max-w-md flex-1"
+      open={open}
+      onToggle={(event) => {
+        setOpen((event.currentTarget as HTMLDetailsElement).open);
+      }}
+    >
+      <summary className="flex h-10 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition hover:border-teal-300">
+        <span
+          className={
+            selectedIds.length > 0
+              ? "truncate font-semibold text-teal-700"
+              : "text-gray-500"
+          }
+        >
+          {selectedIds.length > 0
+            ? `${selectedIds.length} villa seçili`
+            : "Villa adı seçin..."}
+        </span>
+        <span className="text-xs text-gray-400 group-open:rotate-180">▼</span>
+      </summary>
+      <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+        <div className="border-b border-gray-100 p-2">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Villa ara..."
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs outline-none focus:border-teal-400"
+          />
+        </div>
+        <div className="max-h-64 overflow-y-auto p-2">
+          {filtered.length > 0 ? (
+            filtered.map((option) => {
+              const checked = selectedIds.includes(option.id);
+              return (
+                <label
+                  key={option.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-teal-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) =>
+                      toggle(option.id, event.target.checked)
+                    }
+                    className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                  />
+                  <span className="truncate text-gray-800">{option.name}</span>
+                </label>
+              );
+            })
+          ) : (
+            <p className="px-2 py-3 text-sm text-gray-500">Villa bulunamadı.</p>
+          )}
+        </div>
+        {selectedIds.length > 0 ? (
+          <div className="border-t border-gray-100 px-2 py-2">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="text-xs font-medium text-teal-700 hover:text-teal-800"
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-gray-900">{review.guestName}</p>
-                  <p className="text-xs text-gray-500">
-                    {review.villa?.name ?? "Villa belirtilmemiş"} ·{" "}
-                    {review.rating}/5 · {sourceLabel(review.source)}
-                  </p>
-                  {review.submittedAt ? (
-                    <p className="text-xs text-gray-400">
-                      {new Date(review.submittedAt).toLocaleString("tr-TR")}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex gap-2">
+              Seçimi temizle
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+function ReviewEditModal({
+  review,
+  onClose,
+  onSaved,
+}: {
+  review: ReviewRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-gray-900">
+            Yorumu Düzenle
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Kapat"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form
+          action={(fd) =>
+            startTransition(async () => {
+              await saveGuestReviewAction(review.id, fd);
+              onSaved();
+            })
+          }
+          className="space-y-5"
+        >
+          <CmsFormSection title="Temel Bilgiler">
+            <div className="grid gap-4 md:grid-cols-3">
+              <CmsField label="Misafir Adı">
+                <input
+                  name="guestName"
+                  defaultValue={review.guestName}
+                  required
+                  className={cmsInputClass}
+                />
+              </CmsField>
+              <CmsField label="Şehir">
+                <input
+                  name="guestCity"
+                  defaultValue={review.guestCity}
+                  className={cmsInputClass}
+                />
+              </CmsField>
+              <CmsField label="Puan">
+                <input
+                  name="rating"
+                  type="number"
+                  min={1}
+                  max={5}
+                  defaultValue={review.rating}
+                  className={cmsInputClass}
+                />
+              </CmsField>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <CmsField label="Başlık">
+                <input
+                  name="title"
+                  defaultValue={review.title}
+                  className={cmsInputClass}
+                />
+              </CmsField>
+              <CmsField label="Konaklama Zamanı">
+                <input
+                  name="stayMonth"
+                  defaultValue={review.stayMonth}
+                  className={cmsInputClass}
+                />
+              </CmsField>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="approved"
+                  defaultChecked={review.approved}
+                  className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                />
+                Onaylı
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="featured"
+                  defaultChecked={review.featured}
+                  className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                />
+                Öne çıkan
+              </label>
+            </div>
+          </CmsFormSection>
+
+          <CmsFormSection title="İçerik">
+            <CmsField label="Yorum">
+              <textarea
+                name="comment"
+                defaultValue={review.comment}
+                required
+                rows={4}
+                className={cmsInputClass}
+              />
+            </CmsField>
+          </CmsFormSection>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-2">
+              {!review.approved && !isRejected(review) ? (
+                <>
                   <button
                     type="button"
                     disabled={isPending}
-                    onClick={() => handleApprove(review.id)}
-                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    onClick={() =>
+                      startTransition(async () => {
+                        await approveGuestReviewAction(review.id);
+                        onSaved();
+                      })
+                    }
+                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
                     Onayla
                   </button>
                   <button
                     type="button"
                     disabled={isPending}
-                    onClick={() => handleReject(review.id)}
-                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    onClick={() => {
+                      const reason = window.prompt(
+                        "Red nedeni (isteğe bağlı):"
+                      );
+                      if (reason === null) return;
+                      startTransition(async () => {
+                        await rejectGuestReviewAction(review.id, reason);
+                        onSaved();
+                      });
+                    }}
+                    className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                   >
                     Reddet
                   </button>
-                </div>
-              </div>
-              {review.title ? (
-                <p className="text-sm font-medium text-gray-800">{review.title}</p>
+                </>
               ) : null}
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{review.comment}</p>
-              {review.rating <= 3 ? (
-                <p className="text-xs font-medium text-amber-700">
-                  Düşük puan — müşteriyle iletişim kurulması önerilir; Google
-                  yönlendirmesi yapılmaz.
-                </p>
-              ) : null}
-            </article>
-          ))}
-        </section>
-      ) : null}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+              >
+                Kaydet
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const [selectedVillaIds, setSelectedVillaIds] = useState<string[]>([]);
+  const [editing, setEditing] = useState<ReviewRow | null>(null);
+
+  const villaOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const review of reviews) {
+      if (review.villa?.id) {
+        map.set(review.villa.id, review.villa.name);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  }, [reviews]);
+
+  const counts = useMemo(() => {
+    return {
+      pending: reviews.filter(isPending).length,
+      approved: reviews.filter(isApproved).length,
+      rejected: reviews.filter(isRejected).length,
+    };
+  }, [reviews]);
+
+  const filteredReviews = useMemo(() => {
+    return reviews.filter((review) => {
+      if (statusFilter === "pending" && !isPending(review)) return false;
+      if (statusFilter === "approved" && !isApproved(review)) return false;
+      if (statusFilter === "rejected" && !isRejected(review)) return false;
+      if (
+        selectedVillaIds.length > 0 &&
+        (!review.villa?.id || !selectedVillaIds.includes(review.villa.id))
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [reviews, statusFilter, selectedVillaIds]);
+
+  const statusButtons: {
+    key: StatusFilter;
+    label: string;
+    count: number;
+  }[] = [
+    {
+      key: "pending",
+      label: "Onay Bekleyen Yorumlar",
+      count: counts.pending,
+    },
+    { key: "approved", label: "Onaylı Yorumlar", count: counts.approved },
+    { key: "rejected", label: "Ret Edilen Yorumlar", count: counts.rejected },
+  ];
+
+  function refresh() {
+    router.refresh();
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-2">
+        {statusButtons.map((button) => {
+          const active = statusFilter === button.key;
+          return (
+            <button
+              key={button.key}
+              type="button"
+              onClick={() => setStatusFilter(button.key)}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                active
+                  ? "bg-teal-600 text-white shadow-sm"
+                  : "border border-gray-200 bg-white text-gray-700 hover:border-teal-300 hover:bg-teal-50"
+              }`}
+            >
+              {button.label}
+              <span
+                className={`ml-2 rounded-full px-1.5 py-0.5 text-xs ${
+                  active ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {button.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-gray-600">Villa Adı</span>
+        <VillaNameMultiSelect
+          options={villaOptions}
+          selectedIds={selectedVillaIds}
+          onChange={setSelectedVillaIds}
+        />
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Villa Adı</th>
+                <th className="px-4 py-3">Müşteri Adı</th>
+                <th className="px-4 py-3">Konaklama Zamanı</th>
+                <th className="px-4 py-3">Puan</th>
+                <th className="px-4 py-3">Onaylı</th>
+                <th className="px-4 py-3">Öne Çıkan</th>
+                <th className="px-4 py-3 text-right">İşlem</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredReviews.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-4 py-10 text-center text-sm text-gray-500"
+                  >
+                    Bu filtrede yorum yok.
+                  </td>
+                </tr>
+              ) : (
+                filteredReviews.map((review) => (
+                  <tr key={review.id} className="hover:bg-gray-50/80">
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {review.villa?.name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-800">{review.guestName}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {review.stayMonth || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
+                        <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                        {review.rating}/5
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {review.approved ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700">
+                          <Check className="h-4 w-4" />
+                          Evet
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Hayır</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {review.featured ? (
+                        <span className="font-medium text-teal-700">Evet</span>
+                      ) : (
+                        <span className="text-gray-400">Hayır</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(review)}
+                          className="rounded-lg p-2 text-teal-700 hover:bg-teal-50"
+                          title="Değiştir"
+                          aria-label="Değiştir"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() =>
+                            startTransition(async () => {
+                              if (!confirm("Bu yorum silinsin mi?")) return;
+                              await deleteGuestReviewAction(review.id);
+                              refresh();
+                            })
+                          }
+                          className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          title="Sil"
+                          aria-label="Sil"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <form
         action={(fd) =>
           startTransition(async () => {
             await saveGuestReviewAction(null, fd);
-            router.refresh();
+            refresh();
           })
         }
-        className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5"
+        className="space-y-5 rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-5"
       >
         <h2 className="text-sm font-semibold text-gray-800">Yeni Yorum (Manuel)</h2>
-
         <CmsFormSection title="Temel Bilgiler">
           <div className="grid gap-4 md:grid-cols-3">
             <CmsField label="Misafir Adı">
@@ -183,7 +557,7 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
             <CmsField label="Başlık">
               <input name="title" placeholder="Başlık" className={cmsInputClass} />
             </CmsField>
-            <CmsField label="Konaklama Ayı">
+            <CmsField label="Konaklama Zamanı">
               <input
                 name="stayMonth"
                 placeholder="örn. Temmuz 2025"
@@ -211,7 +585,6 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
             </label>
           </div>
         </CmsFormSection>
-
         <CmsFormSection title="İçerik">
           <CmsField label="Yorum">
             <textarea
@@ -223,7 +596,6 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
             />
           </CmsField>
         </CmsFormSection>
-
         <div className="flex justify-end">
           <button
             type="submit"
@@ -235,129 +607,16 @@ export default function ReviewManagement({ reviews }: { reviews: ReviewRow[] }) 
         </div>
       </form>
 
-      {publishedReviews.map((review) => (
-        <div
-          key={review.id}
-          className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-            <span>{sourceLabel(review.source)}</span>
-            {review.villa ? <span>{review.villa.name}</span> : null}
-            {!review.approved && review.rejectedReason ? (
-              <span className="text-red-600">Red: {review.rejectedReason}</span>
-            ) : null}
-          </div>
-          <form
-            action={(fd) =>
-              startTransition(async () => {
-                await saveGuestReviewAction(review.id, fd);
-                router.refresh();
-              })
-            }
-            className="space-y-5"
-          >
-            <CmsFormSection title="Temel Bilgiler">
-              <div className="grid gap-4 md:grid-cols-3">
-                <CmsField label="Misafir Adı">
-                  <input
-                    name="guestName"
-                    defaultValue={review.guestName}
-                    required
-                    className={cmsInputClass}
-                  />
-                </CmsField>
-                <CmsField label="Şehir">
-                  <input
-                    name="guestCity"
-                    defaultValue={review.guestCity}
-                    className={cmsInputClass}
-                  />
-                </CmsField>
-                <CmsField label="Puan">
-                  <input
-                    name="rating"
-                    type="number"
-                    min={1}
-                    max={5}
-                    defaultValue={review.rating}
-                    className={cmsInputClass}
-                  />
-                </CmsField>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <CmsField label="Başlık">
-                  <input
-                    name="title"
-                    defaultValue={review.title}
-                    className={cmsInputClass}
-                  />
-                </CmsField>
-                <CmsField label="Konaklama Ayı">
-                  <input
-                    name="stayMonth"
-                    defaultValue={review.stayMonth}
-                    className={cmsInputClass}
-                  />
-                </CmsField>
-              </div>
-              <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    name="approved"
-                    defaultChecked={review.approved}
-                    className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                  />
-                  Onaylı
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    name="featured"
-                    defaultChecked={review.featured}
-                    className="h-4 w-4 rounded border-gray-300 text-teal-600"
-                  />
-                  Öne çıkan
-                </label>
-              </div>
-            </CmsFormSection>
-
-            <CmsFormSection title="İçerik">
-              <CmsField label="Yorum">
-                <textarea
-                  name="comment"
-                  defaultValue={review.comment}
-                  required
-                  rows={3}
-                  className={cmsInputClass}
-                />
-              </CmsField>
-            </CmsFormSection>
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                className="text-sm font-semibold text-teal-600"
-              >
-                Güncelle
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  startTransition(async () => {
-                    if (!confirm("Silinsin mi?")) return;
-                    await deleteGuestReviewAction(review.id);
-                    router.refresh();
-                  })
-                }
-                className="text-sm text-red-600"
-              >
-                Sil
-              </button>
-            </div>
-          </form>
-        </div>
-      ))}
+      {editing ? (
+        <ReviewEditModal
+          review={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
