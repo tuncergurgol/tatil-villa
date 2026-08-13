@@ -43,14 +43,15 @@ import {
   renderAgencyMessageTemplate,
   resolveCompanyLogoUrl,
 } from "@/lib/agency-message-render";
-import { AGENCY_MESSAGE_TEMPLATE_ROW_10_5 } from "@/lib/agency-message-row-no";
+import { AGENCY_MESSAGE_TEMPLATE_ROW_10_5, AGENCY_MESSAGE_TEMPLATE_ROW_20_5 } from "@/lib/agency-message-row-no";
 import {
   RESERVATION_DOCUMENT_SENT_MAIL_BODY,
   RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY,
 } from "@/lib/agency-message-templates/reservation-document-sent";
 import type { Attachment } from "nodemailer/lib/mailer";
 
-const RESERVATION_DOCUMENT_BCC = "info@tatildeyiz.com.tr";
+/** Yönetim kopyası (20.5) — BCC yerine ayrı şablon maili */
+const RESERVATION_DOCUMENT_MANAGEMENT_EMAIL = "info@tatildeyiz.com.tr";
 const RESERVATION_DOCUMENT_FROM_EMAIL = "rezervasyon@tatildeyiz.com.tr";
 
 function guestFullName(guest: BookingGuestEntry): string {
@@ -291,7 +292,7 @@ export async function buildReservationDocumentDataForBooking(
       address: company.address || "",
       phone: company.phone || "",
       whatsapp: company.whatsapp || company.phone || "",
-      email: company.email || RESERVATION_DOCUMENT_BCC,
+      email: company.email || RESERVATION_DOCUMENT_MANAGEMENT_EMAIL,
       logoUrl: siteBrand.logoUrl || company.logoUrl || undefined,
       taxOffice: company.taxOffice || undefined,
       taxNumber: company.taxNumber || undefined,
@@ -324,7 +325,7 @@ export function buildReservationDocumentTemplateValues(
 ): Record<string, string> {
   const siteName = (data.company.brandName || "").trim();
   const firmPhone = (data.company.phone || "").trim();
-  const firmEmail = (data.company.email || RESERVATION_DOCUMENT_BCC).trim();
+  const firmEmail = (data.company.email || RESERVATION_DOCUMENT_MANAGEMENT_EMAIL).trim();
   const firmAddress = (data.company.address || "").trim();
   const checkInTime = normalizeVillaTimeHHMM(data.stay.checkInTime || "16:00");
   const checkOutTime = normalizeVillaTimeHHMM(
@@ -418,7 +419,10 @@ function resolveDocumentFromName(data: ReservationDocumentData): string {
   );
 }
 
-export type ReservationDocumentChannel = "email" | "whatsapp";
+export type ReservationDocumentChannel =
+  | "email"
+  | "whatsapp"
+  | "management_email";
 
 export type ReservationDocumentChannelResult = {
   channel: ReservationDocumentChannel;
@@ -427,8 +431,8 @@ export type ReservationDocumentChannelResult = {
 };
 
 /**
- * PDF üretip misafire e-posta + BCC info@ gönderir.
- * Hataları fırlatır (çağıran loglar, success UI'yi bozmaz).
+ * PDF üretip misafire 10.5 e-posta gönderir (PDF ek).
+ * Yönetim kopyası sendReservationDocumentNotifications içinde 20.5 ile gider.
  */
 export async function sendReservationDocumentEmail(
   bookingId: string,
@@ -470,7 +474,6 @@ export async function sendReservationDocumentEmail(
 
   await sendCompanyMail(company, {
     to: email,
-    bcc: RESERVATION_DOCUMENT_BCC,
     fromEmail: RESERVATION_DOCUMENT_FROM_EMAIL,
     fromName: resolveDocumentFromName(data),
     subject: `${data.reservationCode} nolu rezervasyon belgeniz`,
@@ -486,8 +489,10 @@ export async function sendReservationDocumentEmail(
 }
 
 /**
- * Misafir onayından sonra konfirme belgesi: e-posta (PDF) + Bildirim WhatsApp (WAHA).
- * Aynı mail müşteri + info@tatildeyiz.com.tr (BCC).
+ * Misafir onayından sonra konfirme belgesi:
+ * - 10.5 → misafir e-posta (PDF)
+ * - 20.5 → yönetim e-posta info@ (aynı gövde + PDF)
+ * - 10.5 → misafir WhatsApp (metin)
  * Kanal hatalarını fırlatmaz; sonuçları döner (UI success bozulmaz).
  */
 export async function sendReservationDocumentNotifications(
@@ -517,6 +522,11 @@ export async function sendReservationDocumentNotifications(
       results: [
         { channel: "email", ok: false, error: msg },
         {
+          channel: "management_email",
+          ok: false,
+          error: `PDF üretilemedi; yönetim maili atlandı (${msg})`,
+        },
+        {
           channel: "whatsapp",
           ok: false,
           error: `PDF üretilemedi; WA atlandı (${msg})`,
@@ -531,20 +541,48 @@ export async function sendReservationDocumentNotifications(
       pdfBytes: 0,
       results: [
         { channel: "email", ok: false, error: "PDF buffer boş üretildi" },
+        {
+          channel: "management_email",
+          ok: false,
+          error: "PDF üretilemedi; yönetim maili atlandı",
+        },
         { channel: "whatsapp", ok: false, error: "PDF üretilemedi; WA atlandı" },
       ],
     };
   }
 
-  const [company, template] = await Promise.all([
+  const [company, guestTemplate, managementTemplate] = await Promise.all([
     getCompanySettings(),
     getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_5),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_20_5),
   ]);
   const email = data.guest.email.trim();
   const phoneRaw = data.guest.phone.trim() || "";
   const values = buildReservationDocumentTemplateValues(data);
+  const emailLogo = await prepareCompanyLogoForEmail(
+    data.company.logoUrl,
+    data.company.domain
+  );
+  const pdfAttachment: Attachment = {
+    filename: `rezervasyon-belgesi-${data.reservationCode}.pdf`,
+    content: pdfBuffer,
+    contentType: "application/pdf",
+  };
+  const mailAttachments: Attachment[] = [
+    ...(emailLogo.attachments ?? []),
+    pdfAttachment,
+  ];
+  const guestMailText = renderAgencyMessageTemplate(
+    pickDocumentChannelBody(guestTemplate, "email"),
+    values
+  );
+  // 20.5 yoksa 10.5 gövdesiyle aynı fallback
+  const managementMailText = renderAgencyMessageTemplate(
+    pickDocumentChannelBody(managementTemplate ?? guestTemplate, "email"),
+    values
+  );
 
-  // --- E-posta (PDF ek + BCC info@) ---
+  // --- 10.5 Misafir e-posta (PDF) ---
   if (!email || isImportedPlaceholderEmail(email)) {
     results.push({
       channel: "email",
@@ -553,32 +591,16 @@ export async function sendReservationDocumentNotifications(
     });
   } else {
     try {
-      const emailLogo = await prepareCompanyLogoForEmail(
-        data.company.logoUrl,
-        data.company.domain
-      );
-      const text = renderAgencyMessageTemplate(
-        pickDocumentChannelBody(template, "email"),
-        values
-      );
-      const attachments: Attachment[] = [
-        ...(emailLogo.attachments ?? []),
-        {
-          filename: `rezervasyon-belgesi-${data.reservationCode}.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
-      ];
-
       await sendCompanyMail(company, {
         to: email,
-        bcc: RESERVATION_DOCUMENT_BCC,
         fromEmail: RESERVATION_DOCUMENT_FROM_EMAIL,
         fromName: resolveDocumentFromName(data),
+        // BCC yok — yönetim ayrı 20.5 alır (çift kopya önlenir)
+        bcc: "",
         subject: `${data.reservationCode} nolu rezervasyon belgeniz`,
-        text,
-        html: toHtmlFromText(text, { logoUrl: emailLogo.src }),
-        attachments,
+        text: guestMailText,
+        html: toHtmlFromText(guestMailText, { logoUrl: emailLogo.src }),
+        attachments: mailAttachments,
       });
       results.push({ channel: "email", ok: true });
     } catch (error) {
@@ -588,6 +610,29 @@ export async function sendReservationDocumentNotifications(
         error: error instanceof Error ? error.message : "E-posta gönderilemedi",
       });
     }
+  }
+
+  // --- 20.5 Yönetim e-posta (aynı gövde + PDF) → info@ ---
+  try {
+    await sendCompanyMail(company, {
+      to: RESERVATION_DOCUMENT_MANAGEMENT_EMAIL,
+      fromEmail: RESERVATION_DOCUMENT_FROM_EMAIL,
+      fromName: resolveDocumentFromName(data),
+      subject: `${data.reservationCode} nolu rezervasyon belgesi (yönetim)`,
+      text: managementMailText,
+      html: toHtmlFromText(managementMailText, { logoUrl: emailLogo.src }),
+      attachments: mailAttachments,
+    });
+    results.push({ channel: "management_email", ok: true });
+  } catch (error) {
+    results.push({
+      channel: "management_email",
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Yönetim e-postası gönderilemedi",
+    });
   }
 
   // --- WhatsApp (WAHA, düz metin) — booking-confirmation-send ile aynı kanal ---
@@ -601,7 +646,7 @@ export async function sendReservationDocumentNotifications(
     const whatsappMessage = ensureWhatsAppRawConfirmationUrl(
       appendBookingSiteFooter(
         renderAgencyMessageTemplate(
-          pickDocumentChannelBody(template, "whatsapp"),
+          pickDocumentChannelBody(guestTemplate, "whatsapp"),
           values
         ),
         data.company.brandName

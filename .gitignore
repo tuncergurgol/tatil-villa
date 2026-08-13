@@ -70,7 +70,14 @@ next-env.d.ts
 /tmp-villa-list/
 
 # broken local symlink created by a font-lookup step (pdfkit)
-/assets/
+/assets/*
+!/assets/fonts/
+!/assets/fonts/**
+# Arial yeniden dağıtılamaz; PDF için DejaVu kullanılır
+/assets/fonts/Arial.ttf
+/assets/fonts/Arial-Bold.ttf
+/assets/fonts/arial.ttf
+/assets/fonts/arialbd.ttf
 
 # generated Meta catalog feed cache (runtime)
 /data/meta-catalog-feed/

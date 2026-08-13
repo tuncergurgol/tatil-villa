@@ -21,13 +21,20 @@ import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
 import {
   syncCustomerFromBookingGuest,
 } from "@/lib/customer-crm";
-import { notifyBookingConfirmedByGuest } from "@/lib/booking-confirmed-notify";
 import { sendReservationDocumentNotifications } from "@/lib/reservation-document-mail";
 import { getRequestClientIp } from "@/lib/request-client-ip";
 import {
   getPrepaymentShareChannelLabel,
   type PrepaymentShareChannel,
 } from "@/lib/booking-prepayment-share";
+
+function reservationDocumentChannelLabel(channel: string): string {
+  if (channel === "management_email") return "Yönetim e-posta";
+  if (channel === "email" || channel === "whatsapp" || channel === "sms") {
+    return getPrepaymentShareChannelLabel(channel as PrepaymentShareChannel);
+  }
+  return channel;
+}
 
 const guestSchema = z.object({
   name: z.string().trim().min(2, "Ad gerekli"),
@@ -324,20 +331,10 @@ export async function confirmBookingGuestInfoAction(
     });
   }
 
-  try {
-    await notifyBookingConfirmedByGuest(booking.id);
-  } catch (error) {
-    console.error(
-      "[confirmBookingGuestInfo] yönetim bildirimi gönderilemedi",
-      {
-        bookingId: booking.id,
-        rezId: booking.rezId,
-        error: error instanceof Error ? error.message : error,
-      }
-    );
-  }
+  // Mesaj 202 yönetim bildirimi pasif — yönetim kopyası 20.5 ile
+  // sendReservationDocumentNotifications içinde gönderilir.
 
-  // Konfirme belgesi (PDF mail + Evolution WA) hata verse bile onay success
+  // Konfirme belgesi: 10.5 misafir + 20.5 yönetim + WA (hata verse bile onay success)
   try {
     const delivery = await sendReservationDocumentNotifications(booking.id, {
       confirmedAt: new Date(),
@@ -346,14 +343,12 @@ export async function confirmBookingGuestInfoAction(
 
     const okChannels = delivery.results
       .filter((r) => r.ok)
-      .map((r) =>
-        getPrepaymentShareChannelLabel(r.channel as PrepaymentShareChannel)
-      );
+      .map((r) => reservationDocumentChannelLabel(r.channel));
     const failParts = delivery.results
       .filter((r) => !r.ok)
       .map(
         (r) =>
-          `${getPrepaymentShareChannelLabel(r.channel as PrepaymentShareChannel)}: ${r.error ?? "hata"}`
+          `${reservationDocumentChannelLabel(r.channel)}: ${r.error ?? "hata"}`
       );
 
     let message: string;
@@ -373,11 +368,18 @@ export async function confirmBookingGuestInfoAction(
         rezId: booking.rezId,
         reservationCode: delivery.reservationCode,
         emailOk: delivery.results.find((r) => r.channel === "email")?.ok ?? false,
+        managementEmailOk:
+          delivery.results.find((r) => r.channel === "management_email")?.ok ??
+          false,
         whatsappOk:
           delivery.results.find((r) => r.channel === "whatsapp")?.ok ?? false,
         emailError:
           delivery.results.find((r) => r.channel === "email" && !r.ok)?.error ??
           null,
+        managementEmailError:
+          delivery.results.find(
+            (r) => r.channel === "management_email" && !r.ok
+          )?.error ?? null,
         whatsappError:
           delivery.results.find((r) => r.channel === "whatsapp" && !r.ok)
             ?.error ?? null,

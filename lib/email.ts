@@ -75,9 +75,11 @@ export async function sendCompanyMail(
     settings.smtpFromEmail.trim() ||
     settings.smtpUser.trim();
   const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+  // bcc verilmişse (boş string dahil) otomatik rezervasyon BCC uygulanmaz
   const bcc =
-    message.bcc?.trim() ||
-    resolveReservationBcc(fromEmail, message.to);
+    message.bcc !== undefined
+      ? message.bcc.trim() || undefined
+      : resolveReservationBcc(fromEmail, message.to);
 
   return transport.sendMail({
     from,

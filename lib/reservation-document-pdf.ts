@@ -1,11 +1,44 @@
 import PDFDocument from "pdfkit";
+import { existsSync } from "fs";
 import { access, readFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import { formatMoneyPlain } from "@/lib/booking-display";
 
-const FONT_REGULAR = path.join(process.cwd(), "assets", "fonts", "Arial.ttf");
-const FONT_BOLD = path.join(process.cwd(), "assets", "fonts", "Arial-Bold.ttf");
+/**
+ * Türkçe glyph destekli font çifti.
+ * Önce assets/fonts (DejaVu veya Arial), yoksa sistem DejaVu / Windows Arial.
+ */
+function resolvePdfFontPair(): { regular: string; bold: string } {
+  const cwd = process.cwd();
+  const candidates: Array<{ regular: string; bold: string }> = [
+    {
+      regular: path.join(cwd, "assets", "fonts", "DejaVuSans.ttf"),
+      bold: path.join(cwd, "assets", "fonts", "DejaVuSans-Bold.ttf"),
+    },
+    {
+      regular: path.join(cwd, "assets", "fonts", "Arial.ttf"),
+      bold: path.join(cwd, "assets", "fonts", "Arial-Bold.ttf"),
+    },
+    {
+      regular: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      bold: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    },
+    {
+      regular: "C:\\Windows\\Fonts\\arial.ttf",
+      bold: "C:\\Windows\\Fonts\\arialbd.ttf",
+    },
+  ];
+  for (const pair of candidates) {
+    if (existsSync(pair.regular) && existsSync(pair.bold)) {
+      return pair;
+    }
+  }
+  throw new Error(
+    "PDF yazı tipi bulunamadı (assets/fonts/DejaVuSans*.ttf veya sistem DejaVu/Arial)"
+  );
+}
+
 const DEFAULT_LOGO_PATH = path.join(
   process.cwd(),
   "public",
@@ -374,6 +407,14 @@ export async function buildReservationDocumentPdf(
   const logoBuffer = await loadLogoPngBuffer(data.company.logoUrl);
 
   return new Promise((resolve, reject) => {
+    let fonts: { regular: string; bold: string };
+    try {
+      fonts = resolvePdfFontPair();
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+
     let doc: PDFKit.PDFDocument;
     try {
       // Varsayılan Helvetica AFM’ye dokunma: Next webpack bundle’da
@@ -381,7 +422,7 @@ export async function buildReservationDocumentPdf(
       doc = new PDFDocument({
         size: "A4",
         margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-        font: FONT_REGULAR,
+        font: fonts.regular,
         info: {
           Title: `Rezervasyon Belgesi ${data.reservationCode}`,
           Author: data.company.companyTitle || data.company.brandName,
@@ -391,7 +432,7 @@ export async function buildReservationDocumentPdf(
       reject(
         error instanceof Error
           ? error
-          : new Error("PDF belgesi başlatılamadı (Arial font / pdfkit)")
+          : new Error("PDF belgesi başlatılamadı (font / pdfkit)")
       );
       return;
     }
@@ -402,8 +443,8 @@ export async function buildReservationDocumentPdf(
     doc.on("error", reject);
 
     try {
-      doc.registerFont("Regular", FONT_REGULAR);
-      doc.registerFont("Bold", FONT_BOLD);
+      doc.registerFont("Regular", fonts.regular);
+      doc.registerFont("Bold", fonts.bold);
       doc.font("Regular");
 
       // —— Üst başlık: logo + ajans solda, tarih sağda ——
@@ -737,7 +778,7 @@ export async function buildReservationDocumentPdf(
         error instanceof Error
           ? error
           : new Error(
-              "PDF yazı tipi / belge üretimi başarısız (assets/fonts/Arial*.ttf)"
+              "PDF yazı tipi / belge üretimi başarısız (DejaVu/Arial font)"
             )
       );
     }

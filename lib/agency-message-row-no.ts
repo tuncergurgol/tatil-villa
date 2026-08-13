@@ -37,6 +37,8 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_10_4 = 104;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = AGENCY_MESSAGE_TEMPLATE_ROW_10_4;
 /** Rezervasyon belgesi gönderildi (UI: 10.5) — misafir onayından sonra PDF mail */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_10_5 = 105;
+/** Rezervasyon belgesi — yönetim kopyası (UI: 20.5, rowNo: 205); 10.5 ile aynı mail gövdesi */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_20_5 = 205;
 /** Giriş bilgilendirme / müşteri bilgilendirme (UI: 11.1, rowNo: 111) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_11_1 = 111;
 /** Çıkıştan 1 gün önce misafir hatırlatma (UI: 11.3, rowNo: 113) */
