@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Send, X } from "lucide-react";
+import { CalendarClock, Loader2, Send, X } from "lucide-react";
 import { sendBookingPrepaymentInfoAction } from "@/app/actions/admin/booking-prepayment-share";
+import { sendOptionRequestMessageAction } from "@/app/actions/admin/booking-option-request-message";
 import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import {
@@ -23,8 +24,9 @@ interface PrepaymentShareModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: (payload: {
-    optionExpiresAt: Date;
+    optionExpiresAt?: Date;
     activityLogs: BookingActivityLogEntry[];
+    kind: "prepayment_share" | "option_request";
   }) => void;
   bookingId: string;
   prepaymentAmount: number | null;
@@ -56,6 +58,7 @@ export default function PrepaymentShareModal({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isOptionPending, startOptionTransition] = useTransition();
 
   const paymentChannelLabel = paymentMethod
     ? getCompanyPaymentTypeLabel(paymentMethod)
@@ -107,9 +110,30 @@ export default function PrepaymentShareModal({
       onSuccess?.({
         optionExpiresAt: new Date(Date.now() + optionHours * 60 * 60 * 1000),
         activityLogs: result.activityLogs,
+        kind: "prepayment_share",
       });
     });
   }
+
+  function handleOptionRequest() {
+    setError(null);
+    setSuccessMessage(null);
+
+    startOptionTransition(async () => {
+      const result = await sendOptionRequestMessageAction({ bookingId });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setSuccessMessage(result.message);
+      onSuccess?.({
+        activityLogs: result.activityLogs,
+        kind: "option_request",
+      });
+    });
+  }
+
+  const busy = isPending || isOptionPending;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
@@ -212,27 +236,43 @@ export default function PrepaymentShareModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 px-5 py-4">
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            onClick={handleOptionRequest}
+            disabled={busy}
+            title="Mesaj İçeriği 30.2 — takvim yönetene (Takvim WhatsApp)"
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
           >
-            Kapat
-          </button>
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
-          >
-            {isPending ? (
+            {isOptionPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <CalendarClock className="h-4 w-4" />
             )}
-            Ön Ödeme Bilgisi Gönder
+            Opsiyon İste
           </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Kapat
+            </button>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Ön Ödeme Bilgisi Gönder
+            </button>
+          </div>
         </div>
       </div>
     </div>

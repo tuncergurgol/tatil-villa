@@ -49,6 +49,8 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_11_4 = 114;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_40_1 = 401;
 /** Takvim kapat bilgisi — takvim yönetene (UI: 30.3, rowNo: 303) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_30_3 = 303;
+/** Opsiyon iste — takvim yönetene (UI: 30.2, rowNo: 302) */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_30_2 = 302;
 /** Havuz ısıtma — karşılayan (UI: 40.2, rowNo: 402) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_40_2 = 402;
 /** Çıkıştan 1 gün önce karşılayan (UI: 40.3, rowNo: 403) */

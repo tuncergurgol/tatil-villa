@@ -17,7 +17,8 @@ export type BookingActivityAction =
   | "owner_payment_deleted"
   | "invoice_saved"
   | "check_in_info_shared"
-  | "calendar_close_message_sent";
+  | "calendar_close_message_sent"
+  | "option_request_message_sent";
 
 export type BookingActivityLogEntry = {
   id: string;
@@ -46,6 +47,7 @@ const ACTION_LABELS: Record<BookingActivityAction, string> = {
   invoice_saved: "Fatura bilgileri kaydedildi",
   check_in_info_shared: "Giriş bilgilendirme gönderildi",
   calendar_close_message_sent: "Takvim kapatma mesajı gönderildi",
+  option_request_message_sent: "Opsiyon iste mesajı gönderildi",
 };
 
 export function getBookingActivityActionLabel(

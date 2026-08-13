@@ -2101,9 +2101,11 @@ export default function BookingDetailModal({
         <PrepaymentShareModal
           open={prepaymentShareOpen}
           onClose={() => setPrepaymentShareOpen(false)}
-          onSuccess={({ optionExpiresAt: expiresAt, activityLogs }) => {
-            setStatus(BookingStatusEnum.PREPAYMENT);
-            setOptionExpiresAt(expiresAt);
+          onSuccess={({ optionExpiresAt: expiresAt, activityLogs, kind }) => {
+            if (kind === "prepayment_share") {
+              setStatus(BookingStatusEnum.PREPAYMENT);
+              if (expiresAt) setOptionExpiresAt(expiresAt);
+            }
             syncActivityLogs(activityLogs);
             onSaved();
           }}
