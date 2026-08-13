@@ -9,6 +9,11 @@ import {
   getPublishedCmsPage,
 } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import {
+  applyContractBrandDomain,
+  RESERVATION_CONTRACT_SLUG,
+} from "@/lib/reservation-document-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -40,14 +45,16 @@ export default async function CorporatePage({ params }: Props) {
     redirect("/sizi-arayalim");
   }
 
-  const [page, menuItems] = await Promise.all([
+  const [page, menuItems, company] = await Promise.all([
     getPublishedCmsPage(slug),
     getCorporateMenuPages(),
+    getCompanySettings(),
   ]);
   if (!page) notFound();
 
+  const site = await getPublicSiteProfile(company);
+
   if (slug === "iletisim") {
-    const company = await getCompanySettings();
     return (
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
         <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
@@ -75,10 +82,14 @@ export default async function CorporatePage({ params }: Props) {
     );
   }
 
-  const contentHtml =
+  let contentHtml =
     slug === "banka-bilgilerimiz"
       ? injectCmsCopyButtons(page.content)
       : page.content;
+
+  if (slug === RESERVATION_CONTRACT_SLUG) {
+    contentHtml = applyContractBrandDomain(contentHtml, site.domain);
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">

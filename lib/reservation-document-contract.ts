@@ -62,6 +62,33 @@ export type ReservationContractPlaceholders = {
   brandDomain?: string;
 };
 
+/** CMS / fallback metnindeki kanonik domain (şablon kaynağı). */
+export const CONTRACT_SOURCE_DOMAIN = "www.tatildeyiz.com.tr";
+
+export function normalizeContractBrandDomain(
+  brandDomain?: string | null
+): string {
+  const cleaned = (brandDomain ?? "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
+  return cleaned || CONTRACT_SOURCE_DOMAIN;
+}
+
+/**
+ * Sözleşmedeki sabit tatildeyiz domainlerini bulunduğu sitenin domaini ile değiştirir.
+ * Yeni siteler (balayivillacisi, tatilvillacisi, …) host profilinden otomatik uyarlanır.
+ */
+export function applyContractBrandDomain(
+  content: string,
+  brandDomain?: string | null
+): string {
+  const domain = normalizeContractBrandDomain(brandDomain);
+  return content
+    .replace(/##DOMAIN##/gi, domain)
+    .replace(/www\.tatildeyiz\.com\.tr/gi, domain);
+}
+
 function stripHtmlToPlainText(html: string): string {
   return html
     .replace(/\r\n/g, "\n")
@@ -85,11 +112,9 @@ export function applyReservationContractPlaceholders(
   body: string,
   placeholders: ReservationContractPlaceholders
 ): string {
-  const domain =
-    placeholders.brandDomain?.replace(/^https?:\/\//i, "").replace(/\/$/, "") ||
-    "www.tatildeyiz.com.tr";
+  const withDomain = applyContractBrandDomain(body, placeholders.brandDomain);
 
-  return body
+  return withDomain
     .replace(/##MUSTERIADI##/gi, placeholders.guestName)
     .replace(/##MÜŞTERİADI##/gi, placeholders.guestName)
     .replace(/##TCNO##/gi, placeholders.identityMasked)
@@ -99,7 +124,6 @@ export function applyReservationContractPlaceholders(
     .replace(/##REZKOD##/gi, placeholders.reservationCode)
     .replace(/##REZNO##/gi, placeholders.reservationCode)
     .replace(/##TARIHLER##/gi, placeholders.dateRangeLabel)
-    .replace(/##DOMAIN##/gi, domain)
     .replace(/"TC Kimlik \/ Pasaport Numarası"/g, `"${placeholders.identityMasked}"`)
     .replace(/"Adres"/g, `"${placeholders.address}"`)
     .replace(

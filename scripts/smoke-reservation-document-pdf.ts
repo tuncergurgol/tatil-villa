@@ -32,6 +32,7 @@ async function main() {
       villaName: "Bungalov Masal",
       dateRangeLabel: "24 Haziran 2026 - 27 Haziran 2026",
       reservationCode: "116004",
+      brandDomain: "www.tatilvillacisi.com",
     }
   );
   assert(
@@ -39,6 +40,11 @@ async function main() {
       personalized.includes("Bungalov Masal") &&
       personalized.includes("116004"),
     "sözleşme placeholder değişimi"
+  );
+  assert(
+    personalized.includes("www.tatilvillacisi.com") &&
+      !personalized.includes("www.tatildeyiz.com.tr"),
+    "sözleşme site domain değişimi"
   );
 
   const data = buildSampleReservationDocumentData();
