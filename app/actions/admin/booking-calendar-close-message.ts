@@ -91,6 +91,7 @@ export async function sendCalendarCloseMessageAction(
         checkIn: true,
         checkOut: true,
         details: true,
+        confirmationSentAt: true,
         villa: {
           select: {
             name: true,
@@ -110,6 +111,17 @@ export async function sendCalendarCloseMessageAction(
     return { success: false, error: "Rezervasyon bulunamadı" };
   }
 
+  const details = parseBookingDetails(booking.details);
+  const hasConfirmationSend =
+    Boolean(booking.confirmationSentAt) ||
+    (details.confirmationSends?.length ?? 0) > 0;
+  if (!hasConfirmationSend) {
+    return {
+      success: false,
+      error: "Takvim kapatma mesajı için önce konfirme gönderilmelidir",
+    };
+  }
+
   if (!template) {
     return {
       success: false,
@@ -126,7 +138,6 @@ export async function sendCalendarCloseMessageAction(
     };
   }
 
-  const details = parseBookingDetails(booking.details);
   const siteBrand = resolveBookingSiteBrand({
     siteInfo: details.siteInfo,
     originDomain: details.originDomain,

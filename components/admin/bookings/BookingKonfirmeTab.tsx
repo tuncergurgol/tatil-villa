@@ -330,16 +330,11 @@ export default function BookingKonfirmeTab({
               </button>
               <button
                 type="button"
-                onClick={handleSendCalendarCloseMessage}
-                disabled={isCalendarClosePending}
-                title="Mesaj İçeriği 30.3 — takvim yönetene"
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled
+                title="Takvim kapatma mesajı, Konfirme Gönder’den sonra aktif olur"
+                className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white opacity-60"
               >
-                {isCalendarClosePending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CalendarOff className="h-4 w-4" />
-                )}
+                <CalendarOff className="h-4 w-4" />
                 Takvim Kapatma Mesajı
               </button>
             </div>
