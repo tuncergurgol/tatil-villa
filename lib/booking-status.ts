@@ -31,7 +31,7 @@ export const BOOKING_STATUS_META: Record<
   },
   [BookingStatus.COMPENSATION]: {
     label: "Tazminat",
-    className: "bg-orange-100 text-orange-800",
+    className: "bg-orange-600 text-white",
   },
   [BookingStatus.CANCELLED]: {
     label: "İptal",

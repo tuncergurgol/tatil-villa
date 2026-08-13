@@ -86,6 +86,8 @@ export type BookingDetails = {
   ownerPaidAmount?: number | null;
   /** Villa sahibine yapılan ödemeler (Ödemeler sekmesi) */
   ownerPayments?: BookingOwnerPaymentRecord[];
+  /** Misafire yapılan iade ödemeleri (Ödemeler sekmesi) */
+  guestRefundPayments?: BookingOwnerPaymentRecord[];
   salesRepName?: string;
   salesRepUserId?: string;
   salesRepCommissionRate?: number | null;
@@ -168,6 +170,9 @@ export function normalizeOwnerPayments(
   }
   return rows.sort((a, b) => a.paidAt.localeCompare(b.paidAt));
 }
+
+/** Misafir iade ödeme kayıtları — villa sahibi ödemeleriyle aynı şekil. */
+export const normalizeGuestRefundPayments = normalizeOwnerPayments;
 
 export { STAY_STATUS_OPTIONS } from "@/lib/stay-status";
 
@@ -307,6 +312,9 @@ export function parseBookingDetails(value: unknown): BookingDetails {
     ...parsed,
     confirmationSends: normalizeConfirmationSends(parsed.confirmationSends),
     ownerPayments: normalizeOwnerPayments(parsed.ownerPayments),
+    guestRefundPayments: normalizeGuestRefundPayments(
+      parsed.guestRefundPayments
+    ),
     activityLogs: normalizeActivityLogs(parsed.activityLogs),
   };
 }
@@ -770,6 +778,9 @@ export function defaultDetailsFromBooking(booking: {
     ownerPaymentDate: parsed.ownerPaymentDate ?? "",
     ownerPaidAmount: parsed.ownerPaidAmount ?? null,
     ownerPayments: normalizeOwnerPayments(parsed.ownerPayments),
+    guestRefundPayments: normalizeGuestRefundPayments(
+      parsed.guestRefundPayments
+    ),
     salesRepName: parsed.salesRepName ?? "",
     salesRepUserId: parsed.salesRepUserId ?? "",
     salesRepCommissionRate: parsed.salesRepCommissionRate ?? 0,

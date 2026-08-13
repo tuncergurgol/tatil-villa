@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import type { AdminBookingListItem } from "@/lib/booking-display";
 import {
   normalizeBookingSiteInfo,
+  normalizeGuestRefundPayments,
   normalizeOwnerPayments,
   parseBookingDetails,
   resolveBookingCommissionAmount,
@@ -15,8 +16,10 @@ import {
 } from "@/lib/owner-payment-schedule";
 import {
   OWNER_PAYMENT_EXCEL_HEADERS,
+  buildGuestRefundPaymentExcelRow,
   buildOwnerPaymentExcelRow,
   buildOwnerPaymentExportFilename,
+  checkGuestRefundPaymentMissingFields,
   checkOwnerPaymentMissingFields,
   normalizeOwnerIban,
   resolveOwnerPaymentRecipientName,
@@ -34,13 +37,16 @@ export type OwnerPaymentIncompleteRow = {
 };
 
 export type OwnerPaymentReportListItem = AdminBookingListItem & {
+  /** Aynı rezervasyonda villa sahibi + misafir iade satırı olabilir. */
+  reportRowId: string;
+  paymentKind: "owner" | "guest_refund";
   ownerName: string;
   recipientName: string;
   bankIban: string;
   ownerPayableAmount: number;
   paidAmount: number;
   remainingAmount: number;
-  /** yyyy-mm-dd — formdaki «Villa Sahibine Ödeme Yapılacak Tarih» */
+  /** yyyy-mm-dd — formdaki «Villa Sahibine Ödeme Yapılacak Tarih» / misafir iade tarihi */
   ownerPaymentDueDate: string;
   ownerPayments: ReturnType<typeof normalizeOwnerPayments>;
   missing: string[];
@@ -189,7 +195,7 @@ function resolveOwnerPayableForBooking(
   return computeOwnerPayableAmount(prepaymentAmount, commissionAmount);
 }
 
-function mapBookingToListItem(
+function mapBookingToOwnerListItem(
   booking: OwnerPaymentBookingRecord,
   brandFallback: { brandName: string; domain: string; logoUrl: string }
 ): OwnerPaymentReportListItem {
@@ -215,9 +221,6 @@ function mapBookingToListItem(
     }) ||
     (details.ownerPaymentDueDate ?? "").trim() ||
     "";
-  const ownerPaymentDueAt = ownerPaymentDueDate
-    ? new Date(`${ownerPaymentDueDate}T12:00:00`)
-    : null;
   const exportInput = toExportInput(booking, remainingAmount);
   const rawMissing = checkOwnerPaymentMissingFields(exportInput);
   const missing =
@@ -238,6 +241,8 @@ function mapBookingToListItem(
 
   return {
     id: booking.id,
+    reportRowId: `${booking.id}:owner`,
+    paymentKind: "owner",
     externalCode: booking.externalCode,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
@@ -273,11 +278,112 @@ function mapBookingToListItem(
     remainingAmount,
     ownerPayments,
     ownerPaymentDueDate,
-    ownerPaymentDueAt,
     missing,
     paymentStatus: resolveOwnerPaymentStatus(remainingAmount, rawMissing),
     exportable: remainingAmount > 0 && rawMissing.length === 0,
   };
+}
+
+function mapBookingToGuestRefundListItem(
+  booking: OwnerPaymentBookingRecord,
+  brandFallback: { brandName: string; domain: string; logoUrl: string }
+): OwnerPaymentReportListItem | null {
+  const details = parseBookingDetails(booking.details);
+  const refundAmount = Math.max(
+    0,
+    Math.round(Number(details.guestRefundAmount) || 0)
+  );
+  if (refundAmount <= 0) return null;
+
+  const guestRefundPayments = normalizeGuestRefundPayments(
+    details.guestRefundPayments
+  );
+  const paidAmount = guestRefundPayments.reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
+  const remainingAmount = Math.max(0, refundAmount - paidAmount);
+  const prepaymentAmount =
+    details.prepaymentAmount != null && Number.isFinite(details.prepaymentAmount)
+      ? Math.round(details.prepaymentAmount)
+      : null;
+  const ownerPaymentDueDate = (details.guestRefundPaymentDate ?? "").trim();
+  const rawMissing = checkGuestRefundPaymentMissingFields({
+    guestName: booking.guestName,
+    payableAmount: remainingAmount,
+    villaName: booking.villa.name,
+  });
+  const missing =
+    remainingAmount > 0
+      ? rawMissing
+      : rawMissing.filter((field) => field !== "Ödenecek tutar");
+  const paymentMethod =
+    details.importPaymentMethod?.trim() ||
+    details.prepaymentBank?.trim() ||
+    details.paymentMethod?.trim() ||
+    null;
+  const siteInfo = normalizeBookingSiteInfo(details.siteInfo);
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo,
+    originDomain: details.originDomain,
+    company: brandFallback,
+  });
+
+  return {
+    id: booking.id,
+    reportRowId: `${booking.id}:guest-refund`,
+    paymentKind: "guest_refund",
+    externalCode: booking.externalCode,
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    adults: booking.adults,
+    children: booking.children,
+    babies: booking.babies,
+    pets: booking.pets,
+    guestName: booking.guestName,
+    guestEmail: booking.guestEmail,
+    guestPhone: booking.guestPhone,
+    totalPrice: booking.totalPrice,
+    status: booking.status,
+    createdAt: booking.createdAt,
+    confirmedAt: null,
+    optionExpiresAt: booking.optionExpiresAt,
+    prepaymentAmount,
+    paymentMethod,
+    siteInfo,
+    siteDomain: siteBrand.domain,
+    villa: {
+      id: booking.villa.id,
+      villaId: booking.villa.villaId,
+      slug: booking.villa.slug,
+      name: booking.villa.name,
+      originalName: booking.villa.originalName,
+      documentNo: booking.villa.documentNo,
+    },
+    ownerName: booking.guestName,
+    recipientName: booking.guestName || "—",
+    bankIban: "",
+    ownerPayableAmount: refundAmount,
+    paidAmount,
+    remainingAmount,
+    ownerPayments: guestRefundPayments,
+    ownerPaymentDueDate,
+    missing,
+    paymentStatus: resolveOwnerPaymentStatus(remainingAmount, rawMissing),
+    exportable: remainingAmount > 0 && rawMissing.length === 0,
+  };
+}
+
+function mapBookingToReportRows(
+  booking: OwnerPaymentBookingRecord,
+  brandFallback: { brandName: string; domain: string; logoUrl: string }
+): OwnerPaymentReportListItem[] {
+  const rows: OwnerPaymentReportListItem[] = [];
+  const ownerRow = mapBookingToOwnerListItem(booking, brandFallback);
+  if (ownerRow.ownerPayableAmount > 0) rows.push(ownerRow);
+  const guestRow = mapBookingToGuestRefundListItem(booking, brandFallback);
+  if (guestRow) rows.push(guestRow);
+  return rows;
 }
 
 export async function getOwnerPaymentReportListData() {
@@ -300,12 +406,14 @@ export async function getOwnerPaymentReportListData() {
     logoUrl: companySettings.logoUrl,
   };
 
-  const items = bookings
-    .map((booking) => mapBookingToListItem(booking, brandFallback))
-    .filter((item) => item.ownerPayableAmount > 0);
+  const items = bookings.flatMap((booking) =>
+    mapBookingToReportRows(booking, brandFallback)
+  );
 
-  const missingIbanCount = items.filter((item) =>
-    item.missing.some((field) => field.toLowerCase().includes("iban"))
+  const missingIbanCount = items.filter(
+    (item) =>
+      item.paymentKind === "owner" &&
+      item.missing.some((field) => field.toLowerCase().includes("iban"))
   ).length;
 
   const warnings =
@@ -329,9 +437,16 @@ export async function generateOwnerPaymentReportExport(bookingIds: string[]) {
     };
   }
 
+  // reportRowId (`bookingId:owner` / `bookingId:guest-refund`) veya düz bookingId
+  const requestedRowIds = new Set(uniqueIds);
+  const bookingIdSet = new Set(
+    uniqueIds.map((id) => id.split(":")[0] ?? id).filter(Boolean)
+  );
+  const legacyPlainIds = uniqueIds.every((id) => !id.includes(":"));
+
   const bookings = await prisma.booking.findMany({
     where: {
-      id: { in: uniqueIds },
+      id: { in: [...bookingIdSet] },
       status: { in: ["CONFIRMED", "COMPENSATION"] },
     },
     select: ownerPaymentBookingSelect,
@@ -340,22 +455,40 @@ export async function generateOwnerPaymentReportExport(bookingIds: string[]) {
 
   const rows: (string | number)[][] = [[...OWNER_PAYMENT_EXCEL_HEADERS]];
   let incompleteCount = 0;
+  const brandFallback = { brandName: "", domain: "", logoUrl: "" };
 
   for (const booking of bookings) {
-    const details = parseBookingDetails(booking.details);
-    const ownerPayableAmount = resolveOwnerPayableForBooking(booking, details);
-    const paidAmount = normalizeOwnerPayments(details.ownerPayments).reduce(
-      (sum, row) => sum + row.amount,
-      0
+    const reportRows = mapBookingToReportRows(booking, brandFallback).filter(
+      (item) =>
+        legacyPlainIds ||
+        requestedRowIds.has(item.reportRowId) ||
+        requestedRowIds.has(item.id)
     );
-    const remainingAmount = Math.max(0, ownerPayableAmount - paidAmount);
-    const exportInput = toExportInput(booking, remainingAmount);
-    const missing = checkOwnerPaymentMissingFields(exportInput);
-    if (missing.length > 0) {
-      incompleteCount += 1;
-      continue;
+
+    for (const item of reportRows) {
+      if (item.remainingAmount <= 0) continue;
+      if (!item.exportable) {
+        incompleteCount += 1;
+        continue;
+      }
+      if (item.paymentKind === "guest_refund") {
+        rows.push(
+          buildGuestRefundPaymentExcelRow({
+            guestName: booking.guestName,
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+            payableAmount: item.remainingAmount,
+            villaName: booking.villa.name,
+          })
+        );
+      } else {
+        rows.push(
+          buildOwnerPaymentExcelRow(
+            toExportInput(booking, item.remainingAmount)
+          )
+        );
+      }
     }
-    rows.push(buildOwnerPaymentExcelRow(exportInput));
   }
 
   return {
@@ -377,7 +510,22 @@ function resolveOwnerPaymentRemaining(booking: OwnerPaymentBookingRecord) {
   return { remainingAmount };
 }
 
-/** Onaylı + tazminat (villa sahibi ödemesi > 0) — giriş tarihi = dateKey. */
+function resolveGuestRefundRemaining(booking: OwnerPaymentBookingRecord) {
+  const details = parseBookingDetails(booking.details);
+  const refundAmount = Math.max(
+    0,
+    Math.round(Number(details.guestRefundAmount) || 0)
+  );
+  const paidAmount = normalizeGuestRefundPayments(
+    details.guestRefundPayments
+  ).reduce((sum, row) => sum + row.amount, 0);
+  return {
+    refundAmount,
+    remainingAmount: Math.max(0, refundAmount - paidAmount),
+  };
+}
+
+/** Onaylı + tazminat (villa sahibi / misafir iade ödemesi) — giriş tarihi = dateKey. */
 export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) {
   const bookings = await prisma.booking.findMany({
     where: {
@@ -391,37 +539,93 @@ export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) 
   const rows: (string | number)[][] = [[...OWNER_PAYMENT_EXCEL_HEADERS]];
   const incomplete: OwnerPaymentIncompleteRow[] = [];
   let paidCount = 0;
+  let matchedCount = 0;
 
   for (const booking of bookings) {
-    const { remainingAmount } = resolveOwnerPaymentRemaining(booking);
-    const exportInput = toExportInput(booking, remainingAmount);
+    const ownerRemaining = resolveOwnerPaymentRemaining(booking);
+    const guestRemaining = resolveGuestRefundRemaining(booking);
+    const hasOwnerPayable = ownerRemaining.remainingAmount > 0;
+    const hasGuestRefund =
+      guestRemaining.refundAmount > 0 && guestRemaining.remainingAmount > 0;
+    const hasOwnerFullyPaid =
+      resolveOwnerPayableForBooking(
+        booking,
+        parseBookingDetails(booking.details)
+      ) > 0 && ownerRemaining.remainingAmount <= 0;
+    const hasGuestFullyPaid =
+      guestRemaining.refundAmount > 0 && guestRemaining.remainingAmount <= 0;
 
-    if (remainingAmount <= 0) {
+    if (
+      !hasOwnerPayable &&
+      !hasGuestRefund &&
+      !hasOwnerFullyPaid &&
+      !hasGuestFullyPaid
+    ) {
+      // Ödenecek tutarı olmayan rezervasyonlar matchedCount'a alınmaz
+      continue;
+    }
+
+    matchedCount += 1;
+
+    if (hasOwnerFullyPaid || hasGuestFullyPaid) {
       paidCount += 1;
-      continue;
     }
 
-    const missing = checkOwnerPaymentMissingFields(exportInput);
-    if (missing.length > 0) {
-      incomplete.push({
-        bookingId: booking.id,
-        externalCode:
-          resolveExternalCode(booking.externalCode, booking.guestEmail) ||
-          booking.id,
+    if (hasOwnerPayable) {
+      const exportInput = toExportInput(
+        booking,
+        ownerRemaining.remainingAmount
+      );
+      const missing = checkOwnerPaymentMissingFields(exportInput);
+      if (missing.length > 0) {
+        incomplete.push({
+          bookingId: booking.id,
+          externalCode:
+            resolveExternalCode(booking.externalCode, booking.guestEmail) ||
+            booking.id,
+          guestName: booking.guestName,
+          villaName: booking.villa.name,
+          missing,
+        });
+      } else {
+        rows.push(buildOwnerPaymentExcelRow(exportInput));
+      }
+    }
+
+    if (hasGuestRefund) {
+      const missing = checkGuestRefundPaymentMissingFields({
         guestName: booking.guestName,
+        payableAmount: guestRemaining.remainingAmount,
         villaName: booking.villa.name,
-        missing,
       });
-      continue;
+      if (missing.length > 0) {
+        incomplete.push({
+          bookingId: `${booking.id}:guest-refund`,
+          externalCode:
+            resolveExternalCode(booking.externalCode, booking.guestEmail) ||
+            booking.id,
+          guestName: `${booking.guestName} (Misafir İade)`,
+          villaName: booking.villa.name,
+          missing,
+        });
+      } else {
+        rows.push(
+          buildGuestRefundPaymentExcelRow({
+            guestName: booking.guestName,
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+            payableAmount: guestRemaining.remainingAmount,
+            villaName: booking.villa.name,
+          })
+        );
+      }
     }
-
-    rows.push(buildOwnerPaymentExcelRow(exportInput));
   }
 
   return {
     rows,
     filename: `ev-sahibi-odemeleri-${dateKey}.xlsx`,
-    matchedCount: bookings.length,
+    matchedCount,
     count: rows.length - 1,
     paidCount,
     incompleteCount: incomplete.length,

@@ -544,6 +544,8 @@ export async function updateBookingDetailAction(
       confirmationSends:
         details.confirmationSends ?? existingDetails.confirmationSends,
       ownerPayments: details.ownerPayments ?? existingDetails.ownerPayments,
+      guestRefundPayments:
+        details.guestRefundPayments ?? existingDetails.guestRefundPayments,
       activityLogs: logEntries,
       // Satış temsilcisi yalnızca yönetici tarafından değiştirilebilir
       ...(isAdminUser

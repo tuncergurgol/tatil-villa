@@ -47,6 +47,7 @@ import {
   formatFeeInputValue,
   getNightCount,
   normalizeBookingSiteInfo,
+  normalizeGuestRefundPayments,
   normalizeOwnerPayments,
   resolveExternalCode,
   toDateInputValue,
@@ -83,6 +84,7 @@ import BookingEntryQuotePreviewModal from "@/components/admin/bookings/BookingEn
 import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
 import BookingPrepaymentSection from "@/components/admin/bookings/BookingPrepaymentSection";
 import BookingOwnerPaymentsSection from "@/components/admin/bookings/BookingOwnerPaymentsSection";
+import BookingGuestRefundPaymentsSection from "@/components/admin/bookings/BookingGuestRefundPaymentsSection";
 import OptionCountdown from "@/components/admin/bookings/OptionCountdown";
 import TcKimlikInput from "@/components/shared/TcKimlikInput";
 import TurkishPhoneField, {
@@ -1934,6 +1936,19 @@ export default function BookingDetailModal({
                       value={formatMoneyPlain(details.guestRefundAmount ?? 0)}
                     />
                   </FormRow>
+                  <FormRow label="Misafire İade Kalan Tutar">
+                    <ReadonlyField
+                      value={formatMoneyPlain(
+                        Math.max(
+                          0,
+                          (details.guestRefundAmount ?? 0) -
+                            normalizeGuestRefundPayments(
+                              details.guestRefundPayments
+                            ).reduce((sum, row) => sum + row.amount, 0)
+                        )
+                      )}
+                    />
+                  </FormRow>
                   <FormRow label="Ödeme Tarihi">
                     <ReadonlyField
                       value={
@@ -1947,6 +1962,32 @@ export default function BookingDetailModal({
                       }
                     />
                   </FormRow>
+                  <FormRow label="Yapılan Ödeme">
+                    <ReadonlyField
+                      value={formatMoneyPlain(
+                        normalizeGuestRefundPayments(
+                          details.guestRefundPayments
+                        ).reduce((sum, row) => sum + row.amount, 0)
+                      )}
+                    />
+                  </FormRow>
+
+                  <div className="pt-2">
+                    <BookingGuestRefundPaymentsSection
+                      bookingId={booking.id}
+                      payments={normalizeGuestRefundPayments(
+                        details.guestRefundPayments
+                      )}
+                      refundAmount={details.guestRefundAmount ?? 0}
+                      onChange={(guestRefundPayments, activityLogs) => {
+                        setDetails((current) => ({
+                          ...current,
+                          guestRefundPayments,
+                          activityLogs: normalizeActivityLogs(activityLogs),
+                        }));
+                      }}
+                    />
+                  </div>
                 </FormSection>
               ) : null}
 

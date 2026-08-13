@@ -8,6 +8,7 @@ import BookingFilterModal, {
   type BookingFilters,
 } from "@/components/admin/bookings/BookingFilterModal";
 import BookingOwnerPaymentsSection from "@/components/admin/bookings/BookingOwnerPaymentsSection";
+import BookingGuestRefundPaymentsSection from "@/components/admin/bookings/BookingGuestRefundPaymentsSection";
 import {
   AdminTablePaginationBar,
   type AdminPageSize,
@@ -151,7 +152,7 @@ export default function OwnerPaymentReportPage({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bookingIds: exportableItems.map((item) => item.id),
+          bookingIds: exportableItems.map((item) => item.reportRowId),
         }),
       });
 
@@ -187,7 +188,9 @@ export default function OwnerPaymentReportPage({
     const nextItem = refreshItemPayments(paymentItem, ownerPayments);
     setPaymentItem(nextItem);
     setItems((current) =>
-      current.map((row) => (row.id === nextItem.id ? nextItem : row))
+      current.map((row) =>
+        row.reportRowId === nextItem.reportRowId ? nextItem : row
+      )
     );
   }
 
@@ -203,7 +206,8 @@ export default function OwnerPaymentReportPage({
               Ev Sahibi Ödemeleri
             </h1>
             <p className="text-sm text-gray-500">
-              Toplu havale Excel şablonu (Alıcı / IBAN / Tutar / Açıklama)
+              Toplu havale Excel şablonu (Alıcı / IBAN / Tutar / Açıklama).
+              Tazminat misafir iadeleri de listelenir.
             </p>
             <p className="mt-1 text-xs text-gray-400">
               Her gün 08:55&apos;te Onaylandı + Giriş gününden 1 gün sonra
@@ -287,6 +291,7 @@ export default function OwnerPaymentReportPage({
                 <th className="px-3 py-2">Müşteri</th>
                 <th className="px-3 py-2">Villa</th>
                 <th className="px-3 py-2">Alıcı / Ev Sahibi</th>
+                <th className="px-3 py-2">Tür</th>
                 <th className="px-3 py-2">IBAN</th>
                 <th className="px-3 py-2">Konaklama</th>
                 <th className="px-3 py-2">Ödeme Yapılacak Tarih</th>
@@ -305,7 +310,7 @@ export default function OwnerPaymentReportPage({
 
                   return (
                     <tr
-                      key={item.id}
+                      key={item.reportRowId}
                       className="border-t border-gray-100 hover:bg-gray-50/60"
                     >
                       <td className="px-3 py-2 font-medium text-gray-900">
@@ -319,11 +324,23 @@ export default function OwnerPaymentReportPage({
                       </td>
                       <td className="px-3 py-2 text-gray-700">
                         <div>{item.recipientName}</div>
-                        {item.recipientName !== item.ownerName ? (
+                        {item.paymentKind === "owner" &&
+                        item.recipientName !== item.ownerName ? (
                           <div className="text-xs text-gray-400">
                             {item.ownerName}
                           </div>
                         ) : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        {item.paymentKind === "guest_refund" ? (
+                          <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
+                            Misafir İade
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                            Villa Sahibi
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs text-gray-700">
                         {item.bankIban || "—"}
@@ -384,10 +401,10 @@ export default function OwnerPaymentReportPage({
               ) : (
                 <tr>
                   <td
-                    colSpan={13}
+                    colSpan={14}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
-                    Filtrelere uygun onaylı rezervasyon bulunamadı.
+                    Filtrelere uygun ödeme kaydı bulunamadı.
                   </td>
                 </tr>
               )}
@@ -411,7 +428,9 @@ export default function OwnerPaymentReportPage({
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">
-                  Villa Sahibine Ödeme
+                  {paymentItem.paymentKind === "guest_refund"
+                    ? "Misafire İade Ödemesi"
+                    : "Villa Sahibine Ödeme"}
                 </h2>
                 <p className="text-sm text-gray-500">
                   {formatBookingReservationNo(paymentItem)} ·{" "}
@@ -428,16 +447,29 @@ export default function OwnerPaymentReportPage({
               </button>
             </div>
 
-            <BookingOwnerPaymentsSection
-              key={`${paymentItem.id}-${paymentItem.ownerPayments.length}`}
-              bookingId={paymentItem.id}
-              payments={paymentItem.ownerPayments}
-              ownerPayableAmount={paymentItem.ownerPayableAmount}
-              startWithDraft
-              onChange={(ownerPayments) => {
-                handlePaymentsChanged(ownerPayments);
-              }}
-            />
+            {paymentItem.paymentKind === "guest_refund" ? (
+              <BookingGuestRefundPaymentsSection
+                key={`${paymentItem.reportRowId}-${paymentItem.ownerPayments.length}`}
+                bookingId={paymentItem.id}
+                payments={paymentItem.ownerPayments}
+                refundAmount={paymentItem.ownerPayableAmount}
+                startWithDraft
+                onChange={(guestRefundPayments) => {
+                  handlePaymentsChanged(guestRefundPayments);
+                }}
+              />
+            ) : (
+              <BookingOwnerPaymentsSection
+                key={`${paymentItem.reportRowId}-${paymentItem.ownerPayments.length}`}
+                bookingId={paymentItem.id}
+                payments={paymentItem.ownerPayments}
+                ownerPayableAmount={paymentItem.ownerPayableAmount}
+                startWithDraft
+                onChange={(ownerPayments) => {
+                  handlePaymentsChanged(ownerPayments);
+                }}
+              />
+            )}
 
             <div className="mt-4 flex justify-end">
               <button

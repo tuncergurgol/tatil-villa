@@ -68,6 +68,47 @@ export function buildOwnerPaymentDescription(input: {
   return `${recipient}-${villa}-${guest}-${formatOwnerPaymentDate(input.checkIn)}-${formatOwnerPaymentDate(input.checkOut)}  Kiralama Bedeli`;
 }
 
+export function buildGuestRefundPaymentDescription(input: {
+  guestName: string;
+  villaName: string;
+  checkIn: Date;
+  checkOut: Date;
+}): string {
+  const guest = input.guestName.trim().toLocaleUpperCase("tr-TR");
+  const villa = input.villaName.trim();
+  return `${guest}-${villa}-${formatOwnerPaymentDate(input.checkIn)}-${formatOwnerPaymentDate(input.checkOut)}  Misafir İade`;
+}
+
+export function checkGuestRefundPaymentMissingFields(input: {
+  guestName: string;
+  payableAmount: number;
+  villaName: string;
+}): string[] {
+  const missing: string[] = [];
+  if (!input.guestName.trim()) missing.push("Misafir adı");
+  if (!(input.payableAmount > 0)) missing.push("Ödenecek tutar");
+  if (!input.villaName.trim()) missing.push("Villa adı");
+  return missing;
+}
+
+export function buildGuestRefundPaymentExcelRow(input: {
+  guestName: string;
+  checkIn: Date;
+  checkOut: Date;
+  payableAmount: number;
+  villaName: string;
+}): (string | number)[] {
+  const guest = input.guestName.trim();
+  const amount = Math.round(input.payableAmount);
+  const description = buildGuestRefundPaymentDescription({
+    guestName: guest,
+    villaName: input.villaName,
+    checkIn: input.checkIn,
+    checkOut: input.checkOut,
+  });
+  return [guest, "", amount, description];
+}
+
 export function checkOwnerPaymentMissingFields(
   input: OwnerPaymentExportInput
 ): string[] {

@@ -15,6 +15,9 @@ export type BookingActivityAction =
   | "owner_payment_created"
   | "owner_payment_updated"
   | "owner_payment_deleted"
+  | "guest_refund_payment_created"
+  | "guest_refund_payment_updated"
+  | "guest_refund_payment_deleted"
   | "invoice_saved"
   | "check_in_info_shared"
   | "calendar_close_message_sent"
@@ -45,6 +48,9 @@ const ACTION_LABELS: Record<BookingActivityAction, string> = {
   owner_payment_created: "Villa sahibine ödeme eklendi",
   owner_payment_updated: "Villa sahibine ödeme güncellendi",
   owner_payment_deleted: "Villa sahibine ödeme silindi",
+  guest_refund_payment_created: "Misafire iade ödemesi eklendi",
+  guest_refund_payment_updated: "Misafire iade ödemesi güncellendi",
+  guest_refund_payment_deleted: "Misafire iade ödemesi silindi",
   invoice_saved: "Fatura bilgileri kaydedildi",
   check_in_info_shared: "Giriş bilgilendirme gönderildi",
   calendar_close_message_sent: "Takvim kapatma mesajı gönderildi",
