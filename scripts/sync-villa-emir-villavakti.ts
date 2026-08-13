@@ -48,16 +48,16 @@ async function main() {
 
   const villa =
     candidates.find((row) =>
+      (row.externalSyncUrl1 || "").includes("villa-emir-gocek")
+    ) ??
+    candidates.find((row) =>
       /emir.*gocek|gocek.*emir/i.test(`${row.slug} ${row.name}`)
     ) ??
-    candidates.find((row) => /emir/i.test(row.slug)) ??
-    candidates.find((row) =>
-      (row.externalSyncUrl1 || "").includes("villa-emir-gocek")
-    );
+    candidates.find((row) => /emirhan/i.test(`${row.slug} ${row.name}`));
 
   if (!villa) {
     throw new Error(
-      "Villa Emir Göcek bulunamadı — --list ile adayları kontrol edin"
+      "Villa Emir Göcek / Emirhan bulunamadı — --list ile adayları kontrol edin"
     );
   }
 
