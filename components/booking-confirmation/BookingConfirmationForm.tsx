@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Info, Loader2, Building2, User } from "lucide-react";
 import { confirmBookingGuestInfoAction } from "@/app/actions/booking-confirmation";
+import BookingConfirmationExtras from "@/components/booking-confirmation/BookingConfirmationExtras";
 import ConfettiBurst from "@/components/celebration/ConfettiBurst";
 import type { PublicConfirmationBooking } from "@/lib/queries/booking-confirmation";
 import { formatPrice } from "@/lib/utils";
@@ -340,32 +341,37 @@ export default function BookingConfirmationForm({
   if (booking.alreadyConfirmed || success) {
     const isFreshSuccess = success && !booking.alreadyConfirmed;
     return (
-      <div className="relative mx-auto max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">
-        {showCelebration ? (
-          <ConfettiBurst onComplete={handleCelebrationComplete} />
-        ) : null}
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
-          <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 sm:gap-8">
+        <div className="relative mx-auto w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">
+          {showCelebration ? (
+            <ConfettiBurst onComplete={handleCelebrationComplete} />
+          ) : null}
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+          </div>
+          <h1 className="mt-5 text-2xl font-bold text-slate-900">
+            {isFreshSuccess
+              ? "Rezervasyonunuz Onaylandı"
+              : "Rezervasyonunuz Önceden Onaylanmıştır"}
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            {isFreshSuccess
+              ? "Teşekkürler. Konfirme belgeniz e-posta ve WhatsApp üzerinden gönderilmiştir. İyi tatiller dileriz."
+              : "Bu rezervasyonunuz için müşteri bilgilerini daha önce tamamladınız. Tatilinize hazır mısınız?"}
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            Rezervasyon No:{" "}
+            <span className="font-semibold">{booking.rezId}</span>
+          </p>
+          <Link
+            href="/"
+            className="mt-8 inline-flex rounded-xl bg-teal-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-teal-700"
+          >
+            Ana Sayfaya Dön
+          </Link>
         </div>
-        <h1 className="mt-5 text-2xl font-bold text-slate-900">
-          {isFreshSuccess
-            ? "Rezervasyonunuz Onaylandı"
-            : "Rezervasyonunuz Önceden Onaylanmıştır"}
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">
-          {isFreshSuccess
-            ? "Teşekkürler. Konfirme belgeniz e-posta ve WhatsApp üzerinden gönderilmiştir."
-            : "Bu rezervasyonunuz için müşteri bilgilerini daha önce tamamladınız."}
-        </p>
-        <p className="mt-2 text-sm text-slate-500">
-          Rezervasyon No: <span className="font-semibold">{booking.rezId}</span>
-        </p>
-        <Link
-          href="/"
-          className="mt-8 inline-flex rounded-xl bg-teal-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-teal-700"
-        >
-          Ana Sayfaya Dön
-        </Link>
+
+        <BookingConfirmationExtras />
       </div>
     );
   }
