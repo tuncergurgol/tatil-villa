@@ -67,18 +67,19 @@ export default function CompensationModal({
       initialCompensationAmount != null && initialCompensationAmount > 0
         ? initialCompensationAmount
         : prepaymentTotal;
+    const hasSavedRefund = initialGuestRefundAmount != null;
     const breakdown = computeCompensationBreakdown({
       reservationTotal,
       prepaymentTotal,
       compensationAmount: defaultCompensation,
-      guestRefundAmount:
-        initialGuestRefundAmount == null
-          ? undefined
-          : Math.max(0, Math.round(initialGuestRefundAmount)),
+      guestRefundAmount: hasSavedRefund
+        ? Math.max(0, Math.round(initialGuestRefundAmount))
+        : undefined,
     });
     setCompensationInput(formatMoneyInputValue(breakdown.compensationAmount));
     setGuestRefundInput(formatMoneyInputValue(breakdown.guestRefundAmount));
-    setGuestRefundTouched(false);
+    // Kayıtlı iade varsa koru; tazminat değişince false yapılıp fark yeniden hesaplanır
+    setGuestRefundTouched(hasSavedRefund);
     setError(null);
   }, [
     open,
