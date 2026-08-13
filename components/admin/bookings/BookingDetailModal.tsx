@@ -578,14 +578,20 @@ export default function BookingDetailModal({
     return details.prepaymentAmount ?? 0;
   }, [realizedPrepaymentTotal, details.prepaymentAmount]);
 
-  const ownerPayableAmount = useMemo(
-    () =>
-      computeOwnerPayableAmount(
-        prepaymentTotalForOwner,
-        details.commissionAmount
-      ),
-    [prepaymentTotalForOwner, details.commissionAmount]
-  );
+  const ownerPayableAmount = useMemo(() => {
+    if (status === BookingStatusEnum.COMPENSATION) {
+      return Math.max(0, Math.round(Number(details.ownerPayableAmount) || 0));
+    }
+    return computeOwnerPayableAmount(
+      prepaymentTotalForOwner,
+      details.commissionAmount
+    );
+  }, [
+    status,
+    details.ownerPayableAmount,
+    prepaymentTotalForOwner,
+    details.commissionAmount,
+  ]);
 
   const ownerPaymentDueDate = useMemo(() => {
     if (!booking) return "";
@@ -604,6 +610,7 @@ export default function BookingDetailModal({
   ]);
 
   useEffect(() => {
+    if (status === BookingStatusEnum.COMPENSATION) return;
     setDetails((current) => {
       const nextTerm = ownerPaymentTermName;
       const nextPayable = ownerPayableAmount;
@@ -622,7 +629,7 @@ export default function BookingDetailModal({
         ownerPaymentDueDate: nextDue,
       };
     });
-  }, [ownerPaymentTermName, ownerPayableAmount, ownerPaymentDueDate]);
+  }, [status, ownerPaymentTermName, ownerPayableAmount, ownerPaymentDueDate]);
 
   useEffect(() => {
     if (salesRepEarnedManuallyEdited.current) return;
@@ -1498,6 +1505,10 @@ export default function BookingDetailModal({
                   externalCode={booking.externalCode}
                   guestEmail={guestEmail}
                   checkOut={booking.checkOut}
+                  reservationTotal={reservationTotal}
+                  prepaymentTotal={prepaymentTotalForOwner}
+                  compensationAmount={details.compensationAmount}
+                  guestRefundAmount={details.guestRefundAmount}
                   prepayments={prepayments}
                   confirmationSentAt={confirmationSentAt}
                   confirmationSends={details.confirmationSends ?? []}
@@ -1529,6 +1540,19 @@ export default function BookingDetailModal({
                   onStatusChanged={(nextStatus, activityLogs) => {
                     setStatus(nextStatus);
                     syncActivityLogs(activityLogs);
+                    onSaved();
+                  }}
+                  onCompensationApplied={({
+                    status: nextStatus,
+                    activityLogs,
+                    details: compensationDetails,
+                  }) => {
+                    setStatus(nextStatus);
+                    setDetails((current) => ({
+                      ...current,
+                      ...compensationDetails,
+                      activityLogs: normalizeActivityLogs(activityLogs),
+                    }));
                     onSaved();
                   }}
                   onActivityLogs={syncActivityLogs}

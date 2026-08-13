@@ -19,6 +19,7 @@ import {
   bookingLabelClass,
 } from "@/components/admin/bookings/booking-form-ui";
 import CheckInInfoShareModal from "@/components/admin/bookings/CheckInInfoShareModal";
+import CompensationModal from "@/components/admin/bookings/CompensationModal";
 import type { CheckInInfoShareAudience } from "@/app/actions/admin/booking-check-in-info-share";
 import { sendGuestReviewInviteAction } from "@/app/actions/admin/guest-review";
 import { buildCheckInInfoSharePath } from "@/lib/agency-message-render";
@@ -29,6 +30,10 @@ interface BookingKonfirmeTabProps {
   externalCode: number | null;
   guestEmail: string;
   checkOut: Date | string;
+  reservationTotal: number | null;
+  prepaymentTotal: number;
+  compensationAmount?: number | null;
+  guestRefundAmount?: number | null;
   prepayments: BookingPrepaymentRecord[];
   confirmationSentAt: Date | string | null;
   confirmationSends: BookingConfirmationSendRecord[];
@@ -47,6 +52,18 @@ interface BookingKonfirmeTabProps {
     status: BookingStatus,
     activityLogs: BookingActivityLogEntry[]
   ) => void;
+  onCompensationApplied: (payload: {
+    status: BookingStatus;
+    activityLogs: BookingActivityLogEntry[];
+    details: {
+      compensationAmount: number;
+      guestRefundAmount: number;
+      ownerPayableAmount: number;
+      commissionAmount: number;
+      invoiceAmount: number;
+      prepaymentAmount: number;
+    };
+  }) => void;
   onActivityLogs?: (activityLogs: BookingActivityLogEntry[]) => void;
 }
 
@@ -84,11 +101,16 @@ export default function BookingKonfirmeTab({
   externalCode: _externalCode,
   guestEmail: _guestEmail,
   checkOut,
+  reservationTotal,
+  prepaymentTotal,
+  compensationAmount,
+  guestRefundAmount,
   prepayments,
   confirmationSentAt,
   confirmationSends,
   onConfirmationSent,
   onStatusChanged,
+  onCompensationApplied,
   onActivityLogs,
 }: BookingKonfirmeTabProps) {
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -116,6 +138,7 @@ export default function BookingKonfirmeTab({
     null
   );
   const [isReviewInvitePending, startReviewInviteTransition] = useTransition();
+  const [compensationOpen, setCompensationOpen] = useState(false);
 
   const hasPrepayments = prepayments.length > 0;
   const canSendConfirmation = hasPrepayments && !isConfirmPending;
@@ -440,9 +463,11 @@ export default function BookingKonfirmeTab({
           <button
             type="button"
             disabled={isStatusPending}
-            onClick={() =>
-              handleStatusChange(BookingStatus.COMPENSATION, "Tazminat")
-            }
+            onClick={() => {
+              setStatusError(null);
+              setStatusSuccess(null);
+              setCompensationOpen(true);
+            }}
             className="rounded-lg bg-orange-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-orange-700 disabled:opacity-60"
           >
             Tazminat
@@ -556,6 +581,22 @@ export default function BookingKonfirmeTab({
         }
         onSuccess={({ activityLogs }) => {
           onActivityLogs?.(activityLogs);
+        }}
+      />
+
+      <CompensationModal
+        open={compensationOpen}
+        onClose={() => setCompensationOpen(false)}
+        bookingId={bookingId}
+        reservationTotal={reservationTotal}
+        prepaymentTotal={prepaymentTotal}
+        initialCompensationAmount={compensationAmount}
+        initialGuestRefundAmount={guestRefundAmount}
+        onSuccess={(payload) => {
+          onCompensationApplied(payload);
+          setStatusSuccess(
+            `Durum "${getBookingStatusLabel(payload.status)}" olarak güncellendi.`
+          );
         }}
       />
     </div>

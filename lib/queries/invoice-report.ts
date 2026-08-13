@@ -20,7 +20,12 @@ import {
   type InvoiceReportBookingInput,
 } from "@/lib/edm-invoice-export";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
+import {
+  addDaysToDateKey,
+  dateKeyToDbDate,
+  toDateKey,
+} from "@/lib/villa-period-calendar";
+import { BookingStatus } from "@prisma/client";
 
 export type { InvoiceReportIncompleteRow };
 
@@ -141,8 +146,55 @@ function resolveReportBasisDate(
   return booking.checkIn;
 }
 
+function resolveGuestInvoiceRecipient(
+  details: ReturnType<typeof parseBookingDetails>,
+  guestName: string
+) {
+  return {
+    title: details.invoiceTitle?.trim() || guestName.trim() || "",
+    taxNumber: (
+      details.invoiceTaxNumber?.trim() ||
+      details.guestTc?.trim() ||
+      ""
+    ).replace(/\D/g, ""),
+    address: (
+      details.invoiceAddress?.trim() ||
+      details.guestAddress?.trim() ||
+      ""
+    ).trim(),
+    country: (
+      details.invoiceCountry?.trim() ||
+      details.guestCountry?.trim() ||
+      "Türkiye"
+    ).trim(),
+    city: (
+      details.invoiceCity?.trim() ||
+      details.guestCity?.trim() ||
+      ""
+    ).trim(),
+    district: (
+      details.invoiceDistrict?.trim() ||
+      details.guestDistrict?.trim() ||
+      ""
+    ).trim(),
+  };
+}
+
 function toBookingInput(booking: InvoiceBookingRecord): InvoiceReportBookingInput {
   const details = parseBookingDetails(booking.details);
+  const isCompensation = booking.status === BookingStatus.COMPENSATION;
+  const commissionAmount = isCompensation
+    ? Math.round(
+        details.compensationAmount ??
+          details.commissionAmount ??
+          details.invoiceAmount ??
+          0
+      )
+    : resolveBookingCommissionAmount(details, booking.totalPrice);
+
+  const invoiceDate = isCompensation
+    ? dateKeyToDbDate(addDaysToDateKey(toDateKey(booking.checkIn), 1))
+    : booking.checkIn;
 
   return {
     bookingId: booking.id,
@@ -151,9 +203,14 @@ function toBookingInput(booking: InvoiceBookingRecord): InvoiceReportBookingInpu
     guestName: booking.guestName,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
-    commissionAmount: resolveBookingCommissionAmount(details, booking.totalPrice),
-    owner: booking.villa.owner,
+    commissionAmount,
+    owner: isCompensation ? null : booking.villa.owner,
     villa: { name: booking.villa.name },
+    recipientKind: isCompensation ? "guest" : "owner",
+    guest: isCompensation
+      ? resolveGuestInvoiceRecipient(details, booking.guestName)
+      : null,
+    invoiceDate,
   };
 }
 
@@ -326,21 +383,42 @@ export async function generateInvoiceReportExport(bookingIds: string[]) {
   };
 }
 
-/** Onaylı rezervasyonlar — giriş tarihi = dateKey (YYYY-MM-DD). */
+/**
+ * Günlük fatura listesi:
+ * - Onaylı rezervasyonlar: giriş tarihi = dateKey → villa sahibine fatura
+ * - Tazminat: giriş+1 = dateKey → misafire ACENTE HİZMET BEDELİ (villa sahibi yok)
+ */
 export async function generateInvoiceReportForCheckInDate(dateKey: string) {
-  const bookings = await prisma.booking.findMany({
-    where: { status: "CONFIRMED", checkIn: dateKeyToDbDate(dateKey) },
-    select: { id: true },
-    orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
-  });
+  const previousCheckInKey = addDaysToDateKey(dateKey, -1);
+  const [confirmed, compensation] = await Promise.all([
+    prisma.booking.findMany({
+      where: {
+        status: BookingStatus.CONFIRMED,
+        checkIn: dateKeyToDbDate(dateKey),
+      },
+      select: { id: true },
+      orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.booking.findMany({
+      where: {
+        status: BookingStatus.COMPENSATION,
+        checkIn: dateKeyToDbDate(previousCheckInKey),
+      },
+      select: { id: true },
+      orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
 
-  const exportResult = await generateInvoiceReportExport(
-    bookings.map((booking) => booking.id)
-  );
+  const bookingIds = [
+    ...confirmed.map((booking) => booking.id),
+    ...compensation.map((booking) => booking.id),
+  ];
+
+  const exportResult = await generateInvoiceReportExport(bookingIds);
 
   return {
     ...exportResult,
-    matchedCount: bookings.length,
+    matchedCount: bookingIds.length,
     filename: `konaklama-faturalari-${dateKey}.xlsx`,
   };
 }

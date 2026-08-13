@@ -171,6 +171,24 @@ function resolveOwnerPaymentStatus(
   return "incomplete";
 }
 
+function resolveOwnerPayableForBooking(
+  booking: OwnerPaymentBookingRecord,
+  details: ReturnType<typeof parseBookingDetails>
+): number {
+  if (booking.status === "COMPENSATION") {
+    return Math.max(0, Math.round(Number(details.ownerPayableAmount) || 0));
+  }
+  const prepaymentAmount =
+    details.prepaymentAmount != null && Number.isFinite(details.prepaymentAmount)
+      ? Math.round(details.prepaymentAmount)
+      : null;
+  const commissionAmount = resolveBookingCommissionAmount(
+    details,
+    booking.totalPrice
+  );
+  return computeOwnerPayableAmount(prepaymentAmount, commissionAmount);
+}
+
 function mapBookingToListItem(
   booking: OwnerPaymentBookingRecord,
   brandFallback: { brandName: string; domain: string; logoUrl: string }
@@ -180,14 +198,7 @@ function mapBookingToListItem(
     details.prepaymentAmount != null && Number.isFinite(details.prepaymentAmount)
       ? Math.round(details.prepaymentAmount)
       : null;
-  const commissionAmount = resolveBookingCommissionAmount(
-    details,
-    booking.totalPrice
-  );
-  const ownerPayableAmount = computeOwnerPayableAmount(
-    prepaymentAmount,
-    commissionAmount
-  );
+  const ownerPayableAmount = resolveOwnerPayableForBooking(booking, details);
   const ownerPayments = normalizeOwnerPayments(details.ownerPayments);
   const paidAmount = ownerPayments.reduce((sum, row) => sum + row.amount, 0);
   const remainingAmount = Math.max(0, ownerPayableAmount - paidAmount);
@@ -273,7 +284,7 @@ export async function getOwnerPaymentReportListData() {
   const [companySettings, bookings, villas] = await Promise.all([
     getCompanySettings(),
     prisma.booking.findMany({
-      where: { status: "CONFIRMED" },
+      where: { status: { in: ["CONFIRMED", "COMPENSATION"] } },
       select: ownerPaymentBookingSelect,
       orderBy: [{ checkIn: "desc" }, { createdAt: "desc" }],
     }),
@@ -319,7 +330,10 @@ export async function generateOwnerPaymentReportExport(bookingIds: string[]) {
   }
 
   const bookings = await prisma.booking.findMany({
-    where: { id: { in: uniqueIds }, status: "CONFIRMED" },
+    where: {
+      id: { in: uniqueIds },
+      status: { in: ["CONFIRMED", "COMPENSATION"] },
+    },
     select: ownerPaymentBookingSelect,
     orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
   });
@@ -329,19 +343,7 @@ export async function generateOwnerPaymentReportExport(bookingIds: string[]) {
 
   for (const booking of bookings) {
     const details = parseBookingDetails(booking.details);
-    const prepaymentAmount =
-      details.prepaymentAmount != null &&
-      Number.isFinite(details.prepaymentAmount)
-        ? Math.round(details.prepaymentAmount)
-        : null;
-    const commissionAmount = resolveBookingCommissionAmount(
-      details,
-      booking.totalPrice
-    );
-    const ownerPayableAmount = computeOwnerPayableAmount(
-      prepaymentAmount,
-      commissionAmount
-    );
+    const ownerPayableAmount = resolveOwnerPayableForBooking(booking, details);
     const paidAmount = normalizeOwnerPayments(details.ownerPayments).reduce(
       (sum, row) => sum + row.amount,
       0
@@ -366,18 +368,7 @@ export async function generateOwnerPaymentReportExport(bookingIds: string[]) {
 
 function resolveOwnerPaymentRemaining(booking: OwnerPaymentBookingRecord) {
   const details = parseBookingDetails(booking.details);
-  const prepaymentAmount =
-    details.prepaymentAmount != null && Number.isFinite(details.prepaymentAmount)
-      ? Math.round(details.prepaymentAmount)
-      : null;
-  const commissionAmount = resolveBookingCommissionAmount(
-    details,
-    booking.totalPrice
-  );
-  const ownerPayableAmount = computeOwnerPayableAmount(
-    prepaymentAmount,
-    commissionAmount
-  );
+  const ownerPayableAmount = resolveOwnerPayableForBooking(booking, details);
   const paidAmount = normalizeOwnerPayments(details.ownerPayments).reduce(
     (sum, row) => sum + row.amount,
     0
@@ -386,10 +377,13 @@ function resolveOwnerPaymentRemaining(booking: OwnerPaymentBookingRecord) {
   return { remainingAmount };
 }
 
-/** Onaylı rezervasyonlar — giriş tarihi = dateKey (YYYY-MM-DD). */
+/** Onaylı + tazminat (villa sahibi ödemesi > 0) — giriş tarihi = dateKey. */
 export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) {
   const bookings = await prisma.booking.findMany({
-    where: { status: "CONFIRMED", checkIn: dateKeyToDbDate(dateKey) },
+    where: {
+      status: { in: ["CONFIRMED", "COMPENSATION"] },
+      checkIn: dateKeyToDbDate(dateKey),
+    },
     select: ownerPaymentBookingSelect,
     orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
   });

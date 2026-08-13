@@ -141,6 +141,18 @@ export type InvoiceReportOwnerInput = {
   mernisIlceCode: string | null;
 } | null;
 
+/** Tazminat: misafire fatura; onaylı rezervasyon: villa sahibine. */
+export type InvoiceReportRecipientKind = "owner" | "guest";
+
+export type InvoiceReportGuestInput = {
+  title: string;
+  taxNumber: string;
+  address: string;
+  country: string;
+  city: string;
+  district: string;
+} | null;
+
 export type InvoiceReportBookingInput = {
   bookingId: string;
   externalCode: string;
@@ -150,6 +162,11 @@ export type InvoiceReportBookingInput = {
   commissionAmount: number;
   owner: InvoiceReportOwnerInput;
   villa: { name: string };
+  /** Varsayılan: villa sahibi. Tazminatta `guest`. */
+  recipientKind?: InvoiceReportRecipientKind;
+  guest?: InvoiceReportGuestInput;
+  /** Fatura / gönderim tarihi (tazminatta giriş+1). */
+  invoiceDate?: Date | null;
 };
 
 export type InvoiceReportCompanyInput = {
@@ -271,11 +288,39 @@ export function checkInvoiceReportMissingFields(
   company: InvoiceReportCompanyInput
 ): string[] {
   const missing: string[] = [];
-  const owner = booking.owner;
+  const recipientKind = booking.recipientKind ?? "owner";
 
   if (!normalizeTaxNumber(company.taxNumber)) {
     missing.push("Gönderici VKN (Şirket ayarları)");
   }
+
+  const invoiceDate = booking.invoiceDate ?? booking.checkIn;
+  if (!formatEdmDate(invoiceDate)) missing.push("Fatura tarihi");
+  if (booking.commissionAmount <= 0) {
+    missing.push(
+      recipientKind === "guest" ? "Tazminat tutarı" : "Komisyon bedeli"
+    );
+  }
+
+  if (recipientKind === "guest") {
+    const guest = booking.guest;
+    if (!guest) {
+      missing.push("Misafir fatura bilgisi yok");
+      return missing;
+    }
+    if (!normalizeTaxNumber(guest.taxNumber)) {
+      missing.push("Misafir TC / vergi numarası");
+    }
+    if (!guest.title.trim()) missing.push("Misafir fatura ünvanı");
+    if (!guest.address.trim()) missing.push("Misafir adresi");
+    if (!guest.country.trim()) missing.push("Misafir ülke");
+    if (!guest.city.trim() || !guest.district.trim()) {
+      missing.push("Misafir il / ilçe");
+    }
+    return missing;
+  }
+
+  const owner = booking.owner;
   if (!owner) {
     missing.push("Villa sahibi tanımlı değil");
     return missing;
@@ -296,8 +341,6 @@ export function checkInvoiceReportMissingFields(
   if (!owner.address.trim()) missing.push("Villa sahibi adresi");
   if (!owner.country.trim()) missing.push("Villa sahibi ülke");
   if (!city || !district) missing.push("Villa sahibi il / ilçe");
-  if (!formatEdmDate(booking.checkIn)) missing.push("Giriş tarihi");
-  if (booking.commissionAmount <= 0) missing.push("Komisyon bedeli");
 
   return missing;
 }
@@ -307,25 +350,40 @@ export function buildInvoiceReportRow(
   company: InvoiceReportCompanyInput
 ): (string | number)[] {
   const row = emptyRow();
-  const owner = booking.owner!;
-  const { city, district } = resolveOwnerRegion(owner);
+  const recipientKind = booking.recipientKind ?? "owner";
   const { net, gross } = splitCommissionAmounts(booking.commissionAmount);
-  const checkInLabel = formatEdmDate(booking.checkIn);
+  const invoiceDate = booking.invoiceDate ?? booking.checkIn;
+  const invoiceDateLabel = formatEdmDate(invoiceDate);
   const reservationCode = booking.externalCode || booking.bookingId;
 
   row[COL.invoiceChannel] = FIXED_INVOICE_CHANNEL;
   row[COL.scenario] = FIXED_SCENARIO;
   row[COL.invoiceType] = FIXED_INVOICE_TYPE;
   row[COL.senderTaxNo] = toEdmTaxNumber(company.taxNumber);
-  row[COL.recipientTaxNo] = toEdmTaxNumber(resolveOwnerTaxNumber(owner));
-  row[COL.recipientTitle] = ownerDisplayName(owner);
-  row[COL.recipientAddress] = owner.address.trim();
-  row[COL.country] = owner.country.trim().toLocaleUpperCase("tr");
-  row[COL.countryCode] = resolveCountryCode(owner.country);
-  row[COL.city] = city.toLocaleUpperCase("tr");
-  row[COL.district] = district.toLocaleUpperCase("tr");
-  row[COL.invoiceDate] = checkInLabel;
-  row[COL.sendDate] = checkInLabel;
+
+  if (recipientKind === "guest") {
+    const guest = booking.guest!;
+    row[COL.recipientTaxNo] = toEdmTaxNumber(guest.taxNumber);
+    row[COL.recipientTitle] = guest.title.trim();
+    row[COL.recipientAddress] = guest.address.trim();
+    row[COL.country] = guest.country.trim().toLocaleUpperCase("tr");
+    row[COL.countryCode] = resolveCountryCode(guest.country);
+    row[COL.city] = guest.city.trim().toLocaleUpperCase("tr");
+    row[COL.district] = guest.district.trim().toLocaleUpperCase("tr");
+  } else {
+    const owner = booking.owner!;
+    const { city, district } = resolveOwnerRegion(owner);
+    row[COL.recipientTaxNo] = toEdmTaxNumber(resolveOwnerTaxNumber(owner));
+    row[COL.recipientTitle] = ownerDisplayName(owner);
+    row[COL.recipientAddress] = owner.address.trim();
+    row[COL.country] = owner.country.trim().toLocaleUpperCase("tr");
+    row[COL.countryCode] = resolveCountryCode(owner.country);
+    row[COL.city] = city.toLocaleUpperCase("tr");
+    row[COL.district] = district.toLocaleUpperCase("tr");
+  }
+
+  row[COL.invoiceDate] = invoiceDateLabel;
+  row[COL.sendDate] = invoiceDateLabel;
   row[COL.notes] =
     `${reservationCode} - ${booking.guestName.trim()} - ${booking.villa.name.trim()} - ${formatNotesDate(booking.checkIn)} - ${formatNotesDate(booking.checkOut)}`;
   row[COL.lineNo] = 1;

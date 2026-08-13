@@ -103,6 +103,10 @@ export type BookingDetails = {
   importAgencyAccountingCode?: string;
   invoiceDifference?: number | null;
   invoiceAmountDifference?: number | null;
+  /** Tazminat tutarı (komisyon = bu tutar) */
+  compensationAmount?: number | null;
+  /** Tazminatta misafire iade edilen tutar */
+  guestRefundAmount?: number | null;
   /** Public talep: card | transfer */
   paymentMethod?: string;
   paymentAmount?: string;
@@ -756,6 +760,8 @@ export function defaultDetailsFromBooking(booking: {
     agencyReceivedAmount: parsed.agencyReceivedAmount ?? 0,
     ownerPaymentTerm: parsed.ownerPaymentTerm ?? "",
     ownerPayableAmount: parsed.ownerPayableAmount ?? null,
+    compensationAmount: parsed.compensationAmount ?? null,
+    guestRefundAmount: parsed.guestRefundAmount ?? null,
     ownerCollectFromGuest: parsed.ownerCollectFromGuest ?? null,
     ownerPaymentDueDate: parsed.ownerPaymentDueDate ?? "",
     ownerPaymentDate: parsed.ownerPaymentDate ?? "",
