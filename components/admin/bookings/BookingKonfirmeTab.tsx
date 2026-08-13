@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Loader2, Send } from "lucide-react";
+import { CalendarOff, Loader2, Send } from "lucide-react";
 import { sendBookingConfirmationAction } from "@/app/actions/admin/booking-confirmation-send";
+import { sendCalendarCloseMessageAction } from "@/app/actions/admin/booking-calendar-close-message";
 import { changeBookingStatusAction } from "@/app/actions/admin/bookings";
 import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
@@ -101,6 +102,13 @@ export default function BookingKonfirmeTab({
   const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
   const [isConfirmPending, startConfirmTransition] = useTransition();
   const [isStatusPending, startStatusTransition] = useTransition();
+  const [isCalendarClosePending, startCalendarCloseTransition] = useTransition();
+  const [calendarCloseError, setCalendarCloseError] = useState<string | null>(
+    null
+  );
+  const [calendarCloseSuccess, setCalendarCloseSuccess] = useState<
+    string | null
+  >(null);
   const [checkInShareAudience, setCheckInShareAudience] =
     useState<CheckInInfoShareAudience | null>(null);
   const [reviewInviteError, setReviewInviteError] = useState<string | null>(null);
@@ -176,6 +184,29 @@ export default function BookingKonfirmeTab({
         activityLogs: result.activityLogs,
         salesRep: result.salesRep,
       });
+    });
+  }
+
+  function handleSendCalendarCloseMessage() {
+    if (
+      !window.confirm(
+        "Takvim yönetene (Mesaj İçeriği 30.3) kapatma mesajı gönderilsin mi?"
+      )
+    ) {
+      return;
+    }
+
+    setCalendarCloseError(null);
+    setCalendarCloseSuccess(null);
+
+    startCalendarCloseTransition(async () => {
+      const result = await sendCalendarCloseMessageAction({ bookingId });
+      if (!result.success) {
+        setCalendarCloseError(result.error);
+        return;
+      }
+      setCalendarCloseSuccess(result.message);
+      onActivityLogs?.(result.activityLogs);
     });
   }
 
@@ -264,6 +295,16 @@ export default function BookingKonfirmeTab({
               {confirmationSuccess}
             </p>
           ) : null}
+          {calendarCloseError ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {calendarCloseError}
+            </p>
+          ) : null}
+          {calendarCloseSuccess ? (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {calendarCloseSuccess}
+            </p>
+          ) : null}
 
           {!hasPrepayments ? (
             <p className="text-sm text-amber-700">
@@ -273,7 +314,7 @@ export default function BookingKonfirmeTab({
           ) : null}
 
           {!hasSentConfirmation ? (
-            <div className="flex justify-start">
+            <div className="flex flex-wrap justify-start gap-2">
               <button
                 type="button"
                 onClick={handleSendConfirmation}
@@ -286,6 +327,20 @@ export default function BookingKonfirmeTab({
                   <Send className="h-4 w-4" />
                 )}
                 Konfirme Gönder
+              </button>
+              <button
+                type="button"
+                onClick={handleSendCalendarCloseMessage}
+                disabled={isCalendarClosePending}
+                title="Mesaj İçeriği 30.3 — takvim yönetene"
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCalendarClosePending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CalendarOff className="h-4 w-4" />
+                )}
+                Takvim Kapatma Mesajı
               </button>
             </div>
           ) : null}
@@ -330,7 +385,7 @@ export default function BookingKonfirmeTab({
                 </ul>
               </div>
 
-              <div className="flex justify-start">
+              <div className="flex flex-wrap justify-start gap-2">
                 <button
                   type="button"
                   onClick={handleSendConfirmation}
@@ -343,6 +398,20 @@ export default function BookingKonfirmeTab({
                     <Send className="h-4 w-4" />
                   )}
                   Yeniden Konfirme Gönder
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendCalendarCloseMessage}
+                  disabled={isCalendarClosePending}
+                  title="Mesaj İçeriği 30.3 — takvim yönetene"
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isCalendarClosePending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CalendarOff className="h-4 w-4" />
+                  )}
+                  Takvim Kapatma Mesajı
                 </button>
               </div>
             </div>

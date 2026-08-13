@@ -108,7 +108,10 @@ export function formatVillaOriginalNameBlock(
 export function normalizeLegacyAgencyMessageTemplate(template: string): string {
   return template
     .replace(/\(##:##-##:##\)/g, "##CIKISSAATARALIGI##")
-    .replace(/##:##/g, "##CIKISSAATI##");
+    .replace(/##:##/g, "##CIKISSAATI##")
+    // 30.3 vb. bozuk orijinal ad placeholder’ı
+    .replace(/##TESİSORJİNALADI\]=/gi, "##TESİSORJİNALADI##)")
+    .replace(/##TESISORJINALADI\]=/gi, "##TESISORJINALADI##)");
 }
 
 /** Render sonrası boş parantez ve çözülemeyen placeholder kalıntılarını temizler */
