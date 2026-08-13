@@ -15,11 +15,15 @@ import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
+import { INTEGRATION_LEAD_NOTIFY_WHATSAPP } from "@/lib/integration-lead-notify";
 import { calculateNights } from "@/lib/stay-nights";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
-import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
+import {
+  sendCustomerNotificationWhatsApp,
+  sendOperationsWhatsApp,
+} from "@/lib/whatsapp-delivery";
 import {
   appendBookingSiteFooter,
   resolveBookingSiteBrand,
@@ -427,13 +431,58 @@ function resolveDocumentFromName(data: ReservationDocumentData): string {
 export type ReservationDocumentChannel =
   | "email"
   | "whatsapp"
-  | "management_email";
+  | "management_email"
+  | "management_whatsapp";
 
 export type ReservationDocumentChannelResult = {
   channel: ReservationDocumentChannel;
   ok: boolean;
   error?: string;
 };
+
+async function sendManagementDocumentWhatsApp(input: {
+  template: {
+    smsBody: string;
+    whatsappBody: string;
+    mailBody: string;
+  } | null;
+  fallbackTemplate: {
+    smsBody: string;
+    whatsappBody: string;
+    mailBody: string;
+  } | null;
+  values: Record<string, string>;
+  brandName: string;
+}): Promise<ReservationDocumentChannelResult> {
+  const text = appendBookingSiteFooter(
+    renderAgencyMessageTemplate(
+      pickDocumentChannelBody(
+        input.template ?? input.fallbackTemplate,
+        "whatsapp"
+      ),
+      input.values
+    ),
+    input.brandName
+  ).trim();
+
+  if (!text) {
+    return {
+      channel: "management_whatsapp",
+      ok: false,
+      error: "20.5 WhatsApp metni boş",
+    };
+  }
+
+  const wa = await sendOperationsWhatsApp(
+    INTEGRATION_LEAD_NOTIFY_WHATSAPP,
+    text
+  );
+  return {
+    channel: "management_whatsapp",
+    ok: wa.ok,
+    error: wa.ok ? undefined : wa.error,
+  };
+}
 
 /**
  * PDF üretip misafire 10.5 e-posta gönderir (PDF ek).
@@ -497,6 +546,7 @@ export async function sendReservationDocumentEmail(
  * Misafir onayından sonra konfirme belgesi:
  * - 10.5 → misafir e-posta (PDF)
  * - 20.5 → yönetim e-posta info@ (aynı gövde + PDF)
+ * - 20.5 → Takvim WhatsApp → +902526180108 (Evolution)
  * - 10.5 → misafir WhatsApp (metin)
  * Kanal hatalarını fırlatmaz; sonuçları döner (UI success bozulmaz).
  */
@@ -510,6 +560,23 @@ export async function sendReservationDocumentNotifications(
 }> {
   const data = await buildReservationDocumentDataForBooking(bookingId, options);
   const results: ReservationDocumentChannelResult[] = [];
+
+  const [company, guestTemplate, managementTemplate] = await Promise.all([
+    getCompanySettings(),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_5),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_20_5),
+  ]);
+  const values = buildReservationDocumentTemplateValues(data);
+
+  // --- 20.5 Yönetim WhatsApp (Takvim / Evolution) — PDF gerekmez ---
+  results.push(
+    await sendManagementDocumentWhatsApp({
+      template: managementTemplate,
+      fallbackTemplate: guestTemplate,
+      values,
+      brandName: data.company.brandName,
+    })
+  );
 
   let pdfBuffer: Buffer;
   try {
@@ -525,6 +592,7 @@ export async function sendReservationDocumentNotifications(
       reservationCode: data.reservationCode,
       pdfBytes: 0,
       results: [
+        ...results,
         { channel: "email", ok: false, error: msg },
         {
           channel: "management_email",
@@ -545,6 +613,7 @@ export async function sendReservationDocumentNotifications(
       reservationCode: data.reservationCode,
       pdfBytes: 0,
       results: [
+        ...results,
         { channel: "email", ok: false, error: "PDF buffer boş üretildi" },
         {
           channel: "management_email",
@@ -556,14 +625,8 @@ export async function sendReservationDocumentNotifications(
     };
   }
 
-  const [company, guestTemplate, managementTemplate] = await Promise.all([
-    getCompanySettings(),
-    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_5),
-    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_20_5),
-  ]);
   const email = data.guest.email.trim();
   const phoneRaw = data.guest.phone.trim() || "";
-  const values = buildReservationDocumentTemplateValues(data);
   const emailLogo = await prepareCompanyLogoForEmail(
     data.company.logoUrl,
     data.company.domain
@@ -640,7 +703,7 @@ export async function sendReservationDocumentNotifications(
     });
   }
 
-  // --- WhatsApp (WAHA, düz metin) — booking-confirmation-send ile aynı kanal ---
+  // --- 10.5 Misafir WhatsApp (WAHA) ---
   if (!phoneRaw?.trim()) {
     results.push({
       channel: "whatsapp",

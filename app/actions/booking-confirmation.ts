@@ -30,6 +30,7 @@ import {
 
 function reservationDocumentChannelLabel(channel: string): string {
   if (channel === "management_email") return "Yönetim e-posta";
+  if (channel === "management_whatsapp") return "Takvim WhatsApp";
   if (channel === "email" || channel === "whatsapp" || channel === "sms") {
     return getPrepaymentShareChannelLabel(channel as PrepaymentShareChannel);
   }
@@ -371,6 +372,9 @@ export async function confirmBookingGuestInfoAction(
         managementEmailOk:
           delivery.results.find((r) => r.channel === "management_email")?.ok ??
           false,
+        managementWhatsappOk:
+          delivery.results.find((r) => r.channel === "management_whatsapp")
+            ?.ok ?? false,
         whatsappOk:
           delivery.results.find((r) => r.channel === "whatsapp")?.ok ?? false,
         emailError:
@@ -379,6 +383,10 @@ export async function confirmBookingGuestInfoAction(
         managementEmailError:
           delivery.results.find(
             (r) => r.channel === "management_email" && !r.ok
+          )?.error ?? null,
+        managementWhatsappError:
+          delivery.results.find(
+            (r) => r.channel === "management_whatsapp" && !r.ok
           )?.error ?? null,
         whatsappError:
           delivery.results.find((r) => r.channel === "whatsapp" && !r.ok)

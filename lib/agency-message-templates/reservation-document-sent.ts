@@ -7,7 +7,7 @@ export const RESERVATION_DOCUMENT_SENT_MANAGEMENT_MESSAGE_NAME =
 
 /**
  * Mesaj İçeriği 10.5 (rowNo 105) — misafir konfirme onayından sonra belge bildirimi.
- * Mesaj İçeriği 20.5 (rowNo 205) — aynı mail gövdesi, yönetim (info@).
+ * Mesaj İçeriği 20.5 (rowNo 205) — aynı gövde; yönetim mail (info@) + Takvim WhatsApp (+902526180108).
  * Mail HTML’de üstte rezervasyonun alındığı site logosu basılır (##SITELOGO## metinde boş).
  */
 export const RESERVATION_DOCUMENT_SENT_MAIL_BODY = `Sayın ##MUSTERIADI##,
