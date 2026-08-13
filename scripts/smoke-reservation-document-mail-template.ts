@@ -43,6 +43,7 @@ const sample: ReservationDocumentData = {
     periodDiscount: null,
     otherDiscount: null,
     netAccommodation: null,
+    extraFees: [],
     reservationTotal: null,
     damageDeposit: null,
     prepayment: null,

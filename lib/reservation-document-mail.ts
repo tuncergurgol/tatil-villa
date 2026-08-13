@@ -1,6 +1,7 @@
 import {
   computeGuestReservationTotal,
   computeNetPrice,
+  listPositiveExtraFees,
   parseBookingDetails,
   resolveExternalCode,
   type BookingGuestEntry,
@@ -274,6 +275,10 @@ export async function buildReservationDocumentDataForBooking(
       otherDiscount:
         otherDiscount != null && otherDiscount > 0 ? otherDiscount : null,
       netAccommodation,
+      extraFees: listPositiveExtraFees(details).map(({ label, amount }) => ({
+        label,
+        amount,
+      })),
       reservationTotal,
       damageDeposit: details.damageDeposit ?? null,
       prepayment: prepayment > 0 ? prepayment : null,

@@ -87,6 +87,8 @@ export type ReservationDocumentData = {
     periodDiscount: number | null;
     otherDiscount: number | null;
     netAccommodation: number | null;
+    /** Konaklama ↔ Rezervasyon Toplamı arası ekstra hizmetler (>0) */
+    extraFees: Array<{ label: string; amount: number }>;
     reservationTotal: number | null;
     damageDeposit: number | null;
     prepayment: number | null;
@@ -625,6 +627,9 @@ export async function buildReservationDocumentPdf(
           moneyOrDash(data.payments.netAccommodation)
         );
       }
+      for (const fee of data.payments.extraFees) {
+        drawPaymentRow(doc, fee.label, moneyOrDash(fee.amount));
+      }
       drawPaymentRow(
         doc,
         "Rezervasyon Toplamı",
@@ -840,11 +845,15 @@ export function buildSampleReservationDocumentData(
       periodDiscount: 3150,
       otherDiscount: 2850,
       netAccommodation: 15000,
-      reservationTotal: 15000,
+      extraFees: [
+        { label: "Temizlik Bedeli", amount: 1500 },
+        { label: "Havuz Isıtma (Özel Havuz)", amount: 3000 },
+      ],
+      reservationTotal: 19500,
       damageDeposit: 3000,
       prepayment: 3000,
       prepaymentMethodLabel: "Kredi Kartı",
-      remainingAtCheckIn: 12000,
+      remainingAtCheckIn: 16500,
     },
     company: {
       brandName: "tatildeyiz.com.tr",

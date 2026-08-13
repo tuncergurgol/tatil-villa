@@ -515,6 +515,24 @@ export function sumExtraFees(details: BookingDetails): number {
   );
 }
 
+/** Belge / özet için: tutarı 0'dan büyük ekstra hizmet kalemleri */
+export function listPositiveExtraFees(
+  details: BookingDetails
+): Array<{ key: BookingExtraFeeFieldKey; label: string; amount: number }> {
+  const rows: Array<{
+    key: BookingExtraFeeFieldKey;
+    label: string;
+    amount: number;
+  }> = [];
+  for (const { key, label } of BOOKING_EXTRA_FEE_FIELDS) {
+    const amount = details[key] ?? 0;
+    if (amount > 0 && Number.isFinite(amount)) {
+      rows.push({ key, label, amount });
+    }
+  }
+  return rows;
+}
+
 export function computeReservationTotal(
   details: BookingDetails
 ): number | null {
