@@ -7,7 +7,7 @@
  * - villavillam.com.tr / villacim.com.tr (NEXT_DATA id + api PriceList/Availability)
  * - tatilpremium.com (RSC routingData id + api.tatilpremium.com PriceList/Availability)
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
- * - villavakti.com (sezon fiyat tablosu)
+ * - villavakti.com (sezon fiyat tablosu + api.php villa_dates takvim)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
  * - mustakilvillam.com / myvillacity.com / villakilavuzu.com (routingData id + api PriceList/Availability)
  * - luxuryvillam.com (window.VILLA_CALENDAR gömülü günlük fiyat + müsaitlik)
@@ -4074,6 +4074,47 @@ function looksLikeVillavakti(pageUrl: string): boolean {
   }
 }
 
+function extractVillavaktiVillaId(html: string): string | null {
+  const patterns = [
+    /var\s+villa_id\s*=\s*(\d+)\s*;/i,
+    /["']villa_id["']\s*:\s*["']?(\d+)/i,
+    /name=["']villa_id["'][^>]*value=["'](\d+)["']/i,
+    /villa_id\s*=\s*(\d+)\s*&type=villa_dates/i,
+  ];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Villavakti POST /api.php?type=villa_dates yanıtı:
+ * entry|release|full|Rentry|Rrelease|pending|hours|...
+ * Tarihler `YYYY-M-D` (ay/gün pad’siz) gelebilir.
+ */
+export function parseVillavaktiDatesResponse(
+  body: string
+): Map<string, VillaDayOccupancy> {
+  const parts = body.split("|");
+  const map = new Map<string, VillaDayOccupancy>();
+
+  const mark = (keys: string[], status: VillaDayOccupancy) => {
+    for (const key of keys) {
+      if (status === "OPTION" && map.get(key) === "BOOKED") continue;
+      if (status === "BOOKED") map.set(key, "BOOKED");
+      else if (!map.has(key) || map.get(key) !== "BOOKED") map.set(key, status);
+    }
+  };
+
+  // Check-in gecesi + ara dolu geceler BOOKED; çıkış sabahı boş bırakılır.
+  mark(parseCsvDateKeys(parts[0] ?? ""), "BOOKED");
+  mark(parseCsvDateKeys(parts[2] ?? ""), "BOOKED");
+  mark(parseCsvDateKeys(parts[5] ?? ""), "OPTION");
+
+  return map;
+}
+
 function parseVillavaktiDateRange(
   raw: string
 ): { start: Date; end: Date } | null {
@@ -4156,11 +4197,11 @@ export function parseVillavaktiPeriods(
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
 }
 
-function scrapeVillavaktiFromHtml(
+async function scrapeVillavaktiFromPage(
   pageUrl: string,
   html: string,
   warnings: string[]
-): ScrapedVillaPage | null {
+): Promise<ScrapedVillaPage | null> {
   if (!looksLikeVillavakti(pageUrl)) return null;
   if (!html.includes("Villa_detay-price-item")) return null;
 
@@ -4168,9 +4209,38 @@ function scrapeVillavaktiFromHtml(
   const periods = parseVillavaktiPeriods(html, deposit);
   if (periods.length === 0) return null;
 
-  if (!html.includes("calendar") && !html.includes("takvim")) {
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const villaId = extractVillavaktiVillaId(html);
+
+  if (villaId) {
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    try {
+      const origin = originFromUrl(pageUrl);
+      const body = await fetchText(`${origin}/api.php`, {
+        method: "POST",
+        body: `villa_id=${encodeURIComponent(villaId)}&type=villa_dates`,
+        referer: pageUrl,
+      });
+      if (body.includes("|")) {
+        const occ = parseVillavaktiDatesResponse(body);
+        for (const [key, value] of occ) occupancyByDateKey.set(key, value);
+      } else {
+        warnings.push("Villavakti takvim yanıtı beklenen formatta değil");
+      }
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `Villavakti müsaitlik AJAX başarısız: ${error.message}`
+          : "Villavakti müsaitlik AJAX başarısız"
+      );
+    }
+  } else {
+    warnings.push("Villavakti takvim villa_id bulunamadı");
+  }
+
+  if (occupancyByDateKey.size === 0) {
     warnings.push(
-      "Villavakti fiyatları alındı; müsaitlik takvimi otomatik okunamadı"
+      "Villavakti fiyatları alındı; müsaitlik takvimi okunamadı veya boş"
     );
   }
 
@@ -4179,7 +4249,7 @@ function scrapeVillavaktiFromHtml(
     strategy: "villavakti",
     pageTitle: extractPageTitle(html),
     periods,
-    occupancyByDateKey: new Map(),
+    occupancyByDateKey,
     warnings,
   };
 }
@@ -5549,7 +5619,7 @@ export async function scrapeExternalVillaPage(
   );
   if (akdenizvillam) return finalizeScrapedPage(akdenizvillam, html);
 
-  const villavakti = scrapeVillavaktiFromHtml(
+  const villavakti = await scrapeVillavaktiFromPage(
     parsed.toString(),
     html,
     warnings
