@@ -8,6 +8,7 @@ APP_DIR="/var/www/tatil-villa"
 ENV_FILE="$APP_DIR/.env"
 BASE_URL="http://127.0.0.1:3000"
 LOG_DIR="/var/log/tatil-villa-cron"
+BACKUP_SCRIPT="${APP_DIR}/scripts/deploy/backup-to-gdrive.sh"
 
 echo "==> Cron kurulumu: $APP_DIR"
 
@@ -37,7 +38,14 @@ if [[ -z "${CRON_SECRET:-}" ]]; then
 fi
 
 CRON_FILE="$(mktemp)"
-crontab -l 2>/dev/null | grep -v 'tatil-villa cron' | grep -v '/api/cron/' > "$CRON_FILE" || true
+# Eski tatil-villa satırlarını temizle (meta feed / backup duplicate birikimini önle)
+crontab -l 2>/dev/null \
+  | grep -v 'tatil-villa cron' \
+  | grep -v '/api/cron/' \
+  | grep -v 'warm-meta-catalog-feed' \
+  | grep -v 'backup-to-gdrive' \
+  | grep -v 'feeds/meta-catalog.xml' \
+  > "$CRON_FILE" || true
 
 cat >> "$CRON_FILE" <<EOF
 # tatil-villa cron — takvim/fiyat otomatik güncelleme (her 15 dk; villa başına aralık admin ayarından)
@@ -56,6 +64,8 @@ cat >> "$CRON_FILE" <<EOF
 55 8 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/daily-check-in-reports" >>"${LOG_DIR}/daily-check-in-reports.log" 2>&1
 # tatil-villa cron — Meta katalog feed önbellek (saatte bir; Commerce Manager doğrulayıcısı için hızlı XML)
 45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1 && for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do curl -fsS -m 180 -H "Host: \${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" >/dev/null; done
+# tatil-villa cron — SQL + site dosyaları Google Drive yedek (her gece 04:30 Europe/Istanbul)
+30 4 * * * /bin/bash ${BACKUP_SCRIPT} >>"${LOG_DIR}/gdrive-backup.log" 2>&1
 EOF
 
 crontab "$CRON_FILE"
@@ -79,4 +89,5 @@ echo "  Zamanlı msg: saat başı tetiklenir (11.4 yorum 11:00, 40.2 havuz 14:00
 echo "  Belge kontrol: her gün 07:15'te tetiklenir."
 echo "  Fatura/ödeme : her gün 08:55'te Excel maili gider (kayıt yoksa da bilgilendirme)."
 echo "  Meta feed  : saat :45'te önbellek yenilenir."
+echo "  GDrive yedek: her gece 04:30 (SQL + dosyalar ayrı)."
 echo "=========================================================="
