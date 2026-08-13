@@ -5,8 +5,10 @@
  */
 import assert from "node:assert/strict";
 import { renderAgencyMessageTemplate } from "../lib/agency-message-render";
+import { toHtmlFromText } from "../lib/email-html";
 import {
   RESERVATION_DOCUMENT_SENT_MAIL_BODY,
+  RESERVATION_DOCUMENT_SENT_SMS_BODY,
   RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY,
 } from "../lib/agency-message-templates/reservation-document-sent";
 import { buildReservationDocumentTemplateValues } from "../lib/reservation-document-mail";
@@ -77,17 +79,24 @@ const mail = renderAgencyMessageTemplate(
 );
 assert.match(mail, /Sayın Nejla Gürgöl,/);
 assert.match(mail, /116005 kodlu rezervasyonunuz konfirme edilmiştir/);
+assert.match(mail, /bu e-postanın ekindedir/);
 assert.match(mail, /Tesis: Villa Sefa/);
 assert.match(mail, /Giriş: 18\.07\.2026 16:00/);
 assert.match(mail, /Çıkış: 25\.07\.2026 10:00/);
-assert.match(mail, /\ntatildeyiz\n/);
-assert.match(mail, /info@tatildeyiz\.com\.tr/);
+assert.match(mail, /Adres: Girmeler Mah/);
+assert.match(mail, /Telefon: 2526180108 \| E-mail: info@tatildeyiz\.com\.tr/);
+assert.doesNotMatch(mail, /\ntatildeyiz\n/);
+
+const html = toHtmlFromText(mail, { logoUrl: "cid:logo@tatildeyiz" });
+assert.match(html, /background-color:#FFE566/);
+assert.match(html, /cid:logo@tatildeyiz/);
 
 const wa = renderAgencyMessageTemplate(
   RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY,
   values
 );
-assert.match(wa, /e-posta adresinize PDF olarak gönderilmiştir/);
-assert.match(wa, /\ntatildeyiz\s*$/);
+assert.match(wa, /e-posta adresinize gönderilmiştir/);
+assert.match(wa, /Adres: Girmeler Mah/);
+assert.equal(RESERVATION_DOCUMENT_SENT_SMS_BODY, RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY);
 
 console.log("smoke-reservation-document-mail-template: OK");

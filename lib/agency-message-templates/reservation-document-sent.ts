@@ -2,8 +2,8 @@ export const RESERVATION_DOCUMENT_SENT_MESSAGE_NAME =
   "Rezervasyon Belgesi Gonderildi";
 
 /**
- * Mesaj İçeriği 10.5 (rowNo 105) — misafir konfirme onayından sonra PDF belge maili.
- * Site logosu HTML’de üstte basılır (##SITELOGO## metinde boş bırakılır).
+ * Mesaj İçeriği 10.5 (rowNo 105) — misafir konfirme onayından sonra belge bildirimi.
+ * Mail HTML’de üstte rezervasyonun alındığı site logosu basılır (##SITELOGO## metinde boş).
  */
 export const RESERVATION_DOCUMENT_SENT_MAIL_BODY = `Sayın ##MUSTERIADI##,
 
@@ -16,25 +16,25 @@ Giriş: ##GIRISTARIHI## ##GIRISSAATI##
 Çıkış: ##CIKISTARIHI## ##CIKISSAATI##
 
 Sorularınız için ##FIRMATEL## numaralı telefondan bize ulaşabilirsiniz.
-
-##SITEADI##
-
 Adres: ##ADRES##
 Telefon: ##FIRMATEL## | E-mail: ##INFOMAIL##`;
 
 /**
- * WhatsApp: PDF e-postada; metinde site adı (##SITEADI##) zorunlu.
+ * WhatsApp / SMS — PDF e-postada; metin mail ile aynı yapıda.
  */
 export const RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY = `Sayın ##MUSTERIADI##,
 
 ##REZKOD## kodlu rezervasyonunuz konfirme edilmiştir.
 
-Konfirme belgeniz (rezervasyon belgesi + online rezervasyon sözleşmesi) e-posta adresinize PDF olarak gönderilmiştir. Lütfen belgeyi saklayınız.
+Rezervasyon belgeniz (konfirme belgesi ve online rezervasyon sözleşmesi) e-posta adresinize gönderilmiştir. Lütfen belgeyi saklayınız.
 
 Tesis: ##TESISADI##
 Giriş: ##GIRISTARIHI## ##GIRISSAATI##
 Çıkış: ##CIKISTARIHI## ##CIKISSAATI##
 
 Sorularınız için ##FIRMATEL## numaralı telefondan bize ulaşabilirsiniz.
+Adres: ##ADRES##
+Telefon: ##FIRMATEL## | E-mail: ##INFOMAIL##`;
 
-##SITEADI##`;
+export const RESERVATION_DOCUMENT_SENT_SMS_BODY =
+  RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY;

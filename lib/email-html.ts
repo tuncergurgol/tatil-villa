@@ -77,6 +77,16 @@ export function toHtmlFromText(
     }
 
     const escaped = escapeHtml(line);
+    // "116005 kodlu rezervasyonunuz konfirme edilmiştir." → kod sarı vurgu
+    const confirmMatch = trimmed.match(
+      /^(\S+)(\s+kodlu rezervasyonunuz konfirme edilmiştir\.?)$/i
+    );
+    if (confirmMatch) {
+      bodyParts.push(
+        `<span style="background-color:#FFE566;padding:1px 4px;">${escapeHtml(confirmMatch[1]!)}</span>${escapeHtml(confirmMatch[2]!)}<br/>`
+      );
+      continue;
+    }
     // Footer şirket satırları (Adres / Telefon … | E-mail); misafir "Telefon:" sola hizalı kalsın.
     if (
       /^Adres\s*:/i.test(trimmed) ||
