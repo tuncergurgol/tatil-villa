@@ -17,6 +17,7 @@ import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
 import { calculateNights } from "@/lib/stay-nights";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
+import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 import {
   appendBookingSiteFooter,
@@ -36,10 +37,21 @@ import {
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { resolvePaymentMethodLabel } from "@/lib/booking-display";
-import { ensureWhatsAppRawConfirmationUrl } from "@/lib/agency-message-render";
+import {
+  ensureWhatsAppRawConfirmationUrl,
+  normalizeVillaTimeHHMM,
+  renderAgencyMessageTemplate,
+  resolveCompanyLogoUrl,
+} from "@/lib/agency-message-render";
+import { AGENCY_MESSAGE_TEMPLATE_ROW_10_5 } from "@/lib/agency-message-row-no";
+import {
+  RESERVATION_DOCUMENT_SENT_MAIL_BODY,
+  RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY,
+} from "@/lib/agency-message-templates/reservation-document-sent";
 import type { Attachment } from "nodemailer/lib/mailer";
 
 const RESERVATION_DOCUMENT_BCC = "info@tatildeyiz.com.tr";
+const RESERVATION_DOCUMENT_FROM_EMAIL = "rezervasyon@tatildeyiz.com.tr";
 
 function guestFullName(guest: BookingGuestEntry): string {
   return formatGuestFullName(guest);
@@ -288,40 +300,122 @@ export async function buildReservationDocumentDataForBooking(
   };
 }
 
-function buildGuestMailText(data: ReservationDocumentData): string {
-  return `Sayın ${data.guest.fullName},
-
-${data.reservationCode} kodlu rezervasyonunuz konfirme edilmiştir.
-
-Rezervasyon belgeniz (konfirme belgesi ve online rezervasyon sözleşmesi) bu e-postanın ekindedir. Lütfen belgeyi saklayınız.
-
-Tesis: ${data.stay.villaName}
-Giriş: ${data.stay.checkIn.toLocaleDateString("tr-TR")} ${data.stay.checkInTime}
-Çıkış: ${data.stay.checkOut.toLocaleDateString("tr-TR")} ${data.stay.checkOutTime}
-
-Sorularınız için ${data.company.phone} numaralı telefondan bize ulaşabilirsiniz.
-
-Adres: ${data.company.address}
-Telefon: ${data.company.phone} | E-mail: ${data.company.email}`;
+function formatDocumentDateNumeric(date: Date): string {
+  return date.toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
-/** WhatsApp: aynı özet; PDF e-postada (Evolution metin kanalı). */
-function buildGuestWhatsAppText(data: ReservationDocumentData): string {
-  return `Sayın ${data.guest.fullName},
+function setTemplateAlias(
+  values: Record<string, string>,
+  aliases: string[],
+  value: string
+) {
+  for (const alias of aliases) {
+    values[alias] = value;
+  }
+}
 
-${data.reservationCode} kodlu rezervasyonunuz konfirme edilmiştir.
+/** Mesaj İçeriği 10.5 placeholder’ları — site adı / logo URL dahil. */
+export function buildReservationDocumentTemplateValues(
+  data: ReservationDocumentData
+): Record<string, string> {
+  const siteName = (data.company.brandName || "").trim();
+  const firmPhone = (data.company.phone || "").trim();
+  const firmEmail = (data.company.email || RESERVATION_DOCUMENT_BCC).trim();
+  const firmAddress = (data.company.address || "").trim();
+  const checkInTime = normalizeVillaTimeHHMM(data.stay.checkInTime || "16:00");
+  const checkOutTime = normalizeVillaTimeHHMM(
+    data.stay.checkOutTime || "10:00"
+  );
+  const absoluteLogoUrl = resolveCompanyLogoUrl(
+    data.company.logoUrl,
+    data.company.domain
+  );
 
-Konfirme belgeniz (rezervasyon belgesi + online rezervasyon sözleşmesi) e-posta adresinize PDF olarak gönderilmiştir. Lütfen belgeyi saklayınız.
+  const values: Record<string, string> = {};
+  setTemplateAlias(
+    values,
+    ["MUSTERIADI", "MÜŞTERİADI", "MISAFIRADI", "MİSAFİRADI"],
+    data.guest.fullName
+  );
+  setTemplateAlias(
+    values,
+    ["REZKOD", "REZNO", "REZERVASYONKODU", "REZERVASYONKOD", "REZID"],
+    data.reservationCode
+  );
+  setTemplateAlias(
+    values,
+    ["TESISADI", "TESİSADI", "VILLAADI", "VİLLAADI", "VVILLAADI"],
+    data.stay.villaName
+  );
+  setTemplateAlias(
+    values,
+    ["GIRISTARIHI", "GİRİŞTARİHİ", "TARIH1"],
+    formatDocumentDateNumeric(data.stay.checkIn)
+  );
+  setTemplateAlias(
+    values,
+    ["CIKISTARIHI", "ÇIKIŞTARİHİ", "TARIH2"],
+    formatDocumentDateNumeric(data.stay.checkOut)
+  );
+  setTemplateAlias(values, ["VILLACHECKIN", "GIRISSAATI"], checkInTime);
+  setTemplateAlias(values, ["VILLACHECKOUT", "CIKISSAATI"], checkOutTime);
+  setTemplateAlias(
+    values,
+    ["FIRMAADI", "FİRMAADI", "SITEADI", "SİTEADI"],
+    siteName
+  );
+  // Mail HTML’de img olarak basılır; metinde boş bırakılır
+  setTemplateAlias(values, ["SITELOGO", "SİTELOGO", "LOGO"], "");
+  setTemplateAlias(values, ["SITELOGOURL", "LOGOURL"], absoluteLogoUrl);
+  setTemplateAlias(values, ["SIRKETADRES", "ADRES"], firmAddress);
+  setTemplateAlias(
+    values,
+    ["SIRKETTELEFON", "FIRMATEL", "FIRMATELEFON"],
+    firmPhone
+  );
+  setTemplateAlias(values, ["SIRKETMAIL", "INFOMAIL"], firmEmail);
+  return values;
+}
 
-Tesis: ${data.stay.villaName}
-Giriş: ${data.stay.checkIn.toLocaleDateString("tr-TR")} ${data.stay.checkInTime}
-Çıkış: ${data.stay.checkOut.toLocaleDateString("tr-TR")} ${data.stay.checkOutTime}
+function pickDocumentChannelBody(
+  template: {
+    smsBody: string;
+    whatsappBody: string;
+    mailBody: string;
+  } | null,
+  channel: "email" | "whatsapp"
+): string {
+  if (!template) {
+    return channel === "email"
+      ? RESERVATION_DOCUMENT_SENT_MAIL_BODY
+      : RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY;
+  }
+  if (channel === "whatsapp") {
+    return (
+      template.whatsappBody ||
+      template.smsBody ||
+      template.mailBody ||
+      RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY
+    );
+  }
+  return (
+    template.mailBody ||
+    template.whatsappBody ||
+    template.smsBody ||
+    RESERVATION_DOCUMENT_SENT_MAIL_BODY
+  );
+}
 
-Sorularınız için ${data.company.phone} numaralı telefondan bize ulaşabilirsiniz.
-
-Adres: ${data.company.address}
-Telefon: ${data.company.phone}
-E-mail: ${data.company.email}`;
+function resolveDocumentFromName(data: ReservationDocumentData): string {
+  return (
+    data.company.domain?.trim() ||
+    data.company.brandName?.trim() ||
+    "tatildeyiz.com.tr"
+  );
 }
 
 export type ReservationDocumentChannel = "email" | "whatsapp";
@@ -352,12 +446,19 @@ export async function sendReservationDocumentEmail(
     throw new Error("Geçerli misafir e-postası yok; belge maili atlandı");
   }
 
-  const company = await getCompanySettings();
+  const [company, template] = await Promise.all([
+    getCompanySettings(),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_5),
+  ]);
   const emailLogo = await prepareCompanyLogoForEmail(
     data.company.logoUrl,
     data.company.domain
   );
-  const text = buildGuestMailText(data);
+  const values = buildReservationDocumentTemplateValues(data);
+  const text = renderAgencyMessageTemplate(
+    pickDocumentChannelBody(template, "email"),
+    values
+  );
   const attachments: Attachment[] = [
     ...(emailLogo.attachments ?? []),
     {
@@ -370,6 +471,8 @@ export async function sendReservationDocumentEmail(
   await sendCompanyMail(company, {
     to: email,
     bcc: RESERVATION_DOCUMENT_BCC,
+    fromEmail: RESERVATION_DOCUMENT_FROM_EMAIL,
+    fromName: resolveDocumentFromName(data),
     subject: `${data.reservationCode} nolu rezervasyon belgeniz`,
     text,
     html: toHtmlFromText(text, { logoUrl: emailLogo.src }),
@@ -384,6 +487,7 @@ export async function sendReservationDocumentEmail(
 
 /**
  * Misafir onayından sonra konfirme belgesi: e-posta (PDF) + Bildirim WhatsApp (WAHA).
+ * Aynı mail müşteri + info@tatildeyiz.com.tr (BCC).
  * Kanal hatalarını fırlatmaz; sonuçları döner (UI success bozulmaz).
  */
 export async function sendReservationDocumentNotifications(
@@ -432,11 +536,15 @@ export async function sendReservationDocumentNotifications(
     };
   }
 
-  const company = await getCompanySettings();
+  const [company, template] = await Promise.all([
+    getCompanySettings(),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_5),
+  ]);
   const email = data.guest.email.trim();
   const phoneRaw = data.guest.phone.trim() || "";
+  const values = buildReservationDocumentTemplateValues(data);
 
-  // --- E-posta (PDF ek + BCC) ---
+  // --- E-posta (PDF ek + BCC info@) ---
   if (!email || isImportedPlaceholderEmail(email)) {
     results.push({
       channel: "email",
@@ -449,7 +557,10 @@ export async function sendReservationDocumentNotifications(
         data.company.logoUrl,
         data.company.domain
       );
-      const text = buildGuestMailText(data);
+      const text = renderAgencyMessageTemplate(
+        pickDocumentChannelBody(template, "email"),
+        values
+      );
       const attachments: Attachment[] = [
         ...(emailLogo.attachments ?? []),
         {
@@ -462,6 +573,8 @@ export async function sendReservationDocumentNotifications(
       await sendCompanyMail(company, {
         to: email,
         bcc: RESERVATION_DOCUMENT_BCC,
+        fromEmail: RESERVATION_DOCUMENT_FROM_EMAIL,
+        fromName: resolveDocumentFromName(data),
         subject: `${data.reservationCode} nolu rezervasyon belgeniz`,
         text,
         html: toHtmlFromText(text, { logoUrl: emailLogo.src }),
@@ -487,7 +600,10 @@ export async function sendReservationDocumentNotifications(
   } else {
     const whatsappMessage = ensureWhatsAppRawConfirmationUrl(
       appendBookingSiteFooter(
-        buildGuestWhatsAppText(data),
+        renderAgencyMessageTemplate(
+          pickDocumentChannelBody(template, "whatsapp"),
+          values
+        ),
         data.company.brandName
       )
     );

@@ -31,10 +31,12 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_1_6 = 16;
 /** @deprecated Eski 1.7 kodlaması; fallback için tutuluyor */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_1_7 = 17;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_3_1 = 31;
-/** Konfirme belgesi gönderildi (UI: 10.4) */
+/** Konfirme onay talebi (UI: 10.4) — misafire onay linki */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_10_4 = 104;
 /** @deprecated Eski kodlama; 10.4 ile aynı kayıt */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = AGENCY_MESSAGE_TEMPLATE_ROW_10_4;
+/** Rezervasyon belgesi gönderildi (UI: 10.5) — misafir onayından sonra PDF mail */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_10_5 = 105;
 /** Giriş bilgilendirme / müşteri bilgilendirme (UI: 11.1, rowNo: 111) */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_11_1 = 111;
 /** Çıkıştan 1 gün önce misafir hatırlatma (UI: 11.3, rowNo: 113) */
