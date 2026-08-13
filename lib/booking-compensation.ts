@@ -1,8 +1,8 @@
 /**
  * Tazminat tutar dağılımı:
  * - Komisyon = tazminat
- * - Fark (ön ödeme − tazminat) varsayılan olarak misafire iade
- * - Misafir iadesi düşürülürse kalan villa sahibine ödeme
+ * - Misafire iade verilmezse varsayılan = ön ödeme − komisyon farkı
+ * - Villa sahibine ödeme = ön ödeme − komisyon − misafire iade
  */
 export type CompensationBreakdown = {
   reservationTotal: number;
@@ -14,43 +14,42 @@ export type CompensationBreakdown = {
   ownerPayableAmount: number;
 };
 
+function toNonNegativeInt(value: number | null | undefined): number {
+  return Math.max(0, Math.round(Number(value) || 0));
+}
+
 export function computeCompensationBreakdown(input: {
   reservationTotal: number | null | undefined;
   prepaymentTotal: number | null | undefined;
   compensationAmount: number | null | undefined;
-  guestRefundAmount?: number | null | undefined;
+  /** `undefined` = varsayılan (tüm fark misafire). `0` geçerli manuel değerdir. */
+  guestRefundAmount?: number | undefined;
 }): CompensationBreakdown {
-  const reservationTotal = Math.max(
-    0,
-    Math.round(Number(input.reservationTotal) || 0)
+  const reservationTotal = toNonNegativeInt(input.reservationTotal);
+  const prepaymentTotal = toNonNegativeInt(input.prepaymentTotal);
+  const compensationAmount = toNonNegativeInt(
+    input.compensationAmount == null
+      ? prepaymentTotal
+      : input.compensationAmount
   );
-  const prepaymentTotal = Math.max(
-    0,
-    Math.round(Number(input.prepaymentTotal) || 0)
-  );
-  const compensationAmount = Math.max(
-    0,
-    Math.round(
-      Number(
-        input.compensationAmount == null
-          ? prepaymentTotal
-          : input.compensationAmount
-      ) || 0
-    )
-  );
-  const difference = Math.max(0, prepaymentTotal - compensationAmount);
+  const commissionAmount = compensationAmount;
+  const difference = Math.max(0, prepaymentTotal - commissionAmount);
+
   const requestedRefund =
-    input.guestRefundAmount == null
+    input.guestRefundAmount === undefined
       ? difference
-      : Math.max(0, Math.round(Number(input.guestRefundAmount) || 0));
+      : toNonNegativeInt(input.guestRefundAmount);
   const guestRefundAmount = Math.min(difference, requestedRefund);
-  const ownerPayableAmount = Math.max(0, difference - guestRefundAmount);
+  const ownerPayableAmount = Math.max(
+    0,
+    prepaymentTotal - commissionAmount - guestRefundAmount
+  );
 
   return {
     reservationTotal,
     prepaymentTotal,
     compensationAmount,
-    commissionAmount: compensationAmount,
+    commissionAmount,
     difference,
     guestRefundAmount,
     ownerPayableAmount,

@@ -7,7 +7,6 @@ import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { computeCompensationBreakdown } from "@/lib/booking-compensation";
 import { formatMoneyInputValue, formatMoneyPlain } from "@/lib/booking-display";
 import { BookingStatus } from "@prisma/client";
-import { parseAmountInput } from "@/lib/villa-period-pricing";
 import {
   FormRow,
   ReadonlyField,
@@ -36,6 +35,15 @@ interface CompensationModalProps {
   }) => void;
 }
 
+/** 0 dahil; boş alan için null. */
+function parseMoneyField(value: string): number | null {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return null;
+  const parsed = Number(digits);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.round(parsed);
+}
+
 export default function CompensationModal({
   open,
   onClose,
@@ -62,7 +70,10 @@ export default function CompensationModal({
       reservationTotal,
       prepaymentTotal,
       compensationAmount: defaultCompensation,
-      guestRefundAmount: initialGuestRefundAmount,
+      guestRefundAmount:
+        initialGuestRefundAmount == null
+          ? undefined
+          : Math.max(0, Math.round(initialGuestRefundAmount)),
     });
     setCompensationInput(formatMoneyInputValue(breakdown.compensationAmount));
     setGuestRefundInput(formatMoneyInputValue(breakdown.guestRefundAmount));
@@ -76,19 +87,17 @@ export default function CompensationModal({
     initialGuestRefundAmount,
   ]);
 
-  const compensationAmount = useMemo(() => {
-    const parsed = parseAmountInput(compensationInput);
-    if (parsed != null) return parsed;
-    if (!compensationInput.trim()) return 0;
-    return null;
-  }, [compensationInput]);
+  const compensationAmount = useMemo(
+    () => parseMoneyField(compensationInput),
+    [compensationInput]
+  );
 
   const guestRefundParsed = useMemo(() => {
-    if (!guestRefundTouched) return null;
-    const parsed = parseAmountInput(guestRefundInput);
-    if (parsed != null) return parsed;
-    if (!guestRefundInput.trim()) return 0;
-    return null;
+    if (!guestRefundTouched) return undefined;
+    const parsed = parseMoneyField(guestRefundInput);
+    // Kullanıcı alanı boşalttıysa 0 kabul et (villa sahibine kalan fark)
+    if (parsed == null) return 0;
+    return parsed;
   }, [guestRefundInput, guestRefundTouched]);
 
   const breakdown = useMemo(() => {
@@ -97,9 +106,7 @@ export default function CompensationModal({
       reservationTotal,
       prepaymentTotal,
       compensationAmount,
-      guestRefundAmount: guestRefundTouched
-        ? guestRefundParsed
-        : undefined,
+      guestRefundAmount: guestRefundTouched ? guestRefundParsed : undefined,
     });
   }, [
     compensationAmount,
@@ -119,10 +126,6 @@ export default function CompensationModal({
   function handleSubmit() {
     if (compensationAmount == null || !breakdown) {
       setError("Geçerli bir tazminat tutarı girin");
-      return;
-    }
-    if (guestRefundTouched && guestRefundParsed == null) {
-      setError("Geçerli bir misafire iade tutarı girin");
       return;
     }
 
@@ -189,7 +192,9 @@ export default function CompensationModal({
               onChange={(event) => {
                 const digits = event.target.value.replace(/\D/g, "");
                 setCompensationInput(
-                  digits ? formatMoneyInputValue(Number(digits)) : ""
+                  digits === ""
+                    ? ""
+                    : formatMoneyInputValue(Number(digits))
                 );
                 setGuestRefundTouched(false);
               }}
@@ -219,14 +224,16 @@ export default function CompensationModal({
                       const digits = event.target.value.replace(/\D/g, "");
                       setGuestRefundTouched(true);
                       setGuestRefundInput(
-                        digits ? formatMoneyInputValue(Number(digits)) : ""
+                        digits === ""
+                          ? "0"
+                          : formatMoneyInputValue(Number(digits))
                       );
                     }}
                     className={bookingInputClass}
                   />
                   <p className="text-xs text-gray-500">
-                    Ön ödeme − tazminat farkı:{" "}
-                    {formatMoneyPlain(breakdown.difference)}
+                    Formül: Ön ödeme − Komisyon − Misafire iade = Villa
+                    sahibine ödeme
                   </p>
                 </div>
               </FormRow>
