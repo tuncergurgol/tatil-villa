@@ -62,6 +62,8 @@ cat >> "$CRON_FILE" <<EOF
 15 7 * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/konut-belge-check" >>"${LOG_DIR}/konut-belge-check.log" 2>&1
 # tatil-villa cron — giriş+1 gün konaklama faturası ve ev sahibi ödemesi Excel maili (her gün 08:55)
 55 8 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/daily-check-in-reports" >>"${LOG_DIR}/daily-check-in-reports.log" 2>&1
+# tatil-villa cron — ONAYLANDI konaklama durumu YAPILDI (giriş günü 23:50 + geçmiş catch-up)
+50 23 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/stay-status-complete" >>"${LOG_DIR}/stay-status-complete.log" 2>&1
 # tatil-villa cron — Meta katalog feed önbellek (saatte bir; Commerce Manager doğrulayıcısı için hızlı XML)
 45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1 && for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do curl -fsS -m 180 -H "Host: \${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" >/dev/null; done
 # tatil-villa cron — SQL + site dosyaları Google Drive yedek (her gece 04:30 Europe/Istanbul)
