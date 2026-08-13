@@ -9,6 +9,7 @@ import {
   resolveActivityActor,
   type BookingActivityLogEntry,
 } from "@/lib/booking-activity-log";
+import { getIstanbulDateKey } from "@/lib/booking-calendar-days";
 import { computeCompensationBreakdown } from "@/lib/booking-compensation";
 import {
   computeGuestReservationTotal,
@@ -33,6 +34,7 @@ export type ApplyCompensationResult =
       details: {
         compensationAmount: number;
         guestRefundAmount: number;
+        guestRefundPaymentDate: string | null;
         ownerPayableAmount: number;
         commissionAmount: number;
         invoiceAmount: number;
@@ -95,10 +97,14 @@ export async function applyCompensationAction(
     };
   }
 
+  const guestRefundPaymentDate =
+    breakdown.guestRefundAmount > 0 ? getIstanbulDateKey() : null;
+
   const nextDetails = {
     ...details,
     compensationAmount: breakdown.compensationAmount,
     guestRefundAmount: breakdown.guestRefundAmount,
+    guestRefundPaymentDate,
     ownerPayableAmount: breakdown.ownerPayableAmount,
     commissionAmount: breakdown.commissionAmount,
     invoiceAmount: breakdown.compensationAmount,
@@ -125,6 +131,7 @@ export async function applyCompensationAction(
       to: BookingStatus.COMPENSATION,
       compensationAmount: breakdown.compensationAmount,
       guestRefundAmount: breakdown.guestRefundAmount,
+      guestRefundPaymentDate,
       ownerPayableAmount: breakdown.ownerPayableAmount,
       commissionAmount: breakdown.commissionAmount,
     },
@@ -140,6 +147,7 @@ export async function applyCompensationAction(
     details: {
       compensationAmount: breakdown.compensationAmount,
       guestRefundAmount: breakdown.guestRefundAmount,
+      guestRefundPaymentDate,
       ownerPayableAmount: breakdown.ownerPayableAmount,
       commissionAmount: breakdown.commissionAmount,
       invoiceAmount: breakdown.compensationAmount,

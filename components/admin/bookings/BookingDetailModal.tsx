@@ -1927,6 +1927,29 @@ export default function BookingDetailModal({
                 </div>
               </FormSection>
 
+              {(details.guestRefundAmount ?? 0) > 0 ? (
+                <FormSection title="Misafir İade Ödeme Bilgileri">
+                  <FormRow label="Misafire İade Edilecek Tutar">
+                    <ReadonlyField
+                      value={formatMoneyPlain(details.guestRefundAmount ?? 0)}
+                    />
+                  </FormRow>
+                  <FormRow label="Ödeme Tarihi">
+                    <ReadonlyField
+                      value={
+                        details.guestRefundPaymentDate
+                          ? formatBookingDate(
+                              new Date(
+                                `${details.guestRefundPaymentDate}T00:00:00.000Z`
+                              )
+                            )
+                          : "—"
+                      }
+                    />
+                  </FormRow>
+                </FormSection>
+              ) : null}
+
               <FormSection title="Satış Temsilcisi Bilgileri">
                 <FormRow label="Satış Temsilcisi Adı">
                   {isAdminUser ? (

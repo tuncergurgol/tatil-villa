@@ -27,6 +27,7 @@ interface CompensationModalProps {
     details: {
       compensationAmount: number;
       guestRefundAmount: number;
+      guestRefundPaymentDate: string | null;
       ownerPayableAmount: number;
       commissionAmount: number;
       invoiceAmount: number;

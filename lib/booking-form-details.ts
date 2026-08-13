@@ -107,6 +107,8 @@ export type BookingDetails = {
   compensationAmount?: number | null;
   /** Tazminatta misafire iade edilen tutar */
   guestRefundAmount?: number | null;
+  /** Misafir iade ödeme tarihi (yyyy-mm-dd) — Tazminatı Uygula günü */
+  guestRefundPaymentDate?: string | null;
   /** Public talep: card | transfer */
   paymentMethod?: string;
   paymentAmount?: string;
@@ -762,6 +764,7 @@ export function defaultDetailsFromBooking(booking: {
     ownerPayableAmount: parsed.ownerPayableAmount ?? null,
     compensationAmount: parsed.compensationAmount ?? null,
     guestRefundAmount: parsed.guestRefundAmount ?? null,
+    guestRefundPaymentDate: parsed.guestRefundPaymentDate ?? null,
     ownerCollectFromGuest: parsed.ownerCollectFromGuest ?? null,
     ownerPaymentDueDate: parsed.ownerPaymentDueDate ?? "",
     ownerPaymentDate: parsed.ownerPaymentDate ?? "",
