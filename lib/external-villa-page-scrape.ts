@@ -12,6 +12,7 @@
  * - mustakilvillam.com / myvillacity.com / villakilavuzu.com (routingData id + api PriceList/Availability)
  * - luxuryvillam.com (window.VILLA_CALENDAR gömülü günlük fiyat + müsaitlik)
  * - hepsivilla.com (price_block haftalık/gecelik + AJAX cal.do takvim)
+ * - elitvillam.com (aylık haftalık fiyat + AJAX cal.do; data-p gecelik)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - tatilvillamda.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
  * - kaskavilla.com (Nuxt __NUXT__ priceTable + frontapi/periyotlar takvim)
@@ -67,6 +68,7 @@ export type ScrapedVillaPage = {
     | "villavakti"
     | "product_detail_rsc"
     | "hepsivilla"
+    | "elitvillam"
     | "villakalkan"
     | "yazlikvillaci"
     | "kvt"
@@ -507,12 +509,20 @@ function extractDamageDeposit(html: string): {
   }
 
   const text = stripTags(html);
-  const m = text.match(
+  const before = text.match(
     /hasar\s*depozito(?:su)?[^0-9]{0,40}(\d[\d.\s]*)\s*(TL|EUR|USD|GBP|€|\$|£)?/i
   );
-  if (!m) return { amount: null, currency: "TL" };
-  const amount = positiveInt(Number((m[1] ?? "").replace(/[.\s]/g, "")));
-  return { amount, currency: mapCurrencyCode(m[2]) };
+  if (before) {
+    const amount = positiveInt(Number((before[1] ?? "").replace(/[.\s]/g, "")));
+    return { amount, currency: mapCurrencyCode(before[2]) };
+  }
+
+  const after = text.match(
+    /(\d[\d.\s]*)\s*(TL|EUR|USD|GBP|€|\$|£)\s+hasar\s*depozito(?:su)?/i
+  );
+  if (!after) return { amount: null, currency: "TL" };
+  const amount = positiveInt(Number((after[1] ?? "").replace(/[.\s]/g, "")));
+  return { amount, currency: mapCurrencyCode(after[2]) };
 }
 
 function extractPrepaymentRate(html: string): number | null {
@@ -4418,7 +4428,7 @@ function looksLikeHepsivilla(pageUrl: string, html: string): boolean {
 }
 
 function extractHepsivillaCalendarItemId(html: string): string | null {
-  const fromJs = html.match(/\bid_item\s*=\s*(\d+)/)?.[1];
+  const fromJs = html.match(/\bid_item\s*=\s*["']?(\d+)/)?.[1];
   if (fromJs) return fromJs;
   return (
     html.match(/name=["']pid["'][^>]*value=["'](\d+)["']/i)?.[1] ??
@@ -4620,6 +4630,189 @@ async function scrapeHepsivillaFromPage(
   return {
     sourceHost: normalizeHost(new URL(pageUrl).hostname),
     strategy: "hepsivilla",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
+function looksLikeElitvillam(pageUrl: string, html: string): boolean {
+  try {
+    if (normalizeHost(new URL(pageUrl).hostname).includes("elitvillam")) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return (
+    html.includes("url_ajax_cal") &&
+    html.includes('id="fiyatlar"') &&
+    /\bid_item\s*=\s*["']?\d+/.test(html) &&
+    !html.includes('class="pb price_block"')
+  );
+}
+
+/** cal.do HTML — `data-p` gecelik fiyat (haftalık / 7). */
+export function parseElitvillamCalendarDayPrices(html: string): {
+  dateKeys: string[];
+  prices: number[];
+} {
+  const dateKeys: string[] = [];
+  const prices: number[] = [];
+  const liRe = /<li\b([^>]*)\bid=["'](\d{4}-\d{2}-\d{2})["']([^>]*)>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = liRe.exec(html)) !== null) {
+    const attrs = `${match[1] ?? ""} ${match[3] ?? ""}`;
+    const key = match[2]!;
+    const priceRaw = attrs.match(/\bdata-p=["']([^"']+)["']/i)?.[1];
+    if (!priceRaw) continue;
+    const price = Number(String(priceRaw).replace(",", "."));
+    if (!Number.isFinite(price) || price <= 0) continue;
+    dateKeys.push(key);
+    prices.push(Math.round(price));
+  }
+
+  return { dateKeys, prices };
+}
+
+/**
+ * Sayfadaki aylık `.pb` blokları — `id="m4"`…`m12` haftalık TL;
+ * gecelik = haftalık / 7.
+ */
+export function parseElitvillamMonthlyPriceBlocks(
+  html: string,
+  yearHint?: number
+): MappedVillaPricePeriod[] {
+  const yearMatch = html.match(/Fiyatlar\s+(\d{4})\s+y[ıi]l/i);
+  const year =
+    yearHint ??
+    (yearMatch ? Number(yearMatch[1]) : new Date().getFullYear());
+  if (!Number.isFinite(year) || year < 2000) return [];
+
+  const deposit = extractDamageDeposit(html);
+  const periods: MappedVillaPricePeriod[] = [];
+  const monthPriceRe =
+    /<span class="tv"\s+id="m(\d{1,2})"[^>]*>([\s\S]*?)<\/span>/gi;
+  let match: RegExpExecArray | null;
+  let sourceId = 1;
+
+  while ((match = monthPriceRe.exec(html)) !== null) {
+    const month = Number(match[1]);
+    if (!Number.isFinite(month) || month < 1 || month > 12) continue;
+
+    const weeklyParsed = parseMoneyWithCurrency(stripTags(match[2] ?? ""));
+    if (!weeklyParsed.amount || weeklyParsed.amount <= 0) continue;
+    const nightly = Math.round(weeklyParsed.amount / 7);
+    if (nightly <= 0) continue;
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate,
+        endDate,
+        nightlyPrice: nightly,
+        currency: weeklyParsed.currency,
+        weeklyPrice: weeklyParsed.amount,
+        damageDeposit: deposit.amount,
+        damageDepositCurrency: deposit.currency,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+async function scrapeElitvillamFromPage(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  if (!looksLikeElitvillam(pageUrl, html)) return null;
+
+  const deposit = extractDamageDeposit(html);
+  const itemId = extractHepsivillaCalendarItemId(html);
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const dateKeys: string[] = [];
+  const prices: number[] = [];
+
+  if (itemId) {
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    const calBase = extractHepsivillaCalendarUrl(html, pageUrl);
+    const today = startOfDay(new Date());
+    let year = today.getFullYear();
+    let month = today.getMonth() + 1;
+
+    for (let i = 0; i < 24; i++) {
+      if (i > 0) await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+      const url = `${calBase}?id_item=${encodeURIComponent(itemId)}&month=${month}&year=${year}&lang=tr&t=${Date.now()}`;
+      try {
+        const calHtml = await fetchText(url, { referer: pageUrl });
+        for (const [key, value] of parseHepsivillaCalendarOccupancy(calHtml)) {
+          const existing = occupancyByDateKey.get(key);
+          if (value === "BOOKED" || existing !== "BOOKED") {
+            occupancyByDateKey.set(key, value);
+          }
+        }
+        const dayPrices = parseElitvillamCalendarDayPrices(calHtml);
+        for (let j = 0; j < dayPrices.dateKeys.length; j++) {
+          dateKeys.push(dayPrices.dateKeys[j]!);
+          prices.push(dayPrices.prices[j]!);
+        }
+      } catch (error) {
+        warnings.push(
+          error instanceof Error
+            ? `Elitvillam takvim ${year}-${String(month).padStart(2, "0")} alınamadı: ${error.message}`
+            : `Elitvillam takvim ${year}-${String(month).padStart(2, "0")} alınamadı`
+        );
+      }
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+    }
+  } else {
+    warnings.push("Elitvillam takvim id_item bulunamadı");
+  }
+
+  let periods =
+    dateKeys.length > 0
+      ? collapseDailyPricesToPeriods(dateKeys, prices, "TL").map((period) => ({
+          ...period,
+          damageDeposit: deposit.amount ?? period.damageDeposit,
+          damageDepositCurrency: deposit.currency,
+        }))
+      : [];
+
+  if (periods.length === 0) {
+    periods = parseElitvillamMonthlyPriceBlocks(html);
+    if (periods.length > 0) {
+      warnings.push(
+        "Elitvillam günlük fiyat (data-p) yok; aylık haftalık fiyat tablosu kullanıldı"
+      );
+    }
+  }
+
+  if (periods.length === 0) {
+    if (occupancyByDateKey.size > 0) {
+      warnings.push("Elitvillam takvim okundu ancak fiyat bulunamadı");
+    }
+    return null;
+  }
+
+  if (occupancyByDateKey.size === 0) {
+    warnings.push(
+      "Elitvillam fiyatları alındı; müsaitlik takvimi okunamadı veya boş"
+    );
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "elitvillam",
     pageTitle: extractPageTitle(html),
     periods,
     occupancyByDateKey,
@@ -5633,6 +5826,13 @@ export async function scrapeExternalVillaPage(
   );
   if (productDetailRsc) return finalizeScrapedPage(productDetailRsc, html);
 
+  const elitvillam = await scrapeElitvillamFromPage(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (elitvillam) return finalizeScrapedPage(elitvillam, html);
+
   const hepsivilla = await scrapeHepsivillaFromPage(
     parsed.toString(),
     html,
@@ -5724,6 +5924,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
