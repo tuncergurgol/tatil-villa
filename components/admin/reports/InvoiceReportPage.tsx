@@ -144,6 +144,12 @@ export default function InvoiceReportPage({
             <p className="text-sm text-gray-500">
               EDM Portal Excel fatura yükleme formatı
             </p>
+            <p className="mt-1 text-xs text-gray-400">
+              Her gün 08:55&apos;te Onaylandı + Giriş gününden 1 gün sonra
+              filtresi Excel olarak info@tatildeyiz.com.tr adresine
+              KONAKLAMA FATURALARI konusuyla gönderilir; kayıt olmasa da
+              bilgilendirme gider.
+            </p>
           </div>
         </div>
 

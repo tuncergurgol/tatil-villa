@@ -5,6 +5,7 @@ import {
   normalizeOwnerPayments,
   parseBookingDetails,
   resolveBookingCommissionAmount,
+  resolveExternalCode,
 } from "@/lib/booking-form-details";
 import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 import { getOwnerDisplayName } from "@/lib/btrans-report";
@@ -22,6 +23,15 @@ import {
   type OwnerPaymentExportInput,
 } from "@/lib/owner-payment-export";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
+
+export type OwnerPaymentIncompleteRow = {
+  bookingId: string;
+  externalCode: string;
+  guestName: string;
+  villaName: string;
+  missing: string[];
+};
 
 export type OwnerPaymentReportListItem = AdminBookingListItem & {
   ownerName: string;
@@ -351,5 +361,76 @@ export async function generateOwnerPaymentReportExport(bookingIds: string[]) {
     filename: buildOwnerPaymentExportFilename(),
     count: rows.length - 1,
     incompleteCount,
+  };
+}
+
+function resolveOwnerPaymentRemaining(booking: OwnerPaymentBookingRecord) {
+  const details = parseBookingDetails(booking.details);
+  const prepaymentAmount =
+    details.prepaymentAmount != null && Number.isFinite(details.prepaymentAmount)
+      ? Math.round(details.prepaymentAmount)
+      : null;
+  const commissionAmount = resolveBookingCommissionAmount(
+    details,
+    booking.totalPrice
+  );
+  const ownerPayableAmount = computeOwnerPayableAmount(
+    prepaymentAmount,
+    commissionAmount
+  );
+  const paidAmount = normalizeOwnerPayments(details.ownerPayments).reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
+  const remainingAmount = Math.max(0, ownerPayableAmount - paidAmount);
+  return { remainingAmount };
+}
+
+/** Onaylı rezervasyonlar — giriş tarihi = dateKey (YYYY-MM-DD). */
+export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) {
+  const bookings = await prisma.booking.findMany({
+    where: { status: "CONFIRMED", checkIn: dateKeyToDbDate(dateKey) },
+    select: ownerPaymentBookingSelect,
+    orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
+  });
+
+  const rows: (string | number)[][] = [[...OWNER_PAYMENT_EXCEL_HEADERS]];
+  const incomplete: OwnerPaymentIncompleteRow[] = [];
+  let paidCount = 0;
+
+  for (const booking of bookings) {
+    const { remainingAmount } = resolveOwnerPaymentRemaining(booking);
+    const exportInput = toExportInput(booking, remainingAmount);
+
+    if (remainingAmount <= 0) {
+      paidCount += 1;
+      continue;
+    }
+
+    const missing = checkOwnerPaymentMissingFields(exportInput);
+    if (missing.length > 0) {
+      incomplete.push({
+        bookingId: booking.id,
+        externalCode:
+          resolveExternalCode(booking.externalCode, booking.guestEmail) ||
+          booking.id,
+        guestName: booking.guestName,
+        villaName: booking.villa.name,
+        missing,
+      });
+      continue;
+    }
+
+    rows.push(buildOwnerPaymentExcelRow(exportInput));
+  }
+
+  return {
+    rows,
+    filename: `ev-sahibi-odemeleri-${dateKey}.xlsx`,
+    matchedCount: bookings.length,
+    count: rows.length - 1,
+    paidCount,
+    incompleteCount: incomplete.length,
+    incomplete,
   };
 }

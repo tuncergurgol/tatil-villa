@@ -205,6 +205,12 @@ export default function OwnerPaymentReportPage({
             <p className="text-sm text-gray-500">
               Toplu havale Excel şablonu (Alıcı / IBAN / Tutar / Açıklama)
             </p>
+            <p className="mt-1 text-xs text-gray-400">
+              Her gün 08:55&apos;te Onaylandı + Giriş gününden 1 gün sonra
+              filtresi Excel olarak info@tatildeyiz.com.tr adresine EV SAHİBİ
+              ÖDEMELERİ konusuyla gönderilir; kayıt olmasa da bilgilendirme
+              gider.
+            </p>
           </div>
         </div>
 

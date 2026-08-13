@@ -4,6 +4,7 @@ export type BookingQuickFilter =
   | "check_in_today"
   | "check_in_1_day"
   | "check_in_2_days"
+  | "check_in_yesterday"
   | "check_out_today"
   | "check_out_1_day"
   | "check_out_2_days";
@@ -34,6 +35,10 @@ export const BOOKING_QUICK_FILTER_OPTIONS: {
   { value: "check_in_today", label: "Bugün Girişli Rezervasyonlar" },
   { value: "check_in_1_day", label: "Tatile 1 gün kalanlar" },
   { value: "check_in_2_days", label: "Tatile 2 gün kalanlar" },
+  {
+    value: "check_in_yesterday",
+    label: "Giriş gününden 1 gün sonra",
+  },
   { value: "check_out_today", label: "Bugün çıkanlar" },
   { value: "check_out_1_day", label: "Çıkışa 1 gün kalanlar" },
   { value: "check_out_2_days", label: "Çıkışa 2 gün kalanlar" },

@@ -20,6 +20,9 @@ import {
   type InvoiceReportBookingInput,
 } from "@/lib/edm-invoice-export";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
+
+export type { InvoiceReportIncompleteRow };
 
 export type InvoiceReportListItem = AdminBookingListItem & {
   ownerName: string;
@@ -320,6 +323,25 @@ export async function generateInvoiceReportExport(bookingIds: string[]) {
     incompleteCount: incomplete.length,
     incomplete,
     warnings: buildCompanyWarnings(companySettings.taxNumber),
+  };
+}
+
+/** Onaylı rezervasyonlar — giriş tarihi = dateKey (YYYY-MM-DD). */
+export async function generateInvoiceReportForCheckInDate(dateKey: string) {
+  const bookings = await prisma.booking.findMany({
+    where: { status: "CONFIRMED", checkIn: dateKeyToDbDate(dateKey) },
+    select: { id: true },
+    orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
+  });
+
+  const exportResult = await generateInvoiceReportExport(
+    bookings.map((booking) => booking.id)
+  );
+
+  return {
+    ...exportResult,
+    matchedCount: bookings.length,
+    filename: `konaklama-faturalari-${dateKey}.xlsx`,
   };
 }
 

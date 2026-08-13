@@ -45,6 +45,11 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
   return toDbDateKey(utc);
 }
 
+/** Türkiye takviminde dünün YYYY-MM-DD değeri (giriş + 1 gün raporu). */
+export function getYesterdayIstanbulDateKey(date = new Date()): string {
+  return addDaysToDateKey(getIstanbulDateKey(date), -1);
+}
+
 export function resolveQuickFilterTargetDateKey(
   quickFilter: BookingQuickFilter
 ): string {
@@ -54,6 +59,8 @@ export function resolveQuickFilterTargetDateKey(
     case "check_in_today":
     case "check_out_today":
       return todayKey;
+    case "check_in_yesterday":
+      return addDaysToDateKey(todayKey, -1);
     case "check_in_1_day":
     case "check_out_1_day":
       return addDaysToDateKey(todayKey, 1);
