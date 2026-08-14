@@ -32,7 +32,10 @@ const cancelInputSchema = z.object({
   bookingId: z.string().min(1),
   reasonId: z.string().min(1),
   forceMajeure: z.boolean().optional().default(false),
+  /** Geriye uyumluluk: tek tutar — alıcı nedene göre seçilir */
   refundAmount: z.number().finite().min(0).optional(),
+  guestRefundAmount: z.number().finite().min(0).optional(),
+  ownerPayableAmount: z.number().finite().min(0).optional(),
 });
 
 export type CancelBookingResult =
@@ -126,14 +129,40 @@ export async function cancelBookingAction(
 
   if (parsed.data.forceMajeure) {
     const prepaymentTotal = toNonNegativeInt(realizedPrepayment);
-    const requested =
-      parsed.data.refundAmount == null
-        ? prepaymentTotal
-        : toNonNegativeInt(parsed.data.refundAmount);
-    const refundAmount = Math.min(prepaymentTotal, requested);
     const recipient: ForceMajeureRefundRecipient =
       resolveForceMajeureRefundRecipient(reasonId);
     const recipientLabel = getForceMajeureRecipientLabel(recipient);
+
+    const defaultAmount =
+      parsed.data.refundAmount == null
+        ? prepaymentTotal
+        : toNonNegativeInt(parsed.data.refundAmount);
+
+    let guestRefundAmount =
+      parsed.data.guestRefundAmount != null
+        ? toNonNegativeInt(parsed.data.guestRefundAmount)
+        : recipient === "guest"
+          ? defaultAmount
+          : 0;
+    let ownerPayableAmount =
+      parsed.data.ownerPayableAmount != null
+        ? toNonNegativeInt(parsed.data.ownerPayableAmount)
+        : recipient === "owner"
+          ? defaultAmount
+          : 0;
+
+    // Toplam ön ödemeyi aşmasın
+    const combined = guestRefundAmount + ownerPayableAmount;
+    if (combined > prepaymentTotal && combined > 0) {
+      const scale = prepaymentTotal / combined;
+      guestRefundAmount = Math.round(guestRefundAmount * scale);
+      ownerPayableAmount = Math.max(
+        0,
+        prepaymentTotal - guestRefundAmount
+      );
+    }
+
+    const refundAmount = guestRefundAmount + ownerPayableAmount;
 
     nextDetails = {
       ...nextDetails,
@@ -143,19 +172,10 @@ export async function cancelBookingAction(
       commissionAmount: details.commissionAmount ?? 0,
       invoiceAmount: 0,
       prepaymentAmount: prepaymentTotal,
-      ...(recipient === "guest"
-        ? {
-            guestRefundAmount: refundAmount,
-            guestRefundPaymentDate: refundAmount > 0 ? todayKey : null,
-            ownerPayableAmount: 0,
-            ownerPaymentDueDate: details.ownerPaymentDueDate ?? "",
-          }
-        : {
-            ownerPayableAmount: refundAmount,
-            ownerPaymentDueDate: refundAmount > 0 ? todayKey : "",
-            guestRefundAmount: 0,
-            guestRefundPaymentDate: null,
-          }),
+      guestRefundAmount,
+      guestRefundPaymentDate: guestRefundAmount > 0 ? todayKey : null,
+      ownerPayableAmount,
+      ownerPaymentDueDate: ownerPayableAmount > 0 ? todayKey : "",
     };
 
     Object.assign(detailPatch, {
@@ -164,14 +184,33 @@ export async function cancelBookingAction(
       compensationAmount: 0,
       invoiceAmount: 0,
       prepaymentAmount: prepaymentTotal,
-      guestRefundAmount: nextDetails.guestRefundAmount ?? 0,
+      guestRefundAmount,
       guestRefundPaymentDate: nextDetails.guestRefundPaymentDate ?? null,
-      ownerPayableAmount: nextDetails.ownerPayableAmount ?? 0,
+      ownerPayableAmount,
       ownerPaymentDueDate: nextDetails.ownerPaymentDueDate ?? "",
     });
 
     activityAction = "force_majeure_refund_applied";
-    activityMessage = `Mücbir sebep iadesi uygulandı (${reasonLabel}, ${recipientLabel} ${formatMoneyPlain(refundAmount)})`;
+    activityMessage = `Mücbir sebep iadesi uygulandı (${reasonLabel}, ${recipientLabel} varsayılan; misafir ${formatMoneyPlain(guestRefundAmount)}, villa sahibi ${formatMoneyPlain(ownerPayableAmount)})`;
+  } else {
+    // Tazminatsız / mücbir sebepsiz iptalde yapılacak ödeme satırı bırakma
+    nextDetails = {
+      ...nextDetails,
+      forceMajeureRefundAmount: null,
+      forceMajeureRefundRecipient: null,
+      ownerPayableAmount: 0,
+      ownerPaymentDueDate: "",
+      guestRefundAmount: 0,
+      guestRefundPaymentDate: null,
+    };
+    Object.assign(detailPatch, {
+      forceMajeureRefundAmount: null,
+      forceMajeureRefundRecipient: null,
+      ownerPayableAmount: 0,
+      ownerPaymentDueDate: "",
+      guestRefundAmount: 0,
+      guestRefundPaymentDate: null,
+    });
   }
 
   const previousStatus = booking.status;

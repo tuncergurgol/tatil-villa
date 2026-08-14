@@ -61,7 +61,8 @@ export default function CancellationModal({
   const [reasonId, setReasonId] = useState<BookingCancellationReasonId | null>(
     null
   );
-  const [refundInput, setRefundInput] = useState("");
+  const [guestRefundInput, setGuestRefundInput] = useState("");
+  const [ownerRefundInput, setOwnerRefundInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [compensationOpen, setCompensationOpen] = useState(false);
@@ -70,7 +71,8 @@ export default function CancellationModal({
     if (!open) return;
     setStep("reason");
     setReasonId(null);
-    setRefundInput(formatMoneyInputValue(realizedPrepaymentTotal));
+    setGuestRefundInput("");
+    setOwnerRefundInput("");
     setError(null);
     setCompensationOpen(false);
   }, [open, realizedPrepaymentTotal]);
@@ -99,9 +101,26 @@ export default function CancellationModal({
     setStep("compensation_question");
   }
 
+  function openForceMajeureForm() {
+    const defaultAmount = formatMoneyInputValue(realizedPrepaymentTotal);
+    const nextRecipient = reasonId
+      ? resolveForceMajeureRefundRecipient(reasonId)
+      : "owner";
+    if (nextRecipient === "guest") {
+      setGuestRefundInput(defaultAmount);
+      setOwnerRefundInput("0");
+    } else {
+      setOwnerRefundInput(defaultAmount);
+      setGuestRefundInput("0");
+    }
+    setStep("force_majeure_form");
+  }
+
   function submitCancel(options: {
     forceMajeure: boolean;
     refundAmount?: number;
+    guestRefundAmount?: number;
+    ownerPayableAmount?: number;
   }) {
     if (!reasonId) {
       setError("İptal nedeni seçin");
@@ -114,6 +133,8 @@ export default function CancellationModal({
         reasonId,
         forceMajeure: options.forceMajeure,
         refundAmount: options.refundAmount,
+        guestRefundAmount: options.guestRefundAmount,
+        ownerPayableAmount: options.ownerPayableAmount,
       });
       if (!result.success) {
         setError(result.error);
@@ -129,12 +150,17 @@ export default function CancellationModal({
   }
 
   function handleForceMajeureSubmit() {
-    const parsed = parseMoneyField(refundInput);
-    if (parsed == null) {
-      setError("Geçerli bir iade tutarı girin");
+    if (!recipient) {
+      setError("İptal nedeni seçin");
       return;
     }
-    submitCancel({ forceMajeure: true, refundAmount: parsed });
+    const guestAmount = parseMoneyField(guestRefundInput) ?? 0;
+    const ownerAmount = parseMoneyField(ownerRefundInput) ?? 0;
+    submitCancel({
+      forceMajeure: true,
+      guestRefundAmount: guestAmount,
+      ownerPayableAmount: ownerAmount,
+    });
   }
 
   return (
@@ -268,12 +294,7 @@ export default function CancellationModal({
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setRefundInput(
-                          formatMoneyInputValue(realizedPrepaymentTotal)
-                        );
-                        setStep("force_majeure_form");
-                      }}
+                      onClick={openForceMajeureForm}
                       className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
                     >
                       Var
@@ -309,18 +330,32 @@ export default function CancellationModal({
                       value={formatMoneyPlain(realizedPrepaymentTotal)}
                     />
                   </FormRow>
-                  <FormRow
-                    label={`İade Edilecek Tutar (${getForceMajeureRecipientLabel(recipient)})`}
-                  >
+                  <FormRow label="Misafire İade Edilecek Tutar">
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={refundInput}
+                      value={guestRefundInput}
                       onChange={(event) => {
                         const digits = event.target.value.replace(/\D/g, "");
-                        setRefundInput(
+                        setGuestRefundInput(
                           digits === ""
-                            ? ""
+                            ? "0"
+                            : formatMoneyInputValue(Number(digits))
+                        );
+                      }}
+                      className={bookingInputClass}
+                    />
+                  </FormRow>
+                  <FormRow label="Villa Sahibine Ödenecek Tutar">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={ownerRefundInput}
+                      onChange={(event) => {
+                        const digits = event.target.value.replace(/\D/g, "");
+                        setOwnerRefundInput(
+                          digits === ""
+                            ? "0"
                             : formatMoneyInputValue(Number(digits))
                         );
                       }}
@@ -328,10 +363,13 @@ export default function CancellationModal({
                     />
                   </FormRow>
                   <p className="text-xs text-gray-500">
-                    {recipient === "guest"
-                      ? "Mücbir Sebep İptali seçildiği için tutar misafir iadesine yazılır."
-                      : "Seçilen neden için tutar villa sahibine yapılacak ödemeye yazılır."}{" "}
-                    Tutar manuel düzeltilebilir.
+                    Varsayılan tutar{" "}
+                    {getForceMajeureRecipientLabel(recipient)} alanına yazıldı
+                    ({recipient === "guest"
+                      ? "Mücbir Sebep İptali"
+                      : "seçilen iptal nedeni"}
+                    ). Her iki alan da manuel düzeltilebilir; kayıtta her iki
+                    tutar da yapılacak ödeme olarak saklanır.
                   </p>
                 </div>
               ) : null}
