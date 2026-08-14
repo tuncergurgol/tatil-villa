@@ -103,14 +103,17 @@ function toStayDateKey(value: Date | string): string {
 /**
  * Konaklama [checkIn, checkOut) — çıkış günü sonraki girişe açıktır.
  * Public takvimle aynı kaynak: VillaPricePeriodDay doluluğu.
- * Tüm geceler takvimde varsa BOOKED/OPTION dışında müsait kabul edilir
+ * Tüm geceler takvimde varsa BOOKED/RESERVED dışında müsait kabul edilir.
+ * Public taleplerde OPTION da seçilebilir; ön ödeme/konfirme kontrolleri ayrı
+ * koruma katmanında OPTION'u kapalı tutar.
  * (çıkış sabahı EMPTY → yeni giriş yapılabilir).
  */
 export async function isVillaAvailable(
   villaId: string,
   checkIn: Date | string,
   checkOut: Date | string,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  options?: { allowOption?: boolean }
 ) {
   const checkInKey = toStayDateKey(checkIn);
   const checkOutKey = toStayDateKey(checkOut);
@@ -162,7 +165,14 @@ export async function isVillaAvailable(
       ? { checkIn: excludedStay.checkIn, checkOut: excludedStay.checkOut }
       : null;
     for (const nightKey of nightKeys) {
-      if (isOccupancyNightBlocked(occupancyByKey, nightKey, excludedAllowStay)) {
+      if (
+        isOccupancyNightBlocked(
+          occupancyByKey,
+          nightKey,
+          excludedAllowStay,
+          options
+        )
+      ) {
         return false;
       }
     }
@@ -223,7 +233,9 @@ export async function createBooking(data: {
   const available = await isVillaAvailable(
     data.villaId,
     checkInKey,
-    checkOutKey
+    checkOutKey,
+    undefined,
+    { allowOption: true }
   );
   if (!available) {
     throw new Error("Seçilen tarihler için villa müsait değil.");

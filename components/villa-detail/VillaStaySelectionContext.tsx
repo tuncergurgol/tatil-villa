@@ -62,7 +62,7 @@ function resolveInitialStayRange(
     return { checkIn: "", checkOut: "" };
   }
   const occupancyMap = buildOccupancyMap(calendarDays);
-  if (rangeHasBlockedNight(start, end, occupancyMap)) {
+  if (rangeHasBlockedNight(start, end, occupancyMap, undefined, { allowOption: true })) {
     return { checkIn: "", checkOut: "" };
   }
   return { checkIn: start, checkOut: end };
@@ -130,7 +130,7 @@ export function VillaStaySelectionProvider({
       if (compareDates(parseDateKey(dateKey), today) < 0) return;
 
       if (!pendingStart) {
-        if (isNightBlocked(occupancyMap, dateKey)) return;
+        if (isNightBlocked(occupancyMap, dateKey, undefined, { allowOption: true })) return;
         setPendingStart(dateKey);
         setHoverDate(dateKey);
         setCheckIn(dateKey);
@@ -142,7 +142,7 @@ export function VillaStaySelectionProvider({
       if (
         compareDates(parseDateKey(dateKey), parseDateKey(pendingStart)) <= 0
       ) {
-        if (isNightBlocked(occupancyMap, dateKey)) return;
+        if (isNightBlocked(occupancyMap, dateKey, undefined, { allowOption: true })) return;
         setPendingStart(dateKey);
         setHoverDate(dateKey);
         setCheckIn(dateKey);
@@ -152,7 +152,7 @@ export function VillaStaySelectionProvider({
 
       const { start, end } = normalizeDateRange(pendingStart, dateKey);
       if (start === end) return;
-      if (rangeHasBlockedNight(start, end, occupancyMap)) return;
+      if (rangeHasBlockedNight(start, end, occupancyMap, undefined, { allowOption: true })) return;
       completeRange(start, end);
     },
     [completeRange, occupancyMap, pendingStart, today]
@@ -176,7 +176,9 @@ export function VillaStaySelectionProvider({
     previewStart &&
       previewEnd &&
       previewStart !== previewEnd &&
-      rangeHasBlockedNight(previewStart, previewEnd, occupancyMap)
+      rangeHasBlockedNight(previewStart, previewEnd, occupancyMap, undefined, {
+        allowOption: true,
+      })
   );
 
   const value = useMemo<VillaStaySelectionContextValue>(

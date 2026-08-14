@@ -9,6 +9,11 @@ export type AllowStayRange = {
   checkOut: string;
 };
 
+/** Public talepte OPTION takvimde görünür ancak talep için seçilebilir. */
+export type OccupancySelectionOptions = {
+  allowOption?: boolean;
+};
+
 export function toOccupancyStatus(value?: string | null): VillaDayOccupancy {
   if (
     value === "BOOKED" ||
@@ -31,17 +36,22 @@ export function isNightInAllowStay(
 }
 
 /**
- * BOOKED/OPTION gece kapalıdır.
+ * BOOKED gece kapalıdır; public talepte OPTION isteğe bağlı olarak açıktır.
  * Giriş+çıkış günü (iki dolu blok arası EMPTY) yeni misafirin gecesidir → kapalı.
  */
 export function isOccupancyNightBlocked(
   occupancyMap: ReadonlyMap<string, VillaDayOccupancy>,
   dateKey: string,
-  allowStay?: AllowStayRange | null
+  allowStay?: AllowStayRange | null,
+  options?: OccupancySelectionOptions
 ): boolean {
   if (isNightInAllowStay(dateKey, allowStay)) return false;
   const status = occupancyMap.get(dateKey) ?? "EMPTY";
-  if (status === "BOOKED" || status === "RESERVED" || status === "OPTION") {
+  if (
+    status === "BOOKED" ||
+    status === "RESERVED" ||
+    (status === "OPTION" && !options?.allowOption)
+  ) {
     return true;
   }
   return isTurnoverOccupancyDay(
@@ -60,9 +70,10 @@ export function isOccupancyNightBlocked(
 export function isNightBlocked(
   occupancyMap: Map<string, VillaDayOccupancy>,
   dateKey: string,
-  allowStay?: AllowStayRange | null
+  allowStay?: AllowStayRange | null,
+  options?: OccupancySelectionOptions
 ) {
-  return isOccupancyNightBlocked(occupancyMap, dateKey, allowStay);
+  return isOccupancyNightBlocked(occupancyMap, dateKey, allowStay, options);
 }
 
 /** checkIn dahil, checkOut hariç geceler dolu mu? */
@@ -70,12 +81,13 @@ export function rangeHasBlockedNight(
   start: string,
   end: string,
   occupancyMap: Map<string, VillaDayOccupancy>,
-  allowStay?: AllowStayRange | null
+  allowStay?: AllowStayRange | null,
+  options?: OccupancySelectionOptions
 ) {
   if (compareDates(parseDateKey(start), parseDateKey(end)) >= 0) return true;
   let key = start;
   while (compareDates(parseDateKey(key), parseDateKey(end)) < 0) {
-    if (isNightBlocked(occupancyMap, key, allowStay)) return true;
+    if (isNightBlocked(occupancyMap, key, allowStay, options)) return true;
     key = offsetDateKey(key, 1);
   }
   return false;
@@ -88,19 +100,29 @@ export function canSelectStayDay(options: {
   pendingStart: string | null;
   occupancyMap: Map<string, VillaDayOccupancy>;
   allowStay?: AllowStayRange | null;
+  allowOption?: boolean;
 }): boolean {
-  const { dateKey, today, pendingStart, occupancyMap, allowStay } = options;
+  const {
+    dateKey,
+    today,
+    pendingStart,
+    occupancyMap,
+    allowStay,
+    allowOption,
+  } = options;
   if (compareDates(parseDateKey(dateKey), today) < 0) return false;
 
   if (!pendingStart) {
-    return !isNightBlocked(occupancyMap, dateKey, allowStay);
+    return !isNightBlocked(occupancyMap, dateKey, allowStay, { allowOption });
   }
 
   if (compareDates(parseDateKey(dateKey), parseDateKey(pendingStart)) <= 0) {
-    return !isNightBlocked(occupancyMap, dateKey, allowStay);
+    return !isNightBlocked(occupancyMap, dateKey, allowStay, { allowOption });
   }
 
-  return !rangeHasBlockedNight(pendingStart, dateKey, occupancyMap, allowStay);
+  return !rangeHasBlockedNight(pendingStart, dateKey, occupancyMap, allowStay, {
+    allowOption,
+  });
 }
 
 export function buildOccupancyMap(

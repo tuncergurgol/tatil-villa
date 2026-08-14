@@ -412,6 +412,7 @@ export default function BookingForm({
               today,
               pendingStart,
               occupancyMap,
+              allowOption: true,
             });
 
             const showOccupancyBg =
