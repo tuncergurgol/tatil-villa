@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CompanySettings } from "@prisma/client";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 
 function SettingsField({
   label,
@@ -61,38 +62,32 @@ export default function ContactSettingsFields({
           type="email"
           defaultValue={settings.email}
         />
-        <SettingsField
-          label="Telefon"
+        <TurkishPhoneField
           name="phone"
+          label="Telefon"
           defaultValue={settings.phone}
+          focusPalette="indigo"
         />
-        <SettingsField
-          label="Telefon 2"
+        <TurkishPhoneField
           name="phone2"
+          label="Telefon 2"
           defaultValue={settings.phone2}
+          focusPalette="indigo"
         />
-        <SettingsField
-          label="Ofis Numarası"
+        <TurkishPhoneField
           name="officePhone"
+          label="Ofis Numarası"
           defaultValue={settings.officePhone}
+          focusPalette="indigo"
         />
       </div>
 
-      <label className="block rounded-2xl border border-gray-200 bg-gray-50/80 px-5 py-4 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100">
-        <span className="text-xs font-medium text-gray-500">WhatsApp</span>
-        <div className="mt-1.5 flex items-center gap-2">
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700">
-            <span aria-hidden>🇹🇷</span>
-            <span>+90</span>
-          </span>
-          <input
-            name="whatsapp"
-            defaultValue={settings.whatsapp}
-            placeholder="252 618 01 08"
-            className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
-          />
-        </div>
-      </label>
+      <TurkishPhoneField
+        name="whatsapp"
+        label="WhatsApp"
+        defaultValue={settings.whatsapp}
+        focusPalette="indigo"
+      />
 
       <SettingsField
         label="Adres"

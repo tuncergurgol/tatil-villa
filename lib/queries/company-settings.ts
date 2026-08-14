@@ -17,11 +17,14 @@ export const DEFAULT_COMPANY_SETTINGS = {
   bankName: "",
   iban: "",
   accountHolder: "",
+  paymentType: "",
   primaryColor: "#0d9488",
   secondaryColor: "#115e59",
-  logoUrl: "",
-  faviconUrl: "",
-  ogImageUrl: "",
+  accentColor: "#14b8a6",
+  surfaceColor: "#f0fdfa",
+  logoUrl: "/uploads/company/logo-1783080885848.svg",
+  faviconUrl: "/uploads/company/favicon-1783081016867.png",
+  ogImageUrl: "/uploads/company/ogImage-1783080931394.png",
   whiteLogoUrl: "",
   tursabNo: "12970",
   tursabEnvironment: "production",
@@ -39,10 +42,10 @@ export const DEFAULT_COMPANY_SETTINGS = {
   facebook: "",
   twitter: "",
   youtube: "",
-  seoTitle: "Tatildeyiz - En İyi Fiyat Garantisi",
+  seoTitle: "Tatildeyiz - Tatilin Keyfini Çıkarın",
   seoDescription:
-    "Türkiye'nin en güzel bölgelerinde villa ve bungalov kiralama. En iyi fiyat garantisi ile hızlı rezervasyon.",
-  googleAnalyticsId: "G-5PDN00BR9S",
+    "Doğanın kalbinde, jakuzili ve havuzlu bungalov evlerinde tatilin keyfini çıkarın. Unutulmaz bir kaçamak için en popüler rotalar Tatildeyiz'de sizi bekliyor.",
+  googleAnalyticsId: "G-3QYZX0CQ1D",
   googleAdsId: "",
   microsoftClarityId: "",
   googleTagManagerId: "",
@@ -53,31 +56,106 @@ export const DEFAULT_COMPANY_SETTINGS = {
   customScripts: "",
   loadingEnabled: false,
   loadingText: "Yükleniyor...",
+  smtpProvider: "google",
+  smtpHost: "smtp.gmail.com",
+  smtpPort: 587,
+  smtpSecure: "starttls",
+  smtpUser: "rezervasyon@tatildeyiz.com.tr",
+  smtpPassword: "Rez@1311@",
+  smtpFromEmail: "rezervasyon@tatildeyiz.com.tr",
+  smtpFromName: "tatildeyiz.com.tr",
+  smtpEnabled: true,
+  whatsappApiEnabled: false,
+  whatsappPhoneNumberId: "",
+  whatsappAccessToken: "",
+  whatsappBusinessAccountId: "",
+  whatsappApiVersion: "v22.0",
+  whatsappWebhookVerifyToken: "",
+  whatsappTestPhone: "",
+  whatsappCalendarEnabled: false,
+  whatsappCalendarWebhookSecret: "",
+  wahaBaseUrl: "http://localhost:3001",
+  wahaApiKey: "",
+  wahaSessionName: "default",
+  evolutionBaseUrl: "http://localhost:8080",
+  evolutionApiKey: "",
+  evolutionInstanceName: "tatil-villa",
+  smsOtpEnabled: false,
+  biletallEnabled: true,
+  biletallPortalSlug: "tatildeyizcomtr",
+  biletallUsername: "",
+  biletallPassword: "",
+  biletallRoutesJson: "",
+  otelzEnabled: true,
+  otelzAffiliateTo: "1857",
+  otelzAffiliateCid: "274",
+  homePopularTitle: "Popüler Villalar",
+  homePopularActive: true,
+  homePopularSortMode: "showcase",
+  homeDealTitle: "Fırsat Villalar",
+  homeDealActive: true,
+  homeDealSortMode: "showcase",
+  homeRecommendedTitle: "Önerilen Villalar",
+  homeRecommendedActive: true,
+  homeRecommendedSortMode: "showcase",
+  googleReviewUrl: "",
+  guestReviewInvitesEnabled: true,
+  scheduledBookingMessagesEnabled: true,
+  tatilAssistantEnabled: true,
+  assistantWahaBaseUrl: "http://localhost:3001",
+  assistantWahaApiKey: "",
+  assistantWahaSessionName: "tatil-asistani",
+  assistantWebhookSecret: "",
+  assistantWelcomeMessage: "",
+  calendarPriceAutoUpdateEnabled: false,
+  calendarPriceAutoUpdatePeriod: "hour",
+  calendarPriceAutoUpdateInterval: 6,
+  calendarPriceAutoUpdateCriteriaJson:
+    '["ical","link1","link2","link3"]',
+  calendarPriceAutoUpdateLastRunAt: null,
+  facebookLeadEnabled: false,
+  facebookLeadAppId: "",
+  facebookLeadAppSecret: "",
+  facebookLeadVerifyToken: "",
+  facebookLeadPageId: "",
+  facebookLeadPageAccessToken: "",
 };
 
 export async function getCompanySettings() {
-  let settings = await prisma.companySettings.findUnique({
-    where: { id: "default" },
-  });
-
-  if (!settings) {
-    settings = await prisma.companySettings.create({
-      data: { id: "default", ...DEFAULT_COMPANY_SETTINGS },
+  try {
+    let settings = await prisma.companySettings.findUnique({
+      where: { id: "default" },
     });
-  }
 
-  return settings;
+    if (!settings) {
+      settings = await prisma.companySettings.create({
+        data: { id: "default", ...DEFAULT_COMPANY_SETTINGS },
+      });
+    }
+
+    return settings;
+  } catch (error) {
+    // Schema/migration gecikmesinde public villa + bilet sayfalarını ayakta tut.
+    console.error("[getCompanySettings] fallback to defaults:", error);
+    return {
+      id: "default",
+      ...DEFAULT_COMPANY_SETTINGS,
+      updatedAt: new Date(),
+    };
+  }
 }
 
 export async function updateCompanySettings(
-  data: Omit<
-    Awaited<ReturnType<typeof getCompanySettings>>,
-    "id" | "updatedAt"
+  data: Partial<
+    Omit<
+      Awaited<ReturnType<typeof getCompanySettings>>,
+      "id" | "updatedAt" | "bankName" | "iban" | "accountHolder" | "paymentType"
+    >
   >
 ) {
   return prisma.companySettings.upsert({
     where: { id: "default" },
-    create: { id: "default", ...data },
+    create: { id: "default", ...DEFAULT_COMPANY_SETTINGS, ...data },
     update: data,
   });
 }

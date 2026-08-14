@@ -1,0 +1,2 @@
+ALTER TABLE "Villa"
+ADD COLUMN "showNaturePestNotice" BOOLEAN NOT NULL DEFAULT true;

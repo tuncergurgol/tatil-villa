@@ -4,15 +4,17 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { syncVillaRooms } from "@/lib/queries/villa-rooms";
+import { applyTatildeyizRoomsToVilla } from "@/lib/tatildeyiz-room-import";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 export type VillaRoomActionState = {
   error?: string;
   success?: boolean;
 };
 
-function revalidateVillaRooms(villaId: string) {
+async function revalidateVillaRooms(villaId: string) {
   revalidatePath("/admin/villalar");
-  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+  await revalidateVillaEditPage(villaId);
 }
 
 export async function updateVillaRoom(
@@ -69,7 +71,7 @@ export async function updateVillaRoom(
       },
     });
 
-    revalidateVillaRooms(villaId);
+    await revalidateVillaRooms(villaId);
     return { success: true };
   } catch {
     return { error: "Oda güncellenemedi" };
@@ -81,6 +83,44 @@ export async function ensureVillaRoomsSynced(
 ): Promise<VillaRoomActionState> {
   await requireAdmin();
   await syncVillaRooms(villaId);
-  revalidateVillaRooms(villaId);
+  await revalidateVillaRooms(villaId);
   return { success: true };
+}
+
+export async function importVillaRoomsFromTatildeyiz(
+  villaId: string
+): Promise<VillaRoomActionState & { message?: string }> {
+  await requireAdmin();
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { slug: true },
+  });
+
+  if (!villa) {
+    return { error: "Villa bulunamadı" };
+  }
+
+  try {
+    const result = await applyTatildeyizRoomsToVilla(prisma, villa.slug, {
+      force: true,
+    });
+
+    if (result.status === "error") {
+      return { error: result.error ?? "Oda içe aktarılamadı" };
+    }
+
+    await revalidateVillaRooms(villaId);
+    return {
+      success: true,
+      message:
+        result.updatedRoomCount != null
+          ? `${result.updatedRoomCount} oda Tatildeyiz'den içe aktarıldı (${result.source})`
+          : "Odalar içe aktarıldı",
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Oda içe aktarılamadı";
+    return { error: message };
+  }
 }

@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/admin/price-inclusion";
 import PriceInclusionFormModal from "@/components/admin/price-inclusion/PriceInclusionFormModal";
 import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
+import { includesSearchText } from "@/lib/search-text";
 
 interface PriceInclusionManagementProps {
   included: PriceInclusionItem[];
@@ -158,18 +159,16 @@ export default function PriceInclusionManagement({
   );
 
   const filteredIncluded = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-    if (!query) return included;
+    if (!search.trim()) return included;
     return included.filter((item) =>
-      item.description.toLocaleLowerCase("tr-TR").includes(query)
+      includesSearchText(item.description, search)
     );
   }, [included, search]);
 
   const filteredExcluded = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-    if (!query) return excluded;
+    if (!search.trim()) return excluded;
     return excluded.filter((item) =>
-      item.description.toLocaleLowerCase("tr-TR").includes(query)
+      includesSearchText(item.description, search)
     );
   }, [excluded, search]);
 

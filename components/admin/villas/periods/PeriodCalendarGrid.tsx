@@ -1,105 +1,306 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   buildMonthGrid,
+  buildNextMonthFirstWeekRow,
+  formatCompactCalendarPriceParts,
   formatPlainPrice,
   getMonthLabel,
   getWeekdayLabels,
   toDateKey,
 } from "@/lib/villa-period-calendar";
+import {
+  countNightsBetween,
+  isDateKeyInRange,
+  normalizeDateRange,
+} from "@/lib/villa-period-selection";
+import {
+  getVillaDayVisualStyle,
+  resolveVillaDayVisualFromMap,
+} from "@/lib/villa-period-day-visual";
 import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
+import type { VillaDayOccupancy } from "@prisma/client";
 
 export type PeriodCalendarDayDisplay = {
   periodId: string;
   nightlyPrice: number;
+  discountedNightlyPrice?: number | null;
   nightlyPriceCurrency: VillaPeriodCurrency;
   availability: VillaPeriodAvailability;
+  occupancyStatus?: VillaDayOccupancy;
 };
+
+export type PeriodCalendarSelectionRange = {
+  start: string;
+  end: string;
+};
+
+export function countSelectionNights(
+  startKey: string,
+  endKey: string
+): number {
+  return countNightsBetween(startKey, endKey);
+}
 
 interface PeriodCalendarGridProps {
   year: number;
   month: number;
   activeDateKeys: ReadonlySet<string>;
   dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>;
-  periodColorIndex?: ReadonlyMap<string, number>;
   today?: Date;
   compact?: boolean;
   showMonthHeader?: boolean;
+  showAdjacentMonths?: boolean;
+  showNextMonthWeekRow?: boolean;
+  selectedRange?: PeriodCalendarSelectionRange | null;
+  isDragging?: boolean;
+  selectableDateKeys?: ReadonlySet<string>;
+  onSelectionStart?: (dateKey: string) => void;
+  onSelectionUpdate?: (dateKey: string) => void;
+  onSelectionComplete?: () => void;
 }
 
-const PERIOD_PALETTE = [
-  {
-    band: "bg-rose-500",
-    cell: "bg-rose-500",
-    prev: "from-rose-400",
-    next: "to-rose-500",
-  },
-  {
-    band: "bg-red-400",
-    cell: "bg-red-400",
-    prev: "from-rose-500",
-    next: "to-red-400",
-  },
-  {
-    band: "bg-pink-500",
-    cell: "bg-pink-500",
-    prev: "from-red-400",
-    next: "to-pink-500",
-  },
-  {
-    band: "bg-rose-400",
-    cell: "bg-rose-400",
-    prev: "from-pink-500",
-    next: "to-rose-400",
-  },
-] as const;
+function getDisplayPrice(display: PeriodCalendarDayDisplay): number {
+  return display.discountedNightlyPrice ?? display.nightlyPrice;
+}
 
-function getPaletteIndex(
-  periodId: string,
-  periodColorIndex?: ReadonlyMap<string, number>
-) {
-  if (periodColorIndex?.has(periodId)) {
-    return periodColorIndex.get(periodId)! % PERIOD_PALETTE.length;
+function hasDiscount(display: PeriodCalendarDayDisplay): boolean {
+  return (
+    display.discountedNightlyPrice != null &&
+    display.discountedNightlyPrice !== display.nightlyPrice
+  );
+}
+
+function buildOccupancyMapFromDisplay(
+  dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>
+): Map<string, VillaDayOccupancy> {
+  const map = new Map<string, VillaDayOccupancy>();
+  for (const [dateKey, display] of dayDisplayByDate) {
+    map.set(dateKey, display.occupancyStatus ?? "EMPTY");
   }
-  return 0;
+  return map;
 }
 
-type WeekSegment = {
-  periodId: string;
-  startIndex: number;
-  endIndex: number;
-  display: PeriodCalendarDayDisplay;
+type DayCellProps = {
+  cell: { date: Date; inCurrentMonth: boolean } | null;
+  activeDateKeys: ReadonlySet<string>;
+  selectableDateKeys: ReadonlySet<string>;
+  dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>;
+  occupancyByDate: ReadonlyMap<string, VillaDayOccupancy>;
+  today?: Date;
+  minCellHeight: string;
+  emphasizeCurrentMonth: boolean;
+  compact?: boolean;
+  selectedRange?: PeriodCalendarSelectionRange | null;
+  isDragging?: boolean;
+  onSelectionStart?: (dateKey: string) => void;
+  onSelectionUpdate?: (dateKey: string) => void;
 };
 
-function buildWeekSegments(
-  week: ReturnType<typeof buildMonthGrid>,
-  dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>
-) {
-  const segments: WeekSegment[] = [];
+function CalendarDayCell({
+  cell,
+  activeDateKeys,
+  selectableDateKeys,
+  dayDisplayByDate,
+  occupancyByDate,
+  today,
+  minCellHeight,
+  emphasizeCurrentMonth,
+  compact = false,
+  selectedRange,
+  isDragging,
+  onSelectionStart,
+  onSelectionUpdate,
+}: DayCellProps) {
+  if (!cell) {
+    return (
+      <div className={`${minCellHeight} rounded-lg bg-gray-50`} />
+    );
+  }
 
-  week.forEach((cell, index) => {
-    if (!cell.inCurrentMonth) return;
+  const dateKey = toDateKey(cell.date);
+  const isActive = activeDateKeys.has(dateKey);
+  const isSelectable = selectableDateKeys.has(dateKey);
+  const display = dayDisplayByDate.get(dateKey);
+  const isToday = today != null && dateKey === toDateKey(today);
+  const isPeriodDay = isActive && display != null;
+  const isCurrentMonthDay = emphasizeCurrentMonth && cell.inCurrentMonth;
 
-    const display = dayDisplayByDate.get(toDateKey(cell.date));
-    if (!display || display.availability === "closed") return;
+  const isInSelection =
+    selectedRange != null &&
+    isDateKeyInRange(dateKey, selectedRange.start, selectedRange.end);
 
-    const last = segments[segments.length - 1];
-    if (last && last.periodId === display.periodId) {
-      last.endIndex = index;
-      return;
+  const normalizedSelection =
+    selectedRange != null
+      ? normalizeDateRange(selectedRange.start, selectedRange.end)
+      : null;
+
+  const isSelectionEnd =
+    normalizedSelection != null && dateKey === normalizedSelection.end;
+
+  const selectionNightCount =
+    normalizedSelection != null
+      ? countSelectionNights(
+          normalizedSelection.start,
+          normalizedSelection.end
+        )
+      : 0;
+
+  const visualKind = isPeriodDay
+    ? resolveVillaDayVisualFromMap(dateKey, occupancyByDate)
+    : "empty";
+
+  const visualStyle = getVillaDayVisualStyle(visualKind);
+
+  const dateClass = isCurrentMonthDay
+    ? visualStyle.useLightText
+      ? "text-white"
+      : "text-gray-900"
+    : visualStyle.useLightText
+      ? "text-white/90"
+      : "text-gray-500";
+
+  const priceClass = isCurrentMonthDay
+    ? visualStyle.useLightText
+      ? "text-white"
+      : "text-blue-600"
+    : visualStyle.useLightText
+      ? "text-white/90"
+      : "text-blue-500";
+
+  const daySizeClass = isCurrentMonthDay
+    ? "text-sm md:text-lg"
+    : "text-[10px] md:text-xs";
+  const cellPaddingClass = "p-1 md:p-2";
+
+  function renderCompactPrice(display: PeriodCalendarDayDisplay) {
+    const main = formatCompactCalendarPriceParts(
+      getDisplayPrice(display),
+      display.nightlyPriceCurrency
+    );
+    const priceSizeClass = isCurrentMonthDay
+      ? "text-[9px]"
+      : "text-[8px]";
+    const strikePriceSizeClass = "text-[7px]";
+
+    if (hasDiscount(display)) {
+      const original = formatCompactCalendarPriceParts(
+        display.nightlyPrice,
+        display.nightlyPriceCurrency
+      );
+      return (
+        <div className="mt-auto self-start leading-none">
+          <div
+            className={`font-medium line-through opacity-70 ${strikePriceSizeClass} ${priceClass}`}
+          >
+            <div>{original.amount}</div>
+            <div>{original.currency}</div>
+          </div>
+          <div className={`font-semibold ${priceSizeClass} ${priceClass}`}>
+            <div>{main.amount}</div>
+            <div className="font-medium opacity-90">{main.currency}</div>
+          </div>
+        </div>
+      );
     }
 
-    segments.push({
-      periodId: display.periodId,
-      startIndex: index,
-      endIndex: index,
-      display,
-    });
-  });
+    return (
+      <div
+        className={`mt-auto self-start leading-none ${priceSizeClass} ${priceClass}`}
+      >
+        <div className="font-semibold">{main.amount}</div>
+        <div className="font-medium opacity-90">{main.currency}</div>
+      </div>
+    );
+  }
 
-  return segments;
+  function renderFullPrice(display: PeriodCalendarDayDisplay) {
+    const priceSizeClass = isCurrentMonthDay ? "text-base" : "text-[10px]";
+    const strikePriceSizeClass = isCurrentMonthDay ? "text-xs" : "text-[9px]";
+
+    if (hasDiscount(display)) {
+      return (
+        <div
+          className={`flex flex-wrap items-baseline gap-x-1.5 leading-tight ${priceSizeClass} ${priceClass}`}
+        >
+          <span
+            className={`font-medium line-through opacity-70 ${strikePriceSizeClass}`}
+          >
+            {formatPlainPrice(
+              display.nightlyPrice,
+              display.nightlyPriceCurrency
+            )}
+          </span>
+          <span className="font-semibold">
+            {formatPlainPrice(
+              getDisplayPrice(display),
+              display.nightlyPriceCurrency
+            )}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`font-semibold ${priceSizeClass} ${priceClass}`}>
+        {formatPlainPrice(
+          getDisplayPrice(display),
+          display.nightlyPriceCurrency
+        )}
+      </div>
+    );
+  }
+
+  const background = isPeriodDay
+    ? visualStyle.background
+    : cell.inCurrentMonth
+      ? "#ffffff"
+      : "#f9fafb";
+
+  function handleMouseDown(event: React.MouseEvent) {
+    if (event.button !== 0 || !isSelectable) return;
+    event.preventDefault();
+    onSelectionStart?.(dateKey);
+  }
+
+  function handleMouseEnter() {
+    if (!isDragging || !isSelectable) return;
+    onSelectionUpdate?.(dateKey);
+  }
+
+  return (
+    <div
+      className={`${minCellHeight} relative flex flex-col overflow-hidden rounded-lg ${cellPaddingClass} ${
+        isToday ? "ring-2 ring-inset ring-indigo-400" : ""
+      } ${isInSelection ? "ring-2 ring-inset ring-blue-500 z-[1]" : ""} ${
+        isSelectable ? "cursor-pointer select-none" : ""
+      }`}
+      style={{ background }}
+      onMouseDown={handleMouseDown}
+      onMouseEnter={handleMouseEnter}
+    >
+      <div className="self-end text-right">
+        <div className={`font-semibold ${daySizeClass} ${dateClass}`}>
+          {cell.date.getDate()}
+        </div>
+
+        {isSelectionEnd && selectionNightCount > 0 ? (
+          <div className="mt-0.5 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+            {selectionNightCount} GECE
+          </div>
+        ) : null}
+      </div>
+
+      {isPeriodDay ? (
+        <div className="text-left leading-tight">
+          <div className="md:hidden">{renderCompactPrice(display)}</div>
+          <div className="hidden md:block">{renderFullPrice(display)}</div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function PeriodCalendarGrid({
@@ -107,11 +308,31 @@ export default function PeriodCalendarGrid({
   month,
   activeDateKeys,
   dayDisplayByDate,
-  periodColorIndex,
   today,
   compact = false,
   showMonthHeader = false,
+  showAdjacentMonths = true,
+  showNextMonthWeekRow = true,
+  selectedRange = null,
+  isDragging = false,
+  selectableDateKeys,
+  onSelectionStart,
+  onSelectionUpdate,
+  onSelectionComplete,
 }: PeriodCalendarGridProps) {
+  const effectiveSelectableDateKeys = selectableDateKeys ?? activeDateKeys;
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseUp = () => {
+      onSelectionComplete?.();
+    };
+
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
+  }, [isDragging, onSelectionComplete]);
+
   const monthCells = useMemo(
     () => buildMonthGrid(year, month),
     [year, month]
@@ -125,149 +346,86 @@ export default function PeriodCalendarGrid({
     return rows;
   }, [monthCells]);
 
-  const minCellHeight = compact ? "min-h-[68px]" : "min-h-[96px]";
+  const nextMonthWeekRow = useMemo(
+    () => buildNextMonthFirstWeekRow(year, month),
+    [year, month]
+  );
+
+  const minCellHeight = "min-h-[68px] md:min-h-[96px]";
+
+  const occupancyByDate = useMemo(
+    () => buildOccupancyMapFromDisplay(dayDisplayByDate),
+    [dayDisplayByDate]
+  );
+
+  const sharedCellProps = {
+    activeDateKeys,
+    selectableDateKeys: effectiveSelectableDateKeys,
+    dayDisplayByDate,
+    occupancyByDate,
+    today,
+    minCellHeight,
+    selectedRange,
+    isDragging,
+    compact,
+    onSelectionStart,
+    onSelectionUpdate,
+  };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200">
+    <div
+      className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${
+        isDragging ? "select-none" : ""
+      }`}
+    >
       {showMonthHeader ? (
-        <div className="border-b border-gray-100 bg-gray-50 px-3 py-2">
+        <div className="border-b border-gray-100 bg-white px-3 py-2">
           <p className="text-sm font-semibold text-gray-800">
             {getMonthLabel(year, month)}
           </p>
         </div>
       ) : null}
 
-      <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+      <div className="grid grid-cols-7 border-b border-gray-200 bg-white">
         {getWeekdayLabels().map((label) => (
           <div
             key={label}
-            className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+            className={`px-1 py-2 text-center text-[9px] font-semibold uppercase tracking-wide text-gray-500 md:py-2.5 md:text-[11px]`}
           >
             {label}
           </div>
         ))}
       </div>
 
-      <div className="divide-y divide-gray-200">
-        {weeks.map((week, weekIndex) => {
-          const segments = buildWeekSegments(week, dayDisplayByDate);
-
-          return (
-            <div key={`week-${weekIndex}`}>
-              {segments.length > 0 ? (
-                <div className="grid grid-cols-7 gap-px bg-white px-px pt-px">
-                  {segments.map((segment) => {
-                    const palette =
-                      PERIOD_PALETTE[
-                        getPaletteIndex(segment.periodId, periodColorIndex)
-                      ];
-
-                    return (
-                      <div
-                        key={`${segment.periodId}-${segment.startIndex}-${weekIndex}`}
-                        className={`${palette.band} py-1 text-center text-[11px] font-semibold text-white`}
-                        style={{
-                          gridColumn: `${segment.startIndex + 1} / ${segment.endIndex + 2}`,
-                        }}
-                      >
-                        {formatPlainPrice(
-                          segment.display.nightlyPrice,
-                          segment.display.nightlyPriceCurrency
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              <div className="grid grid-cols-7">
-                {week.map((cell, index) => {
-                  const dateKey = toDateKey(cell.date);
-                  const isActive = activeDateKeys.has(dateKey);
-                  const display = dayDisplayByDate.get(dateKey);
-                  const isToday =
-                    today != null && dateKey === toDateKey(today);
-
-                  const prevDisplay =
-                    index > 0
-                      ? dayDisplayByDate.get(toDateKey(week[index - 1].date))
-                      : null;
-
-                  const paletteIndex =
-                    display != null
-                      ? getPaletteIndex(display.periodId, periodColorIndex)
-                      : 0;
-                  const palette = PERIOD_PALETTE[paletteIndex];
-                  const prevPaletteIndex =
-                    prevDisplay != null
-                      ? getPaletteIndex(prevDisplay.periodId, periodColorIndex)
-                      : null;
-
-                  const isTransition =
-                    display != null &&
-                    prevDisplay != null &&
-                    prevDisplay.periodId !== display.periodId &&
-                    cell.inCurrentMonth &&
-                    week[index - 1]?.inCurrentMonth;
-
-                  const isPeriodDay =
-                    isActive && display && cell.inCurrentMonth;
-                  const isClosed =
-                    isPeriodDay && display.availability === "closed";
-
-                  let cellClass = !cell.inCurrentMonth
-                    ? "bg-gray-50/80 text-gray-400"
-                    : "bg-white";
-
-                  if (isPeriodDay && !isClosed) {
-                    cellClass = isTransition
-                      ? `bg-gradient-to-br ${PERIOD_PALETTE[prevPaletteIndex ?? 0].prev} ${palette.next} text-white`
-                      : `${palette.cell} text-white`;
-                  } else if (isClosed) {
-                    cellClass = "bg-slate-400 text-white";
-                  }
-
-                  return (
-                    <div
-                      key={dateKey}
-                      className={`${minCellHeight} relative flex flex-col border-r border-gray-100 p-2 last:border-r-0 ${cellClass} ${
-                        isToday ? "ring-2 ring-inset ring-indigo-300" : ""
-                      }`}
-                    >
-                      <div
-                        className={`text-sm font-semibold ${
-                          isPeriodDay
-                            ? "text-white"
-                            : cell.inCurrentMonth
-                              ? "text-gray-800"
-                              : "text-gray-400"
-                        }`}
-                      >
-                        {cell.date.getDate()}
-                      </div>
-
-                      {isPeriodDay ? (
-                        isClosed ? (
-                          <div className="mt-auto self-end pb-0.5 text-right text-[10px] font-bold uppercase tracking-wide text-white/95">
-                            Kapalı
-                          </div>
-                        ) : (
-                          <div className="mt-auto self-end pb-0.5 text-right text-[11px] font-semibold leading-tight text-white">
-                            {formatPlainPrice(
-                              display.nightlyPrice,
-                              display.nightlyPriceCurrency
-                            )}
-                          </div>
-                        )
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+      <div className="flex flex-col gap-1 bg-white p-1">
+        {weeks.map((week, weekIndex) => (
+          <div key={`week-${weekIndex}`} className="grid grid-cols-7 gap-1">
+            {week.map((cell) => (
+              <CalendarDayCell
+                key={toDateKey(cell.date)}
+                cell={cell}
+                emphasizeCurrentMonth={showAdjacentMonths}
+                {...sharedCellProps}
+              />
+            ))}
+          </div>
+        ))}
       </div>
+
+      {showNextMonthWeekRow ? (
+        <div className="border-t border-gray-200 bg-white p-1 pt-0">
+          <div className="grid grid-cols-7 gap-1">
+            {nextMonthWeekRow.map((cell, index) => (
+              <CalendarDayCell
+                key={cell ? toDateKey(cell.date) : `next-week-pad-${index}`}
+                cell={cell}
+                emphasizeCurrentMonth={false}
+                {...sharedCellProps}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

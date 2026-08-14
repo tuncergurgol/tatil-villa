@@ -1,5 +1,27 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import { requireAdmin } from "@/lib/auth-helpers";
+import ObiletSettingsForm from "@/components/admin/obilet/ObiletSettingsForm";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { BILETALL_DEFAULT_PORTAL_SLUG } from "@/lib/biletall";
+import { resolveBiletallPublicOrigin } from "@/lib/biletall-callbacks";
+import { parseBiletallRoutesJson } from "@/lib/biletall-routes";
 
-export default function ObiletPage() {
-  return <ComingSoon title="Obilet" />;
+export const dynamic = "force-dynamic";
+
+export default async function ObiletPage() {
+  await requireAdmin();
+  const settings = await getCompanySettings();
+  const biletallRoutes = parseBiletallRoutesJson(settings.biletallRoutesJson);
+
+  return (
+    <ObiletSettingsForm
+      biletallEnabled={settings.biletallEnabled ?? true}
+      biletallPortalSlug={
+        settings.biletallPortalSlug?.trim() || BILETALL_DEFAULT_PORTAL_SLUG
+      }
+      biletallUsername={settings.biletallUsername?.trim() ?? ""}
+      biletallHasPassword={Boolean(settings.biletallPassword?.trim())}
+      biletallRoutes={biletallRoutes}
+      publicOrigin={resolveBiletallPublicOrigin(settings.domain)}
+    />
+  );
 }

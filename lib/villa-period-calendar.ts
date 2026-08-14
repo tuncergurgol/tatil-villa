@@ -30,9 +30,22 @@ export type VillaPricePeriodItem = {
   underfloorHeatingFeeCurrency: VillaPeriodCurrency;
   extraBedFee: number | null;
   extraBedFeeCurrency: VillaPeriodCurrency;
+  poolHeatingPrivateFee: number | null;
+  poolHeatingPrivateFeeCurrency: VillaPeriodCurrency;
+  poolHeatingIndoorFee: number | null;
+  poolHeatingIndoorFeeCurrency: VillaPeriodCurrency;
+  poolHeatingKidsFee: number | null;
+  poolHeatingKidsFeeCurrency: VillaPeriodCurrency;
   discount1Rate: number | null;
   discount2Rate: number | null;
   extraDiscountAmount: number | null;
+  weekendPrice: number | null;
+  weekendDays: number[];
+  weekendMinStayNights: number | null;
+  childFee02: number | null;
+  childFee02Currency: VillaPeriodCurrency;
+  childFee03_09: number | null;
+  childFee03_09Currency: VillaPeriodCurrency;
 };
 
 const WEEKDAY_LABELS = ["Pts", "Sal", "Çar", "Per", "Cum", "Cts", "Paz"] as const;
@@ -53,7 +66,7 @@ const MONTH_LABELS = [
 ] as const;
 
 export function formatPeriodPrice(price: number, currency = "TL"): string {
-  return `${formatNightlyAmount(price)} ${currency}`;
+  return `${formatNightlyAmount(Math.round(price))} ${currency}`;
 }
 
 export function formatNightlyAmount(price: number): string {
@@ -61,7 +74,38 @@ export function formatNightlyAmount(price: number): string {
 }
 
 export function formatPlainPrice(price: number, currency = "TL"): string {
-  return `${price} ${currency}`;
+  const rounded = Math.round(price);
+  return `${formatNightlyAmount(rounded)} ${currency}`;
+}
+
+export type CompactCalendarPriceParts = {
+  amount: string;
+  currency: string;
+};
+
+/** Takvim hücresi için kısa fiyat: 19.200 → "19,2 K", para birimi ayrı satırda. */
+export function formatCompactCalendarPriceParts(
+  price: number,
+  currency: VillaPeriodCurrency | string = "TL"
+): CompactCalendarPriceParts {
+  const rounded = Math.round(price);
+  const currencyLabel = currency === "TL" ? "TL" : String(currency);
+
+  if (rounded >= 1000) {
+    const inK = rounded / 1000;
+    return {
+      amount: `${inK.toLocaleString("tr-TR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 1,
+      })} K`,
+      currency: currencyLabel,
+    };
+  }
+
+  return {
+    amount: rounded.toLocaleString("tr-TR", { maximumFractionDigits: 0 }),
+    currency: currencyLabel,
+  };
 }
 
 export function getDisplayNightlyPrice(period: VillaPricePeriodItem): number {
@@ -105,6 +149,24 @@ export function parseDateKey(value: string): Date {
   return new Date(year, month - 1, day);
 }
 
+/** Prisma @db.Date alanlarına yazarken timezone kaymasını önler. */
+export function dateKeyToDbDate(dateKey: string): Date {
+  return new Date(`${dateKey}T00:00:00.000Z`);
+}
+
+/** Takvim Date değerini Prisma @db.Date yazımına çevirir. */
+export function toDbDate(date: Date): Date {
+  return dateKeyToDbDate(toDateKey(startOfDay(date)));
+}
+
+/** Prisma @db.Date alanından okunan tarihi YYYY-MM-DD anahtarına çevirir. */
+export function dbDateToDateKey(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -115,6 +177,95 @@ export function todayDate(): Date {
 
 export function compareDates(a: Date, b: Date): number {
   return startOfDay(a).getTime() - startOfDay(b).getTime();
+}
+
+export function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const date = startOfDay(parseDateKey(dateKey));
+  date.setDate(date.getDate() + days);
+  return toDateKey(date);
+}
+
+const MONTH_LENGTHS_WITH_MONTH_END = new Set([28, 29, 31]);
+
+/** Periyot ekle: başlangıç + 30 gün; sonuç ayın 1'inde ve ay 28/29/31 günlükse bir önceki ayın son günü. */
+export function getDefaultPeriodEndDate(startDateKey: string): string {
+  if (!startDateKey) return "";
+
+  const plus30 = startOfDay(parseDateKey(addDaysToDateKey(startDateKey, 30)));
+
+  if (plus30.getDate() === 1) {
+    const endYear = plus30.getFullYear();
+    const endMonth = plus30.getMonth();
+    const daysInEndMonth = getDaysInMonth(endYear, endMonth);
+
+    if (MONTH_LENGTHS_WITH_MONTH_END.has(daysInEndMonth)) {
+      return toDateKey(new Date(endYear, endMonth, 0));
+    }
+  }
+
+  return toDateKey(plus30);
+}
+
+export function getLatestPeriodByEndDate(
+  periods: VillaPricePeriodItem[]
+): VillaPricePeriodItem | null {
+  if (periods.length === 0) return null;
+
+  return periods.reduce((latest, period) =>
+    compareDates(period.endDate, latest.endDate) > 0 ? period : latest
+  );
+}
+
+/** Son periyodun bitişinden sonraki gün (YYYY-MM-DD). */
+export function getNextPeriodStartDate(
+  periods: VillaPricePeriodItem[]
+): string {
+  const latest = getLatestPeriodByEndDate(periods);
+  if (!latest) return "";
+
+  const endKey = dbDateToDateKey(startOfDay(new Date(latest.endDate)));
+  return addDaysToDateKey(endKey, 1);
+}
+
+export type NewPeriodPrefill = {
+  templatePeriod: VillaPricePeriodItem | null;
+  dateRange: { startDate: string; endDate: string } | null;
+};
+
+/** Yeni periyot formu: son periyodun bilgileri + ardışık tarih aralığı (+30 gün). */
+export function buildNewPeriodPrefill(
+  periods: VillaPricePeriodItem[]
+): NewPeriodPrefill {
+  const templatePeriod = getLatestPeriodByEndDate(periods);
+  if (!templatePeriod) {
+    return { templatePeriod: null, dateRange: null };
+  }
+
+  const startDate = getNextPeriodStartDate(periods);
+  return {
+    templatePeriod,
+    dateRange: {
+      startDate,
+      endDate: getDefaultPeriodEndDate(startDate),
+    },
+  };
+}
+
+export function enumerateDateKeys(startKey: string, endKey: string): string[] {
+  const keys: string[] = [];
+  const cursor = startOfDay(parseDateKey(startKey));
+  const end = startOfDay(parseDateKey(endKey));
+
+  while (compareDates(cursor, end) <= 0) {
+    keys.push(toDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return keys;
 }
 
 export function isDateInRange(date: Date, startDate: Date, endDate: Date): boolean {
@@ -137,6 +288,31 @@ export type CalendarCell = {
   date: Date;
   inCurrentMonth: boolean;
 };
+
+export function buildNextMonthFirstWeekRow(
+  year: number,
+  month: number
+): Array<CalendarCell | null> {
+  const nextMonth = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  const row: Array<CalendarCell | null> = Array.from({ length: 7 }, () => null);
+
+  for (let dayNumber = 3; dayNumber <= 9; dayNumber += 1) {
+    const date = new Date(nextYear, nextMonth, dayNumber);
+    const column = (date.getDay() + 6) % 7;
+    row[column] = {
+      date,
+      inCurrentMonth: false,
+    };
+  }
+
+  return row;
+}
+
+export function getAdjacentMonthLabel(year: number, month: number, offset: -1 | 1) {
+  const date = new Date(year, month + offset, 1);
+  return getMonthLabel(date.getFullYear(), date.getMonth());
+}
 
 export function buildMonthGrid(year: number, month: number): CalendarCell[] {
   const firstDay = new Date(year, month, 1);

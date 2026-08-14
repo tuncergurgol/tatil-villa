@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "CompanySettings"
+ADD COLUMN IF NOT EXISTS "homePopularTitle" TEXT NOT NULL DEFAULT 'Popüler Villalar',
+ADD COLUMN IF NOT EXISTS "homePopularActive" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN IF NOT EXISTS "homePopularSortMode" TEXT NOT NULL DEFAULT 'showcase',
+ADD COLUMN IF NOT EXISTS "homeDealTitle" TEXT NOT NULL DEFAULT 'Fırsat Villalar',
+ADD COLUMN IF NOT EXISTS "homeDealActive" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN IF NOT EXISTS "homeDealSortMode" TEXT NOT NULL DEFAULT 'showcase',
+ADD COLUMN IF NOT EXISTS "homeRecommendedTitle" TEXT NOT NULL DEFAULT 'Önerilen Villalar',
+ADD COLUMN IF NOT EXISTS "homeRecommendedActive" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN IF NOT EXISTS "homeRecommendedSortMode" TEXT NOT NULL DEFAULT 'showcase';

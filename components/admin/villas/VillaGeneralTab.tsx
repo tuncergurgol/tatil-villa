@@ -11,12 +11,36 @@ import { facilityTypeOptions } from "@/lib/facility-type";
 import { salesTypeOptions } from "@/lib/sales-type";
 
 interface VillaGeneralTabProps {
-  villa: Villa;
+  villa: VillaGeneralFormValue;
   regionBreadcrumb: string;
   roomCount: number;
   bedroomDraft: number;
   onBedroomsChange: (value: number) => void;
+  aiEnabled?: boolean;
 }
+
+export type VillaGeneralFormValue = Pick<
+  Villa,
+  | "id"
+  | "villaId"
+  | "name"
+  | "originalName"
+  | "category"
+  | "salesType"
+  | "guests"
+  | "extraCapacity"
+  | "livingRooms"
+  | "bedrooms"
+  | "bathrooms"
+  | "active"
+  | "showInSearch"
+  | "showInOffer"
+  | "ribbonText1"
+  | "ribbonText2"
+  | "description"
+  | "amenities"
+  | "allowChildren"
+>;
 
 function Field({
   label,
@@ -49,6 +73,7 @@ export default function VillaGeneralTab({
   roomCount,
   bedroomDraft,
   onBedroomsChange,
+  aiEnabled = true,
 }: VillaGeneralTabProps) {
   const [active, setActive] = useState(villa.active);
   const [showInSearch, setShowInSearch] = useState(villa.showInSearch);
@@ -84,7 +109,16 @@ export default function VillaGeneralTab({
               className={inputClass}
             />
           </Field>
-          <Field label="Tesis Tipi">
+          {villa.villaId != null ? (
+            <Field label="Villa ID">
+              <input
+                readOnly
+                value={String(villa.villaId)}
+                className={`${inputClass} cursor-default bg-gray-100 text-gray-600`}
+              />
+            </Field>
+          ) : null}
+          <Field label="Ev Tipi">
             <select
               name="category"
               defaultValue={villa.category ?? "villa"}
@@ -222,14 +256,21 @@ export default function VillaGeneralTab({
           <button
             type="button"
             onClick={() => setAiModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700"
+            disabled={!aiEnabled}
+            title={
+              aiEnabled
+                ? undefined
+                : "AI açıklaması villa ilk kez kaydedildikten sonra kullanılabilir"
+            }
+            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
             AI ile Oluştur
           </button>
         </div>
         <p className="mb-3 text-xs text-gray-500">
-          * En iyi sonuç için önce tüm villa bilgilerini doldurun.
+          AI açıklama; konum, öne çıkan özellikler, kapasite ve mesafeleri kullanır.
+          En iyi sonuç için önce tüm sekmeleri kaydedin.
         </p>
         <RichTextEditor
           key={descriptionKey}
@@ -246,6 +287,7 @@ export default function VillaGeneralTab({
         initialRegion={regionBreadcrumb}
         formSnapshot={{
           guests: villa.guests,
+          extraCapacity: villa.extraCapacity,
           livingRooms: villa.livingRooms,
           bedrooms: villa.bedrooms,
           bathrooms: villa.bathrooms,

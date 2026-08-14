@@ -18,15 +18,18 @@ export const DEFAULT_ROOM_FEATURES = [
 
 export const ROOM_TYPE_OPTIONS = [
   { value: "yatak_odasi", label: "Yatak Odası" },
+  { value: "salon", label: "Salon" },
+  { value: "mutfak", label: "Mutfak" },
+  { value: "banyo", label: "Banyo" },
 ] as const;
 
 export function formatBedSummary(singleBeds: number, doubleBeds: number) {
   const parts: string[] = [];
   if (doubleBeds > 0) {
-    parts.push(`${doubleBeds} Çift`);
+    parts.push(`${doubleBeds} Çift Kişilik Yatak`);
   }
   if (singleBeds > 0) {
-    parts.push(`${singleBeds} Tek`);
+    parts.push(`${singleBeds} Tek Kişilik Yatak`);
   }
   return parts.length > 0 ? parts.join(", ") : "Yatak yok";
 }

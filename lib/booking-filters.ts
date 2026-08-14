@@ -1,18 +1,8 @@
-import type { BookingFilters } from "@/components/admin/bookings/BookingFilterModal";
+import type { BookingFilters } from "@/lib/booking-filter-types";
 import type { AdminBookingListItem } from "@/lib/booking-display";
-import {
-  formatBookingDisplayNumber,
-  formatBookingShortCode,
-} from "@/lib/booking-display";
-
-function normalize(value: string) {
-  return value.trim().toLocaleLowerCase("tr-TR");
-}
-
-function matchesContains(haystack: string, needle: string) {
-  if (!needle) return true;
-  return normalize(haystack).includes(normalize(needle));
-}
+import { formatBookingReservationNo } from "@/lib/booking-display";
+import { matchesBookingQuickFilter } from "@/lib/booking-calendar-days";
+import { includesSearchText } from "@/lib/search-text";
 
 function isDateWithinRange(
   date: Date,
@@ -35,15 +25,23 @@ export function filterBookings(
   filters: BookingFilters
 ) {
   return bookings.filter((booking) => {
-    if (!matchesContains(booking.guestName, filters.customerName)) {
+    if (filters.status && booking.status !== filters.status) {
       return false;
     }
 
-    if (!matchesContains(booking.guestEmail, filters.email)) {
+    if (!matchesBookingQuickFilter(booking, filters.quickFilter)) {
       return false;
     }
 
-    if (!matchesContains(booking.guestPhone, filters.phone)) {
+    if (!includesSearchText(booking.guestName, filters.customerName)) {
+      return false;
+    }
+
+    if (!includesSearchText(booking.guestEmail, filters.email)) {
+      return false;
+    }
+
+    if (!includesSearchText(booking.guestPhone, filters.phone)) {
       return false;
     }
 
@@ -51,30 +49,30 @@ export function filterBookings(
       if (!filters.selectedVillaIds.includes(booking.villa.id)) {
         return false;
       }
-    } else if (filters.villaSearch.trim()) {
-      const query = normalize(filters.villaSearch);
-      const villaHaystack = [
-        booking.villa.name,
-        booking.villa.originalName,
-        booking.villa.slug,
-      ]
-        .join(" ")
-        .toLocaleLowerCase("tr-TR");
-
-      if (!villaHaystack.includes(query)) return false;
+    } else if (
+      !includesSearchText(
+        [
+          booking.villa.name,
+          booking.villa.originalName,
+          booking.villa.slug,
+        ].join(" "),
+        filters.villaSearch
+      )
+    ) {
+      return false;
     }
 
-    if (filters.reservationNo.trim()) {
-      const query = normalize(filters.reservationNo);
-      const reservationHaystack = [
-        booking.id,
-        formatBookingDisplayNumber(booking.id),
-        formatBookingShortCode(booking.id),
-      ]
-        .join(" ")
-        .toLocaleLowerCase("tr-TR");
-
-      if (!reservationHaystack.includes(query)) return false;
+    if (
+      !includesSearchText(
+        [
+          booking.id,
+          formatBookingReservationNo(booking),
+          booking.externalCode != null ? String(booking.externalCode) : "",
+        ].join(" "),
+        filters.reservationNo
+      )
+    ) {
+      return false;
     }
 
     if (
@@ -101,6 +99,24 @@ export function filterBookings(
       )
     ) {
       return false;
+    }
+
+    if (filters.paymentDateStart || filters.paymentDateEnd) {
+      // Rezervasyonlar listesinde alan yoksa bu filtreyi yok say.
+      if (booking.ownerPaymentDueAt !== undefined) {
+        if (!booking.ownerPaymentDueAt) {
+          return false;
+        }
+        if (
+          !isDateWithinRange(
+            booking.ownerPaymentDueAt,
+            filters.paymentDateStart,
+            filters.paymentDateEnd
+          )
+        ) {
+          return false;
+        }
+      }
     }
 
     return true;

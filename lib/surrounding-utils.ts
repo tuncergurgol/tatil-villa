@@ -12,3 +12,7 @@ export function toSurroundingSlug(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+export function compareSurroundingNames(left: string, right: string): number {
+  return left.localeCompare(right, "tr", { sensitivity: "base" });
+}

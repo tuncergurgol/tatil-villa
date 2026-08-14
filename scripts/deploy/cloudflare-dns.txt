@@ -1,0 +1,33 @@
+# Cloudflare DNS (zone: tatildeyiz.com.tr)
+# Tip: A | İçerik: 185.184.210.96 | Proxy: Açık (turuncu bulut)
+
+bont.tatildeyiz.com.tr     -> 185.184.210.96   # Admin panel
+www.tatildeyiz.com.tr      -> 185.184.210.96   # Site 1
+tatildeyiz.com.tr            -> 185.184.210.96   # www yönlendirmesi için (Page Rule veya redirect)
+
+# Zone: balayivillacisi.com
+www.balayivillacisi.com    -> 185.184.210.96   # Site 2
+balayivillacisi.com        -> 185.184.210.96   # www yönlendirmesi
+
+# Zone: tatilvillacisi.com
+# NOT: Eski A/AAAA kayitlari baska bir hosting'e (Plesk) bakiyordu; 185.184.210.96'ya cevrildi.
+# AAAA (IPv6) kayitlari silinmeli; sunucuda IPv6 origin yok.
+# ONEMLI: Bu zone, tatildeyiz/balayivillacisi ile AYNI Cloudflare hesabinda olmali.
+# Farkli hesapta "Forwarding URL" / Redirect Rule varsa tatildeyiz.com.tr'ye yonlendirir.
+# Kontrol: Cloudflare → tatilvillacisi.com → Rules → Redirect Rules / Page Rules (kaldirin).
+www.tatilvillacisi.com     -> 185.184.210.96   # Site 3 (proxied)
+tatilvillacisi.com         -> 185.184.210.96   # apex -> www (nginx 301)
+
+# Cloudflare SSL/TLS
+# - Başlangıç: Full
+# - Origin sertifikası kurulunca: Full (strict)
+# - Always Use HTTPS: Açık
+# - Minimum TLS: 1.2
+
+# Real IP (nginx logları için) — Cloudflare IP aralıkları zaten nginx real_ip modülü ile
+# scripts/deploy/nginx-tatildeyiz.conf içinde tanımlı
+
+# Meta katalog feed — Cloudflare bot allowlist
+# Otomatik: CLOUDFLARE_API_TOKEN ile scripts/deploy/05-cloudflare-feed-bot-allowlist.sh
+# Manuel adımlar: scripts/deploy/cloudflare-feed-waf.md
+# Meta için önerilen R2 URL: https://r2.tatildeyiz.com.tr/feeds/meta-catalog/{siteKey}.xml

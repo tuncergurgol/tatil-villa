@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Bath, BedDouble, MapPin, Users } from "lucide-react";
+import VillaPriceRange from "@/components/VillaPriceRange";
 import type { Villa } from "@/lib/types";
-import { categoryLabel, formatPrice } from "@/lib/utils";
+import { categoryLabel } from "@/lib/utils";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 interface VillaGridProps {
   villas: Villa[];
@@ -31,7 +33,7 @@ export default function VillaGrid({ villas }: VillaGridProps) {
       {villas.map((villa) => (
         <Link
           key={villa.id}
-          href={`/villalar/${villa.slug}`}
+          href={villaPublicPath(villa.slug)}
           className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
           <div className="relative aspect-[4/3] overflow-hidden">
@@ -72,16 +74,12 @@ export default function VillaGrid({ villas }: VillaGridProps) {
             </div>
 
             <div className="mt-auto border-t border-gray-100 pt-3">
-              {villa.pricePerNight ? (
-                <p className="text-sm">
-                  <span className="text-lg font-bold text-teal-700">
-                    {formatPrice(villa.pricePerNight)}
-                  </span>
-                  <span className="text-gray-500"> / gece</span>
-                </p>
-              ) : (
-                <p className="text-sm font-semibold text-amber-600">Teklif Alınız</p>
-              )}
+              <VillaPriceRange
+                minNightlyPrice={villa.minNightlyPrice}
+                maxNightlyPrice={villa.maxNightlyPrice}
+                pricePerNight={villa.pricePerNight}
+                compact
+              />
             </div>
           </div>
         </Link>

@@ -22,6 +22,7 @@ export async function getAmenityAdminData() {
             },
           },
           isDefault: true,
+          showInSearch: true,
           sortOrder: true,
           active: true,
         },
@@ -40,10 +41,15 @@ export async function getAmenityAdminData() {
     category.amenities.filter((amenity) => amenity.isDefault)
   );
 
+  const searchAmenities = categories.flatMap((category) =>
+    category.amenities.filter((amenity) => amenity.showInSearch)
+  );
+
   return {
     categories,
     totalAmenities,
     defaultCount: defaultAmenities.length,
+    searchCount: searchAmenities.length,
   };
 }
 

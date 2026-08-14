@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import ConditionalSiteChrome from "@/components/ConditionalSiteChrome";
-import { siteConfig } from "@/lib/data";
+import { getLocale } from "next-intl/server";
+import Providers from "@/components/Providers";
+import { buildRootMetadata } from "@/lib/site-metadata";
 import "./globals.css";
 
 const inter = Inter({
@@ -11,26 +10,21 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: `${siteConfig.name} - ${siteConfig.tagline}`,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description:
-    "Türkiye'nin en güzel bölgelerinde villa ve bungalov kiralama. En iyi fiyat garantisi ile hızlı rezervasyon.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return buildRootMetadata();
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="tr" className={`${inter.variable} h-full antialiased`}>
+    <html lang={locale} className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-white text-gray-900">
-        <ConditionalSiteChrome header={<Header />} footer={<Footer />}>
-          {children}
-        </ConditionalSiteChrome>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -18,7 +18,7 @@ export const FACILITY_CATEGORY_SEED_DATA: FacilityCategorySeedItem[] = [
     name: "Sinema Odası Olanlar",
     slug: "sinema-odasi-olanlar",
     description:
-      "Sinema salonu olan tatil tesislerimizde konuklarımıza unutulmaz bir film deneyimi sunuyoruz. Geniş ekranlar ve konforlu oturma düzenleriyle donatılmış sinema salonları keyifli bir tatilin yanı sıra sinema keyfi yaşamanızı sağlar.",
+      "Sinema salonu olan tatil evlerimizde konuklarımıza unutulmaz bir film deneyimi sunuyoruz. Geniş ekranlar ve konforlu oturma düzenleriyle donatılmış sinema salonları keyifli bir tatilin yanı sıra sinema keyfi yaşamanızı sağlar.",
     published: true,
     image:
       "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=400&q=80",
@@ -145,7 +145,7 @@ export const FACILITY_CATEGORY_SEED_DATA: FacilityCategorySeedItem[] = [
     published: true,
     showInSearch: true,
     image:
-      "https://images.unsplash.com/photo-1600047509807-ba8f99d2cd2e?w=400&q=80",
+      "https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=400&q=80",
   },
   {
     name: "Özel Havuzlu Villalar",
@@ -190,5 +190,27 @@ export const FACILITY_CATEGORY_SEED_DATA: FacilityCategorySeedItem[] = [
     showInSearch: true,
     image:
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80",
+  },
+  {
+    name: "Geniş Bahçeli Villalar",
+    slug: "genis-bahceli-villalar",
+    published: true,
+    showInSearch: true,
+    showInOffer: true,
+    description:
+      "Geniş bahçeli tatil villaları; açık alan, çocuk oyun alanı ve doğayla iç içe bir tatil için idealdir.",
+    image:
+      "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&q=80",
+  },
+  {
+    name: "Eğlence ve Aktivite İmkanlı Villalar",
+    slug: "eglence-ve-aktivite-imkanli-villalar",
+    published: true,
+    showInSearch: true,
+    showInOffer: true,
+    description:
+      "Bilardo, oyun konsolu ve benzeri aktivitelerle dolu eğlence imkânlı tatil villaları.",
+    image:
+      "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&q=80",
   },
 ];

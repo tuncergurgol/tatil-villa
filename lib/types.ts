@@ -7,11 +7,18 @@ export interface Villa {
   category: VillaCategory;
   region: string;
   regionName?: string;
+  regionLabel?: string;
   location: string;
   guests: number;
   bedrooms: number;
   bathrooms: number;
   pricePerNight: number | null;
+  /** Güncel + gelecek dönemlerden gecelik min */
+  minNightlyPrice?: number | null;
+  /** Güncel + gelecek dönemlerden gecelik max */
+  maxNightlyPrice?: number | null;
+  /** Tarih seçili aramada rezervasyon toplamı (konaklama + temizlik) */
+  stayTotal?: number | null;
   image: string;
   images: string[];
   description: string;
@@ -28,6 +35,7 @@ export interface Region {
   name: string;
   image: string;
   villaCount: number;
+  level?: "IL" | "ILCE" | "MAHALLE";
 }
 
 export interface Campaign {
@@ -44,4 +52,11 @@ export interface GuestCounts {
   children: number;
   babies: number;
   pets: number;
+}
+
+export interface HeroSearchRegionOption {
+  slug: string;
+  name: string;
+  label: string;
+  level?: "IL" | "ILCE" | "MAHALLE";
 }

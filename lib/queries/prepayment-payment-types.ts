@@ -30,5 +30,6 @@ export async function getPrepaymentPaymentTypeAdminData() {
     items: items as PrepaymentPaymentTypeItem[],
     totalCount: items.length,
     activeCount: items.filter((item) => item.active).length,
+    passiveCount: items.filter((item) => !item.active).length,
   };
 }

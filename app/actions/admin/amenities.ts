@@ -27,12 +27,14 @@ const amenitySchema = z.object({
     .optional()
     .transform((value) => (value && value.length > 0 ? value : null)),
   isDefault: z.enum(["true", "false"]).transform((v) => v === "true"),
+  showInSearch: z.enum(["true", "false"]).transform((v) => v === "true"),
 });
 
 function revalidateAmenityPaths() {
   revalidatePath("/admin/tanimlamalar/villa-olanaklari");
   revalidatePath("/admin/villalar/yeni");
   revalidatePath("/admin/villalar");
+  revalidatePath("/villalar");
 }
 
 async function uniqueCategorySlug(name: string, excludeId?: string) {
@@ -146,6 +148,7 @@ export async function createAmenity(
     categoryId: formData.get("categoryId"),
     facilityCategoryId: formData.get("facilityCategoryId") ?? undefined,
     isDefault: formData.get("isDefault") ?? "false",
+    showInSearch: formData.get("showInSearch") ?? "false",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
@@ -158,6 +161,7 @@ export async function createAmenity(
         categoryId: parsed.data.categoryId,
         facilityCategoryId: parsed.data.facilityCategoryId,
         isDefault: parsed.data.isDefault,
+        showInSearch: parsed.data.showInSearch,
         sortOrder: 0,
       },
     });
@@ -183,6 +187,7 @@ export async function updateAmenity(
     categoryId: formData.get("categoryId"),
     facilityCategoryId: formData.get("facilityCategoryId") ?? undefined,
     isDefault: formData.get("isDefault") ?? "false",
+    showInSearch: formData.get("showInSearch") ?? "false",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
@@ -202,6 +207,7 @@ export async function updateAmenity(
         categoryId: parsed.data.categoryId,
         facilityCategoryId: parsed.data.facilityCategoryId,
         isDefault: parsed.data.isDefault,
+        showInSearch: parsed.data.showInSearch,
       },
     });
     await syncAlphabeticalAmenitySortOrders(parsed.data.categoryId);
@@ -254,5 +260,28 @@ export async function toggleAmenityDefault(
     return { success: true };
   } catch {
     return { error: "Varsayılan durumu güncellenemedi" };
+  }
+}
+
+export async function toggleAmenityShowInSearch(
+  id: string
+): Promise<AmenityActionState> {
+  await requireAdmin();
+
+  const amenity = await prisma.amenity.findUnique({
+    where: { id },
+    select: { showInSearch: true },
+  });
+  if (!amenity) return { error: "Olanak bulunamadı" };
+
+  try {
+    await prisma.amenity.update({
+      where: { id },
+      data: { showInSearch: !amenity.showInSearch },
+    });
+    revalidateAmenityPaths();
+    return { success: true };
+  } catch {
+    return { error: "Arama listesi durumu güncellenemedi" };
   }
 }
