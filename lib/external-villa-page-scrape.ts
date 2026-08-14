@@ -2965,6 +2965,7 @@ const MUSTAKILVILLAM_API = "https://api.mustakilvillam.com";
 const MYVILLACITY_API = "https://api.myvillacity.com";
 const VILLAKILAVUZU_API = "https://api.villakilavuzu.com";
 const OVILLAM_API = "https://api.ovillam.com";
+const KIRALIKVILLANIZ_API = "https://api.kiralikvillaniz.com";
 
 type VillaApiSiteConfig = {
   apiHost: string;
@@ -2979,7 +2980,8 @@ type VillaApiSiteConfig = {
     | "mustakilvillam"
     | "myvillacity"
     | "villakilavuzu"
-    | "ovillam";
+    | "ovillam"
+    | "kiralikvillaniz";
 };
 
 function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
@@ -3053,6 +3055,13 @@ function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
         apiHost: OVILLAM_API,
         origin: "https://www.ovillam.com",
         hostKey: "ovillam",
+      };
+    }
+    if (host.includes("kiralikvillaniz")) {
+      return {
+        apiHost: KIRALIKVILLANIZ_API,
+        origin: "https://www.kiralikvillaniz.com.tr",
+        hostKey: "kiralikvillaniz",
       };
     }
   } catch {
@@ -3265,7 +3274,8 @@ function usesLowercaseApiCurrency(site: VillaApiSiteConfig): boolean {
     site.hostKey === "villaciniz" ||
     site.hostKey === "villayolu" ||
     site.hostKey === "tatilpremium" ||
-    site.hostKey === "ovillam"
+    site.hostKey === "ovillam" ||
+    site.hostKey === "kiralikvillaniz"
   );
 }
 
@@ -3534,7 +3544,8 @@ export async function scrapeVillavillamFromPage(
       site.hostKey === "mustakilvillam" ||
       site.hostKey === "myvillacity" ||
       site.hostKey === "villakilavuzu" ||
-      site.hostKey === "ovillam")
+      site.hostKey === "ovillam" ||
+      site.hostKey === "kiralikvillaniz")
   ) {
     entity = extractTatilpremiumRoutingEntity(html, pageUrl);
   }
