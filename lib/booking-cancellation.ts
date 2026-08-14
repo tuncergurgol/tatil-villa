@@ -56,11 +56,11 @@ export function getCancellationReasonLabel(
   return found?.fullLabel ?? reasonId;
 }
 
-/** Mücbir sebep iadesinde alıcı: yalnızca “Mücbir Sebep İptali” → misafir. */
+/** Mücbir sebep iadesinde varsayılan alıcı: misafir (ön ödeme iadesi). */
 export function resolveForceMajeureRefundRecipient(
-  reasonId: BookingCancellationReasonId
+  _reasonId?: BookingCancellationReasonId
 ): ForceMajeureRefundRecipient {
-  return reasonId === "customer_force_majeure" ? "guest" : "owner";
+  return "guest";
 }
 
 export function getForceMajeureRecipientLabel(

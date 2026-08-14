@@ -8,10 +8,10 @@ assert.equal(
   resolveForceMajeureRefundRecipient("customer_force_majeure"),
   "guest"
 );
-assert.equal(resolveForceMajeureRefundRecipient("agency"), "owner");
-assert.equal(resolveForceMajeureRefundRecipient("owner"), "owner");
-assert.equal(resolveForceMajeureRefundRecipient("customer_withdraw"), "owner");
-assert.equal(resolveForceMajeureRefundRecipient("calendar_full"), "owner");
+assert.equal(resolveForceMajeureRefundRecipient("agency"), "guest");
+assert.equal(resolveForceMajeureRefundRecipient("owner"), "guest");
+assert.equal(resolveForceMajeureRefundRecipient("customer_withdraw"), "guest");
+assert.equal(resolveForceMajeureRefundRecipient("calendar_full"), "guest");
 assert.match(
   getCancellationReasonLabel("customer_force_majeure"),
   /Mücbir Sebep/
