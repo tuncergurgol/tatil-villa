@@ -6,7 +6,6 @@ import { cancelBookingAction } from "@/app/actions/admin/booking-cancellation";
 import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import {
   BOOKING_CANCELLATION_REASONS,
-  getForceMajeureRecipientLabel,
   resolveForceMajeureRefundRecipient,
   type BookingCancellationReasonId,
 } from "@/lib/booking-cancellation";
