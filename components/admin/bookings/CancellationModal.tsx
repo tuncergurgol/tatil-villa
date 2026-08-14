@@ -102,17 +102,10 @@ export default function CancellationModal({
   }
 
   function openForceMajeureForm() {
+    // Mücbir Sebep VAR → ön ödeme varsayılan olarak misafir iadesine yazılır
     const defaultAmount = formatMoneyInputValue(realizedPrepaymentTotal);
-    const nextRecipient = reasonId
-      ? resolveForceMajeureRefundRecipient(reasonId)
-      : "owner";
-    if (nextRecipient === "guest") {
-      setGuestRefundInput(defaultAmount);
-      setOwnerRefundInput("0");
-    } else {
-      setOwnerRefundInput(defaultAmount);
-      setGuestRefundInput("0");
-    }
+    setGuestRefundInput(defaultAmount);
+    setOwnerRefundInput("0");
     setStep("force_majeure_form");
   }
 
@@ -363,13 +356,9 @@ export default function CancellationModal({
                     />
                   </FormRow>
                   <p className="text-xs text-gray-500">
-                    Varsayılan tutar{" "}
-                    {getForceMajeureRecipientLabel(recipient)} alanına yazıldı
-                    ({recipient === "guest"
-                      ? "Mücbir Sebep İptali"
-                      : "seçilen iptal nedeni"}
-                    ). Her iki alan da manuel düzeltilebilir; kayıtta her iki
-                    tutar da yapılacak ödeme olarak saklanır.
+                    Mücbir sebep iadesinde ön ödeme varsayılan olarak misafir
+                    alanına yazılır. Her iki alan da manuel düzeltilebilir;
+                    kayıtta her iki tutar da yapılacak ödeme olarak saklanır.
                   </p>
                 </div>
               ) : null}
