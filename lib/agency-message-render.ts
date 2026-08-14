@@ -321,7 +321,11 @@ export function buildBookingPrepaymentTemplateValues(input: {
   ) as CompanyPaymentTypeValue;
   const nights = calculateNights(input.checkIn, input.checkOut);
   const guestCount = input.adults + input.children;
-  const reservationTotal = computeReservationTotal(input.details);
+  // 10.3 mesajında Fiyat sekmesindeki “Rezervasyon Toplamı” gösterilir:
+  // indirimli konaklama + ekstra hizmetler. Brüt konaklama tutarı kullanılmaz.
+  const reservationTotal =
+    computeGuestReservationTotal(input.details) ??
+    computeReservationTotal(input.details);
   const totalAmount = reservationTotal ?? input.details.grossPrice ?? 0;
   const cleaningFee = input.details.cleaningFee ?? 0;
   const poolFee = resolvePoolHeatingFee(input.details);
