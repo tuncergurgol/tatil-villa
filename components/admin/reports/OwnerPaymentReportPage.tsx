@@ -268,8 +268,8 @@ export default function OwnerPaymentReportPage({
         </p>
       ) : (
         <p className="text-sm text-gray-500">
-          {filteredItems.length} onaylı rezervasyon (ödenecek &gt; 0) —{" "}
-          {exportableItems.length} ödemeye hazır
+          {filteredItems.length} rezervasyon (ödenecek &gt; 0; onaylı / tazminat /
+          iptal) — {exportableItems.length} ödemeye hazır
         </p>
       )}
 

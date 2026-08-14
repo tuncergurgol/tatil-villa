@@ -581,7 +581,10 @@ export default function BookingDetailModal({
   }, [realizedPrepaymentTotal, details.prepaymentAmount]);
 
   const ownerPayableAmount = useMemo(() => {
-    if (status === BookingStatusEnum.COMPENSATION) {
+    if (
+      status === BookingStatusEnum.COMPENSATION ||
+      status === BookingStatusEnum.CANCELLED
+    ) {
       return Math.max(0, Math.round(Number(details.ownerPayableAmount) || 0));
     }
     return computeOwnerPayableAmount(
@@ -597,6 +600,9 @@ export default function BookingDetailModal({
 
   const ownerPaymentDueDate = useMemo(() => {
     if (!booking) return "";
+    if (status === BookingStatusEnum.CANCELLED) {
+      return (details.ownerPaymentDueDate ?? "").trim();
+    }
     return computeOwnerPaymentDueDate({
       paymentTypeName: ownerPaymentTermName,
       confirmationDate: booking.confirmationSentAt,
@@ -605,6 +611,8 @@ export default function BookingDetailModal({
     });
   }, [
     booking,
+    status,
+    details.ownerPaymentDueDate,
     ownerPaymentTermName,
     booking?.confirmationSentAt,
     booking?.checkIn,
@@ -612,7 +620,12 @@ export default function BookingDetailModal({
   ]);
 
   useEffect(() => {
-    if (status === BookingStatusEnum.COMPENSATION) return;
+    if (
+      status === BookingStatusEnum.COMPENSATION ||
+      status === BookingStatusEnum.CANCELLED
+    ) {
+      return;
+    }
     setDetails((current) => {
       const nextTerm = ownerPaymentTermName;
       const nextPayable = ownerPayableAmount;

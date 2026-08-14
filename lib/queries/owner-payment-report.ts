@@ -181,7 +181,11 @@ function resolveOwnerPayableForBooking(
   booking: OwnerPaymentBookingRecord,
   details: ReturnType<typeof parseBookingDetails>
 ): number {
-  if (booking.status === "COMPENSATION") {
+  // Tazminat / iptal iadesi villa sahibine: kayıtlı ownerPayableAmount kullanılır
+  if (
+    booking.status === "COMPENSATION" ||
+    booking.status === "CANCELLED"
+  ) {
     return Math.max(0, Math.round(Number(details.ownerPayableAmount) || 0));
   }
   const prepaymentAmount =
@@ -213,14 +217,23 @@ function mapBookingToOwnerListItem(
     details.ownerPaymentTerm?.trim() ||
     "";
   const ownerPaymentDueDate =
-    computeOwnerPaymentDueDate({
-      paymentTypeName,
-      confirmationDate: booking.confirmationSentAt,
-      checkIn: booking.checkIn,
-      checkOut: booking.checkOut,
-    }) ||
-    (details.ownerPaymentDueDate ?? "").trim() ||
-    "";
+    booking.status === "CANCELLED"
+      ? (details.ownerPaymentDueDate ?? "").trim() ||
+        computeOwnerPaymentDueDate({
+          paymentTypeName,
+          confirmationDate: booking.confirmationSentAt,
+          checkIn: booking.checkIn,
+          checkOut: booking.checkOut,
+        }) ||
+        ""
+      : computeOwnerPaymentDueDate({
+          paymentTypeName,
+          confirmationDate: booking.confirmationSentAt,
+          checkIn: booking.checkIn,
+          checkOut: booking.checkOut,
+        }) ||
+        (details.ownerPaymentDueDate ?? "").trim() ||
+        "";
   const exportInput = toExportInput(booking, remainingAmount);
   const rawMissing = checkOwnerPaymentMissingFields(exportInput);
   const missing =
@@ -390,7 +403,9 @@ export async function getOwnerPaymentReportListData() {
   const [companySettings, bookings, villas] = await Promise.all([
     getCompanySettings(),
     prisma.booking.findMany({
-      where: { status: { in: ["CONFIRMED", "COMPENSATION"] } },
+      where: {
+        status: { in: ["CONFIRMED", "COMPENSATION", "CANCELLED"] },
+      },
       select: ownerPaymentBookingSelect,
       orderBy: [{ checkIn: "desc" }, { createdAt: "desc" }],
     }),
@@ -447,7 +462,7 @@ export async function generateOwnerPaymentReportExport(bookingIds: string[]) {
   const bookings = await prisma.booking.findMany({
     where: {
       id: { in: [...bookingIdSet] },
-      status: { in: ["CONFIRMED", "COMPENSATION"] },
+      status: { in: ["CONFIRMED", "COMPENSATION", "CANCELLED"] },
     },
     select: ownerPaymentBookingSelect,
     orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
@@ -529,7 +544,7 @@ function resolveGuestRefundRemaining(booking: OwnerPaymentBookingRecord) {
 export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) {
   const bookings = await prisma.booking.findMany({
     where: {
-      status: { in: ["CONFIRMED", "COMPENSATION"] },
+      status: { in: ["CONFIRMED", "COMPENSATION", "CANCELLED"] },
       checkIn: dateKeyToDbDate(dateKey),
     },
     select: ownerPaymentBookingSelect,
