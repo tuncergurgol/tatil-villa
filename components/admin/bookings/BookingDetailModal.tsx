@@ -19,6 +19,7 @@ import {
 } from "@/app/actions/admin/bookings";
 import OccupancyStayDateRangePicker from "@/components/admin/availability/OccupancyStayDateRangePicker";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
+import { getCancellationReasonLabel } from "@/lib/booking-cancellation";
 import {
   type BookingDetailRecord,
   type BookingDetails,
@@ -1570,6 +1571,20 @@ export default function BookingDetailModal({
                     }));
                     onSaved();
                   }}
+                  onCancellationCompleted={({
+                    status: nextStatus,
+                    activityLogs,
+                    details: cancellationDetails,
+                  }) => {
+                    setStatus(nextStatus);
+                    setDetails((current) => ({
+                      ...current,
+                      ...cancellationDetails,
+                      activityLogs: normalizeActivityLogs(activityLogs),
+                    }));
+                    onSaved();
+                    onClose();
+                  }}
                   onActivityLogs={syncActivityLogs}
                 />
               </TabPanel>
@@ -1829,6 +1844,35 @@ export default function BookingDetailModal({
               </TabPanel>
 
               <TabPanel active={activeTab === "odemeler"}>
+              {details.cancellationReason ? (
+                <FormSection title="İptal Bilgisi">
+                  <FormRow label="İptal Nedeni">
+                    <ReadonlyField
+                      value={getCancellationReasonLabel(
+                        details.cancellationReason
+                      )}
+                    />
+                  </FormRow>
+                  {details.cancellationHasForceMajeure ? (
+                    <FormRow label="Mücbir Sebep İadesi">
+                      <ReadonlyField
+                        value={`${formatMoneyPlain(
+                          details.forceMajeureRefundAmount ?? 0
+                        )} / ${
+                          details.forceMajeureRefundRecipient === "guest"
+                            ? "Misafir"
+                            : "Villa Sahibi"
+                        }`}
+                      />
+                    </FormRow>
+                  ) : null}
+                  {details.cancellationHasCompensation ? (
+                    <FormRow label="Tazminat">
+                      <ReadonlyField value="Uygulandı" />
+                    </FormRow>
+                  ) : null}
+                </FormSection>
+              ) : null}
               <FormSection title="Acente Bilgileri">
                 <FormRow label="Acente Adı">
                   <input

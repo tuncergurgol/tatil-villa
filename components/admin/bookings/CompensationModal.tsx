@@ -21,6 +21,8 @@ interface CompensationModalProps {
   prepaymentTotal: number;
   initialCompensationAmount?: number | null;
   initialGuestRefundAmount?: number | null;
+  /** İptal akışından geliyorsa neden kodu tazminatla birlikte kaydedilir */
+  cancellationReason?: string | null;
   onSuccess: (payload: {
     status: BookingStatus;
     activityLogs: BookingActivityLogEntry[];
@@ -32,6 +34,10 @@ interface CompensationModalProps {
       commissionAmount: number;
       invoiceAmount: number;
       prepaymentAmount: number;
+      cancellationReason?: string | null;
+      cancellationHasCompensation?: boolean | null;
+      cancellationHasForceMajeure?: boolean | null;
+      cancelledAt?: string | null;
     };
   }) => void;
 }
@@ -53,6 +59,7 @@ export default function CompensationModal({
   prepaymentTotal,
   initialCompensationAmount,
   initialGuestRefundAmount,
+  cancellationReason,
   onSuccess,
 }: CompensationModalProps) {
   const [compensationInput, setCompensationInput] = useState("");
@@ -137,6 +144,9 @@ export default function CompensationModal({
         bookingId,
         compensationAmount: breakdown.compensationAmount,
         guestRefundAmount: breakdown.guestRefundAmount,
+        ...(cancellationReason
+          ? { cancellationReason }
+          : {}),
       });
       if (!result.success) {
         setError(result.error);
