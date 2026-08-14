@@ -10,6 +10,7 @@ import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import { getPrepaymentShareChannelLabel } from "@/lib/booking-prepayment-share";
 import type {
   BookingConfirmationSendRecord,
+  BookingDetails,
   BookingPrepaymentRecord,
 } from "@/lib/booking-form-details";
 import { getBookingStatusLabel } from "@/lib/booking-status";
@@ -19,6 +20,7 @@ import {
   bookingLabelClass,
 } from "@/components/admin/bookings/booking-form-ui";
 import CheckInInfoShareModal from "@/components/admin/bookings/CheckInInfoShareModal";
+import CancellationModal from "@/components/admin/bookings/CancellationModal";
 import CompensationModal from "@/components/admin/bookings/CompensationModal";
 import type { CheckInInfoShareAudience } from "@/app/actions/admin/booking-check-in-info-share";
 import { sendGuestReviewInviteAction } from "@/app/actions/admin/guest-review";
@@ -63,7 +65,16 @@ interface BookingKonfirmeTabProps {
       commissionAmount: number;
       invoiceAmount: number;
       prepaymentAmount: number;
+      cancellationReason?: string | null;
+      cancellationHasCompensation?: boolean | null;
+      cancellationHasForceMajeure?: boolean | null;
+      cancelledAt?: string | null;
     };
+  }) => void;
+  onCancellationCompleted?: (payload: {
+    status: BookingStatus;
+    activityLogs: BookingActivityLogEntry[];
+    details: Partial<BookingDetails>;
   }) => void;
   onActivityLogs?: (activityLogs: BookingActivityLogEntry[]) => void;
 }
@@ -112,6 +123,7 @@ export default function BookingKonfirmeTab({
   onConfirmationSent,
   onStatusChanged,
   onCompensationApplied,
+  onCancellationCompleted,
   onActivityLogs,
 }: BookingKonfirmeTabProps) {
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -140,8 +152,13 @@ export default function BookingKonfirmeTab({
   );
   const [isReviewInvitePending, startReviewInviteTransition] = useTransition();
   const [compensationOpen, setCompensationOpen] = useState(false);
+  const [cancellationOpen, setCancellationOpen] = useState(false);
 
   const hasPrepayments = prepayments.length > 0;
+  const realizedPrepaymentTotal = useMemo(
+    () => prepayments.reduce((sum, item) => sum + item.amount, 0),
+    [prepayments]
+  );
   const canSendConfirmation = hasPrepayments && !isConfirmPending;
   const canNotifyCheckIn = bookingStatus === BookingStatus.CONFIRMED;
   const guestPreviewPath = buildCheckInInfoSharePath(bookingId, "guest");
@@ -484,7 +501,11 @@ export default function BookingKonfirmeTab({
           <button
             type="button"
             disabled={isStatusPending}
-            onClick={() => handleStatusChange(BookingStatus.CANCELLED, "İptal")}
+            onClick={() => {
+              setStatusError(null);
+              setStatusSuccess(null);
+              setCancellationOpen(true);
+            }}
             className="rounded-lg bg-red-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
           >
             İptal
@@ -598,11 +619,33 @@ export default function BookingKonfirmeTab({
         onClose={() => setCompensationOpen(false)}
         bookingId={bookingId}
         reservationTotal={reservationTotal}
-        prepaymentTotal={prepaymentTotal}
+        prepaymentTotal={
+          realizedPrepaymentTotal > 0
+            ? realizedPrepaymentTotal
+            : prepaymentTotal
+        }
         initialCompensationAmount={compensationAmount}
         initialGuestRefundAmount={guestRefundAmount}
         onSuccess={(payload) => {
           onCompensationApplied(payload);
+          setStatusSuccess(
+            `Durum "${getBookingStatusLabel(payload.status)}" olarak güncellendi.`
+          );
+        }}
+      />
+
+      <CancellationModal
+        open={cancellationOpen}
+        onClose={() => setCancellationOpen(false)}
+        bookingId={bookingId}
+        reservationTotal={reservationTotal}
+        realizedPrepaymentTotal={realizedPrepaymentTotal}
+        onCompleted={(payload) => {
+          if (onCancellationCompleted) {
+            onCancellationCompleted(payload);
+            return;
+          }
+          onStatusChanged(payload.status, payload.activityLogs);
           setStatusSuccess(
             `Durum "${getBookingStatusLabel(payload.status)}" olarak güncellendi.`
           );

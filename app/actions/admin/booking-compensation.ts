@@ -23,6 +23,7 @@ const inputSchema = z.object({
   bookingId: z.string().min(1),
   compensationAmount: z.number().finite().min(0),
   guestRefundAmount: z.number().finite().min(0),
+  cancellationReason: z.string().min(1).optional(),
 });
 
 export type ApplyCompensationResult =
@@ -39,6 +40,10 @@ export type ApplyCompensationResult =
         commissionAmount: number;
         invoiceAmount: number;
         prepaymentAmount: number;
+        cancellationReason?: string | null;
+        cancellationHasCompensation?: boolean | null;
+        cancellationHasForceMajeure?: boolean | null;
+        cancelledAt?: string | null;
       };
     }
   | { success: false; error: string };
@@ -100,6 +105,10 @@ export async function applyCompensationAction(
   const guestRefundPaymentDate =
     breakdown.guestRefundAmount > 0 ? getIstanbulDateKey() : null;
 
+  const cancelledAt = parsed.data.cancellationReason
+    ? new Date().toISOString()
+    : details.cancelledAt ?? null;
+
   const nextDetails = {
     ...details,
     compensationAmount: breakdown.compensationAmount,
@@ -109,6 +118,14 @@ export async function applyCompensationAction(
     commissionAmount: breakdown.commissionAmount,
     invoiceAmount: breakdown.compensationAmount,
     prepaymentAmount: breakdown.prepaymentTotal,
+    ...(parsed.data.cancellationReason
+      ? {
+          cancellationReason: parsed.data.cancellationReason,
+          cancellationHasCompensation: true,
+          cancellationHasForceMajeure: false,
+          cancelledAt,
+        }
+      : {}),
   };
 
   const previousStatus = booking.status;
@@ -134,6 +151,7 @@ export async function applyCompensationAction(
       guestRefundPaymentDate,
       ownerPayableAmount: breakdown.ownerPayableAmount,
       commissionAmount: breakdown.commissionAmount,
+      cancellationReason: parsed.data.cancellationReason ?? null,
     },
   });
 
@@ -152,6 +170,14 @@ export async function applyCompensationAction(
       commissionAmount: breakdown.commissionAmount,
       invoiceAmount: breakdown.compensationAmount,
       prepaymentAmount: breakdown.prepaymentTotal,
+      ...(parsed.data.cancellationReason
+        ? {
+            cancellationReason: parsed.data.cancellationReason,
+            cancellationHasCompensation: true,
+            cancellationHasForceMajeure: false,
+            cancelledAt,
+          }
+        : {}),
     },
   };
 }

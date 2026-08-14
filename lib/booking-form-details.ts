@@ -111,6 +111,18 @@ export type BookingDetails = {
   guestRefundAmount?: number | null;
   /** Misafir iade ödeme tarihi (yyyy-mm-dd) — Tazminatı Uygula günü */
   guestRefundPaymentDate?: string | null;
+  /** İptal nedeni kodu (customer_withdraw, customer_force_majeure, …) */
+  cancellationReason?: string | null;
+  /** İptal sırasında tazminat uygulandı mı */
+  cancellationHasCompensation?: boolean | null;
+  /** İptal sırasında mücbir sebep iadesi uygulandı mı */
+  cancellationHasForceMajeure?: boolean | null;
+  /** Mücbir sebep iade tutarı */
+  forceMajeureRefundAmount?: number | null;
+  /** Mücbir sebep iade alıcısı: guest | owner */
+  forceMajeureRefundRecipient?: "guest" | "owner" | null;
+  /** İptal kaydı zamanı (ISO) */
+  cancelledAt?: string | null;
   /** Public talep: card | transfer */
   paymentMethod?: string;
   paymentAmount?: string;
@@ -773,6 +785,12 @@ export function defaultDetailsFromBooking(booking: {
     compensationAmount: parsed.compensationAmount ?? null,
     guestRefundAmount: parsed.guestRefundAmount ?? null,
     guestRefundPaymentDate: parsed.guestRefundPaymentDate ?? null,
+    cancellationReason: parsed.cancellationReason ?? null,
+    cancellationHasCompensation: parsed.cancellationHasCompensation ?? null,
+    cancellationHasForceMajeure: parsed.cancellationHasForceMajeure ?? null,
+    forceMajeureRefundAmount: parsed.forceMajeureRefundAmount ?? null,
+    forceMajeureRefundRecipient: parsed.forceMajeureRefundRecipient ?? null,
+    cancelledAt: parsed.cancelledAt ?? null,
     ownerCollectFromGuest: parsed.ownerCollectFromGuest ?? null,
     ownerPaymentDueDate: parsed.ownerPaymentDueDate ?? "",
     ownerPaymentDate: parsed.ownerPaymentDate ?? "",

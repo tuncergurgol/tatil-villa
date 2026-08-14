@@ -22,7 +22,9 @@ export type BookingActivityAction =
   | "check_in_info_shared"
   | "calendar_close_message_sent"
   | "option_request_message_sent"
-  | "compensation_applied";
+  | "compensation_applied"
+  | "booking_cancelled"
+  | "force_majeure_refund_applied";
 
 export type BookingActivityLogEntry = {
   id: string;
@@ -56,6 +58,8 @@ const ACTION_LABELS: Record<BookingActivityAction, string> = {
   calendar_close_message_sent: "Takvim kapatma mesajı gönderildi",
   option_request_message_sent: "Opsiyon iste mesajı gönderildi",
   compensation_applied: "Tazminat uygulandı",
+  booking_cancelled: "Rezervasyon iptal edildi",
+  force_majeure_refund_applied: "Mücbir sebep iadesi uygulandı",
 };
 
 export function getBookingActivityActionLabel(
