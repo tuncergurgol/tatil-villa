@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { CalendarOff, Loader2, Send } from "lucide-react";
+import { CalendarOff, Download, Loader2, Send } from "lucide-react";
 import { sendBookingConfirmationAction } from "@/app/actions/admin/booking-confirmation-send";
 import { sendCalendarCloseMessageAction } from "@/app/actions/admin/booking-calendar-close-message";
 import { changeBookingStatusAction } from "@/app/actions/admin/bookings";
@@ -432,6 +432,14 @@ export default function BookingKonfirmeTab({
                   )}
                   Takvim Kapatma Mesajı
                 </button>
+                <a
+                  href={`/api/admin/bookings/${bookingId}/confirmation-pdf`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-slate-800"
+                  title="Konfirme belgesini PDF olarak indir"
+                >
+                  <Download className="h-4 w-4" />
+                  Konfirme İndir
+                </a>
               </div>
             </div>
           ) : null}
