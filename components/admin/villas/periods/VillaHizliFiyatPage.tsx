@@ -101,8 +101,31 @@ const cellInputClass =
 const dirtyCellInputClass =
   "w-full min-w-0 rounded-lg border border-violet-300 bg-violet-50/30 px-2 py-1.5 text-sm text-gray-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100";
 
+/** Masaüstü tabloda daraltmayı engeller; yatay scroll ile okunur kalır. */
+const tableCellInputBase =
+  "block shrink-0 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm tabular-nums text-gray-900 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100";
+const tableDirtyCellInputBase =
+  "block shrink-0 rounded-lg border border-violet-300 bg-violet-50/30 px-2.5 py-1.5 text-sm tabular-nums text-gray-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100";
+
 function rowInputClass(dirty: boolean) {
   return dirty ? dirtyCellInputClass : cellInputClass;
+}
+
+function tableInputClass(
+  dirty: boolean,
+  size: "date" | "pct" | "price" | "fee" | "currency"
+) {
+  const sizeClass =
+    size === "date"
+      ? "w-[10.5rem] min-w-[10.5rem]"
+      : size === "pct"
+        ? "w-[4.5rem] min-w-[4.5rem]"
+        : size === "price"
+          ? "w-[7.5rem] min-w-[7.5rem]"
+          : size === "fee"
+            ? "w-[6.5rem] min-w-[6.5rem]"
+            : "w-[5.5rem] min-w-[5.5rem]";
+  return `${dirty ? tableDirtyCellInputBase : tableCellInputBase} ${sizeClass}`;
 }
 
 function dirtyRowClass(dirty: boolean) {
@@ -113,6 +136,12 @@ function dirtyRowClass(dirty: boolean) {
 
 const readOnlyClass =
   "rounded-lg bg-gray-50 px-2 py-1.5 text-sm tabular-nums text-gray-700";
+
+const tableReadOnlyClass =
+  "block w-[7.5rem] min-w-[7.5rem] rounded-lg bg-gray-50 px-2.5 py-1.5 text-sm tabular-nums text-gray-700";
+
+const tableHeadClass =
+  "whitespace-nowrap bg-gray-50 px-2.5 py-3 text-left text-[11px] font-semibold tracking-wide text-gray-500 uppercase";
 
 function periodDateKey(date: Date): string {
   return dbDateToDateKey(startOfDay(new Date(date)));
@@ -966,11 +995,11 @@ export default function VillaHizliFiyatPage({
           )}
         </div>
 
-        <div className="hidden h-[calc(100%-3.25rem)] overflow-auto md:block">
-          <table className="min-w-[1200px] w-full text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-gray-50/95 text-[11px] font-semibold tracking-wide text-gray-500 uppercase backdrop-blur">
+        <div className="hidden min-h-0 flex-1 overflow-x-auto overflow-y-auto md:block">
+          <table className="w-max min-w-full border-separate border-spacing-0 text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur">
               <tr>
-                <th className="px-3 py-3">
+                <th className={`${tableHeadClass} px-3`}>
                   <input
                     type="checkbox"
                     checked={rows.length > 0 && selectedIds.size === rows.length}
@@ -978,21 +1007,21 @@ export default function VillaHizliFiyatPage({
                     className="rounded border-gray-300"
                   />
                 </th>
-                <th className="px-2 py-3">#</th>
-                <th className="px-2 py-3">Başlangıç</th>
-                <th className="px-2 py-3">Bitiş</th>
-                <th className="px-2 py-3">Ön Öd. %</th>
-                <th className="px-2 py-3">Kom. %</th>
-                <th className="px-2 py-3">Fiyat</th>
-                <th className="px-2 py-3">İndirim</th>
-                <th className="px-2 py-3">Komsz.</th>
-                <th className="px-2 py-3">Haftalık</th>
-                <th className="px-2 py-3">Min Gece</th>
-                <th className="px-2 py-3">Temiz. Gün</th>
-                <th className="px-2 py-3">Temiz. Bedel</th>
-                <th className="px-2 py-3">Hasar Dep.</th>
-                <th className="px-2 py-3">Para Bir.</th>
-                <th className="px-2 py-3">İşlem</th>
+                <th className={tableHeadClass}>#</th>
+                <th className={tableHeadClass}>Başlangıç</th>
+                <th className={tableHeadClass}>Bitiş</th>
+                <th className={tableHeadClass}>Ön Öd. %</th>
+                <th className={tableHeadClass}>Kom. %</th>
+                <th className={tableHeadClass}>Fiyat</th>
+                <th className={tableHeadClass}>İndirim</th>
+                <th className={tableHeadClass}>Komsz.</th>
+                <th className={tableHeadClass}>Haftalık</th>
+                <th className={tableHeadClass}>Min Gece</th>
+                <th className={tableHeadClass}>Temiz. Gün</th>
+                <th className={tableHeadClass}>Temiz. Bedel</th>
+                <th className={tableHeadClass}>Hasar Dep.</th>
+                <th className={tableHeadClass}>Para Bir.</th>
+                <th className={tableHeadClass}>İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -1014,7 +1043,7 @@ export default function VillaHizliFiyatPage({
                       key={row.id}
                       className={`border-t border-gray-100 ${dirtyRowClass(row.dirty)}`}
                     >
-                      <td className="px-3 py-2">
+                      <td className="whitespace-nowrap px-3 py-2">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(row.id)}
@@ -1022,7 +1051,7 @@ export default function VillaHizliFiyatPage({
                           className="rounded border-gray-300"
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <div className="flex items-center gap-1.5">
                           {row.dirty ? (
                             <span
@@ -1033,27 +1062,27 @@ export default function VillaHizliFiyatPage({
                           <span className="text-gray-500">{index + 1}</span>
                         </div>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="date"
                           value={row.startDate}
                           onChange={(event) =>
                             updateRow(row.id, { startDate: event.target.value })
                           }
-                          className={rowInputClass(row.dirty)}
+                          className={tableInputClass(row.dirty, "date")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="date"
                           value={row.endDate}
                           onChange={(event) =>
                             updateRow(row.id, { endDate: event.target.value })
                           }
-                          className={rowInputClass(row.dirty)}
+                          className={tableInputClass(row.dirty, "date")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="number"
                           min={0}
@@ -1064,10 +1093,10 @@ export default function VillaHizliFiyatPage({
                               prepaymentRate: event.target.value,
                             })
                           }
-                          className={`${rowInputClass(row.dirty)} w-16`}
+                          className={tableInputClass(row.dirty, "pct")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="number"
                           min={0}
@@ -1080,10 +1109,10 @@ export default function VillaHizliFiyatPage({
                               true
                             )
                           }
-                          className={`${rowInputClass(row.dirty)} w-16`}
+                          className={tableInputClass(row.dirty, "pct")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="text"
                           inputMode="numeric"
@@ -1099,25 +1128,25 @@ export default function VillaHizliFiyatPage({
                               true
                             )
                           }
-                          className={`${rowInputClass(row.dirty)} w-24`}
+                          className={tableInputClass(row.dirty, "price")}
                         />
                       </td>
-                      <td className="px-2 py-2 text-gray-600">
+                      <td className="whitespace-nowrap px-2.5 py-2 text-gray-600">
                         {formatDiscountLabel(row)}
                       </td>
-                      <td className="px-2 py-2">
-                        <div className={readOnlyClass}>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <div className={tableReadOnlyClass}>
                           {formatMoneyAmount(
                             pricing.nightlyPriceWithoutCommission
                           )}
                         </div>
                       </td>
-                      <td className="px-2 py-2">
-                        <div className={readOnlyClass}>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <div className={tableReadOnlyClass}>
                           {formatMoneyAmount(pricing.weeklyPrice)}
                         </div>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="number"
                           min={1}
@@ -1127,10 +1156,10 @@ export default function VillaHizliFiyatPage({
                               minStayNights: event.target.value,
                             })
                           }
-                          className={`${rowInputClass(row.dirty)} w-16`}
+                          className={tableInputClass(row.dirty, "pct")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="number"
                           min={0}
@@ -1140,10 +1169,10 @@ export default function VillaHizliFiyatPage({
                               cleaningDayCount: event.target.value,
                             })
                           }
-                          className={`${rowInputClass(row.dirty)} w-16`}
+                          className={tableInputClass(row.dirty, "pct")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="text"
                           inputMode="numeric"
@@ -1155,10 +1184,10 @@ export default function VillaHizliFiyatPage({
                               ),
                             })
                           }
-                          className={`${rowInputClass(row.dirty)} w-20`}
+                          className={tableInputClass(row.dirty, "fee")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <input
                           type="text"
                           inputMode="numeric"
@@ -1170,10 +1199,10 @@ export default function VillaHizliFiyatPage({
                               ),
                             })
                           }
-                          className={`${rowInputClass(row.dirty)} w-20`}
+                          className={tableInputClass(row.dirty, "fee")}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <select
                           value={row.nightlyPriceCurrency}
                           onChange={(event) =>
@@ -1182,7 +1211,7 @@ export default function VillaHizliFiyatPage({
                                 .value as VillaPeriodCurrency,
                             })
                           }
-                          className={rowInputClass(row.dirty)}
+                          className={tableInputClass(row.dirty, "currency")}
                         >
                           {VILLA_PERIOD_CURRENCIES.map((currency) => (
                             <option key={currency} value={currency}>
@@ -1191,7 +1220,7 @@ export default function VillaHizliFiyatPage({
                           ))}
                         </select>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="whitespace-nowrap px-2.5 py-2">
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
