@@ -387,6 +387,51 @@ assert(
   "16 Ağustos çıkış kalır"
 );
 
+// Tek gece kapama (11–12): önceki gece dolu olsa bile 11 BOOKED yazılmalı
+const priorBeforeSingleNight = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-09", "BOOKED"],
+  ["2026-08-10", "BOOKED"],
+  ["2026-08-11", "EMPTY"],
+  ["2026-08-12", "EMPTY"],
+  ["2026-08-13", "BOOKED"],
+  ["2026-08-14", "BOOKED"],
+]);
+const close11to12 = buildBookedOccupancyForStay(
+  "2026-08-11",
+  "2026-08-12",
+  priorBeforeSingleNight
+);
+assert(
+  close11to12.get("2026-08-11") === "BOOKED",
+  "11–12 kapamada 11 Ağustos BOOKED (tek gece)"
+);
+assert(
+  close11to12.get("2026-08-12") === "EMPTY",
+  "11–12 kapamada 12 Ağustos çıkış EMPTY"
+);
+const close11to12Map = buildOccupancyMap(
+  [...priorBeforeSingleNight, ...close11to12.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+const close11to12CheckIns = new Set(["2026-08-11", "2026-08-12"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-11",
+    close11to12Map,
+    close11to12CheckIns
+  ) === "full",
+  "11 Ağustos dolu görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-12",
+    close11to12Map,
+    close11to12CheckIns
+  ) === "turnover_booked",
+  "12 Ağustos çıkış+giriş görünür"
+);
+
 assert(
   dbDateToDateKey(new Date("2026-08-06T00:00:00.000Z")) === "2026-08-06",
   "dbDateToDateKey UTC gece yarısı kaydırmaz"
