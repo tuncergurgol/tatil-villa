@@ -72,6 +72,7 @@ const ownerPaymentBookingSelect = {
   confirmationSentAt: true,
   optionExpiresAt: true,
   details: true,
+  prepayments: { select: { amount: true } },
   villa: {
     select: {
       id: true,
@@ -116,6 +117,7 @@ type OwnerPaymentBookingRecord = {
   confirmationSentAt: Date | null;
   optionExpiresAt: Date | null;
   details: unknown;
+  prepayments: Array<{ amount: number }>;
   villa: {
     id: string;
     villaId: number | null;
@@ -181,6 +183,12 @@ function resolveOwnerPayableForBooking(
   booking: OwnerPaymentBookingRecord,
   details: ReturnType<typeof parseBookingDetails>
 ): number {
+  const realizedPrepayment = booking.prepayments.reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
+  if (realizedPrepayment <= 0) return 0;
+
   // Tazminat / iptal iadesi villa sahibine: kayıtlı ownerPayableAmount kullanılır
   if (
     booking.status === "COMPENSATION" ||
@@ -302,6 +310,12 @@ function mapBookingToGuestRefundListItem(
   brandFallback: { brandName: string; domain: string; logoUrl: string }
 ): OwnerPaymentReportListItem | null {
   const details = parseBookingDetails(booking.details);
+  const realizedPrepayment = booking.prepayments.reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
+  if (realizedPrepayment <= 0) return null;
+
   const refundAmount = Math.max(
     0,
     Math.round(Number(details.guestRefundAmount) || 0)
@@ -527,6 +541,13 @@ function resolveOwnerPaymentRemaining(booking: OwnerPaymentBookingRecord) {
 
 function resolveGuestRefundRemaining(booking: OwnerPaymentBookingRecord) {
   const details = parseBookingDetails(booking.details);
+  const realizedPrepayment = booking.prepayments.reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
+  if (realizedPrepayment <= 0) {
+    return { refundAmount: 0, remainingAmount: 0 };
+  }
   const refundAmount = Math.max(
     0,
     Math.round(Number(details.guestRefundAmount) || 0)

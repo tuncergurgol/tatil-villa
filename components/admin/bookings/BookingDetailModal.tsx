@@ -570,18 +570,18 @@ export default function BookingDetailModal({
     () => (prepayments ?? []).reduce((sum, item) => sum + item.amount, 0),
     [prepayments]
   );
+  const hasRealizedPrepayment = realizedPrepaymentTotal > 0;
 
   const prepaymentDifference =
     details.prepaymentAmount != null
       ? details.prepaymentAmount - realizedPrepaymentTotal
       : null;
 
-  const prepaymentTotalForOwner = useMemo(() => {
-    if (realizedPrepaymentTotal > 0) return realizedPrepaymentTotal;
-    return details.prepaymentAmount ?? 0;
-  }, [realizedPrepaymentTotal, details.prepaymentAmount]);
+  // Villa sahibi ve misafir iade ödemeleri yalnızca gerçek ön ödeme kaydına dayanır.
+  const prepaymentTotalForOwner = realizedPrepaymentTotal;
 
   const ownerPayableAmount = useMemo(() => {
+    if (!hasRealizedPrepayment) return 0;
     if (
       status === BookingStatusEnum.COMPENSATION ||
       status === BookingStatusEnum.CANCELLED
@@ -594,6 +594,7 @@ export default function BookingDetailModal({
     );
   }, [
     status,
+    hasRealizedPrepayment,
     details.ownerPayableAmount,
     prepaymentTotalForOwner,
     details.commissionAmount,
@@ -646,6 +647,29 @@ export default function BookingDetailModal({
       };
     });
   }, [status, ownerPaymentTermName, ownerPayableAmount, ownerPaymentDueDate]);
+
+  useEffect(() => {
+    if (hasRealizedPrepayment) return;
+    setDetails((current) => {
+      if (
+        (current.ownerPayableAmount ?? 0) === 0 &&
+        (current.guestRefundAmount ?? 0) === 0 &&
+        !current.ownerPaymentDueDate &&
+        !current.guestRefundPaymentDate
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        ownerPayableAmount: 0,
+        ownerPaymentDueDate: "",
+        guestRefundAmount: 0,
+        guestRefundPaymentDate: null,
+        forceMajeureRefundAmount: null,
+        forceMajeureRefundRecipient: null,
+      };
+    });
+  }, [hasRealizedPrepayment]);
 
   useEffect(() => {
     if (salesRepEarnedManuallyEdited.current) return;
@@ -1921,6 +1945,7 @@ export default function BookingDetailModal({
                 </FormRow>
               </FormSection>
 
+              {hasRealizedPrepayment ? (
               <FormSection title="Villa Sahibi Bilgileri">
                 <FormRow label="Villa Ödeme Vadesi">
                   <ReadonlyField value={ownerPaymentTermName || "—"} />
@@ -1985,8 +2010,9 @@ export default function BookingDetailModal({
                   />
                 </div>
               </FormSection>
+              ) : null}
 
-              {(details.guestRefundAmount ?? 0) > 0 ? (
+              {hasRealizedPrepayment && (details.guestRefundAmount ?? 0) > 0 ? (
                 <FormSection title="Misafir İade Ödeme Bilgileri">
                   <FormRow label="Misafire İade Edilecek Tutar">
                     <ReadonlyField

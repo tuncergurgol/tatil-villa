@@ -490,13 +490,19 @@ export async function updateBookingDetailAction(
   try {
     const existing = await prisma.booking.findUnique({
       where: { id: parsed.data.id },
-      select: { details: true, villaId: true },
+      select: {
+        details: true,
+        villaId: true,
+        prepayments: { select: { amount: true } },
+      },
     });
     if (!existing) {
       return { error: "Rezervasyon bulunamadı" };
     }
 
     const existingDetails = parseBookingDetails(existing?.details);
+    const hasRealizedPrepayment =
+      existing.prepayments.reduce((sum, item) => sum + item.amount, 0) > 0;
     const periodFees = await resolveBookingPeriodFees(
       existing.villaId,
       new Date(`${parsed.data.checkIn}T00:00:00.000Z`)
@@ -547,6 +553,18 @@ export async function updateBookingDetailAction(
       guestRefundPayments:
         details.guestRefundPayments ?? existingDetails.guestRefundPayments,
       activityLogs: logEntries,
+      // Kaydedilmiş ön ödeme yoksa, buna bağlı yapılacak ödeme tutarları
+      // form kaydında tekrar taşınmamalıdır.
+      ...(!hasRealizedPrepayment
+        ? {
+            ownerPayableAmount: 0,
+            ownerPaymentDueDate: "",
+            guestRefundAmount: 0,
+            guestRefundPaymentDate: null,
+            forceMajeureRefundAmount: null,
+            forceMajeureRefundRecipient: null,
+          }
+        : {}),
       // Satış temsilcisi yalnızca yönetici tarafından değiştirilebilir
       ...(isAdminUser
         ? {}

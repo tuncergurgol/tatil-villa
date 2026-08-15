@@ -44,13 +44,22 @@ export type BookingGuestRefundPaymentActionResult =
 async function loadGuestRefundPayments(bookingId: string) {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
-    select: { details: true },
+    select: {
+      details: true,
+      prepayments: { select: { amount: true } },
+    },
   });
   if (!booking) return null;
   const details = parseBookingDetails(booking.details);
+  const realizedPrepayment = booking.prepayments.reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
   const refundCap = Math.max(
     0,
-    Math.round(Number(details.guestRefundAmount) || 0)
+    realizedPrepayment > 0
+      ? Math.round(Number(details.guestRefundAmount) || 0)
+      : 0
   );
   return { details, refundCap };
 }

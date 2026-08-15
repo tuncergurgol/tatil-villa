@@ -79,10 +79,13 @@ export async function applyCompensationAction(
     (sum, row) => sum + row.amount,
     0
   );
-  const prepaymentTotal =
-    realizedPrepayment > 0
-      ? Math.round(realizedPrepayment)
-      : Math.round(details.prepaymentAmount ?? 0);
+  const prepaymentTotal = Math.round(realizedPrepayment);
+  if (prepaymentTotal <= 0) {
+    return {
+      success: false,
+      error: "Tazminat için gerçekleşmiş ön ödeme kaydı gerekir",
+    };
+  }
   const reservationTotal =
     computeGuestReservationTotal(details) ??
     booking.totalPrice ??

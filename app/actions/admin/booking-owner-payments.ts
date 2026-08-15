@@ -56,8 +56,8 @@ async function loadOwnerPayments(bookingId: string) {
     (sum, row) => sum + row.amount,
     0
   );
-  const prepaymentTotal =
-    savedPrepayment > 0 ? savedPrepayment : details.prepaymentAmount ?? 0;
+  // Villa sahibine ödeme yalnızca tahsil edilmiş ön ödemeden yapılabilir.
+  const prepaymentTotal = savedPrepayment;
   const ownerPayableCap = computeOwnerPayableAmount(
     prepaymentTotal,
     details.commissionAmount

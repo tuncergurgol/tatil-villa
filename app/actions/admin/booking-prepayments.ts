@@ -15,6 +15,7 @@ import {
   getCompanyPaymentTypeLabel,
   normalizeCompanyPaymentType,
 } from "@/lib/company-payment-types";
+import { parseBookingDetails } from "@/lib/booking-form-details";
 import { prisma } from "@/lib/db";
 
 const createPrepaymentSchema = z.object({
@@ -35,6 +36,22 @@ export type BookingPrepaymentActionResult =
 export type BookingPrepaymentDeleteResult =
   | { success: true; activityLogs: BookingActivityLogEntry[] }
   | { success: false; error: string };
+
+/**
+ * Gerçekleşen son ön ödeme silinirse, ön ödemeye bağlı yapılacak ödemeler
+ * geçerliliğini kaybeder. Ödeme geçmişini silmez; yalnızca açık tutarları kapatır.
+ */
+function clearPrepaymentDependentPayables(details: ReturnType<typeof parseBookingDetails>) {
+  return {
+    ...details,
+    ownerPayableAmount: 0,
+    ownerPaymentDueDate: "",
+    guestRefundAmount: 0,
+    guestRefundPaymentDate: null,
+    forceMajeureRefundAmount: null,
+    forceMajeureRefundRecipient: null,
+  };
+}
 
 export async function createBookingPrepaymentAction(
   payload: z.infer<typeof createPrepaymentSchema>
@@ -325,12 +342,35 @@ export async function deleteBookingPrepaymentAction(payload: {
     return { success: false, error: "Ön ödeme kaydı bulunamadı" };
   }
 
-  await prisma.bookingPrepayment.delete({ where: { id } });
+  const remainingPrepaymentCount = await prisma.$transaction(async (tx) => {
+    await tx.bookingPrepayment.delete({ where: { id } });
+
+    const [remainingCount, booking] = await Promise.all([
+      tx.bookingPrepayment.count({ where: { bookingId } }),
+      tx.booking.findUnique({
+        where: { id: bookingId },
+        select: { details: true },
+      }),
+    ]);
+
+    if (remainingCount === 0 && booking) {
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          details: clearPrepaymentDependentPayables(
+            parseBookingDetails(booking.details)
+          ),
+        },
+      });
+    }
+
+    return remainingCount;
+  });
 
   const channelLabel = getCompanyPaymentTypeLabel(existing.paymentChannel);
   const activityLogs = await appendBookingActivityLog(bookingId, {
     action: "prepayment_deleted",
-    message: `Ön ödeme kaydı silindi (${formatMoneyPlain(existing.amount)}${channelLabel ? ` · ${channelLabel}` : ""})`,
+    message: `Ön ödeme kaydı silindi (${formatMoneyPlain(existing.amount)}${channelLabel ? ` · ${channelLabel}` : ""})${remainingPrepaymentCount === 0 ? "; ön ödemeye bağlı yapılacak ödemeler sıfırlandı" : ""}`,
     actorUserId: actor.actorUserId,
     actorName: actor.actorName,
     meta: {
