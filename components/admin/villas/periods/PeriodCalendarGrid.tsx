@@ -217,8 +217,8 @@ function CalendarDayCell({
   }
 
   function renderFullPrice(display: PeriodCalendarDayDisplay) {
-    const priceSizeClass = isCurrentMonthDay ? "text-base" : "text-[10px]";
-    const strikePriceSizeClass = isCurrentMonthDay ? "text-xs" : "text-[9px]";
+    const priceSizeClass = "text-base";
+    const strikePriceSizeClass = "text-xs";
 
     if (hasDiscount(display)) {
       return (

@@ -1,7 +1,7 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { VillaTakvimSearchItem } from "@/lib/villa-takvim-types";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
@@ -35,41 +35,37 @@ export default function VillaTakvimSelectedClient({ villaParam }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const loadSelected = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setSelected(null);
 
-    fetch(
-      `/api/admin/konaklama/takvim-data?villa=${encodeURIComponent(villaParam)}`,
-      { signal: controller.signal }
-    )
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error ?? "Takvim verisi alınamadı");
-        }
-        if (data.redirectTo) {
-          router.replace(data.redirectTo);
-          return;
-        }
-        setSelected(data.selected ?? null);
-      })
-      .catch((fetchError) => {
-        if ((fetchError as Error).name === "AbortError") return;
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Takvim verisi alınamadı"
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    return () => controller.abort();
+    try {
+      const response = await fetch(
+        `/api/admin/konaklama/takvim-data?villa=${encodeURIComponent(villaParam)}`
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "Takvim verisi alınamadı");
+      }
+      if (data.redirectTo) {
+        router.replace(data.redirectTo);
+        return;
+      }
+      setSelected(data.selected ?? null);
+    } catch (fetchError) {
+      setError(
+        fetchError instanceof Error
+          ? fetchError.message
+          : "Takvim verisi alınamadı"
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [router, villaParam]);
+
+  useEffect(() => {
+    void loadSelected();
+  }, [loadSelected]);
 
   if (loading) {
     return (
@@ -94,5 +90,5 @@ export default function VillaTakvimSelectedClient({ villaParam }: Props) {
     );
   }
 
-  return <VillaTakvimSelectedView selected={selected} />;
+  return <VillaTakvimSelectedView selected={selected} onSaved={loadSelected} />;
 }

@@ -293,20 +293,25 @@ export function buildNextMonthFirstWeekRow(
   year: number,
   month: number
 ): Array<CalendarCell | null> {
-  const nextMonth = month === 11 ? 0 : month + 1;
-  const nextYear = month === 11 ? year + 1 : year;
-  const row: Array<CalendarCell | null> = Array.from({ length: 7 }, () => null);
+  const monthGrid = buildMonthGrid(year, month);
+  const lastVisibleDate = monthGrid[monthGrid.length - 1]!.date;
+  const nextWeekStart = new Date(
+    lastVisibleDate.getFullYear(),
+    lastVisibleDate.getMonth(),
+    lastVisibleDate.getDate() + 1
+  );
 
-  for (let dayNumber = 3; dayNumber <= 9; dayNumber += 1) {
-    const date = new Date(nextYear, nextMonth, dayNumber);
-    const column = (date.getDay() + 6) % 7;
-    row[column] = {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(
+      nextWeekStart.getFullYear(),
+      nextWeekStart.getMonth(),
+      nextWeekStart.getDate() + index
+    );
+    return {
       date,
       inCurrentMonth: false,
     };
-  }
-
-  return row;
+  });
 }
 
 export function getAdjacentMonthLabel(year: number, month: number, offset: -1 | 1) {

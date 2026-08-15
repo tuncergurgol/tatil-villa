@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus, Zap } from "lucide-react";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
 import PeriodCalendarGrid, {
@@ -37,6 +36,7 @@ interface VillaPeriodManagementProps {
   periods: VillaPricePeriodItem[];
   periodDays?: VillaPricePeriodDayItem[];
   embedded?: boolean;
+  onSaved?: () => void;
 }
 
 function toLocalDate(value: Date | string): Date {
@@ -56,8 +56,8 @@ export default function VillaPeriodManagement({
   periods,
   periodDays = [],
   embedded = false,
+  onSaved,
 }: VillaPeriodManagementProps) {
-  const router = useRouter();
   const today = todayDate();
   const normalizedPeriods = useMemo(() => normalizePeriods(periods), [periods]);
 
@@ -159,7 +159,7 @@ export default function VillaPeriodManagement({
   }
 
   function handleSaved() {
-    router.refresh();
+    onSaved?.();
   }
 
   function clearSelection() {
@@ -250,6 +250,9 @@ export default function VillaPeriodManagement({
       >
         <div className="shrink-0 border-b border-gray-200 px-3 py-3 md:px-5 md:py-4">
           <div className="flex flex-wrap items-center gap-2">
+            <h2 className="mr-1 text-base font-bold text-gray-900 md:text-xl">
+              {getMonthLabel(viewYear, viewMonth)}
+            </h2>
             <button
               type="button"
               onClick={goToToday}
@@ -273,9 +276,14 @@ export default function VillaPeriodManagement({
               Sonraki
               <ChevronRight className="h-4 w-4" />
             </button>
-            <h2 className="text-base font-bold text-gray-900 md:ml-2 md:text-xl">
-              {getMonthLabel(viewYear, viewMonth)}
-            </h2>
+            <button
+              type="button"
+              onClick={() => openCreateModal(true)}
+              className="ml-auto hidden items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 md:inline-flex"
+            >
+              <Plus className="h-4 w-4" />
+              Periyot Ekle Devam Et
+            </button>
           </div>
 
           <div className="mt-2 flex gap-2 md:hidden">
@@ -311,16 +319,6 @@ export default function VillaPeriodManagement({
             ))}
           </div>
 
-          <div className="mt-3 hidden flex-wrap items-center justify-end gap-2 md:flex">
-            <button
-              type="button"
-              onClick={() => openCreateModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              <Plus className="h-4 w-4" />
-              Periyot Ekle Devam Et
-            </button>
-          </div>
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[1fr_320px]">
