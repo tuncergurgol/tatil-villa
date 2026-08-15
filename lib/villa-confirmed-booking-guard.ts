@@ -88,11 +88,5 @@ export async function assertNoConfirmedBookingOverlap(
   );
   if (!overlap) return;
 
-  // Kapama: onaylı rezervasyon çıkış/giriş gününde turnover (aynı gün çıkış+giriş).
-  if (options?.applyMode === "BOOKED") {
-    if (overlap.checkOutKey === startDateKey) return;
-    if (overlap.checkInKey === endDateKey) return;
-  }
-
   throw new ConfirmedBookingOccupancyLockedError(overlap);
 }
