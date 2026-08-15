@@ -118,12 +118,14 @@ export function isTurnoverOccupancyDay(
   context?: {
     dateKey: string;
     occupancyMap: ReadonlyMap<string, VillaDayOccupancy>;
+    checkInDateKeys?: ReadonlySet<string>;
   }
 ): boolean {
   if (normalizeOccupancy(current) !== "EMPTY") return false;
   if (!isBlockingOccupancy(prev)) return false;
   if (!isBlockingOccupancy(next)) return false;
   if (!context) return false;
+  if (context.checkInDateKeys?.has(context.dateKey)) return true;
 
   if (
     normalizeOccupancy(prev) === "RESERVED" &&
@@ -170,6 +172,7 @@ export function resolveVillaDayVisual(
   context?: {
     dateKey: string;
     occupancyMap: ReadonlyMap<string, VillaDayOccupancy>;
+    checkInDateKeys?: ReadonlySet<string>;
   }
 ): VillaDayVisualKind {
   const currentStatus = normalizeOccupancy(current);
@@ -200,6 +203,7 @@ export function resolveVillaDayVisual(
           isTurnoverOccupancyDay(prev, prevPrev, current, {
             dateKey: prevDayKey,
             occupancyMap: context.occupancyMap,
+            checkInDateKeys: context.checkInDateKeys,
           })
         ) {
           return "full";
@@ -221,6 +225,7 @@ export function resolveVillaDayVisual(
           isTurnoverOccupancyDay(prev, prevPrev, current, {
             dateKey: prevDayKey,
             occupancyMap: context.occupancyMap,
+            checkInDateKeys: context.checkInDateKeys,
           })
         ) {
           return "reserved_full";
@@ -253,14 +258,15 @@ export function resolveVillaDayVisual(
 
 export function resolveVillaDayVisualFromMap(
   dateKey: string,
-  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>
+  occupancyMap: ReadonlyMap<string, VillaDayOccupancy>,
+  checkInDateKeys?: ReadonlySet<string>
 ): VillaDayVisualKind {
   return resolveVillaDayVisual(
     occupancyMap.get(dateKey),
     occupancyMap.get(offsetDateKey(dateKey, -1)),
     occupancyMap.get(offsetDateKey(dateKey, 1)),
     occupancyMap.get(offsetDateKey(dateKey, -2)),
-    { dateKey, occupancyMap }
+    { dateKey, occupancyMap, checkInDateKeys }
   );
 }
 

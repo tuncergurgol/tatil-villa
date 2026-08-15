@@ -48,15 +48,16 @@ export async function applyVillaPeriodDaysOccupancy(
     select: {
       date: true,
       occupancyStatus: true,
+      occupancyCheckIn: true,
     },
   });
 
   const existingOccupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const existingCheckInByDateKey = new Map<string, boolean>();
   for (const day of existingDays) {
-    existingOccupancyByDateKey.set(
-      dbDateToDateKey(day.date),
-      day.occupancyStatus
-    );
+    const dateKey = dbDateToDateKey(day.date);
+    existingOccupancyByDateKey.set(dateKey, day.occupancyStatus);
+    existingCheckInByDateKey.set(dateKey, day.occupancyCheckIn);
   }
 
   const occupancyByDateKey: Map<string, VillaDayOccupancy> =
@@ -72,23 +73,45 @@ export async function applyVillaPeriodDaysOccupancy(
     .filter(([dateKey, occupancyStatus]) => {
       if (!rangeDateKeySet.has(dateKey)) return false;
       const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
-      return existing !== occupancyStatus;
+      const existingCheckIn = existingCheckInByDateKey.get(dateKey) ?? false;
+      const nextCheckIn =
+        mode === "EMPTY"
+          ? false
+          : dateKey === start
+            ? true
+            : dateKey === end && isOccupiedOccupancy(existing)
+              ? existingCheckIn
+              : false;
+      return existing !== occupancyStatus || existingCheckIn !== nextCheckIn;
     })
-    .map(([dateKey, occupancyStatus]) =>
-      prisma.villaPricePeriodDay.updateMany({
+    .map(([dateKey, occupancyStatus]) => {
+      const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
+      const nextCheckIn =
+        mode === "EMPTY"
+          ? false
+          : dateKey === start
+            ? true
+            : dateKey === end && isOccupiedOccupancy(existing)
+              ? (existingCheckInByDateKey.get(dateKey) ?? false)
+              : false;
+      return prisma.villaPricePeriodDay.updateMany({
         where: {
           villaId,
           date: dateKeyToDbDate(dateKey),
         },
-        data: { occupancyStatus },
-      })
-    );
+        data: { occupancyStatus, occupancyCheckIn: nextCheckIn },
+      });
+    });
 
   if (updates.length > 0) {
     await prisma.$transaction(updates);
   }
 
   return { updatedDays: updates.length };
+}
+
+function isOccupiedOccupancy(status: VillaDayOccupancy): boolean {
+  return status === "BOOKED" || status === "RESERVED" || status === "OPTION";
 }
 
 /**

@@ -109,6 +109,50 @@ assert(
   "bitişik bloklarda 5 Ağustos turnover değil"
 );
 
+// 5–7 dolu blok çıkışı üstüne 7–9 KAPAT: 7 aynı gün çıkış + giriş.
+const priorBlock5to7 = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-05", "BOOKED"],
+  ["2026-08-06", "BOOKED"],
+  ["2026-08-07", "EMPTY"],
+  ["2026-08-08", "EMPTY"],
+  ["2026-08-09", "EMPTY"],
+]);
+const close7to9 = buildBookedOccupancyForStay(
+  "2026-08-07",
+  "2026-08-09",
+  priorBlock5to7
+);
+const close7to9Map = buildOccupancyMap(
+  [...priorBlock5to7, ...close7to9.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+const close7to9CheckIns = new Set(["2026-08-07"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-07",
+    close7to9Map,
+    close7to9CheckIns
+  ) === "turnover_booked",
+  "7 Ağustos mevcut çıkış üstüne KAPAT başlangıcı giriş+çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-08",
+    close7to9Map,
+    close7to9CheckIns
+  ) === "full",
+  "8 Ağustos tam dolu"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-09",
+    close7to9Map,
+    close7to9CheckIns
+  ) === "check_out",
+  "9 Ağustos çıkış"
+);
+
 const close810 = buildBookedOccupancyForStay("2026-08-08", "2026-08-10", new Map());
 assert(close810.get("2026-08-10") === "EMPTY", "10 Ağustos çıkış günü EMPTY");
 

@@ -36,6 +36,7 @@ export async function getVillaPeriodPageData(villaId: string) {
         nightlyPriceWithoutCommission: true,
         discountedNightlyPrice: true,
         occupancyStatus: true,
+        occupancyCheckIn: true,
       },
     }),
   ]);

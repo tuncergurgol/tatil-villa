@@ -13,6 +13,7 @@ export type VillaPricePeriodDayItem = {
   nightlyPriceWithoutCommission: number | null;
   discountedNightlyPrice: number | null;
   occupancyStatus: VillaDayOccupancy;
+  occupancyCheckIn: boolean;
 };
 
 export type VillaPeriodDayPricingSnapshot = {

@@ -882,6 +882,7 @@ model VillaPricePeriodDay {
   childFee03_09                 Int?
   childFee03_09Currency         VillaPeriodCurrency     @default(TL)
   occupancyStatus               VillaDayOccupancy       @default(EMPTY)
+  occupancyCheckIn              Boolean                 @default(false)
   createdAt                     DateTime                @default(now())
   updatedAt                     DateTime                @updatedAt
 

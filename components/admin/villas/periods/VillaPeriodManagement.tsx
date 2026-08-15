@@ -90,6 +90,7 @@ export default function VillaPeriodManagement({
         nightlyPriceCurrency: day.nightlyPriceCurrency,
         availability: day.availability,
         occupancyStatus: day.occupancyStatus,
+        occupancyCheckIn: day.occupancyCheckIn,
       });
     });
 

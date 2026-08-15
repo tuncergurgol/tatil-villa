@@ -30,6 +30,7 @@ export type PeriodCalendarDayDisplay = {
   nightlyPriceCurrency: VillaPeriodCurrency;
   availability: VillaPeriodAvailability;
   occupancyStatus?: VillaDayOccupancy;
+  occupancyCheckIn?: boolean;
 };
 
 export type PeriodCalendarSelectionRange = {
@@ -89,6 +90,7 @@ type DayCellProps = {
   selectableDateKeys: ReadonlySet<string>;
   dayDisplayByDate: ReadonlyMap<string, PeriodCalendarDayDisplay>;
   occupancyByDate: ReadonlyMap<string, VillaDayOccupancy>;
+  checkInDateKeys: ReadonlySet<string>;
   today?: Date;
   minCellHeight: string;
   emphasizeCurrentMonth: boolean;
@@ -105,6 +107,7 @@ function CalendarDayCell({
   selectableDateKeys,
   dayDisplayByDate,
   occupancyByDate,
+  checkInDateKeys,
   today,
   minCellHeight,
   emphasizeCurrentMonth,
@@ -149,7 +152,7 @@ function CalendarDayCell({
       : 0;
 
   const visualKind = isPeriodDay
-    ? resolveVillaDayVisualFromMap(dateKey, occupancyByDate)
+    ? resolveVillaDayVisualFromMap(dateKey, occupancyByDate, checkInDateKeys)
     : "empty";
 
   const visualStyle = getVillaDayVisualStyle(visualKind);
@@ -357,12 +360,22 @@ export default function PeriodCalendarGrid({
     () => buildOccupancyMapFromDisplay(dayDisplayByDate),
     [dayDisplayByDate]
   );
+  const checkInDateKeys = useMemo(
+    () =>
+      new Set(
+        [...dayDisplayByDate.entries()]
+          .filter(([, display]) => display.occupancyCheckIn)
+          .map(([dateKey]) => dateKey)
+      ),
+    [dayDisplayByDate]
+  );
 
   const sharedCellProps = {
     activeDateKeys,
     selectableDateKeys: effectiveSelectableDateKeys,
     dayDisplayByDate,
     occupancyByDate,
+    checkInDateKeys,
     today,
     minCellHeight,
     selectedRange,
