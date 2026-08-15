@@ -709,6 +709,58 @@ assert(
   "19 Ağustos bizim rezervasyon çıkışı"
 );
 
+// Villa Zeyno 3: 16–19 bizim rezervasyon + 20–24 kapama.
+// 19 çıkış gecesi boş → 19 yalnızca rezervasyon çıkışı, 20 kapama girişi.
+const reservedThenClose = buildOccupancyMap([
+  { date: "2026-08-15", occupancyStatus: "EMPTY" },
+  { date: "2026-08-16", occupancyStatus: "RESERVED" },
+  { date: "2026-08-17", occupancyStatus: "RESERVED" },
+  { date: "2026-08-18", occupancyStatus: "RESERVED" },
+  { date: "2026-08-19", occupancyStatus: "EMPTY" },
+  { date: "2026-08-20", occupancyStatus: "BOOKED" },
+  { date: "2026-08-21", occupancyStatus: "BOOKED" },
+  { date: "2026-08-22", occupancyStatus: "BOOKED" },
+  { date: "2026-08-23", occupancyStatus: "BOOKED" },
+  { date: "2026-08-24", occupancyStatus: "EMPTY" },
+]);
+const reservedThenCloseCheckIns = new Set(["2026-08-16", "2026-08-20"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-19",
+    reservedThenClose,
+    reservedThenCloseCheckIns
+  ) === "reserved_check_out",
+  "19 Ağustos yalnızca rezervasyon çıkışı (gecesi boş, dolu değil)"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-20",
+    reservedThenClose,
+    reservedThenCloseCheckIns
+  ) === "check_in",
+  "20 Ağustos kapama girişi ayrı kalır"
+);
+// Giriş işareti yoksa (eski kayıtlar) da bitişik bloklar birleşmemeli
+assert(
+  resolveVillaDayVisualFromMap("2026-08-19", reservedThenClose) ===
+    "reserved_check_out",
+  "19 Ağustos giriş işareti olmadan da yalnızca çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-20", reservedThenClose) === "check_in",
+  "20 Ağustos giriş işareti olmadan da giriş"
+);
+// Aynı gün çıkış + kapama girişi: giriş işareti varsa turnover
+const reservedTurnoverSameDay = new Set(["2026-08-16", "2026-08-19"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-19",
+    reservedThenClose,
+    reservedTurnoverSameDay
+  ) === "reserved_out_booked_in",
+  "19 Ağustos giriş işaretliyse rezervasyon çıkışı + kapama girişi"
+);
+
 assert(
   dbDateToDateKey(new Date("2026-08-06T00:00:00.000Z")) === "2026-08-06",
   "dbDateToDateKey UTC gece yarısı kaydırmaz"

@@ -127,13 +127,6 @@ export function isTurnoverOccupancyDay(
   if (!context) return false;
   if (context.checkInDateKeys?.has(context.dateKey)) return true;
 
-  if (
-    normalizeOccupancy(prev) === "RESERVED" &&
-    normalizeOccupancy(next) === "BOOKED"
-  ) {
-    return true;
-  }
-
   const nextDayKey = offsetDateKey(context.dateKey, 1);
   if (!isBlockingOccupancy(context.occupancyMap.get(nextDayKey))) {
     return false;
@@ -180,9 +173,8 @@ export function resolveVillaDayVisual(
   const nextStatus = normalizeOccupancy(next);
 
   if (currentStatus === "EMPTY") {
-    if (prevStatus === "RESERVED" && nextStatus === "BOOKED") {
-      return "reserved_out_booked_in";
-    }
+    // Rezervasyon çıkışı + ertesi gün kapama girişi turnover değildir;
+    // aynı gün çıkış+giriş yalnızca giriş işareti / bitişiklik kontrolüyle belirlenir.
     if (isTurnoverOccupancyDay(current, prev, next, context)) {
       return resolveTurnoverVisualKind(prev, next);
     }
