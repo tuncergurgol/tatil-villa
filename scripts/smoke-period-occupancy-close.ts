@@ -292,7 +292,8 @@ assert(
   "önceki çıkış günü varsa 1 Ağustos turnover için EMPTY"
 );
 
-// Villa Hayal Duo: 15–18 kapama, mevcut 18 giriş + 19 dolu bozulmamalı
+// Villa Hayal Duo / Deneme: kapama bitişi mevcut giriş gününe denk gelince
+// çıkış+giriş (EMPTY + check-in) olmalı; dolu yazılmamalı.
 const priorAug18CheckIn = new Map<string, "BOOKED" | "EMPTY">([
   ["2026-08-14", "BOOKED"],
   ["2026-08-15", "EMPTY"],
@@ -314,26 +315,76 @@ assert(
 assert(close15to18OntoCheckIn.get("2026-08-16") === "BOOKED", "16 Ağustos kapama BOOKED");
 assert(close15to18OntoCheckIn.get("2026-08-17") === "BOOKED", "17 Ağustos kapama BOOKED");
 assert(
-  close15to18OntoCheckIn.get("2026-08-18") === "BOOKED",
-  "18 Ağustos mevcut giriş silinmez"
-);
-assert(
-  !close15to18OntoCheckIn.has("2026-08-19") ||
-    close15to18OntoCheckIn.get("2026-08-19") === "BOOKED",
-  "19 Ağustos kapama yazmaz / dolu kalır"
+  close15to18OntoCheckIn.get("2026-08-18") === "EMPTY",
+  "18 Ağustos mevcut giriş üstüne kapama bitişi EMPTY (çıkış+giriş)"
 );
 const hayalDuoMap = buildOccupancyMap(
   [...priorAug18CheckIn, ...close15to18OntoCheckIn.entries()].map(
     ([date, occupancyStatus]) => ({ date, occupancyStatus })
   )
 );
+const hayalDuoCheckIns = new Set(["2026-08-15", "2026-08-18"]);
 assert(
-  resolveVillaDayVisualFromMap("2026-08-18", hayalDuoMap) === "full",
-  "18 Ağustos giriş gecesi dolu görünür"
+  resolveVillaDayVisualFromMap("2026-08-18", hayalDuoMap, hayalDuoCheckIns) ===
+    "turnover_booked",
+  "18 Ağustos çıkış+giriş görünür"
 );
 assert(
-  resolveVillaDayVisualFromMap("2026-08-19", hayalDuoMap) === "full",
+  resolveVillaDayVisualFromMap("2026-08-19", hayalDuoMap, hayalDuoCheckIns) ===
+    "full",
   "19 Ağustos dolu görünür"
+);
+
+// 12–14 KAPAT, mevcut 14 giriş + 15 dolu + 16 çıkış → 14 çıkış+giriş
+const priorAug12to16 = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-10", "BOOKED"],
+  ["2026-08-11", "BOOKED"],
+  ["2026-08-12", "BOOKED"],
+  ["2026-08-13", "EMPTY"],
+  ["2026-08-14", "BOOKED"],
+  ["2026-08-15", "BOOKED"],
+  ["2026-08-16", "EMPTY"],
+]);
+const close12to14 = buildBookedOccupancyForStay(
+  "2026-08-12",
+  "2026-08-14",
+  priorAug12to16
+);
+assert(close12to14.get("2026-08-12") === "EMPTY", "12 Ağustos önceki dolu gece üstüne turnover EMPTY");
+assert(close12to14.get("2026-08-13") === "BOOKED", "13 Ağustos kapama BOOKED");
+assert(
+  close12to14.get("2026-08-14") === "EMPTY",
+  "14 Ağustos kapama bitişi EMPTY"
+);
+const close12to14Map = buildOccupancyMap(
+  [...priorAug12to16, ...close12to14.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+const close12to14CheckIns = new Set(["2026-08-12", "2026-08-14"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-14",
+    close12to14Map,
+    close12to14CheckIns
+  ) === "turnover_booked",
+  "14 Ağustos çıkış+giriş görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-15",
+    close12to14Map,
+    close12to14CheckIns
+  ) === "full",
+  "15 Ağustos dolu kalır"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-16",
+    close12to14Map,
+    close12to14CheckIns
+  ) === "check_out",
+  "16 Ağustos çıkış kalır"
 );
 
 assert(

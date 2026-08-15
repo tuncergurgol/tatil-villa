@@ -72,25 +72,29 @@ export async function applyVillaPeriodDaysOccupancy(
       if (!rangeDateKeySet.has(dateKey)) return false;
       const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
       const existingCheckIn = existingCheckInByDateKey.get(dateKey) ?? false;
+      const nextAfterEnd = existingOccupancyByDateKey.get(offsetDateKey(end, 1));
       const nextCheckIn =
         mode === "EMPTY"
           ? false
           : dateKey === start
             ? true
-            : dateKey === end && isOccupiedOccupancy(existing)
-              ? existingCheckIn
+            : dateKey === end
+              ? isOccupiedOccupancy(existing) ||
+                isOccupiedOccupancy(nextAfterEnd ?? "EMPTY")
               : false;
       return existing !== occupancyStatus || existingCheckIn !== nextCheckIn;
     })
     .map(([dateKey, occupancyStatus]) => {
       const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
+      const nextAfterEnd = existingOccupancyByDateKey.get(offsetDateKey(end, 1));
       const nextCheckIn =
         mode === "EMPTY"
           ? false
           : dateKey === start
             ? true
-            : dateKey === end && isOccupiedOccupancy(existing)
-              ? (existingCheckInByDateKey.get(dateKey) ?? false)
+            : dateKey === end
+              ? isOccupiedOccupancy(existing) ||
+                isOccupiedOccupancy(nextAfterEnd ?? "EMPTY")
               : false;
       return prisma.villaPricePeriodDay.updateMany({
         where: {
