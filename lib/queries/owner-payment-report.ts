@@ -26,7 +26,6 @@ import {
   type OwnerPaymentExportInput,
 } from "@/lib/owner-payment-export";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 
 export type OwnerPaymentIncompleteRow = {
   bookingId: string;
@@ -565,12 +564,18 @@ function resolveGuestRefundRemaining(booking: OwnerPaymentBookingRecord) {
   };
 }
 
-/** Onaylı + tazminat (villa sahibi / misafir iade ödemesi) — giriş tarihi = dateKey. */
-export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) {
+/**
+ * Günlük e-posta:
+ * - giriş tarihi dateKey olan kayıtlar,
+ * - overdueBeforeDateKey tarihinden önce vadesi gelmiş ve hâlâ açık ödemeler.
+ */
+export async function generateOwnerPaymentReportForCheckInDate(
+  dateKey: string,
+  overdueBeforeDateKey = dateKey
+) {
   const bookings = await prisma.booking.findMany({
     where: {
       status: { in: ["CONFIRMED", "COMPENSATION", "CANCELLED"] },
-      checkIn: dateKeyToDbDate(dateKey),
     },
     select: ownerPaymentBookingSelect,
     orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
@@ -580,6 +585,7 @@ export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) 
   const incomplete: OwnerPaymentIncompleteRow[] = [];
   let paidCount = 0;
   let matchedCount = 0;
+  let overdueCount = 0;
 
   for (const booking of bookings) {
     const ownerRemaining = resolveOwnerPaymentRemaining(booking);
@@ -594,6 +600,27 @@ export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) 
       ) > 0 && ownerRemaining.remainingAmount <= 0;
     const hasGuestFullyPaid =
       guestRemaining.refundAmount > 0 && guestRemaining.remainingAmount <= 0;
+    const ownerItem = mapBookingToOwnerListItem(booking, {
+      brandName: "",
+      domain: "",
+      logoUrl: "",
+    });
+    const guestItem = mapBookingToGuestRefundListItem(booking, {
+      brandName: "",
+      domain: "",
+      logoUrl: "",
+    });
+    const checkInDateKey = booking.checkIn.toISOString().slice(0, 10);
+    const isScheduledForCheckIn = checkInDateKey === dateKey;
+    const hasOverdueOwnerPayment =
+      hasOwnerPayable &&
+      Boolean(ownerItem.ownerPaymentDueDate) &&
+      ownerItem.ownerPaymentDueDate < overdueBeforeDateKey;
+    const hasOverdueGuestRefund =
+      hasGuestRefund &&
+      Boolean(guestItem?.ownerPaymentDueDate) &&
+      (guestItem?.ownerPaymentDueDate ?? "") < overdueBeforeDateKey;
+    const isOverdue = hasOverdueOwnerPayment || hasOverdueGuestRefund;
 
     if (
       !hasOwnerPayable &&
@@ -604,8 +631,10 @@ export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) 
       // Ödenecek tutarı olmayan rezervasyonlar matchedCount'a alınmaz
       continue;
     }
+    if (!isScheduledForCheckIn && !isOverdue) continue;
 
     matchedCount += 1;
+    if (isOverdue) overdueCount += 1;
 
     if (hasOwnerFullyPaid || hasGuestFullyPaid) {
       paidCount += 1;
@@ -668,6 +697,7 @@ export async function generateOwnerPaymentReportForCheckInDate(dateKey: string) 
     matchedCount,
     count: rows.length - 1,
     paidCount,
+    overdueCount,
     incompleteCount: incomplete.length,
     incomplete,
   };

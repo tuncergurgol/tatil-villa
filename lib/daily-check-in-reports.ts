@@ -1,5 +1,8 @@
 import { sendCompanyMail } from "@/lib/email";
-import { getYesterdayIstanbulDateKey } from "@/lib/booking-calendar-days";
+import {
+  getIstanbulDateKey,
+  getYesterdayIstanbulDateKey,
+} from "@/lib/booking-calendar-days";
 import {
   buildDailyInvoiceReportText,
   buildDailyOwnerPaymentReportText,
@@ -30,6 +33,7 @@ export type DailyReportMailResult = {
   exportCount: number;
   incompleteCount: number;
   paidCount?: number;
+  overdueCount?: number;
   emailSent: boolean;
   attached: boolean;
   message?: string;
@@ -145,27 +149,35 @@ async function sendInvoiceDailyMail(
   };
 }
 
-async function sendOwnerPaymentDailyMail(
-  checkInDateKey: string
+export async function sendOwnerPaymentDailyMail(
+  checkInDateKey: string,
+  options?: { test?: boolean; overdueBeforeDateKey?: string }
 ): Promise<DailyReportMailResult> {
-  const report = await generateOwnerPaymentReportForCheckInDate(checkInDateKey);
+  const report = await generateOwnerPaymentReportForCheckInDate(
+    checkInDateKey,
+    options?.overdueBeforeDateKey ?? getIstanbulDateKey()
+  );
   const summary: DailyReportMailSummary = {
     checkInDateKey,
     matchedCount: report.matchedCount,
     exportCount: report.count,
     incompleteCount: report.incompleteCount,
     paidCount: report.paidCount,
+    overdueCount: report.overdueCount,
     incomplete: mapOwnerIncomplete(report.incomplete),
   };
   const attach = report.count > 0;
   const text = buildDailyOwnerPaymentReportText(summary);
   const html = buildDailyReportHtml({
-    title: "Ev sahibi ödemeleri günlük kontrolü",
+    title: options?.test
+      ? "Ev sahibi ödemeleri günlük kontrolü — TEST"
+      : "Ev sahibi ödemeleri günlük kontrolü",
     checkInDateKey,
     matchedCount: summary.matchedCount,
     exportCount: summary.exportCount,
     incompleteCount: summary.incompleteCount,
     paidCount: summary.paidCount,
+    overdueCount: summary.overdueCount,
     emptyMessage: "Bugün gönderilecek ev sahibi ödemesi bulunmamaktadır.",
     attachedMessage: "Ev sahibi ödemeleri Excel ektedir.",
     incomplete: summary.incomplete,
@@ -174,7 +186,9 @@ async function sendOwnerPaymentDailyMail(
   let emailSent = false;
   try {
     await sendDailyReportMail({
-      subject: OWNER_PAYMENT_DAILY_EMAIL_SUBJECT,
+      subject: options?.test
+        ? `${OWNER_PAYMENT_DAILY_EMAIL_SUBJECT} — TEST`
+        : OWNER_PAYMENT_DAILY_EMAIL_SUBJECT,
       text,
       html,
       filename: report.filename,
@@ -193,6 +207,7 @@ async function sendOwnerPaymentDailyMail(
     exportCount: summary.exportCount,
     incompleteCount: summary.incompleteCount,
     paidCount: summary.paidCount,
+    overdueCount: summary.overdueCount,
     emailSent,
     attached: attach && emailSent,
     message: emailSent
@@ -206,7 +221,9 @@ export async function runDailyCheckInReports(
 ): Promise<DailyCheckInReportsResult> {
   const checkInDateKey = getYesterdayIstanbulDateKey(now);
   const invoice = await sendInvoiceDailyMail(checkInDateKey);
-  const ownerPayment = await sendOwnerPaymentDailyMail(checkInDateKey);
+  const ownerPayment = await sendOwnerPaymentDailyMail(checkInDateKey, {
+    overdueBeforeDateKey: getIstanbulDateKey(now),
+  });
 
   return {
     ok: invoice.emailSent && ownerPayment.emailSent,

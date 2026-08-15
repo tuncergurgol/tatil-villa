@@ -13,6 +13,7 @@ export type DailyReportMailSummary = {
   exportCount: number;
   incompleteCount: number;
   paidCount?: number;
+  overdueCount?: number;
   incomplete: Array<{
     externalCode: string;
     guestName: string;
@@ -92,10 +93,13 @@ export function buildDailyOwnerPaymentReportText(
   const lines = [
     "Bilgilendirme",
     `Giriş tarihi: ${checkInLabel} (giriş gününden 1 gün sonra, onaylı rezervasyonlar)`,
-    `Onaylı rezervasyon: ${summary.matchedCount}`,
+    `Dahil edilen ödeme kaydı: ${summary.matchedCount}`,
     `Excel'e alınan ev sahibi ödemesi: ${summary.exportCount}`,
   ];
 
+  if ((summary.overdueCount ?? 0) > 0) {
+    lines.push(`Vadesi geçmiş ve açık ödeme: ${summary.overdueCount}`);
+  }
   if ((summary.paidCount ?? 0) > 0) {
     lines.push(
       `Ödemesi kalmayan (daha önce ödenmiş / tutar yok): ${summary.paidCount}`
@@ -131,6 +135,7 @@ export function buildDailyReportHtml(input: {
   exportCount: number;
   incompleteCount: number;
   paidCount?: number;
+  overdueCount?: number;
   emptyMessage: string;
   attachedMessage: string;
   incomplete: DailyReportMailSummary["incomplete"];
@@ -139,6 +144,10 @@ export function buildDailyReportHtml(input: {
   const paidLine =
     (input.paidCount ?? 0) > 0
       ? `<p>Ödemesi kalmayan (daha önce ödenmiş / tutar yok): <strong>${input.paidCount}</strong></p>`
+      : "";
+  const overdueLine =
+    (input.overdueCount ?? 0) > 0
+      ? `<p>Vadesi geçmiş ve açık ödeme: <strong>${input.overdueCount}</strong></p>`
       : "";
   const incompleteLine =
     input.incompleteCount > 0
@@ -184,8 +193,9 @@ export function buildDailyReportHtml(input: {
       <p>${escapeDailyReportHtml(input.title)}<br>
       Giriş tarihi: <strong>${escapeDailyReportHtml(checkInLabel)}</strong>
       (giriş gününden 1 gün sonra, onaylı rezervasyonlar)</p>
-      <p>Onaylı rezervasyon: <strong>${input.matchedCount}</strong><br>
+      <p>Dahil edilen ödeme kaydı: <strong>${input.matchedCount}</strong><br>
       Excel'e alınan kayıt: <strong>${input.exportCount}</strong></p>
+      ${overdueLine}
       ${paidLine}
       ${incompleteLine}
       ${resultLine}

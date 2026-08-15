@@ -56,6 +56,7 @@ const filledOwner = buildDailyOwnerPaymentReportText({
   exportCount: 1,
   incompleteCount: 1,
   paidCount: 1,
+  overdueCount: 2,
   incomplete: [
     {
       externalCode: "2002",
@@ -67,6 +68,7 @@ const filledOwner = buildDailyOwnerPaymentReportText({
 });
 assert.match(filledOwner, /Excel'e alınan ev sahibi ödemesi: 1/);
 assert.match(filledOwner, /Ödemesi kalmayan/);
+assert.match(filledOwner, /Vadesi geçmiş ve açık ödeme: 2/);
 assert.match(filledOwner, /Ev sahibi ödemeleri Excel ektedir/);
 
 const buffer = workbookBufferFromRows([
