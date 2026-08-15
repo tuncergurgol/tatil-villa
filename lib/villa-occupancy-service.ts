@@ -116,6 +116,8 @@ export async function applyVillaPeriodDaysOccupancy(
  *   çıkış+giriş) veya mevcut check-in korunuyorsa işaretlenir.
  * - Ertesi gün dolu diye bitişe check-in yazılmaz; aksi halde bitişik
  *   bloklar (19 çıkış + 20 giriş) tek parça dolu gibi görünür.
+ * - Açmada (EMPTY) boşalan geceler işaretsizdir; çıkış günü hâlâ doluysa
+ *   kalan blok artık o günden başladığı için giriş işareti alır.
  */
 function resolveOccupancyCheckIn(input: {
   mode: OccupancyApplyMode;
@@ -125,7 +127,11 @@ function resolveOccupancyCheckIn(input: {
   existing: VillaDayOccupancy;
   existingCheckIn: boolean;
 }): boolean {
-  if (input.mode === "EMPTY") return false;
+  if (input.mode === "EMPTY") {
+    if (input.start === input.end) return false;
+    if (input.dateKey !== input.end) return false;
+    return isOccupiedOccupancy(input.existing);
+  }
   if (input.dateKey === input.start) return true;
   if (input.dateKey === input.end) {
     return isOccupiedOccupancy(input.existing) || input.existingCheckIn;

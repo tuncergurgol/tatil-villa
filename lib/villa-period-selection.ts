@@ -495,7 +495,7 @@ export function buildEmptyOccupancyForRangeMerged(
       isOccupied(nextEnd) &&
       !isOccupied(prevStart)
     ) {
-      map.set(onlyKey, "BOOKED");
+      map.set(onlyKey, existing);
       return map;
     }
 
@@ -509,10 +509,12 @@ export function buildEmptyOccupancyForRangeMerged(
     map.set(keys[index]!, "EMPTY");
   }
 
-  // İlk gün her zaman çıkar (ÇIKIŞ). Son gün yalnızca sonrasında
-  // dolu gece varsa GİRİŞ olarak BOOKED kalır; blok sonundan açılıyorsa EMPTY.
+  // Açma da kapama gibi konaklama aralığıdır: yalnızca ilk gün ile son gün
+  // arasındaki geceler boşalır. Son gün (çıkış) olduğu gibi kalır; açma işlemi
+  // hiçbir zaman yeni gece kapatmaz. Blok o günde devam ediyorsa kalan blok
+  // oradan başlar (giriş işareti applyVillaPeriodDaysOccupancy'de yazılır).
   map.set(firstDayKey, "EMPTY");
-  map.set(lastDayKey, isOccupied(nextEnd) ? "BOOKED" : "EMPTY");
+  map.set(lastDayKey, getOccupancy(existingOccupancyByDateKey, lastDayKey));
   return map;
 }
 

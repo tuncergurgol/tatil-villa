@@ -4,6 +4,7 @@
  */
 import {
   buildBookedOccupancyForStay,
+  buildEmptyOccupancyForRange,
   buildOptionOccupancyForStay,
   buildReservedOccupancyForStay,
 } from "../lib/villa-period-selection";
@@ -759,6 +760,90 @@ assert(
     reservedTurnoverSameDay
   ) === "reserved_out_booked_in",
   "19 Ağustos giriş işaretliyse rezervasyon çıkışı + kapama girişi"
+);
+
+// Villa Deneme: 17–23 kapalıyken 18–19 AÇ.
+// Yalnızca 18 gecesi boşalır; 19 gecesi kapanmaz ve kalan blok 19'dan başlar.
+const closedBlock17to23 = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-16", "EMPTY"],
+  ["2026-08-17", "BOOKED"],
+  ["2026-08-18", "BOOKED"],
+  ["2026-08-19", "BOOKED"],
+  ["2026-08-20", "BOOKED"],
+  ["2026-08-21", "BOOKED"],
+  ["2026-08-22", "BOOKED"],
+  ["2026-08-23", "EMPTY"],
+]);
+const open18to19 = buildEmptyOccupancyForRange(
+  "2026-08-18",
+  "2026-08-19",
+  closedBlock17to23
+);
+assert(
+  open18to19.get("2026-08-18") === "EMPTY",
+  "18–19 açmada 18 gecesi boşalır"
+);
+assert(
+  open18to19.get("2026-08-19") === "BOOKED",
+  "18–19 açmada 19 gecesi olduğu gibi kalır"
+);
+const afterOpen18to19 = buildOccupancyMap([
+  { date: "2026-08-16", occupancyStatus: "EMPTY" },
+  { date: "2026-08-17", occupancyStatus: "BOOKED" },
+  { date: "2026-08-18", occupancyStatus: "EMPTY" },
+  { date: "2026-08-19", occupancyStatus: "BOOKED" },
+  { date: "2026-08-20", occupancyStatus: "BOOKED" },
+  { date: "2026-08-21", occupancyStatus: "BOOKED" },
+  { date: "2026-08-22", occupancyStatus: "BOOKED" },
+  { date: "2026-08-23", occupancyStatus: "EMPTY" },
+]);
+// Açma işlemi kalan bloğun başlangıcını (19) giriş olarak işaretler
+const afterOpenCheckIns = new Set(["2026-08-17", "2026-08-19"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-18",
+    afterOpen18to19,
+    afterOpenCheckIns
+  ) === "check_out",
+  "18 Ağustos açıldıktan sonra yalnızca çıkış (dolu görünmez)"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-19",
+    afterOpen18to19,
+    afterOpenCheckIns
+  ) === "check_in",
+  "19 Ağustos kalan bloğun girişi"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-20",
+    afterOpen18to19,
+    afterOpenCheckIns
+  ) === "full",
+  "20 Ağustos dolu kalır"
+);
+// Çıkış günü boşken açma o günü asla kapatmaz (18 dolu, 19 boş, 20 dolu)
+const gapBefore20 = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-17", "EMPTY"],
+  ["2026-08-18", "BOOKED"],
+  ["2026-08-19", "EMPTY"],
+  ["2026-08-20", "BOOKED"],
+  ["2026-08-21", "BOOKED"],
+  ["2026-08-22", "EMPTY"],
+]);
+const openOntoGap = buildEmptyOccupancyForRange(
+  "2026-08-18",
+  "2026-08-19",
+  gapBefore20
+);
+assert(
+  openOntoGap.get("2026-08-18") === "EMPTY",
+  "18 gecesi açılır"
+);
+assert(
+  openOntoGap.get("2026-08-19") === "EMPTY",
+  "19 boş çıkış günü açmada kapanmaz"
 );
 
 assert(

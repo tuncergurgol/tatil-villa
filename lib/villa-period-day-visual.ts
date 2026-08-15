@@ -131,6 +131,9 @@ export function isTurnoverOccupancyDay(
   if (!isBlockingOccupancy(context.occupancyMap.get(nextDayKey))) {
     return false;
   }
+  // Sonraki blok ertesi gün giriş işaretliyse bugün yalnızca çıkıştır;
+  // aradaki gece boştur ve iki blok tek parça gösterilmez.
+  if (context.checkInDateKeys?.has(nextDayKey)) return false;
 
   // Bitişik ayrı bloklar (17 çıkış + 18 giriş): sonraki blok ertesi günden başlar → turnover değil.
   // Aynı gün çıkış+giriş: sonraki blok bu EMPTY günden başlar → turnover.
