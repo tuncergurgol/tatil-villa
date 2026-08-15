@@ -226,9 +226,9 @@ export default function VillaEditForm({
             </p>
           ) : null}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           {showcaseImage ? (
-            <div className="relative h-20 w-28 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm">
+            <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm">
               <GalleryImage
                 src={showcaseImage}
                 alt={`${villa.name} vitrin`}
@@ -239,21 +239,23 @@ export default function VillaEditForm({
               />
             </div>
           ) : null}
-          <Link
-            href={villaTakvimPath(villa)}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
-          >
-            <CalendarDays className="h-4 w-4" />
-            Takvim
-          </Link>
-          <Link
-            href={villaPublicPath(villa.slug)}
-            target="_blank"
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
-          >
-            Mağazada Görüntüle
-            <ExternalLink className="h-4 w-4" />
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link
+              href={villaTakvimPath(villa)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Takvim
+            </Link>
+            <Link
+              href={villaPublicPath(villa.slug)}
+              target="_blank"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+            >
+              Mağazada Görüntüle
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </div>
 
