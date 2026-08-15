@@ -4,6 +4,7 @@
  */
 import {
   buildBookedOccupancyForStay,
+  buildOptionOccupancyForStay,
   buildReservedOccupancyForStay,
 } from "../lib/villa-period-selection";
 import { buildOccupancyMap } from "../lib/booking-calendar-selection";
@@ -585,6 +586,79 @@ assert(
     close18to19Onto20CheckIns
   ) === "check_in",
   "20 Ağustos sonraki blok girişi ayrı kalır"
+);
+
+// Villa Cihan: kapama çıkışı + ertesi gün opsiyon → opsiyon GİRİŞ görünmeli
+const cihanAdjacent = buildOccupancyMap([
+  { date: "2026-08-25", occupancyStatus: "BOOKED" },
+  { date: "2026-08-26", occupancyStatus: "EMPTY" },
+  { date: "2026-08-27", occupancyStatus: "OPTION" },
+  { date: "2026-08-28", occupancyStatus: "OPTION" },
+  { date: "2026-08-29", occupancyStatus: "OPTION" },
+  { date: "2026-08-30", occupancyStatus: "OPTION" },
+  { date: "2026-08-31", occupancyStatus: "BOOKED" },
+]);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-26", cihanAdjacent) === "check_out",
+  "26 Ağustos kapama çıkışı (opsiyon ile birleşmez)"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-27", cihanAdjacent) === "option_check_in",
+  "27 Ağustos opsiyon başlangıcı (giriş) görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-28", cihanAdjacent) === "option_full",
+  "28 Ağustos opsiyon dolu"
+);
+
+// Opsiyon, kapama çıkış gününden başlayınca ilk gün turnover EMPTY
+const priorKapama = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-24", "BOOKED"],
+  ["2026-08-25", "BOOKED"],
+  ["2026-08-26", "EMPTY"],
+  ["2026-08-27", "EMPTY"],
+  ["2026-08-28", "EMPTY"],
+  ["2026-08-29", "EMPTY"],
+  ["2026-08-30", "EMPTY"],
+  ["2026-08-31", "EMPTY"],
+]);
+const option26to31 = buildOptionOccupancyForStay(
+  "2026-08-26",
+  "2026-08-31",
+  priorKapama
+);
+assert(
+  option26to31.get("2026-08-26") === "EMPTY",
+  "opsiyon 26–31: önceki dolu gece üstüne 26 turnover EMPTY"
+);
+assert(option26to31.get("2026-08-27") === "OPTION", "27 Ağustos OPTION");
+assert(option26to31.get("2026-08-30") === "OPTION", "30 Ağustos OPTION");
+assert(
+  option26to31.get("2026-08-31") === "EMPTY",
+  "31 Ağustos opsiyon çıkış EMPTY"
+);
+const option26to31Map = buildOccupancyMap(
+  [...priorKapama, ...option26to31.entries()].map(([date, occupancyStatus]) => ({
+    date,
+    occupancyStatus,
+  }))
+);
+const option26to31CheckIns = new Set(["2026-08-26"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-26",
+    option26to31Map,
+    option26to31CheckIns
+  ) === "booked_out_option_in",
+  "26 Ağustos kapama çıkış + opsiyon giriş"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-27",
+    option26to31Map,
+    option26to31CheckIns
+  ) === "option_full",
+  "27 Ağustos opsiyon dolu (yanlış giriş değil)"
 );
 
 assert(

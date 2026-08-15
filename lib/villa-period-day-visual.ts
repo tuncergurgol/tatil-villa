@@ -178,7 +178,6 @@ export function resolveVillaDayVisual(
   const currentStatus = normalizeOccupancy(current);
   const prevStatus = normalizeOccupancy(prev);
   const nextStatus = normalizeOccupancy(next);
-  const prevPrevStatus = normalizeOccupancy(prevPrev);
 
   if (currentStatus === "EMPTY") {
     if (prevStatus === "RESERVED" && nextStatus === "BOOKED") {
@@ -253,14 +252,27 @@ export function resolveVillaDayVisual(
 
   if (currentStatus === "OPTION") {
     if (prevStatus === "BOOKED") return "booked_out_option_in";
+    if (prevStatus === "RESERVED") return "reserved_out_option_in";
+    if (
+      prevStatus === "OPTION" &&
+      context?.checkInDateKeys?.has(context.dateKey)
+    ) {
+      return "turnover_option";
+    }
     if (prevStatus === "EMPTY" && nextStatus === "EMPTY") return "option_full";
     if (prevStatus === "EMPTY") {
-      if (
-        prevPrevStatus === "BOOKED" ||
-        prevPrevStatus === "RESERVED" ||
-        prevPrevStatus === "OPTION"
-      ) {
-        return "option_full";
+      if (isBlockingOccupancy(prevPrev) && context) {
+        const prevDayKey = offsetDateKey(context.dateKey, -1);
+        if (
+          isTurnoverOccupancyDay(prev, prevPrev, current, {
+            dateKey: prevDayKey,
+            occupancyMap: context.occupancyMap,
+            checkInDateKeys: context.checkInDateKeys,
+          })
+        ) {
+          return "option_full";
+        }
+        return "option_check_in";
       }
       return "option_check_in";
     }

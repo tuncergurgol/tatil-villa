@@ -359,11 +359,10 @@ function normalizeOccupancy(
 }
 
 /**
- * OPSİYON komutu: DOLU ile aynı giriş–çıkış mantığını izler.
- * - İç geceler (başlangıç .. bitiş-1) OPTION olur.
- * - Son gün ÇIKIŞ kabul edilir: mevcut GİRİŞ/opsiyon girişi korunur,
- *   aksi halde EMPTY kalır (çıkış günü opsiyon değildir).
- * - Tek gün seçiminde komşuya göre OPTION veya EMPTY atanır.
+ * OPSİYON komutu: DOLU (BOOKED) ile aynı giriş–çıkış mantığını izler.
+ * - Önceki gece doluysa çok gecelik opsiyonda ilk gün turnover EMPTY.
+ * - Tek gecelik opsiyonda ilk gün OPTION (aksi halde dolu gece kalmaz).
+ * - Son gün her zaman çıkış EMPTY.
  */
 export function buildOptionOccupancyForStayMerged(
   startKey: string,
@@ -393,13 +392,25 @@ export function buildOptionOccupancyForStayMerged(
   }
 
   for (let index = 0; index < keys.length - 1; index++) {
-    map.set(keys[index]!, "OPTION");
+    if (index > 0) {
+      map.set(keys[index]!, "OPTION");
+    }
   }
 
-  const lastDayKey = keys[keys.length - 1]!;
-  const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
+  const firstDayKey = keys[0]!;
+  const dayBeforeFirst = getOccupancy(
+    existingOccupancyByDateKey,
+    offsetDateKey(firstDayKey, -1)
+  );
+  const firstDayStatus: VillaDayOccupancy = isOccupied(dayBeforeFirst)
+    ? keys.length === 2
+      ? "OPTION"
+      : "EMPTY"
+    : "OPTION";
+  map.set(firstDayKey, firstDayStatus);
 
-  map.set(lastDayKey, isOccupied(existingEnd) ? "OPTION" : "EMPTY");
+  const lastDayKey = keys[keys.length - 1]!;
+  map.set(lastDayKey, "EMPTY");
   return map;
 }
 
