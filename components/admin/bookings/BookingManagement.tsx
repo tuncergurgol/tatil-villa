@@ -399,8 +399,11 @@ export default function BookingManagement({
                         <div className="flex items-center gap-1">
                           <Link
                             href={`/admin/rezervasyonlar/${booking.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="font-semibold text-blue-600 hover:underline"
                             onClick={(event) => event.stopPropagation()}
+                            title="Rezervasyon formunu yeni sekmede aç"
                           >
                             {reservationNo}
                           </Link>

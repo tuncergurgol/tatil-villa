@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { FileSpreadsheet, Filter, Info, Plus, X } from "lucide-react";
 import BookingFilterModal, {
   countActiveBookingFilters,
@@ -314,7 +315,15 @@ export default function OwnerPaymentReportPage({
                       className="border-t border-gray-100 hover:bg-gray-50/60"
                     >
                       <td className="px-3 py-2 font-medium text-gray-900">
-                        {formatBookingReservationNo(item)}
+                        <Link
+                          href={`/admin/rezervasyonlar/${item.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                          title="Rezervasyon formunu yeni sekmede aç"
+                        >
+                          {formatBookingReservationNo(item)}
+                        </Link>
                       </td>
                       <td className="px-3 py-2 text-gray-700">
                         {item.guestName}
