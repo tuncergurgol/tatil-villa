@@ -78,8 +78,7 @@ export class ConfirmedBookingOccupancyLockedError extends Error {
 export async function assertNoConfirmedBookingOverlap(
   villaId: string,
   startDateKey: string,
-  endDateKey: string,
-  options?: { applyMode?: "EMPTY" | "BOOKED" | "OPTION" }
+  endDateKey: string
 ): Promise<void> {
   const overlap = await findConfirmedBookingOverlap(
     villaId,
