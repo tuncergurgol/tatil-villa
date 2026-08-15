@@ -248,6 +248,50 @@ assert(
   "önceki çıkış günü varsa 1 Ağustos turnover için EMPTY"
 );
 
+// Villa Hayal Duo: 15–18 kapama, mevcut 18 giriş + 19 dolu bozulmamalı
+const priorAug18CheckIn = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-14", "BOOKED"],
+  ["2026-08-15", "EMPTY"],
+  ["2026-08-16", "EMPTY"],
+  ["2026-08-17", "EMPTY"],
+  ["2026-08-18", "BOOKED"],
+  ["2026-08-19", "BOOKED"],
+  ["2026-08-20", "BOOKED"],
+]);
+const close15to18OntoCheckIn = buildBookedOccupancyForStay(
+  "2026-08-15",
+  "2026-08-18",
+  priorAug18CheckIn
+);
+assert(
+  close15to18OntoCheckIn.get("2026-08-15") === "EMPTY",
+  "15 Ağustos önceki blok çıkışı üzerine turnover EMPTY"
+);
+assert(close15to18OntoCheckIn.get("2026-08-16") === "BOOKED", "16 Ağustos kapama BOOKED");
+assert(close15to18OntoCheckIn.get("2026-08-17") === "BOOKED", "17 Ağustos kapama BOOKED");
+assert(
+  close15to18OntoCheckIn.get("2026-08-18") === "BOOKED",
+  "18 Ağustos mevcut giriş silinmez"
+);
+assert(
+  !close15to18OntoCheckIn.has("2026-08-19") ||
+    close15to18OntoCheckIn.get("2026-08-19") === "BOOKED",
+  "19 Ağustos kapama yazmaz / dolu kalır"
+);
+const hayalDuoMap = buildOccupancyMap(
+  [...priorAug18CheckIn, ...close15to18OntoCheckIn.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-18", hayalDuoMap) === "full",
+  "18 Ağustos giriş gecesi dolu görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-19", hayalDuoMap) === "full",
+  "19 Ağustos dolu görünür"
+);
+
 assert(
   dbDateToDateKey(new Date("2026-08-06T00:00:00.000Z")) === "2026-08-06",
   "dbDateToDateKey UTC gece yarısı kaydırmaz"

@@ -115,8 +115,16 @@ export function buildBookedOccupancyForStayMerged(
   map.set(firstDayKey, firstDayStatus);
 
   const lastDayKey = keys[keys.length - 1]!;
-  // Seçilen bitiş tarihi her zaman çıkış günüdür (EMPTY).
-  map.set(lastDayKey, "EMPTY");
+  const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
+  // Bitiş günü çıkışdır; ancak aynı günde mevcut giriş (sonraki blok) varsa silinmez.
+  map.set(
+    lastDayKey,
+    isOccupied(existingEnd)
+      ? existingEnd === "RESERVED"
+        ? "RESERVED"
+        : "BOOKED"
+      : "EMPTY"
+  );
   return map;
 }
 
@@ -207,7 +215,16 @@ export function buildReservedOccupancyForStayMerged(
   map.set(firstDayKey, firstDayStatus);
 
   const lastDayKey = keys[keys.length - 1]!;
-  map.set(lastDayKey, "EMPTY");
+  const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
+  // Bitiş günü çıkışdır; sonraki bloğun mevcut girişi korunur.
+  map.set(
+    lastDayKey,
+    isOccupied(existingEnd)
+      ? existingEnd === "OPTION"
+        ? "OPTION"
+        : "RESERVED"
+      : "EMPTY"
+  );
   return map;
 }
 
