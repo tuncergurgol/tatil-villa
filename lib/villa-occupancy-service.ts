@@ -72,30 +72,27 @@ export async function applyVillaPeriodDaysOccupancy(
       if (!rangeDateKeySet.has(dateKey)) return false;
       const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
       const existingCheckIn = existingCheckInByDateKey.get(dateKey) ?? false;
-      const nextAfterEnd = existingOccupancyByDateKey.get(offsetDateKey(end, 1));
-      const nextCheckIn =
-        mode === "EMPTY"
-          ? false
-          : dateKey === start
-            ? true
-            : dateKey === end
-              ? isOccupiedOccupancy(existing) ||
-                isOccupiedOccupancy(nextAfterEnd ?? "EMPTY")
-              : false;
+      const nextCheckIn = resolveOccupancyCheckIn({
+        mode,
+        dateKey,
+        start,
+        end,
+        existing,
+        existingCheckIn,
+      });
       return existing !== occupancyStatus || existingCheckIn !== nextCheckIn;
     })
     .map(([dateKey, occupancyStatus]) => {
       const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
-      const nextAfterEnd = existingOccupancyByDateKey.get(offsetDateKey(end, 1));
-      const nextCheckIn =
-        mode === "EMPTY"
-          ? false
-          : dateKey === start
-            ? true
-            : dateKey === end
-              ? isOccupiedOccupancy(existing) ||
-                isOccupiedOccupancy(nextAfterEnd ?? "EMPTY")
-              : false;
+      const existingCheckIn = existingCheckInByDateKey.get(dateKey) ?? false;
+      const nextCheckIn = resolveOccupancyCheckIn({
+        mode,
+        dateKey,
+        start,
+        end,
+        existing,
+        existingCheckIn,
+      });
       return prisma.villaPricePeriodDay.updateMany({
         where: {
           villaId,
@@ -110,6 +107,30 @@ export async function applyVillaPeriodDaysOccupancy(
   }
 
   return { updatedDays: updates.length };
+}
+
+/**
+ * Giriş işareti:
+ * - Başlangıç günü her zaman check-in.
+ * - Bitiş günü yalnızca o günde zaten dolu bir giriş vardıysa (aynı gün
+ *   çıkış+giriş) veya mevcut check-in korunuyorsa işaretlenir.
+ * - Ertesi gün dolu diye bitişe check-in yazılmaz; aksi halde bitişik
+ *   bloklar (19 çıkış + 20 giriş) tek parça dolu gibi görünür.
+ */
+function resolveOccupancyCheckIn(input: {
+  mode: OccupancyApplyMode;
+  dateKey: string;
+  start: string;
+  end: string;
+  existing: VillaDayOccupancy;
+  existingCheckIn: boolean;
+}): boolean {
+  if (input.mode === "EMPTY") return false;
+  if (input.dateKey === input.start) return true;
+  if (input.dateKey === input.end) {
+    return isOccupiedOccupancy(input.existing) || input.existingCheckIn;
+  }
+  return false;
 }
 
 function isOccupiedOccupancy(status: VillaDayOccupancy): boolean {

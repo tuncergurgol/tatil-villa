@@ -414,7 +414,7 @@ const close11to12Map = buildOccupancyMap(
     ([date, occupancyStatus]) => ({ date, occupancyStatus })
   )
 );
-const close11to12CheckIns = new Set(["2026-08-11", "2026-08-12"]);
+const close11to12CheckIns = new Set(["2026-08-11"]);
 assert(
   resolveVillaDayVisualFromMap(
     "2026-08-11",
@@ -428,8 +428,16 @@ assert(
     "2026-08-12",
     close11to12Map,
     close11to12CheckIns
-  ) === "turnover_booked",
-  "12 Ağustos çıkış+giriş görünür"
+  ) === "check_out",
+  "12 Ağustos bitişik sonraki blokta yalnızca çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-13",
+    close11to12Map,
+    close11to12CheckIns
+  ) === "check_in",
+  "13 Ağustos sonraki blok girişi"
 );
 
 // 15–16 tek gece KAPAT: önceki blok çıkışı (15 EMPTY) üstüne → 15 çıkış+giriş
@@ -459,7 +467,7 @@ const close15to16Map = buildOccupancyMap(
     ([date, occupancyStatus]) => ({ date, occupancyStatus })
   )
 );
-const close15to16CheckIns = new Set(["2026-08-15", "2026-08-16"]);
+const close15to16CheckIns = new Set(["2026-08-15"]);
 assert(
   resolveVillaDayVisualFromMap(
     "2026-08-15",
@@ -473,8 +481,110 @@ assert(
     "2026-08-16",
     close15to16Map,
     close15to16CheckIns
+  ) === "check_out",
+  "16 Ağustos bitişik blokta yalnızca çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-17",
+    close15to16Map,
+    close15to16CheckIns
+  ) === "check_in",
+  "17 Ağustos sonraki blok girişi"
+);
+
+// 18–20 boş + 21+ dolu iken 18–19 KAPAT: 18 giriş, 19 çıkış, 20 boş kalır
+const prior18to20Empty = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-16", "BOOKED"],
+  ["2026-08-17", "BOOKED"],
+  ["2026-08-18", "EMPTY"],
+  ["2026-08-19", "EMPTY"],
+  ["2026-08-20", "EMPTY"],
+  ["2026-08-21", "BOOKED"],
+  ["2026-08-22", "BOOKED"],
+  ["2026-08-23", "EMPTY"],
+]);
+const close18to19 = buildBookedOccupancyForStay(
+  "2026-08-18",
+  "2026-08-19",
+  prior18to20Empty
+);
+assert(close18to19.get("2026-08-18") === "BOOKED", "18 Ağustos kapama gecesi BOOKED");
+assert(close18to19.get("2026-08-19") === "EMPTY", "19 Ağustos çıkış EMPTY");
+assert(
+  prior18to20Empty.get("2026-08-20") === "EMPTY",
+  "20 Ağustos kapamadan etkilenmeden EMPTY kalır"
+);
+const close18to19Merged = new Map([...prior18to20Empty, ...close18to19]);
+const close18to19Map = buildOccupancyMap(
+  [...close18to19Merged.entries()].map(([date, occupancyStatus]) => ({
+    date,
+    occupancyStatus,
+  }))
+);
+const close18to19CheckIns = new Set(["2026-08-18"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-18",
+    close18to19Map,
+    close18to19CheckIns
   ) === "turnover_booked",
-  "16 Ağustos sonraki blok girişi ile çıkış+giriş"
+  "18 Ağustos önceki dolu üstüne çıkış+giriş"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-19",
+    close18to19Map,
+    close18to19CheckIns
+  ) === "check_out",
+  "19 Ağustos yalnızca çıkış (sonraki gün boş)"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-20",
+    close18to19Map,
+    close18to19CheckIns
+  ) === "empty",
+  "20 Ağustos boş kalır"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-21",
+    close18to19Map,
+    close18to19CheckIns
+  ) === "check_in",
+  "21 Ağustos sonraki blok girişi"
+);
+
+// 18–19 KAPAT, ertesi gün (20) zaten dolu: bitişik çıkış+giriş, tek parça dolu değil
+const prior20Booked = new Map(prior18to20Empty);
+prior20Booked.set("2026-08-20", "BOOKED");
+const close18to19Onto20 = buildBookedOccupancyForStay(
+  "2026-08-18",
+  "2026-08-19",
+  prior20Booked
+);
+const close18to19Onto20Map = buildOccupancyMap(
+  [...prior20Booked, ...close18to19Onto20.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+const close18to19Onto20CheckIns = new Set(["2026-08-18"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-19",
+    close18to19Onto20Map,
+    close18to19Onto20CheckIns
+  ) === "check_out",
+  "19 Ağustos ertesi blok dolu olsa bile yalnızca çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-20",
+    close18to19Onto20Map,
+    close18to19Onto20CheckIns
+  ) === "check_in",
+  "20 Ağustos sonraki blok girişi ayrı kalır"
 );
 
 assert(

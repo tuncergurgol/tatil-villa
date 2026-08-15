@@ -120,8 +120,8 @@ export function buildBookedOccupancyForStayMerged(
   map.set(firstDayKey, firstDayStatus);
 
   const lastDayKey = keys[keys.length - 1]!;
-  // Seçilen bitiş tarihi her zaman çıkış günüdür (EMPTY).
-  // Sonraki bloğun girişi occupancyCheckIn ile işaretlenir.
+  // Sonraki bloğun girişi occupancyCheckIn ile yalnızca bitiş gününde
+  // zaten dolu giriş varken işaretlenir (ertesi gün dolu diye değil).
   map.set(lastDayKey, "EMPTY");
   return map;
 }

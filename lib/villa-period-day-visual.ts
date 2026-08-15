@@ -519,6 +519,11 @@ export const VILLA_DAY_VISUAL_LEGEND: {
     swatchStyle: { background: diagonal(COLORS.white, COLORS.red) },
   },
   {
+    kind: "turnover_booked",
+    label: "Kapama Giriş+Çıkış",
+    swatchStyle: { background: turnoverDiagonal(COLORS.red, COLORS.red) },
+  },
+  {
     kind: "reserved_check_in",
     label: "Rezervasyon Giriş",
     swatchStyle: { background: diagonal(COLORS.lilac, COLORS.white) },
