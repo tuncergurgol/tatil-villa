@@ -108,7 +108,8 @@ export function buildBookedOccupancyForStayMerged(
   const existingFirst = getOccupancy(existingOccupancyByDateKey, firstDayKey);
   // Önceki gece doluysa:
   // - 2+ gece kapamada ilk gün turnover EMPTY (çıkış+giriş),
-  // - tek gece kapamada ilk gün BOOKED olmalı (aksi halde hiç dolu gece yazılmaz).
+  // - tek gece kapamada ilk gün BOOKED (aksi halde hiç dolu gece yazılmaz);
+  //   görsel çıkış+giriş occupancyCheckIn ile çözülür.
   const firstDayStatus: VillaDayOccupancy = isOccupied(dayBeforeFirst)
     ? keys.length === 2
       ? "BOOKED"

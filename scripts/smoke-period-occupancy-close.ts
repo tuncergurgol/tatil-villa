@@ -420,8 +420,8 @@ assert(
     "2026-08-11",
     close11to12Map,
     close11to12CheckIns
-  ) === "full",
-  "11 Ağustos dolu görünür"
+  ) === "turnover_booked",
+  "11 Ağustos önceki dolu gece üstüne tek gece giriş → çıkış+giriş"
 );
 assert(
   resolveVillaDayVisualFromMap(
@@ -430,6 +430,51 @@ assert(
     close11to12CheckIns
   ) === "turnover_booked",
   "12 Ağustos çıkış+giriş görünür"
+);
+
+// 15–16 tek gece KAPAT: önceki blok çıkışı (15 EMPTY) üstüne → 15 çıkış+giriş
+const priorBefore15to16 = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-08-13", "BOOKED"],
+  ["2026-08-14", "BOOKED"],
+  ["2026-08-15", "EMPTY"],
+  ["2026-08-16", "EMPTY"],
+  ["2026-08-17", "BOOKED"],
+  ["2026-08-18", "BOOKED"],
+]);
+const close15to16 = buildBookedOccupancyForStay(
+  "2026-08-15",
+  "2026-08-16",
+  priorBefore15to16
+);
+assert(
+  close15to16.get("2026-08-15") === "BOOKED",
+  "15–16 kapamada 15 Ağustos BOOKED (tek gece; EMPTY yazılsa gece kalmaz)"
+);
+assert(
+  close15to16.get("2026-08-16") === "EMPTY",
+  "15–16 kapamada 16 Ağustos çıkış EMPTY"
+);
+const close15to16Map = buildOccupancyMap(
+  [...priorBefore15to16, ...close15to16.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+const close15to16CheckIns = new Set(["2026-08-15", "2026-08-16"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-15",
+    close15to16Map,
+    close15to16CheckIns
+  ) === "turnover_booked",
+  "15 Ağustos çıkış+giriş görünür (dolu değil)"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-16",
+    close15to16Map,
+    close15to16CheckIns
+  ) === "turnover_booked",
+  "16 Ağustos sonraki blok girişi ile çıkış+giriş"
 );
 
 assert(

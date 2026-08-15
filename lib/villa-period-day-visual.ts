@@ -196,6 +196,14 @@ export function resolveVillaDayVisual(
   if (currentStatus === "BOOKED") {
     if (prevStatus === "RESERVED") return "reserved_out_booked_in";
     if (prevStatus === "OPTION") return "option_out_booked_in";
+    // Tek gece kapama: önceki gece dolu + bu gün giriş işaretli → çıkış+giriş
+    // (gece BOOKED kalır; aksi halde EMPTY yazılınca hiç dolu gece olmaz).
+    if (
+      prevStatus === "BOOKED" &&
+      context?.checkInDateKeys?.has(context.dateKey)
+    ) {
+      return "turnover_booked";
+    }
     if (prevStatus === "EMPTY") {
       if (isBlockingOccupancy(prevPrev) && context) {
         const prevDayKey = offsetDateKey(context.dateKey, -1);
@@ -218,6 +226,12 @@ export function resolveVillaDayVisual(
   if (currentStatus === "RESERVED") {
     if (prevStatus === "BOOKED") return "booked_out_reserved_in";
     if (prevStatus === "OPTION") return "option_out_reserved_in";
+    if (
+      prevStatus === "RESERVED" &&
+      context?.checkInDateKeys?.has(context.dateKey)
+    ) {
+      return "turnover_reserved";
+    }
     if (prevStatus === "EMPTY") {
       if (isBlockingOccupancy(prevPrev) && context) {
         const prevDayKey = offsetDateKey(context.dateKey, -1);
