@@ -196,15 +196,13 @@ function resolveOwnerPayableForBooking(
   ) {
     return Math.max(0, Math.round(Number(details.ownerPayableAmount) || 0));
   }
-  const prepaymentAmount =
-    details.prepaymentAmount != null && Number.isFinite(details.prepaymentAmount)
-      ? Math.round(details.prepaymentAmount)
-      : null;
+
+  // Onaylı rezervasyon: form ile aynı — gerçekleşen ön ödeme − komisyon
   const commissionAmount = resolveBookingCommissionAmount(
     details,
     booking.totalPrice
   );
-  return computeOwnerPayableAmount(prepaymentAmount, commissionAmount);
+  return computeOwnerPayableAmount(realizedPrepayment, commissionAmount);
 }
 
 function mapBookingToOwnerListItem(
@@ -212,10 +210,16 @@ function mapBookingToOwnerListItem(
   brandFallback: { brandName: string; domain: string; logoUrl: string }
 ): OwnerPaymentReportListItem {
   const details = parseBookingDetails(booking.details);
-  const prepaymentAmount =
+  const realizedPrepayment = booking.prepayments.reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
+  const plannedPrepayment =
     details.prepaymentAmount != null && Number.isFinite(details.prepaymentAmount)
       ? Math.round(details.prepaymentAmount)
       : null;
+  const prepaymentAmount =
+    realizedPrepayment > 0 ? realizedPrepayment : plannedPrepayment;
   const ownerPayableAmount = resolveOwnerPayableForBooking(booking, details);
   const ownerPayments = normalizeOwnerPayments(details.ownerPayments);
   const paidAmount = ownerPayments.reduce((sum, row) => sum + row.amount, 0);

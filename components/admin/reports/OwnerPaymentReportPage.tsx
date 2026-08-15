@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { FileSpreadsheet, Filter, Info, Plus, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FileSpreadsheet, Filter, Info, Plus, RefreshCw, X } from "lucide-react";
 import BookingFilterModal, {
   countActiveBookingFilters,
   emptyBookingFilters,
@@ -91,6 +92,7 @@ export default function OwnerPaymentReportPage({
   villas,
   warnings,
 }: OwnerPaymentReportPageProps) {
+  const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [filters, setFilters] = useState<BookingFilters>(emptyBookingFilters());
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -99,10 +101,17 @@ export default function OwnerPaymentReportPage({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<AdminPageSize>(10);
   const [isPending, startTransition] = useTransition();
+  const [isRefreshing, startRefresh] = useTransition();
 
   useEffect(() => {
     setItems(initialItems);
   }, [initialItems]);
+
+  function handleRefresh() {
+    startRefresh(() => {
+      router.refresh();
+    });
+  }
 
   const activeFilterCount = countActiveBookingFilters(filters);
 
@@ -203,9 +212,20 @@ export default function OwnerPaymentReportPage({
             E
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Listeyi yenile"
+              className="group inline-flex items-center gap-2 rounded-xl text-left text-2xl font-bold text-gray-900 transition hover:text-teal-700 disabled:opacity-60"
+            >
               Ev Sahibi Ödemeleri
-            </h1>
+              <RefreshCw
+                className={`h-5 w-5 text-gray-400 group-hover:text-teal-600 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
+            </button>
             <p className="text-sm text-gray-500">
               Toplu havale Excel şablonu (Alıcı / IBAN / Tutar / Açıklama).
               Tazminat misafir iadeleri de listelenir.
