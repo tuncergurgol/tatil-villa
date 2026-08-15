@@ -5,7 +5,7 @@ import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Villa, VillaOwner } from "@prisma/client";
-import { ArrowLeft, ExternalLink, Save } from "lucide-react";
+import { ArrowLeft, CalendarDays, ExternalLink, Save } from "lucide-react";
 import {
   updateVillaFeatures,
   updateVillaGeneral,
@@ -32,6 +32,7 @@ import type { AmenityCategoryItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
 import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
 import { villaPublicPath } from "@/lib/villa-public-path";
+import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import type { ActiveVillaOwnerOption } from "@/lib/queries/villa-owners";
 import type {
   RegionPickerOption,
@@ -238,6 +239,13 @@ export default function VillaEditForm({
               />
             </div>
           ) : null}
+          <Link
+            href={villaTakvimPath(villa)}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Takvim
+          </Link>
           <Link
             href={villaPublicPath(villa.slug)}
             target="_blank"
