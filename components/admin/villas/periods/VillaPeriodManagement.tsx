@@ -277,24 +277,16 @@ export default function VillaPeriodManagement({
               Sonraki
               <ChevronRight className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => openCreateModal(true)}
-              className="ml-auto hidden items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 md:inline-flex"
-            >
-              <Plus className="h-4 w-4" />
-              Periyot Ekle Devam Et
-            </button>
-          </div>
-
-          <div className="mt-2 flex gap-2 md:hidden">
             <Link
               href={hizliFiyatPath}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
+              className="ml-auto hidden items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 md:inline-flex"
             >
               <Zap className="h-4 w-4" />
               Hızlı Fiyat
             </Link>
+          </div>
+
+          <div className="mt-2 flex gap-2 md:hidden">
             <button
               type="button"
               onClick={() => openCreateModal(true)}
@@ -303,6 +295,13 @@ export default function VillaPeriodManagement({
               <Plus className="h-4 w-4" />
               Periyot Ekle
             </button>
+            <Link
+              href={hizliFiyatPath}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
+            >
+              <Zap className="h-4 w-4" />
+              Hızlı Fiyat
+            </Link>
           </div>
 
           <div className="mt-3 flex gap-3 overflow-x-auto pb-1 text-[11px] text-gray-600 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:text-xs [&::-webkit-scrollbar]:hidden">
@@ -342,9 +341,9 @@ export default function VillaPeriodManagement({
           <div className="max-h-[40dvh] min-h-0 overflow-y-auto p-3 xl:max-h-none xl:p-4">
             <VillaPeriodSidebar
               villaId={villa.id}
-              hizliFiyatPath={hizliFiyatPath}
               periods={normalizedPeriods}
               onEdit={openEditModal}
+              onCreatePeriod={() => openCreateModal(true)}
             />
           </div>
         </div>

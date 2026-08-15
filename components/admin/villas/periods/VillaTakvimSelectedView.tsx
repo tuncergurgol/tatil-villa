@@ -50,20 +50,28 @@ export default function VillaTakvimSelectedView({
       <div className="shrink-0 border-b border-gray-200/80 bg-white px-3 py-3 shadow-sm md:px-5 md:py-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 md:h-24 md:w-36">
-              {activeVilla.image ? (
-                <Image
-                  src={activeVilla.image}
-                  alt={activeVilla.name}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs font-medium text-gray-400">
-                  VİLLA
-                </div>
-              )}
+            <div className="flex w-28 shrink-0 flex-col gap-2 md:w-36">
+              <div className="relative h-20 w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-100 md:h-24">
+                {activeVilla.image ? (
+                  <Image
+                    src={activeVilla.image}
+                    alt={activeVilla.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-xs font-medium text-gray-400">
+                    VİLLA
+                  </div>
+                )}
+              </div>
+              <p className="text-xs leading-snug text-gray-600 md:text-sm">
+                Fiyat (bugünden):{" "}
+                <span className="font-bold text-indigo-600">
+                  {formatPriceRange(activeVilla)}
+                </span>
+              </p>
             </div>
             <div className="min-w-0 space-y-1">
               <h1 className="truncate text-lg font-bold leading-snug text-gray-900 md:text-xl">
@@ -99,12 +107,6 @@ export default function VillaTakvimSelectedView({
             >
               Villa Detay
             </Link>
-            <p className="text-center text-sm text-gray-600">
-              Fiyat (bugünden):{" "}
-              <span className="font-bold text-indigo-600">
-                {formatPriceRange(activeVilla)}
-              </span>
-            </p>
             <TakvimVillaSearch remote />
           </div>
         </div>

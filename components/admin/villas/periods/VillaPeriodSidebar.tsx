@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock3, Pencil, Trash2, Zap } from "lucide-react";
+import { Clock3, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteVillaPricePeriod } from "@/app/actions/admin/villa-periods";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import {
@@ -14,16 +13,16 @@ import {
 
 interface VillaPeriodSidebarProps {
   villaId: string;
-  hizliFiyatPath: string;
   periods: VillaPricePeriodItem[];
   onEdit: (period: VillaPricePeriodItem) => void;
+  onCreatePeriod?: () => void;
 }
 
 export default function VillaPeriodSidebar({
   villaId,
-  hizliFiyatPath,
   periods,
   onEdit,
+  onCreatePeriod,
 }: VillaPeriodSidebarProps) {
   const router = useRouter();
   const [showPast, setShowPast] = useState(false);
@@ -52,17 +51,20 @@ export default function VillaPeriodSidebar({
   return (
     <aside className="flex h-full min-h-0 flex-col rounded-2xl border border-gray-200 bg-gray-50/60">
       <div className="border-b border-gray-200 bg-white px-4 py-4">
-        <Link
-          href={hizliFiyatPath}
-          className="hidden w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 md:inline-flex"
-        >
-          <Zap className="h-4 w-4" />
-          Hızlı Fiyat
-        </Link>
+        {onCreatePeriod ? (
+          <button
+            type="button"
+            onClick={onCreatePeriod}
+            className="hidden w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 md:inline-flex"
+          >
+            <Plus className="h-4 w-4" />
+            Periyot Ekle Devam Et
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => setShowPast((prev) => !prev)}
-          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+          className={`${onCreatePeriod ? "mt-4" : ""} inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700`}
         >
           <Clock3 className="h-4 w-4" />
           {showPast ? "Güncel Periyotlar" : "Geçmiş Periyotlar"}
