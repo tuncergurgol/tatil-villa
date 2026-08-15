@@ -661,6 +661,54 @@ assert(
   "27 Ağustos opsiyon dolu (yanlış giriş değil)"
 );
 
+// Kapama, onaylı RESERVED günleri ezmemeli (lila korunur)
+const reservedBlock = new Map<string, "RESERVED" | "EMPTY" | "BOOKED">([
+  ["2026-08-15", "EMPTY"],
+  ["2026-08-16", "RESERVED"],
+  ["2026-08-17", "RESERVED"],
+  ["2026-08-18", "RESERVED"],
+  ["2026-08-19", "EMPTY"],
+  ["2026-08-20", "EMPTY"],
+]);
+const closeOverReserved = buildBookedOccupancyForStay(
+  "2026-08-16",
+  "2026-08-19",
+  reservedBlock
+);
+assert(
+  closeOverReserved.get("2026-08-16") === "RESERVED",
+  "kapama onaylı giriş gününü RESERVED bırakır"
+);
+assert(
+  closeOverReserved.get("2026-08-17") === "RESERVED",
+  "kapama onaylı orta geceyi RESERVED bırakır"
+);
+assert(
+  closeOverReserved.get("2026-08-18") === "RESERVED",
+  "kapama onaylı son geceyi RESERVED bırakır"
+);
+const reservedVisualMap = buildOccupancyMap(
+  [...reservedBlock.entries()].map(([date, occupancyStatus]) => ({
+    date,
+    occupancyStatus,
+  }))
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-16", reservedVisualMap) ===
+    "reserved_check_in",
+  "16 Ağustos bizim rezervasyon girişi (lila)"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-17", reservedVisualMap) ===
+    "reserved_full",
+  "17 Ağustos bizim rezervasyon dolu (lila)"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-19", reservedVisualMap) ===
+    "reserved_check_out",
+  "19 Ağustos bizim rezervasyon çıkışı"
+);
+
 assert(
   dbDateToDateKey(new Date("2026-08-06T00:00:00.000Z")) === "2026-08-06",
   "dbDateToDateKey UTC gece yarısı kaydırmaz"

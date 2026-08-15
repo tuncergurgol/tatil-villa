@@ -54,6 +54,22 @@ function getOccupancy(
   return map.get(dateKey) ?? "EMPTY";
 }
 
+/** Kapama/opsiyon yazımı onaylı (RESERVED) günleri ezmesin. */
+function sealReservedDays(
+  map: Map<string, VillaDayOccupancy>,
+  existingOccupancyByDateKey: ReadonlyMap<string, VillaDayOccupancy>
+): Map<string, VillaDayOccupancy> {
+  for (const [dateKey, nextStatus] of map) {
+    if (
+      getOccupancy(existingOccupancyByDateKey, dateKey) === "RESERVED" &&
+      nextStatus !== "RESERVED"
+    ) {
+      map.set(dateKey, "RESERVED");
+    }
+  }
+  return map;
+}
+
 /**
  * DOLU komutu: seçilen aralığı mevcut komşu doluluklarla birleştirir.
  * - İç geceler (başlangıç+1 .. bitiş-1) BOOKED olur.
@@ -91,7 +107,7 @@ export function buildBookedOccupancyForStayMerged(
         next === "BOOKED" || next === "OPTION" ? "BOOKED" : "EMPTY"
       );
     }
-    return map;
+    return sealReservedDays(map, existingOccupancyByDateKey);
   }
 
   for (let index = 0; index < keys.length - 1; index++) {
@@ -123,7 +139,7 @@ export function buildBookedOccupancyForStayMerged(
   // Sonraki bloğun girişi occupancyCheckIn ile yalnızca bitiş gününde
   // zaten dolu giriş varken işaretlenir (ertesi gün dolu diye değil).
   map.set(lastDayKey, "EMPTY");
-  return map;
+  return sealReservedDays(map, existingOccupancyByDateKey);
 }
 
 export function buildBookedOccupancyForStay(
@@ -384,11 +400,11 @@ export function buildOptionOccupancyForStayMerged(
     );
 
     if (isOccupied(existing)) {
-      map.set(onlyKey, "OPTION");
+      map.set(onlyKey, existing === "RESERVED" ? "RESERVED" : "OPTION");
     } else {
       map.set(onlyKey, isOccupied(next) ? "OPTION" : "EMPTY");
     }
-    return map;
+    return sealReservedDays(map, existingOccupancyByDateKey);
   }
 
   for (let index = 0; index < keys.length - 1; index++) {
@@ -411,7 +427,7 @@ export function buildOptionOccupancyForStayMerged(
 
   const lastDayKey = keys[keys.length - 1]!;
   map.set(lastDayKey, "EMPTY");
-  return map;
+  return sealReservedDays(map, existingOccupancyByDateKey);
 }
 
 export function buildOptionOccupancyForStay(
