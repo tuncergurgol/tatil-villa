@@ -111,3 +111,23 @@ export function computeOwnerPayableAmount(
   const commission = Math.max(0, Math.round(Number(commissionAmount) || 0));
   return Math.max(0, prepayment - commission);
 }
+
+/**
+ * Ödeme ekleme üst sınırı.
+ * Onaylı rezervasyon: gerçekleşen ön ödeme − komisyon.
+ * İptal / tazminat: formda kayıtlı villa sahibine ödenecek tutar
+ * (komisyon düşülmüş net tutar; tekrar komisyon kesilmez).
+ */
+export function resolveOwnerPayableCap(input: {
+  status: string;
+  realizedPrepayment: number;
+  commissionAmount?: number | null;
+  storedOwnerPayableAmount?: number | null;
+}): number {
+  const realized = Math.max(0, Math.round(Number(input.realizedPrepayment) || 0));
+  if (realized <= 0) return 0;
+  if (input.status === "COMPENSATION" || input.status === "CANCELLED") {
+    return Math.max(0, Math.round(Number(input.storedOwnerPayableAmount) || 0));
+  }
+  return computeOwnerPayableAmount(realized, input.commissionAmount);
+}

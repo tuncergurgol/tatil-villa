@@ -11,8 +11,8 @@ import {
 import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 import { getOwnerDisplayName } from "@/lib/btrans-report";
 import {
-  computeOwnerPayableAmount,
   computeOwnerPaymentDueDate,
+  resolveOwnerPayableCap,
 } from "@/lib/owner-payment-schedule";
 import {
   OWNER_PAYMENT_EXCEL_HEADERS,
@@ -193,22 +193,15 @@ function resolveOwnerPayableForBooking(
     (sum, row) => sum + row.amount,
     0
   );
-  if (realizedPrepayment <= 0) return 0;
-
-  // Tazminat / iptal iadesi villa sahibine: kayıtlı ownerPayableAmount kullanılır
-  if (
-    booking.status === "COMPENSATION" ||
-    booking.status === "CANCELLED"
-  ) {
-    return Math.max(0, Math.round(Number(details.ownerPayableAmount) || 0));
-  }
-
-  // Onaylı rezervasyon: form ile aynı — gerçekleşen ön ödeme − komisyon
-  const commissionAmount = resolveBookingCommissionAmount(
-    details,
-    booking.totalPrice
-  );
-  return computeOwnerPayableAmount(realizedPrepayment, commissionAmount);
+  return resolveOwnerPayableCap({
+    status: booking.status,
+    realizedPrepayment,
+    commissionAmount: resolveBookingCommissionAmount(
+      details,
+      booking.totalPrice
+    ),
+    storedOwnerPayableAmount: details.ownerPayableAmount,
+  });
 }
 
 function mapBookingToOwnerListItem(

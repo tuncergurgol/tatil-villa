@@ -14,10 +14,11 @@ import { formatMoneyPlain } from "@/lib/booking-display";
 import {
   normalizeOwnerPayments,
   parseBookingDetails,
+  resolveBookingCommissionAmount,
   type BookingOwnerPaymentRecord,
 } from "@/lib/booking-form-details";
 import { prisma } from "@/lib/db";
-import { computeOwnerPayableAmount } from "@/lib/owner-payment-schedule";
+import { resolveOwnerPayableCap } from "@/lib/owner-payment-schedule";
 
 const createSchema = z.object({
   bookingId: z.string().min(1),
@@ -47,21 +48,26 @@ async function loadOwnerPayments(bookingId: string) {
     where: { id: bookingId },
     select: {
       details: true,
+      status: true,
+      totalPrice: true,
       prepayments: { select: { amount: true } },
     },
   });
   if (!booking) return null;
   const details = parseBookingDetails(booking.details);
-  const savedPrepayment = booking.prepayments.reduce(
+  const realizedPrepayment = booking.prepayments.reduce(
     (sum, row) => sum + row.amount,
     0
   );
-  // Villa sahibine ödeme yalnızca tahsil edilmiş ön ödemeden yapılabilir.
-  const prepaymentTotal = savedPrepayment;
-  const ownerPayableCap = computeOwnerPayableAmount(
-    prepaymentTotal,
-    details.commissionAmount
-  );
+  const ownerPayableCap = resolveOwnerPayableCap({
+    status: booking.status,
+    realizedPrepayment,
+    commissionAmount: resolveBookingCommissionAmount(
+      details,
+      booking.totalPrice
+    ),
+    storedOwnerPayableAmount: details.ownerPayableAmount,
+  });
   return { details, ownerPayableCap };
 }
 
