@@ -6,6 +6,7 @@ import {
   saveBiletallCredentials,
   type BiletallSettingsActionState,
 } from "@/app/actions/admin/biletall-settings";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100";
@@ -27,6 +28,8 @@ export default function BiletallCredentialsModal({
     BiletallSettingsActionState,
     FormData
   >(saveBiletallCredentials, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

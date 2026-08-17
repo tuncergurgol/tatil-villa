@@ -200,6 +200,7 @@ export default function BookingManagement({
   function refreshList() {
     setFilters(emptyBookingFilters());
     router.push("/admin/rezervasyonlar");
+    router.refresh();
   }
 
   async function downloadBookingReportExcel(

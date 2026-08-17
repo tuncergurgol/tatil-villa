@@ -144,7 +144,10 @@ export default function AdminMobileMenu() {
         <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-600">
           Bont Admin
         </p>
-        <h1 className="mt-0.5 text-xl font-bold text-slate-900">
+        <h1
+          data-no-page-refresh
+          className="mt-0.5 text-xl font-bold text-slate-900"
+        >
           {frameTitle(currentFrame)}
         </h1>
       </div>

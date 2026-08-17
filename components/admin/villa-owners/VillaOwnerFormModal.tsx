@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { VillaOwnerType } from "@prisma/client";
 import { X } from "lucide-react";
 import {
@@ -90,6 +91,7 @@ export default function VillaOwnerFormModal({
   onClose,
   onCreated,
 }: VillaOwnerFormModalProps) {
+  const router = useRouter();
   const isEdit = Boolean(owner);
   const action = isEdit ? updateVillaOwner : createVillaOwner;
   const [ownerType, setOwnerType] = useState<VillaOwnerType>(
@@ -126,6 +128,7 @@ export default function VillaOwnerFormModal({
         if (!isEdit && state.id) {
           await onCreated?.(state.id);
         }
+        router.refresh();
         if (!cancelled) onClose();
       } catch {
         if (!cancelled) setIsCompleting(false);
@@ -135,7 +138,7 @@ export default function VillaOwnerFormModal({
     return () => {
       cancelled = true;
     };
-  }, [isCompleting, isEdit, onClose, onCreated, state.id, state.success]);
+  }, [isCompleting, isEdit, onClose, onCreated, router, state.id, state.success]);
 
   if (!mounted) return null;
 

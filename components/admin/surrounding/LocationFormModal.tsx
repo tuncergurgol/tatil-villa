@@ -11,6 +11,7 @@ import type {
   SurroundingCategoryItem,
   SurroundingLocationItem,
 } from "@/lib/queries/surrounding";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface LocationFormModalProps {
   categories: SurroundingCategoryItem[];
@@ -31,6 +32,8 @@ export default function LocationFormModal({
     SurroundingActionState,
     FormData
   >(action, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

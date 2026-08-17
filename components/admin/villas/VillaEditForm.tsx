@@ -167,6 +167,7 @@ export default function VillaEditForm({
         }
         setBedroomReduceConfirm(null);
         router.push(returnPath);
+        router.refresh();
       } catch (err) {
         setError(formatSubmitError(err));
       }

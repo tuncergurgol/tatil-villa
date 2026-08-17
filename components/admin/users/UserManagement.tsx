@@ -15,6 +15,7 @@ import {
   USER_ROLE_OPTIONS,
   type AdminUserListItem,
 } from "@/lib/user-roles";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 type StatusFilter = "active" | "passive" | "all";
 
@@ -167,6 +168,8 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
     initialState
   );
 
+  useRefreshOnActionSuccess(state.success);
+
   useEffect(() => {
     if (state.success) {
       onClose();
@@ -236,6 +239,8 @@ function EditUserModal({
 }) {
   const updateAction = updateAdminUser.bind(null, user.id);
   const [state, formAction, pending] = useActionState(updateAction, initialState);
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) {

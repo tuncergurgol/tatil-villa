@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { Save, X } from "lucide-react";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 import {
   createCustomer,
   updateCustomer,
@@ -36,6 +37,8 @@ export default function CustomerFormModal({
     CustomerActionState,
     FormData
   >(action, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

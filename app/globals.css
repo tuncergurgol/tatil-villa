@@ -64,8 +64,13 @@ input[type="reset"]:not(:disabled):not([disabled]),
 input[type="checkbox"]:not(:disabled):not([disabled]),
 input[type="radio"]:not(:disabled):not([disabled]),
 input[type="file"]:not(:disabled):not([disabled]),
-input[type="image"]:not(:disabled):not([disabled]) {
+input[type="image"]:not(:disabled):not([disabled]),
+.admin-dashboard h1:not([data-no-page-refresh]) {
   cursor: pointer;
+}
+
+.admin-dashboard h1:not([data-no-page-refresh]):hover {
+  opacity: 0.72;
 }
 
 button:disabled,

@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/admin/agency-message-templates";
 import { getSortedAgencyMessageRecipientOptions } from "@/lib/agency-message-recipients";
 import type { AgencyMessageTemplateItem } from "@/lib/queries/agency-message-templates";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface AgencyMessageTemplateFormModalProps {
   item?: AgencyMessageTemplateItem;
@@ -34,6 +35,8 @@ export default function AgencyMessageTemplateFormModal({
     AgencyMessageTemplateActionState,
     FormData
   >(action, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

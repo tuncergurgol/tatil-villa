@@ -7,6 +7,7 @@ import {
   type VillaOwnerActionState,
 } from "@/app/actions/admin/villa-owners";
 import { includesSearchText } from "@/lib/search-text";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 type UnlinkedUser = {
   id: string;
@@ -38,6 +39,8 @@ export default function AuthorizeUserModal({
         includesSearchText(user.email, search)
     );
   }, [users, search]);
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();
