@@ -35,6 +35,13 @@ export type OwnerPaymentIncompleteRow = {
   missing: string[];
 };
 
+export type OwnerPaymentMailRow = {
+  externalCode: string;
+  ownerName: string;
+  villaName: string;
+  amount: number;
+};
+
 export type OwnerPaymentReportListItem = AdminBookingListItem & {
   /** Aynı rezervasyonda villa sahibi + misafir iade satırı olabilir. */
   reportRowId: string;
@@ -583,6 +590,7 @@ export async function generateOwnerPaymentReportForCheckInDate(
 
   const rows: (string | number)[][] = [[...OWNER_PAYMENT_EXCEL_HEADERS]];
   const incomplete: OwnerPaymentIncompleteRow[] = [];
+  const payments: OwnerPaymentMailRow[] = [];
   let paidCount = 0;
   let matchedCount = 0;
   let overdueCount = 0;
@@ -658,6 +666,14 @@ export async function generateOwnerPaymentReportForCheckInDate(
         });
       } else {
         rows.push(buildOwnerPaymentExcelRow(exportInput));
+        payments.push({
+          externalCode:
+            resolveExternalCode(booking.externalCode, booking.guestEmail) ||
+            booking.id,
+          ownerName: resolveOwnerName(booking.villa.owner),
+          villaName: booking.villa.name,
+          amount: Math.round(ownerRemaining.remainingAmount),
+        });
       }
     }
 
@@ -687,6 +703,14 @@ export async function generateOwnerPaymentReportForCheckInDate(
             villaName: booking.villa.name,
           })
         );
+        payments.push({
+          externalCode:
+            resolveExternalCode(booking.externalCode, booking.guestEmail) ||
+            booking.id,
+          ownerName: `${booking.guestName} (Misafir İade)`,
+          villaName: booking.villa.name,
+          amount: Math.round(guestRemaining.remainingAmount),
+        });
       }
     }
   }
@@ -700,5 +724,6 @@ export async function generateOwnerPaymentReportForCheckInDate(
     overdueCount,
     incompleteCount: incomplete.length,
     incomplete,
+    payments,
   };
 }

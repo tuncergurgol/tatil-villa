@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   buildDailyInvoiceReportText,
   buildDailyOwnerPaymentReportText,
+  buildDailyReportHtml,
   formatDateKeyTr,
   workbookBufferFromRows,
 } from "../lib/daily-check-in-report-mail";
@@ -57,6 +58,14 @@ const filledOwner = buildDailyOwnerPaymentReportText({
   incompleteCount: 1,
   paidCount: 1,
   overdueCount: 2,
+  payments: [
+    {
+      externalCode: "115033",
+      ownerName: "Barış Çiçek",
+      villaName: "Villa Deniz",
+      amount: 2590,
+    },
+  ],
   incomplete: [
     {
       externalCode: "2002",
@@ -70,6 +79,36 @@ assert.match(filledOwner, /Excel'e alınan ev sahibi ödemesi: 1/);
 assert.match(filledOwner, /Ödemesi kalmayan/);
 assert.match(filledOwner, /Vadesi geçmiş ve açık ödeme: 2/);
 assert.match(filledOwner, /Ev sahibi ödemeleri Excel ektedir/);
+assert.match(filledOwner, /Ödeme listesi:/);
+assert.match(filledOwner, /115033 — Barış Çiçek — Villa Deniz — 2\.590 TL/);
+assert.match(filledOwner, /Toplam: 2\.590 TL/);
+
+const ownerHtml = buildDailyReportHtml({
+  title: "Ev sahibi ödemeleri günlük kontrolü — TEST",
+  checkInDateKey: "2026-08-12",
+  matchedCount: 3,
+  exportCount: 1,
+  incompleteCount: 0,
+  emptyMessage: "Bugün gönderilecek ev sahibi ödemesi bulunmamaktadır.",
+  attachedMessage: "Ev sahibi ödemeleri Excel ektedir.",
+  incomplete: [],
+  payments: [
+    {
+      externalCode: "115033",
+      ownerName: "Barış Çiçek",
+      villaName: "Villa Deniz",
+      amount: 2590,
+    },
+  ],
+});
+assert.match(ownerHtml, /Rezervasyon No/);
+assert.match(ownerHtml, /Villa Sahibi Adı/);
+assert.match(ownerHtml, /Villa Adı/);
+assert.match(ownerHtml, /Ödenecek Tutar/);
+assert.match(ownerHtml, /115033/);
+assert.match(ownerHtml, /Barış Çiçek/);
+assert.match(ownerHtml, /Villa Deniz/);
+assert.match(ownerHtml, /2\.590 TL/);
 
 const buffer = workbookBufferFromRows([
   ["Alıcı", "IBAN", "Tutar"],

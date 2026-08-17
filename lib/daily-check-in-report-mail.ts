@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { formatMoneyPlain } from "@/lib/booking-display";
 
 export const DAILY_CHECK_IN_REPORT_EMAIL = "info@tatildeyiz.com.tr";
 export const INVOICE_DAILY_EMAIL_SUBJECT = "KONAKLAMA FATURALARI";
@@ -7,6 +8,13 @@ export const OWNER_PAYMENT_DAILY_EMAIL_SUBJECT = "EV SAHİBİ ÖDEMELERİ";
 export const DAILY_REPORT_EXCEL_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+export type DailyOwnerPaymentMailRow = {
+  externalCode: string;
+  ownerName: string;
+  villaName: string;
+  amount: number;
+};
+
 export type DailyReportMailSummary = {
   checkInDateKey: string;
   matchedCount: number;
@@ -14,6 +22,7 @@ export type DailyReportMailSummary = {
   incompleteCount: number;
   paidCount?: number;
   overdueCount?: number;
+  payments?: DailyOwnerPaymentMailRow[];
   incomplete: Array<{
     externalCode: string;
     guestName: string;
@@ -111,6 +120,18 @@ export function buildDailyOwnerPaymentReportText(
     );
   }
 
+  const payments = summary.payments ?? [];
+  if (payments.length > 0) {
+    lines.push("", "Ödeme listesi:");
+    for (const row of payments) {
+      lines.push(
+        `${row.externalCode} — ${row.ownerName} — ${row.villaName} — ${formatMoneyPlain(row.amount)}`
+      );
+    }
+    const totalAmount = payments.reduce((sum, row) => sum + row.amount, 0);
+    lines.push(`Toplam: ${formatMoneyPlain(totalAmount)}`);
+  }
+
   if (summary.exportCount > 0) {
     lines.push("", "Ev sahibi ödemeleri Excel ektedir.");
   } else {
@@ -128,6 +149,44 @@ export function buildDailyOwnerPaymentReportText(
   return lines.join("\n");
 }
 
+function buildOwnerPaymentListHtml(payments: DailyOwnerPaymentMailRow[]) {
+  if (payments.length === 0) return "";
+
+  const totalAmount = payments.reduce((sum, row) => sum + row.amount, 0);
+  const body = payments
+    .map(
+      (row) => `
+              <tr>
+                <td>${escapeDailyReportHtml(row.externalCode)}</td>
+                <td>${escapeDailyReportHtml(row.ownerName)}</td>
+                <td>${escapeDailyReportHtml(row.villaName)}</td>
+                <td align="right">${escapeDailyReportHtml(formatMoneyPlain(row.amount))}</td>
+              </tr>`
+    )
+    .join("");
+
+  return `
+        <p><strong>Ödeme listesi</strong></p>
+        <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-size:14px;width:100%;max-width:720px;">
+          <thead>
+            <tr>
+              <th align="left">Rezervasyon No</th>
+              <th align="left">Villa Sahibi Adı</th>
+              <th align="left">Villa Adı</th>
+              <th align="right">Ödenecek Tutar</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${body}
+            <tr>
+              <td colspan="3"><strong>Toplam</strong></td>
+              <td align="right"><strong>${escapeDailyReportHtml(formatMoneyPlain(totalAmount))}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+}
+
 export function buildDailyReportHtml(input: {
   title: string;
   checkInDateKey: string;
@@ -139,6 +198,7 @@ export function buildDailyReportHtml(input: {
   emptyMessage: string;
   attachedMessage: string;
   incomplete: DailyReportMailSummary["incomplete"];
+  payments?: DailyOwnerPaymentMailRow[];
 }) {
   const checkInLabel = formatDateKeyTr(input.checkInDateKey);
   const paidLine =
@@ -198,6 +258,7 @@ export function buildDailyReportHtml(input: {
       ${overdueLine}
       ${paidLine}
       ${incompleteLine}
+      ${buildOwnerPaymentListHtml(input.payments ?? [])}
       ${resultLine}
       ${incompleteSection}
       <p>Bilgilerinize<br><strong>BONT</strong></p>

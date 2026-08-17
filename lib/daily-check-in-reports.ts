@@ -165,6 +165,7 @@ export async function sendOwnerPaymentDailyMail(
     paidCount: report.paidCount,
     overdueCount: report.overdueCount,
     incomplete: mapOwnerIncomplete(report.incomplete),
+    payments: report.payments,
   };
   const attach = report.count > 0;
   const text = buildDailyOwnerPaymentReportText(summary);
@@ -181,6 +182,7 @@ export async function sendOwnerPaymentDailyMail(
     emptyMessage: "Bugün gönderilecek ev sahibi ödemesi bulunmamaktadır.",
     attachedMessage: "Ev sahibi ödemeleri Excel ektedir.",
     incomplete: summary.incomplete,
+    payments: summary.payments,
   });
 
   let emailSent = false;
