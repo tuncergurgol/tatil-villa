@@ -11,6 +11,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Domain belirsizse varsayılan `www.tatildeyiz.com.tr` kullanılır.
 - Toplu villa teklif bağlantıları her zaman Tatildeyiz public frontend üzerinden ve kısa `/teklif/{code}` yapısıyla gönderilir.
 
+## Yerel çalışma
+
+- Cursor her zaman bu Windows bilgisayarda çalışır.
+- Cloud Agent / cloud VM yasaktır; Task `environment: "cloud"` kullanılmaz.
+
 ## Güvenlik
 
 - Admin paneli yalnızca `bont.tatildeyiz.com.tr` (`ADMIN_HOST`) üzerinden açılır.
