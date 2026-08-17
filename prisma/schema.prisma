@@ -1345,6 +1345,8 @@ model CompanySettings {
   googleReviewUrl                   String   @default("")
   guestReviewInvitesEnabled         Boolean  @default(true)
   scheduledBookingMessagesEnabled   Boolean  @default(true)
+  /// Belgesi olmayan villaların yayınlanmasına izin verilen public site anahtarları.
+  publishUndocumentedVillaSiteKeys  String[] @default([])
   facebookLeadEnabled               Boolean  @default(false)
   facebookLeadAppId                 String   @default("")
   facebookLeadAppSecret             String   @default("")

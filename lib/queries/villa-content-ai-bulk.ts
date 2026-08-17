@@ -1,9 +1,10 @@
 import type { TourismDocumentType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
+  getPublishUndocumentedVillaSiteKeys,
   isVillaVisibleOnPublicSite,
 } from "@/lib/public-villa-site-filter";
-import { PUBLIC_SITE_KEYS, PUBLIC_SITE_META } from "@/lib/public-site-keys";
+import { PUBLIC_SITE_KEYS, PUBLIC_SITE_META, type PublicSiteKey } from "@/lib/public-site-keys";
 
 export type VillaContentAiBulkRow = {
   id: string;
@@ -38,40 +39,46 @@ function previewText(value: string, max = 72) {
   return `${text.slice(0, max - 1).trimEnd()}…`;
 }
 
-function resolveSiteLabels(villa: {
-  active: boolean;
-  documentNo: string;
-  documentType: TourismDocumentType | null;
-}) {
+function resolveSiteLabels(
+  villa: {
+    active: boolean;
+    documentNo: string;
+    documentType: TourismDocumentType | null;
+  },
+  allowedSiteKeys: readonly PublicSiteKey[]
+) {
   return PUBLIC_SITE_KEYS.filter((siteKey) =>
-    isVillaVisibleOnPublicSite(villa, siteKey)
+    isVillaVisibleOnPublicSite(villa, siteKey, allowedSiteKeys)
   ).map((siteKey) => PUBLIC_SITE_META[siteKey].label);
 }
 
 export async function getVillaContentAiBulkRows(): Promise<VillaContentAiBulkRow[]> {
-  const villas = await prisma.villa.findMany({
-    orderBy: [{ villaId: "asc" }, { name: "asc" }],
-    select: {
-      id: true,
-      villaId: true,
-      name: true,
-      active: true,
-      description: true,
-      seoTitle: true,
-      seoKeywords: true,
-      seoDescription: true,
-      documentNo: true,
-      documentType: true,
-      descriptionAiUpdatedAt: true,
-      descriptionAiReport: true,
-      seoAiUpdatedAt: true,
-      seoAiReport: true,
-    },
-  });
+  const [villas, allowedSiteKeys] = await Promise.all([
+    prisma.villa.findMany({
+      orderBy: [{ villaId: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        villaId: true,
+        name: true,
+        active: true,
+        description: true,
+        seoTitle: true,
+        seoKeywords: true,
+        seoDescription: true,
+        documentNo: true,
+        documentType: true,
+        descriptionAiUpdatedAt: true,
+        descriptionAiReport: true,
+        seoAiUpdatedAt: true,
+        seoAiReport: true,
+      },
+    }),
+    getPublishUndocumentedVillaSiteKeys(),
+  ]);
 
   return villas.map((villa) => {
     const descriptionText = stripHtml(villa.description);
-    const siteLabels = resolveSiteLabels(villa);
+    const siteLabels = resolveSiteLabels(villa, allowedSiteKeys);
     const lastUpdatedAt =
       villa.descriptionAiUpdatedAt && villa.seoAiUpdatedAt
         ? new Date(

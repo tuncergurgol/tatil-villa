@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
 import type { PublicSiteProfile } from "@/lib/public-site-profile";
-import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
+import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 import { getVillaPeriodPriceRanges } from "@/lib/queries/villas";
 import { getVillaGalleryImages } from "@/lib/villa-gallery";
 
@@ -74,7 +74,7 @@ export async function buildMetaCatalogFeedXml(
   const origin = metadataBase.origin;
 
   const villas = await prisma.villa.findMany({
-    where: withPublicSiteVillaFilter(
+    where: await resolvePublicSiteVillaFilter(
       { active: true, showInSearch: true },
       site.key
     ),

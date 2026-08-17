@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { updateCompanySettings } from "@/lib/queries/company-settings";
+import { updateCompanySettings, getCompanySettings } from "@/lib/queries/company-settings";
 import {
   PUBLIC_SITE_KEYS,
+  isPublicSiteKey,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
+import { invalidatePublishUndocumentedVillaSiteKeysCache } from "@/lib/public-villa-site-filter";
 import {
   upsertAllPublicSiteTracking,
   type PublicSiteTrackingFields,
@@ -233,5 +235,37 @@ export async function saveCompanySettings(
     return { success: true };
   } catch {
     return { error: "Kayıt sırasında bir hata oluştu" };
+  }
+}
+
+export async function setUndocumentedVillaPublishForSite(
+  siteKey: string,
+  publish: boolean
+): Promise<CompanySettingsActionState> {
+  await requireAdmin();
+
+  if (!isPublicSiteKey(siteKey)) {
+    return { error: "Geçersiz site" };
+  }
+
+  try {
+    const settings = await getCompanySettings();
+    const current = (
+      settings.publishUndocumentedVillaSiteKeys ?? []
+    ).filter(isPublicSiteKey);
+    const next = publish
+      ? Array.from(new Set([...current, siteKey]))
+      : current.filter((key) => key !== siteKey);
+
+    await updateCompanySettings({
+      publishUndocumentedVillaSiteKeys: next,
+    });
+    invalidatePublishUndocumentedVillaSiteKeysCache();
+    revalidatePath("/admin/acente/sirket");
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    return { success: true };
+  } catch {
+    return { error: "Durum güncellenemedi" };
   }
 }

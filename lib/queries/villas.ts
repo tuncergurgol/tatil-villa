@@ -22,7 +22,7 @@ import { convertCurrencyAmount } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import { VILLA_SEARCH_PAGE_SIZE } from "@/lib/villa-search-params";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
-import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
+import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 export interface VillaFilters {
   filter?: string;
@@ -241,7 +241,7 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
     };
   }
 
-  const where = withPublicSiteVillaFilter(baseWhere, filters.siteKey);
+  const where = await resolvePublicSiteVillaFilter(baseWhere, filters.siteKey);
 
   const isRandom = filters.sort === "random";
   const orderBy = getVillaOrderBy(filters.filter, filters.sort);
@@ -592,7 +592,7 @@ async function resolvePublicSearchStay(
 export async function getSearchCategoryOptions(siteKey?: PublicSiteKey) {
   const groups = await prisma.villa.groupBy({
     by: ["category"],
-    where: withPublicSiteVillaFilter({ active: true }, siteKey),
+    where: await resolvePublicSiteVillaFilter({ active: true }, siteKey),
     _count: { _all: true },
   });
 
@@ -609,7 +609,7 @@ export async function getSearchCategoryOptions(siteKey?: PublicSiteKey) {
 
 /** Admin panelindeki Ev Kategorileri — arama filtresi için alfabetik. */
 export async function getSearchFacilityCategoryOptions(siteKey?: PublicSiteKey) {
-  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
+  const villaWhere = await resolvePublicSiteVillaFilter({ active: true }, siteKey);
   const [categories, villas] = await Promise.all([
     prisma.facilityCategory.findMany({
       select: { name: true },

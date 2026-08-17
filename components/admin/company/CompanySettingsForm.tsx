@@ -35,6 +35,7 @@ import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payme
 import CustomerContactChannelManagement from "@/components/admin/customer-contact-channels/CustomerContactChannelManagement";
 import CompanyBankAccountManagement from "@/components/admin/company/CompanyBankAccountManagement";
 import AgencySiteManagement from "@/components/admin/company/AgencySiteManagement";
+import UndocumentedVillaPublishSettings from "@/components/admin/company/UndocumentedVillaPublishSettings";
 import PaymentProviderManagement from "@/components/admin/company/PaymentProviderManagement";
 import MailSettingsFields from "@/components/admin/company/MailSettingsFields";
 import WhatsAppSettingsFields from "@/components/admin/company/WhatsAppSettingsFields";
@@ -528,13 +529,18 @@ export default function CompanySettingsForm({
               embedded
             />
           ) : activeTab === "acentenin-siteleri" ? (
-            <AgencySiteManagement
-              items={agencySites.items}
-              totalCount={agencySites.totalCount}
-              activeCount={agencySites.activeCount}
-              passiveCount={agencySites.passiveCount}
-              embedded
-            />
+            <div className="space-y-8">
+              <UndocumentedVillaPublishSettings
+                allowedSiteKeys={settings.publishUndocumentedVillaSiteKeys}
+              />
+              <AgencySiteManagement
+                items={agencySites.items}
+                totalCount={agencySites.totalCount}
+                activeCount={agencySites.activeCount}
+                passiveCount={agencySites.passiveCount}
+                embedded
+              />
+            </div>
           ) : activeTab === "odeme-yonetimi" ? (
             <PaymentProviderManagement
               items={paymentProviders.items}

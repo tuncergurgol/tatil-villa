@@ -16,7 +16,7 @@ import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
-import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
+import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 import { countNightsBetween } from "@/lib/villa-period-selection";
 import {
   parseVillaSearchPage,
@@ -53,7 +53,7 @@ interface PageProps {
 export const dynamic = "force-dynamic";
 
 async function getSearchAmenityOptions(siteKey?: PublicSiteKey) {
-  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
+  const villaWhere = await resolvePublicSiteVillaFilter({ active: true }, siteKey);
   const [searchAmenities, villas] = await Promise.all([
     prisma.amenity.findMany({
       where: { active: true, showInSearch: true },

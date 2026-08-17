@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
-import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
+import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 const blogListSelect = {
   id: true,
@@ -151,7 +151,7 @@ export async function getApprovedReviewsForPublic(
   limit = 12,
   siteKey?: PublicSiteKey
 ) {
-  const villaWhere = withPublicSiteVillaFilter({ active: true }, siteKey);
+  const villaWhere = await resolvePublicSiteVillaFilter({ active: true }, siteKey);
 
   const reviews = await prisma.guestReview.findMany({
     where: {

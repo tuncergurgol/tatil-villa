@@ -4,6 +4,7 @@ import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { RegionLevel } from "@/lib/region-levels";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import {
+  getPublishUndocumentedVillaSiteKeys,
   publicSiteRequiresTourismDocument,
   withPublicSiteVillaFilter,
 } from "@/lib/public-villa-site-filter";
@@ -71,8 +72,10 @@ export async function searchActiveVillasByName(
   const q = query.trim();
   if (q.length < 1) return [];
 
-  const requiresDocument = Boolean(
-    siteKey && publicSiteRequiresTourismDocument(siteKey)
+  const allowedSiteKeys = await getPublishUndocumentedVillaSiteKeys();
+  const requiresDocument = publicSiteRequiresTourismDocument(
+    siteKey,
+    allowedSiteKeys
   );
 
   // Türkçe-duyarlı katlama ile eşleşen villa id'lerini bul.
@@ -108,7 +111,8 @@ export async function searchActiveVillasByName(
         active: true,
         id: { in: matchedIds },
       },
-      siteKey
+      siteKey,
+      allowedSiteKeys
     ),
     select: {
       id: true,

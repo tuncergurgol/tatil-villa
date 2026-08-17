@@ -101,6 +101,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   googleReviewUrl: "",
   guestReviewInvitesEnabled: true,
   scheduledBookingMessagesEnabled: true,
+  publishUndocumentedVillaSiteKeys: [] as string[],
   tatilAssistantEnabled: true,
   assistantWahaBaseUrl: "http://localhost:3001",
   assistantWahaApiKey: "",

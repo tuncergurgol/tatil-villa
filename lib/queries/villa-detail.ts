@@ -9,6 +9,7 @@ import { approximateVillaCoords } from "@/lib/villa-approximate-location";
 import { resolveVillaRegionAddress } from "@/lib/villa-region-address";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import {
+  getPublishUndocumentedVillaSiteKeys,
   isVillaVisibleOnPublicSite,
   withPublicSiteVillaFilter,
 } from "@/lib/public-villa-site-filter";
@@ -112,7 +113,10 @@ export async function getVillaDetailBySlug(
   });
 
   if (!villa || !villa.active) return null;
-  if (siteKey && !isVillaVisibleOnPublicSite(villa, siteKey)) return null;
+  if (siteKey) {
+    const allowedSiteKeys = await getPublishUndocumentedVillaSiteKeys();
+    if (!isVillaVisibleOnPublicSite(villa, siteKey, allowedSiteKeys)) return null;
+  }
 
   const fromDate = startOfTodayUtc();
   const toDate = addMonthsUtc(fromDate, 4);
@@ -659,6 +663,7 @@ export async function getSimilarVillas(
     };
   }> = [];
   const seen = new Set<string>([villaId]);
+  const allowedSiteKeys = await getPublishUndocumentedVillaSiteKeys();
 
   for (const regionIds of tiers) {
     if (rowsDraft.length >= limit) break;
@@ -672,7 +677,8 @@ export async function getSimilarVillas(
           regionId: { in: regionIds },
           guests: { in: guestTargets },
         },
-        siteKey
+        siteKey,
+        allowedSiteKeys
       ),
       orderBy: [{ popular: "desc" }, { updatedAt: "desc" }],
       take: Math.max(remaining * 3, remaining),

@@ -6,7 +6,7 @@ import {
   type HomeDreamCategoryCard,
 } from "@/lib/home-dream-categories";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
-import { withPublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
+import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 export async function getFacilityCategoryAdminData() {
   const categories = await prisma.facilityCategory.findMany({
@@ -74,7 +74,7 @@ export async function getHomeDreamCategories(
       },
     }),
     prisma.villa.findMany({
-      where: withPublicSiteVillaFilter({ active: true }, siteKey),
+      where: await resolvePublicSiteVillaFilter({ active: true }, siteKey),
       select: { facilityCategories: true },
     }),
   ]);
