@@ -179,6 +179,6 @@ export async function resolveVillaStayQuote(
     baseCapacity: villa?.guests ?? 0,
     damageDeposit: periodFees.damageDeposit,
     allowPrepaymentOption: villa?.allowPrepaymentOption !== false,
-    allowFullPaymentOption: villa?.allowFullPaymentOption !== false,
+    allowFullPaymentOption: villa?.allowFullPaymentOption === true,
   };
 }

@@ -143,7 +143,7 @@ export default function PreReservationModal({
   brandName = "tatildeyiz",
   memberBenefits = null,
   allowPrepaymentOption = true,
-  allowFullPaymentOption = true,
+  allowFullPaymentOption = false,
 }: PreReservationModalProps) {
   const paymentAmountOptions = useMemo(
     () =>

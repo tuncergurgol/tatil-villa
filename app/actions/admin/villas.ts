@@ -525,7 +525,7 @@ export async function updateVillaRules(id: string, formData: FormData) {
     data: {
       prepaymentPaymentTypeId,
       allowPrepaymentOption: hasPaymentOption ? allowPrepaymentOption : true,
-      allowFullPaymentOption: hasPaymentOption ? allowFullPaymentOption : true,
+      allowFullPaymentOption: hasPaymentOption ? allowFullPaymentOption : false,
       checkInTime: String(formData.get("checkInTime") ?? "16:00"),
       checkOutTime: String(formData.get("checkOutTime") ?? "10:00"),
       allowBaby: parseBool(formData.get("allowBaby")),

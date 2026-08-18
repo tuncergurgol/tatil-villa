@@ -616,7 +616,7 @@ model Villa {
   showInSearch   Boolean       @default(true)
   showInOffer    Boolean       @default(true)
   allowPrepaymentOption Boolean @default(true)
-  allowFullPaymentOption Boolean @default(true)
+  allowFullPaymentOption Boolean @default(false)
   prepaymentPaymentTypeId String? @default("prepay_checkin_plus_1_day")
   prepaymentPaymentType   PrepaymentPaymentTypeOption? @relation(fields: [prepaymentPaymentTypeId], references: [id], onDelete: SetNull)
   ribbonText1    String        @default("")

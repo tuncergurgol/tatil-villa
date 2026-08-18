@@ -67,7 +67,7 @@ export default function VillaRulesTab({
     villa.allowPrepaymentOption !== false
   );
   const [allowFullPaymentOption, setAllowFullPaymentOption] = useState(
-    villa.allowFullPaymentOption !== false
+    villa.allowFullPaymentOption === true
   );
   const [showNaturePestNotice, setShowNaturePestNotice] = useState(
     villa.showNaturePestNotice

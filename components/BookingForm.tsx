@@ -161,7 +161,7 @@ export default function BookingForm({
   villaSummary,
   calendarDays = [],
   allowPrepaymentOption = true,
-  allowFullPaymentOption = true,
+  allowFullPaymentOption = false,
 }: BookingFormProps) {
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
   const [modalOpen, setModalOpen] = useState(false);

@@ -5,11 +5,11 @@ export function resolveVillaPaymentAmountOptions(villa: {
   allowFullPaymentOption?: boolean | null;
 }): BookingPaymentAmountOption[] {
   const allowPrepayment = villa.allowPrepaymentOption !== false;
-  const allowFullPayment = villa.allowFullPaymentOption !== false;
+  const allowFullPayment = villa.allowFullPaymentOption === true;
   const options: BookingPaymentAmountOption[] = [];
   if (allowPrepayment) options.push("prepayment");
   if (allowFullPayment) options.push("full");
-  return options.length > 0 ? options : ["prepayment", "full"];
+  return options.length > 0 ? options : ["prepayment"];
 }
 
 export function defaultVillaPaymentAmount(

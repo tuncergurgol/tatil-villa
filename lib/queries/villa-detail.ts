@@ -335,7 +335,7 @@ export async function getVillaDetailBySlug(
     allowSmoking: villa.allowSmoking,
     allowPets: villa.allowPets,
     allowPrepaymentOption: villa.allowPrepaymentOption !== false,
-    allowFullPaymentOption: villa.allowFullPaymentOption !== false,
+    allowFullPaymentOption: villa.allowFullPaymentOption === true,
     showNaturePestNotice: villa.showNaturePestNotice,
     customRules: villa.customRules,
     seoTitle: villa.seoTitle,
