@@ -805,8 +805,12 @@ export default function BookingForm({
         <button
           type="button"
           onClick={handleOpenModal}
-          disabled={pending || !canOpenModal}
-          className="w-full rounded-lg bg-emerald-600 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={pending || !canOpenModal || guestsOpen}
+          className={`w-full rounded-lg py-2.5 text-sm font-bold text-white shadow-sm transition disabled:cursor-not-allowed ${
+            guestsOpen || !canOpenModal || pending
+              ? "bg-emerald-600/40 hover:bg-emerald-600/40"
+              : "bg-emerald-600 hover:bg-emerald-700"
+          }`}
         >
           Ön Rezervasyon Talebi Gönder
         </button>

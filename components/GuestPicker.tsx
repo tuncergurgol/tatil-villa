@@ -158,11 +158,11 @@ export default function GuestPicker({
       </div>
 
       {onConfirm ? (
-        <div className="border-t border-gray-100 px-4 py-2.5">
+        <div className="border-t border-gray-100 px-4 py-3">
           <button
             type="button"
             onClick={onConfirm}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
+            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
           >
             {confirmLabel}
           </button>
