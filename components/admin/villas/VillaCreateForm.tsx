@@ -100,23 +100,23 @@ export default function VillaCreateForm() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-            Yeni Villa Ekle
-          </p>
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">Yeni Villa</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Genel bilgileri kaydedin; ardından galeri, oda, özellik, konum ve
-            diğer tüm sekmeler kullanıma açılır.
-          </p>
-        </div>
+    <div className="-mx-3 -mt-3 flex h-[calc(100dvh-4.5rem)] flex-col gap-3 px-3 pb-2 md:mx-0 md:mt-0 md:h-[calc(100dvh-3rem)] md:gap-4 md:px-0 md:pb-0">
+      <div className="shrink-0">
+        <p className="text-[10px] font-semibold tracking-[0.18em] text-gray-400 uppercase md:text-xs md:tracking-[0.2em]">
+          Yeni Villa Ekle
+        </p>
+        <h1 className="mt-0.5 text-xl font-bold text-gray-900 md:mt-1 md:text-3xl">
+          Yeni Villa
+        </h1>
+        <p className="mt-1.5 text-sm text-gray-500 md:mt-2">
+          Genel bilgileri kaydedin; ardından galeri, oda, özellik, konum ve
+          diğer tüm sekmeler kullanıma açılır.
+        </p>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="shrink-0 border-b border-gray-200 bg-white px-6">
-          <div className="flex flex-wrap gap-1">
+        <div className="shrink-0 border-b border-gray-200 bg-white">
+          <div className="flex gap-0 overflow-x-auto px-2 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:gap-1 md:overflow-visible md:px-6 [&::-webkit-scrollbar]:hidden">
             {tabs.map((tab) => {
               const isGeneral = tab.id === "genel";
               return (
@@ -124,7 +124,7 @@ export default function VillaCreateForm() {
                   key={tab.id}
                   type="button"
                   onClick={isGeneral ? undefined : handleLockedTab}
-                  className={`border-b-2 px-4 py-4 text-sm font-medium transition ${
+                  className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition md:px-4 md:py-4 ${
                     isGeneral
                       ? "cursor-default border-teal-600 text-teal-700"
                       : "cursor-pointer border-transparent text-gray-400 hover:border-gray-200 hover:text-gray-600"
@@ -145,7 +145,10 @@ export default function VillaCreateForm() {
             handleSubmit(new FormData(event.currentTarget));
           }}
         >
-          <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-6">
+          <div
+            ref={contentRef}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-6"
+          >
             {error ? (
               <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 {error}
@@ -162,17 +165,17 @@ export default function VillaCreateForm() {
             />
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-white px-3 py-3 md:gap-3 md:px-6 md:py-4">
             <Link
               href={returnPath}
-              className="cursor-pointer rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="cursor-pointer rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:px-5"
             >
               İptal
             </Link>
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:flex-none md:px-5"
             >
               <Save className="h-4 w-4" />
               {isPending ? "Kaydediliyor..." : "Kaydet ve Devam Et"}
