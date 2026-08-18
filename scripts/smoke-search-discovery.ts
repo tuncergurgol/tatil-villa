@@ -35,5 +35,6 @@ const llms = buildLlmsTxt({
 });
 assert.match(llms, /llms-full\.txt/);
 assert.match(llms, /sitemap\.xml/);
+assert.match(llms, /\.well-known\/llms\.txt/);
 
 console.log("smoke-search-discovery: OK");

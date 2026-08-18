@@ -226,6 +226,10 @@ export default function AnalyticsSettingsFields({
                   { label: "Sitemap", value: `https://${row.domain}/sitemap.xml` },
                   { label: "robots.txt", value: `https://${row.domain}/robots.txt` },
                   { label: "llms.txt (AI)", value: `https://${row.domain}/llms.txt` },
+                  {
+                    label: "llms.txt (well-known)",
+                    value: `https://${row.domain}/.well-known/llms.txt`,
+                  },
                   { label: "RSS", value: `https://${row.domain}/rss.xml` },
                   { label: "IndexNow anahtar dosyası", value: row.indexNowKeyUrl },
                 ].map((item) => (

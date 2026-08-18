@@ -104,6 +104,14 @@ const nextConfig: NextConfig = {
         source: "/:key([a-fA-F0-9]{32}).txt",
         destination: "/api/indexnow-key?key=:key",
       },
+      {
+        source: "/.well-known/llms.txt",
+        destination: "/llms.txt",
+      },
+      {
+        source: "/.well-known/llms-full.txt",
+        destination: "/llms-full.txt",
+      },
     ];
   },
   images: {

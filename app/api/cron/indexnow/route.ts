@@ -5,11 +5,12 @@ import {
   canonicalOriginFromDomain,
   createIndexNowKey,
   indexNowKeyLocation,
+  pingYandexSitemap,
   submitIndexNowUrls,
 } from "@/lib/search-discovery";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 function readCronSecret(request: Request) {
   return (
@@ -46,7 +47,8 @@ export async function GET(request: Request) {
       keyLocation: indexNowKeyLocation(origin, key),
       urls: pages.map((page) => page.url),
     });
-    results.push({ siteKey, host, ...submitted });
+    const yandex = await pingYandexSitemap(`${origin}/sitemap.xml`);
+    results.push({ siteKey, host, ...submitted, yandexPing: yandex.status });
   }
 
   return NextResponse.json({

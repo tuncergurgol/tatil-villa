@@ -126,6 +126,22 @@ export async function submitIndexNowUrls(input: {
   };
 }
 
+/** Yandex Webmaster sitemap ping (IndexNow ile birlikte). */
+export async function pingYandexSitemap(
+  sitemapUrl: string
+): Promise<{ ok: boolean; status: number }> {
+  const url = `https://webmaster.yandex.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`;
+  try {
+    const response = await fetch(url, { method: "GET" });
+    return {
+      ok: response.ok || response.status === 202,
+      status: response.status,
+    };
+  } catch {
+    return { ok: false, status: 0 };
+  }
+}
+
 export function buildOrganizationJsonLd(input: {
   origin: string;
   brandName: string;
@@ -213,6 +229,7 @@ Türkiye'de kiralık villa, bungalov ve tatil evi rezervasyonu. ${input.villaCou
 - [Sitemap](${origin}/sitemap.xml)
 - [RSS](${origin}/rss.xml)
 - [Tam içerik listesi](${origin}/llms-full.txt)
+- [AI keşif (well-known)](${origin}/.well-known/llms.txt)
 
 ## Notlar
 
