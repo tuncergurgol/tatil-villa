@@ -21,6 +21,7 @@ import { useVillaStaySelection } from "@/components/villa-detail/VillaStaySelect
 type CalendarDay = {
   date: string;
   occupancyStatus: "EMPTY" | "BOOKED" | "OPTION" | string;
+  occupancyCheckIn?: boolean;
   price: number;
   currency: string;
 };
@@ -93,12 +94,14 @@ function MonthGrid({
   month,
   dayMap,
   occupancyMap,
+  checkInDateKeys,
   exchangeRates,
 }: {
   year: number;
   month: number;
   dayMap: Map<string, CalendarDay>;
   occupancyMap: Map<string, VillaDayOccupancy>;
+  checkInDateKeys: ReadonlySet<string>;
   exchangeRates: PublicExchangeRates;
 }) {
   const {
@@ -143,7 +146,11 @@ function MonthGrid({
 
           const dateKey = cell.dateKey;
           const isPast = compareDates(parseDateKey(dateKey), today) < 0;
-          const kind = resolveVillaDayVisualFromMap(dateKey, occupancyMap);
+          const kind = resolveVillaDayVisualFromMap(
+            dateKey,
+            occupancyMap,
+            checkInDateKeys
+          );
           const visual = getPublicVillaDayVisualStyle(kind);
           const hasDayData = Boolean(cell.data);
           const priceTl =
@@ -255,6 +262,14 @@ export default function VillaAvailabilityCalendar({
     return map;
   }, [days]);
 
+  const checkInDateKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const day of days) {
+      if (day.occupancyCheckIn) set.add(day.date);
+    }
+    return set;
+  }, [days]);
+
   const months = useMemo(() => {
     const keys = new Set<string>();
     for (const day of days) {
@@ -343,6 +358,7 @@ export default function VillaAvailabilityCalendar({
           month={month1}
           dayMap={dayMap}
           occupancyMap={occupancyMap}
+          checkInDateKeys={checkInDateKeys}
           exchangeRates={exchangeRates}
         />
         {showTwo ? (
@@ -351,6 +367,7 @@ export default function VillaAvailabilityCalendar({
             month={month2}
             dayMap={dayMap}
             occupancyMap={occupancyMap}
+            checkInDateKeys={checkInDateKeys}
             exchangeRates={exchangeRates}
           />
         ) : null}

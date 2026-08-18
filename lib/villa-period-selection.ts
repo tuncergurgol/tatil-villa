@@ -393,9 +393,10 @@ function normalizeOccupancy(
 }
 
 /**
- * OPSİYON komutu: DOLU (BOOKED) ile aynı giriş–çıkış mantığını izler.
- * - Önceki gece doluysa çok gecelik opsiyonda ilk gün turnover EMPTY.
- * - Tek gecelik opsiyonda ilk gün OPTION (aksi halde dolu gece kalmaz).
+ * OPSİYON komutu: giriş günü dahil 1:1 yazılır.
+ * - İlk gece her zaman OPTION (önceki gece dolu olsa bile).
+ *   Aksi halde "5-9 Eylül opsiyon" 6 Eylül'den başlıyor görünür;
+ *   çıkış+giriş görseli BOOKED→OPTION geçişinden (booked_out_option_in) gelir.
  * - Son gün her zaman çıkış EMPTY.
  */
 export function buildOptionOccupancyForStayMerged(
@@ -426,22 +427,8 @@ export function buildOptionOccupancyForStayMerged(
   }
 
   for (let index = 0; index < keys.length - 1; index++) {
-    if (index > 0) {
-      map.set(keys[index]!, "OPTION");
-    }
+    map.set(keys[index]!, "OPTION");
   }
-
-  const firstDayKey = keys[0]!;
-  const dayBeforeFirst = getOccupancy(
-    existingOccupancyByDateKey,
-    offsetDateKey(firstDayKey, -1)
-  );
-  const firstDayStatus: VillaDayOccupancy = isOccupied(dayBeforeFirst)
-    ? keys.length === 2
-      ? "OPTION"
-      : "EMPTY"
-    : "OPTION";
-  map.set(firstDayKey, firstDayStatus);
 
   const lastDayKey = keys[keys.length - 1]!;
   map.set(lastDayKey, "EMPTY");

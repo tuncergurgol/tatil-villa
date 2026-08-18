@@ -612,7 +612,7 @@ assert(
   "28 Ağustos opsiyon dolu"
 );
 
-// Opsiyon, kapama çıkış gününden başlayınca ilk gün turnover EMPTY
+// Opsiyon, kapama çıkış gününden başlayınca ilk gece 1:1 OPTION kalır.
 const priorKapama = new Map<string, "BOOKED" | "EMPTY">([
   ["2026-08-24", "BOOKED"],
   ["2026-08-25", "BOOKED"],
@@ -629,8 +629,8 @@ const option26to31 = buildOptionOccupancyForStay(
   priorKapama
 );
 assert(
-  option26to31.get("2026-08-26") === "EMPTY",
-  "opsiyon 26–31: önceki dolu gece üstüne 26 turnover EMPTY"
+  option26to31.get("2026-08-26") === "OPTION",
+  "opsiyon 26–31: önceki dolu gece üstüne 26 OPTION giriş (1:1)"
 );
 assert(option26to31.get("2026-08-27") === "OPTION", "27 Ağustos OPTION");
 assert(option26to31.get("2026-08-30") === "OPTION", "30 Ağustos OPTION");
@@ -644,22 +644,54 @@ const option26to31Map = buildOccupancyMap(
     occupancyStatus,
   }))
 );
-const option26to31CheckIns = new Set(["2026-08-26"]);
 assert(
-  resolveVillaDayVisualFromMap(
-    "2026-08-26",
-    option26to31Map,
-    option26to31CheckIns
-  ) === "booked_out_option_in",
-  "26 Ağustos kapama çıkış + opsiyon giriş"
+  resolveVillaDayVisualFromMap("2026-08-26", option26to31Map) ===
+    "booked_out_option_in",
+  "26 Ağustos kapama çıkış + opsiyon giriş (public checkIn olmadan)"
 );
 assert(
-  resolveVillaDayVisualFromMap(
-    "2026-08-27",
-    option26to31Map,
-    option26to31CheckIns
-  ) === "option_full",
+  resolveVillaDayVisualFromMap("2026-08-27", option26to31Map) === "option_full",
   "27 Ağustos opsiyon dolu (yanlış giriş değil)"
+);
+
+// Villa Carpediem: 1–5 kapama çıkışı üstüne 5–9 opsiyon → 5 giriş, 9 çıkış
+const carpediemPrior = new Map<string, "BOOKED" | "EMPTY">([
+  ["2026-09-01", "BOOKED"],
+  ["2026-09-02", "BOOKED"],
+  ["2026-09-03", "BOOKED"],
+  ["2026-09-04", "BOOKED"],
+  ["2026-09-05", "EMPTY"],
+  ["2026-09-06", "EMPTY"],
+  ["2026-09-07", "EMPTY"],
+  ["2026-09-08", "EMPTY"],
+  ["2026-09-09", "EMPTY"],
+]);
+const carpediemOption = buildOptionOccupancyForStay(
+  "2026-09-05",
+  "2026-09-09",
+  carpediemPrior
+);
+assert(
+  carpediemOption.get("2026-09-05") === "OPTION",
+  "5-9 Eylül opsiyon: 5 Eylül giriş OPTION (bir gün kaymaz)"
+);
+assert(carpediemOption.get("2026-09-06") === "OPTION", "6 Eylül OPTION");
+assert(carpediemOption.get("2026-09-08") === "OPTION", "8 Eylül OPTION");
+assert(carpediemOption.get("2026-09-09") === "EMPTY", "9 Eylül opsiyon çıkış");
+const carpediemMap = buildOccupancyMap(
+  [...carpediemPrior, ...carpediemOption.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-09-05", carpediemMap) ===
+    "booked_out_option_in",
+  "5 Eylül kapama çıkış + opsiyon giriş"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-09-09", carpediemMap) ===
+    "option_check_out",
+  "9 Eylül opsiyon çıkış"
 );
 
 // Opsiyon sonrası KAPAMA 1:1: giriş OPTION kalmamalı, sarı üçgen pembe olur.

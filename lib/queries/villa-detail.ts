@@ -158,6 +158,7 @@ export async function getVillaDetailBySlug(
         select: {
           date: true,
           occupancyStatus: true,
+          occupancyCheckIn: true,
           availability: true,
           nightlyPrice: true,
           nightlyPriceWithoutCommission: true,
@@ -395,6 +396,7 @@ export async function getVillaDetailBySlug(
     calendarDays: calendarDays.map((day) => ({
       date: dbDateToDateKey(day.date),
       occupancyStatus: day.occupancyStatus,
+      occupancyCheckIn: day.occupancyCheckIn,
       availability: day.availability,
       nightlyPrice: day.nightlyPrice,
       nightlyPriceWithoutCommission: day.nightlyPriceWithoutCommission,
