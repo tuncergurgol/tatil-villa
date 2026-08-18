@@ -192,28 +192,34 @@ export default function Header({
         className="border-t border-gray-100 bg-slate-50/80 px-4 py-2 md:hidden"
       >
         <div className="mx-auto flex max-w-7xl flex-col gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={whatsAppButtonClass}
-              aria-label={`WhatsApp ile yazın: ${displayPhone}`}
-            >
-              <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-white" />
-              <span className="truncate">{displayPhone}</span>
-            </a>
-            <MemberLoginLink label={tHeader("memberLogin")} />
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <HeaderVillaSearch className="min-w-0 flex-1" compact />
-            <LanguageSwitcher className="shrink-0" />
-          </div>
+          <a
+            href={waHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={whatsAppButtonClass}
+            aria-label={`WhatsApp ile yazın: ${displayPhone}`}
+          >
+            <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-white" />
+            <span className="truncate">{displayPhone}</span>
+          </a>
+          <HeaderVillaSearch className="min-w-0 w-full" compact />
         </div>
       </div>
 
       {mobileOpen && (
         <div className="border-t border-gray-100 px-4 py-3 md:hidden">
+          <div className="mb-2 flex flex-col gap-2 border-b border-gray-100 pb-3">
+            <MemberLoginLink
+              className="w-full justify-center"
+              label={tHeader("memberLogin")}
+            />
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+              <span className="text-sm font-medium text-slate-700">
+                {tHeader("language")}
+              </span>
+              <LanguageSwitcher className="shrink-0" />
+            </div>
+          </div>
           <nav className="flex flex-col gap-0.5">
             {resolvedNavLinks.map((link) => (
               <Link

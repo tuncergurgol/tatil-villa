@@ -35,6 +35,7 @@ export type AppMessages = {
     search: string;
     reservation: string;
     callUs: string;
+    weWillCallYou: string;
     whatsapp: string;
   };
   common: {
@@ -122,6 +123,7 @@ const tr: AppMessages = {
     search: "Villa Ara",
     reservation: "Rezervasyon",
     callUs: "Bizi Arayın",
+    weWillCallYou: "Sizi Arayalım",
     whatsapp: "WhatsApp",
   },
   common: {
@@ -210,6 +212,7 @@ const en: AppMessages = {
     search: "Search Villa",
     reservation: "Reservation",
     callUs: "Call Us",
+    weWillCallYou: "We'll Call You",
     whatsapp: "WhatsApp",
   },
   common: {
@@ -298,6 +301,7 @@ const de: AppMessages = {
     search: "Villa suchen",
     reservation: "Reservierung",
     callUs: "Rufen Sie uns an",
+    weWillCallYou: "Wir rufen Sie an",
     whatsapp: "WhatsApp",
   },
   common: {
@@ -386,6 +390,7 @@ const fr: AppMessages = {
     search: "Rechercher",
     reservation: "Réservation",
     callUs: "Appelez-nous",
+    weWillCallYou: "On vous rappelle",
     whatsapp: "WhatsApp",
   },
   common: {
@@ -474,6 +479,7 @@ const es: AppMessages = {
     search: "Buscar villa",
     reservation: "Reserva",
     callUs: "Llámenos",
+    weWillCallYou: "Le llamamos",
     whatsapp: "WhatsApp",
   },
   common: {
@@ -562,6 +568,7 @@ const bg: AppMessages = {
     search: "Търсене",
     reservation: "Резервация",
     callUs: "Обадете се",
+    weWillCallYou: "Ще ви се обадим",
     whatsapp: "WhatsApp",
   },
   common: {
@@ -650,6 +657,7 @@ const el: AppMessages = {
     search: "Αναζήτηση",
     reservation: "Κράτηση",
     callUs: "Καλέστε μας",
+    weWillCallYou: "Θα σας καλέσουμε",
     whatsapp: "WhatsApp",
   },
   common: {
@@ -738,6 +746,7 @@ const zh: AppMessages = {
     search: "搜索别墅",
     reservation: "预订",
     callUs: "致电我们",
+    weWillCallYou: "我们给您回拨",
     whatsapp: "WhatsApp",
   },
   common: {

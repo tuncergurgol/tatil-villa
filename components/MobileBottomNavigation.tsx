@@ -106,7 +106,7 @@ export default function MobileBottomNavigation({
             <span className={iconWrapClass}>
               <PhoneIncoming className="h-[22px] w-[22px]" strokeWidth={1.8} />
             </span>
-            <span>{t("callUs")}</span>
+            <span className="text-center">{t("weWillCallYou")}</span>
           </Link>
 
           <div className="flex min-w-0 justify-center">
