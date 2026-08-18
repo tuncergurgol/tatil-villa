@@ -22,6 +22,7 @@ function revalidateCmsPaths() {
     "/admin/icerik/sss",
     "/admin/icerik/blog",
     "/admin/musteri-yonetimi/yorumlar",
+    "/admin",
     "/admin/icerik/kurumsal",
     "/admin/icerik/menuler",
     "/admin/kampanyalar",

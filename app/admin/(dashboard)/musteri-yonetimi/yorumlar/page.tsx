@@ -1,4 +1,5 @@
 import ReviewManagement from "@/components/admin/content/ReviewManagement";
+import { parseGuestReviewAdminStatus } from "@/lib/guest-review-admin-url";
 import {
   getAllReviewsForAdmin,
   getVillasForReviewAdmin,
@@ -6,7 +7,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function MusteriYorumlariPage() {
+export default async function MusteriYorumlariPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const params = await searchParams;
   const [reviews, villas] = await Promise.all([
     getAllReviewsForAdmin(),
     getVillasForReviewAdmin(),
@@ -15,7 +21,11 @@ export default async function MusteriYorumlariPage() {
   return (
     <div className="flex h-[calc(100dvh-3rem)] w-full flex-col overflow-hidden lg:h-[calc(100dvh-4rem)]">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <ReviewManagement reviews={reviews} villas={villas} />
+        <ReviewManagement
+          reviews={reviews}
+          villas={villas}
+          initialStatus={parseGuestReviewAdminStatus(params.status)}
+        />
       </div>
     </div>
   );

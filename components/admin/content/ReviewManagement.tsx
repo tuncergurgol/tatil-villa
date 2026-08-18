@@ -16,6 +16,10 @@ import {
   CmsFormSection,
   cmsInputClass,
 } from "@/components/admin/content/CmsFormSections";
+import {
+  guestReviewsAdminHref,
+  type GuestReviewAdminStatus,
+} from "@/lib/guest-review-admin-url";
 
 type VillaOption = {
   id: string;
@@ -40,7 +44,7 @@ type ReviewRow = {
   villa: { id: string; name: string; villaId: number | null } | null;
 };
 
-type StatusFilter = "pending" | "approved" | "rejected";
+type StatusFilter = GuestReviewAdminStatus;
 
 function reviewIsPending(review: ReviewRow) {
   return !review.approved && !review.rejectedReason?.trim();
@@ -549,16 +553,23 @@ function ReviewCreateModal({
 export default function ReviewManagement({
   reviews,
   villas,
+  initialStatus = "pending",
 }: {
   reviews: ReviewRow[];
   villas: VillaOption[];
+  initialStatus?: StatusFilter;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
   const [selectedVillaIds, setSelectedVillaIds] = useState<string[]>([]);
   const [editing, setEditing] = useState<ReviewRow | null>(null);
   const [creating, setCreating] = useState(false);
+
+  function selectStatus(next: StatusFilter) {
+    setStatusFilter(next);
+    router.replace(guestReviewsAdminHref(next), { scroll: false });
+  }
 
   const villaOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -642,7 +653,7 @@ export default function ReviewManagement({
             <button
               key={button.key}
               type="button"
-              onClick={() => setStatusFilter(button.key)}
+              onClick={() => selectStatus(button.key)}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 active
                   ? "bg-teal-600 text-white shadow-sm"

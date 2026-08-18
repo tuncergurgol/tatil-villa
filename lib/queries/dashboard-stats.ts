@@ -122,3 +122,12 @@ export async function getDashboardIntegrationLeadStats(): Promise<DashboardInteg
 
   return { newObiletInquiries, newYolcu360Orders, newFacebookLeads };
 }
+
+export async function getDashboardPendingGuestReviewCount(): Promise<number> {
+  return prisma.guestReview.count({
+    where: {
+      approved: false,
+      rejectedReason: "",
+    },
+  });
+}

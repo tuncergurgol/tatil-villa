@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { formatGuestReviewStayMonth } from "@/lib/guest-review-invite";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { notifyGuestReviewSubmitted } from "@/lib/guest-review-notify";
 
 const submitSchema = z.object({
   token: z.string().min(8),
@@ -75,7 +76,7 @@ export async function submitGuestReviewAction(
     include: {
       booking: {
         include: {
-          villa: { select: { id: true } },
+          villa: { select: { id: true, name: true, originalName: true } },
           guestReview: { select: { id: true } },
         },
       },
@@ -91,19 +92,26 @@ export async function submitGuestReviewAction(
   }
 
   const now = new Date();
+  const villaName =
+    invitation.booking.villa.originalName?.trim() ||
+    invitation.booking.villa.name;
+  const stayMonth = formatGuestReviewStayMonth(invitation.booking.checkOut);
+  const title = parsed.data.title?.trim() ?? "";
+  const comment = parsed.data.comment.trim();
+  const rating = parsed.data.rating;
 
   await prisma.$transaction(async (tx) => {
     await tx.guestReview.create({
       data: {
         guestName: invitation.booking.guestName,
         guestCity: parsed.data.guestCity?.trim() ?? "",
-        rating: parsed.data.rating,
-        title: parsed.data.title?.trim() ?? "",
-        comment: parsed.data.comment.trim(),
+        rating,
+        title,
+        comment,
         villaId: invitation.booking.villa.id,
         bookingId: invitation.booking.id,
         invitationId: invitation.id,
-        stayMonth: formatGuestReviewStayMonth(invitation.booking.checkOut),
+        stayMonth,
         source: "guest_invite",
         approved: false,
         featured: false,
@@ -117,8 +125,19 @@ export async function submitGuestReviewAction(
     });
   });
 
+  await notifyGuestReviewSubmitted({
+    guestName: invitation.booking.guestName,
+    villaName,
+    rating,
+    title,
+    comment,
+    stayMonth,
+  });
+
   revalidatePath("/yorumlar");
   revalidatePath("/admin/icerik");
+  revalidatePath("/admin/musteri-yonetimi/yorumlar");
+  revalidatePath("/admin");
 
   const company = await getCompanySettings();
 

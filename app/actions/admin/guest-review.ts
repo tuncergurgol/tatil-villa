@@ -13,6 +13,7 @@ export type GuestReviewAdminActionState = {
 
 function revalidateReviewPaths() {
   revalidatePath("/admin/musteri-yonetimi/yorumlar");
+  revalidatePath("/admin");
   revalidatePath("/yorumlar");
   revalidatePath("/");
 }
