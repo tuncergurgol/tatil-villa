@@ -8,6 +8,7 @@ import {
   type VillaPricePeriodDay,
   type VillaRoom,
 } from "@prisma/client";
+import { allocateNextVillaId } from "@/lib/villa-numeric-id";
 import { prisma } from "@/lib/db";
 import {
   buildVillaSlugFromName,
@@ -40,11 +41,6 @@ async function buildUniqueCopyName(baseName: string) {
 async function buildUniqueSlug(name: string, excludeVillaId?: string) {
   const baseSlug = buildVillaSlugFromName(stripVillaCopyLabelFromName(name));
   return ensureUniqueVillaSlug(baseSlug, excludeVillaId);
-}
-
-async function allocateNextVillaId() {
-  const { _max } = await prisma.villa.aggregate({ _max: { villaId: true } });
-  return (_max.villaId ?? 0) + 1;
 }
 
 function villaScalarsForClone(
@@ -233,12 +229,10 @@ export async function cloneVilla(sourceId: string) {
   }
 
   const copyName = await buildUniqueCopyName(source.name);
-  const [slug, nextVillaId] = await Promise.all([
-    buildUniqueSlug(copyName),
-    allocateNextVillaId(),
-  ]);
+  const slug = await buildUniqueSlug(copyName);
 
   const created = await prisma.$transaction(async (tx) => {
+    const nextVillaId = await allocateNextVillaId(tx);
     const villa = await tx.villa.create({
       data: villaScalarsForClone(source, copyName, slug, nextVillaId),
     });

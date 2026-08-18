@@ -109,15 +109,17 @@ export default function VillaGeneralTab({
               className={inputClass}
             />
           </Field>
-          {villa.villaId != null ? (
-            <Field label="Villa ID">
-              <input
-                readOnly
-                value={String(villa.villaId)}
-                className={`${inputClass} cursor-default bg-gray-100 text-gray-600`}
-              />
-            </Field>
-          ) : null}
+          <Field label="Villa ID">
+            <input
+              readOnly
+              value={
+                villa.villaId != null
+                  ? String(villa.villaId)
+                  : "Kayıtta otomatik verilir"
+              }
+              className={`${inputClass} cursor-default bg-gray-100 text-gray-600`}
+            />
+          </Field>
           <Field label="Ev Tipi">
             <select
               name="category"

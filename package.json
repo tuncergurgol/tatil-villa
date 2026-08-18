@@ -31,6 +31,7 @@
     "import:images:101-200": "tsx scripts/import-villa-images-from-tatildeyiz.ts --from-id=101 --to-id=200 --resume --report=scripts/import-villa-images-101-200.json",
     "import:images:201-300": "tsx scripts/import-villa-images-from-tatildeyiz.ts --from-id=201 --to-id=300 --resume --report=scripts/import-villa-images-201-300.json",
     "backfill:period-days": "tsx scripts/backfill-period-days.ts",
+    "backfill:villa-ids": "tsx scripts/assign-missing-villa-ids.ts",
     "backfill:period-days:villa": "tsx scripts/backfill-period-days.ts --db-villa-id=2213",
     "repair:period-range": "tsx scripts/repair-villa-period-range.ts",
     "sync:projects": "powershell -ExecutionPolicy Bypass -File scripts/sync-to-projects.ps1",

@@ -22,6 +22,10 @@ import {
 } from "@/lib/villa-slug";
 import { cloneVilla } from "@/lib/villa-clone";
 import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
+import {
+  allocateNextVillaId,
+  assignMissingVillaNumericIds,
+} from "@/lib/villa-numeric-id";
 
 function readDescription(formData: FormData): string {
   return normalizeVillaDescriptionForStorage(
@@ -85,36 +89,42 @@ export async function createVillaFromGeneral(
       formData.get("salesType") ?? "komisyon"
     ) as SalesType;
 
-    const villa = await prisma.villa.create({
-      data: {
-        slug,
-        name,
-        originalName: String(formData.get("originalName") ?? "").trim(),
-        category:
-          (formData.get("category") as VillaCategory) || VillaCategory.villa,
-        regionId: fallbackRegion.id,
-        location: "",
-        guests: parseIntField(formData.get("guests"), 1),
-        extraCapacity: parseIntField(formData.get("extraCapacity"), 0),
-        livingRooms: parseIntField(formData.get("livingRooms"), 0),
-        bedrooms: parseIntField(formData.get("bedrooms"), 1),
-        bathrooms: parseIntField(formData.get("bathrooms"), 1),
-        image: "",
-        images: [],
-        description: readDescription(formData),
-        amenities: [],
-        facilityCategories: [],
-        salesType:
-          salesType === SalesType.garanti
-            ? SalesType.garanti
-            : SalesType.komisyon,
-        active: parseBool(formData.get("active")),
-        showInSearch: parseBool(formData.get("showInSearch")),
-        showInOffer: parseBool(formData.get("showInOffer")),
-        ribbonText1: String(formData.get("ribbonText1") ?? ""),
-        ribbonText2: String(formData.get("ribbonText2") ?? ""),
-      },
-      select: { id: true, villaId: true },
+    await assignMissingVillaNumericIds();
+
+    const villa = await prisma.$transaction(async (tx) => {
+      const villaId = await allocateNextVillaId(tx);
+      return tx.villa.create({
+        data: {
+          villaId,
+          slug,
+          name,
+          originalName: String(formData.get("originalName") ?? "").trim(),
+          category:
+            (formData.get("category") as VillaCategory) || VillaCategory.villa,
+          regionId: fallbackRegion.id,
+          location: "",
+          guests: parseIntField(formData.get("guests"), 1),
+          extraCapacity: parseIntField(formData.get("extraCapacity"), 0),
+          livingRooms: parseIntField(formData.get("livingRooms"), 0),
+          bedrooms: parseIntField(formData.get("bedrooms"), 1),
+          bathrooms: parseIntField(formData.get("bathrooms"), 1),
+          image: "",
+          images: [],
+          description: readDescription(formData),
+          amenities: [],
+          facilityCategories: [],
+          salesType:
+            salesType === SalesType.garanti
+              ? SalesType.garanti
+              : SalesType.komisyon,
+          active: parseBool(formData.get("active")),
+          showInSearch: parseBool(formData.get("showInSearch")),
+          showInOffer: parseBool(formData.get("showInOffer")),
+          ribbonText1: String(formData.get("ribbonText1") ?? ""),
+          ribbonText2: String(formData.get("ribbonText2") ?? ""),
+        },
+        select: { id: true, villaId: true },
+      });
     });
 
     await syncVillaRooms(villa.id);
@@ -154,29 +164,33 @@ export async function createVilla(formData: FormData) {
     linkedFacilityCategories
   );
 
-  await prisma.villa.create({
-    data: {
-      slug: formData.get("slug") as string,
-      name: formData.get("name") as string,
-      category: (formData.get("category") as VillaCategory) || VillaCategory.villa,
-      regionId,
-      location: formData.get("location") as string,
-      guests: parseInt(formData.get("guests") as string, 10),
-      bedrooms: parseInt(formData.get("bedrooms") as string, 10),
-      bathrooms: parseInt(formData.get("bathrooms") as string, 10),
-      pricePerNight: formData.get("pricePerNight")
-        ? parseInt(formData.get("pricePerNight") as string, 10)
-        : null,
-      image: formData.get("image") as string,
-      images: imagesRaw.split("\n").map((s) => s.trim()).filter(Boolean),
-      description: readDescription(formData),
-      amenities,
-      facilityCategories,
-      featured: formData.get("featured") === "on",
-      popular: formData.get("popular") === "on",
-      deal: formData.get("deal") === "on",
-      recommended: true,
-    },
+  await prisma.$transaction(async (tx) => {
+    const villaId = await allocateNextVillaId(tx);
+    await tx.villa.create({
+      data: {
+        villaId,
+        slug: formData.get("slug") as string,
+        name: formData.get("name") as string,
+        category: (formData.get("category") as VillaCategory) || VillaCategory.villa,
+        regionId,
+        location: formData.get("location") as string,
+        guests: parseInt(formData.get("guests") as string, 10),
+        bedrooms: parseInt(formData.get("bedrooms") as string, 10),
+        bathrooms: parseInt(formData.get("bathrooms") as string, 10),
+        pricePerNight: formData.get("pricePerNight")
+          ? parseInt(formData.get("pricePerNight") as string, 10)
+          : null,
+        image: formData.get("image") as string,
+        images: imagesRaw.split("\n").map((s) => s.trim()).filter(Boolean),
+        description: readDescription(formData),
+        amenities,
+        facilityCategories,
+        featured: formData.get("featured") === "on",
+        popular: formData.get("popular") === "on",
+        deal: formData.get("deal") === "on",
+        recommended: true,
+      },
+    });
   });
 
   revalidatePath("/");
