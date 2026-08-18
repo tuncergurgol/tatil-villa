@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import CheckInInfoOwnerView from "@/components/check-in-info/CheckInInfoOwnerView";
 import { getPublicCheckInInfo } from "@/lib/queries/check-in-info";
 
@@ -36,6 +37,7 @@ export default async function CheckInInfoOwnerPage({ params }: PageProps) {
   });
 
   if (!result.ok) {
+    if (result.expired) redirect("/");
     return (
       <div className="bg-slate-50 py-12 sm:py-16">
         <div className="mx-auto max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">

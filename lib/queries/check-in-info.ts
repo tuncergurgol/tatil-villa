@@ -3,6 +3,7 @@ import {
   applyAddressMask,
   applyPiiMask,
   getCheckInPiiVisibility,
+  isCheckInInfoPublicLinkExpired,
 } from "@/lib/check-in-info-mask";
 import { prisma } from "@/lib/db";
 import {
@@ -603,7 +604,8 @@ export async function getPublicCheckInInfo(input: {
   now?: Date;
 }): Promise<
   | { ok: true; page: PublicCheckInInfoPage }
-  | { ok: false; error: string }
+  | { ok: false; expired: true }
+  | { ok: false; expired?: false; error: string }
 > {
   const code = input.code.trim();
   if (!code) {
@@ -623,6 +625,15 @@ export async function getPublicCheckInInfo(input: {
       ok: false,
       error: "Bu rezervasyon için giriş bilgilendirme görüntülenemez.",
     };
+  }
+
+  if (
+    isCheckInInfoPublicLinkExpired({
+      checkOut: booking.checkOut,
+      now: input.now,
+    })
+  ) {
+    return { ok: false, expired: true };
   }
 
   const details = defaultDetailsFromBooking(booking);

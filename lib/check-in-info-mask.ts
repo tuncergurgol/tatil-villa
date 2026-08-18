@@ -3,9 +3,17 @@
  * Eşik: giriş anından 30 saat önce — sonrası (veya giriş sonrası) tam açık.
  */
 
+import {
+  addDaysToDateKey,
+  getIstanbulDateKey,
+  toDbDateKey,
+} from "@/lib/booking-calendar-days";
+
 export const CHECK_IN_PII_REVEAL_HOURS = 30;
 export const DEFAULT_CHECK_IN_TIME = "16:00";
 export const DEFAULT_CHECK_IN_TIMEZONE = "Europe/Istanbul";
+/** Çıkış gününden bu kadar takvim günü sonra public giriş-bilgilendirme linki kapanır. */
+export const CHECK_IN_INFO_LINK_EXPIRE_DAYS_AFTER_CHECKOUT = 3;
 
 export type CheckInPiiVisibility = {
   /** true = alanlar tam görünür, iletişim butonları aktif */
@@ -16,7 +24,6 @@ export type CheckInPiiVisibility = {
   msUntilReveal: number;
 };
 
-/** Ad / telefon / e-posta / TC: ilk 2 karakter + kalan `*`. */
 export function maskPiiKeepFirstTwo(raw: string | null | undefined): string {
   const value = (raw ?? "").trim();
   if (!value) return "";
@@ -163,4 +170,17 @@ export function isCheckInPiiRevealed(input: {
   revealHours?: number;
 }): boolean {
   return getCheckInPiiVisibility(input).revealed;
+}
+
+/** Çıkış + 3 gün (İstanbul takvimi) itibarıyla misafir/ev sahibi linki kapalı. */
+export function isCheckInInfoPublicLinkExpired(input: {
+  checkOut: Date;
+  now?: Date;
+}): boolean {
+  const expireOnKey = addDaysToDateKey(
+    toDbDateKey(input.checkOut),
+    CHECK_IN_INFO_LINK_EXPIRE_DAYS_AFTER_CHECKOUT
+  );
+  const todayKey = getIstanbulDateKey(input.now ?? new Date());
+  return todayKey >= expireOnKey;
 }

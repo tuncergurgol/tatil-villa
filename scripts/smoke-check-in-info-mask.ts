@@ -7,6 +7,7 @@ import {
   applyAddressMask,
   applyPiiMask,
   getCheckInPiiVisibility,
+  isCheckInInfoPublicLinkExpired,
   maskPiiKeepFirstTwo,
   resolveCheckInInstant,
 } from "../lib/check-in-info-mask";
@@ -85,6 +86,22 @@ assert(
     now: new Date(checkInInstant.getTime() + 60 * 60 * 1000),
   }).revealed === true,
   "girişten sonra açık"
+);
+
+const checkOutDate = new Date(Date.UTC(2026, 7, 20));
+assert(
+  isCheckInInfoPublicLinkExpired({
+    checkOut: checkOutDate,
+    now: new Date("2026-08-22T12:00:00+03:00"),
+  }) === false,
+  "çıkış + 2 gün hâlâ açık"
+);
+assert(
+  isCheckInInfoPublicLinkExpired({
+    checkOut: checkOutDate,
+    now: new Date("2026-08-23T00:00:00+03:00"),
+  }) === true,
+  "çıkış + 3 gün kapalı"
 );
 
 console.log("\nTüm check-in mask smoke testleri geçti.");
