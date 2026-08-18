@@ -227,7 +227,7 @@ export function getNextPeriodStartDate(
   const latest = getLatestPeriodByEndDate(periods);
   if (!latest) return "";
 
-  const endKey = dbDateToDateKey(startOfDay(new Date(latest.endDate)));
+  const endKey = dbDateToDateKey(new Date(latest.endDate));
   return addDaysToDateKey(endKey, 1);
 }
 
