@@ -195,6 +195,56 @@ export default function AnalyticsSettingsFields({
                 placeholder="abc123XYZ..."
                 hint="Search Console → HTML etiketi → meta content değerini yapıştırın. DNS TXT yöntemi de kullanılabilir (Cloudflare)."
               />
+              <AnalyticsField
+                label="Bing Webmaster (Edge / Opera / Copilot)"
+                name={fieldName(siteKey, "bingWebmasterCode")}
+                defaultValue={row.bingWebmasterCode}
+                placeholder="msvalidate.01 içeriği"
+                hint="bing.com/webmasters → Sitenizi ekleyin → HTML meta etiketi content değeri. Edge ve Opera araması Bing indeksini kullanır."
+              />
+              <AnalyticsField
+                label="Yandex Webmaster Doğrulama Kodu"
+                name={fieldName(siteKey, "yandexWebmasterCode")}
+                defaultValue={row.yandexWebmasterCode}
+                placeholder="yandex-verification içeriği"
+                hint="webmaster.yandex.com.tr → Site ekle → Meta etiketi content değeri."
+              />
+            </div>
+
+            <div className="rounded-2xl border border-teal-200 bg-teal-50/60 px-5 py-4">
+              <h3 className="text-sm font-semibold text-teal-900">
+                Arama ve yapay zeka keşif adresleri
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-teal-800/90">
+                Bu adresler otomatik üretilir. Bing/Yandex/IndexNow ve ChatGPT,
+                Perplexity, Claude, Gemini gibi yapay zekalar buradan site haritasını
+                okur. Webmaster panellerinde sitemap olarak{" "}
+                <code className="rounded bg-white/80 px-1">/sitemap.xml</code> gönderin.
+              </p>
+              <div className="mt-4 grid gap-3">
+                {[
+                  { label: "Sitemap", value: `https://${row.domain}/sitemap.xml` },
+                  { label: "robots.txt", value: `https://${row.domain}/robots.txt` },
+                  { label: "llms.txt (AI)", value: `https://${row.domain}/llms.txt` },
+                  { label: "RSS", value: `https://${row.domain}/rss.xml` },
+                  { label: "IndexNow anahtar dosyası", value: row.indexNowKeyUrl },
+                ].map((item) => (
+                  <label
+                    key={item.label}
+                    className="block rounded-xl border border-teal-200 bg-white px-4 py-3"
+                  >
+                    <span className="text-xs font-medium text-teal-700">
+                      {item.label}
+                    </span>
+                    <input
+                      readOnly
+                      value={item.value}
+                      className="mt-1.5 w-full bg-transparent font-mono text-[11px] text-gray-800 outline-none"
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="border-t border-gray-100 pt-6">

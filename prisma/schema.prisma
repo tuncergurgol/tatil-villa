@@ -236,6 +236,8 @@ model PublicSiteTracking {
   googleTagManagerId      String   @default("")
   facebookPixelId         String   @default("")
   googleSearchConsoleCode String   @default("")
+  bingWebmasterCode       String   @default("")
+  yandexWebmasterCode     String   @default("")
   headScripts             String   @default("") @db.Text
   bodyScripts             String   @default("") @db.Text
   createdAt               DateTime @default(now())

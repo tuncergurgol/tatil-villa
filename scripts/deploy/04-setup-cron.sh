@@ -64,6 +64,8 @@ cat >> "$CRON_FILE" <<EOF
 55 8 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/daily-check-in-reports" >>"${LOG_DIR}/daily-check-in-reports.log" 2>&1
 # tatil-villa cron — ONAYLANDI konaklama durumu YAPILDI (giriş günü 23:50 + geçmiş catch-up)
 50 23 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/stay-status-complete" >>"${LOG_DIR}/stay-status-complete.log" 2>&1
+# tatil-villa cron — IndexNow (Bing/Yandex/Edge/Opera) günlük URL bildirimi
+20 6 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/indexnow" >>"${LOG_DIR}/indexnow.log" 2>&1
 # tatil-villa cron — Meta katalog feed önbellek (saatte bir; Commerce Manager doğrulayıcısı için hızlı XML)
 45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1 && for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do curl -fsS -m 180 -H "Host: \${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" >/dev/null; done
 # tatil-villa cron — SQL + site dosyaları Google Drive yedek (her gece 04:30 Europe/Istanbul)
@@ -90,6 +92,7 @@ echo "  Blog AI    : saatte bir tetiklenir (sıklık admin ayarından)."
 echo "  Zamanlı msg: saat başı tetiklenir (11.4 yorum 11:00, 40.2 havuz 14:00 vb.)."
 echo "  Belge kontrol: her gün 07:15'te tetiklenir."
 echo "  Fatura/ödeme : her gün 08:55'te Excel maili gider (kayıt yoksa da bilgilendirme)."
+echo "  IndexNow  : her gün 06:20'de Bing/Yandex'e sitemap URL'leri bildirilir."
 echo "  Meta feed  : saat :45'te önbellek yenilenir."
 echo "  GDrive yedek: her gece 04:30 (SQL + dosyalar ayrı)."
 echo "=========================================================="

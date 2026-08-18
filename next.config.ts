@@ -100,6 +100,10 @@ const nextConfig: NextConfig = {
         source: "/ics/:villaId/:token",
         destination: "/api/ics/:villaId/:token",
       },
+      {
+        source: "/:key([a-fA-F0-9]{32}).txt",
+        destination: "/api/indexnow-key?key=:key",
+      },
     ];
   },
   images: {

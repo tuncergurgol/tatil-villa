@@ -3,6 +3,7 @@ import { siteConfig } from "@/lib/data";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
+import { buildSearchEngineVerification } from "@/lib/search-discovery";
 
 export function resolveMetadataBase(domain: string): URL {
   const cleaned = domain
@@ -38,7 +39,6 @@ export async function buildRootMetadata(): Promise<Metadata> {
   const ogImages = ogImageUrl
     ? [{ url: absoluteAssetUrl(metadataBase, ogImageUrl) }]
     : undefined;
-  const gscCode = tracking.googleSearchConsoleCode?.trim();
 
   return {
     metadataBase,
@@ -70,7 +70,7 @@ export async function buildRootMetadata(): Promise<Metadata> {
       description,
       images: ogImages?.map((image) => image.url),
     },
-    verification: gscCode ? { google: gscCode } : undefined,
+    verification: buildSearchEngineVerification(tracking),
     robots: {
       index: true,
       follow: true,

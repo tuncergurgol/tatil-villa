@@ -5,6 +5,11 @@ import {
   type PublicSiteKey,
   isPublicSiteKey,
 } from "@/lib/public-site-keys";
+import {
+  canonicalOriginFromDomain,
+  createIndexNowKey,
+  indexNowKeyLocation,
+} from "@/lib/search-discovery";
 
 export type PublicSiteTrackingFields = {
   googleAnalyticsId: string;
@@ -13,6 +18,8 @@ export type PublicSiteTrackingFields = {
   googleTagManagerId: string;
   facebookPixelId: string;
   googleSearchConsoleCode: string;
+  bingWebmasterCode: string;
+  yandexWebmasterCode: string;
   headScripts: string;
   bodyScripts: string;
 };
@@ -22,6 +29,8 @@ export type PublicSiteTrackingRow = PublicSiteTrackingFields & {
   siteKey: PublicSiteKey;
   domain: string;
   label: string;
+  indexNowKey: string;
+  indexNowKeyUrl: string;
 };
 
 const EMPTY_FIELDS: PublicSiteTrackingFields = {
@@ -31,9 +40,25 @@ const EMPTY_FIELDS: PublicSiteTrackingFields = {
   googleTagManagerId: "",
   facebookPixelId: "",
   googleSearchConsoleCode: "",
+  bingWebmasterCode: "",
+  yandexWebmasterCode: "",
   headScripts: "",
   bodyScripts: "",
 };
+
+function withIndexNow(
+  row: Omit<PublicSiteTrackingRow, "indexNowKey" | "indexNowKeyUrl">
+): PublicSiteTrackingRow {
+  const indexNowKey = createIndexNowKey(row.domain);
+  return {
+    ...row,
+    indexNowKey,
+    indexNowKeyUrl: indexNowKeyLocation(
+      canonicalOriginFromDomain(row.domain),
+      indexNowKey
+    ),
+  };
+}
 
 function toRow(
   siteKey: PublicSiteKey,
@@ -45,7 +70,7 @@ function toRow(
   } & PublicSiteTrackingFields
 ): PublicSiteTrackingRow {
   const meta = PUBLIC_SITE_META[siteKey];
-  return {
+  return withIndexNow({
     id: row.id,
     siteKey,
     domain: row.domain || meta.domain,
@@ -56,14 +81,16 @@ function toRow(
     googleTagManagerId: row.googleTagManagerId,
     facebookPixelId: row.facebookPixelId,
     googleSearchConsoleCode: row.googleSearchConsoleCode,
+    bingWebmasterCode: row.bingWebmasterCode,
+    yandexWebmasterCode: row.yandexWebmasterCode,
     headScripts: row.headScripts,
     bodyScripts: row.bodyScripts,
-  };
+  });
 }
 
 function fallbackRow(siteKey: PublicSiteKey): PublicSiteTrackingRow {
   const meta = PUBLIC_SITE_META[siteKey];
-  return {
+  return withIndexNow({
     id: `fallback_${siteKey}`,
     siteKey,
     domain: meta.domain,
@@ -72,7 +99,7 @@ function fallbackRow(siteKey: PublicSiteKey): PublicSiteTrackingRow {
     ...(siteKey === "tatildeyiz"
       ? { googleAnalyticsId: "G-3QYZX0CQ1D" }
       : {}),
-  };
+  });
 }
 
 export async function ensurePublicSiteTrackingRows(): Promise<void> {

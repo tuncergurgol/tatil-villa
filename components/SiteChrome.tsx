@@ -21,6 +21,11 @@ import { getFooterRegionLinks } from "@/lib/queries/regions";
 import { siteConfig } from "@/lib/data";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { buildCompanySocialLinks } from "@/lib/social-links";
+import {
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+  canonicalOriginFromDomain,
+} from "@/lib/search-discovery";
 
 const defaultHeaderLinks = [
   { href: "/villalar", label: "Villalar" },
@@ -91,9 +96,34 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
   const brandName = site.brandName?.trim() || siteConfig.name;
   const phone = company.phone?.trim() || siteConfig.phone;
   const socialLinks = buildCompanySocialLinks(company);
+  const origin = canonicalOriginFromDomain(site.domain);
+  const organizationJsonLd = buildOrganizationJsonLd({
+    origin,
+    brandName,
+    companyTitle: company.companyTitle,
+    description: site.seoDescription,
+    logoUrl: site.logoUrl,
+    email: company.email,
+    phone,
+    address: company.address,
+    sameAs: socialLinks.map((link) => link.href),
+  });
+  const websiteJsonLd = buildWebSiteJsonLd({
+    origin,
+    brandName,
+    description: site.seoDescription,
+  });
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       <PublicContentProtection />
       <SiteTrackingScripts tracking={tracking} />
       <Header

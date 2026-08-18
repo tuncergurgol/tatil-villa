@@ -22,6 +22,8 @@ const trackingFieldsSchema = z.object({
   googleTagManagerId: z.string(),
   facebookPixelId: z.string(),
   googleSearchConsoleCode: z.string(),
+  bingWebmasterCode: z.string(),
+  yandexWebmasterCode: z.string(),
   headScripts: z.string(),
   bodyScripts: z.string(),
 });
@@ -107,6 +109,10 @@ function readTrackingFields(
     facebookPixelId: String(formData.get(`${prefix}facebookPixelId`) ?? ""),
     googleSearchConsoleCode: String(
       formData.get(`${prefix}googleSearchConsoleCode`) ?? ""
+    ),
+    bingWebmasterCode: String(formData.get(`${prefix}bingWebmasterCode`) ?? ""),
+    yandexWebmasterCode: String(
+      formData.get(`${prefix}yandexWebmasterCode`) ?? ""
     ),
     headScripts: String(formData.get(`${prefix}headScripts`) ?? ""),
     bodyScripts: String(formData.get(`${prefix}bodyScripts`) ?? ""),
