@@ -36,6 +36,7 @@ export type VillaPeriodActionState = {
   success?: boolean;
   error?: string;
   code?: string;
+  removedPeriodIds?: string[];
 };
 
 export type VillaPeriodExcelImportRow = {
@@ -735,8 +736,34 @@ export async function updateVillaPricePeriod(
     );
     const periodData = buildPeriodData(parsed.data);
     const overlapping = await findOverlappingPeriods(villaId, startDate, endDate);
+    const extraRemoveIds = overlapping.some((period) => period.id === periodId)
+      ? []
+      : [periodId];
 
-    if (
+    if (overlapping.length === 0) {
+      const existing = await prisma.villaPricePeriod.findFirst({
+        where: { id: periodId, villaId },
+        select: { id: true },
+      });
+      if (!existing) return { error: "Periyot bulunamadı" };
+
+      await prisma.villaPricePeriod.update({
+        where: { id: periodId },
+        data: {
+          startDate,
+          endDate,
+          ...periodData,
+        },
+      });
+
+      await syncVillaPricePeriodDays(
+        periodId,
+        villaId,
+        startDate,
+        endDate,
+        periodData as VillaPeriodDayPricingSnapshot
+      );
+    } else if (
       overlapping.length === 1 &&
       overlapping[0]!.id === periodId
     ) {
@@ -756,16 +783,17 @@ export async function updateVillaPricePeriod(
         endDate,
         periodData as VillaPeriodDayPricingSnapshot
       );
-    } else if (overlapping.length > 0) {
-      await applyVillaPriceRangeMergedEdit(
+    } else {
+      const mergeResult = await applyVillaPriceRangeMergedEdit(
         villaId,
         startDate,
         endDate,
         periodData as VillaPeriodDayPricingSnapshot,
-        overlapping
+        overlapping,
+        extraRemoveIds
       );
-    } else {
-      return { error: "Periyot bulunamadı" };
+      await revalidatePeriodPaths(villaId);
+      return { success: true, removedPeriodIds: mergeResult.removedPeriodIds };
     }
 
     await revalidatePeriodPaths(villaId);

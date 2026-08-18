@@ -18,6 +18,7 @@ import {
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
 import VillaPeriodExcelImportModal from "@/components/admin/villas/periods/VillaPeriodExcelImportModal";
+import HizliFiyatSaveOverlay from "@/components/admin/villas/periods/HizliFiyatSaveOverlay";
 import type { VillaAdminRoute } from "@/lib/villa-admin-path";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
@@ -25,7 +26,6 @@ import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import {
   buildNewPeriodPrefill,
   dbDateToDateKey,
-  startOfDay,
 } from "@/lib/villa-period-calendar";
 import {
   VILLA_PERIOD_CURRENCIES,
@@ -144,7 +144,7 @@ const tableHeadClass =
   "whitespace-nowrap bg-gray-50 px-2.5 py-3 text-left text-[11px] font-semibold tracking-wide text-gray-500 uppercase";
 
 function periodDateKey(date: Date): string {
-  return dbDateToDateKey(startOfDay(new Date(date)));
+  return dbDateToDateKey(new Date(date));
 }
 
 function periodToRow(period: VillaPricePeriodItem): PeriodRowState {
@@ -657,7 +657,9 @@ export default function VillaHizliFiyatPage({
 
     setError(null);
     startTransition(async () => {
+      const removedIds = new Set<string>();
       for (const row of dirtyRows) {
+        if (removedIds.has(row.id)) continue;
         const result = await updateVillaPricePeriod(
           villa.id,
           row.id,
@@ -669,6 +671,9 @@ export default function VillaHizliFiyatPage({
         if (result.error) {
           setError(result.error);
           return;
+        }
+        for (const id of result.removedPeriodIds ?? []) {
+          removedIds.add(id);
         }
       }
       router.refresh();
@@ -866,7 +871,7 @@ export default function VillaHizliFiyatPage({
               className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-1"
             >
               <Save className="h-4 w-4" />
-              Tümünü Kaydet ({dirtyCount})
+              {isPending ? "Kaydediliyor..." : `Tümünü Kaydet (${dirtyCount})`}
             </button>
           </div>
         </div>
@@ -1286,6 +1291,8 @@ export default function VillaHizliFiyatPage({
           router.refresh();
         }}
       />
+
+      <HizliFiyatSaveOverlay open={isPending} dirtyCount={Math.max(1, dirtyCount)} />
     </div>
   );
 }
