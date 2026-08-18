@@ -1,11 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BedDouble, Building2, Download, Pencil } from "lucide-react";
+import { BedDouble, Building2, Pencil } from "lucide-react";
 import type { VillaRoom } from "@prisma/client";
-import { importVillaRoomsFromTatildeyiz } from "@/app/actions/admin/villa-rooms";
 import VillaBedroomMismatchAlert from "@/components/admin/villas/VillaBedroomMismatchAlert";
 import VillaRoomEditModal from "@/components/admin/villas/VillaRoomEditModal";
 import {
@@ -30,26 +29,9 @@ export default function VillaRoomsTab({
 }: VillaRoomsTabProps) {
   const router = useRouter();
   const [editingRoom, setEditingRoom] = useState<VillaRoom | null>(null);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [isImporting, startImport] = useTransition();
 
   function refresh() {
     router.refresh();
-  }
-
-  function handleImportFromTatildeyiz() {
-    setImportMessage(null);
-    setImportError(null);
-    startImport(async () => {
-      const result = await importVillaRoomsFromTatildeyiz(villaId);
-      if (result.error) {
-        setImportError(result.error);
-        return;
-      }
-      setImportMessage(result.message ?? "Odalar içe aktarıldı");
-      refresh();
-    });
   }
 
   return (
@@ -71,32 +53,10 @@ export default function VillaRoomsTab({
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleImportFromTatildeyiz}
-            disabled={isImporting}
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-800 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" />
-            {isImporting ? "İçe aktarılıyor..." : "Tatildeyiz'den İçe Aktar"}
-          </button>
-          <p className="text-xs text-gray-500">
-            Yatak odası sayısı Genel sekmesinden belirlenir ({bedroomCount})
-          </p>
-        </div>
+        <p className="text-xs text-gray-500">
+          Yatak odası sayısı Genel sekmesinden belirlenir ({bedroomCount})
+        </p>
       </div>
-
-      {importMessage ? (
-        <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          {importMessage}
-        </p>
-      ) : null}
-      {importError ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {importError}
-        </p>
-      ) : null}
 
       {rooms.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
