@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   FileSpreadsheet,
   Pencil,
-  Plus,
   Save,
   Trash2,
   WandSparkles,
@@ -844,14 +843,6 @@ export default function VillaHizliFiyatPage({
               <FileSpreadsheet className="h-4 w-4" />
               Excel&apos;den İçeri Al
             </button>
-            <button
-              type="button"
-              onClick={() => openAdvancedModal()}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-            >
-              <Plus className="h-4 w-4" />
-              Yeni Periyot
-            </button>
             <Link
               href={villaTakvimPath(routeVilla)}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
@@ -862,17 +853,8 @@ export default function VillaHizliFiyatPage({
               href={villaAdminEditPath(routeVilla)}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
             >
-              Düzenle
+              Villa Düzenleme
             </Link>
-            <button
-              type="button"
-              onClick={handleSaveAll}
-              disabled={isPending || dirtyCount === 0}
-              className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50 md:col-span-1"
-            >
-              <Save className="h-4 w-4" />
-              {isPending ? "Kaydediliyor..." : `Tümünü Kaydet (${dirtyCount})`}
-            </button>
           </div>
         </div>
       </div>
@@ -948,6 +930,15 @@ export default function VillaHizliFiyatPage({
             >
               + Yeni Periyot Ekle
             </button>
+            <button
+              type="button"
+              onClick={handleSaveAll}
+              disabled={isPending || dirtyCount === 0}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {isPending ? "Kaydediliyor..." : `Tümünü Kaydet (${dirtyCount})`}
+            </button>
           </div>
         </div>
 
@@ -968,6 +959,15 @@ export default function VillaHizliFiyatPage({
             className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 disabled:opacity-50"
           >
             Sil ({selectedIds.size})
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveAll}
+            disabled={isPending || dirtyCount === 0}
+            className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            <Save className="h-3.5 w-3.5" />
+            {isPending ? "Kaydediliyor..." : `Kaydet (${dirtyCount})`}
           </button>
         </div>
 
