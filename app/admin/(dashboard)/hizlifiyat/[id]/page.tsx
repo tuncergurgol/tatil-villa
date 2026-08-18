@@ -28,6 +28,7 @@ export default async function HizliFiyatRoutePage({ params }: PageProps) {
     <VillaHizliFiyatPage
       villa={data.villa}
       periods={data.periods}
+      priceDiscounts={data.priceDiscounts}
       routeVilla={routeVilla}
     />
   );

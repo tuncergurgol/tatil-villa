@@ -679,6 +679,7 @@ model Villa {
   pools          VillaPool[]
   pricePeriods   VillaPricePeriod[]
   pricePeriodDays VillaPricePeriodDay[]
+  priceDiscounts VillaPriceDiscount[]
   bookings       Booking[]
   periodImportLog VillaPeriodImportLog?
   whatsappCalendarMessages WhatsappCalendarMessage[]
@@ -890,6 +891,22 @@ model VillaPricePeriodDay {
   @@index([periodId])
   @@index([villaId, date])
   @@index([villaId, occupancyStatus])
+}
+
+model VillaPriceDiscount {
+  id                  String   @id @default(cuid())
+  villaId             String
+  villa               Villa    @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  startDate           DateTime @db.Date
+  endDate             DateTime @db.Date
+  discount1Rate       Int?
+  discount2Rate       Int?
+  extraDiscountAmount Int?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([villaId])
+  @@index([villaId, startDate, endDate])
 }
 
 model VillaPool {

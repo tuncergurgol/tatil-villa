@@ -30,14 +30,24 @@ import {
   parseAvailability,
   parseCurrency,
   parseOptionalPositiveInt,
+  hasActiveDiscount,
   resolveVillaPeriodPricing,
 } from "@/lib/villa-period-pricing";
+import {
+  recomputeVillaDayDiscountsInRange,
+  toVillaPriceDiscountItem,
+  type VillaPriceDiscountItem,
+} from "@/lib/villa-price-discount";
 
 export type VillaPeriodActionState = {
   success?: boolean;
   error?: string;
   code?: string;
   removedPeriodIds?: string[];
+};
+
+export type VillaPriceDiscountActionState = VillaPeriodActionState & {
+  discount?: VillaPriceDiscountItem;
 };
 
 export type VillaPeriodExcelImportRow = {
@@ -897,6 +907,93 @@ export async function updateVillaPricePeriodDaysDiscounts(
         error instanceof Error
           ? error.message
           : "İndirim bilgileri güncellenemedi",
+    };
+  }
+}
+
+export async function createVillaPriceDiscount(
+  villaId: string,
+  formData: FormData
+): Promise<VillaPriceDiscountActionState> {
+  await requireAdmin();
+
+  const parsed = parsePeriodDiscountFormData(formData);
+
+  if (!parsed.success) {
+    return { error: formatPeriodFormError(parsed.error) };
+  }
+
+  if (
+    !hasActiveDiscount({
+      discount1Rate: parsed.data.discount1Rate,
+      discount2Rate: parsed.data.discount2Rate,
+      extraDiscountAmount: parsed.data.extraDiscountAmount,
+    })
+  ) {
+    return { error: "En az bir indirim oranı veya extra tutar girin." };
+  }
+
+  try {
+    const { startDate, endDate } = parsePeriodDates(
+      parsed.data.startDate,
+      parsed.data.endDate
+    );
+
+    const created = await prisma.villaPriceDiscount.create({
+      data: {
+        villaId,
+        startDate,
+        endDate,
+        discount1Rate: parsed.data.discount1Rate,
+        discount2Rate: parsed.data.discount2Rate,
+        extraDiscountAmount: parsed.data.extraDiscountAmount,
+      },
+    });
+
+    await recomputeVillaDayDiscountsInRange(villaId, startDate, endDate);
+    await revalidatePeriodPaths(villaId);
+
+    return {
+      success: true,
+      discount: toVillaPriceDiscountItem(created),
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "İndirim kaydedilemedi",
+    };
+  }
+}
+
+export async function deleteVillaPriceDiscount(
+  villaId: string,
+  discountId: string
+): Promise<VillaPeriodActionState> {
+  await requireAdmin();
+
+  try {
+    const existing = await prisma.villaPriceDiscount.findFirst({
+      where: { id: discountId, villaId },
+    });
+
+    if (!existing) {
+      return { error: "İndirim kaydı bulunamadı" };
+    }
+
+    await prisma.villaPriceDiscount.delete({
+      where: { id: existing.id },
+    });
+    await recomputeVillaDayDiscountsInRange(
+      villaId,
+      existing.startDate,
+      existing.endDate
+    );
+    await revalidatePeriodPaths(villaId);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "İndirim silinemedi",
     };
   }
 }

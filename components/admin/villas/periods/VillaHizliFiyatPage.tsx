@@ -18,12 +18,13 @@ import {
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
 import VillaPeriodExcelImportModal from "@/components/admin/villas/periods/VillaPeriodExcelImportModal";
-import HizliFiyatDiscountModal from "@/components/admin/villas/periods/HizliFiyatDiscountModal";
+import HizliFiyatDiscountListModal from "@/components/admin/villas/periods/HizliFiyatDiscountListModal";
 import HizliFiyatSaveOverlay from "@/components/admin/villas/periods/HizliFiyatSaveOverlay";
 import type { VillaAdminRoute } from "@/lib/villa-admin-path";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
+import type { VillaPriceDiscountItem } from "@/lib/villa-price-discount";
 import {
   buildNewPeriodPrefill,
   dbDateToDateKey,
@@ -48,6 +49,7 @@ interface VillaHizliFiyatPageProps {
     documentNo: string;
   };
   periods: VillaPricePeriodItem[];
+  priceDiscounts: VillaPriceDiscountItem[];
   routeVilla: VillaAdminRoute;
 }
 
@@ -641,6 +643,7 @@ function resolveRowDisplayPricing(row: PeriodRowState) {
 export default function VillaHizliFiyatPage({
   villa,
   periods,
+  priceDiscounts,
   routeVilla,
 }: VillaHizliFiyatPageProps) {
   const router = useRouter();
@@ -677,11 +680,6 @@ export default function VillaHizliFiyatPage({
     () => rows.filter((row) => row.dirty).length,
     [rows]
   );
-
-  const discountPreviewNightlyPrice = useMemo(() => {
-    const selected = rows.find((row) => selectedIds.has(row.id));
-    return parseAmountInput((selected ?? rows[0])?.nightlyPrice ?? "") ?? null;
-  }, [rows, selectedIds]);
 
   const updateRow = useCallback(
     (id: string, patch: Partial<PeriodRowState>, recalc = false) => {
@@ -1445,13 +1443,12 @@ export default function VillaHizliFiyatPage({
         }}
       />
 
-      <HizliFiyatDiscountModal
+      <HizliFiyatDiscountListModal
         open={discountModalOpen}
         villaId={villa.id}
-        previewNightlyPrice={discountPreviewNightlyPrice}
+        discounts={priceDiscounts}
         onClose={() => setDiscountModalOpen(false)}
-        onSaved={() => {
-          setDiscountModalOpen(false);
+        onChanged={() => {
           setError(null);
           router.refresh();
         }}

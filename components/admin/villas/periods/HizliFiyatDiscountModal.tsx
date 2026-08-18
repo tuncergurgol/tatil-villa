@@ -1,39 +1,27 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Percent, Save, X } from "lucide-react";
-import { updateVillaPricePeriodDaysDiscounts } from "@/app/actions/admin/villa-periods";
+import { createVillaPriceDiscount } from "@/app/actions/admin/villa-periods";
 import {
-  calculateDiscountAmounts,
-  formatMoneyAmount,
   parseAmountInput,
   sanitizeAmountInput,
 } from "@/lib/villa-period-pricing";
+import type { VillaPriceDiscountItem } from "@/lib/villa-price-discount";
 
 type HizliFiyatDiscountModalProps = {
   open: boolean;
   villaId: string;
-  previewNightlyPrice: number | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (discount: VillaPriceDiscountItem) => void;
 };
 
 const inputClass =
   "mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-100";
 
-const readOnlyClass =
-  "mt-1.5 w-full rounded-xl border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm font-semibold text-teal-900";
-
-function parseRate(value: string): number {
-  const parsed = Number(value.replace(",", "."));
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return Math.min(100, Math.round(parsed));
-}
-
 export default function HizliFiyatDiscountModal({
   open,
   villaId,
-  previewNightlyPrice,
   onClose,
   onSaved,
 }: HizliFiyatDiscountModalProps) {
@@ -44,17 +32,6 @@ export default function HizliFiyatDiscountModal({
   const [extraDiscountAmount, setExtraDiscountAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const preview = useMemo(
-    () =>
-      calculateDiscountAmounts(
-        previewNightlyPrice ?? 0,
-        parseRate(discount1Rate),
-        parseRate(discount2Rate),
-        parseAmountInput(extraDiscountAmount) ?? 0
-      ),
-    [previewNightlyPrice, discount1Rate, discount2Rate, extraDiscountAmount]
-  );
 
   if (!open) return null;
 
@@ -88,9 +65,9 @@ export default function HizliFiyatDiscountModal({
     formData.set("extraDiscountAmount", extra != null ? String(extra) : "");
 
     startTransition(async () => {
-      const result = await updateVillaPricePeriodDaysDiscounts(villaId, formData);
-      if (result.error) {
-        setError(result.error);
+      const result = await createVillaPriceDiscount(villaId, formData);
+      if (result.error || !result.discount) {
+        setError(result.error ?? "İndirim kaydedilemedi");
         return;
       }
       setStartDate("");
@@ -98,13 +75,13 @@ export default function HizliFiyatDiscountModal({
       setDiscount1Rate("");
       setDiscount2Rate("");
       setExtraDiscountAmount("");
-      onSaved();
+      onSaved(result.discount);
     });
   }
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4"
       onClick={() => {
         if (isPending) return;
         resetAndClose();
@@ -127,10 +104,10 @@ export default function HizliFiyatDiscountModal({
                 id="hizli-fiyat-indirim-title"
                 className="text-lg font-bold text-gray-900"
               >
-                İndirim
+                İndirim Ekle
               </h2>
               <p className="text-xs text-gray-500">
-                Seçilen tarihlerdeki günlere yazılır; periyot fiyatı korunur.
+                Oran, her günün kendi gecelik fiyatına uygulanır.
               </p>
             </div>
           </div>
@@ -191,20 +168,6 @@ export default function HizliFiyatDiscountModal({
             </label>
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                1. İndirim Tutarı
-              </span>
-              <input
-                type="text"
-                readOnly
-                value={formatMoneyAmount(preview.discount1Amount)}
-                className={readOnlyClass}
-              />
-            </label>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
                 2. İndirim Oranı (%)
               </span>
               <input
@@ -213,17 +176,6 @@ export default function HizliFiyatDiscountModal({
                 value={discount2Rate}
                 onChange={(event) => setDiscount2Rate(event.target.value)}
                 className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                2. İndirim Tutarı
-              </span>
-              <input
-                type="text"
-                readOnly
-                value={formatMoneyAmount(preview.discount2Amount)}
-                className={readOnlyClass}
               />
             </label>
           </div>
