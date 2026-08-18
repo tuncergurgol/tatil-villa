@@ -58,7 +58,6 @@ const noSpinClass =
   "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 const labelClass = "text-xs font-medium text-gray-500";
-const helpClass = "mt-1.5 text-xs text-gray-500";
 
 const AMOUNT_FIELDS = new Set([
   "nightlyPrice",
@@ -835,13 +834,6 @@ export default function VillaPeriodFormModal({
                   </label>
                 </div>
 
-                {period ? (
-                  <p className={helpClass}>
-                    Bitiş tarihi çıkış günüdür (sabah boşalır). Örn. 10–13
-                    Ağustos = 3 gece (10, 11, 12 konaklama; 13 çıkış).
-                  </p>
-                ) : null}
-
                 {period && occupancyStayPreview ? (
                   <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
                     <span className="font-semibold">
@@ -962,11 +954,6 @@ export default function VillaPeriodFormModal({
                     }
                     className="mt-1.5"
                   />
-                  <p className={helpClass}>
-                    Haftalık bedel girildiğinde gecelik fiyat otomatik
-                    hesaplanır (Haftalık ÷ 7). Gecelik fiyat değiştiğinde bu
-                    alan da otomatik güncellenir.
-                  </p>
                 </label>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1006,10 +993,6 @@ export default function VillaPeriodFormModal({
                     value={formatMoneyAmount(discountPreview.discountedNightlyPrice)}
                     className="mt-1.5 w-full rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900"
                   />
-                  <p className={helpClass}>
-                    Bu alan indirim uygulandığında otomatik hesaplanır. İndirim
-                    yoksa komisyonlu fiyat ile aynıdır.
-                  </p>
                 </label>
 
                 <label className="block">
@@ -1026,11 +1009,6 @@ export default function VillaPeriodFormModal({
                     }
                     className="mt-1.5"
                   />
-                  <p className={helpClass}>
-                    Komisyonlu fiyattan komisyon oranı düşülerek hesaplanır:
-                    Komisyonlu − (Komisyonlu × Komisyon Oranı %). Bu alana
-                    değer girildiğinde diğer fiyat alanları da güncellenir.
-                  </p>
                 </label>
 
                 <label className="block">
@@ -1041,10 +1019,6 @@ export default function VillaPeriodFormModal({
                     value={formatMoneyAmount(commissionAmount)}
                     className="mt-1.5 w-full rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-900"
                   />
-                  <p className={helpClass}>
-                    Bu alan otomatik hesaplanır (Komisyonlu Fiyat -
-                    Komisyonsuz Fiyat) ve düzenlenemez.
-                  </p>
                 </label>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1188,9 +1162,6 @@ export default function VillaPeriodFormModal({
                       placeholder="5,6 (Cum,Cts)"
                       className={`mt-1.5 ${inputClass}`}
                     />
-                    <p className={helpClass}>
-                      0=Pazar, 1=Pazartesi … 6=Cumartesi. Virgülle ayırın.
-                    </p>
                   </label>
                 </div>
 
@@ -1337,12 +1308,6 @@ export default function VillaPeriodFormModal({
                     />
                   </label>
                 </div>
-                <p className={helpClass}>
-                  1. ve 2. indirim tutarları ile extra tutar toplanır; indirimli
-                  fiyat = komisyonlu gecelik fiyat − toplam indirim tutarıdır.
-                  Hafta sonu günlerinde takvimde hafta sonu fiyatı üzerinden
-                  hesaplanır.
-                </p>
 
                 <button
                   type="button"
