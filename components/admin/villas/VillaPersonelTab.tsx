@@ -178,12 +178,11 @@ function VillaPersonelTab(
     setOwnerSuccess("Yeni villa sahibi kaydedildi ve bu villaya bağlandı.");
 
     const result = await getActiveVillaOwnersAction();
-    if (result.error || !result.owners) {
-      setOwnerError(result.error ?? "Villa sahipleri yüklenemedi");
-      throw new Error(result.error ?? "Villa sahipleri yüklenemedi");
+    if (result.owners) {
+      setOwners(result.owners);
+    } else if (result.error) {
+      setOwnerError(result.error);
     }
-
-    setOwners(result.owners);
     router.refresh();
   }, [router, villa.id]);
 

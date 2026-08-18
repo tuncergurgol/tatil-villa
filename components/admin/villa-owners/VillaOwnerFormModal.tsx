@@ -102,7 +102,7 @@ export default function VillaOwnerFormModal({
   const [tcKimlikNo, setTcKimlikNo] = useState(owner?.tcKimlikNo ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false);
+  const handledSuccessRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<
     VillaOwnerActionState,
@@ -118,27 +118,23 @@ export default function VillaOwnerFormModal({
   }, []);
 
   useEffect(() => {
-    if (!state.success || isCompleting) return;
+    if (!state.success || handledSuccessRef.current) return;
+    handledSuccessRef.current = true;
 
-    let cancelled = false;
-    setIsCompleting(true);
+    const ownerId = state.id;
+    onClose();
 
     void (async () => {
       try {
-        if (!isEdit && state.id) {
-          await onCreated?.(state.id);
+        if (!isEdit && ownerId) {
+          await onCreated?.(ownerId);
         }
         router.refresh();
-        if (!cancelled) onClose();
       } catch {
-        if (!cancelled) setIsCompleting(false);
+        // Villa bağlama hatası üst sekmede gösterilir.
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isCompleting, isEdit, onClose, onCreated, router, state.id, state.success]);
+  }, [isEdit, onClose, onCreated, router, state.id, state.success]);
 
   if (!mounted) return null;
 
@@ -377,11 +373,11 @@ export default function VillaOwnerFormModal({
             </button>
             <button
               type="button"
-              disabled={pending || isCompleting}
+              disabled={pending}
               onClick={handleSaveClick}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {pending || isCompleting ? "Kaydediliyor..." : "Kaydet"}
+              {pending ? "Kaydediliyor..." : "Kaydet"}
             </button>
           </div>
         </form>
