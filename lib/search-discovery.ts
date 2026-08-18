@@ -45,8 +45,8 @@ export function indexNowKeyForHostname(hostname: string): string {
   return createIndexNowKey(PUBLIC_SITE_META[siteKey].domain);
 }
 
-export function indexNowKeyLocation(origin: string, key: string): string {
-  return `${origin.replace(/\/+$/, "")}/${key}.txt`;
+export function indexNowKeyLocation(origin: string, _key?: string): string {
+  return `${origin.replace(/\/+$/, "")}/indexnow-key.txt`;
 }
 
 export function buildSearchEngineVerification(input: {

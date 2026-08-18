@@ -74,6 +74,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           "/.well-known/llms-full.txt",
           "/rss.xml",
           "/sitemap.xml",
+          "/indexnow-key.txt",
         ],
         disallow: publicDisallow,
       },

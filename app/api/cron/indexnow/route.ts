@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     const submitted = await submitIndexNowUrls({
       host,
       key,
-      keyLocation: indexNowKeyLocation(origin, key),
+      keyLocation: indexNowKeyLocation(origin),
       urls: pages.map((page) => page.url),
     });
     const yandex = await pingYandexSitemap(`${origin}/sitemap.xml`);

@@ -5,20 +5,14 @@ import { indexNowKeyForHostname } from "@/lib/search-discovery";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+export async function GET() {
   const requestHeaders = await headers();
   const hostname = normalizeRequestHostname(
     requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host")
   );
-  const expected = indexNowKeyForHostname(hostname);
-  const provided =
-    new URL(request.url).searchParams.get("key")?.trim().toLowerCase() ?? "";
+  const key = indexNowKeyForHostname(hostname);
 
-  if (provided && provided !== expected) {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-
-  return new NextResponse(expected, {
+  return new NextResponse(key, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "public, max-age=86400",

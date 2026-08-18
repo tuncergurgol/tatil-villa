@@ -15,7 +15,7 @@ assert.equal(key.length, 32);
 assert.match(key, /^[a-f0-9]{32}$/);
 assert.equal(
   indexNowKeyLocation(origin, key),
-  `https://www.tatildeyiz.com.tr/${key}.txt`
+  "https://www.tatildeyiz.com.tr/indexnow-key.txt"
 );
 
 const verification = buildSearchEngineVerification({
