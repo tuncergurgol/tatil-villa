@@ -9,6 +9,7 @@ import { revalidateVillaHizliFiyatPage } from "@/lib/villa-admin-path.server";
 import {
   compareDates,
   dateKeyToDbDate,
+  dbDateToDateKey,
   parseDateKey,
 } from "@/lib/villa-period-calendar";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
@@ -739,6 +740,11 @@ export async function updateVillaPricePeriod(
     const extraRemoveIds = overlapping.some((period) => period.id === periodId)
       ? []
       : [periodId];
+    const selfPeriod = overlapping.find((period) => period.id === periodId);
+    const datesUnchanged =
+      selfPeriod != null &&
+      dbDateToDateKey(selfPeriod.startDate) === dbDateToDateKey(startDate) &&
+      dbDateToDateKey(selfPeriod.endDate) === dbDateToDateKey(endDate);
 
     if (overlapping.length === 0) {
       const existing = await prisma.villaPricePeriod.findFirst({
@@ -765,7 +771,8 @@ export async function updateVillaPricePeriod(
       );
     } else if (
       overlapping.length === 1 &&
-      overlapping[0]!.id === periodId
+      overlapping[0]!.id === periodId &&
+      datesUnchanged
     ) {
       await prisma.villaPricePeriod.update({
         where: { id: periodId },
