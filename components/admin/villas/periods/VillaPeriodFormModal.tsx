@@ -13,7 +13,6 @@ import {
   updateVillaPricePeriodDaysPricing,
   updateVillaPeriodDaysOccupancy,
 } from "@/app/actions/admin/villa-periods";
-import VillaPeriodRangePreview from "@/components/admin/villas/periods/VillaPeriodRangePreview";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
 import {
   formatPeriodDate,
@@ -1209,16 +1208,6 @@ export default function VillaPeriodFormModal({
                 ) : null}
               </div>
             </section>
-
-            {!period ? (
-              <VillaPeriodRangePreview
-                startDate={form.actionStartDate}
-                endDate={form.actionEndDate}
-                nightlyPrice={form.nightlyPrice}
-                nightlyPriceCurrency={form.nightlyPriceCurrency}
-                availability="available"
-              />
-            ) : null}
 
             <section className="overflow-hidden rounded-xl border border-teal-200">
               <SectionHeader
