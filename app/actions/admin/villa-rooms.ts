@@ -3,9 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { syncVillaRooms } from "@/lib/queries/villa-rooms";
+import {
+  syncVillaRoomFeatureCatalog,
+  syncVillaRooms,
+} from "@/lib/queries/villa-rooms";
 import { applyTatildeyizRoomsToVilla } from "@/lib/tatildeyiz-room-import";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
+import {
+  isDefaultRoomFeature,
+  uniqueRoomFeatures,
+} from "@/lib/villa-room-features";
 
 export type VillaRoomActionState = {
   error?: string;
@@ -43,19 +50,15 @@ export async function updateVillaRoom(
     return { error: "Oda adı gerekli" };
   }
 
-  const mergedCustomFeatures = Array.from(
-    new Set([
-      ...customFeatures,
-      ...(newCustomFeature ? [newCustomFeature] : []),
-    ])
-  );
+  const mergedCustomFeatures = uniqueRoomFeatures([
+    ...customFeatures,
+    ...(newCustomFeature ? [newCustomFeature] : []),
+  ]).filter((feature) => !isDefaultRoomFeature(feature));
 
-  const mergedFeatures = Array.from(
-    new Set([
-      ...features,
-      ...(newCustomFeature ? [newCustomFeature] : []),
-    ])
-  );
+  const mergedFeatures = uniqueRoomFeatures([
+    ...features,
+    ...(newCustomFeature ? [newCustomFeature] : []),
+  ]);
 
   try {
     await prisma.villaRoom.update({
@@ -70,11 +73,33 @@ export async function updateVillaRoom(
         customFeatures: mergedCustomFeatures,
       },
     });
+    await syncVillaRoomFeatureCatalog(villaId, mergedCustomFeatures);
 
     await revalidateVillaRooms(villaId);
     return { success: true };
   } catch {
     return { error: "Oda güncellenemedi" };
+  }
+}
+
+export async function addVillaRoomCustomFeature(
+  villaId: string,
+  featureName: string
+): Promise<VillaRoomActionState & { customFeatures?: string[] }> {
+  await requireAdmin();
+
+  const name = featureName.trim().replace(/\s+/g, " ");
+  if (!name) {
+    return { error: "Özellik adı gerekli" };
+  }
+  try {
+    const { catalog } = await syncVillaRoomFeatureCatalog(
+      villaId,
+      isDefaultRoomFeature(name) ? [] : [name]
+    );
+    return { success: true, customFeatures: catalog };
+  } catch {
+    return { error: "Özellik eklenemedi" };
   }
 }
 

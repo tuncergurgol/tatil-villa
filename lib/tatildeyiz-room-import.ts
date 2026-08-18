@@ -1,14 +1,18 @@
 import type { PrismaClient } from "@prisma/client";
 import {
-  DEFAULT_ROOM_FEATURES,
   ROOM_TYPE_OPTIONS,
+  isDefaultRoomFeature,
+  uniqueRoomFeatures,
 } from "@/lib/villa-room-features";
 import {
   fetchTatildeyizPropertyWithDelay,
   type TatildeyizProperty,
   type TatildeyizPropertyRoom,
 } from "@/lib/tatildeyiz-property";
-import { syncVillaRooms } from "@/lib/queries/villa-rooms";
+import {
+  syncVillaRoomFeatureCatalog,
+  syncVillaRooms,
+} from "@/lib/queries/villa-rooms";
 
 export type MappedVillaRoom = {
   roomType: string;
@@ -33,8 +37,6 @@ export type ImportVillaRoomsResult = {
   rooms?: MappedVillaRoom[];
   error?: string;
 };
-
-const DEFAULT_FEATURE_SET = new Set<string>(DEFAULT_ROOM_FEATURES);
 
 const ROOM_TYPE_BY_LABEL: Record<string, string> = Object.fromEntries(
   ROOM_TYPE_OPTIONS.map((option) => [option.label.toLowerCase(), option.value])
@@ -126,22 +128,11 @@ export function parseBedCountsFromText(text: string) {
 }
 
 export function mapRoomFeatureNames(names: string[]) {
-  const features: string[] = [];
-  const customFeatures: string[] = [];
-
-  for (const rawName of names) {
-    const name = rawName.trim();
-    if (!name) continue;
-
-    if (DEFAULT_FEATURE_SET.has(name)) {
-      if (!features.includes(name)) features.push(name);
-      continue;
-    }
-
-    if (!customFeatures.includes(name)) customFeatures.push(name);
-  }
-
-  return { features, customFeatures };
+  const features = uniqueRoomFeatures(names);
+  return {
+    features,
+    customFeatures: features.filter((feature) => !isDefaultRoomFeature(feature)),
+  };
 }
 
 function extractFeatureNamesFromDescriptionText(text: string) {
@@ -398,6 +389,8 @@ export async function applyTatildeyizRoomsToVilla(
       },
     });
   }
+
+  await syncVillaRoomFeatureCatalog(villa.id);
 
   return {
     slug,

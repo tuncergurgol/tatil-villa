@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getVillaGalleryImages } from "@/lib/villa-gallery";
-import { getRoomTypeLabel, formatBedSummary } from "@/lib/villa-room-features";
+import { getRoomTypeLabel, formatBedSummary, uniqueRoomFeatures } from "@/lib/villa-room-features";
 import { formatVillaRegionLabel } from "@/lib/queries/villa-location";
 import { getVillaPeriodPriceRanges } from "@/lib/queries/villas";
 import { RegionLevel } from "@/lib/region-levels";
@@ -350,7 +350,7 @@ export async function getVillaDetailBySlug(
       singleBeds: room.singleBeds,
       doubleBeds: room.doubleBeds,
       imageUrl: room.imageUrl,
-      features: [...room.features, ...room.customFeatures],
+      features: uniqueRoomFeatures(room.features),
     })),
     pools: villa.pools.map((pool) => ({
       id: pool.id,

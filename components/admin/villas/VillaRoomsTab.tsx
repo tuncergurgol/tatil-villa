@@ -10,6 +10,7 @@ import VillaRoomEditModal from "@/components/admin/villas/VillaRoomEditModal";
 import {
   formatBedSummary,
   getRoomTypeLabel,
+  uniqueRoomFeatures,
 } from "@/lib/villa-room-features";
 
 interface VillaRoomsTabProps {
@@ -60,7 +61,9 @@ export default function VillaRoomsTab({
 
       {rooms.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {rooms.map((room, index) => (
+          {rooms.map((room, index) => {
+            const roomFeatures = uniqueRoomFeatures(room.features);
+            return (
             <article
               key={room.id}
               className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
@@ -91,9 +94,9 @@ export default function VillaRoomsTab({
                   {formatBedSummary(room.singleBeds, room.doubleBeds)}
                 </div>
 
-                {room.features.length > 0 ? (
+                {roomFeatures.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {room.features.map((feature) => (
+                    {roomFeatures.map((feature) => (
                       <span
                         key={feature}
                         className="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600"
@@ -118,7 +121,8 @@ export default function VillaRoomsTab({
                 </button>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-16 text-center">
@@ -136,6 +140,9 @@ export default function VillaRoomsTab({
           villaId={villaId}
           villaName={villaName}
           room={editingRoom}
+          villaCustomFeatures={uniqueRoomFeatures(
+            rooms.flatMap((item) => item.customFeatures)
+          )}
           galleryImages={galleryImages}
           onClose={() => setEditingRoom(null)}
           onSaved={refresh}
