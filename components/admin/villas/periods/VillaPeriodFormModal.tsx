@@ -1290,7 +1290,7 @@ export default function VillaPeriodFormModal({
               className={pinSaveBar ? "invisible pointer-events-none" : undefined}
               aria-hidden={pinSaveBar}
             >
-              <PeriodSaveActions>
+              <PeriodSaveActions
                 isEdit={Boolean(period)}
                 isPending={isPending}
                 saveDisabled={
