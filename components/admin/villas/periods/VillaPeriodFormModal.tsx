@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   CalendarDays,
+  Percent,
   Save,
   UserPlus,
   X,
@@ -423,6 +431,42 @@ function FeeRow({
   );
 }
 
+function PeriodSaveActions({
+  isEdit,
+  isPending,
+  saveDisabled,
+  onSave,
+  onScrollToDiscount,
+}: {
+  isEdit: boolean;
+  isPending: boolean;
+  saveDisabled: boolean;
+  onSave: () => void;
+  onScrollToDiscount: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <button
+        type={isEdit ? "button" : "submit"}
+        disabled={saveDisabled}
+        onClick={isEdit ? onSave : undefined}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+      >
+        <Save className="h-4 w-4" />
+        {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
+      </button>
+      <button
+        type="button"
+        onClick={onScrollToDiscount}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-teal-300 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800 hover:bg-teal-100"
+      >
+        <Percent className="h-4 w-4" />
+        İndirim
+      </button>
+    </div>
+  );
+}
+
 export default function VillaPeriodFormModal({
   open,
   villaId,
@@ -441,6 +485,10 @@ export default function VillaPeriodFormModal({
   const [isPending, startTransition] = useTransition();
   const [availabilityPending, setAvailabilityPending] = useState(false);
   const [discountPending, setDiscountPending] = useState(false);
+  const [pinSaveBar, setPinSaveBar] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const saveBarRef = useRef<HTMLDivElement>(null);
+  const discountSectionRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -452,7 +500,41 @@ export default function VillaPeriodFormModal({
     );
     setError(null);
     setConfirmedLockMessage(null);
+    setPinSaveBar(true);
   }, [open, period, prefillDateRange, templatePeriod]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const root = scrollContainerRef.current;
+    const saveBar = saveBarRef.current;
+    const discount = discountSectionRef.current;
+    if (!root || !saveBar || !discount) return;
+
+    const updatePin = () => {
+      const rootRect = root.getBoundingClientRect();
+      const saveRect = saveBar.getBoundingClientRect();
+      const discountRect = discount.getBoundingClientRect();
+      const saveVisible =
+        saveRect.top < rootRect.bottom && saveRect.bottom > rootRect.top + 8;
+      const discountVisible = discountRect.top < rootRect.bottom - 48;
+      setPinSaveBar(!saveVisible && !discountVisible);
+    };
+
+    const observer = new IntersectionObserver(updatePin, {
+      root,
+      threshold: [0, 0.05, 0.2, 1],
+    });
+    observer.observe(saveBar);
+    observer.observe(discount);
+    root.addEventListener("scroll", updatePin, { passive: true });
+    updatePin();
+
+    return () => {
+      observer.disconnect();
+      root.removeEventListener("scroll", updatePin);
+    };
+  }, [open]);
 
   const occupancyStayPreview = useMemo(() => {
     if (!form.actionStartDate || !form.actionEndDate) return null;
@@ -776,7 +858,7 @@ export default function VillaPeriodFormModal({
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <h2 className="text-lg font-bold text-gray-900">
-            {period ? "PERİYOD DÜZENLE" : "PERİYOD EKLE"}
+            {period ? "PERİYOT DÜZENLE" : "PERİYOT EKLE"}
           </h2>
           <button
             type="button"
@@ -788,7 +870,10 @@ export default function VillaPeriodFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+          <div
+            ref={scrollContainerRef}
+            className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5"
+          >
             {error ? (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
@@ -797,7 +882,7 @@ export default function VillaPeriodFormModal({
 
             <section className="overflow-hidden rounded-xl border border-gray-200">
               <SectionHeader
-                title="Periyod Aralığı"
+                title="Periyot Aralığı"
                 icon={<CalendarDays className="h-4 w-4" />}
                 tone="blue"
               />
@@ -849,31 +934,33 @@ export default function VillaPeriodFormModal({
                 {period ? (
                   <div>
                     <span className={labelClass}>Uygunluk Durumu</span>
-                    <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-800">
-                      <label className="inline-flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="occupancySelection"
-                          value="EMPTY"
-                          checked={form.occupancySelection === "EMPTY"}
-                          onChange={() =>
-                            updateForm({ occupancySelection: "EMPTY" })
-                          }
-                        />
+                    <div className="mt-2 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateForm({ occupancySelection: "EMPTY" })
+                        }
+                        className={`rounded-xl border-2 px-4 py-4 text-sm font-bold uppercase tracking-wide transition ${
+                          form.occupancySelection === "EMPTY"
+                            ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100"
+                        }`}
+                      >
                         Uygun
-                      </label>
-                      <label className="inline-flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="occupancySelection"
-                          value="BOOKED"
-                          checked={form.occupancySelection === "BOOKED"}
-                          onChange={() =>
-                            updateForm({ occupancySelection: "BOOKED" })
-                          }
-                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateForm({ occupancySelection: "BOOKED" })
+                        }
+                        className={`rounded-xl border-2 px-4 py-4 text-sm font-bold uppercase tracking-wide transition ${
+                          form.occupancySelection === "BOOKED"
+                            ? "border-red-600 bg-red-600 text-white shadow-sm"
+                            : "border-red-200 bg-red-50 text-red-800 hover:border-red-400 hover:bg-red-100"
+                        }`}
+                      >
                         Dolu
-                      </label>
+                      </button>
                     </div>
 
                     {form.occupancySelection === "EMPTY" ? (
@@ -885,7 +972,7 @@ export default function VillaPeriodFormModal({
                           !form.actionEndDate
                         }
                         onClick={() => handleOccupancyAction("EMPTY")}
-                        className="mt-3 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
+                        className="mt-3 w-full rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
                       >
                         {availabilityPending ? "Açılıyor..." : "Aç"}
                       </button>
@@ -900,7 +987,7 @@ export default function VillaPeriodFormModal({
                           !form.actionEndDate
                         }
                         onClick={() => handleOccupancyAction("BOOKED")}
-                        className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
+                        className="mt-3 w-full rounded-xl bg-red-600 px-5 py-3 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
                       >
                         {availabilityPending ? "Kapatılıyor..." : "Kapat"}
                       </button>
@@ -912,7 +999,7 @@ export default function VillaPeriodFormModal({
 
             <section className="overflow-hidden rounded-xl border border-gray-200">
               <SectionHeader
-                title="Period Bilgileri"
+                title="Periyot Bilgileri"
                 icon={<UserPlus className="h-4 w-4" />}
                 tone="gray"
               />
@@ -1195,21 +1282,34 @@ export default function VillaPeriodFormModal({
                     updateForm({ childFee03_09Currency: value })
                   }
                 />
-                {period ? (
-                  <button
-                    type="button"
-                    disabled={isPending || !form.actionStartDate || !form.actionEndDate}
-                    onClick={handlePricingSave}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    <Save className="h-4 w-4" />
-                    {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
-                  </button>
-                ) : null}
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-xl border border-teal-200">
+            <div
+              ref={saveBarRef}
+              className={pinSaveBar ? "invisible pointer-events-none" : undefined}
+              aria-hidden={pinSaveBar}
+            >
+              <PeriodSaveActions>
+                isEdit={Boolean(period)}
+                isPending={isPending}
+                saveDisabled={
+                  isPending || !form.actionStartDate || !form.actionEndDate
+                }
+                onSave={handlePricingSave}
+                onScrollToDiscount={() =>
+                  discountSectionRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  })
+                }
+              />
+            </div>
+
+            <section
+              ref={discountSectionRef}
+              className="scroll-mt-3 overflow-hidden rounded-xl border border-teal-200"
+            >
               <SectionHeader
                 title="İndirim Bilgileri"
                 icon={<Save className="h-4 w-4" />}
@@ -1315,15 +1415,22 @@ export default function VillaPeriodFormModal({
             </section>
           </div>
 
-          {!period ? (
-            <div className="border-t border-gray-100 p-5">
-              <button
-                type="submit"
-                disabled={isPending}
-                className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
-              </button>
+          {pinSaveBar ? (
+            <div className="shrink-0 border-t border-gray-100 bg-white p-5 shadow-[0_-6px_16px_rgba(15,23,42,0.06)]">
+              <PeriodSaveActions
+                isEdit={Boolean(period)}
+                isPending={isPending}
+                saveDisabled={
+                  isPending || !form.actionStartDate || !form.actionEndDate
+                }
+                onSave={handlePricingSave}
+                onScrollToDiscount={() =>
+                  discountSectionRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  })
+                }
+              />
             </div>
           ) : null}
         </form>
