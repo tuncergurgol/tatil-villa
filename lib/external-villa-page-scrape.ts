@@ -14,7 +14,7 @@
  * - hepsivilla.com (price_block haftalık/gecelik + AJAX cal.do takvim)
  * - elitvillam.com (aylık haftalık fiyat + AJAX cal.do; data-p gecelik)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
- * - tatilvillamda.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
+ * - tatilvillamda.com / villamgayrimenkul.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
  * - kaskavilla.com (Nuxt __NUXT__ priceTable + frontapi/periyotlar takvim)
  * - villaevreni.com (aynı panel altyapısı)
  * - tatilvillasi.com.tr (prices_function + availabilitys_function API)
@@ -510,6 +510,16 @@ function extractDamageDeposit(html: string): {
   }
 
   const text = stripTags(html);
+  const titled = text.match(
+    /hasar\s*depozito(?:su)?\s*[-–:]\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i
+  );
+  if (titled?.[1]) {
+    return {
+      amount: positiveInt(parseTurkishMoneyAmount(titled[1])),
+      currency: mapCurrencyCode(titled[2]),
+    };
+  }
+
   const before = text.match(
     /hasar\s*depozito(?:su)?[^0-9]{0,40}(\d[\d.\s]*)\s*(TL|EUR|USD|GBP|€|\$|£)?/i
   );
@@ -531,6 +541,13 @@ function extractPrepaymentRate(html: string): number | null {
 
   // Villavakti vb.: "Rezervasyon için % 20 ön ödeme" — en güvenilir kaynak
   for (const match of text.matchAll(/%\s*(\d{1,3})\s*ön\s*ödeme/gi)) {
+    const value = parsePercentRate(match[1] ?? null);
+    if (value != null) return value;
+  }
+
+  for (const match of text.matchAll(
+    /%\s*(\d{1,3})\s*lik.{0,40}ön\s*[öo]deme/gi
+  )) {
     const value = parsePercentRate(match[1] ?? null);
     if (value != null) return value;
   }
@@ -583,6 +600,23 @@ function extractCleaningDefaults(html: string): {
   }
 
   const text = stripTags(html);
+  const titledFee = text.match(
+    /temizlik\s*[üu]creti\s*[-–:]?\s*(\d[\d.,\s]*)\s*(?:₺|TL)/i
+  );
+  const dayMatch =
+    text.match(/(\d+)\s*gece\s+ve\s+alt/i) ??
+    text.match(/(\d+)\s*gece\s*alt[ıi]ndaki/i);
+
+  if (titledFee?.[1] || dayMatch) {
+    return {
+      cleaningDayCount: dayMatch ? positiveInt(Number(dayMatch[1])) : null,
+      cleaningFee: titledFee?.[1]
+        ? positiveInt(parseTurkishMoneyAmount(titledFee[1]))
+        : null,
+      cleaningFeeCurrency: "TL",
+    };
+  }
+
   const inline = text.match(
     /(\d+)\s*gece\s*alt[ıi]ndaki[^.]{0,80}?(\d[\d.,\s]*)\s*(?:₺|TL)[^.]{0,20}temizlik/i
   );
@@ -5054,7 +5088,9 @@ export function scrapeVillakalkanFromHtml(
 
 function looksLikeTatilvillamda(pageUrl: string, html: string): boolean {
   const host = normalizeHost(new URL(pageUrl).hostname);
-  if (host.includes("tatilvillamda")) return true;
+  if (host.includes("tatilvillamda") || host.includes("villamgayrimenkul")) {
+    return true;
+  }
   return html.includes("fiyat_yazilan_tarihler");
 }
 
@@ -5140,16 +5176,62 @@ export function parseTatilvillamdaOccupancy(
   html: string
 ): Map<string, VillaDayOccupancy> {
   const occupancy = new Map<string, VillaDayOccupancy>();
-  const dolu = extractEmbeddedJsArray(html, "dolutarihler");
-  if (!Array.isArray(dolu)) return occupancy;
 
-  for (const raw of dolu) {
-    const key = normalizeLooseDateKey(String(raw ?? ""));
-    if (!key) continue;
-    occupancy.set(key, "BOOKED");
-  }
+  const mark = (rawList: unknown, status: VillaDayOccupancy) => {
+    if (!Array.isArray(rawList)) return;
+    for (const raw of rawList) {
+      const key = normalizeLooseDateKey(String(raw ?? ""));
+      if (!key) continue;
+      occupancy.set(key, status);
+    }
+  };
+
+  mark(extractEmbeddedJsArray(html, "dolutarihler"), "BOOKED");
+  mark(extractEmbeddedJsArray(html, "RezervasyonBekleyenler"), "OPTION");
 
   return occupancy;
+}
+
+function addYearsUtc(date: Date, years: number) {
+  const next = new Date(date.getTime());
+  next.setUTCFullYear(next.getUTCFullYear() + years);
+  return next;
+}
+
+function shiftStaleEmbeddedSeasonYear(
+  periods: MappedVillaPricePeriod[],
+  occupancyByDateKey: Map<string, VillaDayOccupancy>,
+  warnings: string[]
+) {
+  if (periods.length === 0) return;
+
+  const currentYear = new Date().getUTCFullYear();
+  const maxEnd = periods.reduce(
+    (latest, period) =>
+      compareDates(period.endDate, latest) > 0 ? period.endDate : latest,
+    periods[0]!.endDate
+  );
+  const maxYear = maxEnd.getUTCFullYear();
+  if (maxYear >= currentYear) return;
+
+  const years = currentYear - maxYear;
+  for (const period of periods) {
+    period.startDate = addYearsUtc(period.startDate, years);
+    period.endDate = addYearsUtc(period.endDate, years);
+  }
+
+  const shifted = new Map<string, VillaDayOccupancy>();
+  for (const [key, status] of occupancyByDateKey) {
+    const date = parseDateKey(key);
+    if (!date) continue;
+    shifted.set(toDateKey(addYearsUtc(date, years)), status);
+  }
+  occupancyByDateKey.clear();
+  for (const [key, status] of shifted) occupancyByDateKey.set(key, status);
+
+  warnings.push(
+    `Sezon tarihleri ${years} yıl ileri alındı (${maxYear} → ${currentYear})`
+  );
 }
 
 export function scrapeTatilvillamdaFromHtml(
@@ -5161,20 +5243,19 @@ export function scrapeTatilvillamdaFromHtml(
 
   const periods = parseTatilvillamdaPeriods(html);
   const occupancyByDateKey = parseTatilvillamdaOccupancy(html);
+  shiftStaleEmbeddedSeasonYear(periods, occupancyByDateKey, warnings);
 
   if (periods.length === 0) {
     if (occupancyByDateKey.size > 0) {
       warnings.push(
-        "Tatilvillamda takvimi okundu ancak fiyat_yazilan_tarihler bulunamadı"
+        "Takvim okundu ancak fiyat_yazilan_tarihler bulunamadı"
       );
     }
     return null;
   }
 
   if (occupancyByDateKey.size === 0) {
-    warnings.push(
-      "Tatilvillamda fiyatları alındı; dolutarihler takvimi boş"
-    );
+    warnings.push("Fiyatlar alındı; dolutarihler takvimi boş");
   }
 
   return {
