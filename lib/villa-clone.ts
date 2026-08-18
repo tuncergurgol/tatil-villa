@@ -76,6 +76,8 @@ function villaScalarsForClone(
     b2bSharing: source.b2bSharing,
     showInSearch: source.showInSearch,
     showInOffer: source.showInOffer,
+    allowPrepaymentOption: source.allowPrepaymentOption,
+    allowFullPaymentOption: source.allowFullPaymentOption,
     prepaymentPaymentType: source.prepaymentPaymentTypeId
       ? { connect: { id: source.prepaymentPaymentTypeId } }
       : undefined,

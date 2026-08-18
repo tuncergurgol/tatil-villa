@@ -81,6 +81,8 @@ interface BookingFormProps {
     bedrooms: number;
     bathrooms: number;
   };
+  allowPrepaymentOption?: boolean;
+  allowFullPaymentOption?: boolean;
   calendarDays?: Array<{
     date: string;
     occupancyStatus: string;
@@ -158,6 +160,8 @@ export default function BookingForm({
   heatedPools = [],
   villaSummary,
   calendarDays = [],
+  allowPrepaymentOption = true,
+  allowFullPaymentOption = true,
 }: BookingFormProps) {
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
   const [modalOpen, setModalOpen] = useState(false);
@@ -847,6 +851,8 @@ export default function BookingForm({
           }}
           brandName={brandName}
           memberBenefits={memberBenefits}
+          allowPrepaymentOption={allowPrepaymentOption}
+          allowFullPaymentOption={allowFullPaymentOption}
         />
       ) : null}
     </div>

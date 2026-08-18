@@ -33,6 +33,8 @@ export type VillaStayQuoteResult = {
   heatedPools: HeatedPoolOption[];
   baseCapacity: number;
   damageDeposit: number | null;
+  allowPrepaymentOption: boolean;
+  allowFullPaymentOption: boolean;
 };
 
 const QUOTE_DAY_SELECT = {
@@ -118,6 +120,8 @@ export async function resolveVillaStayQuote(
       where: { id: villaId },
       select: {
         guests: true,
+        allowPrepaymentOption: true,
+        allowFullPaymentOption: true,
         pools: {
           where: { heated: true },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -174,5 +178,7 @@ export async function resolveVillaStayQuote(
     heatedPools,
     baseCapacity: villa?.guests ?? 0,
     damageDeposit: periodFees.damageDeposit,
+    allowPrepaymentOption: villa?.allowPrepaymentOption !== false,
+    allowFullPaymentOption: villa?.allowFullPaymentOption !== false,
   };
 }

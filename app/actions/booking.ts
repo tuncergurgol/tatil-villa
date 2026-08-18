@@ -34,6 +34,7 @@ import {
   type PoolHeatingSelections,
   type StayFeeSelections,
 } from "@/lib/stay-period-fees";
+import { resolveVillaPaymentAmountOptions } from "@/lib/villa-payment-amount-options";
 
 const bookingSchema = z.object({
   villaId: z.string().min(1),
@@ -171,6 +172,14 @@ export async function submitBooking(
         verifiedPricing?.quote.invalidReason ??
         "Seçilen tarihler için fiyat hesaplanamadı.",
     };
+  }
+
+  const allowedPaymentAmounts = resolveVillaPaymentAmountOptions({
+    allowPrepaymentOption: verifiedPricing.allowPrepaymentOption,
+    allowFullPaymentOption: verifiedPricing.allowFullPaymentOption,
+  });
+  if (!allowedPaymentAmounts.includes(paymentAmount)) {
+    return { error: "Bu villa için seçilen ödeme tutarı geçerli değil." };
   }
 
   const feeFields = buildStayBookingFeeDetails({

@@ -63,6 +63,12 @@ export default function VillaRulesTab({
   const [allowEvents, setAllowEvents] = useState(villa.allowEvents);
   const [allowSmoking, setAllowSmoking] = useState(villa.allowSmoking);
   const [allowPets, setAllowPets] = useState(villa.allowPets);
+  const [allowPrepaymentOption, setAllowPrepaymentOption] = useState(
+    villa.allowPrepaymentOption !== false
+  );
+  const [allowFullPaymentOption, setAllowFullPaymentOption] = useState(
+    villa.allowFullPaymentOption !== false
+  );
   const [showNaturePestNotice, setShowNaturePestNotice] = useState(
     villa.showNaturePestNotice
   );
@@ -86,23 +92,53 @@ export default function VillaRulesTab({
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Ön Ödeme Farkı Ödeme Tipi">
-        <p className="mb-3 text-xs text-gray-500">
-          Rezervasyonda &apos;Ev Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
-          Yapılacak Tarih&apos;i otomatik önerir. Tanımlamalar menüsünden yeni
-          tipler ekleyebilirsiniz.
-        </p>
-        <select
-          name="prepaymentPaymentTypeId"
-          defaultValue={defaultPrepaymentId}
-          className={`${inputClass} max-w-md`}
-        >
-          {prepaymentPaymentTypes.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+      <SectionCard title="Ödeme Ayarları">
+        <div className="grid gap-4 md:grid-cols-2 md:items-start">
+          <label className="block">
+            <span className={labelClass}>Ön Ödeme Farkı Ödeme Tipi</span>
+            <p className="mb-2 mt-1 text-xs text-gray-500">
+              Rezervasyonda &apos;Ev Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
+              Yapılacak Tarih&apos;i otomatik önerir.
+            </p>
+            <select
+              name="prepaymentPaymentTypeId"
+              defaultValue={defaultPrepaymentId}
+              className={inputClass}
+            >
+              {prepaymentPaymentTypes.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <span className={labelClass}>Ödeme Bilgisi</span>
+            <p className="mb-2 mt-1 text-xs text-gray-500">
+              Rezervasyon Yap ödeme ekranında görünecek tutar seçenekleri.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <StatusPillToggle
+                label="Ön Ödeme"
+                name="allowPrepaymentOption"
+                checked={allowPrepaymentOption}
+                onChange={(value) => {
+                  if (!value && !allowFullPaymentOption) return;
+                  setAllowPrepaymentOption(value);
+                }}
+              />
+              <StatusPillToggle
+                label="Tam Ödeme"
+                name="allowFullPaymentOption"
+                checked={allowFullPaymentOption}
+                onChange={(value) => {
+                  if (!value && !allowPrepaymentOption) return;
+                  setAllowFullPaymentOption(value);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </SectionCard>
 
       <SectionCard title="Ev Kuralları">

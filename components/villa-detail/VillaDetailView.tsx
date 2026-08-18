@@ -607,6 +607,8 @@ export default function VillaDetailView({
                 bedrooms: villa.bedrooms,
                 bathrooms: villa.bathrooms,
               }}
+              allowPrepaymentOption={villa.allowPrepaymentOption}
+              allowFullPaymentOption={villa.allowFullPaymentOption}
               calendarDays={villa.calendarDays}
             />
           </aside>

@@ -516,10 +516,16 @@ export async function updateVillaRules(id: string, formData: FormData) {
     String(formData.get("prepaymentPaymentTypeId") ?? "").trim() ||
     DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID;
 
+  const allowPrepaymentOption = parseBool(formData.get("allowPrepaymentOption"));
+  const allowFullPaymentOption = parseBool(formData.get("allowFullPaymentOption"));
+  const hasPaymentOption = allowPrepaymentOption || allowFullPaymentOption;
+
   await prisma.villa.update({
     where: { id },
     data: {
       prepaymentPaymentTypeId,
+      allowPrepaymentOption: hasPaymentOption ? allowPrepaymentOption : true,
+      allowFullPaymentOption: hasPaymentOption ? allowFullPaymentOption : true,
       checkInTime: String(formData.get("checkInTime") ?? "16:00"),
       checkOutTime: String(formData.get("checkOutTime") ?? "10:00"),
       allowBaby: parseBool(formData.get("allowBaby")),

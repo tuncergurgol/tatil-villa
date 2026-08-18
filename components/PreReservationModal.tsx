@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,6 +10,10 @@ import TurkishPhoneField, {
   normalizeTurkishPhoneFieldValue,
 } from "@/components/admin/ui/TurkishPhoneField";
 import type { StayQuote } from "@/lib/stay-quote";
+import {
+  defaultVillaPaymentAmount,
+  resolveVillaPaymentAmountOptions,
+} from "@/lib/villa-payment-amount-options";
 
 export type PreReservationPaymentMethod = "card" | "transfer";
 export type PreReservationPaymentAmount = "prepayment" | "full";
@@ -68,6 +72,8 @@ type PreReservationModalProps = {
   quote: StayQuote;
   brandName?: string;
   memberBenefits?: PreReservationMemberBenefits | null;
+  allowPrepaymentOption?: boolean;
+  allowFullPaymentOption?: boolean;
 };
 
 function formatMoney(value: number) {
@@ -136,7 +142,17 @@ export default function PreReservationModal({
   quote,
   brandName = "tatildeyiz",
   memberBenefits = null,
+  allowPrepaymentOption = true,
+  allowFullPaymentOption = true,
 }: PreReservationModalProps) {
+  const paymentAmountOptions = useMemo(
+    () =>
+      resolveVillaPaymentAmountOptions({
+        allowPrepaymentOption,
+        allowFullPaymentOption,
+      }),
+    [allowPrepaymentOption, allowFullPaymentOption]
+  );
   const [mounted, setMounted] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
@@ -144,7 +160,9 @@ export default function PreReservationModal({
   const [paymentMethod, setPaymentMethod] =
     useState<PreReservationPaymentMethod>("transfer");
   const [paymentAmount, setPaymentAmount] =
-    useState<PreReservationPaymentAmount>("prepayment");
+    useState<PreReservationPaymentAmount>(() =>
+      defaultVillaPaymentAmount(paymentAmountOptions)
+    );
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptMarketing, setAcceptMarketing] = useState(false);
   const [hasCoupon, setHasCoupon] = useState(false);
@@ -160,6 +178,11 @@ export default function PreReservationModal({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (paymentAmountOptions.includes(paymentAmount)) return;
+    setPaymentAmount(defaultVillaPaymentAmount(paymentAmountOptions));
+  }, [paymentAmount, paymentAmountOptions]);
 
   useEffect(() => {
     if (!open) return;
@@ -387,21 +410,29 @@ export default function PreReservationModal({
                   description="Bu rezervasyonun ödemesini kredi kartı ile gerçekleştirmek istiyorum."
                 />
               </div>
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                <RadioCard
-                  selected={paymentAmount === "prepayment"}
-                  onSelect={() => setPaymentAmount("prepayment")}
-                  title={`%${quote.prepaymentRate} Ön Ödeme Tutarı`}
-                  price={formatMoneyLira(prepayment)}
-                  description="Toplam tutarın sadece ön ödemesini yapmak istiyorum."
-                />
-                <RadioCard
-                  selected={paymentAmount === "full"}
-                  onSelect={() => setPaymentAmount("full")}
-                  title="Tutarın Tamamı"
-                  price={formatMoneyLira(total)}
-                  description="Toplam tutarın tamamını yapmak istiyorum."
-                />
+              <div
+                className={`grid gap-2.5 ${
+                  paymentAmountOptions.length > 1 ? "sm:grid-cols-2" : ""
+                }`}
+              >
+                {paymentAmountOptions.includes("prepayment") ? (
+                  <RadioCard
+                    selected={paymentAmount === "prepayment"}
+                    onSelect={() => setPaymentAmount("prepayment")}
+                    title={`%${quote.prepaymentRate} Ön Ödeme Tutarı`}
+                    price={formatMoneyLira(prepayment)}
+                    description="Toplam tutarın sadece ön ödemesini yapmak istiyorum."
+                  />
+                ) : null}
+                {paymentAmountOptions.includes("full") ? (
+                  <RadioCard
+                    selected={paymentAmount === "full"}
+                    onSelect={() => setPaymentAmount("full")}
+                    title="Tutarın Tamamı"
+                    price={formatMoneyLira(total)}
+                    description="Toplam tutarın tamamını yapmak istiyorum."
+                  />
+                ) : null}
               </div>
               <p className="text-center text-xs text-slate-500">
                 Şimdi ödenecek:{" "}
