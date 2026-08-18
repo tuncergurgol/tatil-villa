@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
-import { includesSearchText } from "@/lib/search-text";
-import type { VillaListFilters } from "@/lib/villa-list-filters";
+import {
+  matchesVillaListSearch,
+  type VillaListFilters,
+} from "@/lib/villa-list-filters";
 import {
   buildVillaPriceReportFilename,
   buildVillaPriceReportRows,
@@ -46,17 +48,6 @@ function matchesRegionFilter(
   if (selectedSlugs.length === 0) return true;
   const pathSlugs = getRegionPathSlugs(region);
   return pathSlugs.some((slug) => selectedSlugs.includes(slug));
-}
-
-function matchesVillaSearch(
-  villa: { name: string; originalName: string; documentNo: string },
-  query: string
-) {
-  if (!query.trim()) return true;
-
-  return [villa.name, villa.originalName, villa.documentNo].some((value) =>
-    includesSearchText(value ?? "", query)
-  );
 }
 
 function mapPeriod(
@@ -126,7 +117,7 @@ export async function generateVillaPriceReportExport(filters: VillaListFilters) 
     if (filters.status === "passive" && villa.active) return false;
     if (filters.type !== "all" && villa.category !== filters.type) return false;
     if (!matchesRegionFilter(villa.region, filters.regions)) return false;
-    if (!matchesVillaSearch(villa, filters.q)) return false;
+    if (!matchesVillaListSearch(villa, filters.q)) return false;
     return true;
   });
 

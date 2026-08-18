@@ -17,7 +17,6 @@ import {
   Plus,
 } from "lucide-react";
 import { copyVilla, deleteVilla } from "@/app/actions/admin/villas";
-import { includesSearchText } from "@/lib/search-text";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import { villaAdminEditPath, villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import VillaDocumentModal from "@/components/admin/villas/VillaDocumentModal";
@@ -29,6 +28,7 @@ import {
   appendVillaListQuery,
   buildVillaListPath,
   buildVillaListSearchParams,
+  matchesVillaListSearch,
   parseVillaListFilters,
   type VillaListStatusFilter,
   type VillaListTypeFilter,
@@ -42,17 +42,6 @@ type TypeFilter = VillaListTypeFilter;
 interface VillaManagementProps {
   villas: AdminVillaListItem[];
   regionTree: RegionTreeNode[];
-}
-
-function matchesVillaListSearch(
-  villa: Pick<AdminVillaListItem, "name" | "originalName" | "documentNo">,
-  query: string
-) {
-  if (!query.trim()) return true;
-
-  return [villa.name, villa.originalName, villa.documentNo].some((value) =>
-    includesSearchText(value ?? "", query)
-  );
 }
 
 function ActionButton({
@@ -229,27 +218,23 @@ export default function VillaManagement({
   const [isPending, startTransition] = useTransition();
   const [isReportPending, startReportTransition] = useTransition();
   const [openMenuVillaId, setOpenMenuVillaId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (searchInputRef.current === document.activeElement) return;
     setSearch(filters.q);
   }, [filters.q]);
 
-  useEffect(() => {
-    const nextQuery = search.trim();
-    if (nextQuery === filters.q.trim()) return;
-
-    const timer = window.setTimeout(() => {
-      router.replace(
-        buildVillaListPath({
-          ...filters,
-          q: search,
-        }),
-        { scroll: false }
-      );
-    }, 300);
-
-    return () => window.clearTimeout(timer);
-  }, [search, filters, router]);
+  function commitSearchToUrl(nextSearch = search) {
+    if (nextSearch.trim() === filters.q.trim()) return;
+    router.replace(
+      buildVillaListPath({
+        ...filters,
+        q: nextSearch,
+      }),
+      { scroll: false }
+    );
+  }
 
   function updateFilters(
     patch: Partial<{
@@ -262,6 +247,7 @@ export default function VillaManagement({
     router.replace(
       buildVillaListPath({
         ...filters,
+        q: search,
         ...patch,
       }),
       { scroll: false }
@@ -380,9 +366,17 @@ export default function VillaManagement({
           <div className="relative min-w-[180px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
+              ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onBlur={() => commitSearchToUrl()}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                commitSearchToUrl();
+              }}
               placeholder="Villa adı, orijinal adı veya belge no ile ara..."
+              autoComplete="off"
               className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
             />
           </div>

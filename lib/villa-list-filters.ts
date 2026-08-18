@@ -1,5 +1,40 @@
+import { includesSearchText } from "@/lib/search-text";
+
 export type VillaListStatusFilter = "all" | "active" | "passive";
 export type VillaListTypeFilter = "all" | "villa" | "apart" | "suit_daire";
+
+export type VillaListSearchFields = {
+  name?: string | null;
+  originalName?: string | null;
+  documentNo?: string | null;
+};
+
+function compactSearchValue(value: string) {
+  return value.replace(/[\s\-./]/g, "");
+}
+
+export function matchesVillaListSearch(
+  villa: VillaListSearchFields,
+  query: string
+) {
+  if (!query.trim()) return true;
+
+  if (
+    [villa.name, villa.originalName, villa.documentNo].some((value) =>
+      includesSearchText(value ?? "", query)
+    )
+  ) {
+    return true;
+  }
+
+  const compactQuery = compactSearchValue(query);
+  if (!compactQuery) return false;
+
+  return includesSearchText(
+    compactSearchValue(villa.documentNo ?? ""),
+    compactQuery
+  );
+}
 
 export type VillaListFilters = {
   q: string;
