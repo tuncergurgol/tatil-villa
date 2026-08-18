@@ -2,7 +2,7 @@
 
 import GalleryImage from "@/components/GalleryImage";
 import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronLeft,
@@ -18,6 +18,12 @@ type VillaDetailGalleryProps = {
   images: string[];
 };
 
+function slideIndexFromScroll(track: HTMLDivElement, total: number) {
+  const width = track.clientWidth;
+  if (width <= 0 || total <= 0) return 0;
+  return Math.min(Math.max(Math.round(track.scrollLeft / width), 0), total - 1);
+}
+
 export default function VillaDetailGallery({
   villaId,
   name,
@@ -27,22 +33,50 @@ export default function VillaDetailGallery({
   const [shareCopied, setShareCopied] = useState(false);
   const [mobileSlide, setMobileSlide] = useState(0);
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
-  const touchStartX = useRef<number | null>(null);
+  const lightboxTrackRef = useRef<HTMLDivElement | null>(null);
+  const lightboxIndexRef = useRef<number | null>(null);
+  const pendingLightboxIndex = useRef<number | null>(null);
+  const galleryTouchX = useRef<number | null>(null);
+  const gallerySwiped = useRef(false);
   const total = images.length;
   const main = images[0];
   const side = images.slice(1, 5);
 
-  const close = useCallback(() => setLightboxIndex(null), []);
-  const showPrev = useCallback(() => {
-    setLightboxIndex((current) =>
-      current === null ? null : (current - 1 + total) % total
-    );
-  }, [total]);
-  const showNext = useCallback(() => {
-    setLightboxIndex((current) =>
-      current === null ? null : (current + 1) % total
-    );
-  }, [total]);
+  lightboxIndexRef.current = lightboxIndex;
+
+  const close = useCallback(() => {
+    pendingLightboxIndex.current = null;
+    setLightboxIndex(null);
+  }, []);
+
+  const openLightbox = useCallback((index: number) => {
+    pendingLightboxIndex.current = index;
+    setLightboxIndex(index);
+  }, []);
+
+  const scrollLightboxTo = useCallback(
+    (index: number, behavior: ScrollBehavior) => {
+      const track = lightboxTrackRef.current;
+      if (!track || total <= 0) return;
+      const next = ((index % total) + total) % total;
+      track.scrollTo({ left: next * track.clientWidth, behavior });
+    },
+    [total]
+  );
+
+  const stepLightbox = useCallback(
+    (direction: -1 | 1) => {
+      const current = lightboxIndexRef.current;
+      if (current === null || total <= 1) return;
+      const next = (current + direction + total) % total;
+      const wraps = (current === 0 && next === total - 1) || (current === total - 1 && next === 0);
+      setLightboxIndex(next);
+      scrollLightboxTo(next, wraps ? "instant" : "smooth");
+    },
+    [scrollLightboxTo, total]
+  );
+  const showPrev = useCallback(() => stepLightbox(-1), [stepLightbox]);
+  const showNext = useCallback(() => stepLightbox(1), [stepLightbox]);
 
   const handleShare = useCallback(async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -61,10 +95,41 @@ export default function VillaDetailGallery({
 
   const handleMobileScroll = useCallback(() => {
     const track = mobileTrackRef.current;
-    if (!track || track.clientWidth === 0) return;
-    const nextIndex = Math.round(track.scrollLeft / track.clientWidth);
-    setMobileSlide(Math.min(Math.max(nextIndex, 0), Math.max(total - 1, 0)));
+    if (!track) return;
+    setMobileSlide(slideIndexFromScroll(track, total));
   }, [total]);
+
+  const handleLightboxScroll = useCallback(() => {
+    if (pendingLightboxIndex.current !== null) return;
+    const track = lightboxTrackRef.current;
+    if (!track) return;
+    setLightboxIndex(slideIndexFromScroll(track, total));
+  }, [total]);
+
+  useLayoutEffect(() => {
+    if (lightboxIndex === null) {
+      pendingLightboxIndex.current = null;
+      return;
+    }
+    const pending = pendingLightboxIndex.current;
+    if (pending === null) return;
+
+    let cancelled = false;
+    const apply = () => {
+      if (cancelled) return;
+      const track = lightboxTrackRef.current;
+      if (!track || track.clientWidth === 0) {
+        window.requestAnimationFrame(apply);
+        return;
+      }
+      track.scrollLeft = pending * track.clientWidth;
+      pendingLightboxIndex.current = null;
+    };
+    apply();
+    return () => {
+      cancelled = true;
+    };
+  }, [lightboxIndex]);
 
   useEffect(() => {
     if (lightboxIndex === null) return;
@@ -74,10 +139,11 @@ export default function VillaDetailGallery({
       if (event.key === "ArrowRight") showNext();
     };
     window.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
   }, [lightboxIndex, close, showPrev, showNext]);
 
@@ -103,21 +169,42 @@ export default function VillaDetailGallery({
 
   return (
     <>
-      {/* Mobil: kaydırılabilir; yalnızca görünür + komşu slaytları yükle */}
+      {/* Mobil: native snap kaydırma — button slayt iOS'ta kaydırmayı kilitler */}
       <div className="relative sm:hidden">
         <div
           ref={mobileTrackRef}
           onScroll={handleMobileScroll}
-          className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto rounded-xl [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          onTouchStart={(event) => {
+            galleryTouchX.current = event.changedTouches[0]?.clientX ?? null;
+            gallerySwiped.current = false;
+          }}
+          onTouchMove={(event) => {
+            const startX = galleryTouchX.current;
+            const currentX = event.changedTouches[0]?.clientX;
+            if (startX === null || currentX === undefined) return;
+            if (Math.abs(currentX - startX) > 12) gallerySwiped.current = true;
+          }}
+          className="flex touch-pan-x snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xl [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {images.map((src, index) => {
             const shouldLoad = Math.abs(index - mobileSlide) <= 1 || index <= 1;
             return (
-              <button
+              <div
                 key={`mobile-${src}-${index}`}
-                type="button"
-                onClick={() => setLightboxIndex(index)}
-                className="relative aspect-[16/10] w-full shrink-0 snap-center overflow-hidden bg-slate-200"
+                role="button"
+                tabIndex={0}
+                aria-label={`${name} fotoğraf ${index + 1}`}
+                onClick={() => {
+                  if (gallerySwiped.current) return;
+                  openLightbox(index);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openLightbox(index);
+                  }
+                }}
+                className="relative aspect-[16/10] w-full min-w-full shrink-0 snap-start overflow-hidden bg-slate-200"
               >
                 {shouldLoad ? (
                   <GalleryImage
@@ -125,11 +212,12 @@ export default function VillaDetailGallery({
                     alt={`${name} ${index + 1}`}
                     fill
                     priority={index === 0}
-                    className="object-cover"
+                    draggable={false}
+                    className="pointer-events-none object-cover"
                     sizes="100vw"
                   />
                 ) : null}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -143,7 +231,7 @@ export default function VillaDetailGallery({
             </p>
             <button
               type="button"
-              onClick={() => setLightboxIndex(mobileSlide)}
+              onClick={() => openLightbox(mobileSlide)}
               className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-lg bg-white/95 px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-md backdrop-blur hover:bg-white"
             >
               <Images className="h-4 w-4" />
@@ -157,7 +245,7 @@ export default function VillaDetailGallery({
       <div className="relative hidden gap-2 overflow-hidden rounded-xl sm:grid sm:min-h-[440px] sm:grid-cols-4 sm:grid-rows-2">
         <button
           type="button"
-          onClick={() => setLightboxIndex(0)}
+          onClick={() => openLightbox(0)}
           className="relative col-span-2 row-span-2 min-h-[440px] cursor-pointer overflow-hidden"
         >
           <GalleryImage
@@ -173,7 +261,7 @@ export default function VillaDetailGallery({
           <button
             key={`${src}-${index}`}
             type="button"
-            onClick={() => setLightboxIndex(index + 1)}
+            onClick={() => openLightbox(index + 1)}
             className="relative aspect-[4/3] cursor-pointer overflow-hidden"
           >
             <GalleryImage
@@ -192,7 +280,7 @@ export default function VillaDetailGallery({
         {total > 1 && (
           <button
             type="button"
-            onClick={() => setLightboxIndex(0)}
+            onClick={() => openLightbox(0)}
             className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-lg bg-white/95 px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-md backdrop-blur hover:bg-white"
           >
             <Images className="h-4 w-4" />
@@ -203,27 +291,15 @@ export default function VillaDetailGallery({
 
       {lightboxIndex !== null && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 p-4"
+          className="fixed inset-0 z-[80] bg-black/90"
           role="dialog"
           aria-modal="true"
           aria-label="Villa galerisi"
-          onTouchStart={(event) => {
-            touchStartX.current = event.changedTouches[0]?.clientX ?? null;
-          }}
-          onTouchEnd={(event) => {
-            if (touchStartX.current === null || total <= 1) return;
-            const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
-            const delta = endX - touchStartX.current;
-            touchStartX.current = null;
-            if (Math.abs(delta) < 40) return;
-            if (delta > 0) showPrev();
-            else showNext();
-          }}
         >
           <button
             type="button"
             onClick={close}
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            className="absolute right-4 top-4 z-20 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
             aria-label="Kapat"
           >
             <X className="h-6 w-6" />
@@ -233,7 +309,7 @@ export default function VillaDetailGallery({
               <button
                 type="button"
                 onClick={showPrev}
-                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:left-6"
+                className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:left-6"
                 aria-label="Önceki"
               >
                 <ChevronLeft className="h-7 w-7" />
@@ -241,24 +317,44 @@ export default function VillaDetailGallery({
               <button
                 type="button"
                 onClick={showNext}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:right-6"
+                className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:right-6"
                 aria-label="Sonraki"
               >
                 <ChevronRight className="h-7 w-7" />
               </button>
             </>
           )}
-          <div className="relative h-[75vh] w-full max-w-5xl">
-            <GalleryImage
-              src={images[lightboxIndex]}
-              alt={`${name} ${lightboxIndex + 1}`}
-              fill
-              priority
-              className="object-contain"
-              sizes="100vw"
-            />
+          <div
+            ref={lightboxTrackRef}
+            onScroll={handleLightboxScroll}
+            className="flex h-full w-full touch-pan-x snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {images.map((src, index) => {
+              const active = lightboxIndex;
+              const shouldLoad = Math.abs(index - active) <= 2;
+              return (
+                <div
+                  key={`lightbox-${src}-${index}`}
+                  className="relative flex h-full w-full min-w-full shrink-0 snap-start items-center justify-center px-12 py-16"
+                >
+                  {shouldLoad ? (
+                    <div className="pointer-events-none relative h-[75vh] w-full max-w-5xl">
+                      <GalleryImage
+                        src={src}
+                        alt={`${name} ${index + 1}`}
+                        fill
+                        priority={index === active}
+                        draggable={false}
+                        className="object-contain"
+                        sizes="100vw"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
-          <p className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-sm text-white">
+          <p className="pointer-events-none absolute bottom-5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-sm text-white">
             {lightboxIndex + 1} / {total}
           </p>
         </div>
