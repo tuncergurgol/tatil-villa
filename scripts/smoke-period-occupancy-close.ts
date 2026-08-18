@@ -662,6 +662,85 @@ assert(
   "27 Ağustos opsiyon dolu (yanlış giriş değil)"
 );
 
+// Opsiyon sonrası KAPAMA 1:1: giriş OPTION kalmamalı, sarı üçgen pembe olur.
+const option5to11 = buildOptionOccupancyForStay(
+  "2026-10-05",
+  "2026-10-11",
+  new Map()
+);
+assert(option5to11.get("2026-10-05") === "OPTION", "5 Ekim opsiyon giriş");
+assert(option5to11.get("2026-10-06") === "OPTION", "6 Ekim opsiyon dolu");
+assert(option5to11.get("2026-10-11") === "EMPTY", "11 Ekim opsiyon çıkış");
+const close5to11AfterOption = buildBookedOccupancyForStay(
+  "2026-10-05",
+  "2026-10-11",
+  option5to11
+);
+assert(
+  close5to11AfterOption.get("2026-10-05") === "BOOKED",
+  "opsiyon kapamada 5 Ekim 1:1 BOOKED olur (OPTION kalmaz)"
+);
+assert(close5to11AfterOption.get("2026-10-06") === "BOOKED", "6 Ekim kapama BOOKED");
+assert(close5to11AfterOption.get("2026-10-11") === "EMPTY", "11 Ekim kapama çıkış EMPTY");
+const close5to11Map = buildOccupancyMap(
+  [...close5to11AfterOption.entries()].map(([date, occupancyStatus]) => ({
+    date,
+    occupancyStatus,
+  }))
+);
+const close5to11CheckIns = new Set(["2026-10-05"]);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-10-05",
+    close5to11Map,
+    close5to11CheckIns
+  ) === "check_in",
+  "5 Ekim kapama girişi pembe (Ops. Giriş değil)"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-10-06",
+    close5to11Map,
+    close5to11CheckIns
+  ) === "full",
+  "6 Ekim kapama dolu"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-10-11",
+    close5to11Map,
+    close5to11CheckIns
+  ) === "check_out",
+  "11 Ekim kapama çıkış"
+);
+
+const closeOptionOnPriorCheckout = buildBookedOccupancyForStay(
+  "2026-08-26",
+  "2026-08-31",
+  new Map([...priorKapama, ...option26to31])
+);
+assert(
+  closeOptionOnPriorCheckout.get("2026-08-26") === "EMPTY",
+  "önceki kapama çıkışı üstüne opsiyon kapatınca 26 turnover EMPTY"
+);
+assert(
+  closeOptionOnPriorCheckout.get("2026-08-27") === "BOOKED",
+  "27 Ağustos opsiyondan kapamaya döner"
+);
+const closeOptionOnPriorMap = buildOccupancyMap(
+  [...priorKapama, ...option26to31, ...closeOptionOnPriorCheckout.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-08-26",
+    closeOptionOnPriorMap,
+    new Set(["2026-08-26"])
+  ) === "turnover_booked",
+  "26 Ağustos opsiyon girişi kapamada pembe giriş+çıkış olur"
+);
+
 // Kapama, onaylı RESERVED günleri ezmemeli (lila korunur)
 const reservedBlock = new Map<string, "RESERVED" | "EMPTY" | "BOOKED">([
   ["2026-08-15", "EMPTY"],

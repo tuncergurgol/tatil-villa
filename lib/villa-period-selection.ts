@@ -126,12 +126,15 @@ export function buildBookedOccupancyForStayMerged(
   // - 2+ gece kapamada ilk gün turnover EMPTY (çıkış+giriş),
   // - tek gece kapamada ilk gün BOOKED (aksi halde hiç dolu gece yazılmaz);
   //   görsel çıkış+giriş occupancyCheckIn ile çözülür.
+  // Önceki gece boşsa opsiyon girişi 1:1 BOOKED olur (OPTION bırakılmaz).
   const firstDayStatus: VillaDayOccupancy = isOccupied(dayBeforeFirst)
     ? keys.length === 2
-      ? "BOOKED"
+      ? existingFirst === "RESERVED"
+        ? "RESERVED"
+        : "BOOKED"
       : "EMPTY"
-    : isOccupied(existingFirst)
-      ? existingFirst
+    : existingFirst === "RESERVED"
+      ? "RESERVED"
       : "BOOKED";
   map.set(firstDayKey, firstDayStatus);
 
@@ -139,7 +142,10 @@ export function buildBookedOccupancyForStayMerged(
   // Sonraki bloğun girişi occupancyCheckIn ile yalnızca bitiş gününde
   // zaten dolu giriş varken işaretlenir (ertesi gün dolu diye değil).
   map.set(lastDayKey, "EMPTY");
-  return sealReservedDays(map, existingOccupancyByDateKey);
+  return sealReservedDays(
+    replaceOptionWithBooked(map),
+    existingOccupancyByDateKey
+  );
 }
 
 export function buildBookedOccupancyForStay(
@@ -267,6 +273,18 @@ export function buildReservedOccupancyForStay(
 
 function isOccupied(status: VillaDayOccupancy): boolean {
   return status === "BOOKED" || status === "RESERVED" || status === "OPTION";
+}
+
+/** Kapama opsiyon günlerini 1:1 BOOKED yapar; çıkış EMPTY ve RESERVED korunur. */
+function replaceOptionWithBooked(
+  map: Map<string, VillaDayOccupancy>
+): Map<string, VillaDayOccupancy> {
+  for (const [dateKey, status] of map) {
+    if (status === "OPTION") {
+      map.set(dateKey, "BOOKED");
+    }
+  }
+  return map;
 }
 
 /** EMPTY günden hemen önceki bitişik dolu gece sayısı. */
