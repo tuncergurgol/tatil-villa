@@ -797,22 +797,28 @@ export function parseBoceksoftPeriodList(
     if (!range) continue;
 
     const nightlyMatch = block.match(
-      /data-t-show-price=["'][^"']*(?:g[uü]nl[uü]k|gecelik)[^"']*["'][^>]*data-doviz=["']([^"']+)["'][^>]*data-price=["'](\d+)["']/i
+      /data-t-show-price=["'][^"']*(?:g[uü]nl[uü]k|gecelik)[^"']*["'][^>]*data-doviz=["']([^"']+)["'][^>]*data-price=["']([^"']+)["']/i
     );
     const nightlyAlt = block.match(
-      /data-label=["']Gecelik["'][^>]*data-doviz=["']([^"']+)["'][^>]*data-price=["'](\d+)["']/i
+      /data-label=["']Gecelik["'][^>]*data-doviz=["']([^"']+)["'][^>]*data-price=["']([^"']+)["']/i
     );
     const priceHit = nightlyMatch ?? nightlyAlt;
     if (!priceHit) continue;
 
     const currency = mapCurrencyCode(priceHit[1]);
-    const nightlyPrice = Number(priceHit[2]);
+    const nightlyPrice = Math.round(parseLocalizedMoney(priceHit[2] ?? ""));
     if (!Number.isFinite(nightlyPrice) || nightlyPrice <= 0) continue;
 
     const weeklyMatch = block.match(
-      /data-(?:t-show-price|label)=["'][^"']*Haftal[^"']*["'][^>]*data-price=["'](\d+)["']/i
+      /data-(?:t-show-price|label)=["'][^"']*Haftal[^"']*["'][^>]*data-price=["']([^"']+)["']/i
     );
+    const weeklyPrice = weeklyMatch
+      ? Math.round(parseLocalizedMoney(weeklyMatch[1] ?? ""))
+      : null;
     const minStayMatch = block.match(/Minimum\s+Kiralama:\s*(\d+)\s*Gece/i);
+    const cleaningMeta = parseCleaningRuleText(
+      block.match(/\btitle=["']([^"']+)["']/i)?.[1]
+    );
 
     periods.push(
       buildMappedPeriod({
@@ -821,8 +827,11 @@ export function parseBoceksoftPeriodList(
         endDate: range.end,
         nightlyPrice,
         currency,
-        weeklyPrice: weeklyMatch ? Number(weeklyMatch[1]) : null,
+        weeklyPrice: weeklyPrice && weeklyPrice > 0 ? weeklyPrice : null,
         minStayNights: minStayMatch ? Number(minStayMatch[1]) : null,
+        cleaningDayCount: cleaningMeta.cleaningDayCount,
+        cleaningFee: cleaningMeta.cleaningFee,
+        cleaningFeeCurrency: cleaningMeta.cleaningFeeCurrency,
         damageDeposit: damageDeposit?.amount ?? null,
         damageDepositCurrency: damageDeposit?.currency ?? currency,
       })
