@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   extractScrapedPeriodDefaults,
   finalizeScrapedPeriods,
+  parseAkdenizvillamPriceRows,
   scrapeExternalVillaPage,
 } from "../lib/external-villa-page-scrape";
 import type { MappedVillaPricePeriod } from "../lib/tatildeyiz-period-import";
@@ -88,6 +89,32 @@ assert.equal(finalized[0]?.prepaymentRate, 50);
 assert.equal(finalized[0]?.damageDeposit, 5000);
 assert.equal(finalized[0]?.cleaningFee, 3500);
 assert.equal(finalized[0]?.cleaningDayCount, 7);
+
+const weeklyAkdeniz = parseAkdenizvillamPriceRows([
+  {
+    price: 79950,
+    check_in: "2026-07-07",
+    check_out: "2026-09-06",
+    min_stay: 7,
+    pricing_type: 2,
+    damage_deposit: 5000,
+  },
+]);
+assert.equal(weeklyAkdeniz.length, 1);
+assert.equal(weeklyAkdeniz[0]?.nightlyPrice, 11421);
+assert.equal(weeklyAkdeniz[0]?.weeklyPrice, 79950);
+assert.equal(weeklyAkdeniz[0]?.minStayNights, 7);
+
+const nightlyAkdeniz = parseAkdenizvillamPriceRows([
+  {
+    price: 11421,
+    check_in: "2026-07-07",
+    check_out: "2026-09-06",
+    pricing_type: 1,
+  },
+]);
+assert.equal(nightlyAkdeniz[0]?.nightlyPrice, 11421);
+assert.equal(nightlyAkdeniz[0]?.weeklyPrice, 79947);
 
 const villacim = await scrapeExternalVillaPage(
   "https://www.villacim.com.tr/villa-tuana-kayakoy"

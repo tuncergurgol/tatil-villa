@@ -4055,9 +4055,20 @@ export function parseAkdenizvillamPriceRows(
     const o = raw as Record<string, unknown>;
     const startDate = parseIsoLikeDate(String(o.check_in ?? ""));
     const endDate = parseIsoLikeDate(String(o.check_out ?? ""));
-    const nightlyPrice = Number(o.price);
+    const rawPrice = Number(o.price);
     if (!startDate || !endDate || compareDates(startDate, endDate) > 0) continue;
+    if (!Number.isFinite(rawPrice) || rawPrice <= 0) continue;
+
+    // pricing_type: 1 = gecelik, 2 = haftalık (Akdenizvillam / Tatilvillasi).
+    const pricingType = Number(o.pricing_type ?? o.pricingType ?? 0);
+    const isWeekly = pricingType === 2;
+    const nightlyPrice = isWeekly
+      ? deriveNightlyFromWeekly(rawPrice)
+      : rawPrice;
     if (!Number.isFinite(nightlyPrice) || nightlyPrice <= 0) continue;
+    const weeklyPrice = isWeekly
+      ? rawPrice
+      : deriveWeeklyFromNightly(rawPrice);
 
     const damageDeposit = Number(o.damage_deposit);
     periods.push(
@@ -4066,6 +4077,7 @@ export function parseAkdenizvillamPriceRows(
         startDate,
         endDate,
         nightlyPrice,
+        weeklyPrice,
         currency: "TL",
         minStayNights: Number.isFinite(Number(o.min_stay))
           ? Number(o.min_stay)
