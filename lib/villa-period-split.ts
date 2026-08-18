@@ -11,6 +11,7 @@ import {
   updateVillaPricePeriodDaysInRange,
 } from "@/lib/villa-period-day-sync";
 import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
+import { resolveVillaPeriodPricing } from "@/lib/villa-period-pricing";
 
 export function periodRecordToSnapshot(
   period: VillaPricePeriod
@@ -246,7 +247,7 @@ export async function applyVillaPriceRangeDiscountEdit(
     discount2Rate: number | null;
     extraDiscountAmount: number | null;
   },
-  buildHeaderSnapshot: (period: VillaPricePeriod) => VillaPeriodDayPricingSnapshot
+  _buildHeaderSnapshot?: (period: VillaPricePeriod) => VillaPeriodDayPricingSnapshot
 ) {
   const rangeStart = toRangeDate(editStart);
   const rangeEnd = toRangeDate(editEnd);
@@ -255,56 +256,133 @@ export async function applyVillaPriceRangeDiscountEdit(
     rangeStart,
     rangeEnd
   );
-  const middleSnapshot = buildHeaderSnapshot(overlappingPeriods[0]!);
-  const { tails, periodIdsToRemove } = collectTailSegments(
-    overlappingPeriods,
-    rangeStart,
-    rangeEnd
-  );
+  const rangeStartKey = dbDateToDateKey(rangeStart);
+  const rangeEndKey = dbDateToDateKey(rangeEnd);
 
   await prisma.$transaction(async (tx) => {
-    const middlePeriod = await tx.villaPricePeriod.create({
-      data: {
-        villaId,
-        startDate: rangeStart,
-        endDate: rangeEnd,
-        ...periodDataFromSnapshot(middleSnapshot),
-      },
-    });
+    const idsToDelete: string[] = [];
 
-    for (const tail of tails) {
-      const tailPeriod = await tx.villaPricePeriod.create({
+    async function createSegment(
+      startKey: string,
+      endKey: string,
+      snapshot: VillaPeriodDayPricingSnapshot,
+      applyDiscount: boolean
+    ) {
+      const startDate = dateKeyToDbDate(startKey);
+      const endDate = dateKeyToDbDate(endKey);
+      const created = await tx.villaPricePeriod.create({
         data: {
           villaId,
-          startDate: tail.startDate,
-          endDate: tail.endDate,
-          ...periodDataFromSnapshot(tail.snapshot),
+          startDate,
+          endDate,
+          ...periodDataFromSnapshot(snapshot),
         },
       });
 
+      if (applyDiscount) {
+        await reassignPeriodDaysDiscountInRange(
+          tx,
+          created.id,
+          villaId,
+          startDate,
+          endDate,
+          discountUpdate
+        );
+        return;
+      }
+
       await reassignPeriodDaysInRange(
         tx,
-        tailPeriod.id,
+        created.id,
         villaId,
-        tail.startDate,
-        tail.endDate,
-        tail.snapshot
+        startDate,
+        endDate,
+        snapshot
       );
     }
 
-    await reassignPeriodDaysDiscountInRange(
-      tx,
-      middlePeriod.id,
-      villaId,
-      rangeStart,
-      rangeEnd,
-      discountUpdate
-    );
+    for (const period of overlappingPeriods) {
+      const periodStartKey = dbDateToDateKey(period.startDate);
+      const periodEndKey = dbDateToDateKey(period.endDate);
+      const intersectStartKey =
+        periodStartKey > rangeStartKey ? periodStartKey : rangeStartKey;
+      const intersectEndKey =
+        periodEndKey < rangeEndKey ? periodEndKey : rangeEndKey;
+      if (intersectStartKey > intersectEndKey) continue;
 
-    await tx.villaPricePeriod.deleteMany({
-      where: { id: { in: periodIdsToRemove } },
-    });
+      idsToDelete.push(period.id);
+      const originalSnapshot = periodRecordToSnapshot(period);
+      const discountedSnapshot = overlayDiscountOnPeriod(
+        period,
+        discountUpdate
+      );
+
+      if (periodStartKey < intersectStartKey) {
+        const beforeEndKey = offsetDateKey(intersectStartKey, -1);
+        if (isValidDateRange(periodStartKey, beforeEndKey)) {
+          await createSegment(
+            periodStartKey,
+            beforeEndKey,
+            originalSnapshot,
+            false
+          );
+        }
+      }
+
+      await createSegment(
+        intersectStartKey,
+        intersectEndKey,
+        discountedSnapshot,
+        true
+      );
+
+      if (periodEndKey > intersectEndKey) {
+        const afterStartKey = offsetDateKey(intersectEndKey, 1);
+        if (isValidDateRange(afterStartKey, periodEndKey)) {
+          await createSegment(
+            afterStartKey,
+            periodEndKey,
+            originalSnapshot,
+            false
+          );
+        }
+      }
+    }
+
+    if (idsToDelete.length > 0) {
+      await tx.villaPricePeriod.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
+    }
   });
+}
+
+function overlayDiscountOnPeriod(
+  period: VillaPricePeriod,
+  discountUpdate: {
+    discount1Rate: number | null;
+    discount2Rate: number | null;
+    extraDiscountAmount: number | null;
+  }
+): VillaPeriodDayPricingSnapshot {
+  const snapshot = periodRecordToSnapshot(period);
+  const pricing = resolveVillaPeriodPricing({
+    nightlyPrice: period.nightlyPrice,
+    nightlyPriceWithoutCommission: period.nightlyPriceWithoutCommission,
+    weeklyPrice: period.weeklyPrice,
+    commissionRate: period.commissionRate,
+    discount1Rate: discountUpdate.discount1Rate,
+    discount2Rate: discountUpdate.discount2Rate,
+    extraDiscountAmount: discountUpdate.extraDiscountAmount,
+  });
+
+  return {
+    ...snapshot,
+    discount1Rate: discountUpdate.discount1Rate,
+    discount2Rate: discountUpdate.discount2Rate,
+    extraDiscountAmount: discountUpdate.extraDiscountAmount,
+    discountedNightlyPrice: pricing.discountedNightlyPrice,
+  };
 }
 
 export async function applyPartialVillaPricePeriodEdit(

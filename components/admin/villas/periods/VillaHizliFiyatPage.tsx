@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   FileSpreadsheet,
   Pencil,
+  Percent,
   Save,
   Trash2,
   WandSparkles,
@@ -17,6 +18,7 @@ import {
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodFormModal from "@/components/admin/villas/periods/VillaPeriodFormModal";
 import VillaPeriodExcelImportModal from "@/components/admin/villas/periods/VillaPeriodExcelImportModal";
+import HizliFiyatDiscountModal from "@/components/admin/villas/periods/HizliFiyatDiscountModal";
 import HizliFiyatSaveOverlay from "@/components/admin/villas/periods/HizliFiyatSaveOverlay";
 import type { VillaAdminRoute } from "@/lib/villa-admin-path";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
@@ -648,6 +650,7 @@ export default function VillaHizliFiyatPage({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [modalOpen, setModalOpen] = useState(false);
   const [excelImportOpen, setExcelImportOpen] = useState(false);
+  const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [bulkField, setBulkField] =
     useState<BulkEditField>("commissionRate");
   const [bulkValue, setBulkValue] = useState("");
@@ -674,6 +677,11 @@ export default function VillaHizliFiyatPage({
     () => rows.filter((row) => row.dirty).length,
     [rows]
   );
+
+  const discountPreviewNightlyPrice = useMemo(() => {
+    const selected = rows.find((row) => selectedIds.has(row.id));
+    return parseAmountInput((selected ?? rows[0])?.nightlyPrice ?? "") ?? null;
+  }, [rows, selectedIds]);
 
   const updateRow = useCallback(
     (id: string, patch: Partial<PeriodRowState>, recalc = false) => {
@@ -846,6 +854,15 @@ export default function VillaHizliFiyatPage({
     });
   }
 
+  function openDiscountModal() {
+    if (dirtyCount > 0) {
+      setError("İndirim uygulamadan önce tablodaki değişiklikleri kaydedin.");
+      return;
+    }
+    setError(null);
+    setDiscountModalOpen(true);
+  }
+
   function openAdvancedModal(period?: VillaPricePeriodItem) {
     if (period) {
       setEditingPeriod(period);
@@ -988,6 +1005,14 @@ export default function VillaHizliFiyatPage({
             </button>
             <button
               type="button"
+              onClick={openDiscountModal}
+              className="inline-flex h-8 items-center gap-1 rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white transition hover:bg-teal-700"
+            >
+              <Percent className="h-3.5 w-3.5" />
+              İndirim
+            </button>
+            <button
+              type="button"
               onClick={handleSaveAll}
               disabled={isPending || dirtyCount === 0}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1024,6 +1049,14 @@ export default function VillaHizliFiyatPage({
           >
             <Save className="h-3.5 w-3.5" />
             {isPending ? "Kaydediliyor..." : `Kaydet (${dirtyCount})`}
+          </button>
+          <button
+            type="button"
+            onClick={openDiscountModal}
+            className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-2.5 py-1.5 text-xs font-semibold text-white"
+          >
+            <Percent className="h-3.5 w-3.5" />
+            İndirim
           </button>
         </div>
 
@@ -1408,6 +1441,18 @@ export default function VillaHizliFiyatPage({
           setExcelImportOpen(false);
           setError(null);
           window.alert(`${count} periyot Excel'den içeri aktarıldı.`);
+          router.refresh();
+        }}
+      />
+
+      <HizliFiyatDiscountModal
+        open={discountModalOpen}
+        villaId={villa.id}
+        previewNightlyPrice={discountPreviewNightlyPrice}
+        onClose={() => setDiscountModalOpen(false)}
+        onSaved={() => {
+          setDiscountModalOpen(false);
+          setError(null);
           router.refresh();
         }}
       />
