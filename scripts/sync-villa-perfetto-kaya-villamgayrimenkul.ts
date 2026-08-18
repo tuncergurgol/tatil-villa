@@ -21,10 +21,12 @@ async function main() {
   const candidates = await prisma.villa.findMany({
     where: {
       OR: [
+        { villaId: 1976 },
+        { documentNo: { contains: "48-6105" } },
         { name: { contains: "Perfetto", mode: "insensitive" } },
         { slug: { contains: "perfetto", mode: "insensitive" } },
-        { name: { contains: "Villa Kaya", mode: "insensitive" } },
-        { slug: { contains: "villa-kaya", mode: "insensitive" } },
+        { name: { contains: "Eterna Kayak", mode: "insensitive" } },
+        { slug: { equals: "villa-eterna-kayakoy", mode: "insensitive" } },
       ],
     },
     select: {
@@ -49,9 +51,9 @@ async function main() {
   if (listOnly) return;
 
   const villa =
-    candidates.find((row) => /perfetto/i.test(row.name) || /perfetto/i.test(row.slug)) ??
+    candidates.find((row) => row.villaId === 1976) ??
     candidates.find((row) => (row.documentNo || "").includes("48-6105")) ??
-    candidates[0];
+    candidates.find((row) => /eterna|perfetto/i.test(`${row.name} ${row.slug}`));
 
   if (!villa) {
     throw new Error("Perfetto Villa Kaya bulunamadı");
