@@ -99,7 +99,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
             return (
               <Link
                 key={region.id}
-                href={`/villalar?region=${encodeURIComponent(region.slug)}&sort=random`}
+                href={`/villalar?region=${encodeURIComponent(region.slug)}`}
                 className={`group relative overflow-hidden rounded-[1.75rem] ${sizeClass}`}
               >
                 <Image

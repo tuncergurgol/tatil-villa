@@ -11,10 +11,12 @@ import {
 } from "@/lib/i18n/middleware-host";
 import { getAuthSecret, useSecureAuthCookies } from "@/lib/auth-secret";
 import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
+import {
+  isForeignLocalePath,
+  shouldNoindexPublicUrl,
+} from "@/lib/public-indexing";
 
 const handleI18nRouting = createIntlMiddleware(routing);
-
-const FOREIGN_LOCALE_PREFIX = /^\/(en|de|fr|es|bg|el|zh)(\/|$)/;
 
 function getAdminHosts(): string[] {
   return (process.env.ADMIN_HOST || "bont.tatildeyiz.com.tr")
@@ -68,13 +70,20 @@ function isAdminOnlyPath(pathname: string): boolean {
   );
 }
 
+function withPublicIndexingHeaders(req: NextRequest, res: NextResponse) {
+  if (shouldNoindexPublicUrl(req.nextUrl.pathname, req.nextUrl.searchParams)) {
+    res.headers.set("X-Robots-Tag", "noindex, follow");
+  }
+  return res;
+}
+
 function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
   const rewriteUrl = req.nextUrl.clone();
   rewriteUrl.pathname =
     pathname === "/"
       ? `/${routing.defaultLocale}`
       : `/${routing.defaultLocale}${pathname}`;
-  return NextResponse.rewrite(rewriteUrl);
+  return withPublicIndexingHeaders(req, NextResponse.rewrite(rewriteUrl));
 }
 
 function resolvePublicHostForRequest(req: NextRequest): string {
@@ -138,7 +147,7 @@ export default async function middleware(req: NextRequest) {
       return redirectStripTurkishPrefix(req, pathname);
     }
 
-    if (!FOREIGN_LOCALE_PREFIX.test(pathname)) {
+    if (!isForeignLocalePath(pathname)) {
       return rewriteDefaultLocalePath(req, pathname);
     }
 
@@ -148,14 +157,17 @@ export default async function middleware(req: NextRequest) {
       if (location) {
         const fixed = normalizePublicRedirectLocation(req, location);
         if (fixed !== location) {
-          return NextResponse.redirect(
-            fixed,
-            intlResponse.status as 301 | 302 | 307 | 308
+          return withPublicIndexingHeaders(
+            req,
+            NextResponse.redirect(
+              fixed,
+              intlResponse.status as 301 | 302 | 307 | 308
+            )
           );
         }
       }
     }
-    return intlResponse;
+    return withPublicIndexingHeaders(req, intlResponse);
   }
 
   const isAdminRoute = pathname.startsWith("/admin");

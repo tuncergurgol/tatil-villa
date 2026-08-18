@@ -213,7 +213,7 @@ export default function Footer({
               {popularRegions.map((region) => (
                 <li key={region.slug}>
                   <Link
-                    href={`/villalar?region=${encodeURIComponent(region.slug)}&sort=random`}
+                    href={`/villalar?region=${encodeURIComponent(region.slug)}`}
                     className="hover:text-gray-900"
                   >
                     {region.label}
@@ -233,7 +233,7 @@ export default function Footer({
             {mahalleRegions.map((region) => (
               <li key={region.slug}>
                 <Link
-                  href={`/villalar?region=${encodeURIComponent(region.slug)}&sort=random`}
+                  href={`/villalar?region=${encodeURIComponent(region.slug)}`}
                 >
                   {region.label}
                 </Link>

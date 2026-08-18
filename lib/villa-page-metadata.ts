@@ -4,6 +4,10 @@ import {
   absoluteAssetUrl,
   resolveMetadataBase,
 } from "@/lib/site-metadata";
+import {
+  isIndexableLocale,
+  publicIndexingRobots,
+} from "@/lib/public-indexing";
 import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 
 export type VillaMetadataSource = {
@@ -49,7 +53,8 @@ function resolveVillaPageDescription(villa: VillaMetadataSource): string {
 
 export function buildVillaDetailMetadata(
   villa: VillaMetadataSource,
-  site: PublicSiteProfile
+  site: PublicSiteProfile,
+  options?: { locale?: string }
 ): Metadata {
   const metadataBase = resolveMetadataBase(site.domain);
   const domain = metadataBase.host;
@@ -66,6 +71,7 @@ export function buildVillaDetailMetadata(
   return {
     title: { absolute: title },
     description,
+    robots: publicIndexingRobots(isIndexableLocale(options?.locale)),
     alternates: {
       canonical: `/${villa.slug}`,
     },

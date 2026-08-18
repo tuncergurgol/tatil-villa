@@ -34,12 +34,12 @@ interface PageProps {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug, locale } = await params;
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
   const villa = await getVillaDetailBySlug(slug, site.key);
   if (!villa) return { title: "Villa Bulunamadı" };
-  return buildVillaDetailMetadata(villa, site);
+  return buildVillaDetailMetadata(villa, site, { locale });
 }
 
 export default async function VillaDetailPage({

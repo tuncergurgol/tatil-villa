@@ -22,11 +22,10 @@ import {
   parseVillaSearchPage,
   VILLA_SEARCH_PAGE_SIZE,
 } from "@/lib/villa-search-params";
-
-export const metadata: Metadata = {
-  title: "Villalar",
-  description: "Kiralık villa ve bungalov listesi. Filtreleyin ve rezervasyon yapın.",
-};
+import {
+  hasNonEmptySearchParams,
+  publicIndexingRobots,
+} from "@/lib/public-indexing";
 
 interface PageProps {
   searchParams: Promise<{
@@ -48,6 +47,20 @@ interface PageProps {
     sort?: string;
     page?: string;
   }>;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const query = await searchParams;
+  const filtered = hasNonEmptySearchParams(query);
+  return {
+    title: "Villalar",
+    description:
+      "Kiralık villa ve bungalov listesi. Filtreleyin ve rezervasyon yapın.",
+    alternates: { canonical: "/villalar" },
+    robots: publicIndexingRobots(!filtered),
+  };
 }
 
 export const dynamic = "force-dynamic";
