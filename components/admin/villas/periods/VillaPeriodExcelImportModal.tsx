@@ -29,6 +29,10 @@ const TEMPLATE_HEADERS = [
   "Temizlik Gün",
   "Temizlik Bedeli",
   "Hasar Depozitosu",
+  "Ek Yatak Bedeli",
+  "Evcil Hayvan Hasar Depozitosu",
+  "Evcil Hayvan Temizlik Bedeli",
+  "Yerden Isıtma",
   "Haftasonu Fiyatı",
   "Haftasonu Günleri",
   "Haftasonu Min Gece",
@@ -46,6 +50,10 @@ const TEMPLATE_EXAMPLE_ROWS: Array<Record<(typeof TEMPLATE_HEADERS)[number], str
     "Temizlik Gün": 1,
     "Temizlik Bedeli": 1500,
     "Hasar Depozitosu": 5000,
+    "Ek Yatak Bedeli": 500,
+    "Evcil Hayvan Hasar Depozitosu": 2000,
+    "Evcil Hayvan Temizlik Bedeli": 750,
+    "Yerden Isıtma": 1000,
     "Haftasonu Fiyatı": 9500,
     "Haftasonu Günleri": "Cuma,Cumartesi",
     "Haftasonu Min Gece": 2,
@@ -61,6 +69,10 @@ const TEMPLATE_EXAMPLE_ROWS: Array<Record<(typeof TEMPLATE_HEADERS)[number], str
     "Temizlik Gün": 1,
     "Temizlik Bedeli": 2000,
     "Hasar Depozitosu": 7000,
+    "Ek Yatak Bedeli": 750,
+    "Evcil Hayvan Hasar Depozitosu": 2500,
+    "Evcil Hayvan Temizlik Bedeli": 1000,
+    "Yerden Isıtma": 1500,
     "Haftasonu Fiyatı": "",
     "Haftasonu Günleri": "",
     "Haftasonu Min Gece": "",
@@ -78,6 +90,28 @@ const HEADER_ALIASES = {
   cleaningDayCount: ["temizlik gun", "temizlik gunu", "temizlik gun sayisi"],
   cleaningFee: ["temizlik bedeli", "temizlik ucreti"],
   damageDeposit: ["hasar depozitosu", "hasar depozito", "depozito"],
+  extraBedFee: [
+    "ek yatak bedeli",
+    "ek yatak ucreti",
+    "ek yatak",
+    "extra bed",
+  ],
+  petDamageDeposit: [
+    "evcil hayvan hasar depozitosu",
+    "evcil hayvan hasar depozito",
+    "pet damage deposit",
+  ],
+  petCleaningFee: [
+    "evcil hayvan temizlik bedeli",
+    "evcil hayvan temizlik ucreti",
+    "pet cleaning fee",
+  ],
+  underfloorHeatingFee: [
+    "yerden isitma",
+    "yerden isitma bedeli",
+    "yerden isitma ucreti",
+    "underfloor heating",
+  ],
   weekendPrice: ["haftasonu fiyati", "hafta sonu fiyati", "weekend price"],
   weekendDays: ["haftasonu gunleri", "hafta sonu gunleri", "weekend days"],
   weekendMinStayNights: [
@@ -238,6 +272,16 @@ function parseSheetRows(rows: SheetRow[]) {
       cleaningFee: parseInteger(findCell(row, HEADER_ALIASES.cleaningFee)),
       damageDeposit: parseInteger(
         findCell(row, HEADER_ALIASES.damageDeposit)
+      ),
+      extraBedFee: parseInteger(findCell(row, HEADER_ALIASES.extraBedFee)),
+      petDamageDeposit: parseInteger(
+        findCell(row, HEADER_ALIASES.petDamageDeposit)
+      ),
+      petCleaningFee: parseInteger(
+        findCell(row, HEADER_ALIASES.petCleaningFee)
+      ),
+      underfloorHeatingFee: parseInteger(
+        findCell(row, HEADER_ALIASES.underfloorHeatingFee)
       ),
       weekendPrice: parseInteger(findCell(row, HEADER_ALIASES.weekendPrice)),
       weekendDays: parseWeekendDays(
@@ -405,8 +449,9 @@ export default function VillaPeriodExcelImportModal({
             <span className="font-semibold text-gray-800">Zorunlu sütunlar:</span>{" "}
             Başlangıç, Bitiş, Fiyat. İsteğe bağlı: Para Birimi, Ön Ödeme %,
             Komisyon %, Min Gece, Temizlik Gün, Temizlik Bedeli, Hasar
-            Depozitosu, Haftasonu Fiyatı, Haftasonu Günleri ve Haftasonu Min
-            Gece. Tarih formatı: GG.AA.YYYY
+            Depozitosu, Ek Yatak Bedeli, Evcil Hayvan Hasar Depozitosu, Evcil
+            Hayvan Temizlik Bedeli, Yerden Isıtma, Haftasonu Fiyatı, Haftasonu
+            Günleri ve Haftasonu Min Gece. Tarih formatı: GG.AA.YYYY
           </div>
 
           {error ? (

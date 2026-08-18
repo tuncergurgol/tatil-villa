@@ -51,6 +51,10 @@ export type VillaPeriodExcelImportRow = {
   cleaningDayCount?: number | null;
   cleaningFee?: number | null;
   damageDeposit?: number | null;
+  extraBedFee?: number | null;
+  petDamageDeposit?: number | null;
+  petCleaningFee?: number | null;
+  underfloorHeatingFee?: number | null;
   weekendPrice?: number | null;
   weekendDays?: number[];
   weekendMinStayNights?: number | null;
@@ -626,13 +630,13 @@ export async function importVillaPricePeriodsFromExcel(
       cleaningFeeCurrency: currency,
       damageDeposit: row.damageDeposit ?? null,
       damageDepositCurrency: currency,
-      petCleaningFee: null,
+      petCleaningFee: row.petCleaningFee ?? null,
       petCleaningFeeCurrency: currency,
-      petDamageDeposit: null,
+      petDamageDeposit: row.petDamageDeposit ?? null,
       petDamageDepositCurrency: currency,
-      underfloorHeatingFee: null,
+      underfloorHeatingFee: row.underfloorHeatingFee ?? null,
       underfloorHeatingFeeCurrency: currency,
-      extraBedFee: null,
+      extraBedFee: row.extraBedFee ?? null,
       extraBedFeeCurrency: currency,
       poolHeatingPrivateFee: null,
       poolHeatingPrivateFeeCurrency: currency,

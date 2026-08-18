@@ -65,6 +65,7 @@ type PeriodRowState = {
   extraBedFee: string;
   petDamageDeposit: string;
   petCleaningFee: string;
+  underfloorHeatingFee: string;
   nightlyPriceCurrency: VillaPeriodCurrency;
   discount1Rate: string;
   discount2Rate: string;
@@ -82,7 +83,21 @@ type BulkEditField =
   | "minStayNights"
   | "cleaningDayCount"
   | "cleaningFee"
-  | "damageDeposit";
+  | "damageDeposit"
+  | "extraBedFee"
+  | "petDamageDeposit"
+  | "petCleaningFee"
+  | "underfloorHeatingFee";
+
+const AMOUNT_BULK_FIELDS = new Set<BulkEditField>([
+  "nightlyPrice",
+  "cleaningFee",
+  "damageDeposit",
+  "extraBedFee",
+  "petDamageDeposit",
+  "petCleaningFee",
+  "underfloorHeatingFee",
+]);
 
 const BULK_EDIT_OPTIONS: { value: BulkEditField; label: string }[] = [
   { value: "commissionRate", label: "Komisyon %" },
@@ -92,6 +107,10 @@ const BULK_EDIT_OPTIONS: { value: BulkEditField; label: string }[] = [
   { value: "cleaningDayCount", label: "Temizlik Gün Sayısı" },
   { value: "cleaningFee", label: "Temizlik Bedeli" },
   { value: "damageDeposit", label: "Hasar Depozitosu" },
+  { value: "extraBedFee", label: "Ek Yatak Bedeli" },
+  { value: "petDamageDeposit", label: "Evcil Hayvan Hasar Depozitosu" },
+  { value: "petCleaningFee", label: "Evcil Hayvan Temizlik Bedeli" },
+  { value: "underfloorHeatingFee", label: "Yerden Isıtma" },
 ];
 
 const cellInputClass =
@@ -169,6 +188,7 @@ function periodToRow(period: VillaPricePeriodItem): PeriodRowState {
     extraBedFee: formatAmountInput(period.extraBedFee),
     petDamageDeposit: formatAmountInput(period.petDamageDeposit),
     petCleaningFee: formatAmountInput(period.petCleaningFee),
+    underfloorHeatingFee: formatAmountInput(period.underfloorHeatingFee),
     nightlyPriceCurrency: period.nightlyPriceCurrency,
     discount1Rate:
       period.discount1Rate != null ? String(period.discount1Rate) : "",
@@ -227,29 +247,14 @@ function buildPeriodFormData(
   formData.set("cleaningFeeCurrency", row.nightlyPriceCurrency);
   setOptionalAmount(formData, "damageDeposit", row.damageDeposit);
   formData.set("damageDepositCurrency", row.nightlyPriceCurrency);
-  formData.set("petCleaningFee", String(sourcePeriod?.petCleaningFee ?? ""));
-  formData.set(
-    "petCleaningFeeCurrency",
-    sourcePeriod?.petCleaningFeeCurrency ?? row.nightlyPriceCurrency
-  );
-  formData.set("petDamageDeposit", String(sourcePeriod?.petDamageDeposit ?? ""));
-  formData.set(
-    "petDamageDepositCurrency",
-    sourcePeriod?.petDamageDepositCurrency ?? row.nightlyPriceCurrency
-  );
-  formData.set(
-    "underfloorHeatingFee",
-    String(sourcePeriod?.underfloorHeatingFee ?? "")
-  );
-  formData.set(
-    "underfloorHeatingFeeCurrency",
-    sourcePeriod?.underfloorHeatingFeeCurrency ?? row.nightlyPriceCurrency
-  );
-  formData.set("extraBedFee", String(sourcePeriod?.extraBedFee ?? ""));
-  formData.set(
-    "extraBedFeeCurrency",
-    sourcePeriod?.extraBedFeeCurrency ?? row.nightlyPriceCurrency
-  );
+  setOptionalAmount(formData, "petCleaningFee", row.petCleaningFee);
+  formData.set("petCleaningFeeCurrency", row.nightlyPriceCurrency);
+  setOptionalAmount(formData, "petDamageDeposit", row.petDamageDeposit);
+  formData.set("petDamageDepositCurrency", row.nightlyPriceCurrency);
+  setOptionalAmount(formData, "underfloorHeatingFee", row.underfloorHeatingFee);
+  formData.set("underfloorHeatingFeeCurrency", row.nightlyPriceCurrency);
+  setOptionalAmount(formData, "extraBedFee", row.extraBedFee);
+  formData.set("extraBedFeeCurrency", row.nightlyPriceCurrency);
   formData.set(
     "poolHeatingPrivateFee",
     String(sourcePeriod?.poolHeatingPrivateFee ?? "")
@@ -556,6 +561,62 @@ function HizliFiyatPeriodMobileCard({
               className={`${rowInputClass(row.dirty)} mt-1`}
             />
           </label>
+          <label className="block text-[11px] font-medium text-gray-500">
+            Ek Yatak Bedeli
+            <input
+              type="text"
+              inputMode="numeric"
+              value={row.extraBedFee}
+              onChange={(event) =>
+                onUpdate({
+                  extraBedFee: sanitizeAmountInput(event.target.value),
+                })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
+          <label className="block text-[11px] font-medium text-gray-500">
+            Evcil Hayvan Hasar Dep.
+            <input
+              type="text"
+              inputMode="numeric"
+              value={row.petDamageDeposit}
+              onChange={(event) =>
+                onUpdate({
+                  petDamageDeposit: sanitizeAmountInput(event.target.value),
+                })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
+          <label className="block text-[11px] font-medium text-gray-500">
+            Evcil Hayvan Temizlik
+            <input
+              type="text"
+              inputMode="numeric"
+              value={row.petCleaningFee}
+              onChange={(event) =>
+                onUpdate({
+                  petCleaningFee: sanitizeAmountInput(event.target.value),
+                })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
+          <label className="block text-[11px] font-medium text-gray-500">
+            Yerden Isıtma
+            <input
+              type="text"
+              inputMode="numeric"
+              value={row.underfloorHeatingFee}
+              onChange={(event) =>
+                onUpdate({
+                  underfloorHeatingFee: sanitizeAmountInput(event.target.value),
+                })
+              }
+              className={`${rowInputClass(row.dirty)} mt-1`}
+            />
+          </label>
         </div>
       </details>
     </article>
@@ -708,19 +769,14 @@ export default function VillaHizliFiyatPage({
       return;
     }
 
-    const sanitizedValue =
-      bulkField === "nightlyPrice" ||
-      bulkField === "cleaningFee" ||
-      bulkField === "damageDeposit"
-        ? sanitizeAmountInput(bulkValue)
-        : String(Math.max(0, Math.round(Number(bulkValue))));
+    const sanitizedValue = AMOUNT_BULK_FIELDS.has(bulkField)
+      ? sanitizeAmountInput(bulkValue)
+      : String(Math.max(0, Math.round(Number(bulkValue))));
 
     if (
       !sanitizedValue ||
       !Number.isFinite(
-        bulkField === "nightlyPrice" ||
-          bulkField === "cleaningFee" ||
-          bulkField === "damageDeposit"
+        AMOUNT_BULK_FIELDS.has(bulkField)
           ? parseAmountInput(sanitizedValue)
           : Number(sanitizedValue)
       )
@@ -1025,6 +1081,10 @@ export default function VillaHizliFiyatPage({
                 <th className={tableHeadClass}>Temiz. Gün</th>
                 <th className={tableHeadClass}>Temiz. Bedel</th>
                 <th className={tableHeadClass}>Hasar Dep.</th>
+                <th className={tableHeadClass}>Ek Yatak</th>
+                <th className={tableHeadClass}>Evcil Hasar</th>
+                <th className={tableHeadClass}>Evcil Temizlik</th>
+                <th className={tableHeadClass}>Yerden Isıtma</th>
                 <th className={tableHeadClass}>Para Bir.</th>
                 <th className={tableHeadClass}>İşlem</th>
               </tr>
@@ -1033,7 +1093,7 @@ export default function VillaHizliFiyatPage({
               {rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={16}
+                    colSpan={20}
                     className="px-5 py-16 text-center text-sm text-gray-500"
                   >
                     Henüz periyot yok. Yeni periyot ekleyerek başlayın.
@@ -1200,6 +1260,66 @@ export default function VillaHizliFiyatPage({
                           onChange={(event) =>
                             updateRow(row.id, {
                               damageDeposit: sanitizeAmountInput(
+                                event.target.value
+                              ),
+                            })
+                          }
+                          className={tableInputClass(row.dirty, "fee")}
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={row.extraBedFee}
+                          onChange={(event) =>
+                            updateRow(row.id, {
+                              extraBedFee: sanitizeAmountInput(
+                                event.target.value
+                              ),
+                            })
+                          }
+                          className={tableInputClass(row.dirty, "fee")}
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={row.petDamageDeposit}
+                          onChange={(event) =>
+                            updateRow(row.id, {
+                              petDamageDeposit: sanitizeAmountInput(
+                                event.target.value
+                              ),
+                            })
+                          }
+                          className={tableInputClass(row.dirty, "fee")}
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={row.petCleaningFee}
+                          onChange={(event) =>
+                            updateRow(row.id, {
+                              petCleaningFee: sanitizeAmountInput(
+                                event.target.value
+                              ),
+                            })
+                          }
+                          className={tableInputClass(row.dirty, "fee")}
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={row.underfloorHeatingFee}
+                          onChange={(event) =>
+                            updateRow(row.id, {
+                              underfloorHeatingFee: sanitizeAmountInput(
                                 event.target.value
                               ),
                             })
