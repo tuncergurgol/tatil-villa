@@ -1331,7 +1331,7 @@ model CompanySettings {
   homeRecommendedTitle        String  @default("Önerilen Villalar")
   homeRecommendedActive       Boolean @default(true)
   homeRecommendedSortMode     String  @default("showcase")
-  tatilAssistantEnabled       Boolean @default(true)
+  tatilAssistantEnabled       Boolean @default(false)
   assistantWahaBaseUrl        String  @default("http://localhost:3001")
   assistantWahaApiKey         String  @default("")
   assistantWahaSessionName    String  @default("tatil-asistani")

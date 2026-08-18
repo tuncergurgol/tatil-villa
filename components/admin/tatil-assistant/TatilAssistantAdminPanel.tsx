@@ -102,6 +102,11 @@ export default function TatilAssistantAdminPanel(props: TatilAssistantAdminPanel
               Web sitesi sohbet widget&apos;ı ve +90 549 618 01 08 WhatsApp hattı.
               Uygunluk arama kriterleriyle villa önerir.
             </p>
+            {!props.enabled ? (
+              <p className="mt-2 inline-flex rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-white">
+                Şu an pasif — geliştirme sonrası Genel Ayarlar'dan açılır
+              </p>
+            ) : null}
           </div>
         </div>
       </header>
@@ -455,7 +460,7 @@ export default function TatilAssistantAdminPanel(props: TatilAssistantAdminPanel
                 checked={enabled}
                 onChange={(e) => setEnabled(e.target.checked)}
               />
-              Tatil Asistanı aktif (web widget)
+              Tatil Asistanı aktif (web widget + WhatsApp)
             </label>
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-gray-700">

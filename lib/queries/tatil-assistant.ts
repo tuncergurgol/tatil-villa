@@ -120,7 +120,7 @@ export async function getTatilAssistantAdminData() {
   ]);
 
   return {
-    enabled: settings.tatilAssistantEnabled ?? true,
+    enabled: settings.tatilAssistantEnabled ?? false,
     welcomeMessage:
       settings.assistantWelcomeMessage?.trim() || DEFAULT_ASSISTANT_WELCOME,
     ...(() => {
@@ -139,12 +139,13 @@ export async function getTatilAssistantAdminData() {
 }
 
 export async function getTatilAssistantRuntimeContext() {
-  await ensureTatilAssistantDefaults();
   const settings = await getCompanySettings();
 
   if (!settings.tatilAssistantEnabled) {
     return null;
   }
+
+  await ensureTatilAssistantDefaults();
 
   const [topics, rules] = await Promise.all([
     prisma.tatilAssistantTopic.findMany({

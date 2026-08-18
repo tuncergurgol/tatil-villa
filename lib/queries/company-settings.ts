@@ -102,7 +102,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   guestReviewInvitesEnabled: true,
   scheduledBookingMessagesEnabled: true,
   publishUndocumentedVillaSiteKeys: [] as string[],
-  tatilAssistantEnabled: true,
+  tatilAssistantEnabled: false,
   assistantWahaBaseUrl: "http://localhost:3001",
   assistantWahaApiKey: "",
   assistantWahaSessionName: "tatil-asistani",
