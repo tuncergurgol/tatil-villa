@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverMinification: false,
+    optimizePackageImports: ["lucide-react"],
   },
   async headers() {
     const securityHeaders = [

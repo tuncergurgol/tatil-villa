@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { preconnect, preload } from "react-dom";
+import { preconnect } from "react-dom";
 import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
@@ -12,6 +12,7 @@ import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { buildVillaDetailMetadata } from "@/lib/villa-page-metadata";
 import { buildVillaLodgingJsonLd } from "@/lib/villa-json-ld";
 import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
+import { preloadOptimizedLcpImage } from "@/lib/preload-lcp-image";
 import {
   resolveVillaStayAdultsFromSearchParams,
   resolveVillaStayDatesFromSearchParams,
@@ -104,7 +105,7 @@ export default async function VillaDetailPage({
         preconnect(origin);
       }
     }
-    preload(heroImage, { as: "image", fetchPriority: "high" });
+    preloadOptimizedLcpImage(heroImage, "(min-width: 640px) 50vw, 100vw", 70);
   }
 
   return (

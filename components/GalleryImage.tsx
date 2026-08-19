@@ -21,19 +21,20 @@ export default function GalleryImage({
   loading,
   fetchPriority,
   quality,
+  priority,
   ...props
 }: GalleryImageProps) {
   const skipOptimizer = unoptimized === true;
-  const isPriority = props.priority === true;
+  const isPriority = priority === true;
 
   return (
     <Image
+      {...props}
       src={resolveGallerySrc(src, skipOptimizer)}
       unoptimized={skipOptimizer}
       quality={quality ?? 70}
       loading={loading ?? (isPriority ? "eager" : "lazy")}
       fetchPriority={fetchPriority ?? (isPriority ? "high" : "auto")}
-      {...props}
     />
   );
 }

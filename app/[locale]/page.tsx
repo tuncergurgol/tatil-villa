@@ -10,6 +10,7 @@ import { getRegionsWithCount, getHeroSearchRegions } from "@/lib/queries/regions
 import { getHomeDreamCategories } from "@/lib/queries/facility-categories";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { preloadOptimizedLcpImage } from "@/lib/preload-lcp-image";
 import {
   getHomeVillaSectionsWithData,
   HOME_VILLA_SECTION_SUBTITLES,
@@ -30,6 +31,8 @@ export default async function HomePage() {
       getHomeDreamCategories(site.key),
     ]);
 
+  preloadOptimizedLcpImage(site.heroImageUrl, "100vw", 70);
+
   return (
     <>
       <section className="relative flex min-h-[520px] items-center justify-center overflow-visible pb-24 sm:min-h-[580px] sm:pb-28">
@@ -39,9 +42,10 @@ export default async function HomePage() {
             alt="Tatil manzarası"
             fill
             className="object-cover"
-            priority
             sizes="100vw"
             quality={70}
+            loading="eager"
+            fetchPriority="high"
           />
         </div>
 

@@ -133,7 +133,9 @@ export default function Header({
               width={504}
               height={130}
               className={`w-auto object-contain object-left md:h-[4.25rem] md:max-w-[360px] lg:h-[4.75rem] lg:max-w-[420px] ${mobileLogoClass}`}
-              priority
+              unoptimized={logoSrc.endsWith(".svg")}
+              loading="eager"
+              fetchPriority="low"
             />
           ) : (
             <span className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">

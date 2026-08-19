@@ -95,6 +95,7 @@ export default function Footer({
                 height={72}
                 className="h-12 w-auto object-contain sm:h-14"
                 unoptimized={logoSrc.endsWith(".svg")}
+                loading="lazy"
               />
             ) : (
               <span className="text-2xl font-bold tracking-tight text-gray-900">
@@ -160,6 +161,8 @@ export default function Footer({
               alt={`TÜRSAB Dijital Doğrulama Sistemi — Belge No ${tursabNo}`}
               width={280}
               height={90}
+              loading="lazy"
+              decoding="async"
               className="h-auto w-full max-w-[240px] rounded-lg border border-gray-200 bg-white shadow-sm"
             />
           </a>
@@ -187,6 +190,8 @@ export default function Footer({
               alt="SSL güvenli bağlantı, %100 güvenli alışveriş, iyzico, Mastercard, Visa, American Express, Troy, Param"
               width={320}
               height={160}
+              loading="lazy"
+              decoding="async"
               className="h-auto w-full max-w-[260px] bg-white"
             />
           </div>
