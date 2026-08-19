@@ -154,7 +154,7 @@ export default function VillaResultCard({
 
             <Link
               href={villaPublicPath(villa.slug)}
-              className="mt-3 inline-flex rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600 sm:mt-4"
+              className="mt-3 inline-flex rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800 sm:mt-4"
             >
               İncele
             </Link>

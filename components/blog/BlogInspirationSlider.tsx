@@ -238,7 +238,7 @@ export default function BlogInspirationSlider({
 
               <Link
                 href={ctaHref}
-                className="hidden rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600 sm:inline-flex"
+                className="hidden rounded-full bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800 sm:inline-flex"
               >
                 {ctaLabel}
               </Link>
@@ -250,7 +250,7 @@ export default function BlogInspirationSlider({
       <div className="mt-6 text-center sm:hidden">
         <Link
           href={ctaHref}
-          className="inline-flex rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-600"
+          className="inline-flex rounded-full bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
         >
           {ctaLabel}
         </Link>

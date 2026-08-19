@@ -21,7 +21,7 @@ function ViewAllButton({
   return (
     <Link
       href={href}
-      className={`group inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 hover:shadow-md ${className}`}
+      className={`group inline-flex items-center gap-2 rounded-full bg-orange-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-800 hover:shadow-md ${className}`}
     >
       Tümünü Gör
       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 transition group-hover:translate-x-0.5 group-hover:bg-white/30">

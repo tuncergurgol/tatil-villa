@@ -45,7 +45,7 @@ export default function PriceInfoTip({ label, children }: PriceInfoTipProps) {
           event.stopPropagation();
           setOpen((value) => !value);
         }}
-        className="inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold leading-none text-white transition hover:bg-orange-600"
+        className="inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full bg-orange-700 text-[10px] font-bold leading-none text-white transition hover:bg-orange-800"
       >
         i
       </button>

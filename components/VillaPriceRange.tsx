@@ -33,7 +33,7 @@ export default function VillaPriceRange({
           Teklif Alınız
         </p>
         {showArrow ? (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white shadow-sm transition group-hover:bg-orange-600">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-700 text-white shadow-sm transition group-hover:bg-orange-800">
             <ArrowRight className="h-4 w-4" />
           </span>
         ) : null}
@@ -66,7 +66,7 @@ export default function VillaPriceRange({
         </p>
       </div>
       {showArrow ? (
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white shadow-sm transition group-hover:bg-orange-600 group-hover:shadow-md">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-700 text-white shadow-sm transition group-hover:bg-orange-800 group-hover:shadow-md">
           <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
         </span>
       ) : null}

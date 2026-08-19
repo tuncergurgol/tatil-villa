@@ -90,7 +90,7 @@ function CheckboxRow({
         <span
           className={`flex h-4 w-4 items-center justify-center rounded border ${
             active
-              ? "border-sky-500 bg-sky-500 text-[10px] text-white"
+              ? "border-sky-700 bg-sky-700 text-[10px] text-white"
               : "border-gray-300"
           }`}
         >
@@ -221,7 +221,7 @@ export default function VillaSearchSidebar({
             <button
               type="button"
               onClick={applyPrice}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500 text-white transition hover:bg-sky-600"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-700 text-white transition hover:bg-sky-800"
               aria-label="Fiyat uygula"
             >
               →

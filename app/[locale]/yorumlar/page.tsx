@@ -17,7 +17,7 @@ function Stars({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5" aria-label={`${rating} / 5 puan`}>
       {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={i < rating ? "text-amber-400" : "text-gray-300"}>
+        <span key={i} className={i < rating ? "text-amber-700" : "text-gray-500"}>
           ★
         </span>
       ))}
@@ -109,9 +109,9 @@ export default async function ReviewsPage() {
               {review.comment}
             </p>
             {review.stayMonth ? (
-              <p className="mt-3 text-xs text-gray-400">{review.stayMonth}</p>
+              <p className="mt-3 text-xs text-gray-600">{review.stayMonth}</p>
             ) : (
-              <p className="mt-3 text-xs text-gray-400">
+              <p className="mt-3 text-xs text-gray-600">
                 {new Date(review.createdAt).toLocaleDateString("tr-TR")}
               </p>
             )}

@@ -67,8 +67,8 @@ export default function RegionGrid({ regions }: RegionGridProps) {
             onClick={() => setActiveSlug(null)}
             className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
               activeSlug === null
-                ? "border-sky-500 bg-sky-50 text-sky-700"
-                : "border-sky-200 bg-white text-sky-600 hover:border-sky-400 hover:bg-sky-50"
+                ? "border-sky-700 bg-sky-50 text-sky-800"
+                : "border-sky-300 bg-white text-sky-700 hover:border-sky-500 hover:bg-sky-50"
             }`}
           >
             Tümü
@@ -80,8 +80,8 @@ export default function RegionGrid({ regions }: RegionGridProps) {
               onClick={() => setActiveSlug(region.slug)}
               className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
                 activeSlug === region.slug
-                  ? "border-sky-500 bg-sky-50 text-sky-700"
-                  : "border-sky-200 bg-white text-sky-600 hover:border-sky-400 hover:bg-sky-50"
+                  ? "border-sky-700 bg-sky-50 text-sky-800"
+                  : "border-sky-300 bg-white text-sky-700 hover:border-sky-500 hover:bg-sky-50"
               }`}
             >
               {region.name}

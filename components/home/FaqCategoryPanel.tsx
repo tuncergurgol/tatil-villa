@@ -74,7 +74,7 @@ export default function FaqCategoryPanel({ faqs }: { faqs: HomeFaqItem[] }) {
       <div className="pt-1 text-center">
         <Link
           href="/sik-sorulan-sorular"
-          className="inline-flex items-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-600"
+          className="inline-flex items-center rounded-full bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
         >
           Tüm soruları gör
         </Link>

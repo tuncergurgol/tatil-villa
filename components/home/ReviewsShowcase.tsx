@@ -14,9 +14,9 @@ export type HomeReviewItem = {
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <span className="text-amber-400" aria-label={`${rating} / 5 puan`}>
+    <span className="text-amber-700" aria-label={`${rating} / 5 puan`}>
       {"★".repeat(Math.max(0, Math.min(5, rating)))}
-      <span className="text-gray-300">
+      <span className="text-gray-500">
         {"★".repeat(Math.max(0, 5 - Math.min(5, rating)))}
       </span>
     </span>
@@ -48,7 +48,7 @@ function ReviewCard({
           {review.villa ? (
             <Link
               href={`/${review.villa.slug}`}
-              className="mt-0.5 block truncate text-sm text-sky-600 hover:text-sky-700"
+              className="mt-0.5 block truncate text-sm text-sky-700 hover:text-sky-800"
               itemProp="itemReviewed"
               itemScope
               itemType="https://schema.org/LodgingBusiness"
@@ -80,7 +80,7 @@ function ReviewCard({
         “{review.comment}”
       </p>
       {review.stayMonth ? (
-        <p className="mt-3 text-xs text-gray-400">{review.stayMonth}</p>
+        <p className="mt-3 text-xs text-gray-600">{review.stayMonth}</p>
       ) : null}
     </article>
   );
@@ -113,7 +113,7 @@ export default function ReviewsShowcase({
       <div className="text-center">
         <Link
           href="/yorumlar"
-          className="inline-flex items-center rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-600"
+          className="inline-flex items-center rounded-full bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
         >
           Tüm yorumları gör
         </Link>

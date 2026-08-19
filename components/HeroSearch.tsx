@@ -229,7 +229,7 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
 
           <button
             type="submit"
-            className="flex h-14 items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 text-sm font-bold text-white transition hover:bg-sky-600 sm:min-w-[100px] sm:shrink-0 lg:h-full"
+            className="flex h-14 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 text-sm font-bold text-white transition hover:bg-sky-800 sm:min-w-[100px] sm:shrink-0 lg:h-full"
           >
             <Search className="h-4 w-4" />
             <span>Ara</span>

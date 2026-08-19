@@ -145,7 +145,7 @@ function LegacySearchForm({
         <div className="flex items-end lg:col-span-6 xl:col-span-1">
           <button
             type="button"
-            className="inline-flex h-[52px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 text-sm font-bold tracking-wide text-white shadow-md shadow-orange-500/25 transition hover:bg-orange-600"
+            className="inline-flex h-[52px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-700 px-4 text-sm font-bold tracking-wide text-white shadow-md shadow-orange-700/25 transition hover:bg-orange-800"
           >
             <Car className="h-4 w-4" />
             {settings.ctaText.toUpperCase()}

@@ -101,7 +101,7 @@ export default async function TourListPage() {
                       </span>
                       <Link
                         href={`/tur/${tour.slug}`}
-                        className="rounded-full bg-sky-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-600"
+                        className="rounded-full bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-800"
                       >
                         İncele
                       </Link>

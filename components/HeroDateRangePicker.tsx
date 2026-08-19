@@ -236,7 +236,7 @@ export default function HeroDateRangePicker({
                       : "cursor-pointer text-gray-400 hover:bg-gray-50"
                 } ${inRange && !isStart && !isEnd ? "bg-sky-100 text-sky-900" : ""} ${
                   isStart || isEnd
-                    ? "bg-sky-500 text-white hover:bg-sky-500"
+                    ? "bg-sky-700 text-white hover:bg-sky-700"
                     : ""
                 }`}
               >

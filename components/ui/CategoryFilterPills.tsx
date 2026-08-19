@@ -26,8 +26,8 @@ export default function CategoryFilterPills({
           onClick={() => onChange(null)}
           className={`shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium transition sm:px-4 ${
             activeId === null
-              ? "border-sky-400 bg-white text-sky-600 shadow-sm"
-              : "border-sky-200 bg-white text-sky-500 hover:border-sky-300"
+              ? "border-sky-700 bg-sky-50 text-sky-800 shadow-sm"
+              : "border-sky-300 bg-white text-sky-700 hover:border-sky-500"
           }`}
         >
           {allLabel}
@@ -39,8 +39,8 @@ export default function CategoryFilterPills({
             onClick={() => onChange(category.id)}
             className={`shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium transition sm:px-4 ${
               activeId === category.id
-                ? "border-sky-400 bg-white text-sky-600 shadow-sm"
-                : "border-sky-200 bg-white text-sky-500 hover:border-sky-300"
+                ? "border-sky-700 bg-sky-50 text-sky-800 shadow-sm"
+                : "border-sky-300 bg-white text-sky-700 hover:border-sky-500"
             }`}
           >
             {category.label}

@@ -304,7 +304,7 @@ export default function Yolcu360SearchWidget({ settings, driverAgeOptions }: Pro
         <button
           type="button"
           onClick={handleSearch}
-          className="inline-flex h-[52px] w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 text-sm font-bold tracking-wide text-white shadow-md shadow-orange-500/25 transition hover:bg-orange-600 xl:w-auto xl:min-w-[9.5rem]"
+          className="inline-flex h-[52px] w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-700 px-6 text-sm font-bold tracking-wide text-white shadow-md shadow-orange-700/25 transition hover:bg-orange-800 xl:w-auto xl:min-w-[9.5rem]"
         >
           <Car className="h-4 w-4" />
           {settings.ctaText.toUpperCase()}
