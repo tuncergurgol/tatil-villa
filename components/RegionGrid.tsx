@@ -108,6 +108,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
                   fill
                   className="object-cover transition duration-500 group-hover:scale-105"
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  quality={65}
                 />
                 <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/55 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">

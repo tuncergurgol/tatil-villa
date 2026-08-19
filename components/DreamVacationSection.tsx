@@ -39,6 +39,7 @@ export default function DreamVacationSection({
                   fill
                   className="object-cover transition duration-500 group-hover:scale-105"
                   sizes="(max-width: 640px) 42vw, (max-width: 1024px) 33vw, 14vw"
+                  quality={65}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-80" />
               </div>

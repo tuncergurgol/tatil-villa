@@ -41,6 +41,7 @@ export default async function HomePage() {
             className="object-cover"
             priority
             sizes="100vw"
+            quality={70}
           />
         </div>
 

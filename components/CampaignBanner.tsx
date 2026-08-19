@@ -36,6 +36,7 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
               fill
               className="object-cover"
               sizes="(max-width: 1280px) 100vw, 1280px"
+              quality={60}
             />
             <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-12 lg:px-16">
               <h3 className="max-w-md text-2xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:text-3xl lg:text-4xl">

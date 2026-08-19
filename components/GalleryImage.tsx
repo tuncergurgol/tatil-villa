@@ -5,11 +5,14 @@ type GalleryImageProps = Omit<ImageProps, "src"> & {
   src: string;
 };
 
-/** Yerel /uploads görselleri zaten WebP (~100KB); nginx üzerinden doğrudan sunulur.
- *  Next `/_next/image` optimizer dosyayı bulamadığı için 400 veriyor ve sayfayı yavaşlatıyor.
- */
-function shouldSkipImageOptimizer(src: string) {
-  return src.startsWith("/uploads/");
+function resolveGallerySrc(src: string, skipOptimizer: boolean) {
+  if (!src.startsWith("/uploads/")) return src;
+  if (skipOptimizer) return encodeGalleryImageUrl(src);
+  try {
+    return decodeURI(src.split("?")[0] ?? src);
+  } catch {
+    return src;
+  }
 }
 
 export default function GalleryImage({
@@ -17,16 +20,17 @@ export default function GalleryImage({
   unoptimized,
   loading,
   fetchPriority,
+  quality,
   ...props
 }: GalleryImageProps) {
-  const encoded = encodeGalleryImageUrl(src);
-  const skipOptimizer = unoptimized || shouldSkipImageOptimizer(encoded);
+  const skipOptimizer = unoptimized === true;
   const isPriority = props.priority === true;
 
   return (
     <Image
-      src={encoded}
+      src={resolveGallerySrc(src, skipOptimizer)}
       unoptimized={skipOptimizer}
+      quality={quality ?? 70}
       loading={loading ?? (isPriority ? "eager" : "lazy")}
       fetchPriority={fetchPriority ?? (isPriority ? "high" : "auto")}
       {...props}
