@@ -228,7 +228,7 @@ function MonthGrid({
               {visual.showPrice && priceTl != null && hasDayData ? (
                 <p className="mt-0.5 text-[9px] leading-tight text-slate-600 sm:text-[10px]">
                   {formatDayPrice(priceTl)}
-                  <span className="text-slate-400">₺</span>
+                  <span className="text-slate-600">₺</span>
                 </p>
               ) : null}
               {visual.statusLabel ? (

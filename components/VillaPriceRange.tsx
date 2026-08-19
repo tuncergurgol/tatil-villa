@@ -26,7 +26,7 @@ export default function VillaPriceRange({
     return (
       <div className="flex w-full items-end justify-between gap-2">
         <p
-          className={`font-semibold text-amber-600 ${
+          className={`font-semibold text-amber-700 ${
             compact ? "text-sm" : "text-base"
           }`}
         >
@@ -57,11 +57,11 @@ export default function VillaPriceRange({
           >
             {rangeText}
           </span>
-          <span className="ml-1 align-top text-[11px] font-semibold text-orange-500">
+          <span className="ml-1 align-top text-[11px] font-semibold text-orange-700">
             /Gecelik
           </span>
         </p>
-        <p className="mt-0.5 text-xs text-gray-400">
+        <p className="mt-0.5 text-xs text-gray-600">
           {same ? "Gecelik fiyat" : "Fiyat Aralığında"}
         </p>
       </div>

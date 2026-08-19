@@ -137,7 +137,7 @@ export default function Footer({
               </li>
             ) : null}
           </ul>
-          <p className="mt-5 text-xs leading-relaxed text-gray-400">
+          <p className="mt-5 text-xs leading-relaxed text-gray-600">
             {agencyName}
             <br />
             TÜRSAB No: {tursabNo}
@@ -176,7 +176,7 @@ export default function Footer({
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-gray-400">Henüz sayfa eklenmedi.</p>
+            <p className="mt-4 text-sm text-gray-600">Henüz sayfa eklenmedi.</p>
           )}
           <div className="mt-6 bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -222,7 +222,7 @@ export default function Footer({
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-gray-400">Henüz bölge eklenmedi.</p>
+            <p className="mt-4 text-sm text-gray-600">Henüz bölge eklenmedi.</p>
           )}
         </div>
       </div>
@@ -243,7 +243,7 @@ export default function Footer({
         </nav>
       ) : null}
 
-      <div className="border-t border-gray-100 py-4 text-center text-xs text-gray-400">
+      <div className="border-t border-gray-100 py-4 text-center text-xs text-gray-600">
         © {new Date().getFullYear()} {companyTitle || brandName}. Tüm hakları
         saklıdır.
       </div>

@@ -381,7 +381,7 @@ export default function BookingForm({
           {weekdayLabels.map((label) => (
             <div
               key={label}
-              className="py-1 text-center text-[10px] font-medium text-slate-400"
+              className="py-1 text-center text-[10px] font-medium text-slate-600"
             >
               {label}
             </div>
@@ -606,7 +606,7 @@ export default function BookingForm({
                   Tarih seçerek konaklama bedelini hesaplayın
                 </p>
               ) : (
-                <p className="mt-0.5 text-xs font-semibold text-amber-600">
+                <p className="mt-0.5 text-xs font-semibold text-amber-700">
                   Tarih Seçiniz
                 </p>
               )
@@ -685,7 +685,7 @@ export default function BookingForm({
                 </p>
                 <p
                   className={`text-[12px] font-semibold leading-snug ${
-                    checkIn ? "text-slate-900" : "text-slate-400"
+                    checkIn ? "text-slate-900" : "text-slate-600"
                   }`}
                 >
                   {checkIn ? formatBookingDate(checkIn) : "Tarih seçin"}
@@ -700,7 +700,7 @@ export default function BookingForm({
                 </p>
                 <p
                   className={`text-[12px] font-semibold leading-snug ${
-                    checkOut ? "text-slate-900" : "text-slate-400"
+                    checkOut ? "text-slate-900" : "text-slate-600"
                   }`}
                 >
                   {checkOut ? formatBookingDate(checkOut) : "Tarih seçin"}

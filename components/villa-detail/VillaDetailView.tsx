@@ -567,7 +567,7 @@ export default function VillaDetailView({
                       <summary className="cursor-pointer list-none font-medium text-slate-900 marker:content-none">
                         <span className="flex items-start justify-between gap-3">
                           {faq.question}
-                          <span className="text-slate-400 transition group-open:rotate-45">
+                          <span className="text-slate-600 transition group-open:rotate-45">
                             +
                           </span>
                         </span>

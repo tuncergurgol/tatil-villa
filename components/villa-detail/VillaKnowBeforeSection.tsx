@@ -123,7 +123,7 @@ function TimeRangeTimeline({
           />
         </div>
 
-        <div className="mt-2 flex justify-between text-[10px] font-medium text-slate-400">
+        <div className="mt-2 flex justify-between text-[10px] font-medium text-slate-600">
           <span>00:00</span>
           <span>06:00</span>
           <span>12:00</span>
