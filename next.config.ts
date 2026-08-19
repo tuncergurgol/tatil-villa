@@ -22,8 +22,6 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverMinification: false,
-    // İlk ziyarette render-blocking CSS ağ çağrısını kaldırır (Tailwind).
-    inlineCss: true,
   },
   async headers() {
     const securityHeaders = [
