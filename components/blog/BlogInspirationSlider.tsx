@@ -215,7 +215,7 @@ export default function BlogInspirationSlider({
                   onClick={() =>
                     setIndex((prev) => (prev - 1 + items.length) % items.length)
                   }
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-100 bg-white text-sky-600 shadow-sm transition hover:bg-sky-50"
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-sky-100 bg-white text-sky-600 shadow-sm transition hover:bg-sky-50"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -223,27 +223,18 @@ export default function BlogInspirationSlider({
                   type="button"
                   aria-label="Sonraki"
                   onClick={() => setIndex((prev) => (prev + 1) % items.length)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-100 bg-white text-sky-600 shadow-sm transition hover:bg-sky-50"
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-sky-100 bg-white text-sky-600 shadow-sm transition hover:bg-sky-50"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                {items.map((post, i) => (
-                  <button
-                    key={post.id}
-                    type="button"
-                    aria-label={`Yazı ${i + 1}`}
-                    onClick={() => setIndex(i)}
-                    className={`h-2.5 rounded-full transition ${
-                      i === index % items.length
-                        ? "w-6 bg-sky-500"
-                        : "w-2.5 bg-sky-200 hover:bg-sky-300"
-                    }`}
-                  />
-                ))}
-              </div>
+              <p
+                className="min-w-[4.5rem] text-center text-sm font-medium tabular-nums text-slate-600"
+                aria-live="polite"
+              >
+                {(index % items.length) + 1} / {items.length}
+              </p>
 
               <Link
                 href={ctaHref}
