@@ -1,10 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Phone, X } from "lucide-react";
-import CallbackRequestFormPublic from "@/components/corporate/CallbackRequestFormPublic";
+
+const CallbackRequestFormPublic = dynamic(
+  () => import("@/components/corporate/CallbackRequestFormPublic"),
+  { ssr: false }
+);
 
 export default function CallbackFloatingButton() {
   const pathname = usePathname();

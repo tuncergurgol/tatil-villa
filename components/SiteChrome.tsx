@@ -1,8 +1,6 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import ScrollToTopButton from "@/components/ScrollToTopButton";
 import TatilAssistantWidgetLoader from "@/components/tatil-assistant/TatilAssistantWidgetLoader";
-import CallbackFloatingButton from "@/components/CallbackFloatingButton";
 import MobileBottomNavigation from "@/components/MobileBottomNavigation";
 import PublicContentProtection from "@/components/PublicContentProtection";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
@@ -164,9 +162,7 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
           tursabVerificationLogoUrl: company.tursabVerificationLogoUrl,
         }}
       />
-      <ScrollToTopButton />
       <TatilAssistantWidgetLoader />
-      <CallbackFloatingButton />
       <MobileBottomNavigation
         phone={phone}
         whatsapp={company.whatsapp?.trim() || phone}
