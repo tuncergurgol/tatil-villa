@@ -27,7 +27,7 @@ type VillaDetailSectionNavProps = {
   className?: string;
 };
 
-const FALLBACK_HEADER_PX = 0;
+const FALLBACK_HEADER_PX = 88;
 
 const NAV_ICONS: Record<string, LucideIcon> = {
   "genel-bakis": Info,
@@ -60,7 +60,8 @@ export default function VillaDetailSectionNav({
     const ro = new ResizeObserver((entries) => {
       const blockSize = entries[0]?.borderBoxSize?.[0]?.blockSize;
       const height = Math.ceil(blockSize ?? 0);
-      setHeaderOffset(height > 0 ? height : 0);
+      const next = height > 0 ? height : FALLBACK_HEADER_PX;
+      setHeaderOffset((current) => (current === next ? current : next));
     });
     ro.observe(header);
     return () => ro.disconnect();
@@ -73,14 +74,14 @@ export default function VillaDetailSectionNav({
     const ro = new ResizeObserver((entries) => {
       const navH = Math.ceil(entries[0]?.borderBoxSize?.[0]?.blockSize ?? 0);
       const root = document.documentElement;
-      root.style.setProperty(
-        "--villa-detail-sticky-below-nav",
-        `${headerOffset + navH}px`
-      );
-      root.style.setProperty(
-        "--villa-detail-scroll-mt",
-        `${headerOffset + navH + 8}px`
-      );
+      const below = `${headerOffset + navH}px`;
+      const scrollMt = `${headerOffset + navH + 8}px`;
+      if (root.style.getPropertyValue("--villa-detail-sticky-below-nav") !== below) {
+        root.style.setProperty("--villa-detail-sticky-below-nav", below);
+      }
+      if (root.style.getPropertyValue("--villa-detail-scroll-mt") !== scrollMt) {
+        root.style.setProperty("--villa-detail-scroll-mt", scrollMt);
+      }
     });
     ro.observe(nav);
     return () => {

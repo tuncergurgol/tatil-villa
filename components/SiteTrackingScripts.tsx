@@ -8,13 +8,10 @@ function injectHtmlSnippet(html: string, target: "head" | "body") {
   if (!html.trim() || typeof document === "undefined") return () => {};
 
   const parent = target === "head" ? document.head : document.body;
-  const range = document.createRange();
-  range.selectNodeContents(parent);
-  const fragment = range.createContextualFragment(html);
-  const nodes = Array.from(fragment.childNodes);
-  for (const node of nodes) {
-    parent.appendChild(node);
-  }
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const nodes = Array.from(template.content.childNodes);
+  parent.appendChild(template.content);
 
   return () => {
     for (const node of nodes) {
