@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { preconnect, preload } from "react-dom";
 import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
@@ -96,16 +97,15 @@ export default async function VillaDetailPage({
     ? encodeGalleryImageUrl(villa.images[0])
     : null;
 
+  if (heroImage) {
+    if (heroImage.startsWith("https://") || heroImage.startsWith("http://")) {
+      preconnect(new URL(heroImage).origin);
+    }
+    preload(heroImage, { as: "image", fetchPriority: "high" });
+  }
+
   return (
     <>
-      {heroImage?.startsWith("/uploads/") ? (
-        <link
-          rel="preload"
-          as="image"
-          href={heroImage}
-          fetchPriority="high"
-        />
-      ) : null}
       {lodgingJsonLd ? (
         <script
           type="application/ld+json"

@@ -139,7 +139,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { dev }) => {
+  webpack: (config, { dev, isServer }) => {
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "../build/polyfills/polyfill-module": false,
+        "../build/polyfills/polyfill-module.js": false,
+        "next/dist/build/polyfills/polyfill-module": false,
+        "next/dist/build/polyfills/polyfill-module.js": false,
+      };
+    }
     if (dev) {
       const current = config.watchOptions?.ignored;
       const base = Array.isArray(current) ? current : current ? [current] : [];

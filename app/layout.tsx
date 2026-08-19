@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { preconnect, prefetchDNS } from "react-dom";
 import { getLocale } from "next-intl/server";
 import Providers from "@/components/Providers";
 import { buildRootMetadata } from "@/lib/site-metadata";
@@ -8,6 +9,8 @@ import "./globals.css";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -19,6 +22,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  preconnect("https://r2.tatildeyiz.com.tr");
+  prefetchDNS("https://r2.tatildeyiz.com.tr");
   const locale = await getLocale();
 
   return (

@@ -57,28 +57,21 @@ export default function VillaDetailSectionNav({
     const header = document.querySelector("header");
     if (!header) return;
 
-    const syncHeaderHeight = () => {
-      const isSticky = window.getComputedStyle(header).position === "sticky";
-      const height = Math.ceil(header.getBoundingClientRect().height);
-      setHeaderOffset(isSticky && height > 0 ? height : 0);
-    };
-
-    syncHeaderHeight();
-    const ro = new ResizeObserver(syncHeaderHeight);
+    const ro = new ResizeObserver((entries) => {
+      const blockSize = entries[0]?.borderBoxSize?.[0]?.blockSize;
+      const height = Math.ceil(blockSize ?? 0);
+      setHeaderOffset(height > 0 ? height : 0);
+    });
     ro.observe(header);
-    window.addEventListener("resize", syncHeaderHeight);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", syncHeaderHeight);
-    };
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
 
-    const syncOffsets = () => {
-      const navH = Math.ceil(nav.getBoundingClientRect().height);
+    const ro = new ResizeObserver((entries) => {
+      const navH = Math.ceil(entries[0]?.borderBoxSize?.[0]?.blockSize ?? 0);
       const root = document.documentElement;
       root.style.setProperty(
         "--villa-detail-sticky-below-nav",
@@ -88,10 +81,7 @@ export default function VillaDetailSectionNav({
         "--villa-detail-scroll-mt",
         `${headerOffset + navH + 8}px`
       );
-    };
-
-    syncOffsets();
-    const ro = new ResizeObserver(syncOffsets);
+    });
     ro.observe(nav);
     return () => {
       ro.disconnect();
