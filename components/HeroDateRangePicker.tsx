@@ -310,7 +310,7 @@ export default function HeroDateRangePicker({
               </span>
             </>
           ) : (
-            <span className="mt-1 text-sm leading-tight text-gray-400">
+            <span className="mt-1 text-sm leading-tight text-gray-600">
               Tarih seçin
             </span>
           )}
@@ -344,7 +344,7 @@ export default function HeroDateRangePicker({
               </span>
             </>
           ) : (
-            <span className="mt-1 text-sm leading-tight text-gray-400">
+            <span className="mt-1 text-sm leading-tight text-gray-600">
               Tarih seçin
             </span>
           )}

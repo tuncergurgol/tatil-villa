@@ -117,7 +117,7 @@ export default function Header({
   }[siteKey];
 
   const whatsAppButtonClass =
-    "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#20BD5A] sm:text-sm";
+    "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#0F766E] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0D5C56] sm:text-sm";
 
   return (
     <header className="relative z-50 sticky top-0 border-b border-gray-200 bg-white text-gray-900 shadow-sm">

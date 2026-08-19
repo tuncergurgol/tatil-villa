@@ -71,17 +71,22 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
             <ChevronRight className="h-5 w-5" />
           </button>
 
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1">
             {campaigns.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setActive(i)}
-                className={`h-2 rounded-full transition-all ${
-                  i === active ? "w-6 bg-white" : "w-2 bg-white/50"
-                }`}
+                className="flex h-12 w-12 items-center justify-center"
                 aria-label={`Kampanya ${i + 1}`}
-              />
+                aria-current={i === active ? "true" : undefined}
+              >
+                <span
+                  className={`block h-2 rounded-full transition-all ${
+                    i === active ? "w-6 bg-white" : "w-2 bg-white/50"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </div>

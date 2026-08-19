@@ -43,6 +43,7 @@ export default function VillaGrid({ villas }: VillaGridProps) {
               fill
               className="object-cover transition duration-500 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              quality={70}
             />
             <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-teal-800">
               {categoryLabel(villa.category)}
