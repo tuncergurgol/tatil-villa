@@ -2,13 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  FormEvent,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { MapPin, Search } from "lucide-react";
 import FloatingPanel from "@/components/FloatingPanel";
 import {
@@ -37,7 +31,6 @@ export default function HeaderVillaSearch({
   compact?: boolean;
 }) {
   const router = useRouter();
-  const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -164,7 +157,6 @@ export default function HeaderVillaSearch({
             ref={inputRef}
             id={inputId}
             type="search"
-            role="combobox"
             enterKeyHint="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -173,10 +165,6 @@ export default function HeaderVillaSearch({
             }}
             placeholder="Villa adı ara..."
             aria-label="Villa adı ile ara"
-            aria-autocomplete="list"
-            aria-controls={listId}
-            aria-expanded={showPanel}
-            aria-haspopup="listbox"
             className={`w-full rounded-full border border-gray-200 bg-gray-50 pl-9 pr-3 text-gray-800 outline-none transition placeholder:text-gray-600 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 ${
               compact
                 ? "py-1.5 text-sm"
@@ -193,7 +181,7 @@ export default function HeaderVillaSearch({
         panelRef={panelRef}
         className="max-h-96 overflow-y-auto rounded-2xl border border-gray-100 bg-white py-1 shadow-2xl"
       >
-        <div id={listId}>
+        <div>
           {loading && results.length === 0 ? (
             <p className="px-4 py-3 text-sm text-gray-600" role="status">
               Aranıyor...
@@ -212,14 +200,11 @@ export default function HeaderVillaSearch({
               </button>
             </div>
           ) : (
-            <ul role="listbox" aria-label="Villa arama sonuçları">
+            <ul>
               {results.map((villa) => (
-                <li key={villa.id} role="none">
+                <li key={villa.id}>
                   <button
                     type="button"
-                    role="option"
-                    aria-selected="false"
-                    tabIndex={-1}
                     onClick={() => selectVilla(villa)}
                     className="flex w-full cursor-pointer items-start gap-3 px-3 py-2.5 text-left transition hover:bg-sky-50 active:bg-sky-100"
                   >
@@ -248,12 +233,9 @@ export default function HeaderVillaSearch({
                   </button>
                 </li>
               ))}
-              <li className="border-t border-gray-100 px-3 py-2" role="none">
+              <li className="border-t border-gray-100 px-3 py-2">
                 <button
                   type="button"
-                  role="option"
-                  aria-selected="false"
-                  tabIndex={-1}
                   onClick={() => goToResults(query)}
                   className="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-sky-700 hover:bg-sky-50 active:bg-sky-100"
                 >
