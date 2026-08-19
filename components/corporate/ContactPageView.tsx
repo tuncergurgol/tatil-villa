@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import { Clock, Mail, MapPin, Phone } from "lucide-react";
+import { Clock, MapPin, Phone } from "lucide-react";
 import ContactForm from "@/components/corporate/ContactForm";
 import SocialIconLinks from "@/components/SocialIconLinks";
 import { buildCompanySocialLinks } from "@/lib/social-links";
@@ -97,13 +97,12 @@ export default function ContactPageView({
               </p>
             ) : null}
             {company.email ? (
-              <a
-                href={`mailto:${company.email}`}
+              <span
                 className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 hover:text-teal-800"
-              >
-                <Mail className="h-3.5 w-3.5" />
-                {company.email}
-              </a>
+                dangerouslySetInnerHTML={{
+                  __html: `<!--email_off--><a href="mailto:${company.email}" class="inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 hover:text-teal-800">${company.email}</a><!--email_on-->`,
+                }}
+              />
             ) : null}
           </InfoBlock>
 

@@ -119,9 +119,11 @@ export default function Footer({
             {email ? (
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 shrink-0 text-sky-500" />
-                <a href={`mailto:${email}`} className="hover:text-gray-900">
-                  {email}
-                </a>
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: `<!--email_off--><a href="mailto:${email}" class="hover:text-gray-900">${email}</a><!--email_on-->`,
+                  }}
+                />
               </li>
             ) : null}
             {workingHours ? (

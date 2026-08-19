@@ -99,7 +99,10 @@ export default async function VillaDetailPage({
 
   if (heroImage) {
     if (heroImage.startsWith("https://") || heroImage.startsWith("http://")) {
-      preconnect(new URL(heroImage).origin);
+      const origin = new URL(heroImage).origin;
+      if (!origin.includes("tatildeyiz.com.tr") && !origin.includes("localhost")) {
+        preconnect(origin);
+      }
     }
     preload(heroImage, { as: "image", fetchPriority: "high" });
   }

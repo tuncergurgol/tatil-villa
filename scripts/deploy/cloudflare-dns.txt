@@ -23,6 +23,8 @@ tatilvillacisi.com         -> 185.184.210.96   # apex -> www (nginx 301)
 # - Origin sertifikası kurulunca: Full (strict)
 # - Always Use HTTPS: Açık
 # - Minimum TLS: 1.2
+# - Scrape Shield → Email Address Obfuscation: KAPALI
+#   (açıkken /cdn-cgi/scripts/.../email-decode.min.js kritik istek zincirine girer)
 
 # Real IP (nginx logları için) — Cloudflare IP aralıkları zaten nginx real_ip modülü ile
 # scripts/deploy/nginx-tatildeyiz.conf içinde tanımlı
