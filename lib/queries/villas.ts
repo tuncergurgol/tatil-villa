@@ -188,9 +188,13 @@ export async function getVillas(filters: VillaFilters = {}) {
 }
 
 export async function getVillaSearchResults(filters: VillaFilters = {}) {
-  const baseWhere: Prisma.VillaWhereInput = { active: true };
+  const isOfferShare = Boolean(filters.ids && filters.ids.length > 0);
+  const baseWhere: Prisma.VillaWhereInput = {
+    active: true,
+    ...(isOfferShare ? { showInOffer: true } : { showInSearch: true }),
+  };
 
-  if (filters.ids && filters.ids.length > 0) {
+  if (isOfferShare) {
     baseWhere.id = { in: filters.ids };
   }
 
@@ -592,7 +596,10 @@ async function resolvePublicSearchStay(
 export async function getSearchCategoryOptions(siteKey?: PublicSiteKey) {
   const groups = await prisma.villa.groupBy({
     by: ["category"],
-    where: await resolvePublicSiteVillaFilter({ active: true }, siteKey),
+    where: await resolvePublicSiteVillaFilter(
+      { active: true, showInSearch: true },
+      siteKey
+    ),
     _count: { _all: true },
   });
 
@@ -609,7 +616,10 @@ export async function getSearchCategoryOptions(siteKey?: PublicSiteKey) {
 
 /** Admin panelindeki Ev Kategorileri — arama filtresi için alfabetik. */
 export async function getSearchFacilityCategoryOptions(siteKey?: PublicSiteKey) {
-  const villaWhere = await resolvePublicSiteVillaFilter({ active: true }, siteKey);
+  const villaWhere = await resolvePublicSiteVillaFilter(
+    { active: true, showInSearch: true },
+    siteKey
+  );
   const [categories, villas] = await Promise.all([
     prisma.facilityCategory.findMany({
       select: { name: true },

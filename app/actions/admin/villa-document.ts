@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { inferKonutBelgesiType, resolveVillaDocumentType } from "@/lib/villa-document-types";
+import { inferKonutBelgesiType, resolveVillaDocumentType, UNDOCUMENTED_VILLA_VISIBILITY } from "@/lib/villa-document-types";
 import { verifyKonutBelgeOnline } from "@/lib/konut-belge-check";
 
 export type VillaDocumentActionState = {
@@ -122,6 +122,7 @@ export async function saveVillaDocument(
           documentBedCapacity: null,
           documentImageUrl: "",
           documentNo: "",
+          ...UNDOCUMENTED_VILLA_VISIBILITY,
         },
       });
       revalidateVillaDocumentPaths();
@@ -208,6 +209,7 @@ export async function clearVillaDocument(
         documentBedCapacity: null,
         documentImageUrl: "",
         documentNo: "",
+        ...UNDOCUMENTED_VILLA_VISIBILITY,
       },
     });
     revalidateVillaDocumentPaths();

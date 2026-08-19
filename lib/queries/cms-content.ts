@@ -151,7 +151,10 @@ export async function getApprovedReviewsForPublic(
   limit = 12,
   siteKey?: PublicSiteKey
 ) {
-  const villaWhere = await resolvePublicSiteVillaFilter({ active: true }, siteKey);
+  const villaWhere = await resolvePublicSiteVillaFilter(
+    { active: true, showInSearch: true },
+    siteKey
+  );
 
   const reviews = await prisma.guestReview.findMany({
     where: {

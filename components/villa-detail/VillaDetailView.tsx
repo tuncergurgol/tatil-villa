@@ -27,6 +27,7 @@ import VillaDetailSectionNav, {
 import VillaHtmlContent from "@/components/villa-detail/VillaHtmlContent";
 import VillaKnowBeforeSection from "@/components/villa-detail/VillaKnowBeforeSection";
 import { VillaStaySelectionProvider } from "@/components/villa-detail/VillaStaySelectionContext";
+import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 import {
   buildForeignCurrencyPaymentDisclaimer,
   resolveForeignPriceCurrencies,
@@ -127,6 +128,10 @@ export default function VillaDetailView({
   );
   /** Admin Özellikler → ÖNE ÇIKANLAR’da işaretli olanak adları (ev kategorisi değil) */
   const highlightedFeatures = featuredAmenityItems;
+  const canBookPublicly = hasVillaTourismDocument({
+    documentNo: villa.documentNo,
+    documentType: villa.documentType,
+  });
 
   const navItems: VillaDetailNavItem[] = [
     { id: "genel-bakis", label: "Genel Bakış" },
@@ -140,7 +145,8 @@ export default function VillaDetailView({
     villa.distances.length > 0 || villa.hasCoords
       ? { id: "lokasyon", label: "Lokasyon" }
       : null,
-    villa.calendarDays.length > 0 || villa.periods.length > 0
+    canBookPublicly &&
+    (villa.calendarDays.length > 0 || villa.periods.length > 0)
       ? { id: "musaitlik", label: "Müsaitlik" }
       : null,
     { id: "bilmeniz-gerekenler", label: "Bilmeniz Gerekenler" },
@@ -192,7 +198,13 @@ export default function VillaDetailView({
           className="mt-5"
         />
 
-        <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div
+          className={`mt-6 grid gap-10 ${
+            canBookPublicly
+              ? "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]"
+              : ""
+          }`}
+        >
           <div className="min-w-0">
             <DetailSection id="genel-bakis" className="pt-2">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -454,7 +466,8 @@ export default function VillaDetailView({
               </DetailSection>
             ) : null}
 
-            {villa.calendarDays.length > 0 || villa.periods.length > 0 ? (
+            {canBookPublicly &&
+            (villa.calendarDays.length > 0 || villa.periods.length > 0) ? (
               <DetailSection id="musaitlik">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
@@ -582,6 +595,7 @@ export default function VillaDetailView({
             ) : null}
           </div>
 
+          {canBookPublicly ? (
           <aside className="lg:pt-1">
             <BookingForm
               villaId={villa.id}
@@ -612,6 +626,7 @@ export default function VillaDetailView({
               calendarDays={villa.calendarDays}
             />
           </aside>
+          ) : null}
         </div>
 
         <div id="seyahat-macerasi" className="mt-12 scroll-mt-36">

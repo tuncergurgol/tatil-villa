@@ -81,6 +81,13 @@ export function hasVillaTourismDocument(villa: {
   );
 }
 
+/** Belgesiz villaların yayın / arama / teklif görünürlüğü. */
+export const UNDOCUMENTED_VILLA_VISIBILITY = {
+  active: true,
+  showInSearch: false,
+  showInOffer: true,
+} as const;
+
 export function parseDocumentNoParts(documentNo: string) {
   const trimmed = documentNo.trim();
   const match = trimmed.match(/^(\d{2}-)(.+)$/);

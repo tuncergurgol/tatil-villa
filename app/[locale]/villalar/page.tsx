@@ -66,7 +66,7 @@ export async function generateMetadata({
 export const dynamic = "force-dynamic";
 
 async function getSearchAmenityOptions(siteKey?: PublicSiteKey) {
-  const villaWhere = await resolvePublicSiteVillaFilter({ active: true }, siteKey);
+  const villaWhere = await resolvePublicSiteVillaFilter({ active: true, showInSearch: true }, siteKey);
   const [searchAmenities, villas] = await Promise.all([
     prisma.amenity.findMany({
       where: { active: true, showInSearch: true },

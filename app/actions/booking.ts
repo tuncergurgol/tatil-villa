@@ -29,6 +29,7 @@ import {
   validateMemberDiscountSubmission,
 } from "@/lib/member-discount-apply";
 import { prisma } from "@/lib/db";
+import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 import {
   buildStayBookingFeeDetails,
   type PoolHeatingSelections,
@@ -155,6 +156,23 @@ export async function submitBooking(
   const poolSelections = parseBooleanRecord<PoolHeatingSelections>(
     poolHeatingSelectionsRaw
   );
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: {
+      active: true,
+      documentNo: true,
+      documentType: true,
+    },
+  });
+  if (!villa?.active) {
+    return { error: "Villa bulunamadı" };
+  }
+  if (!hasVillaTourismDocument(villa)) {
+    return {
+      error: "Bu villa için online rezervasyon alınmamaktadır.",
+    };
+  }
 
   let verifiedPricing;
   try {

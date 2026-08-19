@@ -53,6 +53,8 @@ export type AvailabilitySearchFilters = {
   guestCounts?: number[];
   flexibleDate?: boolean;
   fillEmptyDates?: boolean;
+  /** search: public/detaylı arama; offer: Bont uygunluk / teklif listesi */
+  listScope?: "search" | "offer";
   sort?: AvailabilitySearchSort;
 };
 
@@ -365,7 +367,9 @@ export async function searchAvailability(
 
   const where: Record<string, unknown> = {
     active: true,
-    showInSearch: true,
+    ...(filters.listScope === "offer"
+      ? { showInOffer: true }
+      : { showInSearch: true }),
   };
 
   if (regionIds.length > 0) {

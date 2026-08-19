@@ -58,9 +58,10 @@ export default function UndocumentedVillaPublishSettings({
             Belgesi olmayan villalar
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Konut / turizm belgesi (belge no veya belge türü) olmayan villaların
-            hangi sitelerde yayınlanacağını seçin. Kapalı sitelerde bu villalar
-            listede, aramada ve detay sayfasında görünmez.
+            Konut / turizm belgesi (belge no veya belge türü) olmayan villalar
+            aktif yayınlanır; ana sayfa ve detaylı aramada görünmez, teklif
+            alanında ve Bont Uygunluk Ara’da görünür. Kapalı sitelerde detay
+            sayfası da açılmaz.
           </p>
         </div>
       </div>

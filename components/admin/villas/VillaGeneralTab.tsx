@@ -9,6 +9,10 @@ import RichTextEditor from "@/components/admin/villas/RichTextEditor";
 import StatusPillToggle from "@/components/admin/villas/StatusPillToggle";
 import { facilityTypeOptions } from "@/lib/facility-type";
 import { salesTypeOptions } from "@/lib/sales-type";
+import {
+  hasVillaTourismDocument,
+  UNDOCUMENTED_VILLA_VISIBILITY,
+} from "@/lib/villa-document-types";
 
 interface VillaGeneralTabProps {
   villa: VillaGeneralFormValue;
@@ -40,6 +44,8 @@ export type VillaGeneralFormValue = Pick<
   | "description"
   | "amenities"
   | "allowChildren"
+  | "documentNo"
+  | "documentType"
 >;
 
 function Field({
@@ -75,9 +81,21 @@ export default function VillaGeneralTab({
   onBedroomsChange,
   aiEnabled = true,
 }: VillaGeneralTabProps) {
-  const [active, setActive] = useState(villa.active);
-  const [showInSearch, setShowInSearch] = useState(villa.showInSearch);
-  const [showInOffer, setShowInOffer] = useState(villa.showInOffer);
+  const undocumented = !hasVillaTourismDocument({
+    documentNo: villa.documentNo,
+    documentType: villa.documentType,
+  });
+  const [active, setActive] = useState(
+    undocumented ? UNDOCUMENTED_VILLA_VISIBILITY.active : villa.active
+  );
+  const [showInSearch, setShowInSearch] = useState(
+    undocumented
+      ? UNDOCUMENTED_VILLA_VISIBILITY.showInSearch
+      : villa.showInSearch
+  );
+  const [showInOffer, setShowInOffer] = useState(
+    undocumented ? UNDOCUMENTED_VILLA_VISIBILITY.showInOffer : villa.showInOffer
+  );
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [description, setDescription] = useState(villa.description);
   const [descriptionKey, setDescriptionKey] = useState(0);
@@ -212,20 +230,29 @@ export default function VillaGeneralTab({
             name="active"
             checked={active}
             onChange={setActive}
+            disabled={undocumented}
           />
           <StatusPillToggle
             label="Arama Alanında Görünür"
             name="showInSearch"
             checked={showInSearch}
             onChange={setShowInSearch}
+            disabled={undocumented}
           />
           <StatusPillToggle
             label="Teklif Alanında Görünür"
             name="showInOffer"
             checked={showInOffer}
             onChange={setShowInOffer}
+            disabled={undocumented}
           />
         </div>
+        {undocumented ? (
+          <p className="mt-2 text-xs text-amber-700">
+            Belgesi olmayan villalar aktif yayınlanır; aramada görünmez, teklif
+            alanında ve Bont Uygunluk Ara’da görünür.
+          </p>
+        ) : null}
       </section>
 
       <section>

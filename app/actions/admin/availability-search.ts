@@ -93,6 +93,7 @@ export async function searchAvailabilityAction(
 
     const results = await searchAvailability({
       ...parsed.data,
+      listScope: "offer",
       sort: parsed.data.sort as AvailabilitySearchSort,
     });
 

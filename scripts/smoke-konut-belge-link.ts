@@ -4,9 +4,11 @@
  *   npx tsx scripts/smoke-konut-belge-link.ts
  */
 import {
+  hasVillaTourismDocument,
   inferKonutBelgesiType,
   isKonutBelgeLinkable,
   resolveVillaDocumentType,
+  UNDOCUMENTED_VILLA_VISIBILITY,
 } from "../lib/villa-document-types";
 
 function assert(condition: unknown, message: string) {
@@ -56,6 +58,24 @@ function main() {
       documentNo: "12-9999",
     }),
     "non-konut prefix should not link"
+  );
+
+  assert(
+    !hasVillaTourismDocument({ documentType: null, documentNo: "  " }),
+    "whitespace-only document no should be undocumented"
+  );
+  assert(
+    hasVillaTourismDocument({
+      documentType: "TURIZM_ISLETME_BELGESI",
+      documentNo: "",
+    }),
+    "document type without number should still count as documented"
+  );
+  assert(
+    UNDOCUMENTED_VILLA_VISIBILITY.active === true &&
+      UNDOCUMENTED_VILLA_VISIBILITY.showInSearch === false &&
+      UNDOCUMENTED_VILLA_VISIBILITY.showInOffer === true,
+    "undocumented villas stay active, hidden from search, visible in offer"
   );
 
   console.log("smoke-konut-belge-link: OK");

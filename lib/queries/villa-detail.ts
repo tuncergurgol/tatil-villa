@@ -677,6 +677,7 @@ export async function getSimilarVillas(
       where: withPublicSiteVillaFilter(
         {
           active: true,
+          showInSearch: true,
           id: { notIn: Array.from(seen) },
           regionId: { in: regionIds },
           guests: { in: guestTargets },

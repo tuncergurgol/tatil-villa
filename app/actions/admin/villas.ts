@@ -23,6 +23,10 @@ import {
 import { cloneVilla } from "@/lib/villa-clone";
 import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 import {
+  hasVillaTourismDocument,
+  UNDOCUMENTED_VILLA_VISIBILITY,
+} from "@/lib/villa-document-types";
+import {
   allocateNextVillaId,
   assignMissingVillaNumericIds,
 } from "@/lib/villa-numeric-id";
@@ -117,9 +121,7 @@ export async function createVillaFromGeneral(
             salesType === SalesType.garanti
               ? SalesType.garanti
               : SalesType.komisyon,
-          active: parseBool(formData.get("active")),
-          showInSearch: parseBool(formData.get("showInSearch")),
-          showInOffer: parseBool(formData.get("showInOffer")),
+          ...UNDOCUMENTED_VILLA_VISIBILITY,
           ribbonText1: String(formData.get("ribbonText1") ?? ""),
           ribbonText2: String(formData.get("ribbonText2") ?? ""),
         },
@@ -265,7 +267,7 @@ export async function updateVillaGeneral(
 
     const existing = await prisma.villa.findUnique({
       where: { id },
-      select: { slug: true },
+      select: { slug: true, documentNo: true, documentType: true },
     });
     if (!existing) {
       return { success: false, error: "Villa bulunamadı" };
@@ -276,6 +278,18 @@ export async function updateVillaGeneral(
     const salesType = String(
       formData.get("salesType") ?? "komisyon"
     ) as SalesType;
+
+    const undocumented = !hasVillaTourismDocument({
+      documentNo: existing.documentNo,
+      documentType: existing.documentType,
+    });
+    const visibility = undocumented
+      ? UNDOCUMENTED_VILLA_VISIBILITY
+      : {
+          active: parseBool(formData.get("active")),
+          showInSearch: parseBool(formData.get("showInSearch")),
+          showInOffer: parseBool(formData.get("showInOffer")),
+        };
 
     const updated = await prisma.villa.update({
       where: { id },
@@ -294,9 +308,7 @@ export async function updateVillaGeneral(
           salesType === SalesType.garanti
             ? SalesType.garanti
             : SalesType.komisyon,
-        active: parseBool(formData.get("active")),
-        showInSearch: parseBool(formData.get("showInSearch")),
-        showInOffer: parseBool(formData.get("showInOffer")),
+        ...visibility,
         ribbonText1: String(formData.get("ribbonText1") ?? ""),
         ribbonText2: String(formData.get("ribbonText2") ?? ""),
         description: readDescription(formData),

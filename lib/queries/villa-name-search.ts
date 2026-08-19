@@ -85,6 +85,7 @@ export async function searchActiveVillasByName(
         SELECT "id"
         FROM "Villa"
         WHERE "active" = true
+          AND "showInSearch" = true
           AND (
             "documentNo" <> ''
             OR "documentType" IS NOT NULL
@@ -97,6 +98,7 @@ export async function searchActiveVillasByName(
         SELECT "id"
         FROM "Villa"
         WHERE "active" = true
+          AND "showInSearch" = true
           AND lower(translate("name", 'İIıŞşĞğÜüÖöÇç', 'iiissgguuoocc'))
               LIKE ${pattern}
         LIMIT ${limit}
@@ -109,6 +111,7 @@ export async function searchActiveVillasByName(
     where: withPublicSiteVillaFilter(
       {
         active: true,
+        showInSearch: true,
         id: { in: matchedIds },
       },
       siteKey,

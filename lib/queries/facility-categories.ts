@@ -74,7 +74,10 @@ export async function getHomeDreamCategories(
       },
     }),
     prisma.villa.findMany({
-      where: await resolvePublicSiteVillaFilter({ active: true }, siteKey),
+      where: await resolvePublicSiteVillaFilter(
+        { active: true, showInSearch: true },
+        siteKey
+      ),
       select: { facilityCategories: true },
     }),
   ]);
