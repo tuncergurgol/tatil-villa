@@ -15,6 +15,9 @@ balayivillacisi.com        -> 185.184.210.96   # www yönlendirmesi
 # ONEMLI: Bu zone, tatildeyiz/balayivillacisi ile AYNI Cloudflare hesabinda olmali.
 # Farkli hesapta "Forwarding URL" / Redirect Rule varsa tatildeyiz.com.tr'ye yonlendirir.
 # Kontrol: Cloudflare → tatilvillacisi.com → Rules → Redirect Rules / Page Rules (kaldirin).
+# PageSpeed 403 + noindex,nofollow: Cloudflare Bot Fight Mode (engel sayfasi).
+#   bash scripts/deploy/08-cloudflare-pagespeed-allow.sh
+#   Token Zone Resources icine tatilvillacisi.com eklenmeli.
 www.tatilvillacisi.com     -> 185.184.210.96   # Site 3 (proxied)
 tatilvillacisi.com         -> 185.184.210.96   # apex -> www (nginx 301)
 
