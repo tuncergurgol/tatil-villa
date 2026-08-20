@@ -38,7 +38,7 @@ export async function calculateSurroundingDistances(input: {
     return {
       success: false,
       error:
-        "Google Maps API anahtarı tanımlı değil. GOOGLE_MAPS_SERVER_API_KEY ekleyin (Distance Matrix API açık olmalı).",
+        "Google Maps API anahtarı tanımlı değil. GOOGLE_MAPS_SERVER_API_KEY ekleyin (Routes API açık olmalı).",
     };
   }
 
