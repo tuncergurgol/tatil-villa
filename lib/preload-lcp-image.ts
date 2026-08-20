@@ -20,6 +20,11 @@ export function preloadOptimizedLcpImage(
 
   if (!props.src) return;
 
+  // Same-origin `/_next/image` already gets a preload from next/image `priority`.
+  // react-dom preload() also emits `<link rel="preconnect" href="/">`, which
+  // PageSpeed flags as unused because the document is already on this origin.
+  if (props.src.startsWith("/")) return;
+
   preload(props.src, {
     as: "image",
     fetchPriority: "high",
