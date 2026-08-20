@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { headers } from "next/headers";
 
 type CompanyBrandSource = {
@@ -26,7 +27,7 @@ export type PublicSiteProfile = {
 };
 
 const DEFAULT_HERO_IMAGE_URL =
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80";
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=60";
 
 type BrandedSiteProfile = Omit<PublicSiteProfile, "useDefaultLogo">;
 
@@ -107,11 +108,11 @@ export function resolvePublicSiteProfile(
   };
 }
 
-export async function getPublicSiteProfile(
+export const getPublicSiteProfile = cache(async function getPublicSiteProfile(
   company: CompanyBrandSource
 ): Promise<PublicSiteProfile> {
   return resolvePublicSiteProfile(company, await getRequestHostname());
-}
+});
 
 export function resolvePublicSiteKey(hostname: string): PublicSiteProfile["key"] {
   return (

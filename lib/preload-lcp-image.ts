@@ -1,11 +1,14 @@
 import { getImageProps } from "next/image";
 import { preload } from "react-dom";
 
+export const HERO_LCP_SIZES = "(max-width: 768px) 100vw, 1400px";
+export const HERO_LCP_QUALITY = 60;
+
 /** Optimized `/_next/image` LCP preload with fetchpriority=high. */
 export function preloadOptimizedLcpImage(
   src: string,
-  sizes: string,
-  quality = 70
+  sizes: string = HERO_LCP_SIZES,
+  quality = HERO_LCP_QUALITY
 ) {
   const { props } = getImageProps({
     src,
