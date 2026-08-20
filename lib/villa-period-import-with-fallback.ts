@@ -3,6 +3,7 @@ import {
   importVillaPeriodsFromExternalPage,
   scoreScrapedPageForPeriodImport,
   scrapedPageHasReliablePeriods,
+  scrapedPageIsOccupancyOnly,
 } from "@/lib/external-villa-page-import-runner";
 import { scrapeExternalVillaPage } from "@/lib/external-villa-page-scrape";
 import type { VillaPeriodImportResult } from "@/lib/tatildeyiz-period-import-runner";
@@ -63,8 +64,9 @@ async function importFromExternalLink(
 
 /**
  * Tanımlı harici villa sayfası linklerinden (villakalkan, hepsivilla vb.) periyot aktarır.
- * Airbnb / iCal / Tatildeyiz public URL burada kullanılmaz — fiyatlar panelde veya
- * harici rakip siteden gelir.
+ * Airbnb / iCal burada kullanılmaz — yalnızca takvim içindir.
+ *
+ * Kaynakta yalnızca takvim varsa occupancy overlay uygulanır; bu hata sayılmaz.
  */
 export async function importVillaPeriodsWithFallback(
   villaId: string,
@@ -95,30 +97,54 @@ export async function importVillaPeriodsWithFallback(
 
   let bestLink: (typeof capableLinks)[number] | null = null;
   let bestScore = -1;
+  let occupancyOnlyLink: (typeof capableLinks)[number] | null = null;
   let lastError: Error | null = null;
 
   for (const link of capableLinks) {
     try {
       const scraped = await scrapeExternalVillaPage(link.url);
-      if (!scrapedPageHasReliablePeriods(scraped)) continue;
-      const score = scoreScrapedPageForPeriodImport(scraped);
-      if (score > bestScore) {
-        bestScore = score;
-        bestLink = link;
+      if (scrapedPageHasReliablePeriods(scraped)) {
+        const score = scoreScrapedPageForPeriodImport(scraped);
+        if (score > bestScore) {
+          bestScore = score;
+          bestLink = link;
+        }
+        continue;
+      }
+      if (
+        !occupancyOnlyLink &&
+        (scrapedPageIsOccupancyOnly(scraped) ||
+          scraped.occupancyByDateKey.size > 0)
+      ) {
+        occupancyOnlyLink = link;
       }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
     }
   }
 
-  if (!bestLink) {
-    throw (
-      lastError ??
-      new Error("Periyot bulunamadı (tanımlı harici fiyat linkleri denendi)")
+  if (bestLink) {
+    return importFromExternalLink(
+      villa.id,
+      bestLink.slot,
+      bestLink.url,
+      options
     );
   }
 
-  return importFromExternalLink(villa.id, bestLink.slot, bestLink.url, options);
+  if (occupancyOnlyLink) {
+    return importFromExternalLink(
+      villa.id,
+      occupancyOnlyLink.slot,
+      occupancyOnlyLink.url,
+      options
+    );
+  }
+
+  throw (
+    lastError ??
+    new Error("Periyot bulunamadı (tanımlı harici fiyat linkleri denendi)")
+  );
 }
 
 /**

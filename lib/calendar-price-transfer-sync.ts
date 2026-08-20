@@ -198,11 +198,42 @@ export async function runCalendarPriceTransferBatchSync(
   try {
     const periodResult = await tryImportVillaPeriodsFromExternalLinks(villa.id);
     if (!periodResult) {
-      messages.push(
-        "Periyot: harici fiyat linki yok (panel fiyatları korunuyor; Airbnb/iCal yalnızca takvim)"
-      );
+      const periodMessage =
+        "Harici fiyat linki yok (panel fiyatları korunuyor; Airbnb/iCal yalnızca takvim)";
+      messages.push(`Periyot: ${periodMessage}`);
+      // Eski Tatildeyiz / periyot hatalarını temizle — Link/Airbnb sync başarılı olsa bile
+      // periodImportLog ERROR kırmızı satırda kalıyordu.
+      await prisma.villaPeriodImportLog.upsert({
+        where: { villaId: villa.id },
+        create: {
+          villaId: villa.id,
+          sourceSlug: villa.slug,
+          status: PeriodImportStatus.SUCCESS,
+          message: periodMessage,
+          periodCount: 0,
+          dayCount: 0,
+          bookedDays: 0,
+          optionDays: 0,
+          attemptedAt: new Date(),
+          succeededAt: new Date(),
+        },
+        update: {
+          sourceSlug: villa.slug,
+          status: PeriodImportStatus.SUCCESS,
+          message: periodMessage,
+          periodCount: 0,
+          dayCount: 0,
+          bookedDays: 0,
+          optionDays: 0,
+          attemptedAt: new Date(),
+          succeededAt: new Date(),
+        },
+      });
     } else {
-      const periodMessage = `${periodResult.sourceLabel}: ${periodResult.periodCount} periyot, ${periodResult.dayCount} gün aktarıldı`;
+      const periodMessage =
+        periodResult.periodCount > 0
+          ? `${periodResult.sourceLabel}: ${periodResult.periodCount} periyot, ${periodResult.dayCount} gün aktarıldı`
+          : `${periodResult.sourceLabel}: takvim güncellendi (${periodResult.bookedDays} dolu); fiyatlar korundu`;
       messages.push(`Periyot: ${periodMessage}`);
       await prisma.villaPeriodImportLog.upsert({
         where: { villaId: villa.id },
