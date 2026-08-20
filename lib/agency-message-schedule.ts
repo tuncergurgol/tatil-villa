@@ -23,10 +23,10 @@ export type ScheduledTemplatePreset = {
 export const SCHEDULED_TEMPLATE_PRESETS: ScheduledTemplatePreset[] = [
   {
     rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_11_1,
-    scheduleTiming: "Girişten 1 Gün Önce Saat: 10:00",
+    scheduleTiming: "Girişten 2 Gün Önce Saat: 10:00",
     scheduleEnabled: true,
     scheduleAnchor: "check_in",
-    scheduleOffsetDays: -1,
+    scheduleOffsetDays: -2,
     scheduleHour: 10,
     scheduleMinute: 0,
   },
@@ -50,10 +50,10 @@ export const SCHEDULED_TEMPLATE_PRESETS: ScheduledTemplatePreset[] = [
   },
   {
     rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_40_1,
-    scheduleTiming: "Girişten 1 Gün Önce Saat: 10:00",
+    scheduleTiming: "Girişten 2 Gün Önce Saat: 10:00",
     scheduleEnabled: true,
     scheduleAnchor: "check_in",
-    scheduleOffsetDays: -1,
+    scheduleOffsetDays: -2,
     scheduleHour: 10,
     scheduleMinute: 0,
   },

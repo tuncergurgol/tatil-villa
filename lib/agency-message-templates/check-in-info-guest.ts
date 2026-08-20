@@ -1,5 +1,5 @@
 export const CHECK_IN_INFO_GUEST_MESSAGE_NAME =
-  "Tatilden 1 Gün Önce Rezervasyon Bilgi";
+  "Tatilden 2 Gün Önce Rezervasyon Bilgi";
 
 /**
  * Mesaj İçeriği 11.1 (rowNo 111) — WhatsApp / SMS varsayılan gövdesi.

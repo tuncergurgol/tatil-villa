@@ -8,6 +8,7 @@ import {
   CHECK_IN_INFO_OWNER_MESSAGE_NAME,
   CHECK_IN_INFO_OWNER_WHATSAPP_BODY,
 } from "../lib/agency-message-templates/check-in-info-owner";
+import { SCHEDULED_TEMPLATE_PRESETS } from "../lib/agency-message-schedule";
 
 const RECIPIENT = "KARŞILAYAN";
 
@@ -31,6 +32,20 @@ function normalizeOwnerBody(body: string, fallback: string): string {
 }
 
 async function upsertTemplate() {
+  const preset = SCHEDULED_TEMPLATE_PRESETS.find(
+    (item) => item.rowNo === AGENCY_MESSAGE_TEMPLATE_ROW_40_1
+  );
+  const scheduleData = preset
+    ? {
+        scheduleTiming: preset.scheduleTiming,
+        scheduleEnabled: preset.scheduleEnabled,
+        scheduleAnchor: preset.scheduleAnchor,
+        scheduleOffsetDays: preset.scheduleOffsetDays,
+        scheduleHour: preset.scheduleHour,
+        scheduleMinute: preset.scheduleMinute,
+      }
+    : {};
+
   const existing = await prisma.agencyMessageTemplate.findFirst({
     where: {
       rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_40_1,
@@ -51,12 +66,13 @@ async function upsertTemplate() {
 
   const data = {
     rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_40_1,
-    name: existing?.name?.trim() || CHECK_IN_INFO_OWNER_MESSAGE_NAME,
+    name: CHECK_IN_INFO_OWNER_MESSAGE_NAME,
     recipient: RECIPIENT,
     smsBody,
     whatsappBody,
     mailBody,
     active: true,
+    ...scheduleData,
   };
 
   if (existing) {
@@ -69,6 +85,7 @@ async function upsertTemplate() {
         whatsappBody: data.whatsappBody,
         mailBody: data.mailBody,
         active: true,
+        ...scheduleData,
       },
     });
     console.log(

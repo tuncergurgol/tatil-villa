@@ -588,7 +588,7 @@ export async function buildReservationDocumentPdf(
         "Villa girişi esnasında konaklayacak tüm misafirlerin Kimlik ibrazı zorunludur.",
         "Rezervasyon formunda yazılı değil ise evcil hayvanınızı yanınızda tatile getirmeyin.",
         "İptal ve değişiklik koşulları satış sözleşmesine tabidir.",
-        "Giriş tarihinizden 1 gün önce size tesis yetkilisi iletişim bilgileri iletilecektir. O güne kadar bizimle iletişimde kalabilirsiniz.",
+        "Giriş tarihinizden 2 gün önce size tesis yetkilisi iletişim bilgileri iletilecektir. O güne kadar bizimle iletişimde kalabilirsiniz.",
       ];
       for (const line of important) {
         ensureSpace(doc, 16);

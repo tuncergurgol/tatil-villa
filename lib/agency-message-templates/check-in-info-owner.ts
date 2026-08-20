@@ -1,5 +1,5 @@
 export const CHECK_IN_INFO_OWNER_MESSAGE_NAME =
-  "Tatilden 1 Gün Önce Rezervasyon Bilgi";
+  "Tatilden 2 Gün Önce Rezervasyon Bilgi";
 
 /**
  * Mesaj İçeriği 40.1 (rowNo 401) — villa yetkilisi / karşılayan varsayılan gövdesi.

@@ -9,12 +9,27 @@ import {
   CHECK_IN_INFO_GUEST_WHATSAPP_BODY,
   isWrongCheckInInfoMailBody,
 } from "../lib/agency-message-templates/check-in-info-guest";
+import { SCHEDULED_TEMPLATE_PRESETS } from "../lib/agency-message-schedule";
 
 const RECIPIENT = "MİSAFİR";
 
 const prisma = new PrismaClient();
 
 async function upsertTemplate() {
+  const preset = SCHEDULED_TEMPLATE_PRESETS.find(
+    (item) => item.rowNo === AGENCY_MESSAGE_TEMPLATE_ROW_11_1
+  );
+  const scheduleData = preset
+    ? {
+        scheduleTiming: preset.scheduleTiming,
+        scheduleEnabled: preset.scheduleEnabled,
+        scheduleAnchor: preset.scheduleAnchor,
+        scheduleOffsetDays: preset.scheduleOffsetDays,
+        scheduleHour: preset.scheduleHour,
+        scheduleMinute: preset.scheduleMinute,
+      }
+    : {};
+
   const existing = await prisma.agencyMessageTemplate.findFirst({
     where: {
       rowNo: AGENCY_MESSAGE_TEMPLATE_ROW_11_1,
@@ -36,6 +51,7 @@ async function upsertTemplate() {
     whatsappBody: CHECK_IN_INFO_GUEST_WHATSAPP_BODY,
     mailBody,
     active: true,
+    ...scheduleData,
   };
 
   if (existing) {
@@ -48,10 +64,11 @@ async function upsertTemplate() {
         whatsappBody: data.whatsappBody,
         mailBody: data.mailBody,
         active: true,
+        ...scheduleData,
       },
     });
     console.log(
-      `${formatAgencyMessageRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_11_1)} (${AGENCY_MESSAGE_TEMPLATE_ROW_11_1}) mesaj şablonu doğrulandı / WhatsApp + mail güncellendi.`
+      `${formatAgencyMessageRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_11_1)} (${AGENCY_MESSAGE_TEMPLATE_ROW_11_1}) mesaj şablonu doğrulandı / WhatsApp + mail + zamanlama güncellendi.`
     );
     return;
   }
