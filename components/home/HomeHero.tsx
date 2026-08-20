@@ -7,7 +7,7 @@ import {
   HERO_LCP_SIZES,
 } from "@/lib/preload-lcp-image";
 
-export function HomeHero({
+export default function HomeHero({
   title,
   imageUrl,
 }: {
