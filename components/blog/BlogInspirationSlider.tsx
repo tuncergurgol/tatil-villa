@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -152,13 +153,13 @@ export default function BlogInspirationSlider({
                 }}
               >
                 {post.coverImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={post.coverImage}
                     alt=""
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="160px"
+                    quality={60}
+                    className="object-cover"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-sky-50 text-sky-600">
@@ -176,13 +177,13 @@ export default function BlogInspirationSlider({
             >
               <div className="relative aspect-[16/10] overflow-hidden">
                 {active.coverImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={active.coverImage}
                     alt={active.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 560px"
+                    quality={60}
+                    className="object-cover transition duration-700 group-hover:scale-[1.03]"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-sky-50 text-sky-600">

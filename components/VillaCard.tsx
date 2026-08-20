@@ -32,7 +32,8 @@ export default function VillaCard({
           alt={villa.name}
           fill
           className="object-cover transition duration-500 group-hover:scale-105"
-          sizes={isFluid ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" : "300px"}
+          sizes={isFluid ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" : "280px"}
+          quality={60}
         />
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-teal-800">
           {categoryLabel(villa.category)}

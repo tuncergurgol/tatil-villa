@@ -1,17 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { getLocale } from "next-intl/server";
 import { buildRootMetadata } from "@/lib/site-metadata";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "latin-ext"],
-  display: "optional",
-  preload: false,
-  adjustFontFallback: true,
-  fallback: ["system-ui", "Segoe UI", "sans-serif"],
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildRootMetadata();
@@ -25,7 +15,7 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full antialiased`}>
+    <html lang={locale} className="h-full antialiased">
       <body className="flex min-h-full flex-col bg-white text-gray-900">
         {children}
       </body>

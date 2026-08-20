@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import { Suspense } from "react";
 import HeroSearch from "@/components/HeroSearch";
 import { getHeroSearchRegions } from "@/lib/queries/regions";
@@ -14,18 +14,37 @@ export default function HomeHero({
   title: string;
   imageUrl: string;
 }) {
+  const { props } = getImageProps({
+    src: imageUrl,
+    alt: "Tatil manzarası",
+    fill: true,
+    sizes: HERO_LCP_SIZES,
+    quality: HERO_LCP_QUALITY,
+  });
+  const { srcSet, ...img } = props;
+
   return (
     <section className="relative flex min-h-[520px] items-center justify-center overflow-visible pb-24 sm:min-h-[580px] sm:pb-28">
-      <div className="absolute inset-0 overflow-hidden">
-        <Image
-          src={imageUrl}
-          alt="Tatil manzarası"
-          fill
-          className="object-cover"
-          sizes={HERO_LCP_SIZES}
-          quality={HERO_LCP_QUALITY}
-          priority
+      {img.src ? (
+        <link
+          rel="preload"
+          as="image"
+          href={img.src}
+          imageSrcSet={srcSet}
+          imageSizes={img.sizes}
           fetchPriority="high"
+        />
+      ) : null}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Native img avoids next/image `priority` injecting unused preconnect /. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          {...img}
+          srcSet={srcSet}
+          alt="Tatil manzarası"
+          className="absolute inset-0 h-full w-full object-cover"
+          fetchPriority="high"
+          decoding="async"
         />
       </div>
 
