@@ -36,8 +36,9 @@ export default function DreamVacationSection({
                 <Image
                   src={card.image}
                   alt={card.title}
-                  fill
-                  className="object-cover transition duration-500 group-hover:scale-105"
+                  width={384}
+                  height={288}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   sizes="(max-width: 640px) 42vw, (max-width: 1024px) 33vw, 14vw"
                   quality={65}
                 />

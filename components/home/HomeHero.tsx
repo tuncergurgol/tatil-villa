@@ -5,6 +5,7 @@ import { getHeroSearchRegions } from "@/lib/queries/regions";
 import {
   HERO_LCP_QUALITY,
   HERO_LCP_SIZES,
+  pickSrcSetCandidate,
 } from "@/lib/preload-lcp-image";
 
 export default function HomeHero({
@@ -17,21 +18,21 @@ export default function HomeHero({
   const { props } = getImageProps({
     src: imageUrl,
     alt: "Tatil manzarası",
-    fill: true,
+    width: 1400,
+    height: 900,
     sizes: HERO_LCP_SIZES,
     quality: HERO_LCP_QUALITY,
   });
   const { srcSet, ...img } = props;
+  const preloadHref = pickSrcSetCandidate(srcSet, 640) ?? img.src;
 
   return (
     <section className="relative flex min-h-[520px] items-start justify-center overflow-visible pb-24 sm:min-h-[580px] sm:pb-28">
-      {img.src ? (
+      {preloadHref ? (
         <link
           rel="preload"
           as="image"
-          href={img.src}
-          imageSrcSet={srcSet}
-          imageSizes={img.sizes}
+          href={preloadHref}
           fetchPriority="high"
         />
       ) : null}
@@ -43,6 +44,7 @@ export default function HomeHero({
           srcSet={srcSet}
           alt="Tatil manzarası"
           className="absolute inset-0 h-full w-full object-cover"
+          loading="eager"
           fetchPriority="high"
           decoding="async"
         />

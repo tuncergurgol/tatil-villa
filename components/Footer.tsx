@@ -169,7 +169,7 @@ export default function Footer({
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-900">Kurumsal</h4>
+          <h2 className="text-sm font-semibold text-gray-900">Kurumsal</h2>
           {corporateLinks.length > 0 ? (
             <ul className="mt-4 space-y-2 text-sm">
               {corporateLinks.map((link) => (
@@ -198,7 +198,7 @@ export default function Footer({
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-900">Hızlı Bağlantılar</h4>
+          <h2 className="text-sm font-semibold text-gray-900">Hızlı Bağlantılar</h2>
           <ul className="mt-4 space-y-2 text-sm">
             {quickLinks.map((link) => (
               <li key={link.href}>
@@ -214,7 +214,7 @@ export default function Footer({
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-900">Popüler Bölgeler</h4>
+          <h2 className="text-sm font-semibold text-gray-900">Popüler Bölgeler</h2>
           {popularRegions.length > 0 ? (
             <ul className="mt-4 space-y-2 text-sm">
               {popularRegions.map((region) => (

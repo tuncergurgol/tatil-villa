@@ -213,9 +213,11 @@ export default function HeaderVillaSearch({
                         <Image
                           src={villa.image}
                           alt={villa.name}
-                          fill
-                          className="object-cover"
+                          width={64}
+                          height={48}
+                          className="h-full w-full object-cover"
                           sizes="64px"
+                          quality={60}
                         />
                       ) : null}
                     </span>

@@ -136,8 +136,8 @@ export default function Header({
             <Image
               src={logoSrc}
               alt={brandName}
-              width={504}
-              height={130}
+              width={560}
+              height={144}
               className={`w-auto object-contain object-left md:h-[4.25rem] md:max-w-[360px] lg:h-[4.75rem] lg:max-w-[420px] ${mobileLogoClass}`}
               unoptimized={logoSrc.endsWith(".svg")}
               loading="eager"

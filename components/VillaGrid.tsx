@@ -40,8 +40,9 @@ export default function VillaGrid({ villas }: VillaGridProps) {
             <Image
               src={villa.image}
               alt={villa.name}
-              fill
-              className="object-cover transition duration-500 group-hover:scale-105"
+              width={560}
+              height={420}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               quality={70}
             />

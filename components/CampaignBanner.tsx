@@ -32,8 +32,9 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
                 <Image
                   src={campaign.image}
                   alt={campaign.title}
-                  fill
-                  className="object-cover"
+                  width={1400}
+                  height={467}
+                  className="h-full w-full object-cover"
                   sizes="(max-width: 1280px) 100vw, 1280px"
                   quality={60}
                 />

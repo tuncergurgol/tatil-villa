@@ -156,10 +156,11 @@ export default function BlogInspirationSlider({
                   <Image
                     src={post.coverImage}
                     alt=""
-                    fill
+                    width={160}
+                    height={220}
                     sizes="160px"
                     quality={60}
-                    className="object-cover"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-sky-50 text-sky-600">
@@ -180,10 +181,11 @@ export default function BlogInspirationSlider({
                   <Image
                     src={active.coverImage}
                     alt={active.title}
-                    fill
+                    width={560}
+                    height={350}
                     sizes="(max-width: 1024px) 100vw, 560px"
                     quality={60}
-                    className="object-cover transition duration-700 group-hover:scale-[1.03]"
+                    className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-sky-50 text-sky-600">

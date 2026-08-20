@@ -56,9 +56,10 @@ export default function BookingGuestLoginPageView({
                 <Image
                   src={logoUrl}
                   alt={brandName}
-                  width={200}
-                  height={64}
+                  width={256}
+                  height={80}
                   className="h-10 w-auto object-contain sm:h-12"
+                  unoptimized={logoUrl.endsWith(".svg")}
                   priority
                 />
               </div>

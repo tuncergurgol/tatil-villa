@@ -71,8 +71,9 @@ export default function RegionGrid({ regions }: RegionGridProps) {
               <Image
                 src={region.image}
                 alt={region.name}
-                fill
-                className="object-cover transition duration-500 group-hover:scale-105"
+                width={750}
+                height={560}
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 quality={65}
               />
