@@ -138,6 +138,12 @@ export async function getTatilAssistantAdminData() {
   };
 }
 
+export async function getTatilAssistantWelcomeMessage() {
+  const settings = await getCompanySettings();
+  if (!settings.tatilAssistantEnabled) return null;
+  return settings.assistantWelcomeMessage?.trim() || DEFAULT_ASSISTANT_WELCOME;
+}
+
 export async function getTatilAssistantRuntimeContext() {
   const settings = await getCompanySettings();
 

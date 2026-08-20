@@ -12,7 +12,7 @@ export default function DreamVacationSection({
   if (cards.length === 0) return null;
 
   return (
-    <section id="tatil-hayali" className="bg-[#f7f9fc] py-12 sm:py-16">
+    <section id="tatil-hayali" className="cv-auto bg-[#f7f9fc] py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center sm:mb-10">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">

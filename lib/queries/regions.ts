@@ -302,7 +302,7 @@ export async function getFooterRegionLinks(siteKey?: PublicSiteKey) {
     { active: true, showInSearch: true },
     siteKey
   );
-  const [candidates, mahalles, nodes, villaGroups] = await Promise.all([
+  const [candidates, nodes, villaGroups] = await Promise.all([
     prisma.region.findMany({
       where: {
         active: true,
@@ -316,19 +316,6 @@ export async function getFooterRegionLinks(siteKey?: PublicSiteKey) {
         name: true,
         level: true,
       },
-    }),
-    prisma.region.findMany({
-      where: {
-        active: true,
-        published: true,
-        level: RegionLevel.MAHALLE,
-      },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-      },
-      orderBy: { name: "asc" },
     }),
     getAllRegionNodes(),
     prisma.villa.groupBy({
@@ -358,6 +345,7 @@ export async function getFooterRegionLinks(siteKey?: PublicSiteKey) {
         b.villaCount - a.villaCount ||
         a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
     )
+    .slice(0, 12)
     .map((region) => ({
       slug: region.slug,
       name: region.name,
@@ -365,23 +353,9 @@ export async function getFooterRegionLinks(siteKey?: PublicSiteKey) {
       level: region.level,
     }));
 
-  const zeroCountHidden = withCounts
-    .filter((region) => region.villaCount === 0)
-    .map((region) => ({
-      slug: region.slug,
-      name: region.name,
-      label: `${region.name} Kiralık Villalar`,
-    }));
-
-  const mahalleLinks = mahalles.map((region) => ({
-    slug: region.slug,
-    name: region.name,
-    label: `${region.name} Kiralık Villalar`,
-  }));
-
   return {
     popular,
-    mahalles: [...zeroCountHidden, ...mahalleLinks],
+    mahalles: [] as Array<{ slug: string; name: string; label: string }>,
   };
 }
 

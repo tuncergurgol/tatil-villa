@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import VillaCard from "./VillaCard";
 import type { Villa } from "@/lib/types";
 
@@ -24,8 +23,8 @@ function ViewAllButton({
       className={`group inline-flex items-center gap-2 rounded-full bg-orange-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-800 hover:shadow-md ${className}`}
     >
       Tümünü Gör
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 transition group-hover:translate-x-0.5 group-hover:bg-white/30">
-        <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-sm transition group-hover:translate-x-0.5 group-hover:bg-white/30">
+        →
       </span>
     </Link>
   );
@@ -41,7 +40,7 @@ export default function VillaSection({
   if (villas.length === 0) return null;
 
   return (
-    <section id={id} className="py-12 sm:py-16">
+    <section id={id} className="cv-auto py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>

@@ -1,6 +1,5 @@
 import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
-import { Bath, BedDouble, MapPin, Users } from "lucide-react";
 import VillaPriceRange from "@/components/VillaPriceRange";
 import type { Villa } from "@/lib/types";
 import { categoryLabel } from "@/lib/utils";
@@ -44,25 +43,12 @@ export default function VillaCard({
         <h3 className="line-clamp-2 text-base font-bold text-gray-900 group-hover:text-teal-700">
           {villa.name}
         </h3>
-        <p className="mt-1 flex items-center gap-1 truncate text-sm text-gray-500">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{villa.location}</span>
-        </p>
+        <p className="mt-1 truncate text-sm text-gray-500">{villa.location}</p>
 
-        <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600">
-          <span className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" />
-            {villa.guests} Kişi
-          </span>
-          <span className="flex items-center gap-1">
-            <BedDouble className="h-3.5 w-3.5" />
-            {villa.bedrooms} Yatak Odası
-          </span>
-          <span className="flex items-center gap-1">
-            <Bath className="h-3.5 w-3.5" />
-            {villa.bathrooms} Banyo
-          </span>
-        </div>
+        <p className="mt-3 text-xs text-gray-600">
+          {villa.guests} kişi · {villa.bedrooms} yatak odası · {villa.bathrooms}{" "}
+          banyo
+        </p>
 
         <div className="mt-auto border-t border-gray-100 pt-3">
           <VillaPriceRange

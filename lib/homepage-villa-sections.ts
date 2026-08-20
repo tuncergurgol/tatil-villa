@@ -23,7 +23,7 @@ function filtersForSection(
 ): VillaFilters {
   return {
     filter: section.key,
-    limit: 12,
+    limit: 8,
     siteKey,
     sort: section.sortMode === "random" ? "random" : undefined,
   };

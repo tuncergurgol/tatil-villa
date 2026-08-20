@@ -1,12 +1,8 @@
-import { getTatilAssistantRuntimeContext } from "@/lib/queries/tatil-assistant";
+import { getTatilAssistantWelcomeMessage } from "@/lib/queries/tatil-assistant";
 import DeferredPublicChrome from "@/components/DeferredPublicChrome";
 
 export default async function TatilAssistantWidgetLoader() {
-  const context = await getTatilAssistantRuntimeContext();
+  const welcomeMessage = await getTatilAssistantWelcomeMessage();
 
-  return (
-    <DeferredPublicChrome
-      assistantWelcome={context?.welcomeMessage ?? null}
-    />
-  );
+  return <DeferredPublicChrome assistantWelcome={welcomeMessage} />;
 }

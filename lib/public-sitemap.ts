@@ -61,7 +61,7 @@ export async function getPublicIndexablePages(
     { active: true, showInSearch: true },
     siteKey
   );
-  const [villas, blogPosts, corporatePages, tours] = await Promise.all([
+  const [villas, blogPosts, corporatePages, tours, regions] = await Promise.all([
     prisma.villa.findMany({
       where: villaWhere,
       select: { slug: true, name: true, updatedAt: true },
@@ -78,6 +78,11 @@ export async function getPublicIndexablePages(
     prisma.tour.findMany({
       where: { isActive: true },
       select: { slug: true, title: true, updatedAt: true },
+    }),
+    prisma.region.findMany({
+      where: { active: true, published: true },
+      select: { slug: true, name: true, updatedAt: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -110,6 +115,14 @@ export async function getPublicIndexablePages(
       title: tour.title,
       lastModified: tour.updatedAt,
     })),
+    ...regions.map((region) => ({
+      url: absolutePublicUrl(
+        origin,
+        `/villalar?region=${encodeURIComponent(region.slug)}`
+      ),
+      title: `${region.name} Kiralık Villalar`,
+      lastModified: region.updatedAt,
+    })),
   ];
 }
 
@@ -141,6 +154,14 @@ export async function buildPublicSitemap(
       };
     }
     if (page.url.includes("/tur/")) {
+      return {
+        url: page.url,
+        lastModified: page.lastModified,
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      };
+    }
+    if (page.url.includes("/villalar?region=")) {
       return {
         url: page.url,
         lastModified: page.lastModified,

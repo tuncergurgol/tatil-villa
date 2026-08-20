@@ -31,7 +31,7 @@ export default async function HomePage() {
       getHomeDreamCategories(site.key),
     ]);
 
-  preloadOptimizedLcpImage(site.heroImageUrl, "100vw", 70);
+  preloadOptimizedLcpImage(site.heroImageUrl, "100vw", 65);
 
   return (
     <>
@@ -43,9 +43,8 @@ export default async function HomePage() {
             fill
             className="object-cover"
             sizes="100vw"
-            quality={70}
-            loading="eager"
-            fetchPriority="high"
+            quality={65}
+            priority
           />
         </div>
 
@@ -91,7 +90,7 @@ export default async function HomePage() {
 
       <section
         id="seyahat-macerasi"
-        className="border-t border-slate-100 bg-white py-12 sm:py-16"
+        className="cv-auto border-t border-slate-100 bg-white py-12 sm:py-16"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <TravelAdventureSection />

@@ -15,6 +15,12 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Below-fold: ilk boyamada layout/paint işini atla (LCP + INP) */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 36rem;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

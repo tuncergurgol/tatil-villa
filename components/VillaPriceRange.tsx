@@ -1,5 +1,3 @@
-import { ArrowRight } from "lucide-react";
-
 type VillaPriceRangeProps = {
   minNightlyPrice?: number | null;
   maxNightlyPrice?: number | null;
@@ -33,8 +31,8 @@ export default function VillaPriceRange({
           Teklif Alınız
         </p>
         {showArrow ? (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-700 text-white shadow-sm transition group-hover:bg-orange-800">
-            <ArrowRight className="h-4 w-4" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-700 text-lg font-semibold text-white shadow-sm transition group-hover:bg-orange-800">
+            →
           </span>
         ) : null}
       </div>
@@ -66,8 +64,8 @@ export default function VillaPriceRange({
         </p>
       </div>
       {showArrow ? (
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-700 text-white shadow-sm transition group-hover:bg-orange-800 group-hover:shadow-md">
-          <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-700 text-lg font-semibold text-white shadow-sm transition group-hover:bg-orange-800 group-hover:shadow-md">
+          →
         </span>
       ) : null}
     </div>

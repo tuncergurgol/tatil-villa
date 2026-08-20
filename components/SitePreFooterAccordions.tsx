@@ -82,7 +82,7 @@ export default function SitePreFooterAccordions({
 
   return (
     <section
-      className="relative overflow-hidden border-t border-sky-50 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)]"
+      className="cv-auto relative overflow-hidden border-t border-sky-50 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)]"
       aria-label="Site içerik alanları"
     >
       <div

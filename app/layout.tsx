@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { getLocale } from "next-intl/server";
-import Providers from "@/components/Providers";
 import { buildRootMetadata } from "@/lib/site-metadata";
 import "./globals.css";
 
@@ -26,7 +25,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-white text-gray-900">
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   );

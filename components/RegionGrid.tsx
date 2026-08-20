@@ -9,8 +9,7 @@ interface RegionGridProps {
   regions: Region[];
 }
 
-/** Ana sayfada gösterilecek bölge kartı sayısı */
-const FEATURED_COUNT = 7;
+const PILL_COUNT = 12;
 
 /**
  * 7 kartlık 3 sütun bento — boş hücre bırakmadan:
@@ -34,11 +33,8 @@ export default function RegionGrid({ regions }: RegionGridProps) {
     [regions]
   );
 
-  /** Villa sayısına göre en popüler 7 bölge */
-  const featured = useMemo(
-    () => sorted.slice(0, FEATURED_COUNT),
-    [sorted]
-  );
+  const pillRegions = useMemo(() => sorted.slice(0, PILL_COUNT), [sorted]);
+  const featured = useMemo(() => sorted.slice(0, 7), [sorted]);
 
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
 
@@ -52,7 +48,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
   if (sorted.length === 0 || (featured.length === 0 && !activeSlug)) return null;
 
   return (
-    <section id="bolgeler" className="bg-white py-12 sm:py-16">
+    <section id="bolgeler" className="cv-auto bg-white py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
@@ -73,7 +69,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
           >
             Tümü
           </button>
-          {sorted.map((region) => (
+          {pillRegions.map((region) => (
             <button
               key={region.id}
               type="button"

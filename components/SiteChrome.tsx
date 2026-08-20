@@ -54,15 +54,17 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
     reviews,
     posts,
     blogCategoryRows,
+    tracking,
   ] = await Promise.all([
     getSiteMenuItemsForPublic("header"),
     getSiteMenuItemsForPublic("footer-quick"),
     getFooterCorporatePages(),
     getFooterRegionLinks(site.key),
-    getActiveFaqsForPublic(),
-    getApprovedReviewsForPublic(12, site.key),
-    getPublishedBlogPosts({ limit: 24 }),
+    getActiveFaqsForPublic({ limit: 8 }),
+    getApprovedReviewsForPublic(6, site.key),
+    getPublishedBlogPosts({ limit: 8 }),
     getBlogCategoriesForPublic(),
+    getPublicSiteTracking(site.key),
   ]);
   const blogCategories = blogCategoryRows
     .filter((category) => category._count.posts > 0)
@@ -71,7 +73,6 @@ export default async function SiteChrome({ children }: { children: React.ReactNo
       name: category.name,
       slug: category.slug,
     }));
-  const tracking = await getPublicSiteTracking(site.key);
 
   const headerLinks =
     headerMenu.length > 0

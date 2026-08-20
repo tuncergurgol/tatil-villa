@@ -83,7 +83,7 @@ export default function Footer({
     contact?.tursabVerificationLogoUrl?.trim() || DEFAULT_TURSAB_DDS_LOGO;
 
   return (
-    <footer className="mt-auto border-t border-gray-100 bg-white text-gray-600">
+    <footer className="cv-auto mt-auto border-t border-gray-100 bg-white text-gray-600">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
         <div>
           <Link href="/" className="inline-block">

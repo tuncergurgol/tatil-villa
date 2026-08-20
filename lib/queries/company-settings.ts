@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/db";
 
 export const DEFAULT_COMPANY_SETTINGS = {
@@ -122,7 +123,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   facebookLeadPageAccessToken: "",
 };
 
-export async function getCompanySettings() {
+export const getCompanySettings = cache(async function getCompanySettings() {
   try {
     let settings = await prisma.companySettings.findUnique({
       where: { id: "default" },
@@ -144,7 +145,7 @@ export async function getCompanySettings() {
       updatedAt: new Date(),
     };
   }
-}
+});
 
 export async function updateCompanySettings(
   data: Partial<
