@@ -40,6 +40,12 @@ export async function getVillaLocationFormData(villaId: string) {
             id: true,
             name: true,
             sortOrder: true,
+            latitude: true,
+            longitude: true,
+            isDefault: true,
+            regionScopes: {
+              select: { regionId: true },
+            },
           },
         },
       },
@@ -63,6 +69,10 @@ export async function getVillaLocationFormData(villaId: string) {
           name: location.name,
           categoryName: category.name,
           sortOrder: category.sortOrder * 1000 + location.sortOrder,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          isDefault: location.isDefault,
+          regionIds: location.regionScopes.map((scope) => scope.regionId),
         }))
     );
 

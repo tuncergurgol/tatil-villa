@@ -12,6 +12,10 @@ export type SurroundingLocationOption = {
   name: string;
   categoryName: string;
   sortOrder: number;
+  latitude: number | null;
+  longitude: number | null;
+  isDefault: boolean;
+  regionIds: string[];
 };
 
 export function resolveRegionHierarchy(

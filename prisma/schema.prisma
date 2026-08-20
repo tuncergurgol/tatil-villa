@@ -117,6 +117,7 @@ model Region {
   sortOrder    Int      @default(0)
   mernisIlceCode String?
   villas       Villa[]
+  surroundingLocationScopes SurroundingLocationRegion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -987,15 +988,34 @@ model SurroundingLocation {
   name       String
   categoryId String
   category   SurroundingCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  latitude   Float?
+  longitude  Float?
+  /// Otomatik mesafe hesaplamaya dahil edilsin mi
+  isDefault  Boolean             @default(false)
   sortOrder  Int                 @default(0)
   active     Boolean             @default(true)
   villaDistances VillaSurroundingDistance[]
+  /// Boşsa tüm illerde listelenir; doluysa yalnızca seçili bölgelerde
+  regionScopes SurroundingLocationRegion[]
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
   @@index([categoryId])
   @@index([sortOrder])
   @@index([active])
+  @@index([isDefault])
+}
+
+/// Çevre konumunun hangi il/ilçe bölgelerinde listeleneceği
+model SurroundingLocationRegion {
+  id                    String              @id @default(cuid())
+  surroundingLocationId String
+  surroundingLocation   SurroundingLocation @relation(fields: [surroundingLocationId], references: [id], onDelete: Cascade)
+  regionId              String
+  region                Region              @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@unique([surroundingLocationId, regionId])
+  @@index([regionId])
 }
 
 model VillaSurroundingDistance {

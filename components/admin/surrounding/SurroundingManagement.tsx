@@ -22,6 +22,7 @@ import LocationFormModal from "@/components/admin/surrounding/LocationFormModal"
 import type {
   SurroundingCategoryItem,
   SurroundingLocationItem,
+  SurroundingProvinceOption,
 } from "@/lib/queries/surrounding";
 import { compareSurroundingNames } from "@/lib/surrounding-utils";
 import { includesSearchText } from "@/lib/search-text";
@@ -29,11 +30,13 @@ import { includesSearchText } from "@/lib/search-text";
 interface SurroundingManagementProps {
   categories: SurroundingCategoryItem[];
   totalLocations: number;
+  provinces: SurroundingProvinceOption[];
 }
 
 export default function SurroundingManagement({
   categories,
   totalLocations,
+  provinces,
 }: SurroundingManagementProps) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -296,6 +299,30 @@ export default function SurroundingManagement({
                         className="group inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm"
                       >
                         <span>{location.name}</span>
+                        {location.isDefault ? (
+                          <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-700">
+                            Varsayılan
+                          </span>
+                        ) : null}
+                        {location.latitude != null &&
+                        location.longitude != null ? (
+                          <span
+                            className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700"
+                            title={`${location.latitude}, ${location.longitude}`}
+                          >
+                            GPS
+                          </span>
+                        ) : null}
+                        {location.regions.length > 0 ? (
+                          <span
+                            className="text-[10px] text-gray-400"
+                            title={location.regions
+                              .map((region) => region.name)
+                              .join(", ")}
+                          >
+                            {location.regions.length} il
+                          </span>
+                        ) : null}
                         <div className="ml-1 flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
                           <button
                             type="button"
@@ -390,6 +417,7 @@ export default function SurroundingManagement({
       {locationModal?.mode === "create" && (
         <LocationFormModal
           categories={categories}
+          provinces={provinces}
           defaultCategoryId={locationModal.categoryId}
           onClose={() => setLocationModal(null)}
         />
@@ -397,6 +425,7 @@ export default function SurroundingManagement({
       {locationModal?.mode === "edit" && (
         <LocationFormModal
           categories={categories}
+          provinces={provinces}
           location={locationModal.location}
           onClose={() => setLocationModal(null)}
         />
