@@ -120,7 +120,13 @@ export default function Header({
     "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-[#0F766E] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0D5C56] sm:text-sm";
 
   return (
-    <header className="relative z-50 sticky top-0 border-b border-gray-200 bg-white text-gray-900 shadow-sm">
+    <header
+      className={`relative z-50 sticky top-0 border-b border-gray-200 bg-white text-gray-900 shadow-sm md:h-[6.75rem] md:overflow-visible ${
+        mobileOpen
+          ? "h-auto overflow-visible"
+          : "h-[10.75rem] overflow-hidden md:h-[6.75rem]"
+      }`}
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-1.5 md:gap-3 md:px-6 md:py-2 lg:px-8">
         <Link
           href="/"

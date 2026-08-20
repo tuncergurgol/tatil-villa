@@ -24,7 +24,7 @@ export default function HomeHero({
   const { srcSet, ...img } = props;
 
   return (
-    <section className="relative flex min-h-[520px] items-center justify-center overflow-visible pb-24 sm:min-h-[580px] sm:pb-28">
+    <section className="relative flex min-h-[520px] items-start justify-center overflow-visible pb-24 sm:min-h-[580px] sm:pb-28">
       {img.src ? (
         <link
           rel="preload"
@@ -55,7 +55,7 @@ export default function HomeHero({
           </h1>
         </div>
 
-        <div className="relative z-20 mt-8">
+        <div className="relative z-20 mt-8 min-h-[20.5rem] lg:min-h-[6.75rem]">
           <Suspense fallback={<HeroSearchFallback />}>
             <HomeHeroSearch />
           </Suspense>
@@ -68,7 +68,8 @@ export default function HomeHero({
 function HeroSearchFallback() {
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="h-12 rounded-2xl bg-white/90 shadow-lg sm:h-14" />
+      <div className="mx-auto mb-1.5 h-12 max-w-xl rounded-2xl bg-white/90 shadow-lg" />
+      <div className="h-[16.5rem] rounded-2xl bg-[#f5f0ea]/95 shadow-2xl lg:h-14" />
     </div>
   );
 }

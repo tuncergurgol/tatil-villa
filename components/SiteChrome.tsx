@@ -6,7 +6,7 @@ import SiteChromeMobileNav from "@/components/SiteChromeMobileNav";
 
 function HeaderFallback() {
   return (
-    <header className="sticky top-0 z-50 h-[72px] border-b border-gray-200 bg-white" />
+    <header className="sticky top-0 z-50 h-[10.75rem] border-b border-gray-200 bg-white md:h-[6.75rem]" />
   );
 }
 
