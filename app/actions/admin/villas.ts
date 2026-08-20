@@ -283,13 +283,13 @@ export async function updateVillaGeneral(
       documentNo: existing.documentNo,
       documentType: existing.documentType,
     });
-    const visibility = undocumented
-      ? UNDOCUMENTED_VILLA_VISIBILITY
-      : {
-          active: parseBool(formData.get("active")),
-          showInSearch: parseBool(formData.get("showInSearch")),
-          showInOffer: parseBool(formData.get("showInOffer")),
-        };
+    const visibility = {
+      active: parseBool(formData.get("active")),
+      showInSearch: undocumented
+        ? UNDOCUMENTED_VILLA_VISIBILITY.showInSearch
+        : parseBool(formData.get("showInSearch")),
+      showInOffer: parseBool(formData.get("showInOffer")),
+    };
 
     const updated = await prisma.villa.update({
       where: { id },

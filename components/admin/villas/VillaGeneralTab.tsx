@@ -85,17 +85,13 @@ export default function VillaGeneralTab({
     documentNo: villa.documentNo,
     documentType: villa.documentType,
   });
-  const [active, setActive] = useState(
-    undocumented ? UNDOCUMENTED_VILLA_VISIBILITY.active : villa.active
-  );
+  const [active, setActive] = useState(villa.active);
   const [showInSearch, setShowInSearch] = useState(
     undocumented
       ? UNDOCUMENTED_VILLA_VISIBILITY.showInSearch
       : villa.showInSearch
   );
-  const [showInOffer, setShowInOffer] = useState(
-    undocumented ? UNDOCUMENTED_VILLA_VISIBILITY.showInOffer : villa.showInOffer
-  );
+  const [showInOffer, setShowInOffer] = useState(villa.showInOffer);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [description, setDescription] = useState(villa.description);
   const [descriptionKey, setDescriptionKey] = useState(0);
@@ -230,7 +226,6 @@ export default function VillaGeneralTab({
             name="active"
             checked={active}
             onChange={setActive}
-            disabled={undocumented}
           />
           <StatusPillToggle
             label="Arama Alanında Görünür"
@@ -244,13 +239,12 @@ export default function VillaGeneralTab({
             name="showInOffer"
             checked={showInOffer}
             onChange={setShowInOffer}
-            disabled={undocumented}
           />
         </div>
         {undocumented ? (
           <p className="mt-2 text-xs text-amber-700">
-            Belgesi olmayan villalar aktif yayınlanır; aramada görünmez, teklif
-            alanında ve Bont Uygunluk Ara’da görünür.
+            Belgesi olmayan villada arama alanı kapalı kalır. Yayın durumu ve
+            teklif görünürlüğü seçilebilir.
           </p>
         ) : null}
       </section>
