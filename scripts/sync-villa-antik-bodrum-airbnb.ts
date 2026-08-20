@@ -26,6 +26,7 @@ async function main() {
       name: true,
       slug: true,
       externalSyncUrl1: true,
+      externalSyncUrl2: true,
     },
     orderBy: [{ villaId: "asc" }],
   });
@@ -33,7 +34,7 @@ async function main() {
   console.log("Aday villalar:");
   for (const row of candidates) {
     console.log(
-      `- ${row.villaId ?? "-"} | ${row.name} | ${row.slug} | link1=${row.externalSyncUrl1 || "(boş)"}`
+      `- ${row.villaId ?? "-"} | ${row.name} | ${row.slug} | link1=${row.externalSyncUrl1 || "(boş)"} | link2=${row.externalSyncUrl2 || "(boş)"}`
     );
   }
 
@@ -53,10 +54,17 @@ async function main() {
 
   const wrong = await prisma.villa.findFirst({
     where: {
-      externalSyncUrl1: URL,
+      OR: [{ externalSyncUrl1: URL }, { externalSyncUrl2: URL }],
       NOT: { id: villa.id },
     },
-    select: { id: true, villaId: true, name: true, slug: true },
+    select: {
+      id: true,
+      villaId: true,
+      name: true,
+      slug: true,
+      externalSyncUrl1: true,
+      externalSyncUrl2: true,
+    },
   });
 
   if (wrong) {
@@ -64,12 +72,17 @@ async function main() {
       `\nYanlış eşleşme temizleniyor: ${wrong.villaId} ${wrong.name} (${wrong.slug})`
     );
     if (!dryRun) {
-      await setVillaExternalSyncUrl(wrong.id, 1, "");
+      if (wrong.externalSyncUrl1 === URL) {
+        await setVillaExternalSyncUrl(wrong.id, 1, "");
+      }
+      if (wrong.externalSyncUrl2 === URL) {
+        await setVillaExternalSyncUrl(wrong.id, 2, "");
+      }
     }
   }
 
   console.log(
-    `\nHedef villa: ${villa.villaId ?? "-"} ${villa.name} (${villa.slug})\nYeni link1: ${URL}`
+    `\nHedef villa: ${villa.villaId ?? "-"} ${villa.name} (${villa.slug})\nYeni link2: ${URL}`
   );
 
   if (dryRun) {
@@ -77,11 +90,15 @@ async function main() {
     return;
   }
 
-  const saved = await setVillaExternalSyncUrl(villa.id, 1, URL);
+  // Airbnb takvim → Link 2; Link 1 boş bırakılır (fiyat sayfası için)
+  if (villa.externalSyncUrl1?.includes("airbnb.")) {
+    await setVillaExternalSyncUrl(villa.id, 1, "");
+  }
+  const saved = await setVillaExternalSyncUrl(villa.id, 2, URL);
   if (!saved.ok) throw new Error(saved.message);
 
   await sleep(800);
-  const result = await syncVillaExternalLinkSlot(villa.id, 1, {
+  const result = await syncVillaExternalLinkSlot(villa.id, 2, {
     urlOverride: URL,
   });
   console.log(result.ok ? "OK" : "FAIL", result.message);
