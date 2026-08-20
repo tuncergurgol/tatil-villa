@@ -1,3 +1,4 @@
+import { staysDateRangesOverlap } from "@/lib/booking-closed-dates";
 import { prisma } from "@/lib/db";
 import { CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE } from "@/lib/villa-confirmed-booking-guard.constants";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
@@ -11,18 +12,7 @@ export type ConfirmedBookingOverlap = {
   checkOutKey: string;
 };
 
-function dateRangesOverlap(
-  aStart: string,
-  aEnd: string,
-  bStart: string,
-  bEnd: string
-): boolean {
-  const a = normalizeDateRange(aStart, aEnd);
-  const b = normalizeDateRange(bStart, bEnd);
-  return a.start <= b.end && b.start <= a.end;
-}
-
-/** Seçilen aralık onaylı (CONFIRMED) rezervasyon tarihlerine dokunuyor mu? */
+/** Seçilen aralık onaylı rezervasyonun dolu gecelerine dokunuyor mu? Çıkış günü serbest. */
 export async function findConfirmedBookingOverlap(
   villaId: string,
   startDateKey: string,
@@ -40,11 +30,18 @@ export async function findConfirmedBookingOverlap(
     },
   });
 
+  const selection = normalizeDateRange(startDateKey, endDateKey);
+
   for (const booking of bookings) {
     const checkInKey = dbDateToDateKey(booking.checkIn);
     const checkOutKey = dbDateToDateKey(booking.checkOut);
     if (
-      dateRangesOverlap(startDateKey, endDateKey, checkInKey, checkOutKey)
+      staysDateRangesOverlap(
+        selection.start,
+        selection.end,
+        checkInKey,
+        checkOutKey
+      )
     ) {
       return {
         bookingLabel:

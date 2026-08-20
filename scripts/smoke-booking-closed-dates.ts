@@ -30,6 +30,15 @@ assert(
   staysDateRangesOverlap("2026-07-13", "2026-07-16", "2026-07-15", "2026-07-18"),
   "kısmi örtüşme çakışır"
 );
+assert(
+  staysDateRangesOverlap("2026-08-20", "2026-08-24", "2026-08-15", "2026-08-20") ===
+    false,
+  "onaylı çıkış gününden yeni kapama serbest"
+);
+assert(
+  staysDateRangesOverlap("2026-08-18", "2026-08-22", "2026-08-15", "2026-08-20"),
+  "çıkıştan önceki dolu geceye kapama çakışır"
+);
 
 // Senaryo: 116004 onaylandı → 13–15 BOOKED; başka OPEN talep aynı tarihler
 assert(
