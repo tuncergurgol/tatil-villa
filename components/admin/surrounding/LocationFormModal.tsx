@@ -7,17 +7,18 @@ import {
   updateSurroundingLocation,
   type SurroundingActionState,
 } from "@/app/actions/admin/surrounding";
+import SurroundingRegionScopeTree from "@/components/admin/surrounding/SurroundingRegionScopeTree";
 import type {
   SurroundingCategoryItem,
   SurroundingLocationItem,
-  SurroundingProvinceOption,
+  SurroundingRegionOption,
 } from "@/lib/queries/surrounding";
 import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 import { parseLatLngPaste } from "@/lib/surrounding-location-helpers";
 
 interface LocationFormModalProps {
   categories: SurroundingCategoryItem[];
-  provinces: SurroundingProvinceOption[];
+  regions: SurroundingRegionOption[];
   location?: SurroundingLocationItem;
   defaultCategoryId?: string;
   onClose: () => void;
@@ -25,7 +26,7 @@ interface LocationFormModalProps {
 
 export default function LocationFormModal({
   categories,
-  provinces,
+  regions,
   location,
   defaultCategoryId,
   onClose,
@@ -61,18 +62,10 @@ export default function LocationFormModal({
     setLongitude(String(parsed.longitude));
   }
 
-  function toggleRegion(regionId: string) {
-    setSelectedRegionIds((prev) =>
-      prev.includes(regionId)
-        ? prev.filter((id) => id !== regionId)
-        : [...prev, regionId]
-    );
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
           <h2 className="text-lg font-bold text-gray-900">
             {isEdit ? "Konum Tipini Düzenle" : "Yeni Konum Tipi"}
           </h2>
@@ -88,7 +81,12 @@ export default function LocationFormModal({
         <form action={formAction} className="space-y-4 p-6">
           {location && <input type="hidden" name="id" value={location.id} />}
           {selectedRegionIds.map((regionId) => (
-            <input key={regionId} type="hidden" name="regionIds" value={regionId} />
+            <input
+              key={regionId}
+              type="hidden"
+              name="regionIds"
+              value={regionId}
+            />
           ))}
 
           {state.error && (
@@ -202,30 +200,11 @@ export default function LocationFormModal({
                 </span>
               </label>
 
-              <div>
-                <span className="text-xs font-medium text-gray-500">
-                  Listeleneceği iller
-                </span>
-                <p className="mt-1 text-xs text-gray-400">
-                  Hiç seçilmezse tüm illerde görünür.
-                </p>
-                <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-gray-200 p-3">
-                  {provinces.map((province) => (
-                    <label
-                      key={province.id}
-                      className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedRegionIds.includes(province.id)}
-                        onChange={() => toggleRegion(province.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      {province.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <SurroundingRegionScopeTree
+                regions={regions}
+                selectedRegionIds={selectedRegionIds}
+                onChange={setSelectedRegionIds}
+              />
             </>
           )}
 

@@ -22,7 +22,7 @@ import LocationFormModal from "@/components/admin/surrounding/LocationFormModal"
 import type {
   SurroundingCategoryItem,
   SurroundingLocationItem,
-  SurroundingProvinceOption,
+  SurroundingRegionOption,
 } from "@/lib/queries/surrounding";
 import { compareSurroundingNames } from "@/lib/surrounding-utils";
 import { includesSearchText } from "@/lib/search-text";
@@ -30,13 +30,13 @@ import { includesSearchText } from "@/lib/search-text";
 interface SurroundingManagementProps {
   categories: SurroundingCategoryItem[];
   totalLocations: number;
-  provinces: SurroundingProvinceOption[];
+  regions: SurroundingRegionOption[];
 }
 
 export default function SurroundingManagement({
   categories,
   totalLocations,
-  provinces,
+  regions,
 }: SurroundingManagementProps) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -320,7 +320,7 @@ export default function SurroundingManagement({
                               .map((region) => region.name)
                               .join(", ")}
                           >
-                            {location.regions.length} il
+                            {location.regions.length} bölge
                           </span>
                         ) : null}
                         <div className="ml-1 flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
@@ -417,7 +417,7 @@ export default function SurroundingManagement({
       {locationModal?.mode === "create" && (
         <LocationFormModal
           categories={categories}
-          provinces={provinces}
+          regions={regions}
           defaultCategoryId={locationModal.categoryId}
           onClose={() => setLocationModal(null)}
         />
@@ -425,7 +425,7 @@ export default function SurroundingManagement({
       {locationModal?.mode === "edit" && (
         <LocationFormModal
           categories={categories}
-          provinces={provinces}
+          regions={regions}
           location={locationModal.location}
           onClose={() => setLocationModal(null)}
         />

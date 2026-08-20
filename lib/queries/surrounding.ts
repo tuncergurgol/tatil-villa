@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/db";
 import { compareSurroundingNames } from "@/lib/surrounding-utils";
-import { RegionLevel } from "@/lib/region-levels";
 
 export async function getSurroundingAdminData() {
-  const [categories, provinces] = await Promise.all([
+  const [categories, regions] = await Promise.all([
     prisma.surroundingCategory.findMany({
       select: {
         id: true,
@@ -39,9 +38,14 @@ export async function getSurroundingAdminData() {
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
     prisma.region.findMany({
-      where: { active: true, level: RegionLevel.IL },
-      select: { id: true, name: true, level: true },
-      orderBy: { name: "asc" },
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        level: true,
+        parentId: true,
+      },
+      orderBy: [{ name: "asc" }],
     }),
   ]);
 
@@ -64,7 +68,7 @@ export async function getSurroundingAdminData() {
   return {
     categories: sortedCategories,
     totalLocations,
-    provinces,
+    regions,
   };
 }
 
@@ -75,6 +79,6 @@ export type SurroundingCategoryItem = Awaited<
 export type SurroundingLocationItem =
   SurroundingCategoryItem["locations"][number];
 
-export type SurroundingProvinceOption = Awaited<
+export type SurroundingRegionOption = Awaited<
   ReturnType<typeof getSurroundingAdminData>
->["provinces"][number];
+>["regions"][number];

@@ -84,3 +84,179 @@ export function filterIlRegions<
     .filter((region) => region.level === RegionLevel.IL)
     .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 }
+
+export type SurroundingRegionNode = {
+  id: string;
+  name: string;
+  level: string;
+  parentId: string | null;
+  children: SurroundingRegionNode[];
+};
+
+export type SurroundingRegionFlat = {
+  id: string;
+  name: string;
+  level: string;
+  parentId: string | null;
+};
+
+function compareRegionName(
+  a: { name: string },
+  b: { name: string }
+): number {
+  return a.name.localeCompare(b.name, "tr", { sensitivity: "base" });
+}
+
+export function buildSurroundingRegionTree(
+  regions: SurroundingRegionFlat[]
+): SurroundingRegionNode[] {
+  const map = new Map<string, SurroundingRegionNode>();
+  for (const region of regions) {
+    map.set(region.id, { ...region, children: [] });
+  }
+
+  const roots: SurroundingRegionNode[] = [];
+  for (const region of regions) {
+    const node = map.get(region.id)!;
+    if (region.parentId && map.has(region.parentId)) {
+      map.get(region.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortNodes = (nodes: SurroundingRegionNode[]) => {
+    nodes.sort(compareRegionName);
+    for (const node of nodes) sortNodes(node.children);
+  };
+  sortNodes(roots);
+  return roots;
+}
+
+export function collectDescendantIds(
+  node: SurroundingRegionNode,
+  includeSelf = true
+): string[] {
+  const ids: string[] = includeSelf ? [node.id] : [];
+  for (const child of node.children) {
+    ids.push(...collectDescendantIds(child, true));
+  }
+  return ids;
+}
+
+export function indexSurroundingRegionTree(tree: SurroundingRegionNode[]) {
+  const byId = new Map<string, SurroundingRegionNode>();
+  const childrenByParent = new Map<string, string[]>();
+  const parentById = new Map<string, string | null>();
+
+  function walk(nodes: SurroundingRegionNode[]) {
+    for (const node of nodes) {
+      byId.set(node.id, node);
+      parentById.set(node.id, node.parentId);
+      childrenByParent.set(
+        node.id,
+        node.children.map((child) => child.id)
+      );
+      walk(node.children);
+    }
+  }
+  walk(tree);
+
+  return { byId, childrenByParent, parentById };
+}
+
+/** Kayıttaki üst bölge id'lerini UI için alt kırılımlarla genişletir. */
+export function expandRegionScopeSelection(
+  storedIds: string[],
+  byId: Map<string, SurroundingRegionNode>
+): Set<string> {
+  const selected = new Set<string>();
+  for (const id of storedIds) {
+    const node = byId.get(id);
+    if (!node) {
+      selected.add(id);
+      continue;
+    }
+    for (const descendantId of collectDescendantIds(node, true)) {
+      selected.add(descendantId);
+    }
+  }
+  return selected;
+}
+
+/** Tam seçili alt ağaçları tek üst id'ye sıkıştırır (DB şişmesin). */
+export function compressRegionScopeSelection(
+  selected: Set<string>,
+  tree: SurroundingRegionNode[]
+): string[] {
+  const result: string[] = [];
+
+  function isCompleteSubtree(node: SurroundingRegionNode): boolean {
+    if (!selected.has(node.id)) return false;
+    return node.children.every((child) => isCompleteSubtree(child));
+  }
+
+  function emit(node: SurroundingRegionNode) {
+    if (isCompleteSubtree(node)) {
+      result.push(node.id);
+      return;
+    }
+    for (const child of node.children) emit(child);
+  }
+
+  for (const root of tree) emit(root);
+  return result;
+}
+
+export function toggleRegionScopeCascade(
+  regionId: string,
+  checked: boolean,
+  selected: Set<string>,
+  byId: Map<string, SurroundingRegionNode>,
+  parentById: Map<string, string | null>,
+  childrenByParent: Map<string, string[]>
+): Set<string> {
+  const next = new Set(selected);
+  const node = byId.get(regionId);
+  const affected = node
+    ? collectDescendantIds(node, true)
+    : [regionId];
+
+  if (checked) {
+    for (const id of affected) next.add(id);
+
+    let parentId = parentById.get(regionId) ?? null;
+    while (parentId) {
+      const siblings = childrenByParent.get(parentId) ?? [];
+      if (siblings.every((siblingId) => next.has(siblingId))) {
+        next.add(parentId);
+        parentId = parentById.get(parentId) ?? null;
+      } else {
+        break;
+      }
+    }
+  } else {
+    for (const id of affected) next.delete(id);
+
+    let parentId = parentById.get(regionId) ?? null;
+    while (parentId) {
+      next.delete(parentId);
+      parentId = parentById.get(parentId) ?? null;
+    }
+  }
+
+  return next;
+}
+
+export function getRegionScopeCheckState(
+  regionId: string,
+  selected: Set<string>,
+  byId: Map<string, SurroundingRegionNode>
+): "checked" | "unchecked" | "indeterminate" {
+  if (selected.has(regionId)) return "checked";
+  const node = byId.get(regionId);
+  if (!node || node.children.length === 0) return "unchecked";
+  const descendants = collectDescendantIds(node, false);
+  if (descendants.some((id) => selected.has(id))) return "indeterminate";
+  return "unchecked";
+}
