@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/db";
+import {
+  compareAmenityNamesTr,
+  isFeaturedAmenityCategory,
+} from "@/lib/amenity-featured";
 
 export async function getAmenityAdminData() {
-  const categories = await prisma.amenityCategory.findMany({
+  const categories = (await prisma.amenityCategory.findMany({
     select: {
       id: true,
       name: true,
@@ -30,7 +34,16 @@ export async function getAmenityAdminData() {
       },
     },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-  });
+  })).map((category) =>
+    isFeaturedAmenityCategory(category.name)
+      ? {
+          ...category,
+          amenities: [...category.amenities].sort((a, b) =>
+            compareAmenityNamesTr(a.name, b.name)
+          ),
+        }
+      : category
+  );
 
   const totalAmenities = categories.reduce(
     (sum, category) => sum + category.amenities.length,

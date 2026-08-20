@@ -18,6 +18,7 @@ import {
   toDateKey,
 } from "@/lib/villa-period-calendar";
 import { countNightsBetween } from "@/lib/villa-period-selection";
+import { sortAmenityNamesTr } from "@/lib/amenity-featured";
 import {
   computeStayQuote,
   convertStayQuoteDayToTl,
@@ -631,8 +632,8 @@ export async function searchAvailability(
       bathrooms: villa.bathrooms,
       facilityCategories: villa.facilityCategories,
       amenities: villa.amenities,
-      featuredAmenities: villa.amenities.filter((amenity) =>
-        featuredAmenityNames.has(amenity)
+      featuredAmenities: sortAmenityNamesTr(
+        villa.amenities.filter((amenity) => featuredAmenityNames.has(amenity))
       ),
       popular: villa.popular,
       recommended: villa.recommended,

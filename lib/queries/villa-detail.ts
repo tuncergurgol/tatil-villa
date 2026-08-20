@@ -14,6 +14,10 @@ import {
   withPublicSiteVillaFilter,
 } from "@/lib/public-villa-site-filter";
 import { resolveVillaDocumentType } from "@/lib/villa-document-types";
+import {
+  isFeaturedAmenityCategory,
+  sortAmenityNamesTr,
+} from "@/lib/amenity-featured";
 import { getVillaPriceInclusionItems } from "@/lib/queries/price-inclusion";
 
 function startOfTodayUtc() {
@@ -243,7 +247,9 @@ export async function getVillaDetailBySlug(
   const amenityGroups = Array.from(amenityGroupsMap.entries())
     .map(([category, value]) => ({
       category,
-      items: value.items,
+      items: isFeaturedAmenityCategory(category)
+        ? sortAmenityNamesTr(value.items)
+        : value.items,
       sortOrder: value.sortOrder,
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder || a.category.localeCompare(b.category, "tr"));

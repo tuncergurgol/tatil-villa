@@ -14,6 +14,7 @@ import {
   type VillaDescriptionPreview,
 } from "@/lib/villa-description-generator";
 import { formatVillaRegionLabel } from "@/lib/villa-location-helpers";
+import { sortAmenityNamesTr } from "@/lib/amenity-featured";
 
 export type VillaDescriptionAiActionState = {
   error?: string;
@@ -175,8 +176,10 @@ async function loadVillaDescriptionContext(
     amenityRows.map((row) => [row.name, row.category.name])
   );
 
-  const featuredAmenities = villa.amenities.filter((name) =>
-    isFeaturedAmenityCategory(amenityCategoryByName.get(name) ?? "")
+  const featuredAmenities = sortAmenityNamesTr(
+    villa.amenities.filter((name) =>
+      isFeaturedAmenityCategory(amenityCategoryByName.get(name) ?? "")
+    )
   );
   const otherAmenities = villa.amenities.filter(
     (name) => !isFeaturedAmenityCategory(amenityCategoryByName.get(name) ?? "")

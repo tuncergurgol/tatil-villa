@@ -29,6 +29,10 @@ import VillaKnowBeforeSection from "@/components/villa-detail/VillaKnowBeforeSec
 import { VillaStaySelectionProvider } from "@/components/villa-detail/VillaStaySelectionContext";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 import {
+  isFeaturedAmenityCategory,
+  sortAmenityNamesTr,
+} from "@/lib/amenity-featured";
+import {
   buildForeignCurrencyPaymentDisclaimer,
   resolveForeignPriceCurrencies,
   type PublicExchangeRates,
@@ -101,12 +105,6 @@ function RatingStars({ rating }: { rating: number }) {
   );
 }
 
-function isFeaturedAmenityCategory(category: string) {
-  return (
-    category.localeCompare("Öne Çıkanlar", "tr", { sensitivity: "base" }) === 0
-  );
-}
-
 export default function VillaDetailView({
   villa,
   faqs,
@@ -119,10 +117,11 @@ export default function VillaDetailView({
   initialCheckOut = "",
   initialAdults = 2,
 }: VillaDetailViewProps) {
-  const featuredAmenityItems =
+  const featuredAmenityItems = sortAmenityNamesTr(
     villa.amenityGroups.find((group) =>
       isFeaturedAmenityCategory(group.category)
-    )?.items ?? [];
+    )?.items ?? []
+  );
   const amenityGroups = villa.amenityGroups.filter(
     (group) => !isFeaturedAmenityCategory(group.category)
   );

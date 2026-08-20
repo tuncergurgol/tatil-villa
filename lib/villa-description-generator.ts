@@ -1,4 +1,5 @@
 import type { VillaCategory } from "@prisma/client";
+import { sortAmenityNamesTr } from "@/lib/amenity-featured";
 import { facilityTypeLabel } from "@/lib/facility-type";
 import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 
@@ -72,11 +73,7 @@ type FeaturedBuckets = {
   other: string[];
 };
 
-export function isFeaturedAmenityCategory(category: string) {
-  return (
-    category.localeCompare("Öne Çıkanlar", "tr", { sensitivity: "base" }) === 0
-  );
-}
+export { isFeaturedAmenityCategory } from "@/lib/amenity-featured";
 
 export function formatDescriptionDistanceKm(km: number) {
   if (km < 1) {
@@ -143,7 +140,7 @@ function formatDistanceLines(distances: VillaDescriptionDistance[]) {
 
 function formatFeaturedLines(featuredAmenities: string[]) {
   if (featuredAmenities.length === 0) return "Belirtilmedi";
-  return featuredAmenities.join(", ");
+  return sortAmenityNamesTr(featuredAmenities).join(", ");
 }
 
 function categorizeFeaturedAmenities(featured: string[]): FeaturedBuckets {

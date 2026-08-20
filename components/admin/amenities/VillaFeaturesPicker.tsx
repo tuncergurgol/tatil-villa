@@ -1,6 +1,10 @@
 "use client";
 
 import { forwardRef, useImperativeHandle, useMemo, useState } from "react";
+import {
+  compareAmenityNamesTr,
+  isFeaturedAmenityCategory,
+} from "@/lib/amenity-featured";
 import type { AmenityCategoryItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
 
@@ -174,8 +178,13 @@ const VillaFeaturesPicker = forwardRef<
               {category.name}
             </h3>
             <div className="flex flex-wrap gap-2">
-              {category.amenities
+              {[...category.amenities]
                 .filter((amenity) => amenity.active)
+                .sort((a, b) =>
+                  isFeaturedAmenityCategory(category.name)
+                    ? compareAmenityNamesTr(a.name, b.name)
+                    : 0
+                )
                 .map((amenity) => {
                   const checked = selectedAmenities.has(amenity.name);
                   const longText = isLongTextAmenity(amenity.name);
