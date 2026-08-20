@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverMinification: false,
     optimizePackageImports: ["lucide-react"],
+    inlineCss: true,
   },
   async headers() {
     const securityHeaders = [

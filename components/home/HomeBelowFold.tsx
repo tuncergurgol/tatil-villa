@@ -60,7 +60,7 @@ export default async function HomeBelowFold({
 
       <section
         id="seyahat-macerasi"
-        className="cv-auto border-t border-slate-100 bg-white py-12 sm:py-16"
+        className="border-t border-slate-100 bg-white py-12 sm:py-16"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <TravelAdventureSection />

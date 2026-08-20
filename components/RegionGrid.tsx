@@ -48,7 +48,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
   if (sorted.length === 0 || (featured.length === 0 && !activeSlug)) return null;
 
   return (
-    <section id="bolgeler" className="cv-auto bg-white py-12 sm:py-16">
+    <section id="bolgeler" className="bg-white py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
@@ -61,7 +61,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
           <button
             type="button"
             onClick={() => setActiveSlug(null)}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+            className={`inline-flex min-h-12 items-center rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
               activeSlug === null
                 ? "border-sky-700 bg-sky-50 text-sky-800"
                 : "border-sky-300 bg-white text-sky-700 hover:border-sky-500 hover:bg-sky-50"
@@ -74,7 +74,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
               key={region.id}
               type="button"
               onClick={() => setActiveSlug(region.slug)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              className={`inline-flex min-h-12 items-center rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
                 activeSlug === region.slug
                   ? "border-sky-700 bg-sky-50 text-sky-800"
                   : "border-sky-300 bg-white text-sky-700 hover:border-sky-500 hover:bg-sky-50"
@@ -85,7 +85,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
           ))}
         </div>
 
-        <div className="grid auto-rows-[minmax(140px,auto)] grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <div className="grid auto-rows-[minmax(140px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((region, index) => {
             const sizeClass =
               activeSlug !== null

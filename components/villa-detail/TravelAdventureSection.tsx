@@ -53,14 +53,14 @@ export default function TravelAdventureSection() {
         </p>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {SERVICES.map((service) => {
           const Icon = service.icon;
           return (
             <Link
               key={service.href}
               href={service.href}
-              className="group flex cursor-pointer items-start gap-3 rounded-2xl border border-white/80 bg-white/90 px-4 py-4 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
+              className="group flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border border-white/80 bg-white/90 px-4 py-3 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 transition group-hover:bg-teal-600 group-hover:text-white">
                 <Icon className="h-5 w-5" strokeWidth={1.75} />

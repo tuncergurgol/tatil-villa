@@ -118,7 +118,7 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
   return (
     <div className="mx-auto w-full max-w-5xl">
       <div className="mb-1.5 flex justify-center">
-        <div className="inline-flex flex-wrap items-center justify-center gap-0.5 rounded-2xl bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur-sm sm:px-3">
+        <div className="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-2xl bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur-sm sm:px-3">
           {SEARCH_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -134,7 +134,7 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
                   }
                   setActiveTab(tab.id);
                 }}
-                className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-medium transition ${
+                className={`flex min-h-12 items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isActive
                     ? "bg-sky-50 text-sky-700"
                     : "text-gray-700 hover:bg-gray-50"

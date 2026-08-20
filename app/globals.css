@@ -18,7 +18,7 @@ html {
 /* Below-fold: ilk boyamada layout/paint işini atla (LCP + INP) */
 .cv-auto {
   content-visibility: auto;
-  contain-intrinsic-size: auto 36rem;
+  contain-intrinsic-size: auto 80rem;
 }
 
 body {

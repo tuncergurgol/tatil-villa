@@ -8,7 +8,7 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
-  preload: true,
+  preload: false,
 });
 
 export async function generateMetadata(): Promise<Metadata> {
