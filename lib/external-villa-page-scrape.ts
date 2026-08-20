@@ -3731,7 +3731,41 @@ export async function scrapeVillavillamFromPage(
     }
   }
 
-  if (periods.length === 0) return null;
+  if (periods.length === 0) {
+    const occupancyOnly =
+      availability?.occupancyByDateKey ?? new Map<string, VillaDayOccupancy>();
+    if (occupancyOnly.size === 0) return null;
+    warnings.push(
+      `${site.hostKey} fiyat periyodu yok; yalnızca müsaitlik takvimi okundu`
+    );
+    return {
+      sourceHost: normalizeHost(new URL(pageUrl).hostname),
+      strategy:
+        site.hostKey === "villacim"
+          ? "villacim"
+          : site.hostKey === "tatilpremium"
+            ? "tatilpremium"
+            : site.hostKey === "villapaketi"
+              ? "villapaketi"
+              : site.hostKey === "villaciniz"
+                ? "villaciniz"
+                : site.hostKey === "villayolu"
+                  ? "villayolu"
+                  : site.hostKey === "mustakilvillam"
+                    ? "mustakilvillam"
+                    : site.hostKey === "myvillacity"
+                      ? "myvillacity"
+                      : site.hostKey === "villakilavuzu"
+                        ? "villakilavuzu"
+                        : site.hostKey === "ovillam"
+                          ? "ovillam"
+                          : "villavillam",
+      pageTitle: entity.title ?? extractPageTitle(html),
+      periods: [],
+      occupancyByDateKey: occupancyOnly,
+      warnings,
+    };
+  }
 
   const occupancyByDateKey =
     availability?.occupancyByDateKey ?? new Map<string, VillaDayOccupancy>();
