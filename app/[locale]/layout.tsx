@@ -36,9 +36,14 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const messages = await getMessages();
+  const clientMessages = {
+    nav: (messages as { nav?: unknown }).nav,
+    header: (messages as { header?: unknown }).header,
+    mobileNav: (messages as { mobileNav?: unknown }).mobileNav,
+  };
 
   return (
-    <NextIntlClientProvider messages={messages}>
+    <NextIntlClientProvider messages={clientMessages}>
       <SiteChrome>{children}</SiteChrome>
     </NextIntlClientProvider>
   );

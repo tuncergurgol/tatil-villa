@@ -1,4 +1,4 @@
-import BlogInspirationSlider from "@/components/blog/BlogInspirationSlider";
+import DeferredBlogInspiration from "@/components/blog/DeferredBlogInspiration";
 import FaqCategoryPanel from "@/components/home/FaqCategoryPanel";
 import HomeContentSection from "@/components/home/HomeContentSection";
 import ReviewsShowcase from "@/components/home/ReviewsShowcase";
@@ -130,9 +130,7 @@ export default function SitePreFooterAccordions({
         </HomeContentSection>
 
         <HomeContentSection id="blog" title="Bloglar" variant="gradient">
-          <BlogInspirationSlider
-            embedded
-            showHeader={false}
+          <DeferredBlogInspiration
             categories={blogCategories}
             posts={posts.map((post) => ({
               id: post.id,

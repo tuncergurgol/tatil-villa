@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import PublicContentProtection from "@/components/PublicContentProtection";
+import DeferredContentProtection from "@/components/DeferredContentProtection";
 import SiteChromeBelowFold from "@/components/SiteChromeBelowFold";
 import SiteChromeHeader from "@/components/SiteChromeHeader";
 import SiteChromeMobileNav from "@/components/SiteChromeMobileNav";
@@ -13,7 +13,7 @@ function HeaderFallback() {
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PublicContentProtection />
+      <DeferredContentProtection />
       <Suspense fallback={<HeaderFallback />}>
         <SiteChromeHeader />
       </Suspense>
