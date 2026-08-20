@@ -24,6 +24,9 @@ async function main() {
         { name: { contains: "Mona Lisa", mode: "insensitive" } },
         { slug: { contains: "monalisa", mode: "insensitive" } },
         { slug: { contains: "mona-lisa", mode: "insensitive" } },
+        { documentNo: { equals: "07-7293" } },
+        { villaId: 229 },
+        { externalSyncUrl1: { contains: "villa-monalisa", mode: "insensitive" } },
       ],
     },
     select: {
@@ -31,6 +34,7 @@ async function main() {
       villaId: true,
       name: true,
       slug: true,
+      documentNo: true,
       externalSyncUrl1: true,
       externalSyncLastMessage1: true,
     },
@@ -40,13 +44,18 @@ async function main() {
   console.log("Aday villalar:");
   for (const row of candidates) {
     console.log(
-      `- ${row.villaId ?? "-"} | ${row.name} | ${row.slug} | link1=${row.externalSyncUrl1 || "(boş)"} | msg=${row.externalSyncLastMessage1 || "-"}`
+      `- ${row.villaId ?? "-"} | ${row.name} | ${row.slug} | belge=${row.documentNo || "-"} | link1=${row.externalSyncUrl1 || "(boş)"} | msg=${row.externalSyncLastMessage1 || "-"}`
     );
   }
 
   if (listOnly) return;
 
   const villa =
+    candidates.find((row) => row.villaId === 229) ??
+    candidates.find((row) => row.documentNo === "07-7293") ??
+    candidates.find((row) =>
+      (row.externalSyncUrl1 || "").toLowerCase().includes("villa-monalisa")
+    ) ??
     candidates.find((row) =>
       row.slug.toLowerCase().includes("monalisa")
     ) ??
