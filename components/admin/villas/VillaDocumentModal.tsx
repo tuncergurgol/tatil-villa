@@ -1,6 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
 import Image from "next/image";
 import { FileText, Save, ShieldCheck, Trash2, UploadCloud, X } from "lucide-react";
 import { uploadCompanyAsset } from "@/app/actions/admin/company-assets";
@@ -15,6 +22,7 @@ import {
   type KonutBelgeCheckStatus,
 } from "@/lib/konut-belge-check";
 import {
+  hasVillaTourismDocument,
   inferKonutBelgesiType,
   resolveVillaDocumentType,
   TOURISM_DOCUMENT_TYPES,
@@ -43,6 +51,8 @@ export default function VillaDocumentModal({
   const [roomCapacity, setRoomCapacity] = useState("");
   const [bedCapacity, setBedCapacity] = useState("");
   const [documentNo, setDocumentNo] = useState("");
+  const [hadDocumentInitially, setHadDocumentInitially] = useState(false);
+  const [askShowInSearch, setAskShowInSearch] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [checkStatus, setCheckStatus] = useState<KonutBelgeCheckStatus | null>(
     null
@@ -51,6 +61,7 @@ export default function VillaDocumentModal({
   const [isUploading, startUpload] = useTransition();
   const [isChecking, startCheck] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  const pendingFormDataRef = useRef<FormData | null>(null);
 
   const [state, formAction, pending] = useActionState<
     VillaDocumentActionState,
@@ -81,6 +92,12 @@ export default function VillaDocumentModal({
         setBedCapacity(String(data.documentBedCapacity ?? ""));
         setDocumentImageUrl(data.documentImageUrl);
         setDocumentNo(loadedDocumentNo);
+        setHadDocumentInitially(
+          hasVillaTourismDocument({
+            documentNo: loadedDocumentNo,
+            documentType: data.documentType,
+          })
+        );
       } catch {
         if (!cancelled) setLoadError("Belge bilgileri yüklenemedi");
       } finally {
@@ -180,14 +197,103 @@ export default function VillaDocumentModal({
     setUploadError(null);
     setCheckStatus(null);
     setCheckMessage(null);
+    setAskShowInSearch(false);
+    pendingFormDataRef.current = null;
     if (fileRef.current) {
       fileRef.current.value = "";
     }
   }
 
+  function isEmptyDocumentDraft() {
+    return (
+      !documentType &&
+      !documentNo.trim() &&
+      !ownerName.trim() &&
+      !address.trim() &&
+      !documentImageUrl.trim() &&
+      !roomCapacity.trim() &&
+      !bedCapacity.trim()
+    );
+  }
+
+  function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const willHaveDocument = !isEmptyDocumentDraft();
+
+    if (!hadDocumentInitially && willHaveDocument) {
+      pendingFormDataRef.current = formData;
+      setAskShowInSearch(true);
+      return;
+    }
+
+    formAction(formData);
+  }
+
+  function confirmShowInSearch(enable: boolean) {
+    const formData = pendingFormDataRef.current;
+    if (!formData) {
+      setAskShowInSearch(false);
+      return;
+    }
+
+    formData.set("applyShowInSearch", "true");
+    formData.set("showInSearch", enable ? "true" : "false");
+    pendingFormDataRef.current = null;
+    setAskShowInSearch(false);
+    formAction(formData);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+      <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        {askShowInSearch ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/35 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-base font-bold text-gray-900">
+                Arama alanında görünür olsun mu?
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Belge No eklendi. Bu villayı{" "}
+                <span className="font-semibold text-gray-800">
+                  Arama Alanında Görünür
+                </span>{" "}
+                yapmak ister misiniz?
+              </p>
+              <div className="mt-5 flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmShowInSearch(false)}
+                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+                  >
+                    Hayır — Pasif kalsın
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmShowInSearch(true)}
+                    className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    Evet — Aktif olsun
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    pendingFormDataRef.current = null;
+                    setAskShowInSearch(false);
+                  }}
+                  className="text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-60"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold text-gray-900">
@@ -221,7 +327,11 @@ export default function VillaDocumentModal({
             {loadError}
           </div>
         ) : (
-          <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+          <form
+            action={formAction}
+            onSubmit={handleFormSubmit}
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <input type="hidden" name="villaId" value={villaId} />
             <input type="hidden" name="documentImageUrl" value={documentImageUrl} />
 

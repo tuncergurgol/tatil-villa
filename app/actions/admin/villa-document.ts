@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { inferKonutBelgesiType, resolveVillaDocumentType, UNDOCUMENTED_VILLA_VISIBILITY } from "@/lib/villa-document-types";
+import { resolveVillaDocumentType, UNDOCUMENTED_VILLA_VISIBILITY } from "@/lib/villa-document-types";
 import { verifyKonutBelgeOnline } from "@/lib/konut-belge-check";
 
 export type VillaDocumentActionState = {
@@ -148,7 +148,7 @@ export async function saveVillaDocument(
 
   const existing = await prisma.villa.findUnique({
     where: { id: villaId },
-    select: { documentNo: true },
+    select: { documentNo: true, documentType: true },
   });
   if (!existing) return { error: "Villa bulunamadı" };
 
@@ -168,6 +168,14 @@ export async function saveVillaDocument(
     return { error: "Belge türü seçilmelidir" };
   }
 
+  const hadDocumentBefore = Boolean(
+    resolveVillaDocumentType(existing.documentNo, existing.documentType) ||
+      existing.documentNo.trim()
+  );
+  const applyShowInSearch =
+    formData.get("applyShowInSearch") === "true" && !hadDocumentBefore;
+  const showInSearch = formData.get("showInSearch") === "true";
+
   try {
     await prisma.villa.update({
       where: { id: villaId },
@@ -179,6 +187,7 @@ export async function saveVillaDocument(
         documentBedCapacity: parsed.data.documentBedCapacity,
         documentImageUrl: parsed.data.documentImageUrl.trim(),
         documentNo,
+        ...(applyShowInSearch ? { showInSearch } : {}),
       },
     });
     revalidateVillaDocumentPaths();
