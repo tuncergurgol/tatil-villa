@@ -4794,6 +4794,15 @@ async function scrapeHepsivillaFromPage(
   if (periods.length === 0) {
     if (occupancyByDateKey.size > 0) {
       warnings.push("Hepsivilla takvim okundu ancak price_block bulunamadı");
+      return {
+        sourceHost: normalizeHost(new URL(pageUrl).hostname),
+        strategy: "hepsivilla",
+        pageTitle: extractPageTitle(html),
+        periods: [],
+        occupancyByDateKey,
+        checkInDateKeys,
+        warnings,
+      };
     }
     return null;
   }

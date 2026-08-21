@@ -1,7 +1,8 @@
 /**
- * Faralya 1–6: Link3 fiyat URL'lerini villa bazlı hepsivilla sayfalarına çeker.
- * Faralya 5–6: kırık Link2 (mustakil 404) → hepsivilla takvim URL.
- * Ardından L2 (takvim) + L3 (fiyat) senkronlar.
+ * Faralya link onarımı (Link 2 = takvim, Link 3 = fiyat):
+ * - L3: yalnızca price_block olan faralya-villas-1 (ortak fiyat)
+ * - L2 Faralya 6: hepsivilla faralya-villas-6 (takvim; mustakil 404)
+ * - L2 Faralya 5: mustakil 404 + hepsivilla sayfa bozuk → L2 boşaltılmaz, uyarı
  *
  * npx tsx scripts/fix-faralya-link-slots.ts [--dry-run]
  */
@@ -10,40 +11,23 @@ import { syncVillaExternalLinkSlot } from "../lib/villa-external-sync";
 
 const prisma = new PrismaClient();
 
+const SHARED_PRICE = "https://www.hepsivilla.com/faralya-villas-1/";
+
 const FARALYA: Array<{
   villaId: number;
-  hepsivilla: string;
-  fixLink2: boolean;
+  link2?: string | null;
+  link3: string;
 }> = [
-  {
-    villaId: 230,
-    hepsivilla: "https://www.hepsivilla.com/faralya-villas-1/",
-    fixLink2: false,
-  },
-  {
-    villaId: 231,
-    hepsivilla: "https://www.hepsivilla.com/faralya-villas-2/",
-    fixLink2: false,
-  },
-  {
-    villaId: 232,
-    hepsivilla: "https://www.hepsivilla.com/faralya-villas-3/",
-    fixLink2: false,
-  },
-  {
-    villaId: 233,
-    hepsivilla: "https://www.hepsivilla.com/faralya-villas-4/",
-    fixLink2: false,
-  },
-  {
-    villaId: 422,
-    hepsivilla: "https://www.hepsivilla.com/faralya-villas-5/",
-    fixLink2: true,
-  },
+  { villaId: 230, link3: SHARED_PRICE },
+  { villaId: 231, link3: SHARED_PRICE },
+  { villaId: 232, link3: SHARED_PRICE },
+  { villaId: 233, link3: SHARED_PRICE },
+  // 5: hepsivilla sayfası bozuk (id_item yok); mustakil 404 — L2 elle kontrol
+  { villaId: 422, link3: SHARED_PRICE },
   {
     villaId: 423,
-    hepsivilla: "https://www.hepsivilla.com/faralya-villas-6/",
-    fixLink2: true,
+    link2: "https://www.hepsivilla.com/faralya-villas-6/",
+    link3: SHARED_PRICE,
   },
 ];
 
@@ -69,25 +53,22 @@ async function main() {
     const data: {
       externalSyncUrl3: string;
       externalSyncUrl2?: string;
-    } = {
-      externalSyncUrl3: item.hepsivilla,
-    };
-    if (item.fixLink2) {
-      data.externalSyncUrl2 = item.hepsivilla;
+    } = { externalSyncUrl3: item.link3 };
+
+    if (item.link2) {
+      data.externalSyncUrl2 = item.link2;
     }
 
     console.log(
-      `#${villa.villaId} ${villa.name}: L3 ${villa.externalSyncUrl3} -> ${item.hepsivilla}` +
-        (item.fixLink2
-          ? ` | L2 ${villa.externalSyncUrl2} -> ${item.hepsivilla}`
-          : "")
+      `#${villa.villaId} ${villa.name}: L3 -> ${item.link3}` +
+        (item.link2 ? ` | L2 -> ${item.link2}` : "")
     );
 
     if (dryRun) continue;
 
     await prisma.villa.update({ where: { id: villa.id }, data });
 
-    if (item.fixLink2) {
+    if (item.link2) {
       const r2 = await syncVillaExternalLinkSlot(villa.id, 2);
       console.log(`  Link2: ${r2.ok ? "OK" : "FAIL"} — ${r2.message}`);
     }
