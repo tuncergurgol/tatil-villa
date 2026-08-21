@@ -52,10 +52,12 @@ function countOccupancyFromMap(occupancyByDateKey: Map<string, VillaDayOccupancy
 /** Mevcut fiyat periyotlarını koruyarak harici takvim doluluğunu üzerine yazar. */
 export async function applyExternalPageOccupancyOverlay(
   villaId: string,
-  occupancyByDateKey: Map<string, VillaDayOccupancy>
+  occupancyByDateKey: Map<string, VillaDayOccupancy>,
+  options?: { checkInDateKeys?: ReadonlySet<string> }
 ): Promise<{ updatedDays: number }> {
   const protectedDateKeys =
     await loadConfirmedBookingProtectedDateKeys(villaId);
+  const checkInDateKeys = options?.checkInDateKeys;
   const updates = [];
 
   for (const [dateKey, occupancyStatus] of occupancyByDateKey) {
@@ -67,7 +69,12 @@ export async function applyExternalPageOccupancyOverlay(
           villaId,
           date: dateKeyToDbDate(dateKey),
         },
-        data: { occupancyStatus },
+        data: {
+          occupancyStatus,
+          ...(checkInDateKeys
+            ? { occupancyCheckIn: checkInDateKeys.has(dateKey) }
+            : {}),
+        },
       })
     );
   }
@@ -109,16 +116,22 @@ function countOccupancyDays(scraped: ScrapedVillaPage) {
 
 async function loadExistingOccupancyByDateKey(
   villaId: string
-): Promise<Map<string, VillaDayOccupancy>> {
+): Promise<{
+  occupancyByDateKey: Map<string, VillaDayOccupancy>;
+  checkInDateKeys: Set<string>;
+}> {
   const days = await prisma.villaPricePeriodDay.findMany({
     where: { villaId },
-    select: { date: true, occupancyStatus: true },
+    select: { date: true, occupancyStatus: true, occupancyCheckIn: true },
   });
-  const map = new Map<string, VillaDayOccupancy>();
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
   for (const day of days) {
-    map.set(dbDateToDateKey(day.date), day.occupancyStatus);
+    const key = dbDateToDateKey(day.date);
+    occupancyByDateKey.set(key, day.occupancyStatus);
+    if (day.occupancyCheckIn) checkInDateKeys.add(key);
   }
-  return map;
+  return { occupancyByDateKey, checkInDateKeys };
 }
 
 /**
@@ -155,6 +168,7 @@ export async function importVillaPeriodsFromExternalPage(
   });
 
   const scraped = await scrapeExternalVillaPage(pageUrl);
+  const scrapedCheckIns = scraped.checkInDateKeys ?? new Set<string>();
 
   if (syncMode === "calendar") {
     if (scraped.occupancyByDateKey.size === 0) {
@@ -176,7 +190,8 @@ export async function importVillaPeriodsFromExternalPage(
     }
     const { updatedDays } = await applyExternalPageOccupancyOverlay(
       villaId,
-      scraped.occupancyByDateKey
+      scraped.occupancyByDateKey,
+      { checkInDateKeys: scrapedCheckIns }
     );
     await reapplyConfirmedBookingReservedOccupancy(villaId);
     return {
@@ -196,9 +211,12 @@ export async function importVillaPeriodsFromExternalPage(
     }
     const existingFallback = buildPeriodMetaFallbackFromPeriods(existingPeriods);
     applyPeriodMetaFallback(scraped.periods, existingFallback);
-    const existingOccupancy = await loadExistingOccupancyByDateKey(villaId);
+    const existing = await loadExistingOccupancyByDateKey(villaId);
     const dayCount = scraped.periods.reduce((sum, period) => {
-      return sum + buildDaySnapshotsForPeriod(period, existingOccupancy).length;
+      return (
+        sum +
+        buildDaySnapshotsForPeriod(period, existing.occupancyByDateKey).length
+      );
     }, 0);
     if (dryRun) {
       return {
@@ -214,7 +232,8 @@ export async function importVillaPeriodsFromExternalPage(
     await persistVillaPricePeriods({
       villaId,
       periods: scraped.periods,
-      occupancyByDateKey: existingOccupancy,
+      occupancyByDateKey: existing.occupancyByDateKey,
+      checkInDateKeys: existing.checkInDateKeys,
     });
     await reapplyConfirmedBookingReservedOccupancy(villaId);
     return {
@@ -247,7 +266,8 @@ export async function importVillaPeriodsFromExternalPage(
 
     const { updatedDays } = await applyExternalPageOccupancyOverlay(
       villaId,
-      scraped.occupancyByDateKey
+      scraped.occupancyByDateKey,
+      { checkInDateKeys: scrapedCheckIns }
     );
     await reapplyConfirmedBookingReservedOccupancy(villaId);
 
@@ -287,6 +307,7 @@ export async function importVillaPeriodsFromExternalPage(
     villaId,
     periods: scraped.periods,
     occupancyByDateKey: scraped.occupancyByDateKey,
+    checkInDateKeys: scrapedCheckIns,
   });
   await reapplyConfirmedBookingReservedOccupancy(villaId);
 

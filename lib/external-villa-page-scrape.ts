@@ -85,6 +85,8 @@ export type ScrapedVillaPage = {
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
+  /** Aynı gün çıkış+giriş (hepsivilla `inout` vb.) — occupancyCheckIn yazılır. */
+  checkInDateKeys?: Set<string>;
   warnings: string[];
 };
 
@@ -4650,11 +4652,20 @@ export function parseHepsivillaPriceBlocks(
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
 }
 
-/** hepsivilla.com `/ajax/cal.do` HTML — `booked` / `onhold` sınıfları. */
+export type ParsedHepsivillaCalendarOccupancy = {
+  occupancyByDateKey: Map<string, VillaDayOccupancy>;
+  checkInDateKeys: Set<string>;
+};
+
+/**
+ * hepsivilla.com `/ajax/cal.do` HTML — `booked` / `onhold` / `inout` sınıfları.
+ * `inout` = aynı gün çıkış+giriş → BOOKED + giriş işareti (turnover).
+ */
 export function parseHepsivillaCalendarOccupancy(
   html: string
-): Map<string, VillaDayOccupancy> {
-  const occupancy = new Map<string, VillaDayOccupancy>();
+): ParsedHepsivillaCalendarOccupancy {
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
   const liRe = /<li\b([^>]*)\bid=["'](\d{4}-\d{2}-\d{2})["']([^>]*)>/gi;
   let match: RegExpExecArray | null;
 
@@ -4664,6 +4675,9 @@ export function parseHepsivillaCalendarOccupancy(
     const classMatch = attrs.match(/\bclass=["']([^"']+)["']/i)?.[1] ?? "";
     const classes = classMatch.split(/\s+/).filter(Boolean);
 
+    const isInout = classes.some(
+      (c) => c === "inout" || c === "giriscikis" || c === "checkinout"
+    );
     const isFullBooked = classes.some(
       (c) => c === "booked" || c === "bg_redish"
     );
@@ -4677,18 +4691,28 @@ export function parseHepsivillaCalendarOccupancy(
       /^(booked_am|booked_pm|onhold_am|onhold_pm)$/.test(c)
     );
 
+    // Aynı gün çıkış+giriş: gece yeni konuğa aittir (BOOKED + check-in).
+    if (isInout) {
+      occupancyByDateKey.set(key, "BOOKED");
+      checkInDateKeys.add(key);
+      continue;
+    }
+
     if (isPartial && !isFullBooked && !isFullOption) continue;
 
     if (isFullBooked) {
-      occupancy.set(key, "BOOKED");
+      occupancyByDateKey.set(key, "BOOKED");
     } else if (isFullOption) {
-      if (!occupancy.has(key) || occupancy.get(key) !== "BOOKED") {
-        occupancy.set(key, "OPTION");
+      if (
+        !occupancyByDateKey.has(key) ||
+        occupancyByDateKey.get(key) !== "BOOKED"
+      ) {
+        occupancyByDateKey.set(key, "OPTION");
       }
     }
   }
 
-  return occupancy;
+  return { occupancyByDateKey, checkInDateKeys };
 }
 
 async function fetchHepsivillaCalendarOccupancy(
@@ -4696,9 +4720,10 @@ async function fetchHepsivillaCalendarOccupancy(
   html: string,
   itemId: string,
   warnings: string[]
-): Promise<Map<string, VillaDayOccupancy>> {
+): Promise<ParsedHepsivillaCalendarOccupancy> {
   const calBase = extractHepsivillaCalendarUrl(html, pageUrl);
-  const occupancy = new Map<string, VillaDayOccupancy>();
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
   const today = startOfDay(new Date());
   let year = today.getFullYear();
   let month = today.getMonth() + 1;
@@ -4708,11 +4733,15 @@ async function fetchHepsivillaCalendarOccupancy(
     const url = `${calBase}?id_item=${encodeURIComponent(itemId)}&month=${month}&year=${year}&lang=tr&t=${Date.now()}`;
     try {
       const calHtml = await fetchText(url, { referer: pageUrl });
-      for (const [key, value] of parseHepsivillaCalendarOccupancy(calHtml)) {
-        const existing = occupancy.get(key);
+      const parsed = parseHepsivillaCalendarOccupancy(calHtml);
+      for (const [key, value] of parsed.occupancyByDateKey) {
+        const existing = occupancyByDateKey.get(key);
         if (value === "BOOKED" || existing !== "BOOKED") {
-          occupancy.set(key, value);
+          occupancyByDateKey.set(key, value);
         }
+      }
+      for (const key of parsed.checkInDateKeys) {
+        checkInDateKeys.add(key);
       }
     } catch (error) {
       warnings.push(
@@ -4728,7 +4757,7 @@ async function fetchHepsivillaCalendarOccupancy(
     }
   }
 
-  return occupancy;
+  return { occupancyByDateKey, checkInDateKeys };
 }
 
 async function scrapeHepsivillaFromPage(
@@ -4742,16 +4771,21 @@ async function scrapeHepsivillaFromPage(
   const periods = parseHepsivillaPriceBlocks(html, deposit);
   const itemId = extractHepsivillaCalendarItemId(html);
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
 
   if (itemId) {
     await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
-    for (const [key, value] of await fetchHepsivillaCalendarOccupancy(
+    const parsed = await fetchHepsivillaCalendarOccupancy(
       pageUrl,
       html,
       itemId,
       warnings
-    )) {
+    );
+    for (const [key, value] of parsed.occupancyByDateKey) {
       occupancyByDateKey.set(key, value);
+    }
+    for (const key of parsed.checkInDateKeys) {
+      checkInDateKeys.add(key);
     }
   } else {
     warnings.push("Hepsivilla takvim id_item bulunamadı");
@@ -4776,6 +4810,7 @@ async function scrapeHepsivillaFromPage(
     pageTitle: extractPageTitle(html),
     periods,
     occupancyByDateKey,
+    checkInDateKeys,
     warnings,
   };
 }
@@ -4879,6 +4914,7 @@ async function scrapeElitvillamFromPage(
   const deposit = extractDamageDeposit(html);
   const itemId = extractHepsivillaCalendarItemId(html);
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
   const dateKeys: string[] = [];
   const prices: number[] = [];
 
@@ -4894,11 +4930,15 @@ async function scrapeElitvillamFromPage(
       const url = `${calBase}?id_item=${encodeURIComponent(itemId)}&month=${month}&year=${year}&lang=tr&t=${Date.now()}`;
       try {
         const calHtml = await fetchText(url, { referer: pageUrl });
-        for (const [key, value] of parseHepsivillaCalendarOccupancy(calHtml)) {
+        const parsed = parseHepsivillaCalendarOccupancy(calHtml);
+        for (const [key, value] of parsed.occupancyByDateKey) {
           const existing = occupancyByDateKey.get(key);
           if (value === "BOOKED" || existing !== "BOOKED") {
             occupancyByDateKey.set(key, value);
           }
+        }
+        for (const key of parsed.checkInDateKeys) {
+          checkInDateKeys.add(key);
         }
         const dayPrices = parseElitvillamCalendarDayPrices(calHtml);
         for (let j = 0; j < dayPrices.dateKeys.length; j++) {
@@ -4959,6 +4999,7 @@ async function scrapeElitvillamFromPage(
     pageTitle: extractPageTitle(html),
     periods,
     occupancyByDateKey,
+    checkInDateKeys,
     warnings,
   };
 }

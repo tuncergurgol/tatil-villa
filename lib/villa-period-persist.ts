@@ -19,6 +19,7 @@ export async function persistVillaPricePeriods(input: {
   villaId: string;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
+  checkInDateKeys?: ReadonlySet<string>;
 }) {
   const protectedDateKeys = await loadConfirmedBookingProtectedDateKeys(
     input.villaId
@@ -55,6 +56,7 @@ export async function persistVillaPricePeriods(input: {
             date: dateKeyToDbDate(dateKey),
             ...snapshot,
             occupancyStatus: snapshot.occupancyStatus ?? "EMPTY",
+            occupancyCheckIn: input.checkInDateKeys?.has(dateKey) ?? false,
           })),
           skipDuplicates: true,
         });
