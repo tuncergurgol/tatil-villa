@@ -718,17 +718,7 @@ export default function CalendarPriceTransferManagement({
             ]}
           />
         </th>
-        <th className="px-3 py-2">
-          <ColumnFilterSelect
-            value={columnFilters.syncable}
-            onChange={(value) => updateColumnFilter("syncable", value)}
-            options={[
-              { value: "all", label: "Tümü" },
-              { value: "yes", label: "Kaynak var" },
-              { value: "no", label: "Kaynak yok" },
-            ]}
-          />
-        </th>
+        <th className="px-3 py-2" />
         <th className="px-3 py-2">
           <ColumnFilterSelect
             value={columnFilters.report}
@@ -951,7 +941,7 @@ export default function CalendarPriceTransferManagement({
                   <th className="px-3 py-3">Link 1</th>
                   <th className="px-3 py-3">Link 2</th>
                   <th className="px-3 py-3">Link 3</th>
-                  <th className="px-3 py-3">Güncelle</th>
+                  <th className="px-3 py-3" />
                   <th className="px-3 py-3">Rapor</th>
                 </tr>
                 {renderColumnFilterRow()}
