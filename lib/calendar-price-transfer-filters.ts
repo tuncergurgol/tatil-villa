@@ -8,6 +8,7 @@ export type ReportFilter = "all" | "error" | "updated" | "not_updated";
 export type CalendarPriceTransferColumnFilters = {
   villaSearch: string;
   originalNameSearch: string;
+  documentNoSearch: string;
   status: StatusFilter;
   whatsapp: TriStateFilter;
   ical: TriStateFilter;
@@ -22,6 +23,7 @@ export const emptyCalendarPriceTransferColumnFilters: CalendarPriceTransferColum
   {
     villaSearch: "",
     originalNameSearch: "",
+    documentNoSearch: "",
     status: "all",
     whatsapp: "all",
     ical: "all",
@@ -61,6 +63,13 @@ export function applyCalendarPriceTransferColumnFilters(
     if (
       filters.originalNameSearch.trim() &&
       !includesSearchText(row.originalName, filters.originalNameSearch)
+    ) {
+      return false;
+    }
+
+    if (
+      filters.documentNoSearch.trim() &&
+      !includesSearchText(row.documentNo, filters.documentNoSearch)
     ) {
       return false;
     }
@@ -105,6 +114,7 @@ export function calendarPriceTransferRowsToExcel(
       "Villa ID": row.villaId ?? "",
       "Villa Adı": row.name,
       "Villa Orijinal Adı": row.originalName,
+      "Belge No": row.documentNo,
       Durum: row.active ? "Aktif" : "Pasif",
       WhatsApp: row.whatsapp.connected ? "Bağlı" : "Bağlı değil",
       "WhatsApp Grup": row.whatsapp.groupName || "",
@@ -158,6 +168,7 @@ export function countActiveCalendarPriceTransferFilters(
   let count = 0;
   if (filters.villaSearch.trim()) count += 1;
   if (filters.originalNameSearch.trim()) count += 1;
+  if (filters.documentNoSearch.trim()) count += 1;
   if (filters.status !== "all") count += 1;
   if (filters.whatsapp !== "all") count += 1;
   if (filters.ical !== "all") count += 1;

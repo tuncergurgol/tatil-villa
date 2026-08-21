@@ -620,24 +620,35 @@ export default function CalendarPriceTransferManagement({
       <tr className="border-t border-gray-200 bg-white">
         <th className="px-3 py-2" />
         <th className="px-3 py-2">
-          <input
-            type="text"
-            value={columnFilters.villaSearch}
-            onChange={(event) =>
-              updateColumnFilter("villaSearch", event.target.value)
-            }
-            placeholder="ID / ad ara"
-            className={filterInputClass}
-          />
+          <div className="space-y-1.5">
+            <input
+              type="text"
+              value={columnFilters.villaSearch}
+              onChange={(event) =>
+                updateColumnFilter("villaSearch", event.target.value)
+              }
+              placeholder="ID / ad ara"
+              className={filterInputClass}
+            />
+            <input
+              type="text"
+              value={columnFilters.originalNameSearch}
+              onChange={(event) =>
+                updateColumnFilter("originalNameSearch", event.target.value)
+              }
+              placeholder="Orijinal ad ara"
+              className={filterInputClass}
+            />
+          </div>
         </th>
         <th className="px-3 py-2">
           <input
             type="text"
-            value={columnFilters.originalNameSearch}
+            value={columnFilters.documentNoSearch}
             onChange={(event) =>
-              updateColumnFilter("originalNameSearch", event.target.value)
+              updateColumnFilter("documentNoSearch", event.target.value)
             }
-            placeholder="Orijinal ad ara"
+            placeholder="Belge no ara"
             className={filterInputClass}
           />
         </th>
@@ -933,7 +944,7 @@ export default function CalendarPriceTransferManagement({
                 <tr>
                   <th className="px-3 py-3">Seç</th>
                   <th className="px-3 py-3">Villa ID — Villa Adı</th>
-                  <th className="px-3 py-3">Villa Orijinal Adı</th>
+                  <th className="px-3 py-3">Belge No</th>
                   <th className="px-3 py-3">Durum</th>
                   <th className="px-3 py-3">WhatsApp</th>
                   <th className="px-3 py-3">iCal</th>
@@ -976,9 +987,14 @@ export default function CalendarPriceTransferManagement({
                       <div className="font-semibold text-gray-900">
                         {row.villaId != null ? row.villaId : "—"} — {row.name}
                       </div>
+                      {row.originalName ? (
+                        <div className="mt-0.5 text-xs text-gray-500">
+                          {row.originalName}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 py-3 text-gray-700">
-                      {row.originalName || "—"}
+                      {row.documentNo || "—"}
                     </td>
                     <td className="px-3 py-3">
                       <span

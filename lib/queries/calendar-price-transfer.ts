@@ -32,6 +32,7 @@ export type CalendarPriceTransferRow = {
   villaId: number | null;
   name: string;
   originalName: string;
+  documentNo: string;
   active: boolean;
   whatsapp: CalendarPriceTransferWhatsapp;
   ical: CalendarPriceTransferIcalSource | null;
@@ -79,6 +80,7 @@ export async function getCalendarPriceTransferAdminData(): Promise<{
         villaId: true,
         name: true,
         originalName: true,
+        documentNo: true,
         active: true,
         whatsappGroupId: true,
         whatsappGroupDifferentName: true,
@@ -229,6 +231,7 @@ export async function getCalendarPriceTransferAdminData(): Promise<{
       villaId: villa.villaId,
       name: villa.name,
       originalName: villa.originalName.trim(),
+      documentNo: villa.documentNo.trim(),
       active: villa.active,
       whatsapp,
       ical,
