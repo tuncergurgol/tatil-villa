@@ -7,6 +7,7 @@ import {
 } from "@/lib/external-villa-page-import-runner";
 import { scrapeExternalVillaPage } from "@/lib/external-villa-page-scrape";
 import type { VillaPeriodImportResult } from "@/lib/tatildeyiz-period-import-runner";
+import { getExternalLinkSyncMode } from "@/lib/external-link-sync-mode";
 import {
   detectExternalSyncUrlKind,
   supportsExternalPeriodImportKind,
@@ -39,9 +40,13 @@ function getPeriodImportCapableLinks(villa: {
   externalSyncUrl3: string;
   externalSyncUrl4: string;
 }) {
-  return getExternalLinkUrls(villa).filter((link) =>
-    supportsExternalPeriodImportKind(detectExternalSyncUrlKind(link.url))
-  );
+  // Fiyat için Link 1 ve Link 3 (Link 2 yalnızca takvim).
+  return getExternalLinkUrls(villa).filter((link) => {
+    if (link.slot === 2) return false;
+    return supportsExternalPeriodImportKind(
+      detectExternalSyncUrlKind(link.url)
+    );
+  });
 }
 
 async function importFromExternalLink(
@@ -50,7 +55,11 @@ async function importFromExternalLink(
   url: string,
   options?: { dryRun?: boolean }
 ): Promise<VillaPeriodImportWithFallbackResult> {
-  const result = await importVillaPeriodsFromExternalPage(villaId, url, options);
+  const syncMode = getExternalLinkSyncMode(slot);
+  const result = await importVillaPeriodsFromExternalPage(villaId, url, {
+    ...options,
+    syncMode,
+  });
   return {
     periodCount: result.periodCount,
     dayCount: result.dayCount,

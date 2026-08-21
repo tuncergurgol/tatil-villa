@@ -1,10 +1,16 @@
 import { importAirbnbCalendarOccupancy } from "@/lib/airbnb-calendar-import-runner";
 import { isAirbnbRoomUrl } from "@/lib/airbnb-calendar-scrape";
 import { prisma } from "@/lib/db";
+import {
+  externalLinkSyncModeLabel,
+  getExternalLinkSyncMode,
+  type ExternalLinkSyncMode,
+} from "@/lib/external-link-sync-mode";
 import { importVillaPeriodsFromExternalPage } from "@/lib/external-villa-page-import-runner";
 import { importVillaPeriodsFromTatildeyiz } from "@/lib/tatildeyiz-period-import-runner";
 import { sleep } from "@/lib/tatildeyiz-gallery";
 import { syncVillaIcalSource } from "@/lib/villa-ical-import-service";
+import { reapplyConfirmedBookingReservedOccupancy } from "@/lib/villa-occupancy-service";
 
 export const EXTERNAL_SYNC_SLOT_COUNT = 4 as const;
 
@@ -242,8 +248,17 @@ async function syncIcalExternalLink(
 
 async function syncTatildeyizExternalLink(
   villa: Pick<VillaExternalSyncFields, "id" | "slug" | "villaId" | "name">,
-  url: string
+  url: string,
+  syncMode: ExternalLinkSyncMode
 ): Promise<{ ok: boolean; message: string }> {
+  if (syncMode === "calendar") {
+    return {
+      ok: true,
+      message:
+        "Tatildeyiz linki fiyat+takvim birlikte aktarır; Link 2 (yalnızca takvim) için atlandı",
+    };
+  }
+
   const slug = extractTatildeyizSlugFromUrl(url);
   if (!slug) {
     return {
@@ -253,7 +268,39 @@ async function syncTatildeyizExternalLink(
   }
 
   try {
+    // Fiyat-only: mevcut takvim doluluğunu import sonrası geri yaz.
+    const priorOccupancy =
+      syncMode === "price"
+        ? await prisma.villaPricePeriodDay.findMany({
+            where: { villaId: villa.id },
+            select: { date: true, occupancyStatus: true, occupancyCheckIn: true },
+          })
+        : null;
+
     const result = await importVillaPeriodsFromTatildeyiz(villa.id, slug);
+
+    if (priorOccupancy && priorOccupancy.length > 0) {
+      await prisma.$transaction(
+        priorOccupancy.map((day) =>
+          prisma.villaPricePeriodDay.updateMany({
+            where: { villaId: villa.id, date: day.date },
+            data: {
+              occupancyStatus: day.occupancyStatus,
+              occupancyCheckIn: day.occupancyCheckIn,
+            },
+          })
+        )
+      );
+    }
+
+    await reapplyConfirmedBookingReservedOccupancy(villa.id);
+
+    if (syncMode === "price") {
+      return {
+        ok: true,
+        message: `${result.periodCount} periyot fiyat güncellendi (takvim korundu; ${result.dayCount} gün)`,
+      };
+    }
     return {
       ok: true,
       message: `${result.periodCount} periyot, ${result.dayCount} gün aktarıldı (${result.bookedDays} dolu, ${result.optionDays} opsiyon)`,
@@ -269,8 +316,16 @@ async function syncTatildeyizExternalLink(
 async function syncAirbnbExternalLink(
   villaId: string,
   slot: ExternalSyncSlot,
-  url: string
+  url: string,
+  syncMode: ExternalLinkSyncMode
 ): Promise<{ ok: boolean; message: string }> {
+  if (syncMode === "price") {
+    return {
+      ok: true,
+      message: "Airbnb yalnızca takvim destekler; Link 3 (fiyat) için atlandı",
+    };
+  }
+
   try {
     const result = await importAirbnbCalendarOccupancy(villaId, url, slot);
     return {
@@ -290,12 +345,29 @@ async function syncAirbnbExternalLink(
 
 async function syncVillaPageExternalLink(
   villaId: string,
-  url: string
+  url: string,
+  syncMode: ExternalLinkSyncMode
 ): Promise<{ ok: boolean; message: string }> {
   try {
-    const result = await importVillaPeriodsFromExternalPage(villaId, url);
+    const result = await importVillaPeriodsFromExternalPage(villaId, url, {
+      syncMode,
+    });
     const warningSuffix =
       result.warnings.length > 0 ? ` — ${result.warnings[0]}` : "";
+    const modeLabel = externalLinkSyncModeLabel(syncMode);
+
+    if (syncMode === "calendar") {
+      return {
+        ok: true,
+        message: `${result.sourceHost} (${result.strategy}): ${modeLabel} güncellendi (${result.bookedDays} dolu, ${result.optionDays} opsiyon)${warningSuffix}`,
+      };
+    }
+    if (syncMode === "price") {
+      return {
+        ok: true,
+        message: `${result.sourceHost} (${result.strategy}): ${modeLabel} güncellendi (${result.periodCount} periyot, ${result.dayCount} gün; takvim korundu)${warningSuffix}`,
+      };
+    }
     if (result.periodCount === 0) {
       return {
         ok: true,
@@ -370,16 +442,24 @@ export async function syncVillaExternalLinkSlot(
   }
 
   const kind = detectExternalSyncUrlKind(url);
+  const syncMode = getExternalLinkSyncMode(slot);
   let outcome: { ok: boolean; message: string };
 
   if (kind === "ical") {
-    outcome = await syncIcalExternalLink(villa.id, slot, url);
+    if (syncMode === "price") {
+      outcome = {
+        ok: true,
+        message: "iCal yalnızca takvim destekler; Link 3 (fiyat) için atlandı",
+      };
+    } else {
+      outcome = await syncIcalExternalLink(villa.id, slot, url);
+    }
   } else if (kind === "tatildeyiz") {
-    outcome = await syncTatildeyizExternalLink(villa, url);
+    outcome = await syncTatildeyizExternalLink(villa, url, syncMode);
   } else if (kind === "airbnb") {
-    outcome = await syncAirbnbExternalLink(villa.id, slot, url);
+    outcome = await syncAirbnbExternalLink(villa.id, slot, url, syncMode);
   } else if (kind === "villa_page") {
-    outcome = await syncVillaPageExternalLink(villa.id, url);
+    outcome = await syncVillaPageExternalLink(villa.id, url, syncMode);
   } else {
     outcome = {
       ok: false,
@@ -393,7 +473,7 @@ export async function syncVillaExternalLinkSlot(
   await prisma.villaIcalSyncEvent.create({
     data: {
       villaId: villa.id,
-      message: `Harici sync ${slot} (${kind}): ${outcome.message}`,
+      message: `Harici sync ${slot} [${externalLinkSyncModeLabel(syncMode)}] (${kind}): ${outcome.message}`,
     },
   });
 

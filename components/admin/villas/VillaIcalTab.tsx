@@ -251,16 +251,20 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
       return;
     }
 
-    // iCal dışı linkler (tatildeyiz / public villa sayfası) yerel periyotları overwrite eder
+    // iCal dışı linkler slot rolüne göre fiyat / takvim üzerine yazar
     const looksLikeIcal =
       /\.ics(\?|$)/i.test(draft) ||
       /\/ical/i.test(draft) ||
       /[?&](format|export|type)=(ical|ics)\b/i.test(draft);
+    const overwriteHint =
+      slot === 2
+        ? "Mevcut takvim müsaitliği kaynaktan güncellenecek (fiyatlar korunur)."
+        : slot === 3
+          ? "Mevcut fiyat periyotları kaynaktan yeniden aktarılacak (takvim korunur)."
+          : "Mevcut fiyat periyotları ve müsaitlik silinip kaynaktan yeniden aktarılacak.";
     if (
       !looksLikeIcal &&
-      !confirm(
-        `Link ${slot}: Mevcut fiyat periyotları ve müsaitlik silinip kaynaktan yeniden aktarılacak. Devam edilsin mi?`
-      )
+      !confirm(`Link ${slot}: ${overwriteHint} Devam edilsin mi?`)
     ) {
       return;
     }
@@ -488,15 +492,15 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
 
       <SectionCard title="Harici Sync Linkleri">
         <p className="mb-4 text-sm text-gray-500">
-          .ics / iCal,{" "}
+          Link 1: takvim + fiyat · Link 2: yalnızca takvim · Link 3: yalnızca
+          fiyat · Link 4: takvim + fiyat. Desteklenen URL: .ics / iCal,{" "}
           <code className="rounded bg-gray-100 px-1">tatildeyiz.com.tr</code>{" "}
-          veya public villa sayfası linki ekleyin — sayfadan fiyat ve takvim
-          çekilir. Güncelle hemen aktarır (villa sayfası / Tatildeyiz mevcut
-          periyotları üzerine yazar); otomatik tarama için{" "}
-          <code className="rounded bg-gray-100 px-1">npm run sync:external-links</code>{" "}
-          veya{" "}
-          <code className="rounded bg-gray-100 px-1">/api/cron/villa-external-sync</code>{" "}
-          (CRON_SECRET, önerilen aralık 1 saat).
+          veya public villa sayfası. Saatlik otomatik tarama aynı rolleri
+          uygular (
+          <code className="rounded bg-gray-100 px-1">npm run sync:external-links</code>
+          {" / "}
+          <code className="rounded bg-gray-100 px-1">/api/cron/villa-external-sync</code>
+          ).
         </p>
 
         <ul className="space-y-3">
@@ -513,7 +517,16 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                   <label className="block min-w-0 flex-1">
-                    <span className={labelClass}>Link {link.slot}</span>
+                    <span className={labelClass}>
+                      Link {link.slot}
+                      <span className="ml-2 font-normal text-gray-400">
+                        {link.slot === 2
+                          ? "(Takvim)"
+                          : link.slot === 3
+                            ? "(Fiyat)"
+                            : "(Takvim + Fiyat)"}
+                      </span>
+                    </span>
                     <input
                       value={draft}
                       onChange={(event) =>

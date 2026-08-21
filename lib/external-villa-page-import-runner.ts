@@ -1,4 +1,4 @@
-import type { VillaDayOccupancy } from "@prisma/client";
+﻿import type { VillaDayOccupancy } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   buildDaySnapshotsForPeriod,
@@ -9,11 +9,12 @@ import {
   scrapeExternalVillaPage,
   type ScrapedVillaPage,
 } from "@/lib/external-villa-page-scrape";
-import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
+import { dateKeyToDbDate, dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { persistVillaPricePeriods } from "@/lib/villa-period-persist";
 import type { VillaPeriodImportResult } from "@/lib/tatildeyiz-period-import-runner";
 import { loadConfirmedBookingProtectedDateKeys } from "@/lib/confirmed-booking-occupancy-guard";
 import { reapplyConfirmedBookingReservedOccupancy } from "@/lib/villa-occupancy-service";
+import type { ExternalLinkSyncMode } from "@/lib/external-link-sync-mode";
 
 export function scrapedPageHasReliablePeriods(scraped: ScrapedVillaPage): boolean {
   return scraped.periods.length > 0;
@@ -59,7 +60,6 @@ export async function applyExternalPageOccupancyOverlay(
 
   for (const [dateKey, occupancyStatus] of occupancyByDateKey) {
     if (occupancyStatus !== "BOOKED" && occupancyStatus !== "OPTION") continue;
-    // Onaylı rezervasyon günleri Link kapamasıyla ezilmez.
     if (protectedDateKeys.has(dateKey)) continue;
     updates.push(
       prisma.villaPricePeriodDay.updateMany({
@@ -107,17 +107,31 @@ function countOccupancyDays(scraped: ScrapedVillaPage) {
   return { dayCount, bookedDays, optionDays };
 }
 
+async function loadExistingOccupancyByDateKey(
+  villaId: string
+): Promise<Map<string, VillaDayOccupancy>> {
+  const days = await prisma.villaPricePeriodDay.findMany({
+    where: { villaId },
+    select: { date: true, occupancyStatus: true },
+  });
+  const map = new Map<string, VillaDayOccupancy>();
+  for (const day of days) {
+    map.set(dbDateToDateKey(day.date), day.occupancyStatus);
+  }
+  return map;
+}
+
 /**
- * Public villa sayfasından fiyat periyotları + müsaitlik aktarır.
- * Mevcut VillaPricePeriod / VillaPricePeriodDay kayıtlarını silip üzerine yazar
- * (Tatildeyiz period import ile aynı overwrite davranışı).
+ * Public villa sayfasından fiyat / takvim aktarır.
+ * syncMode: calendar_and_price | calendar | price
  */
 export async function importVillaPeriodsFromExternalPage(
   villaId: string,
   pageUrl: string,
-  options?: { dryRun?: boolean }
+  options?: { dryRun?: boolean; syncMode?: ExternalLinkSyncMode }
 ): Promise<ExternalVillaPageImportResult> {
   const dryRun = options?.dryRun ?? false;
+  const syncMode = options?.syncMode ?? "calendar_and_price";
 
   const villa = await prisma.villa.findUnique({
     where: { id: villaId },
@@ -141,6 +155,78 @@ export async function importVillaPeriodsFromExternalPage(
   });
 
   const scraped = await scrapeExternalVillaPage(pageUrl);
+
+  if (syncMode === "calendar") {
+    if (scraped.occupancyByDateKey.size === 0) {
+      throw new Error("Sayfadan takvim müsaitliği bulunamadı");
+    }
+    const { dayCount, bookedDays, optionDays } = countOccupancyFromMap(
+      scraped.occupancyByDateKey
+    );
+    if (dryRun) {
+      return {
+        periodCount: 0,
+        dayCount,
+        bookedDays,
+        optionDays,
+        strategy: scraped.strategy,
+        sourceHost: scraped.sourceHost,
+        warnings: scraped.warnings,
+      };
+    }
+    const { updatedDays } = await applyExternalPageOccupancyOverlay(
+      villaId,
+      scraped.occupancyByDateKey
+    );
+    await reapplyConfirmedBookingReservedOccupancy(villaId);
+    return {
+      periodCount: 0,
+      dayCount: updatedDays,
+      bookedDays,
+      optionDays,
+      strategy: scraped.strategy,
+      sourceHost: scraped.sourceHost,
+      warnings: scraped.warnings,
+    };
+  }
+
+  if (syncMode === "price") {
+    if (!scrapedPageHasReliablePeriods(scraped)) {
+      throw new Error("Sayfadan fiyat periyodu bulunamadı");
+    }
+    const existingFallback = buildPeriodMetaFallbackFromPeriods(existingPeriods);
+    applyPeriodMetaFallback(scraped.periods, existingFallback);
+    const existingOccupancy = await loadExistingOccupancyByDateKey(villaId);
+    const dayCount = scraped.periods.reduce((sum, period) => {
+      return sum + buildDaySnapshotsForPeriod(period, existingOccupancy).length;
+    }, 0);
+    if (dryRun) {
+      return {
+        periodCount: scraped.periods.length,
+        dayCount,
+        bookedDays: 0,
+        optionDays: 0,
+        strategy: scraped.strategy,
+        sourceHost: scraped.sourceHost,
+        warnings: scraped.warnings,
+      };
+    }
+    await persistVillaPricePeriods({
+      villaId,
+      periods: scraped.periods,
+      occupancyByDateKey: existingOccupancy,
+    });
+    await reapplyConfirmedBookingReservedOccupancy(villaId);
+    return {
+      periodCount: scraped.periods.length,
+      dayCount,
+      bookedDays: 0,
+      optionDays: 0,
+      strategy: scraped.strategy,
+      sourceHost: scraped.sourceHost,
+      warnings: scraped.warnings,
+    };
+  }
 
   if (scrapedPageIsOccupancyOnly(scraped)) {
     const { dayCount, bookedDays, optionDays } = countOccupancyFromMap(
@@ -219,27 +305,7 @@ export async function importExternalVillaOccupancyFromPage(
   villaId: string,
   pageUrl: string
 ): Promise<ExternalVillaPageImportResult> {
-  const scraped = await scrapeExternalVillaPage(pageUrl);
-  if (scraped.occupancyByDateKey.size === 0) {
-    throw new Error("Sayfadan takvim müsaitliği bulunamadı");
-  }
-
-  const { dayCount, bookedDays, optionDays } = countOccupancyFromMap(
-    scraped.occupancyByDateKey
-  );
-  const { updatedDays } = await applyExternalPageOccupancyOverlay(
-    villaId,
-    scraped.occupancyByDateKey
-  );
-  await reapplyConfirmedBookingReservedOccupancy(villaId);
-
-  return {
-    periodCount: 0,
-    dayCount: updatedDays || dayCount,
-    bookedDays,
-    optionDays,
-    strategy: scraped.strategy,
-    sourceHost: scraped.sourceHost,
-    warnings: scraped.warnings,
-  };
+  return importVillaPeriodsFromExternalPage(villaId, pageUrl, {
+    syncMode: "calendar",
+  });
 }

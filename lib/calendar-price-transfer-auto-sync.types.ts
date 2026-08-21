@@ -13,9 +13,9 @@ export const CALENDAR_PRICE_TRANSFER_CRITERIA: Array<{
 }> = [
   { key: "whatsapp", label: "Whatsapp" },
   { key: "ical", label: "İcal" },
-  { key: "link1", label: "Link 1" },
-  { key: "link2", label: "Link 2" },
-  { key: "link3", label: "Link 3" },
+  { key: "link1", label: "Link 1 (Takvim + Fiyat)" },
+  { key: "link2", label: "Link 2 (Takvim)" },
+  { key: "link3", label: "Link 3 (Fiyat)" },
 ];
 
 export type CalendarPriceTransferAutoUpdateSettings = {

@@ -812,8 +812,9 @@ export default function CalendarPriceTransferManagement({
               Takvim/Fiyat Aktarım Yönetimi
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              Villa tanımındaki iCal ve Link 1–3 bağlantılarından takvim ile
-              periyot fiyatlarını güncelleyin.
+              Link 1: takvim + fiyat · Link 2: yalnızca takvim · Link 3: yalnızca
+              fiyat. iCal ve WhatsApp ayrıca seçilebilir. Saatlik otomatik
+              güncelleme aynı kuralları uygular.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -938,9 +939,9 @@ export default function CalendarPriceTransferManagement({
                   <th className="px-3 py-3">Durum</th>
                   <th className="px-3 py-3">WhatsApp</th>
                   <th className="px-3 py-3">iCal</th>
-                  <th className="px-3 py-3">Link 1</th>
-                  <th className="px-3 py-3">Link 2</th>
-                  <th className="px-3 py-3">Link 3</th>
+                  <th className="px-3 py-3">Link 1<br /><span className="font-medium normal-case tracking-normal text-gray-400">Takvim+Fiyat</span></th>
+                  <th className="px-3 py-3">Link 2<br /><span className="font-medium normal-case tracking-normal text-gray-400">Takvim</span></th>
+                  <th className="px-3 py-3">Link 3<br /><span className="font-medium normal-case tracking-normal text-gray-400">Fiyat</span></th>
                   <th className="px-3 py-3" />
                   <th className="px-3 py-3">Rapor</th>
                 </tr>

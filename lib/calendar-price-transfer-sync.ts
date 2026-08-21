@@ -8,13 +8,10 @@ import {
   type ExternalSyncSlot,
 } from "@/lib/villa-external-sync";
 import { syncVillaIcalSource } from "@/lib/villa-ical-import-service";
-import { applyVillaPeriodDaysOccupancy, reapplyConfirmedBookingReservedOccupancy } from "@/lib/villa-occupancy-service";
-import { tryImportVillaPeriodsFromExternalLinks } from "@/lib/villa-period-import-with-fallback";
 import {
-  scrapedPageIsOccupancyOnly,
-  scrapedPageHasReliablePeriods,
-} from "@/lib/external-villa-page-import-runner";
-import { scrapeExternalVillaPage } from "@/lib/external-villa-page-scrape";
+  applyVillaPeriodDaysOccupancy,
+  reapplyConfirmedBookingReservedOccupancy,
+} from "@/lib/villa-occupancy-service";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 import {
@@ -195,98 +192,8 @@ export async function runCalendarPriceTransferBatchSync(
   const messages: string[] = [];
   const errors: string[] = [];
 
-  try {
-    const periodResult = await tryImportVillaPeriodsFromExternalLinks(villa.id);
-    if (!periodResult) {
-      const periodMessage =
-        "Harici fiyat linki yok (panel fiyatları korunuyor; Airbnb/iCal yalnızca takvim)";
-      messages.push(`Periyot: ${periodMessage}`);
-      // Eski Tatildeyiz / periyot hatalarını temizle — Link/Airbnb sync başarılı olsa bile
-      // periodImportLog ERROR kırmızı satırda kalıyordu.
-      await prisma.villaPeriodImportLog.upsert({
-        where: { villaId: villa.id },
-        create: {
-          villaId: villa.id,
-          sourceSlug: villa.slug,
-          status: PeriodImportStatus.SUCCESS,
-          message: periodMessage,
-          periodCount: 0,
-          dayCount: 0,
-          bookedDays: 0,
-          optionDays: 0,
-          attemptedAt: new Date(),
-          succeededAt: new Date(),
-        },
-        update: {
-          sourceSlug: villa.slug,
-          status: PeriodImportStatus.SUCCESS,
-          message: periodMessage,
-          periodCount: 0,
-          dayCount: 0,
-          bookedDays: 0,
-          optionDays: 0,
-          attemptedAt: new Date(),
-          succeededAt: new Date(),
-        },
-      });
-    } else {
-      const periodMessage =
-        periodResult.periodCount > 0
-          ? `${periodResult.sourceLabel}: ${periodResult.periodCount} periyot, ${periodResult.dayCount} gün aktarıldı`
-          : `${periodResult.sourceLabel}: takvim güncellendi (${periodResult.bookedDays} dolu); fiyatlar korundu`;
-      messages.push(`Periyot: ${periodMessage}`);
-      await prisma.villaPeriodImportLog.upsert({
-        where: { villaId: villa.id },
-        create: {
-          villaId: villa.id,
-          sourceSlug: villa.slug,
-          status: PeriodImportStatus.SUCCESS,
-          message: periodMessage,
-          periodCount: periodResult.periodCount,
-          dayCount: periodResult.dayCount,
-          bookedDays: periodResult.bookedDays,
-          optionDays: periodResult.optionDays,
-          attemptedAt: new Date(),
-          succeededAt: new Date(),
-        },
-        update: {
-          sourceSlug: villa.slug,
-          status: PeriodImportStatus.SUCCESS,
-          message: periodMessage,
-          periodCount: periodResult.periodCount,
-          dayCount: periodResult.dayCount,
-          bookedDays: periodResult.bookedDays,
-          optionDays: periodResult.optionDays,
-          attemptedAt: new Date(),
-          succeededAt: new Date(),
-        },
-      });
-    }
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Periyot aktarımı başarısız";
-    errors.push(`Periyot: ${message}`);
-    await prisma.villaPeriodImportLog.upsert({
-      where: { villaId: villa.id },
-      create: {
-        villaId: villa.id,
-        sourceSlug: villa.slug,
-        status: PeriodImportStatus.ERROR,
-        message,
-        attemptedAt: new Date(),
-      },
-      update: {
-        sourceSlug: villa.slug,
-        status: PeriodImportStatus.ERROR,
-        message,
-        periodCount: 0,
-        dayCount: 0,
-        bookedDays: 0,
-        optionDays: 0,
-        attemptedAt: new Date(),
-      },
-    });
-  }
+  // Fiyat/takvim Link 1–3 slot rollerine göre yapılır:
+  // Link 1 = takvim+fiyat, Link 2 = takvim, Link 3 = fiyat.
 
   if (criteria.whatsapp && villa.whatsappGroupId.trim()) {
     const result = await syncWhatsappForVilla(
@@ -308,48 +215,74 @@ export async function runCalendarPriceTransferBatchSync(
     }
   }
 
-  const linkSlots: Array<{ enabled: boolean; slot: ExternalSyncSlot; url: string }> =
-    [
-      { enabled: criteria.link1, slot: 1, url: villa.externalSyncUrl1 },
-      { enabled: criteria.link2, slot: 2, url: villa.externalSyncUrl2 },
-      { enabled: criteria.link3, slot: 3, url: villa.externalSyncUrl3 },
-    ];
-
-  const activeLinks = linkSlots.filter(
-    (item) => item.enabled && item.url.trim() && isExternalSyncSlot(item.slot) && item.slot <= 3
-  );
-
-  const linkJobs: Array<{
+  const linkSlots: Array<{
+    enabled: boolean;
     slot: ExternalSyncSlot;
     url: string;
-    occupancyOnly: boolean;
-  }> = [];
+  }> = [
+    { enabled: criteria.link1, slot: 1, url: villa.externalSyncUrl1 },
+    { enabled: criteria.link2, slot: 2, url: villa.externalSyncUrl2 },
+    { enabled: criteria.link3, slot: 3, url: villa.externalSyncUrl3 },
+  ];
+
+  const activeLinks = linkSlots
+    .filter(
+      (item) =>
+        item.enabled &&
+        item.url.trim() &&
+        isExternalSyncSlot(item.slot) &&
+        item.slot <= 3
+    )
+    .sort((a, b) => a.slot - b.slot);
+
+  const linkMessages: string[] = [];
+  let linkOkCount = 0;
 
   for (const item of activeLinks) {
-    let occupancyOnly = false;
-    try {
-      const scraped = await scrapeExternalVillaPage(item.url.trim());
-      occupancyOnly =
-        scrapedPageIsOccupancyOnly(scraped) ||
-        (!scrapedPageHasReliablePeriods(scraped) &&
-          scraped.occupancyByDateKey.size > 0);
-    } catch {
-      occupancyOnly = false;
-    }
-    linkJobs.push({
-      slot: item.slot,
-      url: item.url.trim(),
-      occupancyOnly,
-    });
-  }
-
-  linkJobs.sort((a, b) => Number(a.occupancyOnly) - Number(b.occupancyOnly));
-
-  for (const item of linkJobs) {
     const result = await syncVillaExternalLinkSlot(villa.id, item.slot);
-    if (result.ok) messages.push(`Link ${item.slot}: ${result.message}`);
-    else errors.push(`Link ${item.slot}: ${result.message}`);
+    if (result.ok) {
+      linkOkCount += 1;
+      messages.push(`Link ${item.slot}: ${result.message}`);
+      linkMessages.push(`Link ${item.slot}: ${result.message}`);
+    } else {
+      errors.push(`Link ${item.slot}: ${result.message}`);
+      linkMessages.push(`Link ${item.slot} HATA: ${result.message}`);
+    }
   }
+
+  const periodLogMessage =
+    linkMessages.length > 0
+      ? linkMessages.join(" | ")
+      : "Link 1–3 çalıştırılmadı (kriter kapalı veya URL yok)";
+
+  await prisma.villaPeriodImportLog.upsert({
+    where: { villaId: villa.id },
+    create: {
+      villaId: villa.id,
+      sourceSlug: villa.slug,
+      status:
+        linkOkCount > 0 || linkMessages.length === 0
+          ? PeriodImportStatus.SUCCESS
+          : PeriodImportStatus.ERROR,
+      message: periodLogMessage,
+      periodCount: 0,
+      dayCount: 0,
+      bookedDays: 0,
+      optionDays: 0,
+      attemptedAt: new Date(),
+      succeededAt: new Date(),
+    },
+    update: {
+      sourceSlug: villa.slug,
+      status:
+        linkOkCount > 0 || linkMessages.length === 0
+          ? PeriodImportStatus.SUCCESS
+          : PeriodImportStatus.ERROR,
+      message: periodLogMessage,
+      attemptedAt: new Date(),
+      succeededAt: new Date(),
+    },
+  });
 
   // Son güvence: onaylı rezervasyonlar her sync sonrası lila kalır.
   await reapplyConfirmedBookingReservedOccupancy(villa.id);
