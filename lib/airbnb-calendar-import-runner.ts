@@ -8,7 +8,7 @@ import {
   summarizeAirbnbCalendar,
   type AirbnbCalendarStay,
 } from "@/lib/airbnb-calendar-scrape";
-import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { applyVillaPeriodDaysOccupancy, reapplyConfirmedBookingReservedOccupancy } from "@/lib/villa-occupancy-service";
 import {
   buildBookedOccupancyForStay,
   enumerateDateKeysInRange,
@@ -195,6 +195,8 @@ export async function importAirbnbCalendarOccupancy(
       },
     }),
   ]);
+
+  await reapplyConfirmedBookingReservedOccupancy(villaId);
 
   return {
     listingId,

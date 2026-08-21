@@ -5,6 +5,7 @@ import {
   dbDateToDateKey,
 } from "@/lib/villa-period-calendar";
 import { assertNoConfirmedBookingOverlap } from "@/lib/villa-confirmed-booking-guard";
+import { loadConfirmedBookingProtectedDateKeys } from "@/lib/confirmed-booking-occupancy-guard";
 import {
   buildBookedOccupancyForStay,
   buildEmptyOccupancyForRange,
@@ -23,13 +24,23 @@ export async function applyVillaPeriodDaysOccupancy(
   endDateKey: string,
   mode: OccupancyApplyMode
 ): Promise<{ updatedDays: number }> {
-  if (mode !== "RESERVED") {
-    await assertNoConfirmedBookingOverlap(villaId, startDateKey, endDateKey);
-  }
-
   const { start, end } = normalizeDateRange(startDateKey, endDateKey);
   const rangeDateKeys = enumerateDateKeysInRange(start, end);
   const rangeDateKeySet = new Set(rangeDateKeys);
+
+  // Onaylı rezervasyon günleri dış kapama/açma ile ezilmez.
+  // Yalnızca seçimin tamamı korumalıysa (manuel UI) kilit hatası verilir.
+  const protectedDateKeys =
+    mode === "RESERVED"
+      ? new Set<string>()
+      : await loadConfirmedBookingProtectedDateKeys(villaId);
+  const hasUnprotectedDay = rangeDateKeys.some(
+    (dateKey) => !protectedDateKeys.has(dateKey)
+  );
+  if (mode !== "RESERVED" && !hasUnprotectedDay && rangeDateKeys.length > 0) {
+    await assertNoConfirmedBookingOverlap(villaId, startDateKey, endDateKey);
+  }
+
   const lookupDateKeys = new Set<string>([
     ...rangeDateKeys,
     offsetDateKey(start, -1),
@@ -70,6 +81,7 @@ export async function applyVillaPeriodDaysOccupancy(
   const updates = [...occupancyByDateKey.entries()]
     .filter(([dateKey, occupancyStatus]) => {
       if (!rangeDateKeySet.has(dateKey)) return false;
+      if (protectedDateKeys.has(dateKey)) return false;
       const existing = existingOccupancyByDateKey.get(dateKey) ?? "EMPTY";
       const existingCheckIn = existingCheckInByDateKey.get(dateKey) ?? false;
       const nextCheckIn = resolveOccupancyCheckIn({
@@ -206,4 +218,34 @@ export async function syncBookingStayOccupancy(input: {
       "RESERVED"
     );
   }
+}
+
+/** Harici Link/iCal kapamasından sonra onaylı rezervasyonları yeniden boyar. */
+export async function reapplyConfirmedBookingReservedOccupancy(
+  villaId: string
+): Promise<{ bookingCount: number; updatedDays: number }> {
+  const bookings = await prisma.booking.findMany({
+    where: {
+      villaId,
+      status: "CONFIRMED",
+    },
+    select: {
+      checkIn: true,
+      checkOut: true,
+    },
+    orderBy: { checkIn: "asc" },
+  });
+
+  let updatedDays = 0;
+  for (const booking of bookings) {
+    const result = await applyVillaPeriodDaysOccupancy(
+      villaId,
+      dbDateToDateKey(booking.checkIn),
+      dbDateToDateKey(booking.checkOut),
+      "RESERVED"
+    );
+    updatedDays += result.updatedDays;
+  }
+
+  return { bookingCount: bookings.length, updatedDays };
 }

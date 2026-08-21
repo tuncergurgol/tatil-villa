@@ -12,6 +12,8 @@ import {
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { persistVillaPricePeriods } from "@/lib/villa-period-persist";
 import type { VillaPeriodImportResult } from "@/lib/tatildeyiz-period-import-runner";
+import { loadConfirmedBookingProtectedDateKeys } from "@/lib/confirmed-booking-occupancy-guard";
+import { reapplyConfirmedBookingReservedOccupancy } from "@/lib/villa-occupancy-service";
 
 export function scrapedPageHasReliablePeriods(scraped: ScrapedVillaPage): boolean {
   return scraped.periods.length > 0;
@@ -51,10 +53,14 @@ export async function applyExternalPageOccupancyOverlay(
   villaId: string,
   occupancyByDateKey: Map<string, VillaDayOccupancy>
 ): Promise<{ updatedDays: number }> {
+  const protectedDateKeys =
+    await loadConfirmedBookingProtectedDateKeys(villaId);
   const updates = [];
 
   for (const [dateKey, occupancyStatus] of occupancyByDateKey) {
     if (occupancyStatus !== "BOOKED" && occupancyStatus !== "OPTION") continue;
+    // Onaylı rezervasyon günleri Link kapamasıyla ezilmez.
+    if (protectedDateKeys.has(dateKey)) continue;
     updates.push(
       prisma.villaPricePeriodDay.updateMany({
         where: {
@@ -157,6 +163,7 @@ export async function importVillaPeriodsFromExternalPage(
       villaId,
       scraped.occupancyByDateKey
     );
+    await reapplyConfirmedBookingReservedOccupancy(villaId);
 
     return {
       periodCount: 0,
@@ -195,6 +202,7 @@ export async function importVillaPeriodsFromExternalPage(
     periods: scraped.periods,
     occupancyByDateKey: scraped.occupancyByDateKey,
   });
+  await reapplyConfirmedBookingReservedOccupancy(villaId);
 
   return {
     periodCount: scraped.periods.length,
@@ -223,6 +231,7 @@ export async function importExternalVillaOccupancyFromPage(
     villaId,
     scraped.occupancyByDateKey
   );
+  await reapplyConfirmedBookingReservedOccupancy(villaId);
 
   return {
     periodCount: 0,

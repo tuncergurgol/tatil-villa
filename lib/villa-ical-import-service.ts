@@ -5,7 +5,7 @@ import {
   dbDateToDateKey,
   toDateKey,
 } from "@/lib/villa-period-calendar";
-import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { applyVillaPeriodDaysOccupancy, reapplyConfirmedBookingReservedOccupancy } from "@/lib/villa-occupancy-service";
 import { offsetDateKey } from "@/lib/villa-period-selection";
 
 export type ParsedIcalEvent = {
@@ -233,6 +233,8 @@ export async function syncVillaIcalSource(
         },
       }),
     ]);
+
+    await reapplyConfirmedBookingReservedOccupancy(source.villaId);
 
     return {
       sourceId: source.id,

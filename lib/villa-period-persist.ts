@@ -1,4 +1,4 @@
-import type { VillaDayOccupancy } from "@prisma/client";
+﻿import type { VillaDayOccupancy } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   buildDaySnapshotsForPeriod,
@@ -6,6 +6,7 @@ import {
   type MappedVillaPricePeriod,
 } from "@/lib/tatildeyiz-period-import";
 import { dateKeyToDbDate, toDateKey } from "@/lib/villa-period-calendar";
+import { loadConfirmedBookingProtectedDateKeys } from "@/lib/confirmed-booking-occupancy-guard";
 
 export const PERIOD_IMPORT_TX_OPTIONS = {
   maxWait: 15_000,
@@ -19,6 +20,14 @@ export async function persistVillaPricePeriods(input: {
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
 }) {
+  const protectedDateKeys = await loadConfirmedBookingProtectedDateKeys(
+    input.villaId
+  );
+  const occupancyByDateKey = new Map(input.occupancyByDateKey);
+  for (const dateKey of protectedDateKeys) {
+    occupancyByDateKey.set(dateKey, "RESERVED");
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.villaPricePeriodDay.deleteMany({ where: { villaId: input.villaId } });
     await tx.villaPricePeriod.deleteMany({ where: { villaId: input.villaId } });
@@ -34,7 +43,7 @@ export async function persistVillaPricePeriods(input: {
         },
       });
 
-      const snapshots = buildDaySnapshotsForPeriod(mapped, input.occupancyByDateKey);
+      const snapshots = buildDaySnapshotsForPeriod(mapped, occupancyByDateKey);
       if (snapshots.length === 0) continue;
 
       for (let index = 0; index < snapshots.length; index += PERIOD_DAY_BATCH_SIZE) {

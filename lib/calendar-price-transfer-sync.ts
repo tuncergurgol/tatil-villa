@@ -8,7 +8,7 @@ import {
   type ExternalSyncSlot,
 } from "@/lib/villa-external-sync";
 import { syncVillaIcalSource } from "@/lib/villa-ical-import-service";
-import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import { applyVillaPeriodDaysOccupancy, reapplyConfirmedBookingReservedOccupancy } from "@/lib/villa-occupancy-service";
 import { tryImportVillaPeriodsFromExternalLinks } from "@/lib/villa-period-import-with-fallback";
 import {
   scrapedPageIsOccupancyOnly,
@@ -350,6 +350,9 @@ export async function runCalendarPriceTransferBatchSync(
     if (result.ok) messages.push(`Link ${item.slot}: ${result.message}`);
     else errors.push(`Link ${item.slot}: ${result.message}`);
   }
+
+  // Son güvence: onaylı rezervasyonlar her sync sonrası lila kalır.
+  await reapplyConfirmedBookingReservedOccupancy(villa.id);
 
   if (messages.length === 0 && errors.length === 0) {
     return {
