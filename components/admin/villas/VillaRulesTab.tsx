@@ -10,6 +10,7 @@ import {
   resolvePrepaymentPaymentTypeId,
 } from "@/lib/villa-rules-defaults";
 import { VILLA_NATURE_PEST_NOTICE } from "@/lib/villa-nature-pest-notice";
+import { amenitiesAllowPets } from "@/lib/villa-pets-amenity";
 
 interface PrepaymentPaymentTypeOption {
   id: string;
@@ -62,7 +63,9 @@ export default function VillaRulesTab({
   );
   const [allowEvents, setAllowEvents] = useState(villa.allowEvents);
   const [allowSmoking, setAllowSmoking] = useState(villa.allowSmoking);
-  const [allowPets, setAllowPets] = useState(villa.allowPets);
+  const [allowPets, setAllowPets] = useState(
+    villa.allowPets || amenitiesAllowPets(villa.amenities)
+  );
   const [allowPrepaymentOption, setAllowPrepaymentOption] = useState(
     villa.allowPrepaymentOption !== false
   );

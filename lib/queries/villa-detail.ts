@@ -19,6 +19,7 @@ import {
   sortAmenityNamesTr,
 } from "@/lib/amenity-featured";
 import { getVillaPriceInclusionItems } from "@/lib/queries/price-inclusion";
+import { amenitiesAllowPets } from "@/lib/villa-pets-amenity";
 
 function startOfTodayUtc() {
   const now = new Date();
@@ -340,7 +341,7 @@ export async function getVillaDetailBySlug(
     allowChildren: villa.allowChildren,
     allowEvents: villa.allowEvents,
     allowSmoking: villa.allowSmoking,
-    allowPets: villa.allowPets,
+    allowPets: villa.allowPets || amenitiesAllowPets(villa.amenities),
     allowPrepaymentOption: villa.allowPrepaymentOption !== false,
     allowFullPaymentOption: villa.allowFullPaymentOption === true,
     showNaturePestNotice: villa.showNaturePestNotice,

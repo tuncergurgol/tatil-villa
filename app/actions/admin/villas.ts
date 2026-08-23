@@ -30,6 +30,10 @@ import {
   allocateNextVillaId,
   assignMissingVillaNumericIds,
 } from "@/lib/villa-numeric-id";
+import {
+  amenitiesAllowPets,
+  syncAmenitiesWithAllowPets,
+} from "@/lib/villa-pets-amenity";
 
 function readDescription(formData: FormData): string {
   return normalizeVillaDescriptionForStorage(
@@ -187,6 +191,7 @@ export async function createVilla(formData: FormData) {
         description: readDescription(formData),
         amenities,
         facilityCategories,
+        allowPets: amenitiesAllowPets(amenities),
         featured: formData.get("featured") === "on",
         popular: formData.get("popular") === "on",
         deal: formData.get("deal") === "on",
@@ -241,6 +246,7 @@ export async function updateVilla(id: string, formData: FormData) {
       description: readDescription(formData),
       amenities,
       facilityCategories,
+      allowPets: amenitiesAllowPets(amenities),
       featured: formData.get("featured") === "on",
       popular: formData.get("popular") === "on",
       deal: formData.get("deal") === "on",
@@ -360,12 +366,15 @@ export async function updateVillaFeatures(id: string, formData: FormData) {
     .map((value) => String(value).trim())
     .filter(Boolean);
 
-  await prisma.villa.update({
+  const allowPets = amenitiesAllowPets(amenities);
+
+  const villa = await prisma.villa.update({
     where: { id },
     data: {
       amenities,
       facilityCategories,
       priceInclusionIds,
+      allowPets,
       deal: parseBool(formData.get("deal")),
       popular: parseBool(formData.get("popular")),
       recommended: parseBool(formData.get("recommended")),
@@ -376,11 +385,16 @@ export async function updateVillaFeatures(id: string, formData: FormData) {
         99
       ),
     },
+    select: { slug: true },
   });
 
   revalidatePath("/");
   revalidatePath("/villalar");
   revalidatePath("/admin/villalar");
+  if (villa.slug) {
+    revalidatePath(villaPublicPath(villa.slug));
+    revalidatePath(`/villalar/${villa.slug}`);
+  }
   await revalidateVillaEditPage(id);
 }
 
@@ -531,6 +545,17 @@ export async function updateVillaRules(id: string, formData: FormData) {
   const allowPrepaymentOption = parseBool(formData.get("allowPrepaymentOption"));
   const allowFullPaymentOption = parseBool(formData.get("allowFullPaymentOption"));
   const hasPaymentOption = allowPrepaymentOption || allowFullPaymentOption;
+  const allowPets = parseBool(formData.get("allowPets"));
+
+  const existing = await prisma.villa.findUnique({
+    where: { id },
+    select: { amenities: true, slug: true },
+  });
+  if (!existing) {
+    throw new Error("Villa bulunamadı");
+  }
+
+  const amenities = syncAmenitiesWithAllowPets(existing.amenities, allowPets);
 
   await prisma.villa.update({
     where: { id },
@@ -544,13 +569,18 @@ export async function updateVillaRules(id: string, formData: FormData) {
       allowChildren: parseBool(formData.get("allowChildren")),
       allowEvents: parseBool(formData.get("allowEvents")),
       allowSmoking: parseBool(formData.get("allowSmoking")),
-      allowPets: parseBool(formData.get("allowPets")),
+      allowPets,
+      amenities,
       showNaturePestNotice: parseBool(formData.get("showNaturePestNotice")),
       customRules,
     },
   });
 
   revalidatePath("/admin/villalar");
+  if (existing.slug) {
+    revalidatePath(villaPublicPath(existing.slug));
+    revalidatePath(`/villalar/${existing.slug}`);
+  }
   await revalidateVillaEditPage(id);
 }
 
