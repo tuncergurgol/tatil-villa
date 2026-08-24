@@ -108,7 +108,7 @@ export default function LoyaltyProgramPageView({
 
   return (
     <main className="bg-slate-50">
-      <section className="relative overflow-hidden bg-gradient-to-br from-teal-800 via-teal-700 to-emerald-800 px-4 py-16 text-white sm:px-6 sm:py-20">
+      <section className="relative overflow-hidden bg-gradient-to-br from-teal-800 via-teal-700 to-emerald-800 text-white">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl"
@@ -117,12 +117,12 @@ export default function LoyaltyProgramPageView({
           aria-hidden
           className="pointer-events-none absolute -bottom-16 left-10 h-56 w-56 rounded-full bg-emerald-400/20 blur-3xl"
         />
-        <div className="relative mx-auto max-w-5xl text-center">
+        <div className="relative mx-auto max-w-5xl px-4 py-14 text-center sm:px-6 sm:py-20">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-teal-50">
             <Sparkles className="h-3.5 w-3.5" />
             {brandName} Sadakat Programı
           </p>
-          <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-5xl">
+          <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-5xl">
             Konakladıkça kazanın, her rezervasyonda avantajlı kalın
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-teal-50 sm:text-lg">
@@ -146,27 +146,31 @@ export default function LoyaltyProgramPageView({
             </Link>
           </div>
         </div>
-      </section>
 
-      <section className="mx-auto -mt-8 grid max-w-5xl gap-3 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
-        {LOYALTY_TIER_ORDER.map((tier) => {
-          const meta = LOYALTY_TIER_META[tier];
-          const style = TIER_STYLES[tier];
-          return (
-            <div
-              key={tier}
-              className={`rounded-2xl border bg-gradient-to-br p-4 shadow-sm ${style.ring} ${style.bg}`}
-            >
-              <p className="text-2xl">{meta.emoji}</p>
-              <p className="mt-2 text-lg font-bold text-slate-900">{meta.label}</p>
-              <p
-                className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${style.badge}`}
-              >
-                %{meta.voucherPercent} indirim
-              </p>
-            </div>
-          );
-        })}
+        <div className="relative border-t border-white/15 bg-black/10 px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {LOYALTY_TIER_ORDER.map((tier) => {
+              const meta = LOYALTY_TIER_META[tier];
+              const style = TIER_STYLES[tier];
+              return (
+                <div
+                  key={tier}
+                  className={`rounded-2xl border bg-white p-4 text-left shadow-lg ${style.ring}`}
+                >
+                  <p className="text-2xl">{meta.emoji}</p>
+                  <p className="mt-2 text-lg font-bold text-slate-900">
+                    {meta.label}
+                  </p>
+                  <p
+                    className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${style.badge}`}
+                  >
+                    %{meta.voucherPercent} indirim
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       <section className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
@@ -179,7 +183,7 @@ export default function LoyaltyProgramPageView({
             rezervasyonunuzda indiriminizi görün.
           </p>
         </div>
-        <ol className="mt-10 grid gap-4 sm:grid-cols-2">
+        <ol className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
             return (
