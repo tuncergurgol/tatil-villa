@@ -37,6 +37,7 @@ const defaultQuickLinks: FooterLink[] = [
   { href: "/#bolgeler", label: "Popüler Bölgeler" },
   { href: "/#seyahat-macerasi", label: "Hizmetler" },
   { href: "/rezervasyon-dogrulama", label: "Rezervasyon Doğrulama" },
+  { href: "/sadakat", label: "Sadakat Programı" },
 ];
 
 const DEFAULT_LOGO = "/uploads/company/logo-1783080885848.svg";

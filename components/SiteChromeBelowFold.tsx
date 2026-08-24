@@ -25,6 +25,8 @@ const defaultQuickLinks = [
   { href: "/rezervasyon-dogrulama", label: "Rezervasyon Doğrulama" },
 ];
 
+const loyaltyQuickLink = { href: "/sadakat", label: "Sadakat Programı" };
+
 export default async function SiteChromeBelowFold() {
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
@@ -59,10 +61,12 @@ export default async function SiteChromeBelowFold() {
       slug: category.slug,
     }));
 
-  const quickLinks =
-    quickMenu.length > 0
+  const quickLinks = [
+    ...(quickMenu.length > 0
       ? quickMenu.map((item) => ({ href: item.href, label: item.label }))
-      : defaultQuickLinks;
+      : defaultQuickLinks),
+    loyaltyQuickLink,
+  ];
 
   const corporateLinks = corporatePages.map((page) => ({
     href:
