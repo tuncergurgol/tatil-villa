@@ -1,4 +1,4 @@
-import type { BookingStatus } from "@prisma/client";
+import type { BookingStatus, LoyaltyTier } from "@prisma/client";
 import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { normalizeActivityLogs } from "@/lib/booking-activity-log-core";
 import {
@@ -123,6 +123,8 @@ export type BookingDetails = {
   forceMajeureRefundRecipient?: "guest" | "owner" | null;
   /** İptal kaydı zamanı (ISO) */
   cancelledAt?: string | null;
+  /** Public talep: üye sadakat sınıfı (mail şablonu) */
+  memberLoyaltyTier?: LoyaltyTier | null;
   /** Public talep: card | transfer */
   paymentMethod?: string;
   paymentAmount?: string;

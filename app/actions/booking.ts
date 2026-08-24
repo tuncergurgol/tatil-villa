@@ -360,6 +360,7 @@ export async function submitBooking(
           couponDiscountAmount: agencyDiscountAmount,
           loyaltyVoucherId: appliedLoyaltyVoucherId,
           couponBalanceAmount: appliedCouponBalance > 0 ? appliedCouponBalance : undefined,
+          memberLoyaltyTier: member?.loyaltyTier ?? undefined,
         },
         buildActivityLogEntry({
           action: "booking_created",

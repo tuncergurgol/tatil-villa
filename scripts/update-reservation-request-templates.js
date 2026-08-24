@@ -25,6 +25,7 @@ Rezervasyon Bilgileri
 Ad Soyad:	##MUSTERIADI##
 Email:	##MUSTERIMAIL##
 Telefon:	##MUSTERITELEFON##
+Üyelik Statüsü:	##UYELIKSTATU##
 
 Misafir Bilgileri
 Yetişkin:	##YETISKIN##
@@ -41,6 +42,7 @@ Konaklama:	##GUNSAYISI## Gece
 
 Ödeme Bilgileri
 Konaklama Bedeli :	##GROSSPRICE## TL
+Acente / Üyelik İndirimi :	-##INDIRIMTUTARI## TL
 Temizlik Bedeli :	##CLEANINGFEE## TL
 Evcil Hayvan Temizlik Bedeli :	##PETCLEANINGFEE## TL
 Ek Yatak Bedeli :	##EXTRAACCOMMODATIONFEE## TL

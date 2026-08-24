@@ -18,6 +18,8 @@ import {
   type CompanyPaymentTypeValue,
 } from "@/lib/company-payment-types";
 import { calculateNights } from "@/lib/stay-nights";
+import type { LoyaltyTier } from "@prisma/client";
+import { LOYALTY_TIER_META } from "@/lib/loyalty-config";
 
 export function formatAgencyBookingDate(date: Date): string {
   const day = date.getDate();
@@ -456,6 +458,47 @@ function setAlias(
   }
 }
 
+export function resolveBookingMembershipMailValues(input: {
+  memberLoyaltyTier?: LoyaltyTier | null;
+  agencyDiscountAmount?: number | null;
+  agencyDiscountRate?: number | null;
+  couponCode?: string | null;
+}) {
+  const discountAmount = Math.max(
+    0,
+    Math.round(input.agencyDiscountAmount ?? 0)
+  );
+  const discountRate = input.agencyDiscountRate ?? 0;
+  const tier = input.memberLoyaltyTier ?? null;
+
+  let membershipStatus = "Misafir (üye değil)";
+  let discountDescription = "";
+
+  if (tier) {
+    const meta = LOYALTY_TIER_META[tier];
+    membershipStatus = `${meta.label} üyelik`;
+    if (discountRate > 0) {
+      membershipStatus += ` (%${discountRate})`;
+      discountDescription = `${meta.label} üyelik indirimi (%${discountRate})`;
+    } else if (discountAmount > 0) {
+      discountDescription = `${meta.label} üyelik indirimi`;
+    }
+  } else if (discountAmount > 0) {
+    const coupon = input.couponCode?.trim();
+    membershipStatus = coupon ? "Misafir (kupon indirimi)" : "Misafir (üye indirimi)";
+    discountDescription = coupon
+      ? `Kupon indirimi (${coupon})`
+      : "Üyelik / acente indirimi";
+  }
+
+  return {
+    membershipStatus,
+    discountAmount,
+    discountAmountFormatted: formatAgencyMoney(discountAmount),
+    discountDescription,
+  };
+}
+
 /** Yeni rezervasyon talebi (Mesaj İçeriği 1 / 2) placeholder değerleri */
 export function buildNewReservationRequestTemplateValues(input: {
   reservationCode: string;
@@ -474,6 +517,7 @@ export function buildNewReservationRequestTemplateValues(input: {
   pets: number;
   details: BookingDetails;
   totalPrice: number | null;
+  memberLoyaltyTier?: LoyaltyTier | null;
   company: {
     agencyName: string;
     brandName: string;
@@ -515,17 +559,31 @@ export function buildNewReservationRequestTemplateValues(input: {
   const checkOutDay = formatWeekdayTr(input.checkOut);
   const phoneDigits = input.guestPhone.replace(/\D/g, "");
   const guestMessage = input.details.customerNote?.trim() || "-";
+  const membership = resolveBookingMembershipMailValues({
+    memberLoyaltyTier:
+      input.memberLoyaltyTier ?? input.details.memberLoyaltyTier ?? null,
+    agencyDiscountAmount:
+      input.details.agencyDiscountAmount ?? input.details.couponDiscountAmount,
+    agencyDiscountRate: input.details.agencyDiscountRate,
+    couponCode: input.details.couponCode,
+  });
 
   const rezDetail = [
     `Rezervasyon No: ${input.reservationCode}`,
     `Misafir: ${input.guestName}`,
     `E-posta: ${input.guestEmail}`,
     `Telefon: ${input.guestPhone}`,
+    `Üyelik Statüsü: ${membership.membershipStatus}`,
     `Tesis: ${input.villaName}${input.villaRegion ? ` (${input.villaRegion})` : ""}`,
     `Giriş: ${formatAgencyBookingDate(input.checkIn)} ${checkInDay} ${input.villaCheckInTime}`,
     `Çıkış: ${formatAgencyBookingDate(input.checkOut)} ${checkOutDay} ${input.villaCheckOutTime}`,
     `Konaklama: ${nights} Gece`,
     `Misafir: ${input.adults} yetişkin, ${input.children} çocuk, ${input.babies} bebek, ${input.pets} evcil hayvan`,
+    ...(membership.discountAmount > 0
+      ? [
+          `İndirim${membership.discountDescription ? ` (${membership.discountDescription})` : ""}: ${membership.discountAmountFormatted} TL`,
+        ]
+      : []),
     `Toplam: ${formatAgencyMoney(reservationTotal)} TL`,
     `Ön Ödeme: ${formatAgencyMoney(prepaymentAmount)} TL (${paymentTypeLabel || "-"})`,
     `Girişte Ödeme: ${formatAgencyMoney(checkInPayment)} TL`,
@@ -572,6 +630,21 @@ export function buildNewReservationRequestTemplateValues(input: {
   setAlias(values, ["MUSTERIADI", "MÜŞTERİADI", "MUSTARIADI"], input.guestName);
   setAlias(values, ["MUSTERIMAIL", "MUSTERIEMAIL"], input.guestEmail);
   setAlias(values, ["MUSTERITELEFON"], phoneDigits || input.guestPhone);
+  setAlias(
+    values,
+    ["UYELIKSTATU", "UYELIKSTATÜSÜ", "UYELIKSINIFI", "UYELİKSINIFI"],
+    membership.membershipStatus
+  );
+  setAlias(
+    values,
+    ["INDIRIMTUTARI", "INDIRIMTUTAR", "ACENTEINDIRIM", "ACENTEINDIRIMTUTARI"],
+    membership.discountAmountFormatted
+  );
+  setAlias(
+    values,
+    ["INDIRIMACIKLAMA", "INDIRIMDETAY", "UYELIKINDIRIMACIKLAMA"],
+    membership.discountDescription
+  );
   setAlias(
     values,
     ["TESISADI", "TESİSADI", "VILLAADI", "VİLLAADI"],

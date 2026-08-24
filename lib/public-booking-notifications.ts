@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/db";
 import {
   buildNewReservationRequestTemplateValues,
   renderAgencyMessageTemplate,
@@ -106,6 +107,12 @@ export async function notifyNewReservationRequest(
       ]);
 
     const details = parseBookingDetails(booking.details);
+    const linkedMember = await prisma.booking.findUnique({
+      where: { id: booking.id },
+      select: { member: { select: { loyaltyTier: true } } },
+    });
+    const memberLoyaltyTier =
+      details.memberLoyaltyTier ?? linkedMember?.member?.loyaltyTier ?? null;
     const siteBrand = resolveBookingSiteBrand({
       siteInfo: details.siteInfo,
       originDomain: details.originDomain,
@@ -136,6 +143,7 @@ export async function notifyNewReservationRequest(
       pets: booking.pets,
       details,
       totalPrice: booking.totalPrice,
+      memberLoyaltyTier,
       company: {
         agencyName: company.agencyName,
         brandName: siteBrand.siteInfo || company.brandName,
