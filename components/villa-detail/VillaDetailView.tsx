@@ -60,6 +60,11 @@ type VillaDetailViewProps = {
   initialCheckIn?: string;
   initialCheckOut?: string;
   initialAdults?: number;
+  initialChildren?: number;
+  initialBabies?: number;
+  initialPets?: number;
+  /** Üye girişinden dönüşte rezervasyon talebi modalını aç */
+  resumeBookingRequest?: boolean;
   /** Belgesiz villada Uygunluk Ara linkinden gelen erişim token'ı */
   bookingAccessToken?: string;
   allowBookingAccess?: boolean;
@@ -119,6 +124,10 @@ export default function VillaDetailView({
   initialCheckIn = "",
   initialCheckOut = "",
   initialAdults = 2,
+  initialChildren = 0,
+  initialBabies = 0,
+  initialPets = 0,
+  resumeBookingRequest = false,
   bookingAccessToken = "",
   allowBookingAccess = false,
 }: VillaDetailViewProps) {
@@ -173,6 +182,9 @@ export default function VillaDetailView({
       initialCheckIn={initialCheckIn}
       initialCheckOut={initialCheckOut}
       initialAdults={initialAdults}
+      initialChildren={initialChildren}
+      initialBabies={initialBabies}
+      initialPets={initialPets}
     >
     <div className="bg-white" data-villa-detail-page>
       <div className="border-b border-slate-100 bg-slate-50">
@@ -611,6 +623,7 @@ export default function VillaDetailView({
               brandName={brandName}
               exchangeRates={exchangeRates}
               bookingAccessToken={bookingAccessToken || undefined}
+              resumeBookingRequest={resumeBookingRequest}
               heatedPools={villa.pools
                 .filter((pool) => pool.heated)
                 .map((pool) => ({

@@ -74,6 +74,9 @@ export function VillaStaySelectionProvider({
   initialCheckIn = "",
   initialCheckOut = "",
   initialAdults = 2,
+  initialChildren = 0,
+  initialBabies = 0,
+  initialPets = 0,
   children,
 }: {
   calendarDays: CalendarDayInput[];
@@ -81,6 +84,9 @@ export function VillaStaySelectionProvider({
   initialCheckIn?: string;
   initialCheckOut?: string;
   initialAdults?: number;
+  initialChildren?: number;
+  initialBabies?: number;
+  initialPets?: number;
   children: ReactNode;
 }) {
   const [checkIn, setCheckIn] = useState(
@@ -99,9 +105,9 @@ export function VillaStaySelectionProvider({
   const [guestsOpen, setGuestsOpen] = useState(false);
   const [guests, setGuests] = useState<GuestCounts>(() => ({
     adults: Math.max(1, Math.min(50, Math.floor(initialAdults) || 2)),
-    children: 0,
-    babies: 0,
-    pets: 0,
+    children: Math.max(0, Math.min(50, Math.floor(initialChildren) || 0)),
+    babies: Math.max(0, Math.min(50, Math.floor(initialBabies) || 0)),
+    pets: Math.max(0, Math.min(50, Math.floor(initialPets) || 0)),
   }));
 
   const occupancyMap = useMemo(

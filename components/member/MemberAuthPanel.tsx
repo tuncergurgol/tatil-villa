@@ -52,8 +52,9 @@ export default function MemberAuthPanel({
         );
         return;
       }
-      if (result.success && result.redirectTo) {
-        router.push(result.redirectTo || redirectTo);
+      if (result.success) {
+        // Sayfa ?redirect= ile geldiyse rezervasyon akışına geri dön (aksiyon sabit /uye/hesabim döner).
+        router.push(redirectTo || result.redirectTo || "/uye/hesabim");
         router.refresh();
       }
     });
@@ -82,6 +83,11 @@ export default function MemberAuthPanel({
           Telefon ile WhatsApp doğrulaması, e-posta ile şifre veya yeni üyelik
           oluşturabilirsiniz.
         </p>
+        {redirectTo !== "/uye/hesabim" ? (
+          <p className="mt-3 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-medium text-teal-800">
+            Giriş sonrası rezervasyon talebinize otomatik olarak döneceksiniz.
+          </p>
+        ) : null}
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">

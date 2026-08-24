@@ -18,6 +18,7 @@ import {
   defaultVillaPaymentAmount,
   resolveVillaPaymentAmountOptions,
 } from "@/lib/villa-payment-amount-options";
+import { buildVillaStayBookingReturnPath } from "@/lib/villa-stay-url-params";
 
 export type PreReservationPaymentMethod = "card" | "transfer";
 export type PreReservationPaymentAmount = "prepayment" | "full";
@@ -75,6 +76,8 @@ type PreReservationModalProps = {
     babies: number;
     pets: number;
   };
+  checkIn: string;
+  checkOut: string;
   quote: StayQuote;
   brandName?: string;
   memberBenefits?: PreReservationMemberBenefits | null;
@@ -145,6 +148,8 @@ export default function PreReservationModal({
   error = null,
   villa,
   guests,
+  checkIn,
+  checkOut,
   quote,
   brandName = "tatildeyiz",
   memberBenefits = null,
@@ -195,9 +200,16 @@ export default function PreReservationModal({
 
   useEffect(() => {
     if (!open) return;
-    if (typeof window !== "undefined") {
-      const path = `${window.location.pathname}${window.location.search}`;
-      setLoginRedirectHref(`/uye?redirect=${encodeURIComponent(path)}`);
+    if (typeof window !== "undefined" && checkIn && checkOut) {
+      const returnPath = buildVillaStayBookingReturnPath({
+        pathname: window.location.pathname,
+        search: window.location.search,
+        checkIn,
+        checkOut,
+        guests,
+        openRequest: true,
+      });
+      setLoginRedirectHref(`/uye?redirect=${encodeURIComponent(returnPath)}`);
     }
     if (memberBenefits && !memberBenefits.loggedIn) {
       setLoginPromoOpen(true);
@@ -220,7 +232,7 @@ export default function PreReservationModal({
       setAgencyDiscountRate(discount.agencyDiscountRate ?? 0);
       setCouponError(null);
     }
-  }, [open, memberBenefits]);
+  }, [open, memberBenefits, checkIn, checkOut, guests]);
 
   useEffect(() => {
     if (!open) return;

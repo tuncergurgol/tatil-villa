@@ -16,6 +16,8 @@ import { preloadOptimizedLcpImage } from "@/lib/preload-lcp-image";
 import {
   resolveVillaStayAdultsFromSearchParams,
   resolveVillaStayDatesFromSearchParams,
+  resolveVillaStayGuestCountsFromSearchParams,
+  shouldResumeVillaStayRequest,
 } from "@/lib/villa-stay-url-params";
 import {
   verifyUndocumentedVillaBookingAccessToken,
@@ -34,6 +36,13 @@ interface PageProps {
     checkOut?: string | string[];
     adults?: string | string[];
     kisi?: string | string[];
+    children?: string | string[];
+    cocuk?: string | string[];
+    babies?: string | string[];
+    bebek?: string | string[];
+    pets?: string | string[];
+    evcil?: string | string[];
+    talep?: string | string[];
     rez?: string | string[];
   }>;
 }
@@ -56,7 +65,10 @@ export default async function VillaDetailPage({
   const { slug } = await params;
   const query = await searchParams;
   const stayDates = resolveVillaStayDatesFromSearchParams(query);
-  const initialAdults = resolveVillaStayAdultsFromSearchParams(query, 2);
+  const initialGuests = resolveVillaStayGuestCountsFromSearchParams(query, 2);
+  const initialAdults =
+    initialGuests.adults || resolveVillaStayAdultsFromSearchParams(query, 2);
+  const resumeBookingRequest = shouldResumeVillaStayRequest(query);
 
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
@@ -144,6 +156,10 @@ export default async function VillaDetailPage({
         initialCheckIn={stayDates?.checkIn ?? ""}
         initialCheckOut={stayDates?.checkOut ?? ""}
         initialAdults={initialAdults}
+        initialChildren={initialGuests.children}
+        initialBabies={initialGuests.babies}
+        initialPets={initialGuests.pets}
+        resumeBookingRequest={resumeBookingRequest}
         bookingAccessToken={
           allowBookingAccess &&
           !hasVillaTourismDocument({

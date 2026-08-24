@@ -34,6 +34,9 @@ import {
   normalizeTurkishPhoneDigits,
 } from "@/lib/phone-utils";
 import {
+  VILLA_STAY_RESUME_REQUEST_PARAM,
+} from "@/lib/villa-stay-url-params";
+import {
   emptyStayPeriodFees,
   type HeatedPoolOption,
   type PoolHeatingSelections,
@@ -73,6 +76,8 @@ interface BookingFormProps {
   exchangeRates: PublicExchangeRates;
   heatedPools?: HeatedPoolOption[];
   bookingAccessToken?: string;
+  /** Üye girişinden dönüşte talep modalını otomatik aç */
+  resumeBookingRequest?: boolean;
   villaSummary: {
     name: string;
     slug: string;
@@ -160,6 +165,7 @@ export default function BookingForm({
   exchangeRates,
   heatedPools = [],
   bookingAccessToken,
+  resumeBookingRequest = false,
   villaSummary,
   calendarDays = [],
   allowPrepaymentOption = true,
@@ -553,6 +559,31 @@ export default function BookingForm({
     setModalOpen(true);
   }
 
+  const resumeRequestRef = useRef(false);
+  useEffect(() => {
+    if (!resumeBookingRequest || resumeRequestRef.current) return;
+    if (!canOpenModal || !quote?.valid) return;
+    resumeRequestRef.current = true;
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has(VILLA_STAY_RESUME_REQUEST_PARAM)) {
+        params.delete(VILLA_STAY_RESUME_REQUEST_PARAM);
+        const next = `${window.location.pathname}${
+          params.toString() ? `?${params.toString()}` : ""
+        }${window.location.hash}`;
+        window.history.replaceState(null, "", next);
+      }
+      requestAnimationFrame(() => {
+        document
+          .getElementById("rezervasyon-yap")
+          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+
+    void handleOpenModal();
+  }, [resumeBookingRequest, canOpenModal, quote?.valid]);
+
   function handleModalSubmit(payload: PreReservationSubmitPayload) {
     if (!checkIn || !checkOut || !quote?.valid) return;
 
@@ -849,6 +880,8 @@ export default function BookingForm({
           error={modalOpen ? state.error : null}
           villa={villaSummary}
           guests={guests}
+          checkIn={checkIn}
+          checkOut={checkOut}
           quote={{
             ...quote,
             total: pricingTotals?.grandTotal ?? quote.total,
