@@ -195,6 +195,11 @@ export const adminNavSections: NavSection[] = [
         icon: "user",
       },
       {
+        label: "Sadakat Programı",
+        href: "/admin/musteri-yonetimi/sadakat",
+        icon: "ticket",
+      },
+      {
         label: "Kupon Yönetimi",
         href: "/admin/musteri-yonetimi/kuponlar",
         icon: "ticket",
