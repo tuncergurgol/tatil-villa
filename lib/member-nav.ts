@@ -39,7 +39,7 @@ export const memberAccountNavItems: MemberNavItem[] = [
   },
   {
     href: "/uye/hesabim/uyelik",
-    label: "Üyelik Seviyesi",
+    label: "Üyelik Sınıfı",
     icon: Gift,
     description: "Sadakat ve çekler",
   },
