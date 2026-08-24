@@ -65,6 +65,7 @@ const bookingSchema = z.object({
   couponDiscountAmount: z.coerce.number().min(0).optional(),
   loyaltyVoucherId: z.string().trim().optional(),
   couponBalanceAmount: z.coerce.number().min(0).optional(),
+  agencyDiscountRate: z.coerce.number().min(0).max(100).optional(),
   bookingAccessToken: z.string().trim().optional(),
 });
 
@@ -116,6 +117,7 @@ export async function submitBooking(
     couponDiscountAmount: formData.get("couponDiscountAmount") ?? "",
     loyaltyVoucherId: formData.get("loyaltyVoucherId")?.toString() || "",
     couponBalanceAmount: formData.get("couponBalanceAmount") ?? "",
+    agencyDiscountRate: formData.get("agencyDiscountRate") ?? "",
     bookingAccessToken:
       formData.get("bookingAccessToken")?.toString() || "",
   });
@@ -139,6 +141,7 @@ export async function submitBooking(
     couponDiscountAmount: couponDiscountAmountRaw,
     loyaltyVoucherId,
     couponBalanceAmount: couponBalanceAmountRaw,
+    agencyDiscountRate: agencyDiscountRateRaw,
     bookingAccessToken,
     villaId,
     adults,
@@ -235,6 +238,7 @@ export async function submitBooking(
   const site = await getPublicSiteProfile(company);
 
   let agencyDiscountAmount = 0;
+  let agencyDiscountRate = 0;
   let appliedCouponCode: string | null = null;
   let appliedLoyaltyVoucherId: string | null = null;
   let appliedCouponBalance = 0;
@@ -251,10 +255,12 @@ export async function submitBooking(
         couponCode: couponCode?.trim() || undefined,
         loyaltyVoucherId: loyaltyVoucherId?.trim() || undefined,
         couponBalanceAmount: couponBalanceAmountRaw ?? undefined,
+        agencyDiscountRate: agencyDiscountRateRaw ?? undefined,
       }
     );
     if (!discountResult.ok) return { error: discountResult.error };
     agencyDiscountAmount = discountResult.discount.amount;
+    agencyDiscountRate = discountResult.discount.agencyDiscountRate ?? 0;
     appliedCouponCode = discountResult.discount.couponCode ?? null;
     appliedLoyaltyVoucherId = discountResult.discount.loyaltyVoucherId ?? null;
     appliedCouponBalance = discountResult.discount.couponBalanceAmount ?? 0;
@@ -340,6 +346,8 @@ export async function submitBooking(
           acceptMarketing: acceptMarketing ?? false,
           source: "public_pre_reservation",
           agencyDiscountAmount,
+          agencyDiscountRate:
+            agencyDiscountRate > 0 ? agencyDiscountRate : undefined,
           couponCode: appliedCouponCode,
           couponDiscountAmount: agencyDiscountAmount,
           loyaltyVoucherId: appliedLoyaltyVoucherId,
@@ -377,12 +385,20 @@ export async function submitBooking(
   }
 
   if (member && agencyDiscountAmount > 0) {
-    await applyMemberDiscountAfterBooking(member.id, booking.id, {
-      amount: agencyDiscountAmount,
-      couponCode: appliedCouponCode ?? undefined,
-      loyaltyVoucherId: appliedLoyaltyVoucherId ?? undefined,
-      couponBalanceAmount: appliedCouponBalance > 0 ? appliedCouponBalance : undefined,
-    });
+    // Sınıf oranı acente indirimi çek/bakiye tüketmez
+    if (
+      appliedCouponCode ||
+      appliedLoyaltyVoucherId ||
+      appliedCouponBalance > 0
+    ) {
+      await applyMemberDiscountAfterBooking(member.id, booking.id, {
+        amount: agencyDiscountAmount,
+        couponCode: appliedCouponCode ?? undefined,
+        loyaltyVoucherId: appliedLoyaltyVoucherId ?? undefined,
+        couponBalanceAmount:
+          appliedCouponBalance > 0 ? appliedCouponBalance : undefined,
+      });
+    }
   } else if (appliedCouponCode && agencyDiscountAmount > 0) {
     const coupon = await prisma.coupon.findFirst({
       where: { code: { equals: appliedCouponCode, mode: "insensitive" } },

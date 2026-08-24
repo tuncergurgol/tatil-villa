@@ -11,6 +11,10 @@ import TurkishPhoneField, {
 } from "@/components/admin/ui/TurkishPhoneField";
 import type { StayQuote } from "@/lib/stay-quote";
 import {
+  LOYALTY_TIER_META,
+  LOYALTY_TIER_ORDER,
+} from "@/lib/loyalty-config";
+import {
   defaultVillaPaymentAmount,
   resolveVillaPaymentAmountOptions,
 } from "@/lib/villa-payment-amount-options";
@@ -31,6 +35,7 @@ export type PreReservationSubmitPayload = {
   loyaltyVoucherId?: string;
   couponBalanceAmount?: number;
   memberDiscountLabel?: string;
+  agencyDiscountRate?: number;
 };
 
 export type PreReservationMemberBenefits = {
@@ -46,6 +51,7 @@ export type PreReservationMemberBenefits = {
     couponCode?: string;
     loyaltyVoucherId?: string;
     couponBalanceAmount?: number;
+    agencyDiscountRate?: number;
   };
 };
 
@@ -171,9 +177,12 @@ export default function PreReservationModal({
   const [loyaltyVoucherId, setLoyaltyVoucherId] = useState("");
   const [couponBalanceAmount, setCouponBalanceAmount] = useState(0);
   const [memberDiscountLabel, setMemberDiscountLabel] = useState("");
+  const [agencyDiscountRate, setAgencyDiscountRate] = useState(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponPending, setCouponPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [loginPromoOpen, setLoginPromoOpen] = useState(false);
+  const [loginRedirectHref, setLoginRedirectHref] = useState("/uye");
 
   useEffect(() => {
     setMounted(true);
@@ -186,6 +195,15 @@ export default function PreReservationModal({
 
   useEffect(() => {
     if (!open) return;
+    if (typeof window !== "undefined") {
+      const path = `${window.location.pathname}${window.location.search}`;
+      setLoginRedirectHref(`/uye?redirect=${encodeURIComponent(path)}`);
+    }
+    if (memberBenefits && !memberBenefits.loggedIn) {
+      setLoginPromoOpen(true);
+    } else {
+      setLoginPromoOpen(false);
+    }
     if (memberBenefits?.guest) {
       setGuestName(memberBenefits.guest.fullName);
       setGuestEmail(memberBenefits.guest.email);
@@ -199,6 +217,7 @@ export default function PreReservationModal({
       setLoyaltyVoucherId(discount.loyaltyVoucherId ?? "");
       setCouponBalanceAmount(discount.couponBalanceAmount ?? 0);
       setMemberDiscountLabel(discount.label);
+      setAgencyDiscountRate(discount.agencyDiscountRate ?? 0);
       setCouponError(null);
     }
   }, [open, memberBenefits]);
@@ -247,6 +266,7 @@ export default function PreReservationModal({
         setLoyaltyVoucherId("");
         setCouponBalanceAmount(0);
         setMemberDiscountLabel("");
+        setAgencyDiscountRate(0);
         setCouponError(result.error ?? "Kupon uygulanamadı");
         return;
       }
@@ -254,6 +274,7 @@ export default function PreReservationModal({
       setCouponCode(result.couponCode ?? couponCode);
       setLoyaltyVoucherId("");
       setCouponBalanceAmount(0);
+      setAgencyDiscountRate(0);
       setMemberDiscountLabel("Üye kuponu");
     } finally {
       setCouponPending(false);
@@ -311,6 +332,10 @@ export default function PreReservationModal({
           : undefined,
       memberDiscountLabel:
         couponDiscountAmount > 0 ? memberDiscountLabel : undefined,
+      agencyDiscountRate:
+        couponDiscountAmount > 0 && agencyDiscountRate > 0
+          ? agencyDiscountRate
+          : undefined,
     });
   }
 
@@ -453,6 +478,7 @@ export default function PreReservationModal({
                         setLoyaltyVoucherId("");
                         setCouponBalanceAmount(0);
                         setMemberDiscountLabel("");
+                        setAgencyDiscountRate(0);
                         setCouponError(null);
                       }
                     }}
@@ -490,6 +516,15 @@ export default function PreReservationModal({
                   <p className="mt-2 text-xs text-teal-700">
                     Üye avantajınız otomatik uygulandı.
                   </p>
+                ) : null}
+                {!memberBenefits?.loggedIn ? (
+                  <button
+                    type="button"
+                    onClick={() => setLoginPromoOpen(true)}
+                    className="mt-3 w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-left text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+                  >
+                    Üye girişi yapın ve sadakat indirimini kazanın →
+                  </button>
                 ) : null}
               </div>
             </div>
@@ -623,6 +658,69 @@ export default function PreReservationModal({
           </section>
         </div>
       </div>
+
+      {loginPromoOpen ? (
+        <div className="fixed inset-0 z-[230] flex items-center justify-center bg-slate-950/55 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                  Sadakat Programı
+                </p>
+                <h3 className="mt-1 text-xl font-bold text-slate-900">
+                  Üye Girişi Yapın ve İndirimi Kazanın
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoginPromoOpen(false)}
+                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+                aria-label="Kapat"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Üye girişi yaptığınızda sadakat sınıfınıza göre yalnızca{" "}
+              <strong>konaklama bedeline</strong> rezervasyon (acente)
+              indirimi uygulanır.
+            </p>
+            <ul className="mt-4 grid grid-cols-2 gap-2">
+              {LOYALTY_TIER_ORDER.map((tier) => {
+                const meta = LOYALTY_TIER_META[tier];
+                return (
+                  <li
+                    key={tier}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+                  >
+                    <p className="text-sm font-bold text-slate-900">
+                      {meta.emoji} {meta.label}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-teal-700">
+                      %{meta.voucherPercent} indirim
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-5 space-y-2">
+              <Link
+                href={loginRedirectHref}
+                className="flex w-full items-center justify-center rounded-xl bg-teal-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-teal-800"
+              >
+                Üye Girişi Yapın
+              </Link>
+              <button
+                type="button"
+                onClick={() => setLoginPromoOpen(false)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Üye olmadan devam et
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>,
     document.body
   );

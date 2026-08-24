@@ -19,6 +19,7 @@ export type MemberBookingBenefits = {
     couponCode?: string;
     loyaltyVoucherId?: string;
     couponBalanceAmount?: number;
+    agencyDiscountRate?: number;
   };
 };
 
@@ -57,6 +58,7 @@ export async function getMemberBookingBenefitsAction(
           couponCode: autoDiscount.couponCode,
           loyaltyVoucherId: autoDiscount.loyaltyVoucherId,
           couponBalanceAmount: autoDiscount.couponBalanceAmount,
+          agencyDiscountRate: autoDiscount.agencyDiscountRate,
         }
       : undefined,
   };

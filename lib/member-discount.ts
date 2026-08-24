@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import { validateCouponForBooking } from "@/lib/coupon-service";
-import { LOYALTY_RULES } from "@/lib/loyalty-config";
+import {
+  calculateTierVoucherAmount,
+  LOYALTY_RULES,
+  LOYALTY_TIER_META,
+} from "@/lib/loyalty-config";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 
 export type MemberDiscountOffer = {
@@ -9,6 +13,8 @@ export type MemberDiscountOffer = {
   couponCode?: string;
   loyaltyVoucherId?: string;
   couponBalanceAmount?: number;
+  /** Sadakat sınıfı oranı — yalnızca konaklama bedeline acente indirimi */
+  agencyDiscountRate?: number;
 };
 
 export async function resolveBestMemberDiscount(
@@ -20,11 +26,24 @@ export async function resolveBestMemberDiscount(
 
   const member = await prisma.memberAccount.findUnique({
     where: { id: memberId },
-    select: { id: true, couponBalance: true },
+    select: { id: true, couponBalance: true, loyaltyTier: true },
   });
   if (!member) return null;
 
   const offers: MemberDiscountOffer[] = [];
+
+  const tierMeta = LOYALTY_TIER_META[member.loyaltyTier];
+  const tierAmount = calculateTierVoucherAmount(
+    member.loyaltyTier,
+    accommodationTotal
+  );
+  if (tierAmount > 0 && tierMeta.voucherPercent > 0) {
+    offers.push({
+      amount: tierAmount,
+      label: `${tierMeta.label} üyelik indirimi (%${tierMeta.voucherPercent})`,
+      agencyDiscountRate: tierMeta.voucherPercent,
+    });
+  }
 
   if (member.couponBalance > 0) {
     const amount = Math.min(member.couponBalance, accommodationTotal);

@@ -580,6 +580,9 @@ export default function BookingForm({
     if (payload.couponBalanceAmount) {
       formData.set("couponBalanceAmount", String(payload.couponBalanceAmount));
     }
+    if (payload.agencyDiscountRate) {
+      formData.set("agencyDiscountRate", String(payload.agencyDiscountRate));
+    }
     if (bookingAccessToken) {
       formData.set("bookingAccessToken", bookingAccessToken);
     }
