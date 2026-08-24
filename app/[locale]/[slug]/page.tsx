@@ -68,7 +68,7 @@ export default async function VillaDetailPage({
     villa.id,
     villa.regionId,
     villa.guests,
-    10,
+    12,
     site.key
   );
 
