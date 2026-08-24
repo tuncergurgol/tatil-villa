@@ -99,12 +99,17 @@ function RadioCard({
   title,
   description,
   price,
+  discountApplied,
 }: {
   selected: boolean;
   onSelect: () => void;
   title: string;
   description: string;
   price?: string;
+  discountApplied?: {
+    label: string;
+    amountLabel: string;
+  } | null;
 }) {
   return (
     <button
@@ -130,6 +135,21 @@ function RadioCard({
         {price ? (
           <span className="mt-1 block text-lg font-bold text-slate-900">
             {price}
+          </span>
+        ) : null}
+        {discountApplied ? (
+          <span className="mt-2 block rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-xs font-bold uppercase tracking-wide text-emerald-800">
+                {discountApplied.label}
+              </span>
+              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                Uygulandı
+              </span>
+            </span>
+            <span className="mt-1 block text-sm font-bold text-emerald-700">
+              İndirim tutarı: -{discountApplied.amountLabel}
+            </span>
           </span>
         ) : null}
         <span className="mt-1 block text-xs leading-relaxed text-slate-500">
@@ -264,6 +284,16 @@ export default function PreReservationModal({
   const remainder = Math.max(0, quote.checkInPayment);
   const payNow =
     paymentAmount === "prepayment" ? prepayment : total;
+  const hasAppliedDiscount = couponDiscountAmount > 0;
+  const appliedDiscountInfo = hasAppliedDiscount
+    ? {
+        label: memberDiscountLabel || "Üye indirimi",
+        amountLabel: formatMoneyLira(couponDiscountAmount),
+      }
+    : null;
+  const payNowLabel = hasAppliedDiscount
+    ? "İndirimli rezervasyon tutarı"
+    : "Rezervasyon tutarı";
 
   async function applyCoupon() {
     setCouponError(null);
@@ -458,6 +488,7 @@ export default function PreReservationModal({
                     onSelect={() => setPaymentAmount("prepayment")}
                     title={`%${quote.prepaymentRate} Ön Ödeme Tutarı`}
                     price={formatMoneyLira(prepayment)}
+                    discountApplied={appliedDiscountInfo}
                     description="Toplam tutarın sadece ön ödemesini yapmak istiyorum."
                   />
                 ) : null}
@@ -467,13 +498,18 @@ export default function PreReservationModal({
                     onSelect={() => setPaymentAmount("full")}
                     title="Tutarın Tamamı"
                     price={formatMoneyLira(total)}
+                    discountApplied={
+                      !paymentAmountOptions.includes("prepayment")
+                        ? appliedDiscountInfo
+                        : null
+                    }
                     description="Toplam tutarın tamamını yapmak istiyorum."
                   />
                 ) : null}
               </div>
-              <p className="text-center text-xs text-slate-500">
-                Şimdi ödenecek:{" "}
-                <span className="font-semibold text-slate-800">
+              <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+                {payNowLabel}:{" "}
+                <span className="font-bold text-slate-900">
                   {formatMoneyLira(payNow)}
                 </span>
               </p>
@@ -517,17 +553,6 @@ export default function PreReservationModal({
                 ) : null}
                 {couponError ? (
                   <p className="mt-2 text-xs text-red-600">{couponError}</p>
-                ) : null}
-                {couponDiscountAmount > 0 ? (
-                  <p className="mt-2 text-xs font-semibold text-emerald-700">
-                    {memberDiscountLabel || "Üye indirimi"}: -
-                    {formatMoneyLira(couponDiscountAmount)}
-                  </p>
-                ) : null}
-                {memberBenefits?.loggedIn && memberBenefits.autoDiscount ? (
-                  <p className="mt-2 text-xs text-teal-700">
-                    Üye avantajınız otomatik uygulandı.
-                  </p>
                 ) : null}
                 {!memberBenefits?.loggedIn ? (
                   <button
