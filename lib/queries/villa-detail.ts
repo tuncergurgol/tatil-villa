@@ -641,7 +641,7 @@ export async function getSimilarVillas(
   villaId: string,
   regionId: string,
   guests: number,
-  limit = 10,
+  limit = 12,
   siteKey?: PublicSiteKey
 ): Promise<SimilarVillaCard[]> {
   const tiers = await resolveSimilarRegionTiers(regionId);
