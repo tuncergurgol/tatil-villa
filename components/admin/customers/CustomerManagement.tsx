@@ -40,7 +40,7 @@ interface CustomerManagementProps {
 }
 
 const LOYALTY_FILTER_OPTIONS: { value: LoyaltyFilter; label: string }[] = [
-  { value: "all", label: "Üyelik: Tümü" },
+  { value: "all", label: "Üyelik Sınıfı: Tümü" },
   { value: "none", label: "Üye değil" },
   ...LOYALTY_TIER_ORDER.map((tier) => ({
     value: tier as LoyaltyFilter,
@@ -94,7 +94,7 @@ async function downloadCustomerExcel(
     "Ad Soyad",
     "Telefon",
     "E-posta",
-    "Üyelik",
+    "Üyelik Sınıfı",
     "Konaklama",
     "Kupon Bakiyesi (TL)",
     "İlk Kayıt Kanalı",
@@ -327,7 +327,7 @@ export default function CustomerManagement({
           <div>Ad Soyad</div>
           <div>Telefon</div>
           <div>E-posta</div>
-          <div>Üyelik</div>
+          <div>Üyelik Sınıfı</div>
           <div>İlk Kayıt Kanalı</div>
           <div>Etiketler</div>
           <div>İlk Kayıt / Güncelleme</div>
@@ -373,7 +373,7 @@ export default function CustomerManagement({
 
                 <div>
                   <span className="text-xs font-medium text-gray-400 xl:hidden">
-                    Üyelik
+                    Üyelik Sınıfı
                   </span>
                   {isNonMemberCustomer(customer) ? (
                     <p className="text-sm text-gray-400">Üye değil</p>

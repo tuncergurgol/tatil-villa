@@ -16,14 +16,15 @@ export default async function MemberLoyaltyPage() {
   return (
     <div className="space-y-6">
       <div className="hidden lg:block">
-        <h2 className="text-xl font-bold text-slate-900">Üyelik Seviyesi</h2>
+        <h2 className="text-xl font-bold text-slate-900">Üyelik Sınıfı</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Tamamlanan konaklamalarınıza göre seviye ve sadakat çekleri kazanırsınız.
+          Tamamlanan konaklamalarınıza göre üyelik sınıfı ve sadakat çekleri
+          kazanırsınız.
         </p>
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-5">
-        <p className="text-sm font-semibold text-amber-800">Mevcut Seviye</p>
+        <p className="text-sm font-semibold text-amber-800">Mevcut Sınıf</p>
         <p className="mt-1 text-3xl font-bold text-slate-900">
           {currentMeta.emoji} {currentMeta.label}
         </p>

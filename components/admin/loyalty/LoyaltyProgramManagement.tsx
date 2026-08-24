@@ -154,7 +154,8 @@ export default function LoyaltyProgramManagement({
                 Sadakat Programı
               </h1>
               <p className="text-sm text-gray-500">
-                Üyelik seviyeleri, çekler ve davet kuralları
+                Üyelik sınıfları (Bronz–Platin), çekler ve davet kuralları —
+                müşteri listesindeki üyelik ile aynı sınıflandırma
               </p>
             </div>
           </div>
@@ -216,33 +217,36 @@ export default function LoyaltyProgramManagement({
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {LOYALTY_TIER_ORDER.map((tier) => {
-              const meta = LOYALTY_TIER_META[tier];
-              return (
-                <div
-                  key={tier}
-                  className="rounded-2xl border border-gray-200 bg-gray-50/60 px-4 py-4"
-                >
-                  <p className="text-lg font-bold text-gray-900">
-                    {meta.emoji} {meta.label}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600">
-                    {meta.requiredStays === 0
-                      ? "Başlangıç"
-                      : `${meta.requiredStays}+ konaklama`}
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-teal-700">
-                    {meta.voucherPercent > 0
-                      ? `%${meta.voucherPercent} sadakat çeki`
-                      : "Çek yok"}
-                  </p>
-                  <p className="mt-3 text-xs text-gray-500">
-                    {data.stats.tierCounts[tier]} üye
-                  </p>
-                </div>
-              );
-            })}
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              Üyelik Sınıfları
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {LOYALTY_TIER_ORDER.map((tier) => {
+                const meta = LOYALTY_TIER_META[tier];
+                return (
+                  <div
+                    key={tier}
+                    className="rounded-2xl border border-gray-200 bg-gray-50/60 px-4 py-4"
+                  >
+                    <p className="text-lg font-bold text-gray-900">
+                      {meta.emoji} {meta.label}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {meta.requiredStays === 0
+                        ? "Başlangıç"
+                        : `${meta.requiredStays}+ konaklama`}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-teal-700">
+                      %{meta.voucherPercent} sadakat çeki
+                    </p>
+                    <p className="mt-3 text-xs text-gray-500">
+                      {data.stats.tierCounts[tier]} üye
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
@@ -281,7 +285,7 @@ export default function LoyaltyProgramManagement({
               <div className="flex flex-wrap gap-2">
                 {(
                   [
-                    { value: "all", label: "Tümü" },
+                    { value: "all", label: "Üyelik: Tümü" },
                     ...LOYALTY_TIER_ORDER.map((tier) => ({
                       value: tier,
                       label: LOYALTY_TIER_META[tier].label,
@@ -294,7 +298,7 @@ export default function LoyaltyProgramManagement({
                     onClick={() => setTierFilter(option.value)}
                     className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                       tierFilter === option.value
-                        ? "bg-indigo-600 text-white"
+                        ? "bg-amber-600 text-white"
                         : "bg-gray-100 text-gray-700"
                     }`}
                   >
@@ -308,7 +312,7 @@ export default function LoyaltyProgramManagement({
                   <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-4 py-3">Üye</th>
-                      <th className="px-4 py-3">Seviye</th>
+                      <th className="px-4 py-3">Üyelik Sınıfı</th>
                       <th className="px-4 py-3">Konaklama</th>
                       <th className="px-4 py-3">Aktif çek</th>
                       <th className="px-4 py-3">Kupon bakiye</th>

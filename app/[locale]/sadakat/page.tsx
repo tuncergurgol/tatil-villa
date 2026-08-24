@@ -34,7 +34,7 @@ export default function SadakatProgramPage() {
         {[
           {
             title: "Üyelik Seviyesi & Sadakat Çeki",
-            text: "Tamamlanan her konaklama sizi Bronz'dan Platin'e taşır. Seviyenize göre %5'e varan indirim çeki kazanırsınız.",
+            text: "Tamamlanan her konaklama sizi Bronz'dan Platin'e taşır. Üyelik sınıfınıza göre %7'ye varan indirim çeki kazanırsınız.",
           },
           {
             title: "Davet Et, Kazan",
@@ -58,7 +58,7 @@ export default function SadakatProgramPage() {
       </section>
 
       <section className="mx-auto max-w-5xl px-4 pb-16 sm:px-6">
-        <h2 className="text-2xl font-bold text-slate-900">Üyelik Seviyeleri</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Üyelik Sınıfları</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(["BRONZE", "SILVER", "GOLD", "PLATINUM"] as const).map((tier) => {
             const meta = LOYALTY_TIER_META[tier];
