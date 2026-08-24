@@ -1,8 +1,14 @@
 import type { LoyaltyTier, LoyaltyVoucherType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import {
+  getConfirmedStayCountByCustomerId,
+  resolveCustomerLoyaltyTier,
+  resolveCustomerStayCount,
+} from "@/lib/customer-loyalty";
 import { LOYALTY_TIER_ORDER } from "@/lib/loyalty-config";
 
 export type AdminLoyaltyMemberItem = {
+  /** Customer id (üyelik sınıfı müşteri listesiyle aynı kaynaktan) */
   id: string;
   fullName: string;
   phone: string;
@@ -14,7 +20,10 @@ export type AdminLoyaltyMemberItem = {
   lastStayCompletedAt: Date | null;
   activeVoucherCount: number;
   activeVoucherTotal: number;
-  customerId: string | null;
+  customerId: string;
+  /** Kayıtlı üye hesabı varsa; manuel çek için gerekli */
+  memberAccountId: string | null;
+  hasMemberAccount: boolean;
 };
 
 export type AdminLoyaltyVoucherItem = {
@@ -35,6 +44,7 @@ export type AdminLoyaltyVoucherItem = {
 export type AdminLoyaltyStats = {
   memberCount: number;
   activeMemberCount: number;
+  registeredMemberCount: number;
   tierCounts: Record<LoyaltyTier, number>;
   activeVoucherCount: number;
   activeVoucherTotal: number;
@@ -47,31 +57,44 @@ export type AdminLoyaltyPageData = {
   vouchers: AdminLoyaltyVoucherItem[];
 };
 
+function isClassifiedMember(input: {
+  stayCount: number;
+  hasMemberAccount: boolean;
+}) {
+  return input.stayCount > 0 || input.hasMemberAccount;
+}
+
 export async function getAdminLoyaltyPageData(): Promise<AdminLoyaltyPageData> {
   const now = new Date();
 
-  const [members, vouchers, tierGroups, memberCount, activeMemberCount] =
+  const [customers, stayByCustomer, vouchers, registeredMemberCount] =
     await Promise.all([
-      prisma.memberAccount.findMany({
-        orderBy: [{ completedStays: "desc" }, { updatedAt: "desc" }],
-        take: 500,
+      prisma.customer.findMany({
         select: {
           id: true,
           fullName: true,
           phone: true,
           email: true,
-          loyaltyTier: true,
-          completedStays: true,
-          couponBalance: true,
           active: true,
-          lastStayCompletedAt: true,
-          customerId: true,
-          loyaltyVouchers: {
-            where: { usedAt: null, expiresAt: { gt: now } },
-            select: { remainingAmount: true },
+          tags: {
+            select: { tag: { select: { name: true } } },
+          },
+          memberAccount: {
+            select: {
+              id: true,
+              completedStays: true,
+              couponBalance: true,
+              lastStayCompletedAt: true,
+              loyaltyVouchers: {
+                where: { usedAt: null, expiresAt: { gt: now } },
+                select: { remainingAmount: true },
+              },
+            },
           },
         },
+        orderBy: [{ fullName: "asc" }],
       }),
+      getConfirmedStayCountByCustomerId(),
       prisma.loyaltyVoucher.findMany({
         orderBy: [{ createdAt: "desc" }],
         take: 300,
@@ -89,40 +112,55 @@ export async function getAdminLoyaltyPageData(): Promise<AdminLoyaltyPageData> {
           booking: { select: { externalCode: true } },
         },
       }),
-      prisma.memberAccount.groupBy({
-        by: ["loyaltyTier"],
-        _count: { _all: true },
-      }),
       prisma.memberAccount.count(),
-      prisma.memberAccount.count({ where: { active: true } }),
     ]);
 
   const tierCounts = Object.fromEntries(
     LOYALTY_TIER_ORDER.map((tier) => [tier, 0])
   ) as Record<LoyaltyTier, number>;
-  for (const row of tierGroups) {
-    tierCounts[row.loyaltyTier] = row._count._all;
-  }
 
-  const memberItems: AdminLoyaltyMemberItem[] = members.map((member) => {
-    const activeVoucherTotal = member.loyaltyVouchers.reduce(
+  const memberItems: AdminLoyaltyMemberItem[] = [];
+
+  for (const customer of customers) {
+    const stayCount = resolveCustomerStayCount({
+      bookingCount: stayByCustomer.get(customer.id) ?? 0,
+      tags: customer.tags.map((entry) => entry.tag),
+    });
+    const hasMemberAccount = Boolean(customer.memberAccount);
+    if (!isClassifiedMember({ stayCount, hasMemberAccount })) continue;
+
+    const loyaltyTier = resolveCustomerLoyaltyTier(stayCount);
+    tierCounts[loyaltyTier] += 1;
+
+    const vouchersForMember = customer.memberAccount?.loyaltyVouchers ?? [];
+    const activeVoucherTotal = vouchersForMember.reduce(
       (sum, voucher) => sum + voucher.remainingAmount,
       0
     );
-    return {
-      id: member.id,
-      fullName: member.fullName,
-      phone: member.phone,
-      email: member.email,
-      loyaltyTier: member.loyaltyTier,
-      completedStays: member.completedStays,
-      couponBalance: member.couponBalance,
-      active: member.active,
-      lastStayCompletedAt: member.lastStayCompletedAt,
-      activeVoucherCount: member.loyaltyVouchers.length,
+
+    memberItems.push({
+      id: customer.id,
+      fullName: customer.fullName,
+      phone: customer.phone,
+      email: customer.email,
+      loyaltyTier,
+      completedStays: stayCount,
+      couponBalance: customer.memberAccount?.couponBalance ?? 0,
+      active: customer.active,
+      lastStayCompletedAt: customer.memberAccount?.lastStayCompletedAt ?? null,
+      activeVoucherCount: vouchersForMember.length,
       activeVoucherTotal,
-      customerId: member.customerId,
-    };
+      customerId: customer.id,
+      memberAccountId: customer.memberAccount?.id ?? null,
+      hasMemberAccount,
+    });
+  }
+
+  memberItems.sort((a, b) => {
+    if (b.completedStays !== a.completedStays) {
+      return b.completedStays - a.completedStays;
+    }
+    return a.fullName.localeCompare(b.fullName, "tr");
   });
 
   const voucherItems: AdminLoyaltyVoucherItem[] = vouchers.map((voucher) => ({
@@ -149,15 +187,16 @@ export async function getAdminLoyaltyPageData(): Promise<AdminLoyaltyPageData> {
 
   return {
     stats: {
-      memberCount,
-      activeMemberCount,
+      memberCount: memberItems.length,
+      activeMemberCount: memberItems.filter((member) => member.active).length,
+      registeredMemberCount,
       tierCounts,
       activeVoucherCount: activeVouchers.length,
       activeVoucherTotal: activeVouchers.reduce(
         (sum, voucher) => sum + voucher.remainingAmount,
         0
       ),
-      couponBalanceTotal: members.reduce(
+      couponBalanceTotal: memberItems.reduce(
         (sum, member) => sum + member.couponBalance,
         0
       ),

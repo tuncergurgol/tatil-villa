@@ -154,8 +154,8 @@ export default function LoyaltyProgramManagement({
                 Sadakat Programı
               </h1>
               <p className="text-sm text-gray-500">
-                Üyelik sınıfları (Bronz–Platin), çekler ve davet kuralları —
-                müşteri listesindeki üyelik ile aynı sınıflandırma
+                Üyelik sınıfları müşteri listesiyle aynıdır (konaklama
+                sayısına göre). Çekler kayıtlı üye hesaplarında tutulur.
               </p>
             </div>
           </div>
@@ -196,9 +196,9 @@ export default function LoyaltyProgramManagement({
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              label="Üye"
-              value={String(data.stats.activeMemberCount)}
-              hint={`${data.stats.memberCount} toplam üye`}
+              label="Üyelik sınıflı"
+              value={String(data.stats.memberCount)}
+              hint={`${data.stats.activeMemberCount} aktif · ${data.stats.registeredMemberCount} kayıtlı üye hesabı`}
             />
             <StatCard
               label="Aktif çek"
@@ -241,7 +241,7 @@ export default function LoyaltyProgramManagement({
                       %{meta.voucherPercent} sadakat çeki
                     </p>
                     <p className="mt-3 text-xs text-gray-500">
-                      {data.stats.tierCounts[tier]} üye
+                      {data.stats.tierCounts[tier]} müşteri
                     </p>
                   </div>
                 );
@@ -252,7 +252,7 @@ export default function LoyaltyProgramManagement({
           <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
             {(
               [
-                { id: "uyeler", label: "Üyeler" },
+                { id: "uyeler", label: "Sınıflı Müşteriler" },
                 { id: "cekler", label: "Sadakat Çekleri" },
               ] as const
             ).map((item) => (
@@ -413,7 +413,7 @@ export default function LoyaltyProgramManagement({
 
             <label className="mb-3 block">
               <span className="mb-1.5 block text-xs font-medium text-gray-500">
-                Üye
+                Kayıtlı üye hesabı
               </span>
               <select
                 required
@@ -422,14 +422,22 @@ export default function LoyaltyProgramManagement({
                 className={inputClass}
               >
                 <option value="">Seçin</option>
-                {data.members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.fullName} ·{" "}
-                    {formatStoredTurkishPhoneDisplay(member.phone)} ·{" "}
-                    {LOYALTY_TIER_META[member.loyaltyTier].label}
-                  </option>
-                ))}
+                {data.members
+                  .filter((member) => member.memberAccountId)
+                  .map((member) => (
+                    <option
+                      key={member.memberAccountId!}
+                      value={member.memberAccountId!}
+                    >
+                      {member.fullName} ·{" "}
+                      {formatStoredTurkishPhoneDisplay(member.phone)} ·{" "}
+                      {LOYALTY_TIER_META[member.loyaltyTier].label}
+                    </option>
+                  ))}
               </select>
+              <p className="mt-1.5 text-xs text-gray-500">
+                Çek yalnızca siteye üye olmuş hesaplara tanımlanır.
+              </p>
             </label>
 
             <label className="mb-3 block">
@@ -514,6 +522,9 @@ function MemberRow({ member }: { member: AdminLoyaltyMemberItem }) {
           {formatStoredTurkishPhoneDisplay(member.phone)}
           {member.email ? ` · ${member.email}` : ""}
         </p>
+        {!member.hasMemberAccount ? (
+          <p className="mt-1 text-xs text-amber-700">Üye hesabı yok (sınıf konaklamadan)</p>
+        ) : null}
       </td>
       <td className="px-4 py-3">
         <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
