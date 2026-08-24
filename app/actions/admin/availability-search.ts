@@ -23,6 +23,12 @@ import {
 } from "@/lib/public-site-keys";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import { syncCustomerFromAvailabilitySearch } from "@/lib/customer-crm";
+import { hasVillaTourismDocument } from "@/lib/villa-document-types";
+import {
+  appendUndocumentedBookingAccessParam,
+  createUndocumentedVillaBookingAccessToken,
+} from "@/lib/undocumented-villa-booking-access";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 const searchFiltersSchema = z.object({
   phone: z.string().min(1, "Telefon numarası zorunlu"),
@@ -284,7 +290,12 @@ export async function sendAvailabilityOfferAction(input: {
 
   const villa = await prisma.villa.findUnique({
     where: { id: data.villaId },
-    select: { name: true, slug: true },
+    select: {
+      name: true,
+      slug: true,
+      documentNo: true,
+      documentType: true,
+    },
   });
   if (!villa) return { error: "Villa bulunamadı" };
 
@@ -297,7 +308,11 @@ export async function sendAvailabilityOfferAction(input: {
     params.set("adults", String(Math.max(1, data.adults)));
   }
   const query = params.toString();
-  const url = `https://${domain}/${villa.slug}${query ? `?${query}` : ""}`;
+  let url = `https://${domain}${villaPublicPath(villa.slug)}${query ? `?${query}` : ""}`;
+  if (!hasVillaTourismDocument(villa)) {
+    const token = createUndocumentedVillaBookingAccessToken(data.villaId);
+    url = appendUndocumentedBookingAccessParam(url, token);
+  }
 
   const quote = await resolveVillaStayQuote(
     data.villaId,
@@ -365,4 +380,43 @@ export async function sendAvailabilityOfferAction(input: {
   return {
     error: "SMS gönderim altyapısı hazır; SMS sağlayıcısı henüz bağlı değil",
   };
+}
+
+export async function buildAvailabilityPublicVillaUrlAction(input: {
+  villaId: string;
+  siteKey: (typeof PUBLIC_SITE_KEYS)[number];
+  checkIn?: string;
+  checkOut?: string;
+  adults?: number;
+}): Promise<{ success?: boolean; url?: string; error?: string }> {
+  await requireAdmin();
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: input.villaId },
+    select: {
+      slug: true,
+      documentNo: true,
+      documentType: true,
+    },
+  });
+  if (!villa) return { error: "Villa bulunamadı" };
+
+  const domain = sanitizePublicBookingDomain(
+    PUBLIC_SITE_META[input.siteKey].domain
+  );
+  const params = new URLSearchParams();
+  if (input.checkIn && input.checkOut) {
+    params.set("checkIn", input.checkIn);
+    params.set("checkOut", input.checkOut);
+    if (input.adults && input.adults > 0) {
+      params.set("adults", String(input.adults));
+    }
+  }
+  const query = params.toString();
+  let url = `https://${domain}${villaPublicPath(villa.slug)}${query ? `?${query}` : ""}`;
+  if (!hasVillaTourismDocument(villa)) {
+    const token = createUndocumentedVillaBookingAccessToken(input.villaId);
+    url = appendUndocumentedBookingAccessParam(url, token);
+  }
+  return { success: true, url };
 }

@@ -30,6 +30,7 @@ import {
 } from "@/lib/member-discount-apply";
 import { prisma } from "@/lib/db";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
+import { verifyUndocumentedVillaBookingAccessToken } from "@/lib/undocumented-villa-booking-access";
 import {
   buildStayBookingFeeDetails,
   type PoolHeatingSelections,
@@ -64,6 +65,7 @@ const bookingSchema = z.object({
   couponDiscountAmount: z.coerce.number().min(0).optional(),
   loyaltyVoucherId: z.string().trim().optional(),
   couponBalanceAmount: z.coerce.number().min(0).optional(),
+  bookingAccessToken: z.string().trim().optional(),
 });
 
 export type BookingActionState = {
@@ -114,6 +116,8 @@ export async function submitBooking(
     couponDiscountAmount: formData.get("couponDiscountAmount") ?? "",
     loyaltyVoucherId: formData.get("loyaltyVoucherId")?.toString() || "",
     couponBalanceAmount: formData.get("couponBalanceAmount") ?? "",
+    bookingAccessToken:
+      formData.get("bookingAccessToken")?.toString() || "",
   });
 
   if (!parsed.success) {
@@ -135,6 +139,7 @@ export async function submitBooking(
     couponDiscountAmount: couponDiscountAmountRaw,
     loyaltyVoucherId,
     couponBalanceAmount: couponBalanceAmountRaw,
+    bookingAccessToken,
     villaId,
     adults,
     children,
@@ -168,7 +173,12 @@ export async function submitBooking(
   if (!villa?.active) {
     return { error: "Villa bulunamadı" };
   }
-  if (!hasVillaTourismDocument(villa)) {
+  const hasDocument = hasVillaTourismDocument(villa);
+  const hasAccessToken = verifyUndocumentedVillaBookingAccessToken(
+    bookingAccessToken,
+    villaId
+  );
+  if (!hasDocument && !hasAccessToken) {
     return {
       error: "Bu villa için online rezervasyon alınmamaktadır.",
     };

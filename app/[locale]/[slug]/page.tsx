@@ -17,6 +17,10 @@ import {
   resolveVillaStayAdultsFromSearchParams,
   resolveVillaStayDatesFromSearchParams,
 } from "@/lib/villa-stay-url-params";
+import {
+  verifyUndocumentedVillaBookingAccessToken,
+} from "@/lib/undocumented-villa-booking-access";
+import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +34,7 @@ interface PageProps {
     checkOut?: string | string[];
     adults?: string | string[];
     kisi?: string | string[];
+    rez?: string | string[];
   }>;
 }
 
@@ -63,6 +68,17 @@ export default async function VillaDetailPage({
   ]);
 
   if (!villa) notFound();
+
+  const rawAccessToken = query.rez;
+  const bookingAccessToken = Array.isArray(rawAccessToken)
+    ? rawAccessToken[0] ?? ""
+    : rawAccessToken ?? "";
+  const allowBookingAccess =
+    hasVillaTourismDocument({
+      documentNo: villa.documentNo,
+      documentType: villa.documentType,
+    }) ||
+    verifyUndocumentedVillaBookingAccessToken(bookingAccessToken, villa.id);
 
   const similarVillas = await getSimilarVillas(
     villa.id,
@@ -128,6 +144,16 @@ export default async function VillaDetailPage({
         initialCheckIn={stayDates?.checkIn ?? ""}
         initialCheckOut={stayDates?.checkOut ?? ""}
         initialAdults={initialAdults}
+        bookingAccessToken={
+          allowBookingAccess &&
+          !hasVillaTourismDocument({
+            documentNo: villa.documentNo,
+            documentType: villa.documentType,
+          })
+            ? bookingAccessToken
+            : ""
+        }
+        allowBookingAccess={allowBookingAccess}
         faqs={(detailFaqs.length > 0 ? detailFaqs : faqs.slice(0, 8)).map(
           (faq) => ({
             id: faq.id,

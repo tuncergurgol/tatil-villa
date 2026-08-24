@@ -10,6 +10,7 @@ import {
 import {
   resolveAvailabilityStayQuoteAction,
   sendAvailabilityOfferAction,
+  buildAvailabilityPublicVillaUrlAction,
 } from "@/app/actions/admin/availability-search";
 import PeriodCalendarGrid, {
   type PeriodCalendarDayDisplay,
@@ -58,6 +59,31 @@ function buildVillaPublicUrl(
   const query = params.toString();
   const domain = sanitizePublicBookingDomain(PUBLIC_SITE_META[siteKey].domain);
   return `https://${domain}${villaPublicPath(slug)}${query ? `?${query}` : ""}`;
+}
+
+async function resolveShareUrl(input: {
+  villaId: string;
+  siteKey: PublicSiteKey;
+  slug: string;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+}): Promise<string> {
+  const response = await buildAvailabilityPublicVillaUrlAction({
+    villaId: input.villaId,
+    siteKey: input.siteKey,
+    checkIn: input.checkIn || undefined,
+    checkOut: input.checkOut || undefined,
+    adults: input.adults,
+  });
+  if (response.url) return response.url;
+  return buildVillaPublicUrl(
+    input.siteKey,
+    input.slug,
+    input.checkIn,
+    input.checkOut,
+    input.adults
+  );
 }
 
 export default function AvailabilityResultCard({
@@ -236,22 +262,32 @@ export default function AvailabilityResultCard({
   }
 
   function handlePublicPreview() {
-    window.open(
-      buildVillaPublicUrl(siteKey, result.slug, checkIn, checkOut, adults),
-      "_blank",
-      "noopener,noreferrer"
-    );
+    void resolveShareUrl({
+      villaId: result.id,
+      siteKey,
+      slug: result.slug,
+      checkIn,
+      checkOut,
+      adults,
+    }).then((url) => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
   }
 
   function handleCopyLink() {
-    const url =
-      linkType === "DETAILED"
-        ? buildVillaPublicUrl(siteKey, result.slug, checkIn, checkOut, adults)
-        : buildVillaPublicUrl(siteKey, result.slug, "", "", adults);
-    void navigator.clipboard.writeText(url).then(
-      () => window.alert("Villa bağlantısı panoya kopyalandı."),
-      () => window.alert(url)
-    );
+    void resolveShareUrl({
+      villaId: result.id,
+      siteKey,
+      slug: result.slug,
+      checkIn: linkType === "DETAILED" ? checkIn : "",
+      checkOut: linkType === "DETAILED" ? checkOut : "",
+      adults,
+    }).then((url) => {
+      void navigator.clipboard.writeText(url).then(
+        () => window.alert("Villa bağlantısı panoya kopyalandı."),
+        () => window.alert(url)
+      );
+    });
   }
 
   const firstMonth = result.calendarMonths[0];

@@ -72,6 +72,7 @@ interface BookingFormProps {
   brandName?: string;
   exchangeRates: PublicExchangeRates;
   heatedPools?: HeatedPoolOption[];
+  bookingAccessToken?: string;
   villaSummary: {
     name: string;
     slug: string;
@@ -158,6 +159,7 @@ export default function BookingForm({
   brandName = "Wings Tatil",
   exchangeRates,
   heatedPools = [],
+  bookingAccessToken,
   villaSummary,
   calendarDays = [],
   allowPrepaymentOption = true,
@@ -577,6 +579,9 @@ export default function BookingForm({
     }
     if (payload.couponBalanceAmount) {
       formData.set("couponBalanceAmount", String(payload.couponBalanceAmount));
+    }
+    if (bookingAccessToken) {
+      formData.set("bookingAccessToken", bookingAccessToken);
     }
     formData.set("feeSelections", JSON.stringify(feeSelections));
     formData.set(

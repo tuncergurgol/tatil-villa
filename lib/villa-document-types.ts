@@ -71,13 +71,23 @@ export function isKonutBelgeLinkable(villa: {
   );
 }
 
+export function hasMeaningfulVillaDocumentNo(documentNo: string): boolean {
+  const trimmed = documentNo.trim();
+  if (!trimmed) return false;
+  // Placeholder (ör. 000000000) belgesiz sayılır
+  if (/^0+$/.test(trimmed)) return false;
+  return true;
+}
+
 export function hasVillaTourismDocument(villa: {
   documentType: TourismDocumentType | null;
   documentNo: string;
 }) {
+  const documentNo = hasMeaningfulVillaDocumentNo(villa.documentNo)
+    ? villa.documentNo.trim()
+    : "";
   return Boolean(
-    resolveVillaDocumentType(villa.documentNo, villa.documentType) ||
-      villa.documentNo.trim()
+    resolveVillaDocumentType(documentNo, villa.documentType) || documentNo
   );
 }
 

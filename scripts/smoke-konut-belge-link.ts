@@ -72,6 +72,11 @@ function main() {
     "document type without number should still count as documented"
   );
   assert(
+    !hasVillaTourismDocument({ documentType: null, documentNo: "000000000" }),
+    "all-zero document no should be undocumented"
+  );
+
+  assert(
     UNDOCUMENTED_VILLA_VISIBILITY.active === true &&
       UNDOCUMENTED_VILLA_VISIBILITY.showInSearch === false &&
       UNDOCUMENTED_VILLA_VISIBILITY.showInOffer === true,

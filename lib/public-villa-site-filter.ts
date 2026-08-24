@@ -4,6 +4,7 @@ import {
   isPublicSiteKey,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
+import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 
 let cachedAllowedSiteKeys: {
   keys: PublicSiteKey[];
@@ -47,7 +48,7 @@ export function hasPublicTourismDocument(villa: {
   documentNo: string;
   documentType: TourismDocumentType | null;
 }): boolean {
-  return Boolean(villa.documentType || villa.documentNo.trim());
+  return hasVillaTourismDocument(villa);
 }
 
 function tourismDocumentWhere(): Prisma.VillaWhereInput {

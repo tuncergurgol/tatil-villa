@@ -60,6 +60,9 @@ type VillaDetailViewProps = {
   initialCheckIn?: string;
   initialCheckOut?: string;
   initialAdults?: number;
+  /** Belgesiz villada Uygunluk Ara linkinden gelen erişim token'ı */
+  bookingAccessToken?: string;
+  allowBookingAccess?: boolean;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -116,6 +119,8 @@ export default function VillaDetailView({
   initialCheckIn = "",
   initialCheckOut = "",
   initialAdults = 2,
+  bookingAccessToken = "",
+  allowBookingAccess = false,
 }: VillaDetailViewProps) {
   const featuredAmenityItems = sortAmenityNamesTr(
     villa.amenityGroups.find((group) =>
@@ -127,10 +132,11 @@ export default function VillaDetailView({
   );
   /** Admin Özellikler → ÖNE ÇIKANLAR’da işaretli olanak adları (ev kategorisi değil) */
   const highlightedFeatures = featuredAmenityItems;
-  const canBookPublicly = hasVillaTourismDocument({
-    documentNo: villa.documentNo,
-    documentType: villa.documentType,
-  });
+  const canBookPublicly =
+    hasVillaTourismDocument({
+      documentNo: villa.documentNo,
+      documentType: villa.documentType,
+    }) || allowBookingAccess;
 
   const navItems: VillaDetailNavItem[] = [
     { id: "genel-bakis", label: "Genel Bakış" },
@@ -604,6 +610,7 @@ export default function VillaDetailView({
               companyPhone={companyPhone}
               brandName={brandName}
               exchangeRates={exchangeRates}
+              bookingAccessToken={bookingAccessToken || undefined}
               heatedPools={villa.pools
                 .filter((pool) => pool.heated)
                 .map((pool) => ({
