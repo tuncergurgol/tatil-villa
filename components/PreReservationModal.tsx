@@ -252,6 +252,14 @@ export default function PreReservationModal({
       setMemberDiscountLabel(discount.label);
       setAgencyDiscountRate(discount.agencyDiscountRate ?? 0);
       setCouponError(null);
+    } else if (memberBenefits?.loggedIn) {
+      setHasCoupon(false);
+      setCouponDiscountAmount(0);
+      setCouponCode("");
+      setLoyaltyVoucherId("");
+      setCouponBalanceAmount(0);
+      setMemberDiscountLabel("");
+      setAgencyDiscountRate(0);
     }
   }, [open, memberBenefits, checkIn, checkOut, guests]);
 

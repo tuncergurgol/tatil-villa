@@ -53,6 +53,13 @@ type ReservationPriceSummaryProps = {
   poolHeatingSelections?: PoolHeatingSelections;
   onSelectionChange?: (key: keyof StayFeeSelections, value: boolean) => void;
   onPoolHeatingChange?: (poolId: string, value: boolean) => void;
+  memberDiscountAmount?: number;
+  memberDiscountLabel?: string;
+  displayTotals?: {
+    grandTotal: number;
+    prepaymentAmount: number;
+    checkInPayment: number;
+  };
   compactPrimaryRows?: boolean;
   hideDepositNotice?: boolean;
   className?: string;
@@ -167,6 +174,9 @@ export default function ReservationPriceSummary({
   poolHeatingSelections = {},
   onSelectionChange,
   onPoolHeatingChange,
+  memberDiscountAmount = 0,
+  memberDiscountLabel = "",
+  displayTotals,
   compactPrimaryRows = false,
   hideDepositNotice = false,
   className = "",
@@ -224,11 +234,13 @@ export default function ReservationPriceSummary({
     checkIn,
     checkOut,
   });
-  const grandTotal = quote.accommodationTotal + quote.cleaningFee + extrasTotal;
-  const prepaymentAmount = Math.round(
-    (quote.accommodationTotal * quote.prepaymentRate) / 100
-  );
-  const checkInPayment = Math.max(0, grandTotal - prepaymentAmount);
+  const grandTotal = displayTotals?.grandTotal ?? quote.accommodationTotal + quote.cleaningFee + extrasTotal;
+  const prepaymentAmount =
+    displayTotals?.prepaymentAmount ??
+    Math.round((quote.accommodationTotal * quote.prepaymentRate) / 100);
+  const checkInPayment =
+    displayTotals?.checkInPayment ??
+    Math.max(0, grandTotal - prepaymentAmount);
 
   const cleaningAmount = quote.cleaningFee;
   const showCleaningRow =
@@ -405,8 +417,16 @@ export default function ReservationPriceSummary({
       </div>
 
       <div className="mt-2.5 space-y-1 border-t border-slate-100 pt-2.5">
+        {memberDiscountAmount > 0 ? (
+          <div className="flex items-center justify-between gap-2 text-xs text-emerald-700">
+            <span className="truncate">{memberDiscountLabel || "Üye indirimi"}</span>
+            <span className="shrink-0 font-semibold">
+              -{formatMoneyTl(memberDiscountAmount, currency)}
+            </span>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-2 font-bold text-slate-900">
-          <span>Toplam</span>
+          <span>{memberDiscountAmount > 0 ? "İndirimli Toplam" : "Toplam"}</span>
           <span>{formatMoneyTl(grandTotal, currency)}</span>
         </div>
         <div className="flex items-center justify-between gap-2 text-xs text-slate-600">

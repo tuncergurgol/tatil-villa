@@ -36,6 +36,7 @@ import {
 import {
   VILLA_STAY_RESUME_REQUEST_PARAM,
 } from "@/lib/villa-stay-url-params";
+import { computePrepaymentAmount } from "@/lib/booking-form-details";
 import {
   emptyStayPeriodFees,
   type HeatedPoolOption,
@@ -309,6 +310,48 @@ export default function BookingForm({
     checkIn,
     checkOut,
   ]);
+
+  const memberDiscountAmount = memberBenefits?.autoDiscount?.amount ?? 0;
+  const memberDiscountLabel = memberBenefits?.autoDiscount?.label ?? "";
+
+  const displayTotals = useMemo(() => {
+    if (!pricingTotals || !quote?.valid) return null;
+    if (memberDiscountAmount <= 0) return pricingTotals;
+    const prepaymentAmount =
+      computePrepaymentAmount(
+        quote.accommodationTotal,
+        0,
+        quote.prepaymentRate,
+        memberDiscountAmount,
+        pricingTotals.prepaymentAmount
+      ) ?? pricingTotals.prepaymentAmount;
+    const grandTotal = Math.max(
+      0,
+      pricingTotals.grandTotal - memberDiscountAmount
+    );
+    return {
+      ...pricingTotals,
+      grandTotal,
+      prepaymentAmount,
+      checkInPayment: Math.max(0, grandTotal - prepaymentAmount),
+    };
+  }, [memberDiscountAmount, pricingTotals, quote]);
+
+  useEffect(() => {
+    if (!quote?.valid || quote.accommodationTotal <= 0) {
+      setMemberBenefits(null);
+      return;
+    }
+    let cancelled = false;
+    void getMemberBookingBenefitsAction(quote.accommodationTotal).then(
+      (benefits) => {
+        if (!cancelled) setMemberBenefits(benefits);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [quote?.valid, quote?.accommodationTotal]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -653,19 +696,41 @@ export default function BookingForm({
               <p className="mt-1 text-[15px] font-bold leading-tight text-slate-900">
                 {quote.nights} Gece
                 <span className="mx-1.5 font-semibold text-slate-400">·</span>
-                Toplam{" "}
-                <span className="text-emerald-600">
-                  {(pricingTotals?.grandTotal ?? quote.total).toLocaleString(
-                    "tr-TR"
-                  )}{" "}
-                  {quote.currency}
-                </span>
+                {memberDiscountAmount > 0 ? (
+                  <>
+                    Toplam{" "}
+                    <span className="text-emerald-600">
+                      {(displayTotals?.grandTotal ?? quote.total).toLocaleString(
+                        "tr-TR"
+                      )}{" "}
+                      {quote.currency}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] font-semibold text-teal-700">
+                      {memberDiscountLabel} uygulandı
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Toplam{" "}
+                    <span className="text-emerald-600">
+                      {(displayTotals?.grandTotal ?? quote.total).toLocaleString(
+                        "tr-TR"
+                      )}{" "}
+                      {quote.currency}
+                    </span>
+                  </>
+                )}
               </p>
             ) : (
               <p className="mt-0.5 text-xs text-amber-700">
                 {quote?.invalidReason ?? "Hesaplama için tarih seçin"}
               </p>
             )}
+            {quote?.valid && memberBenefits && !memberBenefits.loggedIn ? (
+              <p className="mt-1 text-[11px] font-medium text-amber-800">
+                Üye girişiyle sadakat indirimi kazanın
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -837,6 +902,9 @@ export default function BookingForm({
           heatedPools={heatedPoolsInTl}
           selections={feeSelections}
           poolHeatingSelections={poolHeatingSelections}
+          memberDiscountAmount={memberDiscountAmount}
+          memberDiscountLabel={memberDiscountLabel}
+          displayTotals={displayTotals ?? undefined}
           onSelectionChange={(key, value) =>
             setFeeSelections((prev) => ({ ...prev, [key]: value }))
           }
@@ -884,11 +952,15 @@ export default function BookingForm({
           checkOut={checkOut}
           quote={{
             ...quote,
-            total: pricingTotals?.grandTotal ?? quote.total,
+            total: displayTotals?.grandTotal ?? pricingTotals?.grandTotal ?? quote.total,
             prepaymentAmount:
-              pricingTotals?.prepaymentAmount ?? quote.prepaymentAmount,
+              displayTotals?.prepaymentAmount ??
+              pricingTotals?.prepaymentAmount ??
+              quote.prepaymentAmount,
             checkInPayment:
-              pricingTotals?.checkInPayment ?? quote.checkInPayment,
+              displayTotals?.checkInPayment ??
+              pricingTotals?.checkInPayment ??
+              quote.checkInPayment,
           }}
           brandName={brandName}
           memberBenefits={memberBenefits}
