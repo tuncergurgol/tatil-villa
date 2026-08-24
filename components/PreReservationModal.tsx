@@ -19,6 +19,7 @@ import {
   resolveVillaPaymentAmountOptions,
 } from "@/lib/villa-payment-amount-options";
 import { buildVillaStayBookingReturnPath } from "@/lib/villa-stay-url-params";
+import { computePrepaymentAmount } from "@/lib/booking-form-details";
 
 export type PreReservationPaymentMethod = "card" | "transfer";
 export type PreReservationPaymentAmount = "prepayment" | "full";
@@ -279,19 +280,27 @@ export default function PreReservationModal({
     `${villa.bedrooms} Yatak Odası`,
   ].join(" · ");
 
-  const total = Math.max(0, quote.total - couponDiscountAmount);
-  const prepayment = Math.max(0, quote.prepaymentAmount - couponDiscountAmount);
-  const remainder = Math.max(0, quote.checkInPayment);
-  const payNow =
-    paymentAmount === "prepayment" ? prepayment : total;
   const hasAppliedDiscount = couponDiscountAmount > 0;
+  const reservationTotal = Math.max(
+    0,
+    quote.total - (hasAppliedDiscount ? couponDiscountAmount : 0)
+  );
+  const prepayment =
+    computePrepaymentAmount(
+      quote.accommodationTotal,
+      0,
+      quote.prepaymentRate,
+      hasAppliedDiscount ? couponDiscountAmount : 0,
+      quote.prepaymentAmount
+    ) ?? Math.max(0, quote.prepaymentAmount);
+  const remainder = Math.max(0, reservationTotal - prepayment);
   const appliedDiscountInfo = hasAppliedDiscount
     ? {
         label: memberDiscountLabel || "Üye indirimi",
         amountLabel: formatMoneyLira(couponDiscountAmount),
       }
     : null;
-  const payNowLabel = hasAppliedDiscount
+  const reservationAmountLabel = hasAppliedDiscount
     ? "İndirimli rezervasyon tutarı"
     : "Rezervasyon tutarı";
 
@@ -425,7 +434,7 @@ export default function PreReservationModal({
                     Toplam Ödeme
                   </span>
                   <span className="text-base font-bold text-[#c45c26]">
-                    {formatMoney(total)}
+                    {formatMoney(reservationTotal)}
                   </span>
                 </div>
 
@@ -497,7 +506,7 @@ export default function PreReservationModal({
                     selected={paymentAmount === "full"}
                     onSelect={() => setPaymentAmount("full")}
                     title="Tutarın Tamamı"
-                    price={formatMoneyLira(total)}
+                    price={formatMoneyLira(reservationTotal)}
                     discountApplied={
                       !paymentAmountOptions.includes("prepayment")
                         ? appliedDiscountInfo
@@ -508,9 +517,9 @@ export default function PreReservationModal({
                 ) : null}
               </div>
               <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
-                {payNowLabel}:{" "}
+                {reservationAmountLabel}:{" "}
                 <span className="font-bold text-slate-900">
-                  {formatMoneyLira(payNow)}
+                  {formatMoneyLira(reservationTotal)}
                 </span>
               </p>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">

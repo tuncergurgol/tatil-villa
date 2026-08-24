@@ -8,6 +8,7 @@ import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
 import type { BookingExtraFeeFieldKey } from "@/lib/booking-form-details";
 import {
   DEFAULT_BOOKING_AGENCY_NAME,
+  computePrepaymentAmount,
   normalizeBookingSiteInfo,
 } from "@/lib/booking-form-details";
 import {
@@ -289,11 +290,18 @@ export async function submitBooking(
     appliedCouponCode = couponResult.coupon.code;
   }
 
-  const verifiedTotal = accommodationTotal + verifiedExtraTotal;
-  const verifiedPrepayment = Math.max(
+  const verifiedTotal = Math.max(
     0,
-    verifiedPricing.quote.prepaymentAmount - agencyDiscountAmount
+    accommodationTotal + verifiedExtraTotal - agencyDiscountAmount
   );
+  const verifiedPrepayment =
+    computePrepaymentAmount(
+      accommodationTotal,
+      0,
+      verifiedPricing.quote.prepaymentRate,
+      agencyDiscountAmount,
+      verifiedPricing.quote.prepaymentAmount
+    ) ?? Math.max(0, verifiedPricing.quote.prepaymentAmount);
   const resolvedCheckIn = Math.max(0, verifiedTotal - verifiedPrepayment);
 
   const siteInfo = normalizeBookingSiteInfo(site.brandName);
