@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db";
 import type { AdminBookingListItem } from "@/lib/booking-display";
-import { normalizeActivityLogs } from "@/lib/booking-activity-log-core";
+import {
+  normalizeActivityLogs,
+  resolveBookingConfirmedAtFromLogs,
+} from "@/lib/booking-activity-log-core";
 import {
   normalizeBookingSiteInfo,
   parseBookingDetails,
@@ -12,15 +15,14 @@ import {
 } from "@/lib/booking-site-brand";
 import { cancelExpiredPrepaymentBookings } from "@/lib/queries/bookings";
 
-function resolveConfirmedAt(details: unknown): Date | null {
-  const logs = normalizeActivityLogs(parseBookingDetails(details).activityLogs);
-  const confirmationLogs = logs.filter(
-    (log) => log.action === "status_changed" && log.meta?.to === "CONFIRMED"
+function resolveConfirmedAt(
+  details: unknown,
+  confirmationSentAt?: Date | string | null
+): Date | null {
+  return resolveBookingConfirmedAtFromLogs(
+    normalizeActivityLogs(parseBookingDetails(details).activityLogs),
+    confirmationSentAt
   );
-  if (confirmationLogs.length === 0) return null;
-  const latest = confirmationLogs[confirmationLogs.length - 1];
-  const at = new Date(latest!.at);
-  return Number.isNaN(at.getTime()) ? null : at;
 }
 
 export async function getAdminBookingListData() {
@@ -106,7 +108,10 @@ export async function getAdminBookingListData() {
       totalPrice: booking.totalPrice,
       status: booking.status,
       createdAt: booking.createdAt,
-      confirmedAt: resolveConfirmedAt(booking.details),
+      confirmedAt: resolveConfirmedAt(
+        booking.details,
+        booking.confirmationSentAt
+      ),
       optionExpiresAt: booking.optionExpiresAt,
       prepaymentAmount,
       paymentMethod,

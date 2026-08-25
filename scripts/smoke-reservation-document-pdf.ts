@@ -11,6 +11,7 @@ import {
   applyReservationContractPlaceholders,
   FALLBACK_ONLINE_RESERVATION_CONTRACT,
 } from "../lib/reservation-document-contract";
+import { resolveBookingConfirmedAtFromLogs } from "../lib/booking-activity-log-core";
 
 function assert(condition: boolean, label: string) {
   if (!condition) {
@@ -45,6 +46,24 @@ async function main() {
     personalized.includes("www.tatilvillacisi.com") &&
       !personalized.includes("www.tatildeyiz.com.tr"),
     "sözleşme site domain değişimi"
+  );
+
+  const confirmedAt = resolveBookingConfirmedAtFromLogs(
+    [
+      {
+        id: "status-1",
+        at: "2026-06-01T06:33:04.000Z",
+        action: "status_changed",
+        message: "Durum: Onaylandı",
+        actorName: "Sistem",
+        meta: { to: "CONFIRMED" },
+      },
+    ],
+    null
+  );
+  assert(
+    confirmedAt?.toISOString() === "2026-06-01T06:33:04.000Z",
+    "onay tarihi activity log"
   );
 
   const data = buildSampleReservationDocumentData();

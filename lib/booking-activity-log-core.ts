@@ -68,6 +68,30 @@ export function getBookingActivityActionLabel(
   return ACTION_LABELS[action] ?? action;
 }
 
+export function parseActivityLogDate(
+  value: Date | string | null | undefined
+): Date | null {
+  if (!value) return null;
+  const at = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
+
+/** Misafir onayı / CONFIRMED geçişi / konfirme gönderim tarihi */
+export function resolveBookingConfirmedAtFromLogs(
+  logs: BookingActivityLogEntry[],
+  confirmationSentAt?: Date | string | null
+): Date | null {
+  const guestConfirmed = logs.find((log) => log.action === "guest_confirmed");
+  const statusConfirmed = logs.find(
+    (log) => log.action === "status_changed" && log.meta?.to === "CONFIRMED"
+  );
+  return (
+    parseActivityLogDate(guestConfirmed?.at) ??
+    parseActivityLogDate(statusConfirmed?.at) ??
+    parseActivityLogDate(confirmationSentAt)
+  );
+}
+
 export function normalizeActivityLogs(
   value: unknown
 ): BookingActivityLogEntry[] {

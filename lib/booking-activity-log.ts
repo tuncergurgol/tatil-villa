@@ -18,6 +18,8 @@ export {
   buildLegacyCreatedLog,
   getBookingActivityActionLabel,
   normalizeActivityLogs,
+  parseActivityLogDate,
+  resolveBookingConfirmedAtFromLogs,
   statusChangedMessage,
   withInitialActivityLog,
 } from "@/lib/booking-activity-log-core";

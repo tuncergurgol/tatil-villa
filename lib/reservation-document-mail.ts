@@ -17,6 +17,10 @@ import { toHtmlFromText } from "@/lib/email-html";
 import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
 import { INTEGRATION_LEAD_NOTIFY_WHATSAPP } from "@/lib/integration-lead-notify";
 import { calculateNights } from "@/lib/stay-nights";
+import {
+  normalizeActivityLogs,
+  resolveBookingConfirmedAtFromLogs,
+} from "@/lib/booking-activity-log-core";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
@@ -246,11 +250,18 @@ export async function buildReservationDocumentDataForBooking(
   // Tarihler DB date — yerel gün için dateKey üzerinden gösterim
   const checkIn = new Date(`${dbDateToDateKey(booking.checkIn)}T12:00:00`);
   const checkOut = new Date(`${dbDateToDateKey(booking.checkOut)}T12:00:00`);
+  const confirmedAt =
+    options?.confirmedAt ??
+    resolveBookingConfirmedAtFromLogs(
+      normalizeActivityLogs(details.activityLogs),
+      booking.confirmationSentAt
+    ) ??
+    new Date();
 
   return {
     reservationCode,
-    issuedAt: new Date(),
-    confirmedAt: options?.confirmedAt ?? new Date(),
+    issuedAt: confirmedAt,
+    confirmedAt,
     clientIp: options?.clientIp,
     guest: {
       fullName: booking.guestName,
