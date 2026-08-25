@@ -122,6 +122,14 @@ export default function MemberShell({
                 </Link>
               );
             })}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <LogOut className="h-4 w-4" />
+              Çıkış Yap
+            </button>
           </aside>
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             {children}
