@@ -62,6 +62,8 @@ cat >> "$CRON_FILE" <<EOF
 15 7 * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/konut-belge-check" >>"${LOG_DIR}/konut-belge-check.log" 2>&1
 # tatil-villa cron — giriş+1 gün konaklama faturası ve ev sahibi ödemesi Excel maili (her gün 08:55)
 55 8 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/daily-check-in-reports" >>"${LOG_DIR}/daily-check-in-reports.log" 2>&1
+# tatil-villa cron — BTRANS 538 aylık bildirim XML maili (her ayın 1'i 09:10; önceki ay, onay tarihi)
+10 9 1 * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/btrans-monthly-report" >>"${LOG_DIR}/btrans-monthly-report.log" 2>&1
 # tatil-villa cron — ONAYLANDI konaklama durumu YAPILDI (giriş günü 23:50 + geçmiş catch-up)
 50 23 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/stay-status-complete" >>"${LOG_DIR}/stay-status-complete.log" 2>&1
 # tatil-villa cron — IndexNow (Bing/Yandex/Edge/Opera) günlük URL bildirimi
@@ -92,6 +94,7 @@ echo "  Blog AI    : saatte bir tetiklenir (sıklık admin ayarından)."
 echo "  Zamanlı msg: saat başı tetiklenir (11.4 yorum 11:00, 40.2 havuz 14:00 vb.)."
 echo "  Belge kontrol: her gün 07:15'te tetiklenir."
 echo "  Fatura/ödeme : her gün 08:55'te Excel maili gider (kayıt yoksa da bilgilendirme)."
+echo "  BTRANS 538 : her ayın 1'i 09:10'da önceki ay XML maili (info@)."
 echo "  IndexNow  : her gün 06:20'de Bing/Yandex'e sitemap URL'leri bildirilir."
 echo "  Meta feed  : saat :45'te önbellek yenilenir."
 echo "  GDrive yedek: her gece 04:30 (SQL + dosyalar ayrı)."
