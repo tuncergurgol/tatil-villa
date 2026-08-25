@@ -13,6 +13,7 @@ import {
   splitOwnerName,
 } from "@/lib/villa-owner-utils";
 import { isValidTcKimlik, normalizeTcKimlik } from "@/lib/tc-kimlik";
+import { isValidTurkishIban, normalizeIban } from "@/lib/iban";
 import { getActiveVillaOwners } from "@/lib/queries/villa-owners";
 
 export type VillaOwnerActionState = {
@@ -47,7 +48,12 @@ const commonSchema = z.object({
   phone: optionalString,
   email: optionalEmail,
   bankAccountHolder: optionalString,
-  bankIban: optionalString,
+  bankIban: optionalString
+    .transform((value) => normalizeIban(value))
+    .refine(
+      (value) => !value || isValidTurkishIban(value),
+      "IBAN 26 hane olmalı (TR + 24 rakam, GİB BTRANS)"
+    ),
   accountingCode: optionalString,
   country: optionalString,
   mernisIlceCode: z.string().optional(),

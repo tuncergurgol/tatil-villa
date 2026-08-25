@@ -1,4 +1,9 @@
 import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
+import {
+  isValidTurkishIban,
+  normalizeIban,
+  turkishIbanIssue,
+} from "@/lib/iban";
 
 /**
  * Bu dosya client component'lerden de import edildiği için (BtransReportPage.tsx)
@@ -126,9 +131,13 @@ export function escapeXml(value: string | null | undefined): string {
     .replace(/'/g, "&apos;");
 }
 
-/** GİB gunubirlikson.xsd — type_ibanNo maxLength 26; boşluksuz TR IBAN. */
+/** GİB gunubirlikson.xsd — type_ibanNo tam 26 hane; boşluksuz TR IBAN. */
 export function normalizeIbanForBtrans(iban: string | null | undefined): string {
-  return (iban ?? "").replace(/\s+/g, "").toUpperCase();
+  return normalizeIban(iban);
+}
+
+export function isValidBtransIban(iban: string | null | undefined): boolean {
+  return isValidTurkishIban(iban);
 }
 
 /** GİB gunubirlikson.xsd — enlem/boylam fractionDigits max 8. */
@@ -182,8 +191,9 @@ export function checkMissingFields(
     missing.push("Ev sahibi cep telefonu (10 hane)");
   }
 
-  if (!normalizeIbanForBtrans(owner.bankIban)) {
-    missing.push("IBAN (26 hane)");
+  const ibanIssue = turkishIbanIssue(owner.bankIban);
+  if (ibanIssue) {
+    missing.push(ibanIssue);
   }
 
   if (!region.ilKodu || !region.ilceKodu) {

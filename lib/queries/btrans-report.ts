@@ -7,7 +7,9 @@ import {
   checkMissingFields,
   formatYYYYMMDD,
   getOwnerDisplayName,
+  isValidBtransIban,
   isWithinMonth,
+  normalizeIbanForBtrans,
   type BtransBookingInput,
   type BtransDateBasis,
   type BtransIncompleteRow,
@@ -169,6 +171,22 @@ export async function generateBtransReport(input: {
 
   const islemXmlBlocks: string[] = [];
   const incomplete: BtransIncompleteRow[] = [];
+  const komisyonIban = normalizeIbanForBtrans(companySettings.iban);
+  if (!isValidBtransIban(komisyonIban)) {
+    const length = komisyonIban.length;
+    return {
+      xml: "",
+      filename: buildBtransFilename(year, month),
+      count: 0,
+      incompleteCount: 0,
+      incomplete: [],
+      warnings: [],
+      error:
+        length === 0
+          ? "Şirket komisyon IBAN'ı boş. Acente > Şirket ayarlarından 26 haneli TR IBAN girin."
+          : `Şirket komisyon IBAN'ı GİB formatında değil (${length} hane, 26 olmalı). XML üretilmedi.`,
+    };
+  }
 
   for (const booking of bookings) {
     const approvedAt = resolveApprovedAt(booking.details, booking.createdAt);
@@ -238,7 +256,7 @@ export async function generateBtransReport(input: {
         // Ödeme tahsilat tarihi için ayrı bir kayıt tutulmuyor;
         // en yakın karşılık olarak konaklamanın tamamlandığı çıkış tarihi kullanılıyor.
         tahsilTarihi: booking.checkOut,
-        komisyonIban: companySettings.iban,
+        komisyonIban,
         komisyonOrani: details.commissionRate ?? 0,
         komisyonTutari,
         owner,
@@ -260,7 +278,7 @@ export async function generateBtransReport(input: {
   ];
   if (incomplete.length > 0) {
     warnings.push(
-      `${incomplete.length} rezervasyon, zorunlu alanları (IBAN / ev sahibi TC-VKN / cep / il-ilçe kodu) eksik olduğu için DOSYAYA ALINMADI. Aşağıdaki listeden eksikleri tamamlayıp tekrar üretin.`
+      `${incomplete.length} rezervasyon, zorunlu alanları (IBAN 26 hane / ev sahibi TC-VKN / cep / il-ilçe kodu) eksik veya hatalı olduğu için DOSYAYA ALINMADI. Aşağıdaki listeden eksikleri tamamlayıp tekrar üretin.`
     );
   }
 

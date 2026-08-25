@@ -15,6 +15,7 @@ type ReportResult = {
   incompleteCount: number;
   incomplete: BtransIncompleteRow[];
   warnings: string[];
+  error?: string;
 };
 
 const DATE_BASIS_HELP: Record<BtransDateBasis, string> = {
@@ -111,7 +112,13 @@ export default function BtransReportPage() {
 
       const data = (await response.json()) as ReportResult;
       setResult(data);
-      downloadXmlFile(data.xml, data.filename);
+      if (data.error) {
+        window.alert(data.error);
+        return;
+      }
+      if (data.xml) {
+        downloadXmlFile(data.xml, data.filename);
+      }
     });
   }
 
@@ -186,9 +193,10 @@ export default function BtransReportPage() {
 
         <p className="px-5 py-4 text-sm text-gray-600">
           Seçilen tarih bazına göre o aydaki yalnızca ONAYLI (Onaylandı)
-          rezervasyonlar tek dosyada toplanır. Zorunlu alanı (IBAN, ev
-          sahibi TC/VKN, cep, il/ilçe kodu) eksik olan kayıtlar dosyaya
-          alınmaz; aşağıda eksikleriyle listelenir. İnen XML&apos;i GİB
+          rezervasyonlar tek dosyada toplanır. Zorunlu alanı (IBAN 26 hane,
+          ev sahibi TC/VKN, cep, il/ilçe kodu) eksik veya GİB formatına
+          uymayan kayıtlar dosyaya alınmaz; aşağıda eksikleriyle listelenir.
+          IBAN tam 26 karakter olmalı (TR + 24 rakam). İnen XML&apos;i GİB
           BTRANS test ekranında doğrulayıp, geçtikten sonra ziplenip
           Başkanlığa yüklenir. Bir aya ait bilgi, takip eden ayın son günü
           23:59&apos;a kadar bildirilir.
@@ -196,13 +204,20 @@ export default function BtransReportPage() {
 
         {result ? (
           <div className="space-y-3 border-t border-gray-100 px-5 py-4">
-            <div className="flex items-start gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
-              <Download className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                {result.filename} indirildi — {result.count} işlem dosyaya
-                alındı (GİB gunubirlikson.xsd şemasına uygun).
-              </span>
-            </div>
+            {result.error ? (
+              <div className="flex items-start gap-2 rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-900">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{result.error}</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
+                <Download className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {result.filename} indirildi — {result.count} işlem dosyaya
+                  alındı (GİB gunubirlikson.xsd şemasına uygun).
+                </span>
+              </div>
+            )}
             {result.warnings.map((warning) => (
               <div
                 key={warning}
