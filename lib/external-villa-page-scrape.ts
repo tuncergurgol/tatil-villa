@@ -2099,11 +2099,17 @@ function parseTurkishMonthYearLabel(
   return { year, month };
 }
 
-/** Tatilkentim `/villa/{id}/calendar` HTML — `day-rented` = dolu. */
-export function parseTatilkentimCalendarOccupancy(
-  html: string
-): Map<string, VillaDayOccupancy> {
-  const occupancy = new Map<string, VillaDayOccupancy>();
+/**
+ * Tatilkentim `/villa/{id}/calendar` HTML.
+ * - `day-rented` / `day-checkin` = dolu gece (kapama)
+ * - yalnız `day-checkout` = çıkış günü (gece boş)
+ */
+export function parseTatilkentimCalendar(html: string): {
+  occupancyByDateKey: Map<string, VillaDayOccupancy>;
+  checkInDateKeys: Set<string>;
+} {
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
   const blocks = html.split(/<div class="calendar-month">/i).slice(1);
 
   for (const block of blocks) {
@@ -2113,14 +2119,12 @@ export function parseTatilkentimCalendarOccupancy(
     );
     if (!monthYear) continue;
 
-    const daysMatch = block.match(
-      /<div class="calendar-days">([\s\S]*?)<\/div>\s*<\/div>/i
-    );
-    if (!daysMatch?.[1]) continue;
+    const daysStart = block.search(/<div class="calendar-days">/i);
+    const daysSection = daysStart >= 0 ? block.slice(daysStart) : block;
 
     const dayRe = /<div([^>]*)>\s*(?:<span>(\d+)<\/span>\s*)?<\/div>/gi;
     let match: RegExpExecArray | null;
-    while ((match = dayRe.exec(daysMatch[1])) !== null) {
+    while ((match = dayRe.exec(daysSection)) !== null) {
       const attrs = match[1] ?? "";
       const dayText = match[2];
       if (!dayText) continue;
@@ -2129,18 +2133,24 @@ export function parseTatilkentimCalendarOccupancy(
       if (!Number.isFinite(day) || day <= 0) continue;
 
       const key = `${monthYear.year}-${String(monthYear.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      if (/\bday-rented\b/i.test(attrs)) {
-        occupancy.set(key, "BOOKED");
-      } else if (
-        /\bday-checkin\b/i.test(attrs) ||
-        /\bday-checkout\b/i.test(attrs)
-      ) {
-        if (!occupancy.has(key)) occupancy.set(key, "OPTION");
+      const isRented = /\bday-rented\b/i.test(attrs);
+      const isCheckIn = /\bday-checkin\b/i.test(attrs);
+
+      if (isCheckIn) checkInDateKeys.add(key);
+      if (isRented || isCheckIn) {
+        occupancyByDateKey.set(key, "BOOKED");
       }
     }
   }
 
-  return occupancy;
+  return { occupancyByDateKey, checkInDateKeys };
+}
+
+/** @deprecated parseTatilkentimCalendar kullanın */
+export function parseTatilkentimCalendarOccupancy(
+  html: string
+): Map<string, VillaDayOccupancy> {
+  return parseTatilkentimCalendar(html).occupancyByDateKey;
 }
 
 function extractTatilkentimVillaId(html: string): string | null {
@@ -2157,6 +2167,7 @@ async function scrapeTatilkentimFromPage(
   const deposit = extractDamageDeposit(html);
   const periods = parseTatilkentimPricingItems(html, deposit);
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
   const villaId = extractTatilkentimVillaId(html);
 
   if (villaId) {
@@ -2166,10 +2177,12 @@ async function scrapeTatilkentimFromPage(
         `${originFromUrl(pageUrl)}/villa/${encodeURIComponent(villaId)}/calendar`,
         { referer: pageUrl }
       );
-      for (const [key, value] of parseTatilkentimCalendarOccupancy(
-        calendarHtml
-      )) {
+      const parsed = parseTatilkentimCalendar(calendarHtml);
+      for (const [key, value] of parsed.occupancyByDateKey) {
         occupancyByDateKey.set(key, value);
+      }
+      for (const key of parsed.checkInDateKeys) {
+        checkInDateKeys.add(key);
       }
     } catch (error) {
       warnings.push(
@@ -2196,6 +2209,7 @@ async function scrapeTatilkentimFromPage(
     pageTitle: extractPageTitle(html),
     periods,
     occupancyByDateKey,
+    checkInDateKeys,
     warnings,
   };
 }

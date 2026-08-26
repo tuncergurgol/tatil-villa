@@ -9,7 +9,11 @@ import {
   scrapeExternalVillaPage,
   type ScrapedVillaPage,
 } from "@/lib/external-villa-page-scrape";
-import { dateKeyToDbDate, dbDateToDateKey } from "@/lib/villa-period-calendar";
+import {
+  dateKeyToDbDate,
+  dbDateToDateKey,
+  enumerateDateKeys,
+} from "@/lib/villa-period-calendar";
 import { persistVillaPricePeriods } from "@/lib/villa-period-persist";
 import type { VillaPeriodImportResult } from "@/lib/tatildeyiz-period-import-runner";
 import { loadConfirmedBookingProtectedDateKeys } from "@/lib/confirmed-booking-occupancy-guard";
@@ -60,9 +64,22 @@ export async function applyExternalPageOccupancyOverlay(
   const checkInDateKeys = options?.checkInDateKeys;
   const updates = [];
 
-  for (const [dateKey, occupancyStatus] of occupancyByDateKey) {
-    if (occupancyStatus !== "BOOKED" && occupancyStatus !== "OPTION") continue;
+  const occupiedKeys = [...occupancyByDateKey.entries()]
+    .filter(([, status]) => status === "BOOKED" || status === "OPTION")
+    .map(([dateKey]) => dateKey)
+    .sort();
+  const overlayKeys =
+    occupiedKeys.length > 0
+      ? enumerateDateKeys(occupiedKeys[0]!, occupiedKeys.at(-1)!)
+      : [];
+
+  for (const dateKey of overlayKeys) {
     if (protectedDateKeys.has(dateKey)) continue;
+    const occupancyStatus = occupancyByDateKey.get(dateKey);
+    const nextStatus =
+      occupancyStatus === "BOOKED" || occupancyStatus === "OPTION"
+        ? occupancyStatus
+        : "EMPTY";
     updates.push(
       prisma.villaPricePeriodDay.updateMany({
         where: {
@@ -70,10 +87,12 @@ export async function applyExternalPageOccupancyOverlay(
           date: dateKeyToDbDate(dateKey),
         },
         data: {
-          occupancyStatus,
+          occupancyStatus: nextStatus,
           ...(checkInDateKeys
             ? { occupancyCheckIn: checkInDateKeys.has(dateKey) }
-            : {}),
+            : nextStatus === "EMPTY"
+              ? { occupancyCheckIn: false }
+              : {}),
         },
       })
     );
