@@ -17,11 +17,13 @@ import {
   getAdminBookingWizardVillasAction,
   type AdminBookingActionState,
 } from "@/app/actions/admin/bookings";
+import { lookupReturningGuestAdminAction } from "@/app/actions/returning-guest";
 import StayDateRangePicker from "@/components/admin/availability/StayDateRangePicker";
 import GuestCounterRow from "@/components/admin/bookings/new-booking/GuestCounterRow";
 import NewBookingPriceSummary from "@/components/admin/bookings/new-booking/NewBookingPriceSummary";
 import SelectedVillaCard from "@/components/admin/bookings/new-booking/SelectedVillaCard";
 import { DiscountPercentAmountField } from "@/components/admin/bookings/booking-form-ui";
+import ReturningGuestBanner from "@/components/member/ReturningGuestBanner";
 import {
   clampDiscountRate,
   computeDiscountAmount,
@@ -40,8 +42,10 @@ import type {
   AdminBookingWizardQuote,
   AdminBookingWizardVilla,
 } from "@/lib/queries/admin-booking-wizard";
+import { splitFullName, type ReturningGuestPreview } from "@/lib/returning-guest-shared";
 import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 import { formatMoneyPlain } from "@/lib/booking-display";
+import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
 
 interface BookingFormModalProps {
   open: boolean;
@@ -118,6 +122,9 @@ export default function BookingFormModal({
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("prepayment");
   const [customerNote, setCustomerNote] = useState("");
+  const [returningGuest, setReturningGuest] =
+    useState<ReturningGuestPreview | null>(null);
+  const [loyaltyDiscountApplied, setLoyaltyDiscountApplied] = useState(false);
 
   useEffect(() => {
     if (state.success) {
@@ -152,6 +159,8 @@ export default function BookingFormModal({
     setPaymentMethod("bank_transfer");
     setPaymentMode("prepayment");
     setCustomerNote("");
+    setReturningGuest(null);
+    setLoyaltyDiscountApplied(false);
 
     setVillasLoading(true);
     getAdminBookingWizardVillasAction()
@@ -183,6 +192,69 @@ export default function BookingFormModal({
       cancelled = true;
     };
   }, [selectedVilla?.id, checkIn, checkOut]);
+
+  const guestName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
+  const phoneValue = normalizeTurkishPhoneFieldValue(guestPhone);
+
+  useEffect(() => {
+    if (!open) return;
+    const digits = normalizeTurkishPhoneDigits(phoneValue);
+    const email = guestEmail.trim();
+    if (digits.length < 10 && !email.includes("@")) {
+      setReturningGuest(null);
+      setLoyaltyDiscountApplied(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void lookupReturningGuestAdminAction({ phone: phoneValue, email }).then(
+        (result) => {
+          if (cancelled) return;
+          const match = result.match;
+          setReturningGuest(match);
+          if (!match) {
+            setLoyaltyDiscountApplied(false);
+            return;
+          }
+          if (match.fullName) {
+            const parts = splitFullName(match.fullName);
+            setGuestFirstName((current) =>
+              current.trim() ? current : parts.first
+            );
+            setGuestLastName((current) =>
+              current.trim() ? current : parts.last
+            );
+          }
+          if (!match.applyDiscount) {
+            setLoyaltyDiscountApplied(false);
+            return;
+          }
+          setAgencyDiscountRate((current) => {
+            if (match.discountPercent <= current) {
+              setLoyaltyDiscountApplied(true);
+              return current;
+            }
+            const gross = quoteData?.quote?.valid
+              ? quoteData.quote.accommodationTotal
+              : null;
+            setAgencyDiscountAmount(
+              gross != null
+                ? computeDiscountAmount(gross, match.discountPercent)
+                : 0
+            );
+            setLoyaltyDiscountApplied(true);
+            return match.discountPercent;
+          });
+        }
+      );
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, phoneValue, guestEmail, quoteData]);
 
   const filteredVillas = useMemo(() => {
     const query = villaSearch.trim().toLocaleLowerCase("tr");
@@ -259,9 +331,6 @@ export default function BookingFormModal({
   const paymentTypeOptions = getSortedCompanyPaymentTypeOptions();
 
   if (!open) return null;
-
-  const guestName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
-  const phoneValue = normalizeTurkishPhoneFieldValue(guestPhone);
 
   const canContinueStep1 = Boolean(selectedVilla);
   const canContinueStep2 =
@@ -606,6 +675,16 @@ export default function BookingFormModal({
                   />
                   <input type="hidden" name="customerNote" value={customerNote} />
                   <input type="hidden" name="guestTc" value={guestTc} />
+
+                  {returningGuest ? (
+                    <div className="mb-4">
+                      <ReturningGuestBanner
+                        match={returningGuest}
+                        variant="admin"
+                        discountApplied={loyaltyDiscountApplied}
+                      />
+                    </div>
+                  ) : null}
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label>

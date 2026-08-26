@@ -5,6 +5,7 @@ import {
   LOYALTY_RULES,
   LOYALTY_TIER_META,
 } from "@/lib/loyalty-config";
+import { syncMemberLoyaltyFromHistory } from "@/lib/member-account";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 
 export type MemberDiscountOffer = {
@@ -24,6 +25,7 @@ export async function resolveBestMemberDiscount(
 ): Promise<MemberDiscountOffer | null> {
   if (accommodationTotal <= 0) return null;
 
+  await syncMemberLoyaltyFromHistory(memberId);
   const member = await prisma.memberAccount.findUnique({
     where: { id: memberId },
     select: { id: true, couponBalance: true, loyaltyTier: true },

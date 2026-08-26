@@ -5,11 +5,17 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { deliverOtpCode } from "@/lib/otp-delivery";
 import {
+  createMemberAccountWithLoyalty,
   ensureWelcomeCouponForMember,
   generateUniqueInviteCode,
   linkMemberToCustomer,
   normalizeMemberEmail,
 } from "@/lib/member-account";
+import {
+  findMemberByPhoneOrEmail,
+  recognizeReturningGuest,
+  type ReturningGuestMatch,
+} from "@/lib/returning-guest";
 import {
   clearMemberSession,
   createMemberSession,
@@ -44,15 +50,42 @@ export type MemberAuthState = {
   message?: string;
   needsVerification?: boolean;
   phone?: string;
+  verifyPhone?: string;
   verificationId?: string;
   channel?: "sms" | "whatsapp";
   redirectTo?: string;
+  alreadyRegistered?: boolean;
+  otpMode?: "login" | "register" | "reservation";
+  welcomeTitle?: string;
+  welcomeBody?: string;
 };
 
 function maskPhone(e164: string): string {
   const digits = e164.replace(/\D/g, "");
   if (digits.length < 7) return e164;
   return `****${digits.slice(-4)}`;
+}
+
+function welcomeFields(
+  match: ReturningGuestMatch | null
+): Pick<MemberAuthState, "welcomeTitle" | "welcomeBody"> {
+  if (!match) return {};
+  return {
+    welcomeTitle: match.welcomeTitle,
+    welcomeBody: match.welcomeBody,
+  };
+}
+
+async function alignMemberPhoneToE164(memberId: string, e164: string) {
+  const clash = await prisma.memberAccount.findUnique({
+    where: { phone: e164 },
+    select: { id: true },
+  });
+  if (clash) return;
+  await prisma.memberAccount.update({
+    where: { id: memberId },
+    data: { phone: e164 },
+  });
 }
 
 const registerSchema = z.object({
@@ -124,37 +157,35 @@ export async function startMemberPhoneLoginAction(
     return { error: "Geçerli bir telefon numarası girin" };
   }
 
-  let member = await prisma.memberAccount.findUnique({ where: { phone } });
-  if (!member) {
-    const booking = await prisma.booking.findFirst({
-      where: { guestPhone: phone },
-      orderBy: { createdAt: "desc" },
-      select: { guestName: true, guestEmail: true },
-    });
-    if (!booking) {
-      return {
-        error:
-          "Bu telefonla kayıtlı üyelik veya rezervasyon bulunamadı. Önce üye olun.",
-      };
-    }
-  } else if (!member.active) {
+  const member = await findMemberByPhoneOrEmail({ phone });
+  const guest = await recognizeReturningGuest({ phone });
+  if (!member && !guest) {
+    return {
+      error:
+        "Bu telefonla kayıtlı üyelik veya rezervasyon bulunamadı. Önce üye olun.",
+    };
+  }
+  if (member && !member.active) {
     return { error: "Üyelik hesabınız pasif durumda" };
   }
 
   const otp = await sendMemberOtp(phone, MEMBER_LOGIN_OTP_PURPOSE, {
     memberId: member?.id,
-    email: member?.email || undefined,
-    fullName: member?.fullName || undefined,
+    email: member?.email || guest?.email || undefined,
+    fullName: member?.fullName || guest?.fullName || undefined,
   });
   if ("error" in otp) return { error: otp.error };
 
   return {
     success: true,
     needsVerification: true,
+    otpMode: "login",
     verificationId: otp.verificationId,
     channel: otp.channel,
     phone: otp.phone,
+    verifyPhone: phone,
     message: `${otp.phone} numarasına doğrulama kodu gönderildi`,
+    ...welcomeFields(guest),
   };
 }
 
@@ -182,28 +213,24 @@ export async function verifyMemberPhoneLoginAction(input: {
     data: { usedAt: new Date() },
   });
 
-  let member = await prisma.memberAccount.findUnique({ where: { phone } });
+  let member = await findMemberByPhoneOrEmail({ phone });
   if (!member) {
-    const booking = await prisma.booking.findFirst({
-      where: { guestPhone: phone },
-      orderBy: { createdAt: "desc" },
-      select: { guestName: true, guestEmail: true },
-    });
-    if (!booking) return { error: "Üyelik oluşturulamadı" };
+    const guest = await recognizeReturningGuest({ phone });
+    if (!guest) return { error: "Üyelik oluşturulamadı" };
 
     const company = await getCompanySettings();
     const site = await getPublicSiteProfile(company);
-    member = await prisma.memberAccount.create({
-      data: {
-        fullName: booking.guestName,
-        phone,
-        email: normalizeMemberEmail(booking.guestEmail),
-        inviteCode: await generateUniqueInviteCode(),
-        phoneVerifiedAt: new Date(),
-        membershipAcceptedAt: new Date(),
-        registeredSiteKey: site.key,
-      },
+    member = await createMemberAccountWithLoyalty({
+      fullName: guest.fullName,
+      phone,
+      email: guest.email,
+      inviteCode: await generateUniqueInviteCode(),
+      phoneVerifiedAt: new Date(),
+      membershipAcceptedAt: new Date(),
+      registeredSiteKey: site.key,
     });
+  } else if (member.phone !== phone) {
+    await alignMemberPhoneToE164(member.id, phone);
   }
 
   await prisma.memberAccount.update({
@@ -236,17 +263,33 @@ export async function startMemberRegisterAction(
 
   const phone = parsed.data.phone;
   const email = normalizeMemberEmail(parsed.data.email);
-  const existingPhone = await prisma.memberAccount.findUnique({
-    where: { phone },
-  });
-  if (existingPhone) {
-    return { error: "Bu telefon numarası zaten kayıtlı" };
-  }
-  const existingEmail = await prisma.memberAccount.findFirst({
-    where: { email },
-  });
-  if (existingEmail) {
-    return { error: "Bu e-posta adresi zaten kayıtlı" };
+  const existingMember = await findMemberByPhoneOrEmail({ phone, email });
+  const guest = await recognizeReturningGuest({ phone, email });
+
+  if (existingMember) {
+    if (!existingMember.active) {
+      return { error: "Üyelik hesabınız pasif durumda" };
+    }
+    const otpPhone = existingMember.phone;
+    const otp = await sendMemberOtp(otpPhone, MEMBER_LOGIN_OTP_PURPOSE, {
+      memberId: existingMember.id,
+      email: existingMember.email,
+      fullName: existingMember.fullName,
+    });
+    if ("error" in otp) return { error: otp.error };
+
+    return {
+      success: true,
+      needsVerification: true,
+      alreadyRegistered: true,
+      otpMode: "login",
+      verificationId: otp.verificationId,
+      channel: otp.channel,
+      phone: otp.phone,
+      verifyPhone: otpPhone,
+      message: `${otp.phone} numarasına doğrulama kodu gönderildi. Yeni üyelik açmanıza gerek yok.`,
+      ...welcomeFields(guest),
+    };
   }
 
   const otp = await sendMemberOtp(phone, MEMBER_REGISTER_OTP_PURPOSE, {
@@ -260,10 +303,15 @@ export async function startMemberRegisterAction(
   return {
     success: true,
     needsVerification: true,
+    otpMode: "register",
     verificationId: otp.verificationId,
     channel: otp.channel,
     phone: otp.phone,
-    message: "Kayıt için doğrulama kodu gönderildi",
+    verifyPhone: phone,
+    message: guest
+      ? "Sizi sistemimizde hatırladık. Üyeliğinizi tamamlamak için doğrulama kodu gönderildi"
+      : "Kayıt için doğrulama kodu gönderildi",
+    ...welcomeFields(guest),
   };
 }
 
@@ -308,20 +356,36 @@ export async function verifyMemberRegisterAction(input: {
     ? await bcrypt.hash(input.password.trim(), 12)
     : "";
 
-  const member = await prisma.memberAccount.create({
-    data: {
-      fullName: payload.fullName,
-      phone,
-      email: normalizeMemberEmail(payload.email),
-      passwordHash,
-      inviteCode: await generateUniqueInviteCode(),
-      referredByMemberId,
-      marketingConsent: Boolean(payload.marketingConsent),
-      kvkkAcceptedAt: new Date(),
-      membershipAcceptedAt: new Date(),
-      phoneVerifiedAt: new Date(),
-      registeredSiteKey: site.key,
-    },
+  const existingMember = await findMemberByPhoneOrEmail({
+    phone,
+    email: payload.email,
+  });
+  if (existingMember) {
+    await prisma.verificationCode.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    });
+    await prisma.memberAccount.update({
+      where: { id: existingMember.id },
+      data: { phoneVerifiedAt: new Date() },
+    });
+    await linkMemberToCustomer(existingMember.id);
+    await createMemberSession(existingMember.id);
+    return { success: true, redirectTo: "/uye/hesabim" };
+  }
+
+  const member = await createMemberAccountWithLoyalty({
+    fullName: payload.fullName,
+    phone,
+    email: payload.email,
+    passwordHash,
+    inviteCode: await generateUniqueInviteCode(),
+    referredByMemberId,
+    marketingConsent: Boolean(payload.marketingConsent),
+    kvkkAcceptedAt: new Date(),
+    membershipAcceptedAt: new Date(),
+    phoneVerifiedAt: new Date(),
+    registeredSiteKey: site.key,
   });
 
   if (referredByMemberId) {
@@ -470,21 +534,24 @@ export async function verifyMemberReservationLoginAction(input: {
     data: { usedAt: new Date() },
   });
 
-  let member = await prisma.memberAccount.findUnique({ where: { phone } });
+  let member = await findMemberByPhoneOrEmail({
+    phone,
+    email: booking.guestEmail,
+  });
   if (!member) {
     const company = await getCompanySettings();
     const site = await getPublicSiteProfile(company);
-    member = await prisma.memberAccount.create({
-      data: {
-        fullName: booking.guestName,
-        phone,
-        email: normalizeMemberEmail(booking.guestEmail),
-        inviteCode: await generateUniqueInviteCode(),
-        phoneVerifiedAt: new Date(),
-        membershipAcceptedAt: new Date(),
-        registeredSiteKey: site.key,
-      },
+    member = await createMemberAccountWithLoyalty({
+      fullName: booking.guestName,
+      phone,
+      email: booking.guestEmail,
+      inviteCode: await generateUniqueInviteCode(),
+      phoneVerifiedAt: new Date(),
+      membershipAcceptedAt: new Date(),
+      registeredSiteKey: site.key,
     });
+  } else if (member.phone !== phone) {
+    await alignMemberPhoneToE164(member.id, phone);
   }
 
   await prisma.booking.update({

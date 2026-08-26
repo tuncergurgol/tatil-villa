@@ -11,8 +11,10 @@ import {
   verifyMemberPhoneLoginAction,
   verifyMemberRegisterAction,
   verifyMemberReservationLoginAction,
+  type MemberAuthState,
 } from "@/app/actions/member-auth";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
+import ReturningGuestBanner from "@/components/member/ReturningGuestBanner";
 
 type Tab = "phone" | "email" | "reservation" | "register";
 
@@ -31,24 +33,30 @@ export default function MemberAuthPanel({
   const [otpMode, setOtpMode] = useState<"login" | "register" | "reservation" | null>(null);
   const [phone, setPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [welcomeTitle, setWelcomeTitle] = useState<string | null>(null);
+  const [welcomeBody, setWelcomeBody] = useState<string | null>(null);
 
-  function run(action: () => Promise<{ error?: string; message?: string; success?: boolean; needsVerification?: boolean; redirectTo?: string }>) {
+  function run(action: () => Promise<MemberAuthState>) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
       const result = await action();
+      if (result.welcomeTitle) setWelcomeTitle(result.welcomeTitle);
+      if (result.welcomeBody) setWelcomeBody(result.welcomeBody);
       if (result.error) {
         setError(result.error);
         return;
       }
       if (result.message) setMessage(result.message);
+      if (result.verifyPhone) setPhone(result.verifyPhone);
       if (result.needsVerification) {
         setOtpMode(
-          tab === "register"
-            ? "register"
-            : tab === "reservation"
-              ? "reservation"
-              : "login"
+          result.otpMode ??
+            (tab === "register"
+              ? "register"
+              : tab === "reservation"
+                ? "reservation"
+                : "login")
         );
         return;
       }
@@ -99,6 +107,8 @@ export default function MemberAuthPanel({
               setTab(item.id);
               setOtpMode(null);
               setError(null);
+              setWelcomeTitle(null);
+              setWelcomeBody(null);
             }}
             className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
               tab === item.id
@@ -110,6 +120,12 @@ export default function MemberAuthPanel({
           </button>
         ))}
       </div>
+
+      {welcomeTitle || welcomeBody ? (
+        <div className="mb-4">
+          <ReturningGuestBanner title={welcomeTitle ?? undefined} body={welcomeBody ?? undefined} />
+        </div>
+      ) : null}
 
       {error ? (
         <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">

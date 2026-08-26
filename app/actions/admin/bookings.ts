@@ -26,6 +26,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
   computeCheckInPayment,
+  computeNetPrice,
   computeReservationTotal,
   DEFAULT_BOOKING_AGENCY_NAME,
   DEFAULT_BOOKING_SITE_INFO,
@@ -50,6 +51,7 @@ import {
   validateOptionalTcKimlikFields,
 } from "@/lib/tc-kimlik";
 import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
+import { applyLoyaltyFloorToBookingDetails } from "@/lib/returning-guest";
 
 const bookingStatusSchema = z.nativeEnum(BookingStatus);
 
@@ -247,10 +249,27 @@ export async function createAdminBookingAction(
     totalPrice: _formTotalPrice,
     ...rest
   } = parsed.data;
-  const details = buildBookingDetailsFromAdminForm(parsed.data);
-  const totalPrice = resolveAdminBookingTotalPrice(parsed.data);
+  const builtDetails = buildBookingDetailsFromAdminForm(parsed.data);
+  const loyaltyFloor = await applyLoyaltyFloorToBookingDetails({
+    guestPhone: parsed.data.guestPhone,
+    guestEmail: parsed.data.guestEmail,
+    details: builtDetails,
+  });
+  const details = loyaltyFloor.raised
+    ? {
+        ...loyaltyFloor.details,
+        checkInPayment: computeCheckInPayment(loyaltyFloor.details),
+      }
+    : loyaltyFloor.details;
+  const totalPrice = loyaltyFloor.raised
+    ? computeReservationTotal(details)
+    : resolveAdminBookingTotalPrice(parsed.data);
 
   try {
+    const loyaltyNote =
+      loyaltyFloor.raised && loyaltyFloor.match
+        ? ` Sadakat: ${loyaltyFloor.match.welcomeTitle} — %${loyaltyFloor.match.discountPercent} uygulandı.`
+        : "";
     await createAdminBooking({
       ...rest,
       totalPrice,
@@ -258,7 +277,7 @@ export async function createAdminBookingAction(
         details,
         buildActivityLogEntry({
           action: "booking_created",
-          message: `Panelden rezervasyon oluşturuldu (${parsed.data.guestName})`,
+          message: `Panelden rezervasyon oluşturuldu (${parsed.data.guestName})${loyaltyNote}`,
           actorUserId: actor.actorUserId,
           actorName: actor.actorName,
         })
@@ -310,8 +329,21 @@ export async function updateAdminBookingAction(
     totalPrice: _formTotalPrice,
     ...rest
   } = parsed.data;
-  const details = buildBookingDetailsFromAdminForm(parsed.data);
-  const totalPrice = resolveAdminBookingTotalPrice(parsed.data);
+  const builtDetails = buildBookingDetailsFromAdminForm(parsed.data);
+  const loyaltyFloor = await applyLoyaltyFloorToBookingDetails({
+    guestPhone: parsed.data.guestPhone,
+    guestEmail: parsed.data.guestEmail,
+    details: builtDetails,
+  });
+  const details = loyaltyFloor.raised
+    ? {
+        ...loyaltyFloor.details,
+        checkInPayment: computeCheckInPayment(loyaltyFloor.details),
+      }
+    : loyaltyFloor.details;
+  const totalPrice = loyaltyFloor.raised
+    ? computeReservationTotal(details)
+    : resolveAdminBookingTotalPrice(parsed.data);
 
   try {
     await updateAdminBooking(id, {
@@ -487,6 +519,21 @@ export async function updateBookingDetailAction(
     return { error: tcError };
   }
 
+  const loyaltyFloor = await applyLoyaltyFloorToBookingDetails({
+    guestPhone: parsed.data.guestPhone,
+    guestEmail: parsed.data.guestEmail,
+    details,
+  });
+  const flooredDetails = loyaltyFloor.raised
+    ? {
+        ...loyaltyFloor.details,
+        checkInPayment: computeCheckInPayment(loyaltyFloor.details),
+      }
+    : loyaltyFloor.details;
+  const flooredTotalPrice = loyaltyFloor.raised
+    ? computeNetPrice(flooredDetails)
+    : parsed.data.totalPrice;
+
   try {
     const existing = await prisma.booking.findUnique({
       where: { id: parsed.data.id },
@@ -518,6 +565,16 @@ export async function updateBookingDetailAction(
         actorName: actor.actorName,
       })
     );
+    if (loyaltyFloor.raised && loyaltyFloor.match) {
+      logEntries.push(
+        buildActivityLogEntry({
+          action: "booking_updated",
+          message: `Sadakat sınıfı hatırlandı: ${loyaltyFloor.match.welcomeTitle} — acente indirimi %${loyaltyFloor.match.discountPercent}`,
+          actorUserId: actor.actorUserId,
+          actorName: actor.actorName,
+        })
+      );
+    }
 
     const hadInvoice =
       Boolean(existingDetails.invoiceNo?.trim()) ||
@@ -542,16 +599,16 @@ export async function updateBookingDetailAction(
     }
 
     const mergedDetails: BookingDetails = {
-      ...details,
+      ...flooredDetails,
       // Depozitolar her kayıtta giriş tarihinin bağlı olduğu periyottan alınır.
       damageDeposit: periodFees.damageDeposit,
       petDamageDeposit:
         parsed.data.pets > 0 ? periodFees.petDamageDeposit : null,
       confirmationSends:
-        details.confirmationSends ?? existingDetails.confirmationSends,
-      ownerPayments: details.ownerPayments ?? existingDetails.ownerPayments,
+        flooredDetails.confirmationSends ?? existingDetails.confirmationSends,
+      ownerPayments: flooredDetails.ownerPayments ?? existingDetails.ownerPayments,
       guestRefundPayments:
-        details.guestRefundPayments ?? existingDetails.guestRefundPayments,
+        flooredDetails.guestRefundPayments ?? existingDetails.guestRefundPayments,
       activityLogs: logEntries,
       // Kaydedilmiş ön ödeme yoksa, buna bağlı yapılacak ödeme tutarları
       // form kaydında tekrar taşınmamalıdır.
@@ -589,7 +646,7 @@ export async function updateBookingDetailAction(
       guestName: parsed.data.guestName,
       guestEmail: parsed.data.guestEmail,
       guestPhone: parsed.data.guestPhone,
-      totalPrice: parsed.data.totalPrice,
+      totalPrice: flooredTotalPrice,
       details: mergedDetails,
     });
     revalidatePath("/admin/rezervasyonlar");

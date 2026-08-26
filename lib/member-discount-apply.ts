@@ -5,6 +5,7 @@ import {
   LOYALTY_RULES,
   LOYALTY_TIER_META,
 } from "@/lib/loyalty-config";
+import { syncMemberLoyaltyFromHistory } from "@/lib/member-account";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 
 export type ValidatedMemberDiscount = {
@@ -112,6 +113,7 @@ export async function validateMemberDiscountSubmission(
   }
 
   // Sadakat sınıfı oranı → yalnızca konaklama bedeline acente indirimi
+  await syncMemberLoyaltyFromHistory(memberId);
   const member = await prisma.memberAccount.findUnique({
     where: { id: memberId },
     select: { loyaltyTier: true },

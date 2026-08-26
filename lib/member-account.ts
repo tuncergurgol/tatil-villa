@@ -6,6 +6,10 @@ import {
   upsertCustomerFromBooking,
 } from "@/lib/customer-from-booking";
 import { LOYALTY_RULES } from "@/lib/loyalty-config";
+import {
+  higherLoyaltyTier,
+  recognizeReturningGuest,
+} from "@/lib/returning-guest";
 
 const INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -34,6 +38,82 @@ export async function generateUniqueInviteCode() {
   throw new Error("Davet kodu üretilemedi");
 }
 
+export async function syncMemberLoyaltyFromHistory(memberId: string) {
+  const member = await prisma.memberAccount.findUnique({
+    where: { id: memberId },
+    select: {
+      id: true,
+      phone: true,
+      email: true,
+      completedStays: true,
+      loyaltyTier: true,
+    },
+  });
+  if (!member) return null;
+
+  const match = await recognizeReturningGuest({
+    phone: member.phone,
+    email: member.email,
+  });
+  const stayCount = Math.max(match?.stayCount ?? 0, member.completedStays);
+  const loyaltyTier = higherLoyaltyTier(
+    member.loyaltyTier,
+    match?.loyaltyTier ?? member.loyaltyTier
+  );
+
+  if (
+    stayCount === member.completedStays &&
+    loyaltyTier === member.loyaltyTier
+  ) {
+    return member;
+  }
+
+  return prisma.memberAccount.update({
+    where: { id: member.id },
+    data: {
+      completedStays: stayCount,
+      loyaltyTier,
+    },
+  });
+}
+
+export async function createMemberAccountWithLoyalty(input: {
+  fullName: string;
+  phone: string;
+  email: string;
+  passwordHash?: string;
+  inviteCode: string;
+  referredByMemberId?: string;
+  marketingConsent?: boolean;
+  kvkkAcceptedAt?: Date | null;
+  membershipAcceptedAt?: Date | null;
+  phoneVerifiedAt?: Date | null;
+  registeredSiteKey: string;
+}) {
+  const match = await recognizeReturningGuest({
+    phone: input.phone,
+    email: input.email,
+  });
+
+  return prisma.memberAccount.create({
+    data: {
+      fullName: input.fullName.trim() || match?.fullName || "Misafir",
+      phone: input.phone,
+      email: normalizeMemberEmail(input.email),
+      passwordHash: input.passwordHash ?? "",
+      inviteCode: input.inviteCode,
+      referredByMemberId: input.referredByMemberId,
+      marketingConsent: Boolean(input.marketingConsent),
+      kvkkAcceptedAt: input.kvkkAcceptedAt ?? undefined,
+      membershipAcceptedAt: input.membershipAcceptedAt ?? undefined,
+      phoneVerifiedAt: input.phoneVerifiedAt ?? undefined,
+      registeredSiteKey: input.registeredSiteKey,
+      loyaltyTier: match?.loyaltyTier ?? "BRONZE",
+      completedStays: match?.stayCount ?? 0,
+    },
+  });
+}
+
 export async function linkMemberToCustomer(memberId: string) {
   const member = await prisma.memberAccount.findUnique({
     where: { id: memberId },
@@ -45,30 +125,34 @@ export async function linkMemberToCustomer(memberId: string) {
       customerId: true,
     },
   });
-  if (!member || member.customerId) return member?.customerId ?? null;
+  if (!member) return null;
 
-  const existingCustomer = await findCustomerForBookingGuest({
-    guestName: member.fullName,
-    guestPhone: member.phone,
-    guestEmail: member.email,
-  });
+  let customerId = member.customerId;
+  if (!customerId) {
+    const existingCustomer = await findCustomerForBookingGuest({
+      guestName: member.fullName,
+      guestPhone: member.phone,
+      guestEmail: member.email,
+    });
 
-  const result =
-    existingCustomer
+    const result = existingCustomer
       ? { created: false, id: existingCustomer.id }
       : await upsertCustomerFromBooking({
           guestName: member.fullName,
           guestPhone: member.phone,
           guestEmail: member.email,
         });
-  if (!result) return null;
+    if (result) {
+      customerId = result.id;
+      await prisma.memberAccount.update({
+        where: { id: member.id },
+        data: { customerId },
+      });
+    }
+  }
 
-  await prisma.memberAccount.update({
-    where: { id: member.id },
-    data: { customerId: result.id },
-  });
-
-  return result.id;
+  await syncMemberLoyaltyFromHistory(member.id);
+  return customerId;
 }
 
 export async function findMemberBookings(member: {

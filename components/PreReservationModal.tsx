@@ -6,10 +6,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { validateCouponAction } from "@/app/actions/validate-coupon";
+import { lookupReturningGuestAction } from "@/app/actions/returning-guest";
 import TurkishPhoneField, {
   normalizeTurkishPhoneFieldValue,
 } from "@/components/admin/ui/TurkishPhoneField";
+import ReturningGuestBanner from "@/components/member/ReturningGuestBanner";
 import type { StayQuote } from "@/lib/stay-quote";
+import type { ReturningGuestPreview } from "@/lib/returning-guest-shared";
 import {
   LOYALTY_TIER_META,
   LOYALTY_TIER_ORDER,
@@ -209,6 +212,8 @@ export default function PreReservationModal({
   const [localError, setLocalError] = useState<string | null>(null);
   const [loginPromoOpen, setLoginPromoOpen] = useState(false);
   const [loginRedirectHref, setLoginRedirectHref] = useState("/uye");
+  const [returningGuest, setReturningGuest] =
+    useState<ReturningGuestPreview | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -262,6 +267,33 @@ export default function PreReservationModal({
       setAgencyDiscountRate(0);
     }
   }, [open, memberBenefits, checkIn, checkOut, guests]);
+
+  useEffect(() => {
+    if (!open || memberBenefits?.loggedIn) {
+      setReturningGuest(null);
+      return;
+    }
+    const phone = normalizeTurkishPhoneFieldValue(guestPhone);
+    const email = guestEmail.trim();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10 && !email.includes("@")) {
+      setReturningGuest(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void lookupReturningGuestAction({ phone, email }).then((result) => {
+        if (cancelled) return;
+        setReturningGuest(result.match);
+      });
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, guestPhone, guestEmail, memberBenefits?.loggedIn]);
 
   useEffect(() => {
     if (!open) return;
@@ -627,6 +659,21 @@ export default function PreReservationModal({
                   focusPalette="blue"
                 />
               </div>
+
+              {returningGuest ? (
+                <div className="mt-3 space-y-2">
+                  <ReturningGuestBanner match={returningGuest} />
+                  {returningGuest.applyDiscount && !memberBenefits?.loggedIn ? (
+                    <Link
+                      href={loginRedirectHref}
+                      className="block rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+                    >
+                      Üye girişi yapın, %{returningGuest.discountPercent} sadakat
+                      indirimini uygulayalım →
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="mt-5 space-y-3">
                 <label className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-600">

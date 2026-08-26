@@ -17,6 +17,7 @@ import {
   updateBookingDetailAction,
   expirePrepaymentOptionsAction,
 } from "@/app/actions/admin/bookings";
+import { lookupReturningGuestAdminAction } from "@/app/actions/returning-guest";
 import OccupancyStayDateRangePicker from "@/components/admin/availability/OccupancyStayDateRangePicker";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import { getCancellationReasonLabel } from "@/lib/booking-cancellation";
@@ -78,6 +79,7 @@ import {
   bookingInputClass,
   bookingReadonlyClass,
 } from "@/components/admin/bookings/booking-form-ui";
+import ReturningGuestBanner from "@/components/member/ReturningGuestBanner";
 import { getActiveSalesRepOptionsAction } from "@/app/actions/admin/users";
 import type { SalesRepOption } from "@/lib/queries/users";
 import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
@@ -96,6 +98,7 @@ import {
   validateOptionalTcKimlikFields,
 } from "@/lib/tc-kimlik";
 import type { AdminBookingWizardQuote } from "@/lib/queries/admin-booking-wizard";
+import type { ReturningGuestPreview } from "@/lib/returning-guest-shared";
 
 type EntryCommittedSnapshot = {
   checkIn: string;
@@ -311,6 +314,8 @@ export default function BookingDetailModal({
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [details, setDetails] = useState<BookingDetails>({});
+  const [returningGuest, setReturningGuest] =
+    useState<ReturningGuestPreview | null>(null);
   const [periodPrepaymentRate, setPeriodPrepaymentRate] = useState(20);
   const prepaymentManuallyEdited = useRef(false);
   const talepPrepaymentAmountRef = useRef<number | null>(null);
@@ -401,6 +406,7 @@ export default function BookingDetailModal({
         setGuestName(record.guestName);
         setGuestEmail(record.guestEmail);
         setGuestPhone(record.guestPhone);
+        setReturningGuest(null);
         const parsed = parseBookingDetails(record.details);
         talepPrepaymentAmountRef.current =
           parsed.prepaymentAmount != null &&
@@ -781,6 +787,45 @@ export default function BookingDetailModal({
       ),
     });
   }
+
+  useEffect(() => {
+    const phone = normalizeTurkishPhoneFieldValue(guestPhone);
+    const email = guestEmail.trim();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10 && !email.includes("@")) {
+      setReturningGuest(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void lookupReturningGuestAdminAction({ phone, email }).then((result) => {
+        if (cancelled) return;
+        const match = result.match;
+        setReturningGuest(match);
+        if (!match?.applyDiscount) return;
+        setDetails((current) => {
+          if ((current.agencyDiscountRate ?? 0) >= match.discountPercent) {
+            return current;
+          }
+          prepaymentManuallyEdited.current = false;
+          return {
+            ...current,
+            agencyDiscountRate: match.discountPercent,
+            agencyDiscountAmount: computeDiscountAmount(
+              current.grossPrice,
+              match.discountPercent
+            ),
+          };
+        });
+      });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [guestPhone, guestEmail]);
 
   function handleCommissionRateChange(rate: number) {
     const commissionRate = clampDiscountRate(rate);
@@ -1327,7 +1372,18 @@ export default function BookingDetailModal({
                   />
                 </FormRow>
                 <FormRow label="Acente İndirimi (% - Tutar)">
-                  <DiscountPercentAmountField
+                  <div className="space-y-2">
+                    {returningGuest?.applyDiscount ? (
+                      <ReturningGuestBanner
+                        match={returningGuest}
+                        variant="admin"
+                        discountApplied={
+                          (details.agencyDiscountRate ?? 0) >=
+                          returningGuest.discountPercent
+                        }
+                      />
+                    ) : null}
+                    <DiscountPercentAmountField
                     rate={details.agencyDiscountRate ?? 0}
                     amount={details.agencyDiscountAmount ?? 0}
                     onRateChange={handleAgencyDiscountRateChange}
@@ -1336,6 +1392,7 @@ export default function BookingDetailModal({
                       patchDetails({ agencyDiscountAmount: amount ?? 0 });
                     }}
                   />
+                  </div>
                 </FormRow>
                 <FormRow label="Acente Hizmet Bedeli">
                   <input
@@ -1614,6 +1671,18 @@ export default function BookingDetailModal({
               </TabPanel>
 
               <TabPanel active={activeTab === "musteri"}>
+              {returningGuest ? (
+                <div className="mb-4">
+                  <ReturningGuestBanner
+                    match={returningGuest}
+                    variant="admin"
+                    discountApplied={
+                      (details.agencyDiscountRate ?? 0) >=
+                      returningGuest.discountPercent
+                    }
+                  />
+                </div>
+              ) : null}
               <FormSection title="Müşteri Bilgileri">
                 <FormRow label="Müşteri Adı Soyadı">
                   <input
