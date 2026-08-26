@@ -245,6 +245,11 @@ export const adminNavSections: NavSection[] = [
         href: "/admin/raporlar/ev-sahibi-odemeleri",
         icon: "file-check",
       },
+      {
+        label: "İyzico Ödemeler",
+        href: "/admin/raporlar/iyzico-odemeler",
+        icon: "file-check",
+      },
     ],
   },
 ];
