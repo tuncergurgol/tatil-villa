@@ -60,7 +60,6 @@ export default async function SiteChromeHeader() {
       />
       <Header
         navLinks={headerLinks}
-        phone={phone}
         brandName={brandName}
         logoUrl={site.logoUrl}
         useDefaultLogo={site.useDefaultLogo}
