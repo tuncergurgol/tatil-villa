@@ -11,7 +11,10 @@ import {
   parseWhatsappCalendarMessage,
 } from "@/lib/whatsapp-calendar-parser";
 import { parseWhatsappCalendarDateTrainingLine } from "@/lib/whatsapp-calendar-date-training";
-import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import {
+  applyVillaPeriodDaysOccupancy,
+  reapplyConfirmedBookingReservedOccupancy,
+} from "@/lib/villa-occupancy-service";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import { normalizeWhatsappGroupId } from "@/lib/whatsapp-calendar-webhook";
 import {
@@ -331,6 +334,7 @@ export async function applyWhatsappCalendarParserTestAction(
     parsed.endDateKey,
     mode
   );
+  await reapplyConfirmedBookingReservedOccupancy(villaId);
 
   revalidateWhatsappCalendarPaths();
   return {
@@ -572,6 +576,7 @@ export async function retryWhatsappCalendarMessageAction(
         parsed.endDateKey,
         mode
       );
+      await reapplyConfirmedBookingReservedOccupancy(villa.id);
       applied.push({ name: villa.name, updatedDays });
     }
 

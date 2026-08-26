@@ -12,7 +12,10 @@ import {
   dbDateToDateKey,
   parseDateKey,
 } from "@/lib/villa-period-calendar";
-import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import {
+  applyVillaPeriodDaysOccupancy,
+  reapplyConfirmedBookingReservedOccupancy,
+} from "@/lib/villa-occupancy-service";
 import {
   CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE,
   ConfirmedBookingOccupancyLockedError,
@@ -1008,6 +1011,7 @@ export async function updateVillaPeriodDaysOccupancy(
 
   try {
     await applyVillaPeriodDaysOccupancy(villaId, startDateKey, endDateKey, mode);
+    await reapplyConfirmedBookingReservedOccupancy(villaId);
     await revalidatePeriodPaths(villaId);
     return { success: true };
   } catch (error) {

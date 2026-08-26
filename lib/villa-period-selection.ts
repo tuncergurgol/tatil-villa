@@ -172,7 +172,8 @@ export function buildBookedOccupancyForStay(
 }
 
 /**
- * Onaylı rezervasyon: BOOKED ile aynı giriş–çıkış kuralı; günler RESERVED yazılır.
+ * Onaylı rezervasyon: giriş–çıkış geceleri RESERVED, çıkış günü EMPTY.
+ * İlk gece önceki kapama/opsiyona bakılmadan RESERVED kalır (gece düşmez).
  */
 export function buildReservedOccupancyForStayMerged(
   startKey: string,
@@ -204,47 +205,17 @@ export function buildReservedOccupancyForStayMerged(
     return map;
   }
 
+  // Konaklama geceleri (giriş .. çıkış hariç) her zaman RESERVED.
+  // İlk geceyi EMPTY yazmak 3 gecelik konaklamada bir geceyi düşürür
+  // (Villa Fiyona 31.08–03.09: 31 Ağustos beyaz kalıyordu).
   for (let index = 0; index < keys.length - 1; index++) {
-    if (index > 0) {
-      map.set(keys[index]!, "RESERVED");
-    }
+    map.set(keys[index]!, "RESERVED");
   }
-
-  const firstDayKey = keys[0]!;
-  const prevNightKey = offsetDateKey(firstDayKey, -1);
-  const dayBeforeFirst = getOccupancy(existingOccupancyByDateKey, prevNightKey);
-  const existingFirst = getOccupancy(existingOccupancyByDateKey, firstDayKey);
-  let firstDayStatus: VillaDayOccupancy;
-  if (isOccupied(dayBeforeFirst)) {
-    // Kapama son gece BOOKED iken ertesi gün rezervasyon girişi: RESERVED (10 Ağu senaryosu).
-    // Önceki gece RESERVED ise aynı gün çıkış+giriş: EMPTY (5 Ağu rezervasyon çıkışı).
-    if (
-      dayBeforeFirst === "BOOKED" &&
-      firstDayKey === offsetDateKey(prevNightKey, 1)
-    ) {
-      firstDayStatus = "RESERVED";
-    } else {
-      firstDayStatus = "EMPTY";
-    }
-  } else if (isOccupied(existingFirst)) {
-    firstDayStatus =
-      existingFirst === "OPTION" ? "OPTION" : "RESERVED";
-  } else {
-    firstDayStatus = "RESERVED";
-  }
-  map.set(firstDayKey, firstDayStatus);
 
   const lastDayKey = keys[keys.length - 1]!;
   const existingEnd = getOccupancy(existingOccupancyByDateKey, lastDayKey);
-  // Bitiş günü çıkışdır; sonraki bloğun mevcut girişi korunur.
-  map.set(
-    lastDayKey,
-    isOccupied(existingEnd)
-      ? existingEnd === "OPTION"
-        ? "OPTION"
-        : "RESERVED"
-      : "EMPTY"
-  );
+  // Çıkış günü boş kalır; sonraki kapama/opsiyon girişi ezilmez.
+  map.set(lastDayKey, isOccupied(existingEnd) ? existingEnd : "EMPTY");
   return map;
 }
 

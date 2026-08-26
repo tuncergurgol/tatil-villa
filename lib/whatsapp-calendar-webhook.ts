@@ -2,7 +2,10 @@ import { randomUUID } from "crypto";
 import { WhatsappCalendarMessageStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/queries/company-settings";
-import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
+import {
+  applyVillaPeriodDaysOccupancy,
+  reapplyConfirmedBookingReservedOccupancy,
+} from "@/lib/villa-occupancy-service";
 import { ConfirmedBookingOccupancyLockedError } from "@/lib/villa-confirmed-booking-guard";
 import { dateKeyToDbDate } from "@/lib/villa-period-calendar";
 import {
@@ -382,6 +385,7 @@ async function applyOccupancyToVillas(
         endDateKey,
         mode
       );
+      await reapplyConfirmedBookingReservedOccupancy(villa.id);
       applied.push({ villa, updatedDays });
     } catch (error) {
       if (error instanceof ConfirmedBookingOccupancyLockedError) {

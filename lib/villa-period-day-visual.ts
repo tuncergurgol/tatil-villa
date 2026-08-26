@@ -125,15 +125,15 @@ export function isTurnoverOccupancyDay(
   if (!isBlockingOccupancy(prev)) return false;
   if (!isBlockingOccupancy(next)) return false;
   if (!context) return false;
-  if (context.checkInDateKeys?.has(context.dateKey)) return true;
 
   const nextDayKey = offsetDateKey(context.dateKey, 1);
   if (!isBlockingOccupancy(context.occupancyMap.get(nextDayKey))) {
     return false;
   }
-  // Sonraki blok ertesi gün giriş işaretliyse bugün yalnızca çıkıştır;
-  // aradaki gece boştur ve iki blok tek parça gösterilmez.
+  // Sonraki blok ertesi gün giriş işaretliyse bugün yalnızca çıkıştır
+  // (eski kapama çıkışındaki stale check-in işareti turnover üretmesin).
   if (context.checkInDateKeys?.has(nextDayKey)) return false;
+  if (context.checkInDateKeys?.has(context.dateKey)) return true;
 
   // Bitişik ayrı bloklar (17 çıkış + 18 giriş): sonraki blok ertesi günden başlar → turnover değil.
   // Aynı gün çıkış+giriş: sonraki blok bu EMPTY günden başlar → turnover.

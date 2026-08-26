@@ -1021,4 +1021,68 @@ assert(
   "villavillam Opaline: 12 Ağustos çıkış değil, dolu görünür"
 );
 
+// Villa Fiyona: kapama 25–30 + onaylı rezervasyon 31.08–03.09 + kapama 3–7
+const fiyonaExisting = new Map<string, "BOOKED" | "EMPTY" | "RESERVED">([
+  ["2026-08-25", "BOOKED"],
+  ["2026-08-26", "BOOKED"],
+  ["2026-08-27", "BOOKED"],
+  ["2026-08-28", "BOOKED"],
+  ["2026-08-29", "BOOKED"],
+  ["2026-08-30", "EMPTY"],
+  ["2026-08-31", "EMPTY"],
+  ["2026-09-01", "RESERVED"],
+  ["2026-09-02", "RESERVED"],
+  ["2026-09-03", "EMPTY"],
+  ["2026-09-04", "BOOKED"],
+  ["2026-09-05", "BOOKED"],
+  ["2026-09-06", "BOOKED"],
+  ["2026-09-07", "EMPTY"],
+]);
+const fiyonaReserved = buildReservedOccupancyForStay(
+  "2026-08-31",
+  "2026-09-03",
+  fiyonaExisting
+);
+assert(
+  fiyonaReserved.get("2026-08-31") === "RESERVED",
+  "Fiyona: 31 Ağustos ilk gece RESERVED (boş bırakılmaz)"
+);
+assert(fiyonaReserved.get("2026-09-01") === "RESERVED", "Fiyona: 1 Eylül RESERVED");
+assert(fiyonaReserved.get("2026-09-02") === "RESERVED", "Fiyona: 2 Eylül RESERVED");
+assert(
+  fiyonaReserved.get("2026-09-03") === "EMPTY",
+  "Fiyona: 3 Eylül çıkış EMPTY (sonraki kapama korunur)"
+);
+const fiyonaMap = buildOccupancyMap(
+  [...fiyonaExisting, ...fiyonaReserved.entries()].map(
+    ([date, occupancyStatus]) => ({ date, occupancyStatus })
+  )
+);
+const fiyonaCheckIns = new Set(["2026-08-30", "2026-08-31", "2026-09-03"]);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-30", fiyonaMap, fiyonaCheckIns) ===
+    "check_out",
+  "Fiyona: 30 Ağustos yalnızca kapama çıkışı (stale check-in turnover olmaz)"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-08-31", fiyonaMap, fiyonaCheckIns) ===
+    "reserved_check_in",
+  "Fiyona: 31 Ağustos rezervasyon girişi"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-09-01", fiyonaMap, fiyonaCheckIns) ===
+    "reserved_full",
+  "Fiyona: 1 Eylül bizim rezervasyon"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-09-02", fiyonaMap, fiyonaCheckIns) ===
+    "reserved_full",
+  "Fiyona: 2 Eylül bizim rezervasyon"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-09-03", fiyonaMap, fiyonaCheckIns) ===
+    "reserved_out_booked_in",
+  "Fiyona: 3 Eylül rezervasyon çıkışı + kapama girişi"
+);
+
 console.log("\nTüm period occupancy smoke senaryoları geçti.");

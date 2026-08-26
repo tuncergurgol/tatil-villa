@@ -6,7 +6,8 @@ import {
 
 /**
  * Onaylı rezervasyonların takvimde her zaman RESERVED (Bizim Rezervasyon)
- * kalması için korunan günler: check-in .. check-out (dahil).
+ * kalması için korunan günler: dolu geceler [check-in, check-out).
+ * Çıkış günü serbesttir; aynı gün sonraki kapama girebilir.
  */
 export async function loadConfirmedBookingProtectedDateKeys(
   villaId: string
@@ -27,6 +28,7 @@ export async function loadConfirmedBookingProtectedDateKeys(
     const start = dbDateToDateKey(booking.checkIn);
     const end = dbDateToDateKey(booking.checkOut);
     for (const dateKey of enumerateDateKeys(start, end)) {
+      if (dateKey === end) continue;
       protectedKeys.add(dateKey);
     }
   }
