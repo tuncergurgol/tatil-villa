@@ -7,17 +7,17 @@ export function dispatchMobileVillaSearchOpen() {
   window.dispatchEvent(new CustomEvent(MOBILE_VILLA_SEARCH_OPEN_EVENT));
 }
 
-/** Üst villa arama kutusuna odaklanır; bulunamazsa false döner. */
+/** Mobil menüdeki villa arama kutusunu açar ve odaklar. */
 export function focusHeaderVillaSearchInput(): boolean {
+  dispatchMobileVillaSearchOpen();
   const input = document.getElementById(
     HEADER_VILLA_SEARCH_INPUT_ID
   ) as HTMLInputElement | null;
 
-  if (!input) return false;
+  if (!input) return true;
 
   const section = document.getElementById(HEADER_VILLA_SEARCH_SECTION_ID);
   section?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   input.focus({ preventScroll: true });
-  dispatchMobileVillaSearchOpen();
   return true;
 }

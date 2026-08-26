@@ -24,11 +24,13 @@ export default function HeaderVillaSearch({
   className = "",
   inputId = HEADER_VILLA_SEARCH_INPUT_ID,
   compact = false,
+  onAfterNavigate,
 }: {
   initialQuery?: string;
   className?: string;
   inputId?: string;
   compact?: boolean;
+  onAfterNavigate?: () => void;
 }) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -40,6 +42,7 @@ export default function HeaderVillaSearch({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const listenToMobileOpen = inputId === HEADER_VILLA_SEARCH_INPUT_ID;
 
   useEffect(() => {
     const value = query.trim();
@@ -88,6 +91,8 @@ export default function HeaderVillaSearch({
   }, [query]);
 
   useEffect(() => {
+    if (!listenToMobileOpen) return;
+
     function handleMobileOpen() {
       inputRef.current?.focus({ preventScroll: true });
       if (query.trim().length > 0) {
@@ -98,7 +103,7 @@ export default function HeaderVillaSearch({
     window.addEventListener(MOBILE_VILLA_SEARCH_OPEN_EVENT, handleMobileOpen);
     return () =>
       window.removeEventListener(MOBILE_VILLA_SEARCH_OPEN_EVENT, handleMobileOpen);
-  }, [query]);
+  }, [query, listenToMobileOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -126,6 +131,7 @@ export default function HeaderVillaSearch({
   function goToResults(value: string) {
     const trimmed = value.trim();
     setOpen(false);
+    onAfterNavigate?.();
     if (!trimmed) {
       router.push("/villalar");
       return;
@@ -143,6 +149,7 @@ export default function HeaderVillaSearch({
     setResults([]);
     setOpen(false);
     setQuery(villa.name);
+    onAfterNavigate?.();
     router.push(villaPublicPath(villa.slug));
   }
 

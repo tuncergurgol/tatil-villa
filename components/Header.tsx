@@ -1,13 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, UserRound, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import HeaderVillaSearch from "@/components/HeaderVillaSearch";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Link } from "@/lib/i18n/navigation";
 import { siteConfig } from "@/lib/data";
+import {
+  HEADER_VILLA_SEARCH_INPUT_ID,
+  HEADER_VILLA_SEARCH_SECTION_ID,
+  MOBILE_VILLA_SEARCH_OPEN_EVENT,
+} from "@/lib/mobile-villa-search";
 
 const defaultNavHrefs = [
   "/villalar",
@@ -71,6 +76,7 @@ export default function Header({
     [navLinks, t]
   );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const focusSearchAfterOpenRef = useRef(false);
   const logoSrc = logoUrl?.trim() || (useDefaultLogo ? DEFAULT_LOGO : "");
   const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
   const mobileLogoClass = {
@@ -79,12 +85,37 @@ export default function Header({
     "tatil-villacisi": "h-10 max-w-[170px]",
   }[siteKey];
 
+  useEffect(() => {
+    function handleOpenSearch() {
+      focusSearchAfterOpenRef.current = true;
+      setMobileOpen(true);
+    }
+    window.addEventListener(MOBILE_VILLA_SEARCH_OPEN_EVENT, handleOpenSearch);
+    return () =>
+      window.removeEventListener(
+        MOBILE_VILLA_SEARCH_OPEN_EVENT,
+        handleOpenSearch
+      );
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen || !focusSearchAfterOpenRef.current) return;
+    focusSearchAfterOpenRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      const input = document.getElementById(
+        HEADER_VILLA_SEARCH_INPUT_ID
+      ) as HTMLInputElement | null;
+      input?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [mobileOpen]);
+
   return (
     <header
       className={`relative z-50 sticky top-0 border-b border-gray-200 bg-white text-gray-900 shadow-sm md:h-[6.75rem] md:overflow-visible ${
         mobileOpen
           ? "h-auto overflow-visible"
-          : "h-[8rem] overflow-hidden md:h-[6.75rem]"
+          : "h-[4.75rem] overflow-hidden md:h-[6.75rem]"
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-1.5 md:gap-3 md:px-6 md:py-2 lg:px-8">
@@ -130,7 +161,11 @@ export default function Header({
             <MemberLoginLink label={tHeader("memberLogin")} />
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <HeaderVillaSearch className="min-w-0 flex-1" compact />
+            <HeaderVillaSearch
+              className="min-w-0 flex-1"
+              compact
+              inputId="header-villa-search-input-desktop"
+            />
             <LanguageSwitcher className="shrink-0" />
           </div>
         </div>
@@ -140,22 +175,27 @@ export default function Header({
           className="rounded-lg p-1.5 text-gray-700 hover:bg-gray-100 md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label={tHeader("menu")}
+          aria-expanded={mobileOpen}
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      <div
-        id="header-villa-search-section"
-        className="border-t border-gray-100 bg-slate-50/80 px-4 py-2 md:hidden"
-      >
-        <div className="mx-auto max-w-7xl">
-          <HeaderVillaSearch className="min-w-0 w-full" compact />
-        </div>
-      </div>
-
       {mobileOpen && (
         <div className="border-t border-gray-100 px-4 py-3 md:hidden">
+          <div
+            id={HEADER_VILLA_SEARCH_SECTION_ID}
+            className="mb-3"
+          >
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {tHeader("searchVilla")}
+            </p>
+            <HeaderVillaSearch
+              className="min-w-0 w-full"
+              compact
+              onAfterNavigate={() => setMobileOpen(false)}
+            />
+          </div>
           <div className="mb-2 flex flex-col gap-2 border-b border-gray-100 pb-3">
             <MemberLoginLink
               className="w-full justify-center"
