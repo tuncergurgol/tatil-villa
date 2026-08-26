@@ -16,7 +16,7 @@ export const IYZICO_INSTALLMENT_CUSTOMER_RATES: Record<number, number> = {
   12: 0.3639,
 };
 
-export type IyzicoPayoutStatus = "pending" | "paid";
+export type IyzicoPayoutStatus = "pending" | "paid" | "cancelled";
 
 export type IyzicoParsedPayment = {
   installment: number;
@@ -177,4 +177,5 @@ export function formatIyzicoDateKey(dateKey: string): string {
 export const IYZICO_PAYMENT_STATUS_LABEL: Record<IyzicoPayoutStatus, string> = {
   pending: "Beklemede",
   paid: "Ödendi",
+  cancelled: "İptal",
 };

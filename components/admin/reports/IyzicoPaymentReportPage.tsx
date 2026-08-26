@@ -95,6 +95,10 @@ export default function IyzicoPaymentReportPage({
     () =>
       filteredItems.reduce(
         (acc, item) => {
+          if (item.status === "cancelled") {
+            acc.cancelledCount += 1;
+            return acc;
+          }
           acc.paid += item.paidAmount;
           acc.commission += item.commissionTotal;
           acc.bank += item.bankAmount;
@@ -102,7 +106,14 @@ export default function IyzicoPaymentReportPage({
           else acc.pendingCount += 1;
           return acc;
         },
-        { paid: 0, commission: 0, bank: 0, paidCount: 0, pendingCount: 0 }
+        {
+          paid: 0,
+          commission: 0,
+          bank: 0,
+          paidCount: 0,
+          pendingCount: 0,
+          cancelledCount: 0,
+        }
       ),
     [filteredItems]
   );
@@ -212,9 +223,9 @@ export default function IyzicoPaymentReportPage({
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           Bankaya yatış, işlem tarihinden 28 gün sonraki ilk Çarşamba olarak
-          hesaplanır. Tek çekimde kesinti iyzico oranına göre yüzde 4,29 + 0,25
-          TL sabittir; taksitli ödemelerde müşteri farkı iyzico yanıtındaki
-          tutarlardan alınır.
+          hesaplanır. İptal edilen rezervasyonların kart tahsilatı listede{" "}
+          <strong>İptal</strong> görünür ve bankaya yatmaz. Tek çekimde kesinti
+          yüzde 4,29 + 0,25 TL sabittir.
         </span>
       </div>
 
@@ -268,6 +279,7 @@ export default function IyzicoPaymentReportPage({
                 <option value="">Tümü</option>
                 <option value="pending">Beklemede</option>
                 <option value="paid">Ödendi</option>
+                <option value="cancelled">İptal</option>
               </select>
             </label>
             <div className="hidden lg:block" />
@@ -375,6 +387,9 @@ export default function IyzicoPaymentReportPage({
           </p>
           <p className="mt-1 text-xs text-gray-500">
             {totals.pendingCount} beklemede · {totals.paidCount} ödendi
+            {totals.cancelledCount > 0
+              ? ` · ${totals.cancelledCount} iptal`
+              : null}
           </p>
         </div>
       </div>
@@ -428,12 +443,18 @@ export default function IyzicoPaymentReportPage({
                       {formatIyzicoMoney(item.bankAmount)}
                     </td>
                     <td className="px-3 py-2 text-gray-700">
-                      {formatIyzicoDateKey(item.payoutDateKey)}
+                      {item.status === "cancelled"
+                        ? "—"
+                        : formatIyzicoDateKey(item.payoutDateKey)}
                     </td>
                     <td className="px-3 py-2">
                       {item.status === "paid" ? (
                         <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                           {IYZICO_PAYMENT_STATUS_LABEL.paid}
+                        </span>
+                      ) : item.status === "cancelled" ? (
+                        <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                          {IYZICO_PAYMENT_STATUS_LABEL.cancelled}
                         </span>
                       ) : (
                         <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
