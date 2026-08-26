@@ -1,6 +1,7 @@
 import { BookingStatus, type LoyaltyTier } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { resolveTierByCompletedStays } from "@/lib/loyalty-config";
+import { higherLoyaltyTier } from "@/lib/returning-guest-shared";
 
 /** Etiketlerden sezon yılı sayısı (2018–2026). */
 export function countStaySeasonsFromTags(
@@ -104,9 +105,12 @@ export async function syncAllCustomerLoyaltyFromStays(): Promise<CustomerLoyalty
     const member = customer.memberAccount;
     if (!member) continue;
 
+    const nextStays = Math.max(member.completedStays, stayCount);
+    const nextTier = higherLoyaltyTier(member.loyaltyTier, loyaltyTier);
+
     if (
-      member.completedStays === stayCount &&
-      member.loyaltyTier === loyaltyTier
+      member.completedStays === nextStays &&
+      member.loyaltyTier === nextTier
     ) {
       unchanged += 1;
       continue;
@@ -115,8 +119,8 @@ export async function syncAllCustomerLoyaltyFromStays(): Promise<CustomerLoyalty
     await prisma.memberAccount.update({
       where: { id: member.id },
       data: {
-        completedStays: stayCount,
-        loyaltyTier,
+        completedStays: nextStays,
+        loyaltyTier: nextTier,
       },
     });
     memberAccountsUpdated += 1;

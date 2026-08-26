@@ -15,6 +15,7 @@ export type DashboardBookingQuickStats = {
   checkIn2Days: number;
   checkIn1Day: number;
   checkInToday: number;
+  checkInYesterday: number;
   checkOut2Days: number;
   checkOut1Day: number;
   checkOutToday: number;
@@ -46,6 +47,7 @@ export async function getDashboardBookingQuickStats(): Promise<DashboardBookingQ
     checkIn2Days,
     checkIn1Day,
     checkInToday,
+    checkInYesterday,
     checkOut2Days,
     checkOut1Day,
     checkOutToday,
@@ -66,6 +68,12 @@ export async function getDashboardBookingQuickStats(): Promise<DashboardBookingQ
       where: {
         status: confirmed,
         checkIn: resolveQuickFilterPrismaDate("check_in_today"),
+      },
+    }),
+    prisma.booking.count({
+      where: {
+        status: confirmed,
+        checkIn: resolveQuickFilterPrismaDate("check_in_yesterday"),
       },
     }),
     prisma.booking.count({
@@ -92,6 +100,7 @@ export async function getDashboardBookingQuickStats(): Promise<DashboardBookingQ
     checkIn2Days,
     checkIn1Day,
     checkInToday,
+    checkInYesterday,
     checkOut2Days,
     checkOut1Day,
     checkOutToday,

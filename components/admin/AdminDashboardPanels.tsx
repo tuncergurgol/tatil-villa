@@ -3,6 +3,7 @@ import {
   AlarmClock,
   BadgeCheck,
   Bus,
+  CalendarCheck,
   CalendarClock,
   CalendarDays,
   Car,
@@ -124,6 +125,15 @@ export default function AdminDashboardPanels({
       linkClass: "text-teal-700",
     },
     {
+      label: "Giriş gününden 1 gün sonra",
+      value: quickStats.checkInYesterday,
+      href: buildQuickHref("check_in_yesterday"),
+      icon: CalendarCheck,
+      iconWrapClass: "bg-cyan-100 text-cyan-700",
+      accentClass: "border-cyan-100 hover:border-cyan-300",
+      linkClass: "text-cyan-700",
+    },
+    {
       label: "Bugün Çıkanlar",
       value: quickStats.checkOutToday,
       href: buildQuickHref("check_out_today"),
@@ -174,7 +184,7 @@ export default function AdminDashboardPanels({
 
       <section className="space-y-3">
         <SectionTitle>Giriş / çıkış takibi</SectionTitle>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
           {quickCards.map((card) => (
             <DashboardStatCard
               key={card.label}

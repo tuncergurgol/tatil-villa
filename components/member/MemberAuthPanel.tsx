@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,8 +13,10 @@ import {
   verifyMemberReservationLoginAction,
   type MemberAuthState,
 } from "@/app/actions/member-auth";
+import { lookupReturningGuestAction } from "@/app/actions/returning-guest";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import ReturningGuestBanner from "@/components/member/ReturningGuestBanner";
+import type { ReturningGuestPreview } from "@/lib/returning-guest-shared";
 
 type Tab = "phone" | "email" | "reservation" | "register";
 
@@ -32,16 +34,22 @@ export default function MemberAuthPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [otpMode, setOtpMode] = useState<"login" | "register" | "reservation" | null>(null);
   const [phone, setPhone] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerName, setRegisterName] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [welcomeTitle, setWelcomeTitle] = useState<string | null>(null);
   const [welcomeBody, setWelcomeBody] = useState<string | null>(null);
+  const [liveGuest, setLiveGuest] = useState<ReturningGuestPreview | null>(null);
 
   function run(action: () => Promise<MemberAuthState>) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
       const result = await action();
-      if (result.welcomeTitle) setWelcomeTitle(result.welcomeTitle);
+      if (result.welcomeTitle) {
+        setWelcomeTitle(result.welcomeTitle);
+        setLiveGuest(null);
+      }
       if (result.welcomeBody) setWelcomeBody(result.welcomeBody);
       if (result.error) {
         setError(result.error);
@@ -67,6 +75,34 @@ export default function MemberAuthPanel({
       }
     });
   }
+
+  useEffect(() => {
+    if (otpMode) return;
+    if (tab !== "phone" && tab !== "register") {
+      setLiveGuest(null);
+      return;
+    }
+
+    const email = tab === "register" ? registerEmail : "";
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10 && !email.includes("@")) {
+      setLiveGuest(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void lookupReturningGuestAction({ phone, email }).then((result) => {
+        if (cancelled) return;
+        setLiveGuest(result.match);
+      });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [tab, phone, registerEmail, otpMode]);
 
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: "phone", label: "Telefon" },
@@ -109,6 +145,7 @@ export default function MemberAuthPanel({
               setError(null);
               setWelcomeTitle(null);
               setWelcomeBody(null);
+              setLiveGuest(null);
             }}
             className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
               tab === item.id
@@ -121,9 +158,13 @@ export default function MemberAuthPanel({
         ))}
       </div>
 
-      {welcomeTitle || welcomeBody ? (
+      {liveGuest || welcomeTitle || welcomeBody ? (
         <div className="mb-4">
-          <ReturningGuestBanner title={welcomeTitle ?? undefined} body={welcomeBody ?? undefined} />
+          <ReturningGuestBanner
+            match={liveGuest}
+            title={welcomeTitle ?? undefined}
+            body={welcomeBody ?? undefined}
+          />
         </div>
       ) : null}
 
@@ -288,6 +329,8 @@ export default function MemberAuthPanel({
             <input
               name="fullName"
               required
+              value={registerName}
+              onChange={(event) => setRegisterName(event.target.value)}
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3"
             />
           </label>
@@ -297,6 +340,8 @@ export default function MemberAuthPanel({
               name="email"
               type="email"
               required
+              value={registerEmail}
+              onChange={(event) => setRegisterEmail(event.target.value)}
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-4 py-3"
             />
           </label>
