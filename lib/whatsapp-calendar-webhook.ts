@@ -18,6 +18,10 @@ import {
   resolveWhatsappCalendarTargetVillas,
   type WhatsappCalendarLinkedVilla,
 } from "@/lib/whatsapp-calendar-villas";
+import {
+  extractWhatsappMessageUrls,
+  notifyWhatsappCalendarMessageHasLinks,
+} from "@/lib/whatsapp-calendar-link-notify";
 
 export { normalizeWhatsappGroupId };
 
@@ -29,6 +33,8 @@ export type NormalizedWhatsappCalendarPayload = {
   body: string;
   /** Yanıt verilen / alıntılanan mesaj metni (tarih buradan alınabilir). */
   quotedBody: string;
+  /** Evolution link önizleme alanları (canonicalUrl / matchedText). */
+  previewUrls: string[];
   fromMe: boolean;
 };
 
@@ -39,7 +45,30 @@ function readNestedMessageText(message: Record<string, unknown> | undefined) {
   if (extended?.text) return extended.text;
   const image = message.imageMessage as { caption?: string } | undefined;
   if (image?.caption) return image.caption;
+  const video = message.videoMessage as { caption?: string } | undefined;
+  if (video?.caption) return video.caption;
+  const document = message.documentMessage as { caption?: string } | undefined;
+  if (document?.caption) return document.caption;
   return "";
+}
+
+function readLinkPreviewUrls(message: Record<string, unknown> | undefined) {
+  if (!message) return [];
+  const extended = message.extendedTextMessage as
+    | { canonicalUrl?: string; matchedText?: string }
+    | undefined;
+  return [extended?.canonicalUrl, extended?.matchedText].filter(
+    (value): value is string => Boolean(value?.trim())
+  );
+}
+
+function formatSenderPhone(value: string) {
+  return value.replace(/@s\.whatsapp\.net$/i, "").replace(/@lid$/i, "").trim();
+}
+
+function withLinkMailNote(message: string, sent: boolean) {
+  if (!sent) return message;
+  return `${message} · Link info@ adresine iletildi`;
 }
 
 /** Evolution / Baileys contextInfo.quotedMessage içinden alıntı metnini çıkarır. */
@@ -76,11 +105,17 @@ export function normalizeWhatsappCalendarPayload(
         typeof body.messageId === "string" ? body.messageId : randomUUID(),
       groupExternalId: normalizeWhatsappGroupId(body.groupId),
       senderName: typeof body.senderName === "string" ? body.senderName : "",
-      senderPhone:
-        typeof body.senderPhone === "string" ? body.senderPhone : "",
+      senderPhone: formatSenderPhone(
+        typeof body.senderPhone === "string" ? body.senderPhone : ""
+      ),
       body: body.text.trim(),
       quotedBody:
         typeof body.quotedText === "string" ? body.quotedText.trim() : "",
+      previewUrls: Array.isArray(body.previewUrls)
+        ? body.previewUrls.filter(
+            (value): value is string => typeof value === "string"
+          )
+        : [],
       fromMe: body.fromMe === true,
     };
   }
@@ -96,7 +131,8 @@ export function normalizeWhatsappCalendarPayload(
   if (!remoteJid.includes("@g.us")) return null;
 
   const text = readNestedMessageText(message);
-  if (!text.trim()) return null;
+  const previewUrls = readLinkPreviewUrls(message);
+  if (!text.trim() && previewUrls.length === 0) return null;
 
   return {
     externalId:
@@ -112,14 +148,16 @@ export function normalizeWhatsappCalendarPayload(
         : typeof data.senderName === "string"
           ? data.senderName
           : "",
-    senderPhone:
+    senderPhone: formatSenderPhone(
       typeof data.senderPhone === "string"
         ? data.senderPhone
         : typeof key?.participant === "string"
           ? key.participant
-          : "",
-    body: text.trim(),
+          : ""
+    ),
+    body: text.trim() || previewUrls[0] || "",
     quotedBody: readQuotedMessageText(message),
+    previewUrls,
     fromMe: key?.fromMe === true || data.fromMe === true,
   };
 }
@@ -212,6 +250,12 @@ export async function processWhatsappCalendarWebhook(
     [normalized.body, normalized.quotedBody].filter(Boolean).join(" ")
   );
 
+  const linkMailSent = await maybeNotifyCalendarMessageLinks(
+    normalized,
+    linkedVillas,
+    targetVillas
+  );
+
   const phraseRules = await prisma.whatsappCalendarPhraseRule.findMany({
     where: { active: true },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -245,7 +289,10 @@ export async function processWhatsappCalendarWebhook(
     await logWhatsappCalendarMessage({
       ...normalized,
       status: WhatsappCalendarMessageStatus.FAILED,
-      resultMessage: "Bu grup ile eşleşen villa bulunamadı",
+      resultMessage: withLinkMailNote(
+        "Bu grup ile eşleşen villa bulunamadı",
+        linkMailSent
+      ),
       intent: parsed?.intent ?? "",
       startDate: parsed ? dateKeyToDbDate(parsed.startDateKey) : null,
       endDate: parsed ? dateKeyToDbDate(parsed.endDateKey) : null,
@@ -258,7 +305,10 @@ export async function processWhatsappCalendarWebhook(
       ...normalized,
       villaId: targetVillas[0]?.id,
       status: WhatsappCalendarMessageStatus.IGNORED,
-      resultMessage: "Takvim komutu veya tarih algılanamadı",
+      resultMessage: withLinkMailNote(
+        "Takvim komutu veya tarih algılanamadı",
+        linkMailSent
+      ),
     });
     return { ok: true, message: "Mesaj yok sayıldı" };
   }
@@ -288,7 +338,7 @@ export async function processWhatsappCalendarWebhook(
         startDate: dateKeyToDbDate(parsed.startDateKey),
         endDate: dateKeyToDbDate(parsed.endDateKey),
         status: WhatsappCalendarMessageStatus.FAILED,
-        resultMessage: failMessage,
+        resultMessage: withLinkMailNote(failMessage, linkMailSent),
       });
       return { ok: false, message: failMessage };
     }
@@ -321,7 +371,7 @@ export async function processWhatsappCalendarWebhook(
           startDate: dateKeyToDbDate(parsed.startDateKey),
           endDate: dateKeyToDbDate(parsed.endDateKey),
           status: WhatsappCalendarMessageStatus.APPLIED,
-          resultMessage,
+          resultMessage: withLinkMailNote(resultMessage, linkMailSent),
         },
       }),
     ]);
@@ -338,11 +388,45 @@ export async function processWhatsappCalendarWebhook(
       startDate: dateKeyToDbDate(parsed.startDateKey),
       endDate: dateKeyToDbDate(parsed.endDateKey),
       status: WhatsappCalendarMessageStatus.FAILED,
-      resultMessage,
+      resultMessage: withLinkMailNote(resultMessage, linkMailSent),
     });
 
     return { ok: false, message: resultMessage };
   }
+}
+
+async function maybeNotifyCalendarMessageLinks(
+  normalized: NormalizedWhatsappCalendarPayload,
+  linkedVillas: WhatsappCalendarLinkedVilla[],
+  targetVillas: WhatsappCalendarLinkedVilla[]
+) {
+  const urls = extractWhatsappMessageUrls(
+    normalized.body,
+    normalized.quotedBody,
+    ...normalized.previewUrls
+  );
+  if (urls.length === 0) return false;
+
+  const villas = targetVillas.length > 0 ? targetVillas : linkedVillas;
+  const groupId = normalizeWhatsappGroupId(normalized.groupExternalId);
+  const bareGroupId = groupId.replace(/@g\.us$/i, "");
+  const group = await prisma.whatsappCalendarGroup.findFirst({
+    where: {
+      OR: [{ externalId: groupId }, { externalId: bareGroupId }],
+    },
+    select: { name: true },
+  });
+
+  return notifyWhatsappCalendarMessageHasLinks({
+    groupName: group?.name ?? "",
+    groupExternalId: normalized.groupExternalId,
+    villaNames: villas.map((villa) => villa.name),
+    senderName: normalized.senderName,
+    senderPhone: normalized.senderPhone,
+    body: normalized.body,
+    quotedBody: normalized.quotedBody,
+    urls,
+  });
 }
 
 async function findRecentGroupDateContext(groupExternalId: string) {

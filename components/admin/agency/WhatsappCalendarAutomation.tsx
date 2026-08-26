@@ -500,7 +500,9 @@ export default function WhatsappCalendarAutomation({
           <p className="text-xs text-gray-500">
             Köprü servisinizde webhook olarak bu URL&apos;yi tanımlayın. İstek başlığına{" "}
             <code>x-whatsapp-calendar-secret</code> ekleyin veya URL&apos;ye{" "}
-            <code>?secret=...</code> parametresi verin.
+            <code>?secret=...</code> parametresi verin. Gruba gelen mesajda
+            http/https veya www linki varsa <strong>info@</strong> adresine e-posta
+            gider.
           </p>
         </div>
       </details>
