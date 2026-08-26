@@ -25,7 +25,7 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import {
-  sendCustomerNotificationWhatsApp,
+  sendCustomerNotificationWhatsAppSequence,
   sendOperationsWhatsApp,
 } from "@/lib/whatsapp-delivery";
 import {
@@ -52,11 +52,16 @@ import {
   renderAgencyMessageTemplate,
   resolveCompanyLogoUrl,
 } from "@/lib/agency-message-render";
-import { AGENCY_MESSAGE_TEMPLATE_ROW_10_5, AGENCY_MESSAGE_TEMPLATE_ROW_20_5 } from "@/lib/agency-message-row-no";
+import {
+  AGENCY_MESSAGE_TEMPLATE_ROW_10_5,
+  AGENCY_MESSAGE_TEMPLATE_ROW_10_6,
+  AGENCY_MESSAGE_TEMPLATE_ROW_20_5,
+} from "@/lib/agency-message-row-no";
 import {
   RESERVATION_DOCUMENT_SENT_MAIL_BODY,
   RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY,
 } from "@/lib/agency-message-templates/reservation-document-sent";
+import { RESERVATION_CONFIRMED_FOLLOWUP_WHATSAPP_BODY } from "@/lib/agency-message-templates/reservation-confirmed-followup";
 import type { Attachment } from "nodemailer/lib/mailer";
 
 /** Yönetim kopyası (20.5) — BCC yerine ayrı şablon maili */
@@ -559,6 +564,7 @@ export async function sendReservationDocumentEmail(
  * - 20.5 → yönetim e-posta info@ (aynı gövde + PDF)
  * - 20.5 → Takvim WhatsApp → +902526180108 (Evolution)
  * - 10.5 → misafir WhatsApp (metin)
+ * - 10.6 → misafir WhatsApp 2. mesaj (onay bilgilendirme)
  * Kanal hatalarını fırlatmaz; sonuçları döner (UI success bozulmaz).
  */
 export async function sendReservationDocumentNotifications(
@@ -572,11 +578,13 @@ export async function sendReservationDocumentNotifications(
   const data = await buildReservationDocumentDataForBooking(bookingId, options);
   const results: ReservationDocumentChannelResult[] = [];
 
-  const [company, guestTemplate, managementTemplate] = await Promise.all([
-    getCompanySettings(),
-    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_5),
-    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_20_5),
-  ]);
+  const [company, guestTemplate, followupTemplate, managementTemplate] =
+    await Promise.all([
+      getCompanySettings(),
+      getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_5),
+      getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_6),
+      getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_20_5),
+    ]);
   const values = buildReservationDocumentTemplateValues(data);
 
   // --- 20.5 Yönetim WhatsApp (Takvim / Evolution) — PDF gerekmez ---
@@ -714,7 +722,7 @@ export async function sendReservationDocumentNotifications(
     });
   }
 
-  // --- 10.5 Misafir WhatsApp (WAHA) ---
+  // --- 10.5 + 10.6 Misafir WhatsApp (WAHA, sırayla) ---
   if (!phoneRaw?.trim()) {
     results.push({
       channel: "whatsapp",
@@ -731,10 +739,15 @@ export async function sendReservationDocumentNotifications(
         data.company.brandName
       )
     );
-    const wa = await sendCustomerNotificationWhatsApp(
-      phoneRaw,
-      whatsappMessage
+    const followupMessage = renderAgencyMessageTemplate(
+      followupTemplate?.whatsappBody?.trim() ||
+        RESERVATION_CONFIRMED_FOLLOWUP_WHATSAPP_BODY,
+      values
     );
+    const wa = await sendCustomerNotificationWhatsAppSequence(phoneRaw, [
+      whatsappMessage,
+      followupMessage,
+    ]);
     results.push({
       channel: "whatsapp",
       ok: wa.ok,

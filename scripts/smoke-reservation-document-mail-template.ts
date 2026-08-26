@@ -11,6 +11,7 @@ import {
   RESERVATION_DOCUMENT_SENT_SMS_BODY,
   RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY,
 } from "../lib/agency-message-templates/reservation-document-sent";
+import { RESERVATION_CONFIRMED_FOLLOWUP_WHATSAPP_BODY } from "../lib/agency-message-templates/reservation-confirmed-followup";
 import { buildReservationDocumentTemplateValues } from "../lib/reservation-document-mail";
 import type { ReservationDocumentData } from "../lib/reservation-document-pdf";
 
@@ -99,5 +100,14 @@ const wa = renderAgencyMessageTemplate(
 assert.match(wa, /e-posta adresinize gönderilmiştir/);
 assert.match(wa, /Adres: Girmeler Mah/);
 assert.equal(RESERVATION_DOCUMENT_SENT_SMS_BODY, RESERVATION_DOCUMENT_SENT_WHATSAPP_BODY);
+
+const followup = renderAgencyMessageTemplate(
+  RESERVATION_CONFIRMED_FOLLOWUP_WHATSAPP_BODY,
+  values
+);
+assert.match(followup, /Rezervasyonunuz onaylanmıştır efendim/);
+assert.match(followup, /48 saat kala/);
+assert.match(followup, /kapıda banka havalesi/);
+assert.doesNotMatch(followup, /##/);
 
 console.log("smoke-reservation-document-mail-template: OK");

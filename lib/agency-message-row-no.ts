@@ -37,6 +37,8 @@ export const AGENCY_MESSAGE_TEMPLATE_ROW_10_4 = 104;
 export const AGENCY_MESSAGE_TEMPLATE_ROW_4 = AGENCY_MESSAGE_TEMPLATE_ROW_10_4;
 /** Rezervasyon belgesi gönderildi (UI: 10.5) — misafir onayından sonra PDF mail */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_10_5 = 105;
+/** Rezervasyon onaylandı 2. WhatsApp (UI: 10.6) — 10.5’ten hemen sonra */
+export const AGENCY_MESSAGE_TEMPLATE_ROW_10_6 = 106;
 /** Rezervasyon belgesi — yönetim kopyası (UI: 20.5, rowNo: 205); 10.5 ile aynı mail gövdesi */
 export const AGENCY_MESSAGE_TEMPLATE_ROW_20_5 = 205;
 /** Giriş bilgilendirme / müşteri bilgilendirme — 2 gün önce 10:00 (UI: 11.1, rowNo: 111) */
