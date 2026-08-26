@@ -9,6 +9,7 @@
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
  * - villavakti.com (sezon fiyat tablosu + api.php villa_dates takvim)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
+ * - villaekstra.com (Next.js RSC routingData minfiyat; PriceList Cloudflare 403)
  * - mustakilvillam.com / myvillacity.com / villakilavuzu.com / ovillam.com (routingData id + api PriceList/Availability)
  * - luxuryvillam.com (window.VILLA_CALENDAR gömülü günlük fiyat + müsaitlik)
  * - hepsivilla.com (price_block haftalık/gecelik + AJAX cal.do takvim)
@@ -4413,6 +4414,7 @@ const PRODUCT_DETAIL_RSC_HOSTS = [
   "villaciniz",
   "villapaketi",
   "villayolu",
+  "villaekstra",
 ];
 
 function looksLikeProductDetailRsc(pageUrl: string, html: string): boolean {
@@ -4456,6 +4458,24 @@ function extractProductDetailRscPriceRange(html: string): {
           };
         }
       }
+    }
+  }
+
+  const minOnly = html.match(/minfiyat\\":\\"([^\\]+)\\"/);
+  if (minOnly) {
+    const low = Math.round(parseLocalizedMoney(minOnly[1]!));
+    const highRaw = html.match(/maxfiyat\\":\\"([^\\]+)\\"/)?.[1];
+    const high = highRaw ? Math.round(parseLocalizedMoney(highRaw)) : low;
+    const hasar = html.match(/hasar\\":\\"([^\\]+)\\"/)?.[1];
+    if (low > 0 && high >= low) {
+      return {
+        low,
+        high,
+        currency: "TL",
+        damageDeposit: hasar
+          ? Math.round(parseLocalizedMoney(hasar))
+          : null,
+      };
     }
   }
 
@@ -6164,6 +6184,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
