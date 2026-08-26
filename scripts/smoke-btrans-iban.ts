@@ -59,6 +59,10 @@ function main() {
     checkMissingFields({ ...owner, bankIban: repaired }, region).length === 0,
     "geçerli IBAN ile eksik yok"
   );
+  assert(
+    turkishIbanIssue("TR920020500009667140100001") === null,
+    "şirket komisyon IBAN geçerli"
+  );
 
   console.log("smoke ok — btrans iban");
 }

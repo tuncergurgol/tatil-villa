@@ -307,6 +307,7 @@ export default function VillaOwnerFormModal({
             name="bankIban"
             defaultValue={owner?.bankIban}
             placeholder="TR00 0000 0000 0000 0000 0000 00"
+            maxLength={32}
           />
           <Field
             label="Muhasebe Kodu"

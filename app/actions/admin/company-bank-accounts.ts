@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { isValidCompanyPaymentType } from "@/lib/company-payment-types";
+import { isValidTurkishIban, normalizeIban } from "@/lib/iban";
 
 export type CompanyBankAccountActionState = {
   success?: boolean;
@@ -21,7 +22,11 @@ const itemSchema = z.object({
   iban: z
     .string()
     .min(1, "IBAN gerekli")
-    .transform((value) => value.replace(/\s/g, "").toUpperCase()),
+    .transform((value) => normalizeIban(value))
+    .refine(
+      isValidTurkishIban,
+      "IBAN 26 hane olmalı (TR + 24 rakam, GİB BTRANS)"
+    ),
 });
 
 function revalidatePaths() {

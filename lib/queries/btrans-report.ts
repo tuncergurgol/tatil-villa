@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { resolveCompanyCommissionIban } from "@/lib/queries/company-bank-accounts";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
   buildBtransFilename,
@@ -9,7 +10,6 @@ import {
   getOwnerDisplayName,
   isValidBtransIban,
   isWithinMonth,
-  normalizeIbanForBtrans,
   type BtransBookingInput,
   type BtransDateBasis,
   type BtransIncompleteRow,
@@ -168,10 +168,10 @@ export async function generateBtransReport(input: {
         ? fetchConfirmedBookings({ gte: monthStart, lt: monthEnd }, "createdAt")
         : fetchConfirmedBookings(null, null),
   ]);
+  const komisyonIban = await resolveCompanyCommissionIban(companySettings.iban);
 
   const islemXmlBlocks: string[] = [];
   const incomplete: BtransIncompleteRow[] = [];
-  const komisyonIban = normalizeIbanForBtrans(companySettings.iban);
   if (!isValidBtransIban(komisyonIban)) {
     const length = komisyonIban.length;
     return {
@@ -183,7 +183,7 @@ export async function generateBtransReport(input: {
       warnings: [],
       error:
         length === 0
-          ? "Şirket komisyon IBAN'ı boş. Acente > Şirket ayarlarından 26 haneli TR IBAN girin."
+          ? "Şirket komisyon IBAN'ı boş. Acente > Şirket ayarlarındaki Banka Havale/EFT hesabına 26 haneli TR IBAN girin."
           : `Şirket komisyon IBAN'ı GİB formatında değil (${length} hane, 26 olmalı). XML üretilmedi.`,
     };
   }

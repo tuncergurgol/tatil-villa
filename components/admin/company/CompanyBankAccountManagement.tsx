@@ -93,6 +93,8 @@ function BankAccountFields({
           defaultValue={item?.iban ?? ""}
           className={inputClass}
           placeholder="TR00 0000 0000 0000 0000 0000 00"
+          maxLength={32}
+          autoComplete="off"
         />
       </label>
       <div className="flex shrink-0 gap-2">

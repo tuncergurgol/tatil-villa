@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { normalizeIban } from "@/lib/iban";
 
 export type CompanyBankAccountItem = {
   id: string;
@@ -29,4 +30,23 @@ export async function getCompanyBankAccountAdminData() {
     items,
     totalCount: items.length,
   };
+}
+
+/**
+ * BTRANS komisyon IBAN: aktif Banka Havale/EFT hesabı.
+ * Eski CompanySettings.iban alanı formdan kaldırıldığı için yedek olarak kalır.
+ */
+export async function resolveCompanyCommissionIban(
+  fallbackIban?: string | null
+): Promise<string> {
+  const bankAccount = await prisma.companyBankAccount.findFirst({
+    where: {
+      active: true,
+      OR: [{ paymentType: "bank_transfer" }, { paymentType: "" }],
+    },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { iban: true },
+  });
+
+  return normalizeIban(bankAccount?.iban || fallbackIban);
 }

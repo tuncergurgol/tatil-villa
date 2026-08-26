@@ -39,15 +39,17 @@ fi
 
 CRON_FILE="$(mktemp)"
 # Eski tatil-villa satırlarını temizle (meta feed / backup duplicate birikimini önle)
-crontab -l 2>/dev/null \
-  | grep -v 'tatil-villa cron' \
-  | grep -v '/api/cron/' \
-  | grep -v 'warm-meta-catalog-feed' \
-  | grep -v 'backup-to-gdrive' \
-  | grep -v 'feeds/meta-catalog.xml' \
-  > "$CRON_FILE" || true
-
-cat >> "$CRON_FILE" <<EOF
+{
+  echo "CRON_TZ=Europe/Istanbul"
+  crontab -l 2>/dev/null \
+    | grep -v 'tatil-villa cron' \
+    | grep -v '/api/cron/' \
+    | grep -v 'warm-meta-catalog-feed' \
+    | grep -v 'backup-to-gdrive' \
+    | grep -v 'feeds/meta-catalog.xml' \
+    | grep -v '^CRON_TZ=' \
+    || true
+  cat <<EOF
 # tatil-villa cron — takvim/fiyat otomatik güncelleme (her 15 dk; villa başına aralık admin ayarından)
 */15 * * * * curl -fsS -m 900 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/calendar-price-transfer" >>"${LOG_DIR}/calendar-price-transfer.log" 2>&1
 # tatil-villa cron — harici villa link senkronu (saatte bir)
@@ -73,6 +75,7 @@ cat >> "$CRON_FILE" <<EOF
 # tatil-villa cron — SQL + site dosyaları Google Drive yedek (her gece 04:30 Europe/Istanbul)
 30 4 * * * /bin/bash ${BACKUP_SCRIPT} >>"${LOG_DIR}/gdrive-backup.log" 2>&1
 EOF
+} > "$CRON_FILE"
 
 crontab "$CRON_FILE"
 rm -f "$CRON_FILE"
@@ -94,7 +97,7 @@ echo "  Blog AI    : saatte bir tetiklenir (sıklık admin ayarından)."
 echo "  Zamanlı msg: saat başı tetiklenir (11.4 yorum 11:00, 40.2 havuz 14:00 vb.)."
 echo "  Belge kontrol: her gün 07:15'te tetiklenir."
 echo "  Fatura/ödeme : her gün 08:55'te Excel maili gider (kayıt yoksa da bilgilendirme)."
-echo "  BTRANS 538 : her ayın 1'i 09:10'da önceki ay XML maili (info@)."
+echo "  BTRANS 538 : her ayın 1'i 09:10 Europe/Istanbul'da önceki ay XML maili (info@)."
 echo "  IndexNow  : her gün 06:20'de Bing/Yandex'e sitemap URL'leri bildirilir."
 echo "  Meta feed  : saat :45'te önbellek yenilenir."
 echo "  GDrive yedek: her gece 04:30 (SQL + dosyalar ayrı)."
