@@ -268,7 +268,8 @@ export default function VillaDetailGallery({
               src={src}
               alt={`${name} ${index + 2}`}
               fill
-              loading="lazy"
+              loading="eager"
+              fetchPriority="high"
               className="object-cover transition duration-300 hover:scale-[1.03]"
               sizes="25vw"
             />

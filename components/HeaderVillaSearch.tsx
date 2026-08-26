@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+import GalleryImage from "@/components/GalleryImage";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { MapPin, Search } from "lucide-react";
 import FloatingPanel from "@/components/FloatingPanel";
@@ -217,14 +217,13 @@ export default function HeaderVillaSearch({
                   >
                     <span className="relative mt-0.5 h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100">
                       {villa.image ? (
-                        <Image
+                        <GalleryImage
                           src={villa.image}
                           alt={villa.name}
                           width={64}
                           height={48}
                           className="h-full w-full object-cover"
                           sizes="64px"
-                          quality={60}
                         />
                       ) : null}
                     </span>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import GalleryImage from "@/components/GalleryImage";
 import { Bath, BedDouble, MapPin, Users } from "lucide-react";
 import VillaPriceRange from "@/components/VillaPriceRange";
 import type { Villa } from "@/lib/types";
@@ -37,14 +37,13 @@ export default function VillaGrid({ villas }: VillaGridProps) {
           className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
           <div className="relative aspect-[4/3] overflow-hidden">
-            <Image
+            <GalleryImage
               src={villa.image}
               alt={villa.name}
               width={560}
               height={420}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              quality={70}
             />
             <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-teal-800">
               {categoryLabel(villa.category)}

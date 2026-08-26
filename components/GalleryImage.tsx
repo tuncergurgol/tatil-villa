@@ -15,6 +15,13 @@ function resolveGallerySrc(src: string, skipOptimizer: boolean) {
   }
 }
 
+function shouldSkipOptimizer(src: string, unoptimized?: boolean) {
+  if (unoptimized === true) return true;
+  // Upload pipeline already writes ~100KB WebP. Next `/_next/image` re-encodes
+  // every srcset width and returns 400 ("isn't a valid image") on new villas.
+  return src.startsWith("/uploads/");
+}
+
 export default function GalleryImage({
   src,
   unoptimized,
@@ -24,7 +31,7 @@ export default function GalleryImage({
   priority,
   ...props
 }: GalleryImageProps) {
-  const skipOptimizer = unoptimized === true;
+  const skipOptimizer = shouldSkipOptimizer(src, unoptimized);
   const isPriority = priority === true;
 
   return (

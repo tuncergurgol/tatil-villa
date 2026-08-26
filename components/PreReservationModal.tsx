@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
 import Link from "next/link";
+import GalleryImage from "@/components/GalleryImage";
 import { X } from "lucide-react";
 import { validateCouponAction } from "@/app/actions/validate-coupon";
 import { lookupReturningGuestAction } from "@/app/actions/returning-guest";
@@ -454,7 +454,7 @@ export default function PreReservationModal({
             <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
               <div className="relative aspect-[16/11] bg-slate-200">
                 {villa.image ? (
-                  <Image
+                  <GalleryImage
                     src={villa.image}
                     alt={villa.name}
                     fill
