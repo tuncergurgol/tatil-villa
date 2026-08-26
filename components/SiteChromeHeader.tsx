@@ -66,6 +66,7 @@ export default async function SiteChromeHeader() {
         siteKey={site.key}
         agencyName={company.agencyName}
         tursabNo={company.tursabNo}
+        phone={phone}
       />
     </>
   );
