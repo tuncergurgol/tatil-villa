@@ -46,6 +46,7 @@ interface PageProps {
     q?: string;
     sort?: string;
     page?: string;
+    year?: string;
   }>;
 }
 
@@ -122,6 +123,11 @@ export default async function VillalarPage({ searchParams }: PageProps) {
   const adults = params.adults ? parseInt(params.adults, 10) : undefined;
   const sort = params.sort || (params.region ? "random" : "recommended");
   const page = parseVillaSearchPage(params.page);
+  const parsedYear = params.year ? parseInt(params.year, 10) : NaN;
+  const priceYear =
+    Number.isInteger(parsedYear) && parsedYear >= 2020 && parsedYear <= 2035
+      ? parsedYear
+      : undefined;
 
   const [
     searchRegions,
@@ -155,6 +161,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       page,
       pageSize: VILLA_SEARCH_PAGE_SIZE,
       siteKey: site.key,
+      priceYear,
     }),
   ]);
 
@@ -173,7 +180,9 @@ export default async function VillalarPage({ searchParams }: PageProps) {
         ? "Fırsat Villalar"
         : params.filter === "popular"
           ? "Popüler Villalar"
-          : "Kiralık Villa";
+          : priceYear
+            ? `${priceYear} Erken Rezervasyon Villaları`
+            : "Kiralık Villa";
 
   const initialRegion =
     selectedRegion
@@ -201,6 +210,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     amenities: params.amenities,
     sort: params.sort,
     page: params.page,
+    year: params.year,
   };
 
   return (

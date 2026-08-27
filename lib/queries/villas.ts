@@ -43,6 +43,8 @@ export interface VillaFilters {
   pageSize?: number;
   limit?: number;
   siteKey?: PublicSiteKey;
+  /** VillaPricePeriod içinde bu yıl için fiyatı olan villalar */
+  priceYear?: number;
 }
 
 const HOME_SHOWCASE_LIMIT = 12;
@@ -224,6 +226,18 @@ export async function getVillaSearchResults(filters: VillaFilters = {}) {
       { originalName: { contains: query, mode: "insensitive" } },
       { location: { contains: query, mode: "insensitive" } },
     ];
+  }
+
+  if (filters.priceYear) {
+    const yearStart = new Date(Date.UTC(filters.priceYear, 0, 1));
+    const yearEnd = new Date(Date.UTC(filters.priceYear, 11, 31));
+    baseWhere.pricePeriods = {
+      some: {
+        nightlyPrice: { gt: 0 },
+        startDate: { lte: yearEnd },
+        endDate: { gte: yearStart },
+      },
+    };
   }
 
   if (filters.amenities && filters.amenities.length > 0) {

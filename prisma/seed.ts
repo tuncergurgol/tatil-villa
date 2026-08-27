@@ -10,38 +10,9 @@ import { PRICE_INCLUSION_SEED_DATA } from "./price-inclusion-data";
 import { syncAllPriceInclusionSortOrders } from "../lib/price-inclusion-sort";
 import { FACILITY_CATEGORY_SEED_DATA } from "./facility-category-data";
 import { syncAlphabeticalFacilityCategorySortOrders } from "../lib/facility-category-sort";
+import { HOME_CAMPAIGNS } from "../lib/home-campaigns";
 
 const prisma = new PrismaClient();
-
-const campaigns = [
-  {
-    title: "Erken Rezervasyon Fırsatı",
-    subtitle: "Yaz sezonuna %25'e varan indirim",
-    image:
-      "https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=1200&q=80",
-    cta: "Fırsatları Keşfet",
-    href: "/villalar?filter=deal",
-    sortOrder: 0,
-  },
-  {
-    title: "Hafta Sonu Kaçamağı",
-    subtitle: "2 gece konaklamada 3. gece bizden",
-    image:
-      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&q=80",
-    cta: "Villaları İncele",
-    href: "/villalar",
-    sortOrder: 1,
-  },
-  {
-    title: "Aile Paketleri",
-    subtitle: "Çocuklu ailelere özel villalar",
-    image:
-      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=80",
-    cta: "Hemen Rezervasyon",
-    href: "/villalar?filter=popular",
-    sortOrder: 2,
-  },
-];
 
 const villas = [
   {
@@ -373,8 +344,8 @@ async function main() {
     await syncAlphabeticalSiblingSortOrders(ilce.id, RegionLevel.MAHALLE);
   }
 
-  for (const campaign of campaigns) {
-    await prisma.campaign.create({ data: campaign });
+  for (const campaign of HOME_CAMPAIGNS) {
+    await prisma.campaign.create({ data: { ...campaign } });
   }
 
   for (const [categoryIndex, category] of SURROUNDING_SEED_DATA.entries()) {
