@@ -2,13 +2,6 @@ import { prisma } from "../lib/db";
 import { HOME_CAMPAIGNS } from "../lib/home-campaigns";
 
 async function main() {
-  const hrefs = HOME_CAMPAIGNS.map((campaign) => campaign.href);
-
-  const deactivated = await prisma.campaign.updateMany({
-    where: { href: { notIn: [...hrefs] } },
-    data: { active: false },
-  });
-
   let created = 0;
   let updated = 0;
 
@@ -27,7 +20,7 @@ async function main() {
   }
 
   console.log(
-    `Kampanyalar güncellendi — oluşturuldu: ${created}, güncellendi: ${updated}, diğerleri pasif: ${deactivated.count}`
+    `Kampanyalar güncellendi — oluşturuldu: ${created}, güncellendi: ${updated}`
   );
 }
 
