@@ -160,7 +160,7 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
                 key={campaign.id}
                 className="relative min-w-0 shrink-0 basis-full snap-start overflow-hidden"
               >
-                <div className="relative aspect-[16/9] min-h-[176px] w-full sm:aspect-[21/9] sm:min-h-[200px] lg:aspect-[21/7]">
+                <div className="relative aspect-[4/3] min-h-[248px] w-full sm:aspect-[21/9] sm:min-h-[200px] lg:aspect-[21/7]">
                   <Image
                     src={campaign.image}
                     alt={campaign.title}
@@ -169,17 +169,17 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
                     sizes="(max-width: 1280px) 100vw, 1280px"
                     quality={60}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/35 via-black/10 to-transparent" />
-                  <div className="absolute inset-0 flex flex-col justify-center px-12 sm:px-16 lg:px-20">
-                    <h3 className="max-w-md text-balance break-words text-xl font-bold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:text-3xl lg:text-4xl">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/10 sm:bg-gradient-to-r sm:from-black/35 sm:via-black/10 sm:to-transparent" />
+                  <div className="absolute inset-0 flex flex-col justify-end px-12 py-4 sm:justify-center sm:px-16 sm:py-6 lg:px-20">
+                    <h3 className="max-w-md text-pretty break-words text-[1.05rem] font-bold leading-snug text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:text-3xl sm:leading-tight lg:text-4xl">
                       {campaign.title}
                     </h3>
-                    <p className="mt-2 max-w-sm text-pretty break-words text-sm text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)] sm:text-base">
+                    <p className="mt-1.5 max-w-sm text-pretty break-words text-xs leading-snug text-white/95 drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)] sm:mt-2 sm:text-base sm:leading-normal">
                       {campaign.subtitle}
                     </p>
                     <Link
                       href={campaign.href}
-                      className="mt-5 inline-flex max-w-full w-fit rounded-full bg-white px-5 py-2.5 text-sm font-bold text-teal-800 shadow-md transition hover:bg-teal-50 sm:mt-6 sm:px-6"
+                      className="mt-3 inline-flex max-w-full w-fit rounded-full bg-white px-4 py-2 text-sm font-bold text-teal-800 shadow-md transition hover:bg-teal-50 sm:mt-6 sm:px-6 sm:py-2.5"
                     >
                       {campaign.cta}
                     </Link>
