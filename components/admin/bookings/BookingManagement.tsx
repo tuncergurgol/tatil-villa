@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { BookingStatus } from "@prisma/client";
 import { Copy, ExternalLink, FileText, Filter, Plus } from "lucide-react";
 import BookingFilterModal, {
-  BOOKING_QUICK_FILTER_OPTIONS,
   countActiveBookingFilters,
   emptyBookingFilters,
   type BookingFilters,
@@ -334,34 +333,6 @@ export default function BookingManagement({
             Yeni Kayıt
           </button>
         </div>
-      </div>
-
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-        {BOOKING_QUICK_FILTER_OPTIONS.map((option) => {
-          const active = filters.quickFilter === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() =>
-                setFilters((current) => ({
-                  ...current,
-                  quickFilter: active ? null : option.value,
-                  status: active
-                    ? current.status
-                    : current.status ?? BookingStatus.CONFIRMED,
-                }))
-              }
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                active
-                  ? "border-indigo-600 bg-indigo-600 text-white"
-                  : "border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50"
-              }`}
-            >
-              {option.label}
-            </button>
-          );
-        })}
       </div>
 
       {activeFilterCount > 0 ? (
