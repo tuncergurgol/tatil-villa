@@ -9,7 +9,7 @@
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
  * - villavakti.com (sezon fiyat tablosu + api.php villa_dates takvim)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
- * - villaekstra.com (Next.js RSC routingData minfiyat; PriceList Cloudflare 403)
+ * - villaekstra.com (routingData id + api2.villaekstra.com PriceList/Availability; CF 403 olursa fiyat uydurulmaz)
  * - mustakilvillam.com / myvillacity.com / villakilavuzu.com / ovillam.com (routingData id + api PriceList/Availability)
  * - luxuryvillam.com (window.VILLA_CALENDAR gömülü günlük fiyat + müsaitlik)
  * - hepsivilla.com (price_block haftalık/gecelik + AJAX cal.do takvim)
@@ -65,6 +65,7 @@ export type ScrapedVillaPage = {
     | "myvillacity"
     | "villakilavuzu"
     | "ovillam"
+    | "villaekstra"
     | "luxuryvillam"
     | "akdenizvillam"
     | "villavakti"
@@ -3026,6 +3027,7 @@ const MYVILLACITY_API = "https://api.myvillacity.com";
 const VILLAKILAVUZU_API = "https://api.villakilavuzu.com";
 const OVILLAM_API = "https://api.ovillam.com";
 const KIRALIKVILLANIZ_API = "https://api.kiralikvillaniz.com";
+const VILLAEKSTRA_API = "https://api2.villaekstra.com";
 
 type VillaApiSiteConfig = {
   apiHost: string;
@@ -3041,7 +3043,8 @@ type VillaApiSiteConfig = {
     | "myvillacity"
     | "villakilavuzu"
     | "ovillam"
-    | "kiralikvillaniz";
+    | "kiralikvillaniz"
+    | "villaekstra";
 };
 
 function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
@@ -3122,6 +3125,13 @@ function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
         apiHost: KIRALIKVILLANIZ_API,
         origin: "https://www.kiralikvillaniz.com.tr",
         hostKey: "kiralikvillaniz",
+      };
+    }
+    if (host.includes("villaekstra")) {
+      return {
+        apiHost: VILLAEKSTRA_API,
+        origin: "https://www.villaekstra.com",
+        hostKey: "villaekstra",
       };
     }
   } catch {
@@ -3335,8 +3345,29 @@ function usesLowercaseApiCurrency(site: VillaApiSiteConfig): boolean {
     site.hostKey === "villayolu" ||
     site.hostKey === "tatilpremium" ||
     site.hostKey === "ovillam" ||
-    site.hostKey === "kiralikvillaniz"
+    site.hostKey === "kiralikvillaniz" ||
+    site.hostKey === "villaekstra"
   );
+}
+
+function villaApiFamilyStrategy(
+  hostKey: VillaApiSiteConfig["hostKey"]
+): ScrapedVillaPage["strategy"] {
+  switch (hostKey) {
+    case "villacim":
+    case "tatilpremium":
+    case "villapaketi":
+    case "villaciniz":
+    case "villayolu":
+    case "mustakilvillam":
+    case "myvillacity":
+    case "villakilavuzu":
+    case "ovillam":
+    case "villaekstra":
+      return hostKey;
+    default:
+      return "villavillam";
+  }
 }
 
 function apiCurrencyParam(
@@ -3435,7 +3466,22 @@ async function fetchVillavillamJson<T>(
   );
 }
 
-function parseVillavillamPriceList(
+function parseMinStayFromPriceTexts(
+  ...texts: Array<string | null | undefined>
+): number | null {
+  for (const raw of texts) {
+    if (!raw) continue;
+    const match = raw
+      .replace(/\s+/g, " ")
+      .match(/minu?mum\s+(\d+)\s+gece/i);
+    if (!match) continue;
+    const nights = Number(match[1]);
+    if (Number.isFinite(nights) && nights > 0) return nights;
+  }
+  return null;
+}
+
+export function parseVillavillamPriceList(
   rows: unknown[],
   currency: VillaPeriodCurrency,
   damageDeposit: number | null
@@ -3525,7 +3571,12 @@ function parseVillavillamPriceList(
           Number.isFinite(gece) && gece === 7 && Number.isFinite(packagePrice)
             ? packagePrice
             : undefined,
-        minStayNights: Number.isFinite(gece) && gece > 0 ? gece : null,
+        minStayNights:
+          parseMinStayFromPriceTexts(
+            typeof o.subTitle === "string" ? o.subTitle : null,
+            typeof o.title === "string" ? o.title : null,
+            typeof o.info === "string" ? o.info : null
+          ) ?? (Number.isFinite(gece) && gece > 0 ? gece : null),
         prepaymentRate,
         commissionRate,
         cleaningDayCount,
@@ -3605,7 +3656,8 @@ export async function scrapeVillavillamFromPage(
       site.hostKey === "myvillacity" ||
       site.hostKey === "villakilavuzu" ||
       site.hostKey === "ovillam" ||
-      site.hostKey === "kiralikvillaniz")
+      site.hostKey === "kiralikvillaniz" ||
+      site.hostKey === "villaekstra")
   ) {
     entity = extractTatilpremiumRoutingEntity(html, pageUrl);
   }
@@ -3757,26 +3809,7 @@ export async function scrapeVillavillamFromPage(
     );
     return {
       sourceHost: normalizeHost(new URL(pageUrl).hostname),
-      strategy:
-        site.hostKey === "villacim"
-          ? "villacim"
-          : site.hostKey === "tatilpremium"
-            ? "tatilpremium"
-            : site.hostKey === "villapaketi"
-              ? "villapaketi"
-              : site.hostKey === "villaciniz"
-                ? "villaciniz"
-                : site.hostKey === "villayolu"
-                  ? "villayolu"
-                  : site.hostKey === "mustakilvillam"
-                    ? "mustakilvillam"
-                    : site.hostKey === "myvillacity"
-                      ? "myvillacity"
-                      : site.hostKey === "villakilavuzu"
-                        ? "villakilavuzu"
-                        : site.hostKey === "ovillam"
-                          ? "ovillam"
-                          : "villavillam",
+      strategy: villaApiFamilyStrategy(site.hostKey),
       pageTitle: entity.title ?? extractPageTitle(html),
       periods: [],
       occupancyByDateKey: occupancyOnly,
@@ -3797,26 +3830,7 @@ export async function scrapeVillavillamFromPage(
 
   return {
     sourceHost: normalizeHost(new URL(pageUrl).hostname),
-    strategy:
-      site.hostKey === "villacim"
-        ? "villacim"
-        : site.hostKey === "tatilpremium"
-          ? "tatilpremium"
-          : site.hostKey === "villapaketi"
-            ? "villapaketi"
-            : site.hostKey === "villaciniz"
-              ? "villaciniz"
-              : site.hostKey === "villayolu"
-                ? "villayolu"
-                : site.hostKey === "mustakilvillam"
-                  ? "mustakilvillam"
-                  : site.hostKey === "myvillacity"
-                    ? "myvillacity"
-                    : site.hostKey === "villakilavuzu"
-                      ? "villakilavuzu"
-                      : site.hostKey === "ovillam"
-                        ? "ovillam"
-                      : "villavillam",
+    strategy: villaApiFamilyStrategy(site.hostKey),
     pageTitle: entity.title ?? extractPageTitle(html),
     periods,
     occupancyByDateKey,
@@ -4428,7 +4442,6 @@ const PRODUCT_DETAIL_RSC_HOSTS = [
   "villaciniz",
   "villapaketi",
   "villayolu",
-  "villaekstra",
 ];
 
 function looksLikeProductDetailRsc(pageUrl: string, html: string): boolean {
@@ -4567,6 +4580,8 @@ function scrapeProductDetailRscFromHtml(
 
   const range = extractProductDetailRscPriceRange(html);
   if (!range) return null;
+  // Tek bir min=max fiyatından 2 yıllık sahte sezon uydurma (ör. tüm 2027 = düşük sezon).
+  if (range.low === range.high) return null;
 
   const periods = buildMinMaxSeasonPeriods(
     range.low,

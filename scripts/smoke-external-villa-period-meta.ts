@@ -3,6 +3,7 @@ import {
   extractScrapedPeriodDefaults,
   finalizeScrapedPeriods,
   parseAkdenizvillamPriceRows,
+  parseVillavillamPriceList,
   scrapeExternalVillaPage,
 } from "../lib/external-villa-page-scrape";
 import type { MappedVillaPricePeriod } from "../lib/tatildeyiz-period-import";
@@ -115,6 +116,37 @@ const nightlyAkdeniz = parseAkdenizvillamPriceRows([
 ]);
 assert.equal(nightlyAkdeniz[0]?.nightlyPrice, 11421);
 assert.equal(nightlyAkdeniz[0]?.weeklyPrice, 79947);
+
+const villaekstraPeriods = parseVillavillamPriceList(
+  [
+    {
+      tarih1: "2026-08-01",
+      tarih2: "2026-08-31",
+      fiyat: 620000,
+      dailyPrice: 20000,
+      subTitle: "Minumum 3 gece konaklama",
+      info: "7 Gece altındaki kiralamalarda ekstra 5000₺ kısa konaklama ücreti alınmaktadır.",
+      Symbol: "₺",
+    },
+    {
+      tarih1: "2026-10-01",
+      tarih2: "2026-10-31",
+      fiyat: 348750,
+      dailyPrice: 11250,
+      subTitle: "Minumum 3 gece konaklama",
+      Symbol: "₺",
+    },
+  ],
+  "TL",
+  2500
+);
+assert.equal(villaekstraPeriods.length, 2);
+assert.equal(villaekstraPeriods[0]?.nightlyPrice, 20000);
+assert.equal(villaekstraPeriods[0]?.weeklyPrice, 140000);
+assert.equal(villaekstraPeriods[0]?.minStayNights, 3);
+assert.equal(villaekstraPeriods[0]?.damageDeposit, 2500);
+assert.equal(villaekstraPeriods[1]?.nightlyPrice, 11250);
+assert.equal(villaekstraPeriods[1]?.minStayNights, 3);
 
 const villacim = await scrapeExternalVillaPage(
   "https://www.villacim.com.tr/villa-tuana-kayakoy"
