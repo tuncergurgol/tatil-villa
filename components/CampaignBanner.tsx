@@ -32,9 +32,20 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
+
+    const snapToPage = () => {
+      const width = el.clientWidth;
+      if (width <= 0) return;
+      const target = Math.round(el.scrollLeft / width) * width;
+      if (Math.abs(el.scrollLeft - target) > 2) {
+        el.scrollTo({ left: target });
+      }
+      syncArrows();
+    };
+
     syncArrows();
     el.addEventListener("scroll", syncArrows, { passive: true });
-    const observer = new ResizeObserver(syncArrows);
+    const observer = new ResizeObserver(snapToPage);
     observer.observe(el);
     return () => {
       el.removeEventListener("scroll", syncArrows);
