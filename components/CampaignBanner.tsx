@@ -13,7 +13,7 @@ interface CampaignBannerProps {
 const MAX_HOME_CAMPAIGNS = 4;
 
 const ARROW_CLASS =
-  "absolute top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/25 text-white/80 ring-1 ring-inset ring-white/25 backdrop-blur-[2px] transition hover:bg-white/45 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:pointer-events-none disabled:opacity-0 sm:h-9 sm:w-9";
+  "absolute top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/40 text-slate-800/75 ring-1 ring-inset ring-white/50 backdrop-blur-[3px] transition hover:bg-white/70 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:pointer-events-none disabled:opacity-0 sm:h-9 sm:w-9";
 
 export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
   const items = campaigns.slice(0, MAX_HOME_CAMPAIGNS);
@@ -71,7 +71,7 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
         <div className="relative min-w-0">
           <div
             ref={scrollerRef}
-            className="flex snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-2xl touch-pan-x [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex snap-x snap-mandatory overflow-y-hidden overscroll-x-contain rounded-2xl touch-pan-x [overflow-x:auto] [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {items.map((campaign) => (
               <article
