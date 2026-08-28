@@ -17,6 +17,11 @@ import {
   normalizeDateRange,
 } from "@/lib/villa-period-selection";
 import FloatingPanel from "./FloatingPanel";
+import {
+  HolidayCalendarLegend,
+  HolidayMarker,
+  holidayDayTitle,
+} from "@/components/calendar/HolidayMarker";
 
 function formatHeroDate(dateKey: string, compact = false) {
   const date = parseDateKey(dateKey);
@@ -208,6 +213,7 @@ export default function HeroDateRangePicker({
                 key={`${year}-${month}-${index}`}
                 type="button"
                 disabled={isDisabled}
+                title={holidayDayTitle(dateKey)}
                 onMouseEnter={() => {
                   if (pendingStart) {
                     setHoverDate(dateKey);
@@ -241,6 +247,10 @@ export default function HeroDateRangePicker({
                 }`}
               >
                 {cell.date.getDate()}
+                <HolidayMarker
+                  dateKey={dateKey}
+                  tone={isStart || isEnd ? "onDark" : "default"}
+                />
                 {showNightHint ? (
                   <span className="pointer-events-none absolute -bottom-4 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
                     {nights} Gece
@@ -392,6 +402,9 @@ export default function HeroDateRangePicker({
           {renderMonth(viewYear, viewMonth)}
           {renderMonth(rightYear, rightMonth)}
         </div>
+        <p className="mt-3 text-center text-[11px] text-gray-500">
+          <HolidayCalendarLegend />
+        </p>
         {pendingStart ? (
           <p className="mt-4 text-center text-xs text-gray-500">
             Çıkış tarihini seçin — fare ile aralığı önizleyebilirsiniz

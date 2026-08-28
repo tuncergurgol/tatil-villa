@@ -22,6 +22,11 @@ import {
 import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
 import type { VillaDayOccupancy } from "@prisma/client";
+import {
+  HolidayCalendarLegend,
+  HolidayMarker,
+  holidayDayTitle,
+} from "@/components/calendar/HolidayMarker";
 
 export type PeriodCalendarDayDisplay = {
   periodId: string;
@@ -281,6 +286,7 @@ function CalendarDayCell({
         isSelectable ? "cursor-pointer select-none" : ""
       }`}
       style={{ background }}
+      title={holidayDayTitle(dateKey)}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
     >
@@ -302,6 +308,10 @@ function CalendarDayCell({
           <div className="hidden md:block">{renderFullPrice(display)}</div>
         </div>
       ) : null}
+      <HolidayMarker
+        dateKey={dateKey}
+        tone={visualStyle.useLightText ? "onDark" : "default"}
+      />
     </div>
   );
 }
@@ -439,6 +449,10 @@ export default function PeriodCalendarGrid({
           </div>
         </div>
       ) : null}
+      <div className="border-t border-gray-100 bg-white px-3 py-2 text-[11px] text-gray-500">
+        <HolidayCalendarLegend />
+        <span className="ml-1">— üzerine gelince tatilin adı görünür</span>
+      </div>
     </div>
   );
 }

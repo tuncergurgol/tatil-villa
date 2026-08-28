@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { seedTurkeyHolidayBlogs } from "@/lib/seed-turkey-holiday-blogs";
+import { TURKEY_HOLIDAY_BLOG_CATEGORY } from "@/lib/turkey-public-holiday-blog-posts";
 import { villaRentalFaqSeedData } from "./cms-faq-seed-data";
 import {
   buildVillaNaturePestNoticeExcerpt,
@@ -75,6 +77,7 @@ export const blogCategorySeeds = [
     description: "Kampanya, duyuru ve sektör haberleri",
     sortOrder: 4,
   },
+  TURKEY_HOLIDAY_BLOG_CATEGORY,
 ];
 
 export const naturePestNoticeBlogPostSeed = {
@@ -274,4 +277,6 @@ export async function seedCmsContent() {
       await prisma.guestReview.create({ data: review });
     }
   }
+
+  await seedTurkeyHolidayBlogs();
 }

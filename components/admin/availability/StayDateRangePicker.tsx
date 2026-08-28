@@ -16,6 +16,11 @@ import {
   isDateKeyInRange,
   normalizeDateRange,
 } from "@/lib/villa-period-selection";
+import {
+  HolidayCalendarLegend,
+  HolidayMarker,
+  holidayDayTitle,
+} from "@/components/calendar/HolidayMarker";
 
 function formatDisplayDate(dateKey: string): string {
   const date = parseDateKey(dateKey);
@@ -146,6 +151,7 @@ export default function StayDateRangePicker({
                 key={`${year}-${month}-${index}`}
                 type="button"
                 disabled={isPast}
+                title={holidayDayTitle(dateKey)}
                 onMouseEnter={() => {
                   if (pendingStart) setHoverDate(dateKey);
                 }}
@@ -164,6 +170,10 @@ export default function StayDateRangePicker({
                 } ${isStart || isEnd ? "bg-violet-600 text-white hover:bg-violet-600" : ""}`}
               >
                 {cell.date.getDate()}
+                <HolidayMarker
+                  dateKey={dateKey}
+                  tone={isStart || isEnd ? "onDark" : "default"}
+                />
                 {isEnd && nights > 0 ? (
                   <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-violet-600">
                     {nights} gece
@@ -271,6 +281,9 @@ export default function StayDateRangePicker({
               {renderMonth(rightYear, rightMonth)}
             </div>
           </div>
+          <p className="mt-2 text-center text-[10px] text-gray-500">
+            <HolidayCalendarLegend />
+          </p>
           {pendingStart ? (
             <p className="mt-3 text-center text-[11px] text-gray-500">
               Çıkış tarihini seçin

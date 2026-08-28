@@ -17,6 +17,11 @@ import {
 import { compareDates, parseDateKey, todayDate } from "@/lib/villa-period-calendar";
 import { isDateKeyInRange, offsetDateKey } from "@/lib/villa-period-selection";
 import { useVillaStaySelection } from "@/components/villa-detail/VillaStaySelectionContext";
+import {
+  HolidayCalendarLegend,
+  HolidayMarker,
+  holidayDayTitle,
+} from "@/components/calendar/HolidayMarker";
 
 type CalendarDay = {
   date: string;
@@ -193,6 +198,7 @@ function MonthGrid({
               key={dateKey}
               type="button"
               disabled={!canClick}
+              title={holidayDayTitle(dateKey)}
               onMouseEnter={() => {
                 if (pendingStart) setHoverDate(dateKey);
               }}
@@ -236,6 +242,10 @@ function MonthGrid({
                   {visual.statusLabel}
                 </p>
               ) : null}
+              <HolidayMarker
+                dateKey={dateKey}
+                tone={isStart || isEnd ? "onDark" : "default"}
+              />
               {showNightHint ? (
                 <span className="pointer-events-none absolute -bottom-5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
                   {previewNights} Gece
@@ -383,6 +393,7 @@ export default function VillaAvailabilityCalendar({
             {item.label}
           </span>
         ))}
+        <HolidayCalendarLegend />
       </div>
     </div>
   );

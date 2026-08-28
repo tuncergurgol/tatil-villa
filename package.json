@@ -61,6 +61,8 @@
     "sync:external-links": "tsx scripts/sync-villa-external-links.ts",
     "sync:external-links:force": "tsx scripts/sync-villa-external-links.ts --force",
     "seed:cms": "tsx scripts/seed-cms-content.ts",
+    "seed:holiday-blogs": "tsx scripts/seed-turkey-holiday-blogs.ts",
+    "smoke:holidays": "tsx scripts/smoke-turkey-public-holidays.ts",
     "seed:campaigns": "tsx scripts/upsert-home-campaigns.ts",
     "seed:car-rental": "tsx scripts/seed-car-rental.ts",
     "smoke:yolcu360-filters": "tsx scripts/smoke-yolcu360-search-filters.ts",

@@ -27,6 +27,11 @@ import {
   normalizeDateRange,
   offsetDateKey,
 } from "@/lib/villa-period-selection";
+import {
+  HolidayCalendarLegend,
+  HolidayMarker,
+  holidayDayTitle,
+} from "@/components/calendar/HolidayMarker";
 
 function formatDisplayDate(dateKey: string): string {
   const date = parseDateKey(dateKey);
@@ -229,6 +234,7 @@ export default function OccupancyStayDateRangePicker({
                 key={`${year}-${month}-${index}`}
                 type="button"
                 disabled={!canClick}
+                title={holidayDayTitle(dateKey)}
                 onMouseEnter={() => {
                   if (pendingStart) setHoverDate(dateKey);
                 }}
@@ -270,6 +276,10 @@ export default function OccupancyStayDateRangePicker({
                 >
                   {cell.date.getDate()}
                 </span>
+                <HolidayMarker
+                  dateKey={dateKey}
+                  tone={isStart || isEnd ? "onDark" : "default"}
+                />
                 {showNightHint ? (
                   <span className="pointer-events-none absolute -bottom-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-md">
                     {previewNights} Gece
@@ -347,6 +357,9 @@ export default function OccupancyStayDateRangePicker({
             {renderMonth(viewYear, viewMonth)}
             {renderMonth(rightYear, rightMonth)}
           </div>
+          <p className="mt-2 text-center text-[10px] text-gray-500">
+            <HolidayCalendarLegend />
+          </p>
           {pendingStart ? (
             <p className="mt-3 text-center text-[11px] text-gray-500">
               Çıkış tarihini seçin

@@ -14,6 +14,11 @@ import { submitBooking, type BookingActionState } from "@/app/actions/booking";
 import { getMemberBookingBenefitsAction } from "@/app/actions/member-booking-benefits";
 import type { PreReservationMemberBenefits } from "@/components/PreReservationModal";
 import FloatingPanel from "@/components/FloatingPanel";
+import {
+  HolidayCalendarLegend,
+  HolidayMarker,
+  holidayDayTitle,
+} from "@/components/calendar/HolidayMarker";
 import GuestPicker from "@/components/GuestPicker";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import PreReservationModal, {
@@ -488,6 +493,7 @@ export default function BookingForm({
                 key={`${year}-${month}-${index}`}
                 type="button"
                 disabled={!canClick}
+                title={holidayDayTitle(dateKey)}
                 onMouseEnter={() => {
                   if (pendingStart) setHoverDate(dateKey);
                 }}
@@ -529,6 +535,10 @@ export default function BookingForm({
                 >
                   {cell.date.getDate()}
                 </span>
+                <HolidayMarker
+                  dateKey={dateKey}
+                  tone={isStart || isEnd ? "onDark" : "default"}
+                />
                 {showNightHint ? (
                   <span className="pointer-events-none absolute -bottom-5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
                     {previewNights} Gece
@@ -845,6 +855,9 @@ export default function BookingForm({
               })}
               {!isMobile ? renderMonth(rightYear, rightMonth) : null}
             </div>
+            <p className="mt-2 text-center text-[10px] text-slate-500">
+              <HolidayCalendarLegend />
+            </p>
           </FloatingPanel>
         </div>
 
