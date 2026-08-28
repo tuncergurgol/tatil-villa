@@ -19,7 +19,7 @@ export default function AdminMobileBottomBar() {
           className="inline-flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-violet-600 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition active:bg-violet-700"
         >
           <LayoutDashboard className="h-5 w-5" />
-          Dashboard
+          Bont
         </button>
         <button
           type="button"
