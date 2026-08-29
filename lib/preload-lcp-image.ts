@@ -1,5 +1,6 @@
 import { getImageProps } from "next/image";
 import { preload } from "react-dom";
+import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
 
 export const HERO_LCP_SIZES = "(max-width: 640px) 640px, (max-width: 828px) 828px, 1400px";
 export const HERO_LCP_QUALITY = 60;
@@ -24,6 +25,16 @@ export function preloadOptimizedLcpImage(
   sizes: string = HERO_LCP_SIZES,
   quality = HERO_LCP_QUALITY
 ) {
+  // Gallery WebP is already compressed; `/_next/image` returns 400
+  // ("isn't a valid image") and can crash the villa page.
+  if (src.startsWith("/uploads/")) {
+    preload(encodeGalleryImageUrl(src), {
+      as: "image",
+      fetchPriority: "high",
+    });
+    return;
+  }
+
   const { props } = getImageProps({
     src,
     alt: "",

@@ -28,10 +28,9 @@ import {
   clampDiscountRate,
   computeDiscountAmount,
   computeEntrancePayment,
-  computeGuestReservationTotal,
   computeNetPrice,
+  computePayableReservationTotal,
   computePrepaymentAmount,
-  computeReservationTotal,
 } from "@/lib/booking-form-details";
 import { getSortedCompanyPaymentTypeOptions } from "@/lib/company-payment-types";
 import TcKimlikInput from "@/components/shared/TcKimlikInput";
@@ -288,8 +287,7 @@ export default function BookingFormModal({
       damageDeposit: quoteData?.damageDeposit ?? null,
     };
 
-    const reservationTotal = computeReservationTotal(details);
-    const guestReservationTotal = computeGuestReservationTotal(details);
+    const reservationTotal = computePayableReservationTotal(details);
     const netPrice = computeNetPrice(details);
     const prepaymentRate = quote?.prepaymentRate ?? 20;
     const formulaPrepayment = computePrepaymentAmount(
@@ -299,11 +297,9 @@ export default function BookingFormModal({
       agencyDiscountAmount
     );
     const prepaymentAmount =
-      paymentMode === "full"
-        ? guestReservationTotal
-        : formulaPrepayment;
+      paymentMode === "full" ? reservationTotal : formulaPrepayment;
     const entrancePayment = computeEntrancePayment(
-      guestReservationTotal,
+      reservationTotal,
       prepaymentAmount
     );
 
@@ -586,6 +582,8 @@ export default function BookingFormModal({
                 prepaymentRate={pricingDetails.prepaymentRate}
                 entrancePayment={pricingDetails.entrancePayment}
                 damageDeposit={pricingDetails.damageDeposit}
+                ownerDiscountAmount={pricingDetails.ownerDiscountAmount}
+                agencyDiscountAmount={pricingDetails.agencyDiscountAmount}
               />
             </div>
           ) : null}
@@ -671,7 +669,12 @@ export default function BookingFormModal({
                   <input
                     type="hidden"
                     name="totalPrice"
-                    value={pricingDetails.netPrice ?? pricingDetails.grossPrice ?? ""}
+                    value={
+                      pricingDetails.reservationTotal ??
+                      pricingDetails.netPrice ??
+                      pricingDetails.grossPrice ??
+                      ""
+                    }
                   />
                   <input type="hidden" name="customerNote" value={customerNote} />
                   <input type="hidden" name="guestTc" value={guestTc} />
@@ -823,6 +826,8 @@ export default function BookingFormModal({
                 prepaymentRate={pricingDetails.prepaymentRate}
                 entrancePayment={pricingDetails.entrancePayment}
                 damageDeposit={pricingDetails.damageDeposit}
+                ownerDiscountAmount={pricingDetails.ownerDiscountAmount}
+                agencyDiscountAmount={pricingDetails.agencyDiscountAmount}
                 compact
               />
             </div>

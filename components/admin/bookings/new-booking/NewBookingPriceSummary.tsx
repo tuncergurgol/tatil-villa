@@ -22,6 +22,8 @@ interface NewBookingPriceSummaryProps {
   prepaymentRate: number;
   entrancePayment: number | null;
   damageDeposit: number | null;
+  ownerDiscountAmount?: number | null;
+  agencyDiscountAmount?: number | null;
   compact?: boolean;
 }
 
@@ -43,6 +45,8 @@ export default function NewBookingPriceSummary({
   prepaymentRate,
   entrancePayment,
   damageDeposit,
+  ownerDiscountAmount = 0,
+  agencyDiscountAmount = 0,
   compact = false,
 }: NewBookingPriceSummaryProps) {
   const nights =
@@ -81,6 +85,24 @@ export default function NewBookingPriceSummary({
               : "—"}
           </span>
         </div>
+
+        {ownerDiscountAmount > 0 ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-gray-600">Villa Sahibi İndirimi</span>
+            <span className="font-medium text-emerald-700">
+              -{formatMoneyPlain(ownerDiscountAmount)}
+            </span>
+          </div>
+        ) : null}
+
+        {agencyDiscountAmount > 0 ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-gray-600">Acente İndirimi</span>
+            <span className="font-medium text-emerald-700">
+              -{formatMoneyPlain(agencyDiscountAmount)}
+            </span>
+          </div>
+        ) : null}
 
         {cleaningFee != null && cleaningFee > 0 ? (
           <div className="flex items-center justify-between gap-3">

@@ -569,6 +569,15 @@ export function computeReservationTotal(
   return accommodation + sumExtraFees(details);
 }
 
+/** Misafirin ödeyeceği rezervasyon tutarı: indirimli konaklama + ekstra bedeller. */
+export function computePayableReservationTotal(
+  details: BookingDetails
+): number | null {
+  const net = computeNetPrice(details);
+  if (net == null) return null;
+  return net + sumExtraFees(details);
+}
+
 /**
  * Rezervasyon toplamı (Fiyat sekmesi):
  * Konaklama Bakiyesi + Ön Ödeme Tutarı + ekstra bedeller

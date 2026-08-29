@@ -27,7 +27,7 @@ import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
   computeCheckInPayment,
   computeNetPrice,
-  computeReservationTotal,
+  computePayableReservationTotal,
   DEFAULT_BOOKING_AGENCY_NAME,
   DEFAULT_BOOKING_SITE_INFO,
   dedupeSiteInfoNames,
@@ -183,10 +183,11 @@ function buildBookingDetailsFromAdminForm(
 }
 
 function resolveAdminBookingTotalPrice(
-  data: z.infer<typeof adminBookingSchema>
+  data: z.infer<typeof adminBookingSchema>,
+  details: BookingDetails
 ): number | null {
   if (data.totalPrice != null) return data.totalPrice;
-  return computeReservationTotal(buildBookingDetailsFromAdminForm(data));
+  return computePayableReservationTotal(details);
 }
 
 function collectBookingDetailsTcFields(
@@ -262,8 +263,8 @@ export async function createAdminBookingAction(
       }
     : loyaltyFloor.details;
   const totalPrice = loyaltyFloor.raised
-    ? computeReservationTotal(details)
-    : resolveAdminBookingTotalPrice(parsed.data);
+    ? computePayableReservationTotal(details)
+    : resolveAdminBookingTotalPrice(parsed.data, details);
 
   try {
     const loyaltyNote =
@@ -342,8 +343,8 @@ export async function updateAdminBookingAction(
       }
     : loyaltyFloor.details;
   const totalPrice = loyaltyFloor.raised
-    ? computeReservationTotal(details)
-    : resolveAdminBookingTotalPrice(parsed.data);
+    ? computePayableReservationTotal(details)
+    : resolveAdminBookingTotalPrice(parsed.data, details);
 
   try {
     await updateAdminBooking(id, {

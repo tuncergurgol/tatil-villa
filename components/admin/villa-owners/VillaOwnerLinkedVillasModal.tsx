@@ -65,6 +65,7 @@ export default function VillaOwnerLinkedVillasModal({
                             fill
                             className="object-cover"
                             sizes="80px"
+                            unoptimized
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center text-xs text-gray-400">

@@ -323,6 +323,7 @@ export default function AvailabilityResultCard({
                     fill
                     className="object-cover"
                     sizes="128px"
+                    unoptimized
                   />
                 ) : null}
               </div>
