@@ -319,6 +319,7 @@ async function persistRooms(
     })),
   });
   await syncVillaRoomFeatureCatalog(villaId);
+  // Kapak görseli galeri sırasının ilki olsun
   return rooms.length;
 }
 

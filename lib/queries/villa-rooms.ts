@@ -55,23 +55,32 @@ export async function syncVillaRooms(villaId: string) {
   if (!villa) return [];
 
   const targetCount = Math.max(0, villa.bedrooms);
-  const existing = await prisma.villaRoom.findMany({
-    where: { villaId },
+  // Mutfak / salon / banyo kayıtlarını silme; yalnızca yatak odalarını hizala
+  const existingBedrooms = await prisma.villaRoom.findMany({
+    where: { villaId, roomType: "yatak_odasi" },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
 
-  if (existing.length > targetCount) {
-    const toRemove = existing.slice(targetCount);
+  if (existingBedrooms.length > targetCount) {
+    const toRemove = existingBedrooms.slice(targetCount);
     await prisma.villaRoom.deleteMany({
       where: { id: { in: toRemove.map((room) => room.id) } },
     });
   }
 
-  if (existing.length < targetCount) {
-    const toCreate = targetCount - existing.length;
-    const startIndex = existing.length;
+  if (existingBedrooms.length < targetCount) {
+    const toCreate = targetCount - existingBedrooms.length;
+    const startIndex = existingBedrooms.length;
+    const allRooms = await prisma.villaRoom.findMany({
+      where: { villaId },
+      select: { customFeatures: true, sortOrder: true },
+    });
+    const maxSort = allRooms.reduce(
+      (max, room) => Math.max(max, room.sortOrder),
+      0
+    );
     const sharedCustomFeatures = uniqueRoomFeatures(
-      existing.flatMap((room) => room.customFeatures)
+      allRooms.flatMap((room) => room.customFeatures)
     ).filter((feature) => !isDefaultRoomFeature(feature));
 
     await prisma.villaRoom.createMany({
@@ -79,7 +88,7 @@ export async function syncVillaRooms(villaId: string) {
         villaId,
         roomType: "yatak_odasi",
         name: String(startIndex + offset + 1),
-        sortOrder: startIndex + offset + 1,
+        sortOrder: maxSort + offset + 1,
         customFeatures: sharedCustomFeatures,
       })),
     });

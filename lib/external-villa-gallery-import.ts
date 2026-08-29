@@ -72,10 +72,11 @@ export async function importVillaGalleryFromUrls(
     localUrls.push(`/uploads/villas/${villa.id}/${fileName}`);
   }
 
+  const cover = localUrls[0] ?? "";
   await prisma.villa.update({
     where: { id: villa.id },
     data: {
-      image: localUrls[0] ?? "",
+      image: cover,
       images: localUrls,
     },
   });
