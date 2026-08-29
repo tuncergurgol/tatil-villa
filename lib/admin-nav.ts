@@ -99,6 +99,11 @@ export const adminNavSections: NavSection[] = [
         icon: "settings",
         items: [
           {
+            label: "Dış Siteden Kur",
+            href: "/admin/konaklama/ayarlar/dis-siteden-kur",
+            icon: "import",
+          },
+          {
             label: "Özellikleri Aktar",
             href: "/admin/konaklama/ayarlar/ozellikleri-aktar",
             icon: "import",

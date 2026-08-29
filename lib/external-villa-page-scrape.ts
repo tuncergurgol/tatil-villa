@@ -27,6 +27,7 @@
  * - villasayfam.com (api.villasayfam.com pricePeriods + availability)
  * - villaoteltatili.com (Bravo/VillaSistem liketablerow + loadDates takvim)
  * - rezervasyonyap.tr (priceRules + günlük is_available takvim)
+ * - villareyonu.com (RSC id + api.villareyonu.com PriceList/Availability)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
  */
@@ -83,7 +84,8 @@ export type ScrapedVillaPage = {
     | "villaevreni"
     | "tatilvillasi"
     | "villajoye"
-    | "rezervasyonyap";
+    | "rezervasyonyap"
+    | "villareyonu";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -3028,6 +3030,7 @@ const VILLAKILAVUZU_API = "https://api.villakilavuzu.com";
 const OVILLAM_API = "https://api.ovillam.com";
 const KIRALIKVILLANIZ_API = "https://api.kiralikvillaniz.com";
 const VILLAEKSTRA_API = "https://api2.villaekstra.com";
+const VILLAREYONU_API = "https://api.villareyonu.com";
 
 type VillaApiSiteConfig = {
   apiHost: string;
@@ -3044,7 +3047,8 @@ type VillaApiSiteConfig = {
     | "villakilavuzu"
     | "ovillam"
     | "kiralikvillaniz"
-    | "villaekstra";
+    | "villaekstra"
+    | "villareyonu";
 };
 
 function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
@@ -3134,6 +3138,13 @@ function resolveVillaApiSite(pageUrl: string): VillaApiSiteConfig | null {
         hostKey: "villaekstra",
       };
     }
+    if (host.includes("villareyonu")) {
+      return {
+        apiHost: VILLAREYONU_API,
+        origin: "https://www.villareyonu.com",
+        hostKey: "villareyonu",
+      };
+    }
   } catch {
     return null;
   }
@@ -3215,6 +3226,7 @@ function extractVillaApiEntityMeta(
         result.onOdeme ??
         result.kaporaOrani ??
         result.prepaymentRate ??
+        result.depozito ??
         ""
     )
   );
@@ -3334,6 +3346,64 @@ export function extractTatilpremiumRoutingEntity(
   };
 }
 
+function extractEscapedRscField(chunk: string, key: string): string | null {
+  const escaped = chunk.match(
+    new RegExp(`"${key}\\\\":\\\\"([^\\\\]*)\\\\"`)
+  )?.[1];
+  if (escaped != null && escaped !== "") return escaped;
+  const raw = chunk.match(new RegExp(`"${key}\\\\":([^,}\\]]+)`))?.[1];
+  return raw?.replace(/^"|"$/g, "").trim() || null;
+}
+
+/**
+ * App Router RSC (`self.__next_f`) gömülü villa kartı.
+ * villareyonu.com PriceList/Availability `id` (ör. 4390) kullanır; RoutingId (1036) değil.
+ */
+export function extractRscVillaApiEntity(
+  html: string
+): ReturnType<typeof extractVillaApiEntity> {
+  const marker = html.search(/evkodu\\":\\"VR-/i);
+  if (marker < 0) return null;
+
+  const chunk = html.slice(Math.max(0, marker - 25000), marker + 6000);
+  const routingId = extractEscapedRscField(chunk, "RoutingId");
+  const ids = [...chunk.matchAll(/"id\\":\\"(\d+)\\"/g)].map((match) => match[1]!);
+  const entityId =
+    ids.find((id) => id !== routingId) ??
+    extractEscapedRscField(chunk, "id") ??
+    routingId;
+  if (!entityId || !/^\d+$/.test(entityId)) return null;
+
+  const hasarRaw = extractEscapedRscField(chunk, "hasar");
+  const damageDeposit = hasarRaw
+    ? Number(String(hasarRaw).replace(/[^\d.]/g, ""))
+    : NaN;
+  const depozito = extractEscapedRscField(chunk, "depozito");
+  const symbol = extractEscapedRscField(chunk, "Symbol") ?? "₺";
+  const currencyCode =
+    extractEscapedRscField(chunk, "CurrencyCode") ??
+    extractEscapedRscField(chunk, "FromCurrencyCode") ??
+    "TRY";
+
+  return {
+    entityId,
+    title:
+      extractEscapedRscField(chunk, "baslik") ??
+      extractEscapedRscField(chunk, "kisa_icerik"),
+    symbol,
+    currencyCode,
+    damageDeposit:
+      Number.isFinite(damageDeposit) && damageDeposit > 0
+        ? damageDeposit
+        : null,
+    result: {
+      depozito: depozito ?? "",
+      hasar: hasarRaw ?? "",
+      onOdemeOrani: depozito ?? "",
+    },
+  };
+}
+
 function usesLowercaseApiCurrency(site: VillaApiSiteConfig): boolean {
   return (
     site.hostKey === "villacim" ||
@@ -3346,7 +3416,8 @@ function usesLowercaseApiCurrency(site: VillaApiSiteConfig): boolean {
     site.hostKey === "tatilpremium" ||
     site.hostKey === "ovillam" ||
     site.hostKey === "kiralikvillaniz" ||
-    site.hostKey === "villaekstra"
+    site.hostKey === "villaekstra" ||
+    site.hostKey === "villareyonu"
   );
 }
 
@@ -3364,6 +3435,7 @@ function villaApiFamilyStrategy(
     case "villakilavuzu":
     case "ovillam":
     case "villaekstra":
+    case "villareyonu":
       return hostKey;
     default:
       return "villavillam";
@@ -3645,6 +3717,9 @@ export async function scrapeVillavillamFromPage(
   if (!site) return null;
 
   let entity = html.trim() ? extractVillaApiEntity(html) : null;
+  if (!entity && html.trim() && site.hostKey === "villareyonu") {
+    entity = extractRscVillaApiEntity(html);
+  }
   if (
     !entity &&
     html.trim() &&
@@ -6213,6 +6288,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, villareyonu.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
