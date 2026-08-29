@@ -21,6 +21,7 @@ export default function ExternalVillaSetupForm() {
         periodCount: number;
         bookedDays: number;
         optionDays: number;
+        roomCount: number;
         documentNo: string;
         link1: string;
         published: boolean;
@@ -48,6 +49,7 @@ export default function ExternalVillaSetupForm() {
         periodCount: response.periodCount,
         bookedDays: response.bookedDays,
         optionDays: response.optionDays,
+        roomCount: response.roomCount,
         documentNo: response.documentNo,
         link1: response.link1,
         published: response.published,
@@ -64,8 +66,8 @@ export default function ExternalVillaSetupForm() {
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Acente villa sayfasının bağlantısını yapıştırın. BONT adı, fotoğrafları,
-          belge no, konum, mesafeler, fiyat ve müsaitlik takvimini okuyup villayı
-          LINK1 ile kaydeder ve yayına alır.
+          oda detaylarını, belge no, konum, mesafeler, fiyat ve müsaitlik takvimini
+          okuyup villayı LINK1 ile kaydeder ve yayına alır.
         </p>
       </div>
 
@@ -139,6 +141,7 @@ export default function ExternalVillaSetupForm() {
           </div>
           <ul className="grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
             <li>Fotoğraf: {result.imageCount}</li>
+            <li>Oda: {result.roomCount}</li>
             <li>Mesafe: {result.distanceCount}</li>
             <li>Fiyat dönemi: {result.periodCount}</li>
             <li>

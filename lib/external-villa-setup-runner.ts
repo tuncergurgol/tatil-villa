@@ -9,13 +9,14 @@ import {
   getAmenitiesForVillaForm,
   getDefaultAmenityNames,
 } from "@/lib/queries/amenities";
-import { syncVillaRooms } from "@/lib/queries/villa-rooms";
+import { syncVillaRoomFeatureCatalog } from "@/lib/queries/villa-rooms";
 import { importVillaGalleryFromUrls } from "@/lib/external-villa-gallery-import";
 import { importVillaPeriodsFromExternalPage } from "@/lib/external-villa-page-import-runner";
 import {
   scrapeExternalVillaListing,
   type ExternalVillaListing,
   type ExternalVillaListingDistance,
+  type ExternalVillaListingRoom,
 } from "@/lib/external-villa-listing";
 import { toSurroundingSlug } from "@/lib/surrounding-utils";
 import {
@@ -46,6 +47,7 @@ export type ExternalVillaSetupResult = {
   periodCount: number;
   bookedDays: number;
   optionDays: number;
+  roomCount: number;
   documentNo: string;
   link1: string;
   published: boolean;
@@ -276,6 +278,50 @@ async function persistPool(
   });
 }
 
+async function persistRooms(
+  villaId: string,
+  rooms: ExternalVillaListingRoom[]
+) {
+  await prisma.villaRoom.deleteMany({ where: { villaId } });
+
+  if (rooms.length === 0) {
+    // Yatak odası sayısı kadar boş oda iskeleti
+    const villa = await prisma.villa.findUnique({
+      where: { id: villaId },
+      select: { bedrooms: true },
+    });
+    const count = Math.max(0, villa?.bedrooms ?? 0);
+    if (count > 0) {
+      await prisma.villaRoom.createMany({
+        data: Array.from({ length: count }, (_, index) => ({
+          villaId,
+          roomType: "yatak_odasi",
+          name: String(index + 1),
+          sortOrder: index + 1,
+        })),
+      });
+    }
+    await syncVillaRoomFeatureCatalog(villaId);
+    return count;
+  }
+
+  await prisma.villaRoom.createMany({
+    data: rooms.map((room) => ({
+      villaId,
+      roomType: room.roomType,
+      name: room.name,
+      singleBeds: room.singleBeds,
+      doubleBeds: room.doubleBeds,
+      imageUrl: "",
+      features: room.features,
+      customFeatures: room.customFeatures,
+      sortOrder: room.sortOrder,
+    })),
+  });
+  await syncVillaRoomFeatureCatalog(villaId);
+  return rooms.length;
+}
+
 async function findExistingVilla(pageUrl: string, listing: ExternalVillaListing) {
   const byLink = await prisma.villa.findFirst({
     where: {
@@ -399,8 +445,6 @@ export async function setupVillaFromExternalUrl(
     slug = villa.slug;
   }
 
-  await syncVillaRooms(villaId);
-
   let imageCount = 0;
   if (listing.imageUrls.length > 0) {
     const gallery = await importVillaGalleryFromUrls(villaId, listing.imageUrls, {
@@ -413,6 +457,10 @@ export async function setupVillaFromExternalUrl(
 
   const distanceCount = await persistDistances(villaId, listing.distances);
   await persistPool(villaId, listing.pool);
+  const roomCount = await persistRooms(villaId, listing.rooms);
+  if (listing.rooms.length === 0) {
+    warnings.push("Kaynak sayfada oda detayı bulunamadı");
+  }
 
   let periodCount = 0;
   let bookedDays = 0;
@@ -450,6 +498,7 @@ export async function setupVillaFromExternalUrl(
     periodCount,
     bookedDays,
     optionDays,
+    roomCount,
     documentNo,
     link1: pageUrl,
     published: visibility.active && visibility.showInSearch,

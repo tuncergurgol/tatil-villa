@@ -16,6 +16,7 @@ export type ExternalVillaSetupActionResult =
       periodCount: number;
       bookedDays: number;
       optionDays: number;
+      roomCount: number;
       documentNo: string;
       link1: string;
       published: boolean;
@@ -49,6 +50,7 @@ export async function setupVillaFromExternalUrlAction(
       periodCount: result.periodCount,
       bookedDays: result.bookedDays,
       optionDays: result.optionDays,
+      roomCount: result.roomCount,
       documentNo: result.documentNo,
       link1: result.link1,
       published: result.published,

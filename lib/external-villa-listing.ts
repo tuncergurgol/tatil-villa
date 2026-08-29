@@ -1,5 +1,6 @@
 import { parseDistanceToKm } from "@/lib/tatildeyiz-location-import";
 import { sleep } from "@/lib/tatildeyiz-gallery";
+import { mapRoomFeatureNames } from "@/lib/tatildeyiz-room-import";
 
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -17,6 +18,16 @@ export type ExternalVillaListingPool = {
   depth: number | null;
   conservative: boolean;
   heated: boolean;
+};
+
+export type ExternalVillaListingRoom = {
+  roomType: string;
+  name: string;
+  singleBeds: number;
+  doubleBeds: number;
+  features: string[];
+  customFeatures: string[];
+  sortOrder: number;
 };
 
 export type ExternalVillaListing = {
@@ -46,6 +57,7 @@ export type ExternalVillaListing = {
   imageUrls: string[];
   distances: ExternalVillaListingDistance[];
   pool: ExternalVillaListingPool | null;
+  rooms: ExternalVillaListingRoom[];
   entityId: string | null;
   allowPets: boolean;
   allowEvents: boolean;
@@ -400,6 +412,94 @@ function extractVillareyonuDescription(html: string, fallbackName: string) {
   return `<p>${fallbackName}</p>`;
 }
 
+function mapRoomTypeFromName(roomName: string): string {
+  const key = roomName.toLocaleLowerCase("tr-TR");
+  if (key.includes("mutfak")) return "mutfak";
+  if (key.includes("salon") || key.includes("oturma")) return "salon";
+  if (key.includes("banyo")) return "banyo";
+  return "yatak_odasi";
+}
+
+function mapRoomItemFeature(itemName: string): string | null {
+  const key = itemName.trim().toLocaleLowerCase("tr-TR");
+  if (/yatak/.test(key)) return null;
+  if (/banyo|wc/.test(key)) return "Özel Banyo";
+  if (/elbise\s*dolab/.test(key)) return "Elbise Dolabı";
+  if (/klima/.test(key)) return "Klima";
+  if (/jakuzi/.test(key)) return "Jakuzi";
+  if (/sauna/.test(key)) return "Sauna";
+  if (/^tv$|televizyon/.test(key)) return "Televizyon";
+  if (/balkon/.test(key)) return "Balkon";
+  if (/teras/.test(key)) return "Teras";
+  if (/şömine|somine/.test(key)) return "Şömine";
+  if (/bebek/.test(key)) return "Bebek Yatağı";
+  return itemName.trim();
+}
+
+export function parseVillareyonuRooms(html: string): ExternalVillaListingRoom[] {
+  const rooms: ExternalVillaListingRoom[] = [];
+  const roomBlocks = [
+    ...html.matchAll(
+      /"room_name\\":\\"([^\\]+)\\",\\"items\\":\[([\s\S]*?)\]\}/g
+    ),
+  ];
+
+  let bedroomIndex = 0;
+  let sortOrder = 0;
+  for (const block of roomBlocks) {
+    const roomName = unescapeRsc(block[1] ?? "").trim();
+    const itemsRaw = block[2] ?? "";
+    if (!roomName) continue;
+
+    let singleBeds = 0;
+    let doubleBeds = 0;
+    const featureNames: string[] = [];
+
+    for (const item of itemsRaw.matchAll(
+      /"item_name\\":\\"([^\\]+)\\",\\"icon\\":\\"[^"]*\\",\\"value\\":(\d+)/g
+    )) {
+      const itemName = unescapeRsc(item[1] ?? "").trim();
+      const value = parseInt(item[2] ?? "0", 10);
+      if (!itemName || !Number.isFinite(value) || value <= 0) continue;
+
+      const key = itemName.toLocaleLowerCase("tr-TR");
+      if (/çift\s*kişilik\s*yatak|cift\s*kisilik\s*yatak/.test(key)) {
+        doubleBeds += value;
+        continue;
+      }
+      if (/tek\s*kişilik\s*yatak|tek\s*kisilik\s*yatak/.test(key)) {
+        singleBeds += value;
+        continue;
+      }
+
+      const feature = mapRoomItemFeature(itemName);
+      if (feature) {
+        for (let i = 0; i < value; i += 1) featureNames.push(feature);
+      }
+    }
+
+    const roomType = mapRoomTypeFromName(roomName);
+    sortOrder += 1;
+    if (roomType === "yatak_odasi") bedroomIndex += 1;
+
+    const { features, customFeatures } = mapRoomFeatureNames(featureNames);
+    rooms.push({
+      roomType,
+      name:
+        roomType === "yatak_odasi"
+          ? String(bedroomIndex || sortOrder)
+          : roomName.replace(/^\d+\.\s*/, "").trim() || roomName,
+      singleBeds,
+      doubleBeds,
+      features,
+      customFeatures,
+      sortOrder,
+    });
+  }
+
+  return rooms;
+}
+
 const AMENITY_ALIASES: Record<string, string> = {
   "internet bağlantısı": "Wi-Fi",
   "kablosuz modem": "Wi-Fi",
@@ -495,6 +595,10 @@ export function parseVillareyonuListing(
   const districtName =
     locationMatch?.[1]?.replace(/Kiralık Villa/gi, "").trim() || "Demre";
   const cityName = "Antalya";
+  const rooms = parseVillareyonuRooms(html);
+  const bedroomRooms = rooms.filter((room) => room.roomType === "yatak_odasi");
+  const livingRooms =
+    rooms.filter((room) => room.roomType === "salon").length || 1;
 
   return {
     sourceHost: host,
@@ -505,9 +609,9 @@ export function parseVillareyonuListing(
     districtName,
     cityName,
     guests,
-    bedrooms,
+    bedrooms: bedroomRooms.length > 0 ? bedroomRooms.length : bedrooms,
     bathrooms,
-    livingRooms: 1,
+    livingRooms,
     latitude,
     longitude,
     documentNo,
@@ -535,6 +639,7 @@ export function parseVillareyonuListing(
           heated,
         }
       : null,
+    rooms,
     allowPets: !/Evcil Hayvan Giremez/i.test(chunk),
     allowEvents: !/Parti Düzenlenemez/i.test(chunk),
     allowSmoking: !/Sigara İçilmez/i.test(chunk),

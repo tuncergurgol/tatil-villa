@@ -34,6 +34,7 @@ async function main() {
         editPath: result.editPath,
         imageCount: result.imageCount,
         distanceCount: result.distanceCount,
+        roomCount: result.roomCount,
         periodCount: result.periodCount,
         bookedDays: result.bookedDays,
         optionDays: result.optionDays,
