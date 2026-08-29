@@ -365,10 +365,16 @@ export async function setupVillaFromExternalUrl(
   if (existing) {
     villaId = existing.id;
     numericVillaId = existing.villaId;
-    slug = existing.slug;
+    slug = await ensureUniqueVillaSlug(
+      buildVillaSlugFromName(listing.name),
+      existing.id
+    );
     await prisma.villa.update({
       where: { id: villaId },
-      data: sharedData,
+      data: {
+        ...sharedData,
+        slug,
+      },
     });
   } else {
     created = true;
