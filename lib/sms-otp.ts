@@ -1,10 +1,18 @@
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import {
+  isSmsProviderConfigured,
+  sendSmsMessage,
+  type SmsSendResult,
+} from "@/lib/sms-delivery";
 
 /**
  * SMS OTP açık mı?
  * Öncelik: env SMS_OTP_ENABLED=true|1|yes → company settings smsOtpEnabled
+ * Ayrıca sağlayıcı yapılandırılmış olmalı (aksi halde WhatsApp'a düşer).
  */
 export async function isSmsOtpEnabled(): Promise<boolean> {
+  if (!isSmsProviderConfigured()) return false;
+
   const env = process.env.SMS_OTP_ENABLED?.trim().toLowerCase();
   if (env === "true" || env === "1" || env === "yes") return true;
   if (env === "false" || env === "0" || env === "no") return false;
@@ -17,23 +25,15 @@ export async function isSmsOtpEnabled(): Promise<boolean> {
   }
 }
 
-/**
- * SMS sağlayıcı stub — bağlanınca gerçek API buraya iner.
- * Şimdilik yalnızca log; false döner (gönderilemedi).
- */
+/** @deprecated sendSmsMessage kullanın — geriye uyumluluk */
 export async function sendSmsOtpStub(params: {
   phone: string;
   message: string;
   purpose: string;
-}): Promise<{ ok: boolean; provider: "stub"; detail?: string }> {
-  console.info("[sms-otp] stub provider — SMS gönderilmedi", {
+}): Promise<SmsSendResult> {
+  return sendSmsMessage({
     phone: params.phone,
+    message: params.message,
     purpose: params.purpose,
-    messagePreview: params.message.slice(0, 80),
   });
-  return {
-    ok: false,
-    provider: "stub",
-    detail: "SMS provider henüz bağlı değil",
-  };
 }

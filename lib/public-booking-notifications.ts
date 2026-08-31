@@ -77,13 +77,21 @@ async function sendGuestWhatsApp(phone: string, message: string) {
 }
 
 async function sendGuestSms(phone: string, message: string, bookingId: string) {
-  // SMS sağlayıcısı henüz bağlı değil; kanal hazır, log ile izlenir.
-  console.info("[new-reservation-notify] SMS (provider yok — log)", {
-    bookingId,
+  const { sendSmsMessage } = await import("@/lib/sms-delivery");
+  const result = await sendSmsMessage({
     phone,
     message,
+    purpose: `new-reservation:${bookingId}`,
   });
-  return false;
+  if (!result.ok) {
+    console.warn(
+      "[new-reservation-notify] SMS:",
+      result.detail ?? "gönderilemedi",
+      phone
+    );
+    return false;
+  }
+  return true;
 }
 
 /**

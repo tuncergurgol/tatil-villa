@@ -36,8 +36,8 @@ async function sendOtpViaWhatsApp(
 
 /**
  * OTP gönderimi:
- * - smsOtpEnabled / SMS_OTP_ENABLED → SMS stub path (provider bağlanınca burası dolar)
- * - kapalıyken → Bildirim WhatsApp (WAHA)
+ * - smsOtpEnabled / SMS_OTP_ENABLED + Netgsm → SMS
+ * - kapalıyken veya sağlayıcı yoksa → Bildirim WhatsApp (WAHA)
  */
 export async function deliverOtpCode(
   phoneRaw: string,

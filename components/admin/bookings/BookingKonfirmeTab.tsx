@@ -128,7 +128,7 @@ export default function BookingKonfirmeTab({
 }: BookingKonfirmeTabProps) {
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
-  const sendSms = false;
+  const [sendSms, setSendSms] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const [confirmationSuccess, setConfirmationSuccess] = useState<string | null>(
     null
@@ -305,17 +305,14 @@ export default function BookingKonfirmeTab({
                 />
                 E-posta
               </label>
-              <label
-                className="inline-flex cursor-not-allowed items-center gap-2 text-sm font-medium text-gray-400"
-                title="SMS sağlayıcısı henüz yapılandırılmadı"
-              >
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
                 <input
                   type="checkbox"
-                  checked={false}
-                  disabled
+                  checked={sendSms}
+                  onChange={(event) => setSendSms(event.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                 />
-                SMS (yakında)
+                SMS
               </label>
             </div>
             {sendWhatsApp ? (

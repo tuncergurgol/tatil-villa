@@ -15,6 +15,7 @@ import { resolveVillaStayQuote } from "@/lib/queries/villa-stay-quote";
 import type { StayQuote } from "@/lib/stay-quote";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
+import { sendSmsMessage } from "@/lib/sms-delivery";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import {
@@ -376,10 +377,17 @@ export async function sendAvailabilityOfferAction(input: {
     }
   }
 
-  // SMS kanalı ve payload'ı hazır; sağlayıcı bağlandığında burada teslim edilir.
-  return {
-    error: "SMS gönderim altyapısı hazır; SMS sağlayıcısı henüz bağlı değil",
-  };
+  // SMS
+  if (!data.guestPhone) return { error: "Müşteri telefonu gerekli" };
+  const sms = await sendSmsMessage({
+    phone: data.guestPhone,
+    message,
+    purpose: `availability-search:${data.villaId}`,
+  });
+  if (!sms.ok) {
+    return { error: sms.detail ?? "SMS gönderilemedi" };
+  }
+  return { success: true, message: "SMS gönderildi" };
 }
 
 export async function buildAvailabilityPublicVillaUrlAction(input: {

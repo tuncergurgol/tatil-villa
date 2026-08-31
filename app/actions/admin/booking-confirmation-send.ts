@@ -47,6 +47,7 @@ import {
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { isSmsProviderConfigured, sendSmsMessage } from "@/lib/sms-delivery";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
 const sendConfirmationSchema = z.object({
@@ -201,11 +202,26 @@ export async function sendBookingConfirmationAction(
   }
 
   if (data.sendSms) {
-    return {
-      success: false,
-      error:
-        "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
-    };
+    if (!isSmsProviderConfigured()) {
+      return {
+        success: false,
+        error:
+          "SMS sağlayıcısı yapılandırılmadı. .env içine NETGSM_USERCODE, NETGSM_PASSWORD, NETGSM_MSGHEADER ekleyin.",
+      };
+    }
+    if (!phone.trim()) {
+      return {
+        success: false,
+        error: "SMS gönderimi için müşteri telefonu gerekli",
+      };
+    }
+    const e164Sms = normalizePhoneToE164(phone);
+    if (!e164Sms || !isValidWhatsAppPhoneE164(e164Sms)) {
+      return {
+        success: false,
+        error: "Geçersiz telefon numarası",
+      };
+    }
   }
 
   if (data.sendEmail && (!email || isImportedPlaceholderEmail(email))) {
@@ -327,11 +343,17 @@ export async function sendBookingConfirmationAction(
         };
       }
     } else {
-      return {
-        success: false,
-        error:
-          "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
-      };
+      const sms = await sendSmsMessage({
+        phone,
+        message,
+        purpose: `booking-confirmation:${booking.id}`,
+      });
+      if (!sms.ok) {
+        return {
+          success: false,
+          error: sms.detail ?? "SMS gönderilemedi",
+        };
+      }
     }
 
     sentChannels.push(channel);

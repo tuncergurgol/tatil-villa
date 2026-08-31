@@ -45,7 +45,7 @@ export default function CheckInInfoShareModal({
 }: CheckInInfoShareModalProps) {
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
-  const sendSms = false;
+  const [sendSms, setSendSms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resolvedPreview, setResolvedPreview] = useState<string | null>(
@@ -67,6 +67,7 @@ export default function CheckInInfoShareModal({
     if (!open) return;
     setSendWhatsApp(true);
     setSendEmail(true);
+    setSendSms(false);
     setError(null);
     setSuccessMessage(null);
     setResolvedPreview(previewPath ?? null);
@@ -237,17 +238,14 @@ export default function CheckInInfoShareModal({
                 />
                 E-posta
               </label>
-              <label
-                className="inline-flex cursor-not-allowed items-center gap-2 text-sm font-medium text-gray-400"
-                title="SMS sağlayıcısı henüz yapılandırılmadı"
-              >
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
                 <input
                   type="checkbox"
-                  checked={false}
-                  disabled
+                  checked={sendSms}
+                  onChange={(event) => setSendSms(event.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                 />
-                SMS (yakında)
+                SMS
               </label>
             </div>
             {sendWhatsApp ? (

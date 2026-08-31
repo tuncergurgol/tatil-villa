@@ -59,6 +59,7 @@ import {
   sendCustomerNotificationWhatsApp,
   sendOperationsWhatsApp,
 } from "@/lib/whatsapp-delivery";
+import { isSmsProviderConfigured, sendSmsMessage } from "@/lib/sms-delivery";
 
 const audienceSchema = z.enum(["guest", "owner"]);
 
@@ -427,14 +428,6 @@ export async function sendCheckInInfoShareAction(
       };
     }
 
-    if (sendSms) {
-      return {
-        success: false,
-        error:
-          "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
-      };
-    }
-
     const ctx = await loadCheckInInfoShareContext(bookingId, audience);
     if (!ctx.ok) return { success: false, error: ctx.error };
 
@@ -465,6 +458,32 @@ export async function sendCheckInInfoShareAction(
             audience === "guest"
               ? "E-posta gönderimi için geçerli müşteri e-postası gerekli"
               : "Villa yetkilisi e-posta adresi yok",
+        };
+      }
+    }
+
+    if (sendSms) {
+      if (!isSmsProviderConfigured()) {
+        return {
+          success: false,
+          error:
+            "SMS sağlayıcısı yapılandırılmadı. .env içine NETGSM_USERCODE, NETGSM_PASSWORD, NETGSM_MSGHEADER ekleyin.",
+        };
+      }
+      if (!ctx.phone) {
+        return {
+          success: false,
+          error:
+            audience === "guest"
+              ? "SMS gönderimi için müşteri telefonu gerekli"
+              : "Villa yetkilisi / karşılama telefonu yok",
+        };
+      }
+      const e164Sms = normalizePhoneToE164(ctx.phone);
+      if (!e164Sms || !isValidWhatsAppPhoneE164(e164Sms)) {
+        return {
+          success: false,
+          error: "Geçersiz telefon numarası",
         };
       }
     }
@@ -576,12 +595,25 @@ export async function sendCheckInInfoShareAction(
         continue;
       }
 
-      channelResults.push({
-        channel,
-        ok: false,
-        error:
-          "SMS sağlayıcısı henüz yapılandırılmadı. Lütfen WhatsApp veya E-posta kullanın.",
-      });
+      try {
+        const sms = await sendSmsMessage({
+          phone: ctx.phone,
+          message,
+          purpose: `check-in-info:${bookingId}:${audience}`,
+        });
+        if (!sms.ok) {
+          throw new Error(sms.detail ?? "SMS gönderilemedi");
+        }
+        channelResults.push({ channel, ok: true });
+        sentChannels.push(channel);
+      } catch (error) {
+        channelResults.push({
+          channel,
+          ok: false,
+          error:
+            error instanceof Error ? error.message : "SMS gönderilemedi",
+        });
+      }
     }
 
     if (sentChannels.length === 0) {
