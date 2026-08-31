@@ -4,9 +4,11 @@ import bcrypt from "bcryptjs";
 import { type Prisma } from "@prisma/client";
 import { z } from "zod";
 import { getAdminPanelBaseUrl } from "@/lib/admin-auth-url";
+import { recordAdminAuditEvent } from "@/lib/admin-audit";
 import { prisma } from "@/lib/db";
 import { sendCompanyMail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getRequestClientIp } from "@/lib/request-client-ip";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
   ADMIN_PASSWORD_RESET_PURPOSE,
@@ -89,6 +91,13 @@ export async function requestAdminPasswordResetAction(
       channel: "email",
       payload: payload as unknown as Prisma.InputJsonValue,
     },
+  });
+
+  await recordAdminAuditEvent({
+    action: "password_reset_request",
+    userId: user.id,
+    email: user.email,
+    ip: await getRequestClientIp(),
   });
 
   const company = await getCompanySettings();
@@ -187,6 +196,13 @@ export async function resetAdminPasswordAction(
       data: { usedAt: new Date() },
     }),
   ]);
+
+  await recordAdminAuditEvent({
+    action: "password_reset_complete",
+    userId: payload.userId,
+    email: payload.email,
+    ip: await getRequestClientIp(),
+  });
 
   return {
     success: true,

@@ -5,8 +5,10 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { recordAdminAuditEvent } from "@/lib/admin-audit";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { getRequestClientIp } from "@/lib/request-client-ip";
 import { getActiveSalesRepOptions } from "@/lib/queries/users";
 
 export type UserActionState = {
@@ -115,14 +117,22 @@ export async function createAdminUser(
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         ...data,
         phone: normalizePhone(phone),
         passwordHash,
       },
     });
+    await recordAdminAuditEvent({
+      action: "user_created",
+      userId: created.id,
+      email: created.email,
+      ip: await getRequestClientIp(),
+      meta: { role: created.role, active: created.active },
+    });
     revalidatePath("/admin/acente/kullanicilar");
+    revalidatePath("/admin/acente/guvenlik");
     revalidatePath("/admin/rezervasyonlar");
     return { success: true };
   } catch {
@@ -192,7 +202,20 @@ export async function updateAdminUser(
       data: updateData,
     });
 
+    await recordAdminAuditEvent({
+      action: "user_updated",
+      userId,
+      email: data.email,
+      ip: await getRequestClientIp(),
+      meta: {
+        role: data.role,
+        active,
+        passwordChanged: Boolean(updateData.passwordHash),
+      },
+    });
+
     revalidatePath("/admin/acente/kullanicilar");
+    revalidatePath("/admin/acente/guvenlik");
     revalidatePath("/admin/rezervasyonlar");
     return { success: true };
   } catch {

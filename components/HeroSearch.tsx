@@ -26,7 +26,7 @@ const SEARCH_TABS = [
   { id: "tur", label: "Tur", icon: Map, href: "/tur" },
   { id: "otel", label: "Otel", icon: Building2, href: "/otel" },
   { id: "ucak-otobus", label: "Uçak/Otobüs", icon: Plane, href: "/bilet/ara" },
-  { id: "transfer", label: "Transfer", icon: Bus },
+  { id: "transfer", label: "Transfer", icon: Bus, href: "/vip-transfer" },
   { id: "arac", label: "Araç Kiralama", icon: Car, href: "/arac-kiralama" },
   {
     id: "gunubirlik",

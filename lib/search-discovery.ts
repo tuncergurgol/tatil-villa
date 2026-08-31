@@ -1,8 +1,8 @@
 import { createHmac } from "crypto";
 import { getAuthSecret } from "@/lib/auth-secret";
 import {
-  PUBLIC_SITE_KEYS,
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
+  listPublicSiteKeys,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
 
@@ -31,8 +31,8 @@ function siteKeyFromHostname(hostname: string): PublicSiteKey {
     .trim()
     .toLowerCase()
     .replace(/^www\./, "");
-  for (const siteKey of PUBLIC_SITE_KEYS) {
-    const domain = PUBLIC_SITE_META[siteKey].domain
+  for (const siteKey of listPublicSiteKeys()) {
+    const domain = getPublicSiteMeta(siteKey).domain
       .toLowerCase()
       .replace(/^www\./, "");
     if (normalized === domain) return siteKey;
@@ -42,7 +42,7 @@ function siteKeyFromHostname(hostname: string): PublicSiteKey {
 
 export function indexNowKeyForHostname(hostname: string): string {
   const siteKey = siteKeyFromHostname(hostname);
-  return createIndexNowKey(PUBLIC_SITE_META[siteKey].domain);
+  return createIndexNowKey(getPublicSiteMeta(siteKey).domain);
 }
 
 export function indexNowKeyLocation(origin: string, _key?: string): string {

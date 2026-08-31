@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PUBLIC_SITE_KEYS, PUBLIC_SITE_META } from "@/lib/public-site-keys";
+import { getPublicSiteMeta, listPublicSiteKeys } from "@/lib/public-site-keys";
 import { getPublicIndexablePages } from "@/lib/public-sitemap";
 import {
   canonicalOriginFromDomain,
@@ -35,8 +35,8 @@ export async function GET(request: Request) {
   }
 
   const results = [];
-  for (const siteKey of PUBLIC_SITE_KEYS) {
-    const domain = PUBLIC_SITE_META[siteKey].domain;
+  for (const siteKey of listPublicSiteKeys()) {
+    const domain = getPublicSiteMeta(siteKey).domain;
     const origin = canonicalOriginFromDomain(domain);
     const host = domain.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
     const key = createIndexNowKey(domain);

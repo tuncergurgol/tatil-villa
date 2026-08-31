@@ -188,6 +188,21 @@ export default function ContentManagement({
           <TabPanel active={activeModule === "kampanyalar"}>
             <CampaignManagement campaigns={campaigns} />
           </TabPanel>
+          <TabPanel active={activeModule === "custom"}>
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900">
+                Bu özel sekme kurumsal sayfa editörüne bağlı. Sekme anahtarıyla
+                aynı slug&apos;a sahip sayfa yoksa aşağıdaki listeden yeni sayfa
+                ekleyin (slug = sekme key).
+                {activeTab ? (
+                  <span className="mt-1 block font-semibold">
+                    Önerilen slug: {activeTab.key}
+                  </span>
+                ) : null}
+              </div>
+              <CorporatePageManagement pages={pages} />
+            </div>
+          </TabPanel>
           <TabPanel
             active={
               ![
@@ -196,6 +211,7 @@ export default function ContentManagement({
                 "kurumsal",
                 "menuler",
                 "kampanyalar",
+                "custom",
               ].includes(activeModule)
             }
           >
@@ -204,7 +220,8 @@ export default function ContentManagement({
                 Bu sekme için henüz içerik paneli bağlanmadı.
               </p>
               <p className="mt-1 text-xs text-gray-500">
-                Sekme adı ve sırasını düzenleyebilirsiniz.
+                Sekmeyi düzenleyip modülü SSS, Blog, Kurumsal, Menüler,
+                Kampanyalar veya Özel sayfa olarak seçin.
               </p>
             </div>
           </TabPanel>

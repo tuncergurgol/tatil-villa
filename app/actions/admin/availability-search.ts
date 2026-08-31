@@ -19,7 +19,7 @@ import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import {
   PUBLIC_SITE_KEYS,
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
 } from "@/lib/public-site-keys";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import { syncCustomerFromAvailabilitySearch } from "@/lib/customer-crm";
@@ -299,7 +299,7 @@ export async function sendAvailabilityOfferAction(input: {
   });
   if (!villa) return { error: "Villa bulunamadı" };
 
-  const site = PUBLIC_SITE_META[data.siteKey];
+  const site = getPublicSiteMeta(data.siteKey);
   const domain = sanitizePublicBookingDomain(site.domain);
   const params = new URLSearchParams();
   if (data.linkType === "DETAILED") {
@@ -402,7 +402,7 @@ export async function buildAvailabilityPublicVillaUrlAction(input: {
   if (!villa) return { error: "Villa bulunamadı" };
 
   const domain = sanitizePublicBookingDomain(
-    PUBLIC_SITE_META[input.siteKey].domain
+    getPublicSiteMeta(input.siteKey).domain
   );
   const params = new URLSearchParams();
   if (input.checkIn && input.checkOut) {

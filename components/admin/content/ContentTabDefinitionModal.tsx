@@ -27,7 +27,7 @@ export const CONTENT_TAB_MODULES = [
   { value: "kurumsal", label: "Kurumsal" },
   { value: "menuler", label: "Menüler" },
   { value: "kampanyalar", label: "Kampanyalar" },
-  { value: "custom", label: "Özel (boş panel)" },
+  { value: "custom", label: "Özel sayfa (kurumsal içerik)" },
 ] as const;
 
 type ContentTabDefinitionModalProps = {

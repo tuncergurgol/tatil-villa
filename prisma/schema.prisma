@@ -1276,6 +1276,23 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+/** Admin güvenlik olayları (login, şifre sıfırlama, kullanıcı değişiklikleri). */
+model AdminAuditEvent {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String?
+  email     String   @default("")
+  ip        String?
+  userAgent String?  @db.Text
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+  @@index([email, createdAt])
+}
+
 model CompanySettings {
   id             String  @id @default("default")
   agencyName     String  @default("")

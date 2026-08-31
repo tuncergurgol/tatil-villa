@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import {
-  PUBLIC_SITE_KEYS,
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
+  listPublicSiteKeys,
   type PublicSiteKey,
   isPublicSiteKey,
 } from "@/lib/public-site-keys";
@@ -69,7 +69,7 @@ function toRow(
     label: string;
   } & PublicSiteTrackingFields
 ): PublicSiteTrackingRow {
-  const meta = PUBLIC_SITE_META[siteKey];
+  const meta = getPublicSiteMeta(siteKey);
   return withIndexNow({
     id: row.id,
     siteKey,
@@ -89,7 +89,7 @@ function toRow(
 }
 
 function fallbackRow(siteKey: PublicSiteKey): PublicSiteTrackingRow {
-  const meta = PUBLIC_SITE_META[siteKey];
+  const meta = getPublicSiteMeta(siteKey);
   return withIndexNow({
     id: `fallback_${siteKey}`,
     siteKey,
@@ -103,8 +103,8 @@ function fallbackRow(siteKey: PublicSiteKey): PublicSiteTrackingRow {
 }
 
 export async function ensurePublicSiteTrackingRows(): Promise<void> {
-  for (const siteKey of PUBLIC_SITE_KEYS) {
-    const meta = PUBLIC_SITE_META[siteKey];
+  for (const siteKey of listPublicSiteKeys()) {
+    const meta = getPublicSiteMeta(siteKey);
     await prisma.publicSiteTracking.upsert({
       where: { siteKey },
       create: {
@@ -128,13 +128,13 @@ export async function getAllPublicSiteTracking(): Promise<PublicSiteTrackingRow[
     const byKey = new Map(
       rows.filter((r) => isPublicSiteKey(r.siteKey)).map((r) => [r.siteKey, r])
     );
-    return PUBLIC_SITE_KEYS.map((siteKey) => {
+    return listPublicSiteKeys().map((siteKey) => {
       const row = byKey.get(siteKey);
       return row ? toRow(siteKey, row) : fallbackRow(siteKey);
     });
   } catch (error) {
     console.error("[getAllPublicSiteTracking] fallback:", error);
-    return PUBLIC_SITE_KEYS.map(fallbackRow);
+    return listPublicSiteKeys().map(fallbackRow);
   }
 }
 
@@ -159,7 +159,7 @@ export async function upsertPublicSiteTracking(
   siteKey: PublicSiteKey,
   data: PublicSiteTrackingFields
 ) {
-  const meta = PUBLIC_SITE_META[siteKey];
+  const meta = getPublicSiteMeta(siteKey);
   return prisma.publicSiteTracking.upsert({
     where: { siteKey },
     create: {

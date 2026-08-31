@@ -112,8 +112,10 @@ export default function ExternalVillaSetupForm() {
         </button>
         <p className="text-xs text-slate-500">
           İlk kurulum birkaç dakika sürebilir (görseller indirilir, takvim okunur).
-          Şu an tam kurulum villareyonu.com için aktiftir; fiyat/takvim diğer
-          desteklenen acente sitelerinde de çalışır.
+          Tam kurulum (oda/mesafe/belge): <strong>villareyonu.com</strong>. Hafif
+          kurulum (başlık + fiyat/takvim): villaekstra ve diğer villa-api
+          siteleri. Cloudflare engelinde URL&apos;ye{" "}
+          <code className="rounded bg-slate-100 px-1">?entityId=…</code> ekleyin.
         </p>
       </form>
 

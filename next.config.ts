@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { LEGACY_PUBLIC_REDIRECTS } from "./lib/legacy-redirects";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -78,23 +79,11 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    return [
-      {
-        source: "/villalar/:slug",
-        destination: "/:slug",
-        permanent: true,
-      },
-      {
-        source: "/:locale(en|de|fr|es|bg|el|zh)/villalar/:slug",
-        destination: "/:locale/:slug",
-        permanent: true,
-      },
-      {
-        source: "/ucak-otobus",
-        destination: "/bilet/ara",
-        permanent: true,
-      },
-    ];
+    return LEGACY_PUBLIC_REDIRECTS.map((item) => ({
+      source: item.source,
+      destination: item.destination,
+      permanent: item.permanent ?? true,
+    }));
   },
   async rewrites() {
     return [

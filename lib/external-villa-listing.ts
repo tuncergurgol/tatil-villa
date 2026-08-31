@@ -658,10 +658,154 @@ export function parseExternalVillaListing(
     if (host.includes("villareyonu")) {
       return parseVillareyonuListing(pageUrl, html);
     }
+    // Aynı Next.js / routingData ailesi — hafif kurulum (başlık + görsel + entity)
+    if (
+      host.includes("villaekstra") ||
+      host.includes("villavillam") ||
+      host.includes("villapaketi") ||
+      host.includes("villaciniz") ||
+      host.includes("villayolu") ||
+      host.includes("ovillam") ||
+      host.includes("kiralikvillaniz") ||
+      host.includes("villakilavuzu") ||
+      host.includes("mustakilvillam") ||
+      host.includes("myvillacity") ||
+      host.includes("tatilpremium")
+    ) {
+      return parseVillaApiFamilyLightListing(pageUrl, html);
+    }
   } catch {
     return null;
   }
   return null;
+}
+
+function extractOgImages(html: string): string[] {
+  const urls = [
+    ...html.matchAll(
+      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/gi
+    ),
+    ...html.matchAll(
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/gi
+    ),
+  ]
+    .map((match) => match[1]!.trim())
+    .filter((url) => /^https?:\/\//i.test(url));
+  return [...new Set(urls)].slice(0, 40);
+}
+
+function extractPageTitleTag(html: string): string {
+  const raw =
+    html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.replace(/\s+/g, " ").trim() ??
+    "";
+  return raw.split("|")[0]?.split("-")[0]?.trim() || raw;
+}
+
+function extractRoutingTitle(html: string, pageUrl: string): string | null {
+  try {
+    const slug = new URL(pageUrl).pathname.replace(/\/+$/, "").split("/").pop() ?? "";
+    if (!slug) return null;
+    const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const patterns = [
+      new RegExp(
+        `"baslik\\\\":\\\\"([^\\\\]+)\\\\"[\\s\\S]{0,200}"url\\\\":\\\\"\\/?${escapedSlug}\\\\"`,
+        "i"
+      ),
+      new RegExp(
+        `"url\\\\":\\\\"\\/?${escapedSlug}\\\\"[\\s\\S]{0,200}"baslik\\\\":\\\\"([^\\\\]+)\\\\"`,
+        "i"
+      ),
+      new RegExp(
+        `"title"\\s*:\\s*"([^"]+)"[\\s\\S]{0,120}"url"\\s*:\\s*"\\/?${escapedSlug}"`,
+        "i"
+      ),
+    ];
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match?.[1]) return unescapeRsc(match[1]).trim();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function extractRoutingEntityId(html: string, pageUrl: string): string | null {
+  try {
+    const slug = new URL(pageUrl).pathname.replace(/\/+$/, "").split("/").pop() ?? "";
+    if (!slug) return null;
+    const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const near = html.match(
+      new RegExp(
+        `routingData\\\\":\\{\\\\"id\\\\":\\\\"(\\d+)\\\\"[\\s\\S]{0,400}url\\\\":\\\\"\\/?${escapedSlug}\\\\"`,
+        "i"
+      )
+    );
+    if (near?.[1]) return near[1];
+    const urlParam = new URL(pageUrl).searchParams.get("entityId");
+    if (urlParam && /^\d+$/.test(urlParam)) return urlParam;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function parseVillaApiFamilyLightListing(
+  pageUrl: string,
+  html: string
+): ExternalVillaListing | null {
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  const name =
+    extractRoutingTitle(html, pageUrl) ||
+    extractPageTitleTag(html) ||
+    titleCaseTr(
+      new URL(pageUrl).pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ||
+        "Yeni Villa"
+    );
+  if (!name || name.length < 2) return null;
+
+  const entityId = extractRoutingEntityId(html, pageUrl);
+  const documentMatch =
+    html.match(/HI[-\s]?\d{4,}/i)?.[0] ||
+    html.match(/VR[-\s]?\d{3,}/i)?.[0] ||
+    html.match(/07[-\s]?\d{3,}/)?.[0] ||
+    "";
+
+  return {
+    sourceHost: host,
+    pageUrl,
+    name,
+    originalName: name,
+    locationLabel: "",
+    districtName: null,
+    cityName: null,
+    guests: 4,
+    bedrooms: 2,
+    bathrooms: 1,
+    livingRooms: 1,
+    latitude: 0,
+    longitude: 0,
+    documentNo: documentMatch.replace(/\s+/g, "-").toUpperCase(),
+    checkInTime: "16:00",
+    checkOutTime: "10:00",
+    ribbonText1: "",
+    minNightlyPrice: null,
+    damageDeposit: null,
+    prepaymentRate: null,
+    descriptionHtml: "",
+    amenityLabels: [],
+    facilityLabels: [],
+    imageUrls: extractOgImages(html),
+    distances: [],
+    pool: null,
+    rooms: [],
+    entityId,
+    allowPets: false,
+    allowEvents: false,
+    allowSmoking: false,
+    allowChildren: true,
+    allowBaby: true,
+  };
 }
 
 export async function scrapeExternalVillaListing(
@@ -677,6 +821,10 @@ export async function scrapeExternalVillaListing(
     throw new Error("URL http veya https olmalı");
   }
 
+  // Cloudflare engeline karşı entityId ile hafif kurulum
+  const entityFromUrl = parsed.searchParams.get("entityId");
+  const host = normalizeHost(parsed.hostname);
+
   const response = await fetch(parsed.toString(), {
     headers: {
       "User-Agent": BROWSER_UA,
@@ -687,20 +835,69 @@ export async function scrapeExternalVillaListing(
     cache: "no-store",
     redirect: "follow",
   });
-  if (!response.ok) {
+
+  let html = "";
+  if (response.ok) {
+    html = await response.text();
+    await sleep(400);
+  } else if (entityFromUrl && /^\d+$/.test(entityFromUrl)) {
+    // Sayfa 403/429 olsa bile entityId ile devam
+    html = "";
+  } else {
     throw new Error(`Sayfa alınamadı (${response.status})`);
   }
-  const html = await response.text();
-  await sleep(400);
 
-  const listing = parseExternalVillaListing(parsed.toString(), html);
+  let listing = html ? parseExternalVillaListing(parsed.toString(), html) : null;
+
+  if (!listing && entityFromUrl && /^\d+$/.test(entityFromUrl)) {
+    const slugName = titleCaseTr(
+      parsed.pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ||
+        "Yeni Villa"
+    );
+    listing = {
+      sourceHost: host,
+      pageUrl: parsed.toString(),
+      name: slugName,
+      originalName: slugName,
+      locationLabel: "",
+      districtName: null,
+      cityName: null,
+      guests: 4,
+      bedrooms: 2,
+      bathrooms: 1,
+      livingRooms: 1,
+      latitude: 0,
+      longitude: 0,
+      documentNo: "",
+      checkInTime: "16:00",
+      checkOutTime: "10:00",
+      ribbonText1: "",
+      minNightlyPrice: null,
+      damageDeposit: null,
+      prepaymentRate: null,
+      descriptionHtml: "",
+      amenityLabels: [],
+      facilityLabels: [],
+      imageUrls: [],
+      distances: [],
+      pool: null,
+      rooms: [],
+      entityId: entityFromUrl,
+      allowPets: false,
+      allowEvents: false,
+      allowSmoking: false,
+      allowChildren: true,
+      allowBaby: true,
+    };
+  }
+
   if (!listing) {
     throw new Error(
-      `${normalizeHost(parsed.hostname)} ilan bilgisi (fotoğraf, belge, konum) henüz otomatik okunamıyor. Desteklenen tam kurulum: villareyonu.com`
+      `${host} ilan bilgisi okunamadı. Tam kurulum: villareyonu.com. Hafif kurulum (başlık+fiyat/takvim): villaekstra ve diğer villa-api siteleri (gerekirse ?entityId= ekleyin).`
     );
   }
 
-  if (listing.entityId && listing.distances.length === 0) {
+  if (listing.entityId && listing.distances.length === 0 && host.includes("villareyonu")) {
     try {
       listing.distances = await fetchVillareyonuDistances(
         listing.entityId,
@@ -709,6 +906,12 @@ export async function scrapeExternalVillaListing(
     } catch {
       // HTML mesafesi yoksa boş kalır; kurulum diğer alanlarla devam eder
     }
+  }
+
+  // Fiyat/takvim senkronunda entityId URL'de olsun (CF HTML engeli bypass)
+  if (listing.entityId && !parsed.searchParams.get("entityId")) {
+    parsed.searchParams.set("entityId", listing.entityId);
+    listing.pageUrl = parsed.toString();
   }
 
   return listing;

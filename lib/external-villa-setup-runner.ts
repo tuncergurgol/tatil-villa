@@ -353,6 +353,8 @@ export async function setupVillaFromExternalUrl(
   if (options?.name?.trim()) {
     listing.name = options.name.trim();
   }
+  // scrape entityId eklediyse fiyat/takvim için zenginleştirilmiş URL kullan
+  const syncUrl = normalizeUrl(listing.pageUrl || pageUrl);
 
   const warnings: string[] = [];
   const regionId = await resolveMahalleRegionId(listing);
@@ -371,7 +373,7 @@ export async function setupVillaFromExternalUrl(
     showInOffer: true,
   };
 
-  const existing = await findExistingVilla(pageUrl, listing);
+  const existing = await findExistingVilla(syncUrl, listing);
   let created = false;
   let villaId: string;
   let numericVillaId: number | null;
@@ -405,7 +407,7 @@ export async function setupVillaFromExternalUrl(
     allowPets: listing.allowPets,
     latitude: listing.latitude,
     longitude: listing.longitude,
-    externalSyncUrl1: pageUrl,
+    externalSyncUrl1: syncUrl,
     ...visibility,
   };
 
@@ -467,7 +469,7 @@ export async function setupVillaFromExternalUrl(
   let bookedDays = 0;
   let optionDays = 0;
   try {
-    const imported = await importVillaPeriodsFromExternalPage(villaId, pageUrl, {
+    const imported = await importVillaPeriodsFromExternalPage(villaId, syncUrl, {
       syncMode: "calendar_and_price",
     });
     periodCount = imported.periodCount;
@@ -501,7 +503,7 @@ export async function setupVillaFromExternalUrl(
     optionDays,
     roomCount,
     documentNo,
-    link1: pageUrl,
+    link1: syncUrl,
     published: visibility.active && visibility.showInSearch,
     warnings,
   };

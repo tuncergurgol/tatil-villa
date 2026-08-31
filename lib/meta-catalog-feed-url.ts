@@ -1,6 +1,6 @@
 import {
-  PUBLIC_SITE_KEYS,
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
+  listPublicSiteKeys,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
 import { buildMetaCatalogFeedR2Url } from "@/lib/meta-catalog-feed-r2";
@@ -33,10 +33,10 @@ export function buildMetaCatalogFeedUrl(
 }
 
 export function getMetaCatalogFeedUrls(): MetaCatalogFeedUrlRow[] {
-  return PUBLIC_SITE_KEYS.map((siteKey) => ({
+  return listPublicSiteKeys().map((siteKey) => ({
     siteKey,
-    label: PUBLIC_SITE_META[siteKey].label,
-    url: buildMetaCatalogFeedUrl(PUBLIC_SITE_META[siteKey].domain, siteKey),
-    siteUrl: buildMetaCatalogSiteFeedUrl(PUBLIC_SITE_META[siteKey].domain),
+    label: getPublicSiteMeta(siteKey).label,
+    url: buildMetaCatalogFeedUrl(getPublicSiteMeta(siteKey).domain, siteKey),
+    siteUrl: buildMetaCatalogSiteFeedUrl(getPublicSiteMeta(siteKey).domain),
   }));
 }

@@ -67,7 +67,9 @@ export default async function ContentHubPage({
           updatedAt: new Date(),
         }),
     activeModule === "blog" ? getBlogAiTopicsForAdmin() : Promise.resolve([]),
-    activeModule === "kurumsal" ? getAllCmsPagesForAdmin() : Promise.resolve([]),
+    activeModule === "kurumsal" || activeModule === "custom"
+      ? getAllCmsPagesForAdmin()
+      : Promise.resolve([]),
     activeModule === "menuler" ? getAllSiteMenusForAdmin() : Promise.resolve([]),
     activeModule === "kampanyalar" ? getAllCampaigns() : Promise.resolve([]),
   ]);

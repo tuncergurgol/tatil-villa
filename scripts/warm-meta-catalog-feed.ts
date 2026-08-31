@@ -4,24 +4,18 @@
  */
 import { warmMetaCatalogFeedCache } from "../lib/meta-catalog-feed-cache";
 import {
-  PUBLIC_SITE_KEYS,
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
+  listPublicSiteKeys,
   type PublicSiteKey,
 } from "../lib/public-site-keys";
 import type { PublicSiteProfile } from "../lib/public-site-profile";
 
-const BRAND_NAMES: Record<PublicSiteKey, string> = {
-  tatildeyiz: "Tatildeyiz",
-  "balayi-villacisi": "Balayı Villacısı",
-  "tatil-villacisi": "Tatil Villacısı",
-};
-
 function minimalSiteProfile(siteKey: PublicSiteKey): PublicSiteProfile {
-  const meta = PUBLIC_SITE_META[siteKey];
+  const meta = getPublicSiteMeta(siteKey);
   return {
     key: siteKey,
     domain: meta.domain,
-    brandName: BRAND_NAMES[siteKey],
+    brandName: meta.label,
     logoUrl: "",
     faviconUrl: "",
     ogImageUrl: "",
@@ -34,7 +28,7 @@ function minimalSiteProfile(siteKey: PublicSiteKey): PublicSiteProfile {
 }
 
 async function main() {
-  for (const siteKey of PUBLIC_SITE_KEYS) {
+  for (const siteKey of listPublicSiteKeys()) {
     const site = minimalSiteProfile(siteKey);
     const result = await warmMetaCatalogFeedCache(site);
     console.log(

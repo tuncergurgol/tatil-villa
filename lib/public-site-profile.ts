@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
+import { getOptionalSite4Config } from "@/lib/public-site-4";
+import type { PublicSiteKey } from "@/lib/public-site-keys";
 
 type CompanyBrandSource = {
   brandName: string;
@@ -13,7 +15,7 @@ type CompanyBrandSource = {
 };
 
 export type PublicSiteProfile = {
-  key: "tatildeyiz" | "balayi-villacisi" | "tatil-villacisi";
+  key: PublicSiteKey;
   domain: string;
   brandName: string;
   logoUrl: string;
@@ -31,40 +33,68 @@ const DEFAULT_HERO_IMAGE_URL =
 
 type BrandedSiteProfile = Omit<PublicSiteProfile, "useDefaultLogo">;
 
-const BRANDED_SITES: Array<{ hosts: string[]; profile: BrandedSiteProfile }> = [
-  {
-    hosts: ["balayivillacisi.com", "www.balayivillacisi.com"],
-    profile: {
-      key: "balayi-villacisi",
-      domain: "www.balayivillacisi.com",
-      brandName: "Balayı Villacısı",
-      logoUrl: "/brands/balayi-villacisi/logo.png",
-      faviconUrl: "/brands/balayi-villacisi/favicon.png",
-      ogImageUrl: "/brands/balayi-villacisi/og-image.png",
-      seoTitle: "Balayı Villacısı - Aşkınıza Özel Hayalinizdeki Balayı",
-      seoDescription:
-        "Balayı çiftlerine özel korunaklı, jakuzili ve özel havuzlu kiralık villaları keşfedin. Aşkınıza özel unutulmaz bir balayı tatili planlayın.",
-      heroTitle: "Aşkınıza Özel Hayalinizdeki Balayı Villaları",
-      heroImageUrl: "/brands/balayi-villacisi/hero.png",
+function buildBrandedSites(): Array<{
+  hosts: string[];
+  profile: BrandedSiteProfile;
+}> {
+  const sites: Array<{ hosts: string[]; profile: BrandedSiteProfile }> = [
+    {
+      hosts: ["balayivillacisi.com", "www.balayivillacisi.com"],
+      profile: {
+        key: "balayi-villacisi",
+        domain: "www.balayivillacisi.com",
+        brandName: "Balayı Villacısı",
+        logoUrl: "/brands/balayi-villacisi/logo.png",
+        faviconUrl: "/brands/balayi-villacisi/favicon.png",
+        ogImageUrl: "/brands/balayi-villacisi/og-image.png",
+        seoTitle: "Balayı Villacısı - Aşkınıza Özel Hayalinizdeki Balayı",
+        seoDescription:
+          "Balayı çiftlerine özel korunaklı, jakuzili ve özel havuzlu kiralık villaları keşfedin. Aşkınıza özel unutulmaz bir balayı tatili planlayın.",
+        heroTitle: "Aşkınıza Özel Hayalinizdeki Balayı Villaları",
+        heroImageUrl: "/brands/balayi-villacisi/hero.png",
+      },
     },
-  },
-  {
-    hosts: ["tatilvillacisi.com", "www.tatilvillacisi.com"],
-    profile: {
-      key: "tatil-villacisi",
-      domain: "www.tatilvillacisi.com",
-      brandName: "Tatil Villacısı",
-      logoUrl: "/brands/tatil-villacisi/logo.png",
-      faviconUrl: "/brands/tatil-villacisi/favicon.png",
-      ogImageUrl: "/brands/tatil-villacisi/og-image.png",
-      seoTitle: "Tatil Villacısı - Hayalinizdeki Tatil Villası",
-      seoDescription:
-        "Türkiye'nin en güzel bölgelerinde özel havuzlu, deniz manzaralı ve korunaklı kiralık tatil villalarını keşfedin. Hayalinizdeki tatili Tatil Villacısı ile planlayın.",
-      heroTitle: "Hayalinizdeki Tatil Villası Bir Tık Uzağınızda",
-      heroImageUrl: "/brands/tatil-villacisi/hero.png",
+    {
+      hosts: ["tatilvillacisi.com", "www.tatilvillacisi.com"],
+      profile: {
+        key: "tatil-villacisi",
+        domain: "www.tatilvillacisi.com",
+        brandName: "Tatil Villacısı",
+        logoUrl: "/brands/tatil-villacisi/logo.png",
+        faviconUrl: "/brands/tatil-villacisi/favicon.png",
+        ogImageUrl: "/brands/tatil-villacisi/og-image.png",
+        seoTitle: "Tatil Villacısı - Hayalinizdeki Tatil Villası",
+        seoDescription:
+          "Türkiye'nin en güzel bölgelerinde özel havuzlu, deniz manzaralı ve korunaklı kiralık tatil villalarını keşfedin. Hayalinizdeki tatili Tatil Villacısı ile planlayın.",
+        heroTitle: "Hayalinizdeki Tatil Villası Bir Tık Uzağınızda",
+        heroImageUrl: "/brands/tatil-villacisi/hero.png",
+      },
     },
-  },
-];
+  ];
+
+  const site4 = getOptionalSite4Config();
+  if (site4) {
+    sites.push({
+      hosts: site4.hosts,
+      profile: {
+        key: site4.key,
+        domain: site4.domain,
+        brandName: site4.brandName,
+        logoUrl: `/brands/${site4.key}/logo.png`,
+        faviconUrl: `/brands/${site4.key}/favicon.png`,
+        ogImageUrl: `/brands/${site4.key}/og-image.png`,
+        seoTitle: site4.seoTitle,
+        seoDescription: site4.seoDescription,
+        heroTitle: site4.heroTitle,
+        heroImageUrl: `/brands/${site4.key}/hero.png`,
+      },
+    });
+  }
+
+  return sites;
+}
+
+const BRANDED_SITES = buildBrandedSites();
 
 const BRANDED_SITE_BY_HOST = new Map<string, BrandedSiteProfile>(
   BRANDED_SITES.flatMap(({ hosts, profile }) =>

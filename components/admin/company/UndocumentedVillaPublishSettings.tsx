@@ -6,7 +6,7 @@ import { FileWarning, Globe } from "lucide-react";
 import { setUndocumentedVillaPublishForSite } from "@/app/actions/admin/company-settings";
 import {
   PUBLIC_SITE_KEYS,
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
   isPublicSiteKey,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
@@ -83,7 +83,7 @@ export default function UndocumentedVillaPublishSettings({
           </thead>
           <tbody>
             {PUBLIC_SITE_KEYS.map((siteKey) => {
-              const meta = PUBLIC_SITE_META[siteKey];
+              const meta = getPublicSiteMeta(siteKey);
               const publish = allowed.includes(siteKey);
               const disabled = isPending && pendingKey === siteKey;
 

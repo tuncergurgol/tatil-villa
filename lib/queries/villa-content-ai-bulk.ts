@@ -4,7 +4,11 @@ import {
   getPublishUndocumentedVillaSiteKeys,
   isVillaVisibleOnPublicSite,
 } from "@/lib/public-villa-site-filter";
-import { PUBLIC_SITE_KEYS, PUBLIC_SITE_META, type PublicSiteKey } from "@/lib/public-site-keys";
+import {
+  getPublicSiteMeta,
+  listPublicSiteKeys,
+  type PublicSiteKey,
+} from "@/lib/public-site-keys";
 
 export type VillaContentAiBulkRow = {
   id: string;
@@ -47,9 +51,9 @@ function resolveSiteLabels(
   },
   allowedSiteKeys: readonly PublicSiteKey[]
 ) {
-  return PUBLIC_SITE_KEYS.filter((siteKey) =>
+  return listPublicSiteKeys().filter((siteKey) =>
     isVillaVisibleOnPublicSite(villa, siteKey, allowedSiteKeys)
-  ).map((siteKey) => PUBLIC_SITE_META[siteKey].label);
+  ).map((siteKey) => getPublicSiteMeta(siteKey).label);
 }
 
 export async function getVillaContentAiBulkRows(): Promise<VillaContentAiBulkRow[]> {

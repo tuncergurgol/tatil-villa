@@ -38,7 +38,7 @@ import { isValidStoredPhoneE164 } from "@/lib/phone-utils";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import {
   PUBLIC_SITE_KEYS,
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
 
@@ -474,7 +474,7 @@ export default function AvailabilitySearchPage({
                 >
                   {PUBLIC_SITE_KEYS.map((key) => (
                     <option key={key} value={key}>
-                      {PUBLIC_SITE_META[key].label} ({PUBLIC_SITE_META[key].domain})
+                      {getPublicSiteMeta(key).label} ({getPublicSiteMeta(key).domain})
                     </option>
                   ))}
                 </select>

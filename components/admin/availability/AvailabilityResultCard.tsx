@@ -23,7 +23,7 @@ import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-se
 import type { StayQuote } from "@/lib/stay-quote";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import {
-  PUBLIC_SITE_META,
+  getPublicSiteMeta,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
@@ -57,7 +57,7 @@ function buildVillaPublicUrl(
   if (checkOut) params.set("checkOut", checkOut);
   if (adults > 0) params.set("adults", String(adults));
   const query = params.toString();
-  const domain = sanitizePublicBookingDomain(PUBLIC_SITE_META[siteKey].domain);
+  const domain = sanitizePublicBookingDomain(getPublicSiteMeta(siteKey).domain);
   return `https://${domain}${villaPublicPath(slug)}${query ? `?${query}` : ""}`;
 }
 
@@ -460,8 +460,8 @@ export default function AvailabilityResultCard({
               <option value="VILLA_ONLY">Sadece villa linki gönder</option>
             </select>
             <p className="rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-[11px] font-medium text-violet-700">
-              Site: {PUBLIC_SITE_META[siteKey].label} (
-              {PUBLIC_SITE_META[siteKey].domain})
+              Site: {getPublicSiteMeta(siteKey).label} (
+              {getPublicSiteMeta(siteKey).domain})
             </p>
           </div>
 

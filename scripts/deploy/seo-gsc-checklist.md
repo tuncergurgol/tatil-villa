@@ -9,6 +9,20 @@ Geçiş sonrası Google’ın yeni altyapıyı tanıması birkaç hafta sürebil
 | Tatildeyiz | https://www.tatildeyiz.com.tr | /robots.txt | /sitemap.xml |
 | Balayı Villacısı | https://www.balayivillacisi.com | /robots.txt | /sitemap.xml |
 | Tatil Villacısı | https://www.tatilvillacisi.com | /robots.txt | /sitemap.xml |
+| Site 4 (opsiyonel) | `PUBLIC_SITE_4_DOMAIN` | /robots.txt | /sitemap.xml |
+
+## Bing Webmaster
+
+1. https://www.bing.com/webmasters → site ekle (URL-prefix `https://www.…`)
+2. HTML meta etiketi `content` değerini kopyala
+3. Admin → Acente → Şirket → **Analytics & Scriptler** → ilgili site → Bing Webmaster alanına yapıştır
+4. Sitemap: `https://www.{domain}/sitemap.xml`
+
+## Yandex Webmaster
+
+1. HTML doğrulama dosyaları `public/yandex_*.html` kökte yayında olabilir
+2. Webmaster’da **Doğrula** → sitemap `/sitemap.xml` ekle
+3. İsteğe bağlı: Analytics’teki Yandex Webmaster meta alanı
 
 Admin paneli (`bont.tatildeyiz.com.tr`) indexlenmez (`Disallow: /admin`).
 

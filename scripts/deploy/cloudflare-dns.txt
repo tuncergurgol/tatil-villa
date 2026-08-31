@@ -21,6 +21,14 @@ balayivillacisi.com        -> 185.184.210.96   # www yönlendirmesi
 www.tatilvillacisi.com     -> 185.184.210.96   # Site 3 (proxied)
 tatilvillacisi.com         -> 185.184.210.96   # apex -> www (nginx 301)
 
+# Zone: Site 4 (domain belli olunca)
+# PUBLIC_SITE_4_KEY / PUBLIC_SITE_4_DOMAIN / PUBLIC_SITE_4_BRAND .env'e yazın.
+# www.{site4}.com           -> 185.184.210.96   # Site 4 (proxied)
+# {site4}.com               -> 185.184.210.96   # apex -> www (nginx 301)
+# nginx-tatildeyiz.conf içine Site 3 kopyası server block ekleyin (server_name güncelleyin).
+# public/brands/{key}/ altına logo.png, favicon.png, og-image.png, hero.png koyun.
+# Admin → Acente → Şirket → Analytics'te yeni siteKey için Bing/Yandex/GSC kodlarını girin.
+
 # Cloudflare SSL/TLS
 # - Başlangıç: Full
 # - Origin sertifikası kurulunca: Full (strict)
