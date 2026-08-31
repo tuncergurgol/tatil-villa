@@ -355,7 +355,12 @@ export async function setupVillaFromExternalUrl(
   }
 ): Promise<ExternalVillaSetupResult> {
   const pageUrl = normalizeUrl(pageUrlRaw);
-  const listing = await scrapeExternalVillaListing(pageUrl);
+  const listing = await scrapeExternalVillaListing(pageUrl, {
+    fallbackName: options?.name?.trim() || undefined,
+    allowMinimalFallback: Boolean(
+      options?.name?.trim() || options?.googleDriveUrl?.trim()
+    ),
+  });
   if (options?.name?.trim()) {
     listing.name = options.name.trim();
   }
@@ -363,6 +368,15 @@ export async function setupVillaFromExternalUrl(
   const syncUrl = normalizeUrl(listing.pageUrl || pageUrl);
 
   const warnings: string[] = [];
+  try {
+    const originalPath = new URL(pageUrl).pathname.replace(/\/+$/, "");
+    const usedPath = new URL(listing.pageUrl).pathname.replace(/\/+$/, "");
+    if (originalPath !== usedPath) {
+      warnings.push(`Kaynak URL sitemap ile düzeltildi: ${listing.pageUrl}`);
+    }
+  } catch {
+    // ignore
+  }
   const googleDriveUrl = options?.googleDriveUrl?.trim() || "";
   if (googleDriveUrl) {
     const driveGallery = await listGoogleDriveImageUrls(googleDriveUrl);

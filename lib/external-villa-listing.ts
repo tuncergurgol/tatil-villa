@@ -674,10 +674,10 @@ export function parseExternalVillaListing(
     ) {
       return parseVillaApiFamilyLightListing(pageUrl, html);
     }
+    return parseGenericHtmlListing(pageUrl, html);
   } catch {
     return null;
   }
-  return null;
 }
 
 function extractOgImages(html: string): string[] {
@@ -808,8 +808,292 @@ function parseVillaApiFamilyLightListing(
   };
 }
 
-export async function scrapeExternalVillaListing(
+function extractBravoServiceId(html: string): string | null {
+  const bravoMatch = html.match(
+    /bravo_booking_data\s*=\s*(\{[\s\S]*?\})\s*[\r\n;]/
+  );
+  if (bravoMatch?.[1]) {
+    try {
+      const data = JSON.parse(bravoMatch[1]) as {
+        id?: number | string;
+        max_guests?: number | string;
+      };
+      if (data.id != null && String(data.id).trim()) {
+        return String(data.id).trim();
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return (
+    html.match(
+      /<input[^>]+name=["']service_id["'][^>]+value=["'](\d+)["']/i
+    )?.[1] ?? null
+  );
+}
+
+function extractBravoMaxGuests(html: string): number | null {
+  const bravoMatch = html.match(
+    /bravo_booking_data\s*=\s*(\{[\s\S]*?\})\s*[\r\n;]/
+  );
+  if (!bravoMatch?.[1]) return null;
+  try {
+    const data = JSON.parse(bravoMatch[1]) as { max_guests?: number | string };
+    const guests = Number(data.max_guests);
+    return Number.isFinite(guests) && guests > 0 ? guests : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseGenericHtmlListing(
+  pageUrl: string,
+  html: string
+): ExternalVillaListing | null {
+  // Laravel/Next hata sayfası — ilan değil
+  if (
+    /Server hatas/i.test(html) &&
+    html.length < 5000 &&
+    !/bravo_booking_data|og:title|service_id/i.test(html)
+  ) {
+    return null;
+  }
+
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  const ogTitle =
+    html.match(
+      /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i
+    )?.[1] ||
+    html.match(
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i
+    )?.[1];
+  const name =
+    (ogTitle ? unescapeRsc(ogTitle).replace(/\s+/g, " ").trim() : "") ||
+    extractPageTitleTag(html) ||
+    titleCaseTr(
+      new URL(pageUrl).pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ||
+        ""
+    );
+  if (!name || name.length < 2) return null;
+  if (/server hatas|404|not found|sayfa bulunamad/i.test(name)) return null;
+
+  const entityId = extractBravoServiceId(html);
+  const guests = extractBravoMaxGuests(html) ?? 4;
+  const documentMatch =
+    html.match(/HI[-\s]?\d{4,}/i)?.[0] ||
+    html.match(/VR[-\s]?\d{3,}/i)?.[0] ||
+    html.match(/07[-\s]?\d{3,}/)?.[0] ||
+    "";
+
+  const bedroomsMatch =
+    html.match(/(\d+)\s*(?:Yatak\s*Odas|Yatak\s*oda|Bedroom)/i)?.[1] ||
+    html.match(/Yatak\s*Odas[^\d]{0,20}(\d+)/i)?.[1];
+  const bathroomsMatch =
+    html.match(/(\d+)\s*(?:Banyo|Bathroom)/i)?.[1] ||
+    html.match(/Banyo[^\d]{0,20}(\d+)/i)?.[1];
+
+  return {
+    sourceHost: host,
+    pageUrl,
+    name,
+    originalName: name,
+    locationLabel: "",
+    districtName: null,
+    cityName: null,
+    guests,
+    bedrooms: parseIntSafe(bedroomsMatch ?? null, 2),
+    bathrooms: parseIntSafe(bathroomsMatch ?? null, 1),
+    livingRooms: 1,
+    latitude: 0,
+    longitude: 0,
+    documentNo: documentMatch.replace(/\s+/g, "-").toUpperCase(),
+    checkInTime: "16:00",
+    checkOutTime: "10:00",
+    ribbonText1: "",
+    minNightlyPrice: null,
+    damageDeposit: null,
+    prepaymentRate: null,
+    descriptionHtml: "",
+    amenityLabels: [],
+    facilityLabels: [],
+    imageUrls: extractOgImages(html),
+    distances: [],
+    pool: null,
+    rooms: [],
+    entityId,
+    allowPets: false,
+    allowEvents: false,
+    allowSmoking: false,
+    allowChildren: true,
+    allowBaby: true,
+  };
+}
+
+function buildMinimalListingFromUrl(
+  pageUrl: string,
+  fallbackName?: string
+): ExternalVillaListing {
+  const parsed = new URL(pageUrl);
+  const host = normalizeHost(parsed.hostname);
+  const slugName = titleCaseTr(
+    parsed.pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ||
+      "Yeni Villa"
+  );
+  const name = fallbackName?.trim() || slugName;
+  return {
+    sourceHost: host,
+    pageUrl,
+    name,
+    originalName: name,
+    locationLabel: "",
+    districtName: null,
+    cityName: null,
+    guests: 4,
+    bedrooms: 2,
+    bathrooms: 1,
+    livingRooms: 1,
+    latitude: 0,
+    longitude: 0,
+    documentNo: "",
+    checkInTime: "16:00",
+    checkOutTime: "10:00",
+    ribbonText1: "",
+    minNightlyPrice: null,
+    damageDeposit: null,
+    prepaymentRate: null,
+    descriptionHtml: "",
+    amenityLabels: [],
+    facilityLabels: [],
+    imageUrls: [],
+    distances: [],
+    pool: null,
+    rooms: [],
+    entityId: null,
+    allowPets: false,
+    allowEvents: false,
+    allowSmoking: false,
+    allowChildren: true,
+    allowBaby: true,
+  };
+}
+
+function slugBaseCandidates(slug: string): string[] {
+  const normalized = slug.trim().toLowerCase();
+  const candidates = new Set<string>([normalized]);
+  const withoutTrailingNum = normalized.replace(/-\d+$/, "");
+  if (withoutTrailingNum && withoutTrailingNum !== normalized) {
+    candidates.add(withoutTrailingNum);
+  }
+  const parts = normalized.split("-").filter(Boolean);
+  if (parts.length >= 2) {
+    candidates.add(parts.slice(0, 2).join("-"));
+  }
+  return [...candidates];
+}
+
+async function findSitemapAlternateUrl(
   pageUrl: string
+): Promise<string | null> {
+  let parsed: URL;
+  try {
+    parsed = new URL(pageUrl);
+  } catch {
+    return null;
+  }
+  const slug =
+    parsed.pathname.replace(/\/+$/, "").split("/").filter(Boolean).pop() || "";
+  if (!slug || slug.length < 4) return null;
+
+  const bases = slugBaseCandidates(slug);
+  const sitemapCandidates = [
+    `${parsed.origin}/sitemap-space.xml`,
+    `${parsed.origin}/sitemap.xml`,
+  ];
+
+  for (const sitemapUrl of sitemapCandidates) {
+    try {
+      const response = await fetch(sitemapUrl, {
+        headers: {
+          "User-Agent": BROWSER_UA,
+          Accept: "application/xml,text/xml,*/*",
+        },
+        cache: "no-store",
+        redirect: "follow",
+      });
+      if (!response.ok) continue;
+      const xml = await response.text();
+      // sitemap index → space alt sitemap
+      const nested = [
+        ...xml.matchAll(/<loc>\s*(https?:\/\/[^<]*sitemap[^<]*)\s*<\/loc>/gi),
+      ].map((match) => match[1]!.trim());
+      const bodies = [xml];
+      for (const nestedUrl of nested.slice(0, 4)) {
+        try {
+          const nestedRes = await fetch(nestedUrl, {
+            headers: { "User-Agent": BROWSER_UA },
+            cache: "no-store",
+          });
+          if (nestedRes.ok) bodies.push(await nestedRes.text());
+        } catch {
+          // ignore
+        }
+      }
+
+      const locs = new Set<string>();
+      for (const body of bodies) {
+        for (const match of body.matchAll(/<loc>\s*(https?:\/\/[^<]+)\s*<\/loc>/gi)) {
+          locs.add(match[1]!.trim());
+        }
+      }
+
+      const scored: Array<{ url: string; score: number }> = [];
+      for (const loc of locs) {
+        let locUrl: URL;
+        try {
+          locUrl = new URL(loc);
+        } catch {
+          continue;
+        }
+        if (normalizeHost(locUrl.hostname) !== normalizeHost(parsed.hostname)) {
+          continue;
+        }
+        const locSlug =
+          locUrl.pathname.replace(/\/+$/, "").split("/").filter(Boolean).pop() ||
+          "";
+        if (!locSlug) continue;
+        if (locSlug === slug) {
+          scored.push({ url: loc, score: 100 });
+          continue;
+        }
+        for (const base of bases) {
+          if (locSlug === base) scored.push({ url: loc, score: 90 });
+          else if (locSlug.startsWith(`${base}-`)) scored.push({ url: loc, score: 80 });
+          else if (locSlug.includes(base)) scored.push({ url: loc, score: 60 });
+        }
+      }
+
+      scored.sort((a, b) => b.score - a.score || a.url.localeCompare(b.url));
+      const best = scored[0];
+      if (best && best.score >= 60 && best.url !== pageUrl) {
+        return best.url;
+      }
+    } catch {
+      // sonraki sitemap
+    }
+  }
+  return null;
+}
+
+export type ScrapeExternalVillaListingOptions = {
+  /** Sayfa okunamazsa kullanılacak villa adı */
+  fallbackName?: string;
+  /** Ad veya Drive ile devam için minimal kayıt üret */
+  allowMinimalFallback?: boolean;
+};
+
+export async function scrapeExternalVillaListing(
+  pageUrl: string,
+  options?: ScrapeExternalVillaListingOptions
 ): Promise<ExternalVillaListing> {
   let parsed: URL;
   try {
@@ -821,97 +1105,112 @@ export async function scrapeExternalVillaListing(
     throw new Error("URL http veya https olmalı");
   }
 
-  // Cloudflare engeline karşı entityId ile hafif kurulum
   const entityFromUrl = parsed.searchParams.get("entityId");
   const host = normalizeHost(parsed.hostname);
+  const fallbackName = options?.fallbackName?.trim() || "";
+  const allowMinimal = Boolean(options?.allowMinimalFallback || fallbackName);
 
-  const response = await fetch(parsed.toString(), {
-    headers: {
-      "User-Agent": BROWSER_UA,
-      Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
-    },
-    cache: "no-store",
-    redirect: "follow",
-  });
-
-  let html = "";
-  if (response.ok) {
-    html = await response.text();
-    await sleep(400);
-  } else if (entityFromUrl && /^\d+$/.test(entityFromUrl)) {
-    // Sayfa 403/429 olsa bile entityId ile devam
-    html = "";
-  } else {
-    throw new Error(`Sayfa alınamadı (${response.status})`);
+  async function fetchHtml(url: string): Promise<{ ok: boolean; status: number; html: string }> {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": BROWSER_UA,
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+      },
+      cache: "no-store",
+      redirect: "follow",
+    });
+    const html = response.ok ? await response.text() : "";
+    if (response.ok) await sleep(400);
+    return { ok: response.ok, status: response.status, html };
   }
 
-  let listing = html ? parseExternalVillaListing(parsed.toString(), html) : null;
+  let workingUrl = parsed.toString();
+  let fetched = await fetchHtml(workingUrl);
+
+  if (!fetched.ok || !fetched.html) {
+    const alternate = await findSitemapAlternateUrl(workingUrl);
+    if (alternate) {
+      const altFetched = await fetchHtml(alternate);
+      if (altFetched.ok && altFetched.html) {
+        workingUrl = alternate;
+        fetched = altFetched;
+        parsed = new URL(alternate);
+      }
+    }
+  }
+
+  let html = fetched.html;
+  if (!fetched.ok && entityFromUrl && /^\d+$/.test(entityFromUrl)) {
+    html = "";
+  } else if (!fetched.ok && !allowMinimal) {
+    throw new Error(
+      `Sayfa alınamadı (${fetched.status}). Kaynak site hata veriyor olabilir; doğru villa URL'sini kontrol edin.`
+    );
+  }
+
+  let listing = html ? parseExternalVillaListing(workingUrl, html) : null;
 
   if (!listing && entityFromUrl && /^\d+$/.test(entityFromUrl)) {
-    const slugName = titleCaseTr(
-      parsed.pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ||
-        "Yeni Villa"
-    );
-    listing = {
-      sourceHost: host,
-      pageUrl: parsed.toString(),
-      name: slugName,
-      originalName: slugName,
-      locationLabel: "",
-      districtName: null,
-      cityName: null,
-      guests: 4,
-      bedrooms: 2,
-      bathrooms: 1,
-      livingRooms: 1,
-      latitude: 0,
-      longitude: 0,
-      documentNo: "",
-      checkInTime: "16:00",
-      checkOutTime: "10:00",
-      ribbonText1: "",
-      minNightlyPrice: null,
-      damageDeposit: null,
-      prepaymentRate: null,
-      descriptionHtml: "",
-      amenityLabels: [],
-      facilityLabels: [],
-      imageUrls: [],
-      distances: [],
-      pool: null,
-      rooms: [],
-      entityId: entityFromUrl,
-      allowPets: false,
-      allowEvents: false,
-      allowSmoking: false,
-      allowChildren: true,
-      allowBaby: true,
-    };
+    listing = buildMinimalListingFromUrl(workingUrl, fallbackName);
+    listing.entityId = entityFromUrl;
+  }
+
+  if (!listing && allowMinimal) {
+    listing = buildMinimalListingFromUrl(workingUrl, fallbackName);
   }
 
   if (!listing) {
     throw new Error(
-      `${host} ilan bilgisi okunamadı. Tam kurulum: villareyonu.com. Hafif kurulum (başlık+fiyat/takvim): villaekstra ve diğer villa-api siteleri (gerekirse ?entityId= ekleyin).`
+      `${host} ilan bilgisi okunamadı. Tam kurulum: villareyonu.com. Hafif kurulum: villaekstra / villaoteltatili ve diğer desteklenen siteler (gerekirse ?entityId= ekleyin).`
     );
+  }
+
+  if (workingUrl !== pageUrl.trim() && workingUrl !== new URL(pageUrl.trim()).toString()) {
+    // sitemap alternatifi kullanıldı — pageUrl zaten listing'de
   }
 
   if (listing.entityId && listing.distances.length === 0 && host.includes("villareyonu")) {
     try {
       listing.distances = await fetchVillareyonuDistances(
         listing.entityId,
-        parsed.toString()
+        workingUrl
       );
     } catch {
       // HTML mesafesi yoksa boş kalır; kurulum diğer alanlarla devam eder
     }
   }
 
-  // Fiyat/takvim senkronunda entityId URL'de olsun (CF HTML engeli bypass)
-  if (listing.entityId && !parsed.searchParams.get("entityId")) {
-    parsed.searchParams.set("entityId", listing.entityId);
-    listing.pageUrl = parsed.toString();
+  // Fiyat/takvim senkronunda entityId URL'de olsun (yalnızca villa-api ailesi / CF bypass)
+  try {
+    const syncParsed = new URL(listing.pageUrl || workingUrl);
+    const syncHost = normalizeHost(syncParsed.hostname);
+    const needsEntityQuery =
+      syncHost.includes("villaekstra") ||
+      syncHost.includes("villavillam") ||
+      syncHost.includes("villapaketi") ||
+      syncHost.includes("villaciniz") ||
+      syncHost.includes("villayolu") ||
+      syncHost.includes("ovillam") ||
+      syncHost.includes("kiralikvillaniz") ||
+      syncHost.includes("villakilavuzu") ||
+      syncHost.includes("mustakilvillam") ||
+      syncHost.includes("myvillacity") ||
+      syncHost.includes("tatilpremium") ||
+      syncHost.includes("villareyonu");
+    if (
+      listing.entityId &&
+      needsEntityQuery &&
+      !syncParsed.searchParams.get("entityId")
+    ) {
+      syncParsed.searchParams.set("entityId", listing.entityId);
+      listing.pageUrl = syncParsed.toString();
+    } else {
+      listing.pageUrl = listing.pageUrl || workingUrl;
+    }
+  } catch {
+    listing.pageUrl = workingUrl;
   }
 
   return listing;

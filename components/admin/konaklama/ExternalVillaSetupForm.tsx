@@ -136,8 +136,9 @@ export default function ExternalVillaSetupForm() {
         <p className="text-xs text-slate-500">
           İlk kurulum birkaç dakika sürebilir (görseller indirilir, takvim okunur).
           Tam kurulum (oda/mesafe/belge): <strong>villareyonu.com</strong>. Hafif
-          kurulum (başlık + fiyat/takvim): villaekstra ve diğer villa-api
-          siteleri. Cloudflare engelinde URL&apos;ye{" "}
+          kurulum (başlık + fiyat/takvim): villaekstra, villaoteltatili ve diğer
+          desteklenen siteler. Sayfa 404/500 verirse sitemap&apos;ten yakın URL
+          aranır. Cloudflare engelinde URL&apos;ye{" "}
           <code className="rounded bg-slate-100 px-1">?entityId=…</code> ekleyin.
         </p>
       </form>
