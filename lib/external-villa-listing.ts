@@ -846,6 +846,320 @@ function extractBravoMaxGuests(html: string): number | null {
   }
 }
 
+function bravoPlainText(html: string) {
+  return stripTags(
+    html
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&Ouml;/g, "Ö")
+      .replace(/&ouml;/g, "ö")
+      .replace(/&Uuml;/g, "Ü")
+      .replace(/&uuml;/g, "ü")
+      .replace(/&Ccedil;/g, "Ç")
+      .replace(/&ccedil;/g, "ç")
+      .replace(/&Gbreve;|&Ğ;/g, "Ğ")
+      .replace(/&gbreve;|&ğ;/g, "ğ")
+      .replace(/&Scedil;|&Ş;/g, "Ş")
+      .replace(/&scedil;|&ş;/g, "ş")
+      .replace(/&Iacute;/g, "İ")
+      .replace(/&iacute;/g, "ı")
+      .replace(/&#(\d+);/g, (_, code) => {
+        const n = parseInt(code, 10);
+        return Number.isFinite(n) ? String.fromCharCode(n) : "";
+      })
+  );
+}
+
+function extractBravoMapCoords(html: string): {
+  latitude: number;
+  longitude: number;
+} {
+  const latRaw =
+    html.match(/map_lat_default\s*:\s*['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/["']?map_lat["']?\s*[:=]\s*['"]([^'"]+)['"]/i)?.[1];
+  const lngRaw =
+    html.match(/map_lng_default\s*:\s*['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/["']?map_lng["']?\s*[:=]\s*['"]([^'"]+)['"]/i)?.[1];
+  const latitude = parseFloatSafe(latRaw ?? null) ?? 0;
+  const longitude = parseFloatSafe(lngRaw ?? null) ?? 0;
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    (latitude === 0 && longitude === 0)
+  ) {
+    return { latitude: 0, longitude: 0 };
+  }
+  return { latitude, longitude };
+}
+
+function extractBravoPool(plain: string): ExternalVillaListingPool | null {
+  const dims =
+    plain.match(
+      /Özel\s+Yüzme\s+Havuzu\s*:\s*Genişlik\s*[-:]\s*([\d.,]+)\s*m\s*\|\s*Uzunluk\s*[-:]\s*([\d.,]+)\s*m\s*\|\s*Derinlik\s*[-:]\s*([\d.,]+)\s*m/i
+    ) ||
+    plain.match(
+      /Genişlik\s*[-:]\s*([\d.,]+)\s*m\s*[|\/]\s*Uzunluk\s*[-:]\s*([\d.,]+)\s*m\s*[|\/]\s*Derinlik\s*[-:]\s*([\d.,]+)\s*m/i
+    );
+  const hasPool =
+    Boolean(dims) ||
+    /özel\s+yüzme\s+havuzu|yüzme\s+havuzu\s*:/i.test(plain);
+  if (!hasPool) return null;
+
+  return {
+    poolType: "Özel Havuz",
+    width: dims?.[1] ? parseMeter(dims[1]) : null,
+    length: dims?.[2] ? parseMeter(dims[2]) : null,
+    depth: dims?.[3] ? parseMeter(dims[3]) : null,
+    conservative: /korunaklı\s+(?:yüzme\s+)?havuz/i.test(plain),
+    heated: /ısıtmalı\s+havuz/i.test(plain),
+  };
+}
+
+function extractBravoRoomFeatures(detail: string): string[] {
+  const featureNames: string[] = [];
+  const lower = detail.toLocaleLowerCase("tr-TR");
+  const checks: Array<[RegExp, string]> = [
+    [/ensuit|en\s*suit|özel\s*banyo|\bbanyo\b/i, "Özel Banyo"],
+    [/jakuzi/i, "Jakuzi"],
+    [/klima/i, "Klima"],
+    [/elbise\s*dolab/i, "Elbise Dolabı"],
+    [/tv|televizyon/i, "Televizyon"],
+    [/balkon/i, "Balkon"],
+    [/teras/i, "Teras"],
+    [/şömine|somine/i, "Şömine"],
+    [/bebek/i, "Bebek Yatağı"],
+    [/makyaj\s*masa/i, "Makyaj Masası"],
+    [/komodin/i, "Komodin"],
+  ];
+  for (const [re, label] of checks) {
+    if (re.test(lower)) featureNames.push(label);
+  }
+  return featureNames;
+}
+
+function extractBravoRooms(plain: string): ExternalVillaListingRoom[] {
+  const rooms: ExternalVillaListingRoom[] = [];
+  let bedroomIndex = 0;
+  let sortOrder = 0;
+
+  const bedroomBlocks = [
+    ...plain.matchAll(/Yatak\s+Odas[ıi]\s*:\s*([^.]+)\./gi),
+  ];
+  for (const block of bedroomBlocks) {
+    const detail = (block[1] ?? "").trim();
+    if (!detail) continue;
+
+    let singleBeds = 0;
+    let doubleBeds = 0;
+    for (const bed of detail.matchAll(
+      /(\d+)\s*adet\s*(çift|cift|tek)\s*kişilik\s*yatak/gi
+    )) {
+      const count = parseInt(bed[1] ?? "0", 10);
+      if (!Number.isFinite(count) || count <= 0) continue;
+      if (/çift|cift/i.test(bed[2] ?? "")) doubleBeds += count;
+      else singleBeds += count;
+    }
+    if (singleBeds === 0 && doubleBeds === 0) {
+      if (/çift\s*kişilik\s*yatak|cift\s*kisilik\s*yatak/i.test(detail)) {
+        doubleBeds = 1;
+      } else if (/tek\s*kişilik\s*yatak/i.test(detail)) {
+        singleBeds = 1;
+      }
+    }
+
+    bedroomIndex += 1;
+    sortOrder += 1;
+    const { features, customFeatures } = mapRoomFeatureNames(
+      extractBravoRoomFeatures(detail)
+    );
+    rooms.push({
+      roomType: "yatak_odasi",
+      name: String(bedroomIndex),
+      singleBeds,
+      doubleBeds,
+      features,
+      customFeatures,
+      sortOrder,
+    });
+  }
+
+  const salon = plain.match(/Salon\s+Bilgileri\s+([^.]+)\./i)?.[1];
+  if (salon) {
+    sortOrder += 1;
+    const { features, customFeatures } = mapRoomFeatureNames(
+      extractBravoRoomFeatures(salon)
+    );
+    rooms.push({
+      roomType: "salon",
+      name: "Salon",
+      singleBeds: 0,
+      doubleBeds: 0,
+      features,
+      customFeatures,
+      sortOrder,
+    });
+  }
+
+  const mutfak = plain.match(/Mutfak\s+Bilgileri\s+([^.]+)\./i)?.[1];
+  if (mutfak) {
+    sortOrder += 1;
+    const { features, customFeatures } = mapRoomFeatureNames(
+      extractBravoRoomFeatures(mutfak)
+    );
+    rooms.push({
+      roomType: "mutfak",
+      name: "Mutfak",
+      singleBeds: 0,
+      doubleBeds: 0,
+      features,
+      customFeatures,
+      sortOrder,
+    });
+  }
+
+  return rooms;
+}
+
+function extractBravoLocation(plain: string): {
+  locationLabel: string;
+  districtName: string | null;
+  cityName: string | null;
+} {
+  const slashLabel = plain.match(
+    /\b(Üzümlü|İslamlar|Akbel|Bezirgan|Patara|Kızıltaş|Ölüdeniz|Göcek)\s*\/\s*([A-ZÇĞİÖŞÜa-zçğıöşü]{3,})\b/i
+  );
+  const regionPhrase =
+    plain.match(
+      /((?:Kalkan|Kaş|Fethiye|Göcek)[^.]{0,40}?)\s+bölgesinde\s+konumlan/i
+    )?.[1] ||
+    plain.match(
+      /([A-ZÇĞİÖŞÜa-zçğıöşü0-9\s/,-]{3,60}?)\s+mevkisinde\s+bulun/i
+    )?.[1];
+
+  const locationLabel = (
+    slashLabel
+      ? `${slashLabel[1]!.trim()} / ${slashLabel[2]!.trim()}`
+      : regionPhrase?.replace(/\s+/g, " ").trim() || ""
+  ).slice(0, 120);
+
+  const mahalleCandidates = [
+    "Üzümlü",
+    "İslamlar",
+    "Akbel",
+    "Bezirgan",
+    "Sarıbelen",
+    "Kızıltaş",
+    "Patara",
+    "Ölüdeniz",
+    "Göcek",
+  ];
+  const ilceCandidates = ["Kalkan", "Kaş", "Fethiye"];
+
+  const primaryHay = `${locationLabel} ${slashLabel?.[0] ?? ""} ${regionPhrase ?? ""}`
+    .toLocaleLowerCase("tr-TR");
+  // Footer menüdeki tüm mahalle adlarını yakalamamak için kısa özet metin
+  const secondaryHay = plain.slice(0, 1800).toLocaleLowerCase("tr-TR");
+
+  function pickName(hay: string, names: string[]): string | null {
+    for (const candidate of names) {
+      if (hay.includes(candidate.toLocaleLowerCase("tr-TR"))) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  const districtName =
+    pickName(primaryHay, mahalleCandidates) ||
+    pickName(secondaryHay, mahalleCandidates) ||
+    pickName(primaryHay, ilceCandidates) ||
+    pickName(secondaryHay, ilceCandidates);
+
+  const cityName = /\bantalya\b/i.test(secondaryHay)
+    ? "Antalya"
+    : /\bmuğla\b/i.test(secondaryHay)
+      ? "Muğla"
+      : null;
+
+  return {
+    locationLabel:
+      locationLabel ||
+      (districtName ? districtName : ""),
+    districtName,
+    cityName,
+  };
+}
+
+function extractBravoDistances(plain: string): ExternalVillaListingDistance[] {
+  const rows: ExternalVillaListingDistance[] = [];
+  const patterns: Array<{
+    re: RegExp;
+    name: string;
+    categoryName: string;
+  }> = [
+    {
+      re: /Havaliman(?:ı|ina|ına)\s+Uzakl(?:ık|ik)\s*([\d.,]+)\s*(km|m)/gi,
+      name: "Havalimanı",
+      categoryName: "Ulaşım",
+    },
+    {
+      re: /Otogar(?:a)?\s+Uzakl(?:ık|ik)\s*([\d.,]+)\s*(km|m)/gi,
+      name: "Otogar",
+      categoryName: "Ulaşım",
+    },
+    {
+      re: /Plaj(?:a)?\s+Uzakl(?:ık|ik)\s*([\d.,]+)\s*(km|m)/gi,
+      name: "Deniz/Plaj",
+      categoryName: "Popüler Yerler",
+    },
+    {
+      re: /Market(?:e)?\s+Uzakl(?:ık|ik)\s*([\d.,]+)\s*(km|m)/gi,
+      name: "Market",
+      categoryName: "Yakın Yerler",
+    },
+    {
+      re: /Restaurant(?:lar)?\s*(?:Uzakl(?:ık|ik))?\s*([\d.,]+)\s*(km|m)/gi,
+      name: "Restaurant",
+      categoryName: "Yakın Yerler",
+    },
+    {
+      re: /Şehir\s+Merkezi\s*(?:Uzakl(?:ık|ik))?\s*([\d.,]+)\s*(km|m)/gi,
+      name: "Şehir Merkezi",
+      categoryName: "Yakın Yerler",
+    },
+  ];
+
+  for (const pattern of patterns) {
+    const re = new RegExp(pattern.re.source, pattern.re.flags);
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(plain)) !== null) {
+      const distanceKm = parseDistanceToKm(`${match[1]} ${match[2]}`);
+      if (distanceKm == null) continue;
+      rows.push({
+        name: pattern.name,
+        distanceKm,
+        categoryName: pattern.categoryName,
+      });
+    }
+  }
+
+  const unique = new Map<string, ExternalVillaListingDistance>();
+  for (const row of rows) {
+    unique.set(row.name.toLocaleLowerCase("tr-TR"), row);
+  }
+  return [...unique.values()];
+}
+
+function extractBravoPrepaymentRate(html: string): number | null {
+  const percentMatch = html.match(
+    /"deposit_type"\s*:\s*"percent"[\s\S]{0,80}?"deposit_amount"\s*:\s*"(\d{1,3})"/i
+  );
+  if (percentMatch?.[1]) {
+    const value = parseInt(percentMatch[1], 10);
+    return Number.isFinite(value) && value > 0 && value <= 100 ? value : null;
+  }
+  return null;
+}
+
 function parseGenericHtmlListing(
   pageUrl: string,
   html: string
@@ -892,34 +1206,46 @@ function parseGenericHtmlListing(
     html.match(/(\d+)\s*(?:Banyo|Bathroom)/i)?.[1] ||
     html.match(/Banyo[^\d]{0,20}(\d+)/i)?.[1];
 
+  const plain = bravoPlainText(html);
+  const coords = extractBravoMapCoords(html);
+  const pool = extractBravoPool(plain);
+  const rooms = extractBravoRooms(plain);
+  const location = extractBravoLocation(plain);
+  const distances = extractBravoDistances(plain);
+  const bedroomsFromRooms = rooms.filter((r) => r.roomType === "yatak_odasi")
+    .length;
+
   return {
     sourceHost: host,
     pageUrl,
     name,
     originalName: name,
-    locationLabel: "",
-    districtName: null,
-    cityName: null,
+    locationLabel: location.locationLabel,
+    districtName: location.districtName,
+    cityName: location.cityName,
     guests,
-    bedrooms: parseIntSafe(bedroomsMatch ?? null, 2),
+    bedrooms:
+      bedroomsFromRooms > 0
+        ? bedroomsFromRooms
+        : parseIntSafe(bedroomsMatch ?? null, 2),
     bathrooms: parseIntSafe(bathroomsMatch ?? null, 1),
-    livingRooms: 1,
-    latitude: 0,
-    longitude: 0,
+    livingRooms: rooms.some((r) => r.roomType === "salon") ? 1 : 1,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
     documentNo: documentMatch.replace(/\s+/g, "-").toUpperCase(),
     checkInTime: "16:00",
     checkOutTime: "10:00",
     ribbonText1: "",
     minNightlyPrice: null,
     damageDeposit: null,
-    prepaymentRate: null,
+    prepaymentRate: extractBravoPrepaymentRate(html),
     descriptionHtml: "",
     amenityLabels: [],
     facilityLabels: [],
     imageUrls: extractOgImages(html),
-    distances: [],
-    pool: null,
-    rooms: [],
+    distances,
+    pool,
+    rooms,
     entityId,
     allowPets: false,
     allowEvents: false,

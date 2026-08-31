@@ -67,12 +67,30 @@ function amenityKey(value: string) {
 }
 
 async function resolveMahalleRegionId(listing: ExternalVillaListing) {
-  const districtName = listing.districtName?.trim();
-  if (districtName) {
+  const nameCandidates = [
+    listing.districtName?.trim(),
+    ...String(listing.locationLabel || "")
+      .split(/[/,|\-–—]/)
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 3),
+  ].filter((value, index, all): value is string => {
+    if (!value) return false;
+    return (
+      all.findIndex(
+        (item) =>
+          item &&
+          item.toLocaleLowerCase("tr-TR") === value.toLocaleLowerCase("tr-TR")
+      ) === index
+    );
+  });
+
+  let ilceFallbackId: string | null = null;
+
+  for (const candidate of nameCandidates) {
     const district = await prisma.region.findFirst({
       where: {
         active: true,
-        name: { equals: districtName, mode: "insensitive" },
+        name: { equals: candidate, mode: "insensitive" },
         level: { in: [RegionLevel.ILCE, RegionLevel.MAHALLE] },
       },
       select: {
@@ -94,8 +112,11 @@ async function resolveMahalleRegionId(listing: ExternalVillaListing) {
       return district.id;
     }
 
-    if (district?.level === RegionLevel.ILCE) {
-      if (district.children[0]?.id) return district.children[0].id;
+    if (district?.level === RegionLevel.ILCE && !ilceFallbackId) {
+      if (district.children[0]?.id) {
+        ilceFallbackId = district.children[0].id;
+        continue;
+      }
 
       const mahalleSlug = `${district.slug}-merkez`;
       const existingMahalle = await prisma.region.findUnique({
@@ -103,7 +124,8 @@ async function resolveMahalleRegionId(listing: ExternalVillaListing) {
         select: { id: true, level: true },
       });
       if (existingMahalle?.level === RegionLevel.MAHALLE) {
-        return existingMahalle.id;
+        ilceFallbackId = existingMahalle.id;
+        continue;
       }
 
       const created = await prisma.region.create({
@@ -119,9 +141,11 @@ async function resolveMahalleRegionId(listing: ExternalVillaListing) {
         },
         select: { id: true },
       });
-      return created.id;
+      ilceFallbackId = created.id;
     }
   }
+
+  if (ilceFallbackId) return ilceFallbackId;
 
   const fallback = await prisma.region.findFirst({
     where: { level: RegionLevel.MAHALLE, active: true },
@@ -538,6 +562,87 @@ export async function setupVillaFromExternalUrl(
     documentNo,
     link1: syncUrl,
     published: visibility.active && visibility.showInSearch,
+    warnings,
+  };
+}
+
+/**
+ * Mevcut villaya kaynak sayfadan yalnızca oda / havuz / konum / mesafe aktarır.
+ * Galeri ve fiyat/takvime dokunmaz (eksik detay doldurma için).
+ */
+export async function enrichVillaDetailsFromExternalUrl(
+  pageUrlRaw: string,
+  options?: { villaId?: string }
+): Promise<{
+  villaId: string;
+  numericVillaId: number | null;
+  name: string;
+  editPath: string;
+  roomCount: number;
+  distanceCount: number;
+  poolUpdated: boolean;
+  locationLabel: string;
+  latitude: number;
+  longitude: number;
+  warnings: string[];
+}> {
+  const pageUrl = normalizeUrl(pageUrlRaw);
+  const listing = await scrapeExternalVillaListing(pageUrl);
+  const syncUrl = normalizeUrl(listing.pageUrl || pageUrl);
+  const warnings: string[] = [];
+
+  const existing =
+    (options?.villaId
+      ? await prisma.villa.findUnique({
+          where: { id: options.villaId },
+          select: { id: true, villaId: true, name: true, slug: true },
+        })
+      : null) ?? (await findExistingVilla(syncUrl, listing));
+
+  if (!existing) {
+    throw new Error(
+      "Villa bulunamadı. Önce dış siteden kurulum yapın veya villaId verin."
+    );
+  }
+
+  const regionId = await resolveMahalleRegionId(listing);
+  await prisma.villa.update({
+    where: { id: existing.id },
+    data: {
+      location: listing.locationLabel || undefined,
+      latitude: listing.latitude,
+      longitude: listing.longitude,
+      regionId,
+      guests: listing.guests,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
+      livingRooms: listing.livingRooms,
+    },
+  });
+
+  const distanceCount = await persistDistances(existing.id, listing.distances);
+  await persistPool(existing.id, listing.pool);
+  const roomCount = await persistRooms(existing.id, listing.rooms);
+
+  if (!listing.pool) warnings.push("Kaynak sayfada havuz bilgisi bulunamadı");
+  if (listing.rooms.length === 0) {
+    warnings.push("Kaynak sayfada oda detayı bulunamadı");
+  }
+  if (!listing.latitude && !listing.longitude) {
+    warnings.push("Kaynak sayfada konum koordinatı bulunamadı");
+  }
+
+  return {
+    villaId: existing.id,
+    numericVillaId: existing.villaId,
+    name: existing.name,
+    editPath: villaAdminEditPath(existing),
+    roomCount,
+    distanceCount,
+    poolUpdated: Boolean(listing.pool),
+    locationLabel: listing.locationLabel,
+    latitude: listing.latitude,
+    longitude: listing.longitude,
     warnings,
   };
 }
