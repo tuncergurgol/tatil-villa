@@ -8,6 +8,7 @@ import { setupVillaFromExternalUrlAction } from "@/app/actions/admin/external-vi
 export default function ExternalVillaSetupForm() {
   const [pageUrl, setPageUrl] = useState("");
   const [name, setName] = useState("");
+  const [googleDriveUrl, setGoogleDriveUrl] = useState("");
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<
     | { type: "error"; message: string }
@@ -34,7 +35,11 @@ export default function ExternalVillaSetupForm() {
     event.preventDefault();
     setResult(null);
     startTransition(async () => {
-      const response = await setupVillaFromExternalUrlAction(pageUrl, name);
+      const response = await setupVillaFromExternalUrlAction(
+        pageUrl,
+        name,
+        googleDriveUrl
+      );
       if (!response.success) {
         setResult({ type: "error", message: response.error });
         return;
@@ -67,7 +72,8 @@ export default function ExternalVillaSetupForm() {
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Acente villa sayfasının bağlantısını yapıştırın. BONT adı, fotoğrafları,
           oda detaylarını, belge no, konum, mesafeler, fiyat ve müsaitlik takvimini
-          okuyup villayı LINK1 ile kaydeder ve yayına alır.
+          okuyup villayı LINK1 ile kaydeder ve yayına alır. Google Drive alanı
+          doluysa galeri o klasörden çekilir.
         </p>
       </div>
 
@@ -97,6 +103,23 @@ export default function ExternalVillaSetupForm() {
             placeholder="Boş bırakılırsa kaynaktaki ad kullanılır"
             className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100"
           />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium text-slate-800">
+            Google Drive galeri{" "}
+            <span className="font-normal text-slate-500">(isteğe bağlı)</span>
+          </span>
+          <input
+            type="url"
+            value={googleDriveUrl}
+            onChange={(event) => setGoogleDriveUrl(event.target.value)}
+            placeholder="https://drive.google.com/drive/folders/..."
+            className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100"
+          />
+          <span className="block text-xs leading-5 text-slate-500">
+            Doluysa fotoğraflar kaynak siteden değil bu Drive klasöründen (veya
+            tek dosyadan) alınır. Klasörü «bağlantıya sahip herkes» ile paylaşın.
+          </span>
         </label>
         <button
           type="submit"

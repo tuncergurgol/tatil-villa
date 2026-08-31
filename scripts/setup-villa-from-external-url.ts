@@ -2,6 +2,7 @@
  * Dış acente villa sayfasından tam kurulum.
  *
  *   npx tsx scripts/setup-villa-from-external-url.ts --url "https://www.villareyonu.com/villa-sole-marin" --name "Villa Sole Mare"
+ *   npx tsx scripts/setup-villa-from-external-url.ts --url "..." --drive "https://drive.google.com/drive/folders/..."
  */
 import { setupVillaFromExternalUrl } from "../lib/external-villa-setup-runner";
 import { prisma } from "../lib/db";
@@ -15,12 +16,16 @@ function argValue(flag: string) {
 async function main() {
   const pageUrl = argValue("--url") || process.argv[2];
   const name = argValue("--name");
+  const googleDriveUrl = argValue("--drive");
   if (!pageUrl) {
-    throw new Error("Kullanım: --url https://... [--name \"Villa Adı\"]");
+    throw new Error(
+      'Kullanım: --url https://... [--name "Villa Adı"] [--drive "https://drive.google.com/..."]'
+    );
   }
 
   const result = await setupVillaFromExternalUrl(pageUrl, {
     name: name || undefined,
+    googleDriveUrl: googleDriveUrl || undefined,
     publish: true,
   });
 

@@ -14,16 +14,28 @@ export type VillaGalleryFromUrlsResult = {
 };
 
 async function downloadImage(url: string) {
+  const isDrive =
+    /drive\.google\.com|googleusercontent\.com/i.test(url) ||
+    /[?&]id=[a-zA-Z0-9_-]+/.test(url);
   const response = await fetch(url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-      Referer: "https://www.villareyonu.com/",
+      Referer: isDrive
+        ? "https://drive.google.com/"
+        : "https://www.villareyonu.com/",
     },
+    redirect: "follow",
   });
   if (!response.ok) {
     throw new Error(`Görsel indirilemedi (${response.status}): ${url}`);
+  }
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (contentType.includes("text/html")) {
+    throw new Error(
+      `Görsel yerine HTML döndü (paylaşım kapalı olabilir): ${url}`
+    );
   }
   return Buffer.from(await response.arrayBuffer());
 }

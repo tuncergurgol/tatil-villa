@@ -11,6 +11,7 @@ import {
 } from "@/lib/queries/amenities";
 import { syncVillaRoomFeatureCatalog } from "@/lib/queries/villa-rooms";
 import { importVillaGalleryFromUrls } from "@/lib/external-villa-gallery-import";
+import { listGoogleDriveImageUrls } from "@/lib/google-drive-gallery";
 import { importVillaPeriodsFromExternalPage } from "@/lib/external-villa-page-import-runner";
 import {
   scrapeExternalVillaListing,
@@ -346,7 +347,12 @@ async function findExistingVilla(pageUrl: string, listing: ExternalVillaListing)
 
 export async function setupVillaFromExternalUrl(
   pageUrlRaw: string,
-  options?: { name?: string; publish?: boolean }
+  options?: {
+    name?: string;
+    publish?: boolean;
+    /** Doluysa galeri Google Drive klasör/dosyasından alınır (kaynak site görselleri atlanır). */
+    googleDriveUrl?: string;
+  }
 ): Promise<ExternalVillaSetupResult> {
   const pageUrl = normalizeUrl(pageUrlRaw);
   const listing = await scrapeExternalVillaListing(pageUrl);
@@ -357,6 +363,15 @@ export async function setupVillaFromExternalUrl(
   const syncUrl = normalizeUrl(listing.pageUrl || pageUrl);
 
   const warnings: string[] = [];
+  const googleDriveUrl = options?.googleDriveUrl?.trim() || "";
+  if (googleDriveUrl) {
+    const driveGallery = await listGoogleDriveImageUrls(googleDriveUrl);
+    listing.imageUrls = driveGallery.urls;
+    warnings.push(...driveGallery.warnings);
+    warnings.push(
+      `Galeri Google Drive'dan alındı (${driveGallery.source}, ${driveGallery.urls.length} görsel)`
+    );
+  }
   const regionId = await resolveMahalleRegionId(listing);
   const { amenities, facilityCategories } =
     await resolveAmenitiesAndFacilities(listing);
@@ -455,7 +470,11 @@ export async function setupVillaFromExternalUrl(
     });
     imageCount = gallery.importedCount;
   } else {
-    warnings.push("Kaynak sayfada villa görseli bulunamadı");
+    warnings.push(
+      googleDriveUrl
+        ? "Google Drive bağlantısından villa görseli alınamadı"
+        : "Kaynak sayfada villa görseli bulunamadı"
+    );
   }
 
   const distanceCount = await persistDistances(villaId, listing.distances);

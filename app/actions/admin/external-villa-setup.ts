@@ -26,13 +26,15 @@ export type ExternalVillaSetupActionResult =
 
 export async function setupVillaFromExternalUrlAction(
   pageUrl: string,
-  name?: string
+  name?: string,
+  googleDriveUrl?: string
 ): Promise<ExternalVillaSetupActionResult> {
   await requireAdmin();
 
   try {
     const result = await setupVillaFromExternalUrl(pageUrl, {
       name: name?.trim() || undefined,
+      googleDriveUrl: googleDriveUrl?.trim() || undefined,
       publish: true,
     });
     await revalidateVillaEditPage(result.villaId);
