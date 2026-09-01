@@ -63,7 +63,7 @@ function emptyEditor(): EditorState {
     length: "",
     depth: "",
     poolType: "",
-    purificationMethod: "",
+    purificationMethod: "Klor",
     heated: false,
     conservative: false,
   };

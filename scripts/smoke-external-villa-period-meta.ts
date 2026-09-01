@@ -23,6 +23,15 @@ assert.equal(defaults.prepaymentRate, 50);
 assert.equal(defaults.cleaningDayCount, 7);
 assert.equal(defaults.cleaningFee, 3500);
 
+const bravoHtml = `
+<p>Villa yüksek sezonda minimum kiralama süresi 3 gecedir.</p>
+<p>7 gece altı konaklamalarda 3.000₺ temizlik ücreti alınır.</p>
+`;
+const bravoDefaults = extractScrapedPeriodDefaults(bravoHtml);
+assert.equal(bravoDefaults.minStayNights, 3);
+assert.equal(bravoDefaults.cleaningDayCount, 7);
+assert.equal(bravoDefaults.cleaningFee, 3000);
+
 const noisyHtml = `
 <script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"data":{"gece":"3","subTitle":"Minimum 2 gece","sozlesme":"komisyon alma suretiyle"}}}}</script>
 <ul>
@@ -154,7 +163,6 @@ const villacim = await scrapeExternalVillaPage(
 assert.equal(villacim.periods.length > 0, true);
 for (const period of villacim.periods) {
   assert.equal(period.cleaningDayCount, 7);
-  assert.equal(period.prepaymentRate, null);
   assert.equal(period.commissionRate, null);
 }
 

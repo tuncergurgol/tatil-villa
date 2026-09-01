@@ -6,9 +6,6 @@ import { Sparkles } from "lucide-react";
 import VillaFeaturesPicker, {
   type VillaFeaturesPickerHandle,
 } from "@/components/admin/amenities/VillaFeaturesPicker";
-import VillaPoolManager, {
-  type VillaPoolWithPeriods,
-} from "@/components/admin/villas/VillaPoolManager";
 import VillaPriceInclusionPicker, {
   type VillaPriceInclusionPickerHandle,
 } from "@/components/admin/villas/VillaPriceInclusionPicker";
@@ -21,7 +18,6 @@ import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
 
 interface VillaFeaturesTabProps {
   villa: Villa;
-  pools: VillaPoolWithPeriods[];
   amenityCategories: AmenityCategoryItem[];
   facilityCategories: FacilityCategoryOption[];
   priceInclusionItems: PriceInclusionItem[];
@@ -44,7 +40,6 @@ function Section({
 
 export default function VillaFeaturesTab({
   villa,
-  pools,
   amenityCategories,
   facilityCategories,
   priceInclusionItems,
@@ -82,10 +77,6 @@ export default function VillaFeaturesTab({
           showFacilityCategories={false}
         />
       </Section>
-
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
-        <VillaPoolManager villaId={villa.id} pools={pools} />
-      </section>
 
       <Section title="Fiyata Dahil Olan / Olmayan">
         <VillaPriceInclusionPicker

@@ -179,10 +179,15 @@ async function resolveAmenitiesAndFacilities(
     listing.allowPets
   );
   const linked = await resolveFacilityCategoryNamesForAmenities(amenities);
-  const facilityCategories = mergeFacilityCategoryNames(
+  let facilityCategories = mergeFacilityCategoryNames(
     listing.facilityLabels,
     linked
   );
+  if (listing.pool?.conservative) {
+    facilityCategories = mergeFacilityCategoryNames(facilityCategories, [
+      "Muhafazakar Villalar",
+    ]);
+  }
   return { amenities, facilityCategories };
 }
 
@@ -281,14 +286,21 @@ async function persistPool(
     orderBy: { sortOrder: "asc" },
     select: { id: true },
   });
+
+  const toCm = (value: number | null | undefined) => {
+    if (value == null || !Number.isFinite(value) || value <= 0) return null;
+    return value <= 25 ? Math.round(value * 100) : Math.round(value);
+  };
+
   const data = {
     poolType: pool.poolType || "Özel Havuz",
-    length: pool.length,
-    width: pool.width,
-    depth: pool.depth,
+    length: toCm(pool.length),
+    width: toCm(pool.width),
+    depth: toCm(pool.depth),
     conservative: pool.conservative,
     heated: pool.heated,
-    measureUnit: "M" as const,
+    measureUnit: "CM" as const,
+    purificationMethod: "Klor",
   };
   if (existing) {
     await prisma.villaPool.update({ where: { id: existing.id }, data });
@@ -299,6 +311,26 @@ async function persistPool(
       villaId,
       sortOrder: 0,
       ...data,
+    },
+  });
+}
+
+async function applyConservativePoolFacilities(
+  villaId: string,
+  conservative: boolean
+) {
+  if (!conservative) return;
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { facilityCategories: true },
+  });
+  if (!villa) return;
+  await prisma.villa.update({
+    where: { id: villaId },
+    data: {
+      facilityCategories: mergeFacilityCategoryNames(villa.facilityCategories, [
+        "Muhafazakar Villalar",
+      ]),
     },
   });
 }
@@ -517,6 +549,9 @@ export async function setupVillaFromExternalUrl(
 
   const distanceCount = await persistDistances(villaId, listing.distances);
   await persistPool(villaId, listing.pool);
+  if (listing.pool?.conservative) {
+    await applyConservativePoolFacilities(villaId, true);
+  }
   const roomCount = await persistRooms(villaId, listing.rooms);
   if (listing.rooms.length === 0) {
     warnings.push("Kaynak sayfada oda detayı bulunamadı");
@@ -622,7 +657,28 @@ export async function enrichVillaDetailsFromExternalUrl(
 
   const distanceCount = await persistDistances(existing.id, listing.distances);
   await persistPool(existing.id, listing.pool);
+  if (listing.pool?.conservative) {
+    await applyConservativePoolFacilities(existing.id, true);
+  }
   const roomCount = await persistRooms(existing.id, listing.rooms);
+
+  try {
+    const imported = await importVillaPeriodsFromExternalPage(existing.id, syncUrl, {
+      syncMode: "calendar_and_price",
+    });
+    if (imported.periodCount > 0) {
+      warnings.push(
+        `Fiyat periyotları güncellendi (${imported.periodCount} dönem)`
+      );
+    }
+    warnings.push(...imported.warnings);
+  } catch (error) {
+    warnings.push(
+      error instanceof Error
+        ? `Fiyat meta güncellenemedi: ${error.message}`
+        : "Fiyat meta güncellenemedi"
+    );
+  }
 
   if (!listing.pool) warnings.push("Kaynak sayfada havuz bilgisi bulunamadı");
   if (listing.rooms.length === 0) {

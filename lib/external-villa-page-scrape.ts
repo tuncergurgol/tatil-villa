@@ -424,6 +424,7 @@ function extractPageTitle(html: string): string | null {
 export type ScrapedVillaPeriodDefaults = {
   prepaymentRate: number | null;
   commissionRate: number | null;
+  minStayNights: number | null;
   cleaningDayCount: number | null;
   cleaningFee: number | null;
   cleaningFeeCurrency: VillaPeriodCurrency;
@@ -609,9 +610,21 @@ function extractCleaningDefaults(html: string): {
   const titledFee = text.match(
     /temizlik\s*[üu]creti\s*[-–:]?\s*(\d[\d.,\s]*)\s*(?:₺|TL)/i
   );
+  const inline = text.match(
+    /(\d+)\s*gece\s*alt[ıi][^.]{0,80}?(\d[\d.,\s]*)\s*(?:₺|TL)[^.]{0,40}temizlik/i
+  );
+  if (inline) {
+    return {
+      cleaningDayCount: positiveInt(Number(inline[1])),
+      cleaningFee: positiveInt(parseTurkishMoneyAmount(inline[2] ?? "")),
+      cleaningFeeCurrency: "TL",
+    };
+  }
+
   const dayMatch =
     text.match(/(\d+)\s*gece\s+ve\s+alt/i) ??
-    text.match(/(\d+)\s*gece\s*alt[ıi]ndaki/i);
+    text.match(/(\d+)\s*gece\s*alt[ıi]ndaki/i) ??
+    text.match(/(\d+)\s*gece\s*alt[ıi](?:\s|[^a-z])/i);
 
   if (titledFee?.[1] || dayMatch) {
     return {
@@ -623,22 +636,26 @@ function extractCleaningDefaults(html: string): {
     };
   }
 
-  const inline = text.match(
-    /(\d+)\s*gece\s*alt[ıi]ndaki[^.]{0,80}?(\d[\d.,\s]*)\s*(?:₺|TL)[^.]{0,20}temizlik/i
-  );
-  if (inline) {
-    return {
-      cleaningDayCount: positiveInt(Number(inline[1])),
-      cleaningFee: positiveInt(parseTurkishMoneyAmount(inline[2] ?? "")),
-      cleaningFeeCurrency: "TL",
-    };
-  }
-
   return {
     cleaningDayCount: null,
     cleaningFee: null,
     cleaningFeeCurrency: "TL",
   };
+}
+
+function extractDefaultMinStayNights(html: string): number | null {
+  const text = stripTags(html);
+  const patterns = [
+    /minimum\s*kiralama\s*s[üu]resi[^0-9]{0,40}(\d+)\s*gece/i,
+    /minimum\s*kiralama[^0-9]{0,30}(\d+)\s*gece/i,
+    /min\.?\s*(\d+)\s*gece\s*konaklama/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = positiveInt(Number(match?.[1]));
+    if (value != null) return value;
+  }
+  return null;
 }
 
 export function extractScrapedPeriodDefaults(html: string): ScrapedVillaPeriodDefaults {
@@ -647,6 +664,7 @@ export function extractScrapedPeriodDefaults(html: string): ScrapedVillaPeriodDe
   return {
     prepaymentRate: extractPrepaymentRate(html),
     commissionRate: extractCommissionRate(html),
+    minStayNights: extractDefaultMinStayNights(html),
     cleaningDayCount: cleaning.cleaningDayCount,
     cleaningFee: cleaning.cleaningFee,
     cleaningFeeCurrency: cleaning.cleaningFeeCurrency,
@@ -678,6 +696,10 @@ function applyMetaToPeriod(
   if (period.commissionRate == null) {
     period.commissionRate =
       meta.commissionRate ?? defaults.commissionRate ?? null;
+  }
+  if (period.minStayNights == null) {
+    period.minStayNights =
+      meta.minStayNights ?? defaults.minStayNights ?? null;
   }
   if (period.cleaningDayCount == null) {
     period.cleaningDayCount =
@@ -744,6 +766,7 @@ export function applyPeriodMetaFallback(
   const defaults: ScrapedVillaPeriodDefaults = {
     prepaymentRate: fallback.prepaymentRate ?? null,
     commissionRate: fallback.commissionRate ?? null,
+    minStayNights: fallback.minStayNights ?? null,
     cleaningDayCount: fallback.cleaningDayCount ?? null,
     cleaningFee: fallback.cleaningFee ?? null,
     cleaningFeeCurrency: fallback.cleaningFeeCurrency ?? "TL",
@@ -770,6 +793,7 @@ export function buildPeriodMetaFallbackFromPeriods(
   return {
     prepaymentRate: modeValue(periods.map((period) => period.prepaymentRate)),
     commissionRate: modeValue(periods.map((period) => period.commissionRate)),
+    minStayNights: modeValue(periods.map((period) => period.minStayNights)),
     cleaningDayCount: modeValue(periods.map((period) => period.cleaningDayCount)),
     cleaningFee: modeValue(periods.map((period) => period.cleaningFee)),
     cleaningFeeCurrency:

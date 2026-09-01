@@ -16,6 +16,10 @@ import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import {
+  appendUndocumentedBookingAccessParam,
+  createUndocumentedVillaBookingAccessToken,
+} from "@/lib/undocumented-villa-booking-access";
+import {
   buildVillaSlugFromName,
   ensureUniqueVillaSlug,
   resolveVillaSlugForName,
@@ -617,4 +621,41 @@ export async function copyVilla(id: string): Promise<CopyVillaResult> {
         error instanceof Error ? error.message : "Villa kopyalanamadı",
     };
   }
+}
+
+export async function getUndocumentedVillaPreviewUrl(
+  villaId: string,
+  previewDomain: string
+): Promise<{ url?: string; error?: string }> {
+  await requireAdmin();
+
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: {
+      id: true,
+      slug: true,
+      documentNo: true,
+      documentType: true,
+    },
+  });
+  if (!villa) {
+    return { error: "Villa bulunamadı" };
+  }
+  if (hasVillaTourismDocument(villa)) {
+    return { error: "Belge no olan villada gizli görünüm kullanılmaz" };
+  }
+
+  const domain = previewDomain
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
+  if (!domain) {
+    return { error: "Önizleme domaini tanımlı değil" };
+  }
+
+  const token = createUndocumentedVillaBookingAccessToken(villa.id);
+  const base = `https://${domain}${villaPublicPath(villa.slug)}`;
+  return {
+    url: appendUndocumentedBookingAccessParam(base, token),
+  };
 }

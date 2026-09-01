@@ -5,8 +5,9 @@ import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Villa, VillaOwner } from "@prisma/client";
-import { ArrowLeft, CalendarDays, ExternalLink, Save } from "lucide-react";
+import { ArrowLeft, CalendarDays, ExternalLink, EyeOff, Save } from "lucide-react";
 import {
+  getUndocumentedVillaPreviewUrl,
   updateVillaFeatures,
   updateVillaGeneral,
   updateVillaLocation,
@@ -19,6 +20,7 @@ import VillaRoomsTab from "@/components/admin/villas/VillaRoomsTab";
 import VillaGalleryTab from "@/components/admin/villas/VillaGalleryTab";
 import VillaGeneralTab from "@/components/admin/villas/VillaGeneralTab";
 import VillaFeaturesTab from "@/components/admin/villas/VillaFeaturesTab";
+import VillaPoolsTab from "@/components/admin/villas/VillaPoolsTab";
 import VillaIcalTab from "@/components/admin/villas/VillaIcalTab";
 import VillaLocationTab from "@/components/admin/villas/VillaLocationTab";
 import VillaMetaSeoTab from "@/components/admin/villas/VillaMetaSeoTab";
@@ -45,12 +47,14 @@ import {
   buildVillaListPath,
   parseVillaListFilters,
 } from "@/lib/villa-list-filters";
+import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 
 const tabs = [
   { id: "genel", label: "Genel" },
   { id: "galeri", label: "Galeri" },
   { id: "odalar", label: "Oda Yönetimi" },
   { id: "ozellikler", label: "Özellikler" },
+  { id: "havuz", label: "Havuz Bilgileri" },
   { id: "konum", label: "Konum & Çevre" },
   { id: "kurallar", label: "Kurallar" },
   { id: "personel", label: "Personel" },
@@ -123,6 +127,26 @@ export default function VillaEditForm({
     newBedroomCount: number;
   } | null>(null);
   const showcaseImage = galleryImages[0] ?? "";
+  const undocumented = !hasVillaTourismDocument({
+    documentNo: villa.documentNo,
+    documentType: villa.documentType,
+  });
+
+  function openHiddenPreview() {
+    startTransition(async () => {
+      const result = await getUndocumentedVillaPreviewUrl(
+        villa.id,
+        previewDomain
+      );
+      if (result.error) {
+        window.alert(result.error);
+        return;
+      }
+      if (result.url) {
+        window.open(result.url, "_blank", "noopener,noreferrer");
+      }
+    });
+  }
 
   useEffect(() => {
     setBedroomDraft(villa.bedrooms);
@@ -258,6 +282,17 @@ export default function VillaEditForm({
               <span className="truncate">Mağazada Görüntüle</span>
               <ExternalLink className="h-4 w-4 shrink-0" />
             </Link>
+            {undocumented ? (
+              <button
+                type="button"
+                onClick={openHiddenPreview}
+                disabled={isPending}
+                className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50 sm:col-span-1 md:px-4 md:text-sm"
+              >
+                <EyeOff className="h-4 w-4 shrink-0" />
+                <span className="truncate">Gizli Görünüm</span>
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -338,11 +373,13 @@ export default function VillaEditForm({
             {activeTab === "ozellikler" ? (
               <VillaFeaturesTab
                 villa={villa}
-                pools={pools}
                 amenityCategories={amenityCategories}
                 facilityCategories={facilityCategories}
                 priceInclusionItems={priceInclusionItems}
               />
+            ) : null}
+            {activeTab === "havuz" ? (
+              <VillaPoolsTab villaId={villa.id} pools={pools} />
             ) : null}
             {activeTab === "konum" ? (
               <VillaLocationTab
