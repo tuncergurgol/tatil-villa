@@ -82,6 +82,47 @@ export async function updateVillaRoom(
   }
 }
 
+export async function deleteVillaRoom(
+  villaId: string,
+  roomId: string
+): Promise<VillaRoomActionState> {
+  await requireAdmin();
+
+  const room = await prisma.villaRoom.findFirst({
+    where: { id: roomId, villaId },
+    select: { id: true, roomType: true, name: true },
+  });
+
+  if (!room) {
+    return { error: "Oda bulunamadı" };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (room.roomType === "yatak_odasi") {
+        const villa = await tx.villa.findUnique({
+          where: { id: villaId },
+          select: { bedrooms: true },
+        });
+        if (villa) {
+          await tx.villa.update({
+            where: { id: villaId },
+            data: { bedrooms: Math.max(0, villa.bedrooms - 1) },
+          });
+        }
+      }
+
+      await tx.villaRoom.delete({ where: { id: roomId } });
+    });
+
+    await syncVillaRoomFeatureCatalog(villaId);
+    await revalidateVillaRooms(villaId);
+    return { success: true };
+  } catch {
+    return { error: "Oda silinemedi" };
+  }
+}
+
 export async function addVillaRoomCustomFeature(
   villaId: string,
   featureName: string

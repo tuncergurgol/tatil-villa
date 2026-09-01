@@ -8,12 +8,18 @@ import {
   ImageIcon,
   Info,
   Plus,
+  Trash2,
   X,
 } from "lucide-react";
 import type { VillaRoom } from "@prisma/client";
-import { addVillaRoomCustomFeature, updateVillaRoom } from "@/app/actions/admin/villa-rooms";
+import {
+  addVillaRoomCustomFeature,
+  deleteVillaRoom,
+  updateVillaRoom,
+} from "@/app/actions/admin/villa-rooms";
 import {
   getRoomFeatureOptions,
+  getRoomTypeLabel,
   roomHasFeature,
   ROOM_TYPE_OPTIONS,
   toggleRoomFeature,
@@ -28,6 +34,7 @@ interface VillaRoomEditModalProps {
   galleryImages: string[];
   onClose: () => void;
   onSaved: () => void;
+  onDeleted: () => void;
 }
 
 const inputClass =
@@ -63,6 +70,7 @@ export default function VillaRoomEditModal({
   galleryImages,
   onClose,
   onSaved,
+  onDeleted,
 }: VillaRoomEditModalProps) {
   const [roomType, setRoomType] = useState(room.roomType);
   const [name, setName] = useState(room.name);
@@ -139,6 +147,28 @@ export default function VillaRoomEditModal({
         return;
       }
       onSaved();
+      onClose();
+    });
+  }
+
+  function handleDelete() {
+    const label = `${getRoomTypeLabel(room.roomType)} — ${room.name}`;
+    if (
+      !window.confirm(
+        `"${label}" oda kaydı silinsin mi? Bu işlem geri alınamaz.`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteVillaRoom(villaId, room.id);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onDeleted();
       onClose();
     });
   }
@@ -313,22 +343,33 @@ export default function VillaRoomEditModal({
           </SectionCard>
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
+        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-gray-200 bg-white px-6 py-4">
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-lg px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            İptal
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
+            onClick={handleDelete}
             disabled={isPending}
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-100 disabled:opacity-50"
           >
-            {isPending ? "Kaydediliyor..." : "Güncelle"}
+            <Trash2 className="h-4 w-4" />
+            Sil
           </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              İptal
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isPending}
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isPending ? "Kaydediliyor..." : "Güncelle"}
+            </button>
+          </div>
         </div>
       </div>
 

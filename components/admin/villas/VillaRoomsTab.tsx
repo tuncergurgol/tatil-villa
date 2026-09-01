@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BedDouble, Building2, Pencil } from "lucide-react";
+import { BedDouble, Building2, Pencil, Trash2 } from "lucide-react";
 import type { VillaRoom } from "@prisma/client";
+import { deleteVillaRoom } from "@/app/actions/admin/villa-rooms";
 import VillaBedroomMismatchAlert from "@/components/admin/villas/VillaBedroomMismatchAlert";
 import VillaRoomEditModal from "@/components/admin/villas/VillaRoomEditModal";
 import {
@@ -30,9 +31,33 @@ export default function VillaRoomsTab({
 }: VillaRoomsTabProps) {
   const router = useRouter();
   const [editingRoom, setEditingRoom] = useState<VillaRoom | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   function refresh() {
     router.refresh();
+  }
+
+  function handleDelete(room: VillaRoom) {
+    const label = `${getRoomTypeLabel(room.roomType)} — ${room.name}`;
+    if (
+      !window.confirm(
+        `"${label}" oda kaydı silinsin mi? Bu işlem geri alınamaz.`
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await deleteVillaRoom(villaId, room.id);
+      if (result.error) {
+        window.alert(result.error);
+        return;
+      }
+      if (editingRoom?.id === room.id) {
+        setEditingRoom(null);
+      }
+      refresh();
+    });
   }
 
   return (
@@ -111,14 +136,27 @@ export default function VillaRoomsTab({
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setEditingRoom(room)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                >
-                  <Pencil className="h-4 w-4 text-blue-600" />
-                  Düzenle
-                </button>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingRoom(room)}
+                    disabled={isPending}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Pencil className="h-4 w-4 text-blue-600" />
+                    Düzenle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(room)}
+                    disabled={isPending}
+                    aria-label="Odayı sil"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Sil
+                  </button>
+                </div>
               </div>
             </article>
             );
@@ -146,6 +184,7 @@ export default function VillaRoomsTab({
           galleryImages={galleryImages}
           onClose={() => setEditingRoom(null)}
           onSaved={refresh}
+          onDeleted={refresh}
         />
       ) : null}
     </div>
