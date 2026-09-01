@@ -74,7 +74,7 @@ export default function VillaFeaturesTab({
           facilityCategories={facilityCategories}
           selectedAmenityNames={villa.amenities}
           selectedFacilityCategoryNames={villa.facilityCategories}
-          showFacilityCategories={false}
+          showFacilityCategories
         />
       </Section>
 
