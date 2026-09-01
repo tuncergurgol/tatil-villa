@@ -41,6 +41,7 @@ import {
 } from "@/lib/villa-period-pricing";
 import {
   compareDates,
+  enumerateDateKeys,
   parseDateKey,
   startOfDay,
   toDateKey,
@@ -2786,12 +2787,13 @@ type VillaoteltatiliCalendarEvent = {
   start?: string;
   start_date?: string;
   end?: string;
+  end_date?: string;
   price?: string | number;
-  active?: number;
+  active?: number | string | boolean;
   event?: string;
   title?: string;
   is_default?: boolean;
-  classNames?: string[];
+  classNames?: string[] | string;
 };
 
 function villaoteltatiliEventDateKey(
@@ -2803,31 +2805,99 @@ function villaoteltatiliEventDateKey(
   return normalizeLooseDateKey(String(raw ?? ""));
 }
 
+function villaoteltatiliClassNames(
+  event: VillaoteltatiliCalendarEvent
+): string[] {
+  const raw = event.classNames;
+  if (Array.isArray(raw)) return raw.map((name) => String(name));
+  if (typeof raw === "string") {
+    return raw.split(/[\s,]+/).filter(Boolean);
+  }
+  return [];
+}
+
+function villaoteltatiliEventDateKeys(
+  event: VillaoteltatiliCalendarEvent
+): string[] {
+  const start = villaoteltatiliEventDateKey(event);
+  if (!start) return [];
+  const endRaw =
+    event.end ??
+    (typeof event.end_date === "string" ? event.end_date.slice(0, 10) : "");
+  const end = normalizeLooseDateKey(String(endRaw ?? ""));
+  if (!end || end === start) return [start];
+  return enumerateDateKeys(start, end);
+}
+
+function villaoteltatiliIsInactive(event: VillaoteltatiliCalendarEvent): boolean {
+  const active = event.active;
+  if (active === 0 || active === false || active === "0") return true;
+  if (typeof active === "string" && active.trim() !== "" && Number(active) === 0) {
+    return true;
+  }
+  return false;
+}
+
 function isVillaoteltatiliBlockedEvent(
   event: VillaoteltatiliCalendarEvent
 ): boolean {
-  if (event.is_default) return false;
-  if (event.active !== 0) return false;
+  const classes = villaoteltatiliClassNames(event);
   const label = String(event.event ?? event.title ?? "");
-  if (/engellen/i.test(label)) return true;
-  return (event.classNames ?? []).some((name) => /blocked/i.test(name));
+  const blockedByClass = classes.some((name) => /blocked/i.test(name));
+  const blockedByLabel = /engellen|kapal[ıi]|dolu|rezerve/i.test(label);
+  if (blockedByClass || blockedByLabel) return true;
+  if (event.is_default) return false;
+  // Bravo: active=0 + fiyat = kapalı gün (takvimde fiyat görünür ama müsait değil)
+  const price = Number(event.price);
+  return villaoteltatiliIsInactive(event) && Number.isFinite(price) && price > 0;
+}
+
+export function parseVillaoteltatiliCalendar(events: VillaoteltatiliCalendarEvent[]): {
+  occupancyByDateKey: Map<string, VillaDayOccupancy>;
+  checkInDateKeys: Set<string>;
+} {
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
+
+  for (const event of events) {
+    const keys = villaoteltatiliEventDateKeys(event);
+    if (keys.length === 0) continue;
+    const classes = villaoteltatiliClassNames(event);
+    const blocked = isVillaoteltatiliBlockedEvent(event);
+    const hasCheckInTriangle = classes.some((name) =>
+      /ustucgen|check[-_]?in/i.test(name)
+    );
+    const hasCheckOutTriangle = classes.some((name) =>
+      /altucgen|check[-_]?out/i.test(name)
+    );
+
+    if (blocked) {
+      for (const key of keys) occupancyByDateKey.set(key, "BOOKED");
+      if (hasCheckInTriangle) {
+        checkInDateKeys.add(keys[0]!);
+      }
+      continue;
+    }
+
+    // Aynı gün çıkış+giriş (iki üçgen): gece yeni konuğa aittir.
+    if (hasCheckInTriangle && hasCheckOutTriangle) {
+      for (const key of keys) occupancyByDateKey.set(key, "BOOKED");
+      checkInDateKeys.add(keys[0]!);
+    }
+  }
+
+  return { occupancyByDateKey, checkInDateKeys };
 }
 
 export function parseVillaoteltatiliOccupancy(
   events: VillaoteltatiliCalendarEvent[]
 ): Map<string, VillaDayOccupancy> {
-  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
-  for (const event of events) {
-    if (!isVillaoteltatiliBlockedEvent(event)) continue;
-    const key = villaoteltatiliEventDateKey(event);
-    if (!key) continue;
-    occupancyByDateKey.set(key, "BOOKED");
-  }
-  return occupancyByDateKey;
+  return parseVillaoteltatiliCalendar(events).occupancyByDateKey;
 }
 
 export function parseVillaoteltatiliDailyPrices(
-  events: VillaoteltatiliCalendarEvent[]
+  events: VillaoteltatiliCalendarEvent[],
+  options?: { includeBlocked?: boolean }
 ): { dateKeys: string[]; prices: number[] } {
   const sorted = [...events].sort((a, b) =>
     String(a.start ?? a.start_date ?? "").localeCompare(
@@ -2836,9 +2906,13 @@ export function parseVillaoteltatiliDailyPrices(
   );
   const dateKeys: string[] = [];
   const prices: number[] = [];
+  const includeBlocked = options?.includeBlocked === true;
 
   for (const event of sorted) {
-    if (event.active !== 1) continue;
+    if (!includeBlocked) {
+      if (villaoteltatiliIsInactive(event)) continue;
+      if (isVillaoteltatiliBlockedEvent(event)) continue;
+    }
     const price = Number(event.price);
     if (!Number.isFinite(price) || price <= 0) continue;
     const key = villaoteltatiliEventDateKey(event);
@@ -2850,6 +2924,23 @@ export function parseVillaoteltatiliDailyPrices(
   return { dateKeys, prices };
 }
 
+function parseVillaoteltatiliLoadDatesPayload(
+  parsed: unknown
+): VillaoteltatiliCalendarEvent[] {
+  if (Array.isArray(parsed)) return parsed as VillaoteltatiliCalendarEvent[];
+  if (parsed && typeof parsed === "object") {
+    const rec = parsed as {
+      events?: unknown;
+      data?: unknown;
+      dates?: unknown;
+    };
+    for (const value of [rec.events, rec.data, rec.dates]) {
+      if (Array.isArray(value)) return value as VillaoteltatiliCalendarEvent[];
+    }
+  }
+  throw new Error("loadDates yanıtı dizi değil");
+}
+
 async function fetchVillaoteltatiliLoadDates(
   pageUrl: string,
   serviceId: string,
@@ -2857,19 +2948,33 @@ async function fetchVillaoteltatiliLoadDates(
 ): Promise<VillaoteltatiliCalendarEvent[]> {
   const startDate = startOfDay(new Date());
   const endDate = new Date(startDate);
-  endDate.setFullYear(endDate.getFullYear() + 1);
+  endDate.setMonth(endDate.getMonth() + 18);
+  const origin = originFromUrl(pageUrl);
+  const candidates = [
+    loadDatesUrl,
+    `${origin}/user/kiralik-villa/availability/loadDates`,
+    `${origin}/booking/availability/loadDates`,
+  ];
+  const seen = new Set<string>();
+  let lastError: Error | null = null;
 
-  const url = new URL(loadDatesUrl, originFromUrl(pageUrl));
-  url.searchParams.set("id", serviceId);
-  url.searchParams.set("start", toDateKey(startDate));
-  url.searchParams.set("end", toDateKey(endDate));
-
-  const body = await fetchText(url.toString(), { referer: pageUrl });
-  const parsed = JSON.parse(body) as unknown;
-  if (!Array.isArray(parsed)) {
-    throw new Error("loadDates yanıtı dizi değil");
+  for (const candidate of candidates) {
+    const url = new URL(candidate, origin);
+    const hrefBase = `${url.origin}${url.pathname}`;
+    if (seen.has(hrefBase)) continue;
+    seen.add(hrefBase);
+    url.searchParams.set("id", serviceId);
+    url.searchParams.set("start", toDateKey(startDate));
+    url.searchParams.set("end", toDateKey(endDate));
+    try {
+      const parsed = await fetchJson(url.toString(), { referer: pageUrl });
+      return parseVillaoteltatiliLoadDatesPayload(parsed);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
   }
-  return parsed as VillaoteltatiliCalendarEvent[];
+
+  throw lastError ?? new Error("loadDates alınamadı");
 }
 
 async function scrapeVillaoteltatiliFromPage(
@@ -2888,6 +2993,7 @@ async function scrapeVillaoteltatiliFromPage(
   const deposit = extractDamageDeposit(html);
   let periods = parseVillaoteltatiliPriceTable(html, deposit);
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
   const prepaymentRate = extractVillaoteltatiliPrepaymentRate(html);
   const loadDatesUrl =
     meta.loadDatesUrl ??
@@ -2900,16 +3006,42 @@ async function scrapeVillaoteltatiliFromPage(
       meta.serviceId,
       loadDatesUrl
     );
-    const occ = parseVillaoteltatiliOccupancy(events);
-    for (const [key, status] of occ) occupancyByDateKey.set(key, status);
+    const parsedCalendar = parseVillaoteltatiliCalendar(events);
+    for (const [key, status] of parsedCalendar.occupancyByDateKey) {
+      occupancyByDateKey.set(key, status);
+    }
+    for (const key of parsedCalendar.checkInDateKeys) checkInDateKeys.add(key);
 
-    if (periods.length === 0) {
-      const { dateKeys, prices } = parseVillaoteltatiliDailyPrices(events);
-      periods = collapseDailyPricesToPeriods(dateKeys, prices, "TL");
-      if (periods.length > 0) {
-        warnings.push(
-          "Dönem listesi HTML'de yoktu; takvim günlük fiyatlarından birleştirildi"
-        );
+    if (events.length > 0 && occupancyByDateKey.size === 0) {
+      warnings.push(
+        "VillaOtelTatili takvimi alındı ama Engellenmiş gün bulunamadı"
+      );
+    }
+
+    // Takvim günlük fiyatları engelli günleri de kapsar; HTML dönem tablosu
+    // engelli aralıkları (01-02 / 09-10 Eyl) dışarıda bırakabiliyor.
+    const htmlPeriodCount = periods.length;
+    const daily = parseVillaoteltatiliDailyPrices(events, {
+      includeBlocked: true,
+    });
+    if (daily.dateKeys.length > 0) {
+      const fromCalendar = collapseDailyPricesToPeriods(
+        daily.dateKeys,
+        daily.prices,
+        "TL"
+      );
+      if (fromCalendar.length > 0) {
+        periods = fromCalendar.map((period) => ({
+          ...period,
+          damageDeposit: deposit.amount ?? period.damageDeposit,
+          damageDepositCurrency:
+            deposit.currency ?? period.damageDepositCurrency,
+        }));
+        if (htmlPeriodCount === 0) {
+          warnings.push(
+            "Dönem listesi HTML'de yoktu; takvim günlük fiyatlarından birleştirildi"
+          );
+        }
       }
     }
   } catch (error) {
@@ -2934,6 +3066,7 @@ async function scrapeVillaoteltatiliFromPage(
     pageTitle: extractPageTitle(html),
     periods,
     occupancyByDateKey,
+    checkInDateKeys,
     warnings,
   };
 }
