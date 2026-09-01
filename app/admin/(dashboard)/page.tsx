@@ -1,6 +1,7 @@
 import AdminDashboardPanels from "@/components/admin/AdminDashboardPanels";
+import DashboardNewBookingCard from "@/components/admin/DashboardNewBookingCard";
 import DashboardStatCard from "@/components/admin/DashboardStatCard";
-import { getBookingCount, getPendingBookingCount } from "@/lib/queries/bookings";
+import { getBookingCount } from "@/lib/queries/bookings";
 import {
   getDashboardBookingQuickStats,
   getDashboardBookingStatusStats,
@@ -10,15 +11,12 @@ import {
 } from "@/lib/queries/dashboard-stats";
 import { getVillaCount } from "@/lib/queries/villas";
 import { pendingGuestReviewsAdminHref } from "@/lib/guest-review-admin-url";
-import { Calendar, Clock, Home, MessageSquareQuote } from "lucide-react";
-import { buildReservationsHref } from "@/lib/booking-filter-url";
-import { BookingStatus } from "@prisma/client";
+import { Calendar, Home, MessageSquareQuote } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   const [
     villaCount,
     bookingCount,
-    pendingCount,
     statusStats,
     quickStats,
     unansweredCallbacks,
@@ -27,7 +25,6 @@ export default async function AdminDashboardPage() {
   ] = await Promise.all([
     getVillaCount(),
     getBookingCount(),
-    getPendingBookingCount(),
     getDashboardBookingStatusStats(),
     getDashboardBookingQuickStats(),
     getDashboardUnansweredCallbackCount(),
@@ -59,15 +56,7 @@ export default async function AdminDashboardPage() {
           accentClass="border-blue-100 hover:border-blue-300"
           linkClass="text-blue-700"
         />
-        <DashboardStatCard
-          href={buildReservationsHref({ status: BookingStatus.NEW })}
-          label="Bekleyen"
-          value={pendingCount}
-          icon={Clock}
-          iconWrapClass="bg-amber-100 text-amber-800"
-          accentClass="border-amber-100 hover:border-amber-300"
-          linkClass="text-amber-800"
-        />
+        <DashboardNewBookingCard />
         <DashboardStatCard
           href={pendingGuestReviewsAdminHref()}
           label="Onay Bekleyen Misafir Yorumları"
