@@ -40,6 +40,7 @@ import {
   deriveWithoutCommissionFromCommissioned,
 } from "@/lib/villa-period-pricing";
 import {
+  addDaysToDateKey,
   compareDates,
   enumerateDateKeys,
   parseDateKey,
@@ -2852,38 +2853,71 @@ function isVillaoteltatiliBlockedEvent(
   return villaoteltatiliIsInactive(event) && Number.isFinite(price) && price > 0;
 }
 
+/**
+ * Bravo/villaoteltatili üçgenleri (site UI ile uyumlu):
+ * - altucgen = giriş yarımı → Engellenmiş bloğunun hemen önünde ise o gece BOOKED + Giriş
+ * - ustucgen = çıkış / sonraki müsait yarım (gece modelinde ekstra gece yazılmaz)
+ */
 export function parseVillaoteltatiliCalendar(events: VillaoteltatiliCalendarEvent[]): {
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
   checkInDateKeys: Set<string>;
 } {
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
   const checkInDateKeys = new Set<string>();
+  const eventByDateKey = new Map<string, VillaoteltatiliCalendarEvent>();
+
+  for (const event of events) {
+    for (const key of villaoteltatiliEventDateKeys(event)) {
+      eventByDateKey.set(key, event);
+    }
+  }
+
+  for (const event of events) {
+    const keys = villaoteltatiliEventDateKeys(event);
+    if (keys.length === 0) continue;
+    if (!isVillaoteltatiliBlockedEvent(event)) continue;
+    for (const key of keys) occupancyByDateKey.set(key, "BOOKED");
+  }
 
   for (const event of events) {
     const keys = villaoteltatiliEventDateKeys(event);
     if (keys.length === 0) continue;
     const classes = villaoteltatiliClassNames(event);
-    const blocked = isVillaoteltatiliBlockedEvent(event);
-    const hasCheckInTriangle = classes.some((name) =>
-      /ustucgen|check[-_]?in/i.test(name)
-    );
-    const hasCheckOutTriangle = classes.some((name) =>
-      /altucgen|check[-_]?out/i.test(name)
-    );
+    const hasAltUcg = classes.some((name) => /altucgen/i.test(name));
+    const hasUstUcg = classes.some((name) => /ustucgen/i.test(name));
+    const hasBoth =
+      (hasAltUcg && hasUstUcg) ||
+      classes.some((name) => /check[-_]?in[-_]?out|inout/i.test(name));
 
-    if (blocked) {
+    // Aynı gün çıkış+giriş: gece yeni konuğa aittir.
+    if (hasBoth) {
       for (const key of keys) occupancyByDateKey.set(key, "BOOKED");
-      if (hasCheckInTriangle) {
-        checkInDateKeys.add(keys[0]!);
-      }
+      checkInDateKeys.add(keys[0]!);
       continue;
     }
 
-    // Aynı gün çıkış+giriş (iki üçgen): gece yeni konuğa aittir.
-    if (hasCheckInTriangle && hasCheckOutTriangle) {
-      for (const key of keys) occupancyByDateKey.set(key, "BOOKED");
-      checkInDateKeys.add(keys[0]!);
+    // altucgen + ertesi gün Engellenmiş/BOOKED → giriş günü (ör. 8 Eyl → 9–10 blok)
+    if (hasAltUcg) {
+      for (const key of keys) {
+        const nextKey = addDaysToDateKey(key, 1);
+        const nextEvent = eventByDateKey.get(nextKey);
+        const nextBooked =
+          occupancyByDateKey.get(nextKey) === "BOOKED" ||
+          (nextEvent != null && isVillaoteltatiliBlockedEvent(nextEvent));
+        if (!nextBooked) continue;
+        occupancyByDateKey.set(key, "BOOKED");
+        checkInDateKeys.add(key);
+      }
     }
+  }
+
+  // Engellenmiş koşunun ilk günü (önünde altucgen yoksa) giriş kabul edilir.
+  const bookedKeys = [...occupancyByDateKey.keys()].sort();
+  for (const key of bookedKeys) {
+    if (checkInDateKeys.has(key)) continue;
+    const prevKey = addDaysToDateKey(key, -1);
+    if (occupancyByDateKey.get(prevKey) === "BOOKED") continue;
+    checkInDateKeys.add(key);
   }
 
   return { occupancyByDateKey, checkInDateKeys };
