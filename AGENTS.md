@@ -15,6 +15,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - Cursor her zaman bu Windows bilgisayarda çalışır.
 - Cloud Agent / cloud VM yasaktır; Task `environment: "cloud"` kullanılmaz.
+- Commit / push / deploy / SSH / bundle için kullanıcıdan ek onay isteme; işi sonuna kadar tamamla.
+- Auto-review engeli çıkarsa aynı komutu onay isteğiyle yeniden dene; chat’te “çalıştırayım mı?” sorma.
 
 ## Güvenlik
 
