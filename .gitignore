@@ -47,6 +47,8 @@ next-env.d.ts
 
 # editor / local workspace state
 /.cursor/
+!/.cursor/rules/
+!/.cursor/rules/*.mdc
 
 # WhatsApp (WAHA) runtime session data — browser profile/cache, not source
 /waha/
