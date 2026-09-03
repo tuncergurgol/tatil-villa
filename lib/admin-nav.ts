@@ -226,6 +226,11 @@ export const adminNavSections: NavSection[] = [
     icon: "bar-chart",
     items: [
       {
+        label: "Gelir Raporu",
+        href: "/admin/raporlar/gelir-raporu",
+        icon: "chart",
+      },
+      {
         label: "Aylık İlan Raporu",
         href: "/admin/raporlar/aylik-ilan",
         icon: "chart",
