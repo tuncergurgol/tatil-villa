@@ -346,8 +346,10 @@ function DimensionHeaderMenu({
       <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
         <input
           type="checkbox"
-          checked={allSelected}
-          onChange={() => onChangeFilter(undefined)}
+          checked={allSelected && options.length > 0}
+          onChange={() =>
+            onChangeFilter(allSelected ? [] : undefined)
+          }
           className="h-3.5 w-3.5 shrink-0 rounded border-gray-300"
         />
         Tümü
@@ -569,7 +571,9 @@ function MeasureHeaderMenu({
             <input
               type="checkbox"
               checked={allSelected}
-              onChange={() => onChangeFilter(undefined)}
+              onChange={() =>
+                onChangeFilter(allSelected ? [] : undefined)
+              }
               className="h-3.5 w-3.5 shrink-0 rounded border-gray-300"
             />
             Tümü
