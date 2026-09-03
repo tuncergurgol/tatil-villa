@@ -72,7 +72,7 @@ function main() {
     "reservation year"
   );
   assert(
-    getFactDimensionKey(facts[0], "reservationMonth") === "2026-01",
+    getFactDimensionKey(facts[0], "reservationMonth") === "01",
     "reservation month"
   );
   assert(getFactDimensionKey(facts[0], "stayDay") === "2026-07-01", "stay day");
@@ -107,11 +107,34 @@ function main() {
   assert(year2026?.totals[1] === 3900, "2026 commission subtotal");
 
   const january = defaultPivot.rows.find(
-    (row) => row.keys.join("|") === "2026|2026-01" && !row.isSubtotal
+    (row) => row.keys.join("|") === "2026|01" && !row.isSubtotal
   );
   assert(january?.total === 3500, "january 2026 total");
   assert(january?.totals[0] === 2, "january reservation count");
   assert(january?.totals[1] === 3500, "january 2026 commission");
+
+  const monthPivot = buildIncomePivot(facts, {
+    filters: [],
+    rows: ["reservationMonth", "reservationYear"],
+    columns: ["incomeType"],
+    values: ["reservationCount", "commissionAmount"],
+  });
+  const ocakGroup = monthPivot.rows.find(
+    (row) => row.keys[0] === "01" && row.isSubtotal
+  );
+  assert(ocakGroup?.labels[0] === "Ocak", "month label is Ocak without year");
+  assert(
+    monthPivot.rows.some(
+      (row) => row.keys.join("|") === "01|2026" && !row.isSubtotal
+    ),
+    "ocak then 2026 leaf"
+  );
+  assert(
+    monthPivot.rows.some(
+      (row) => row.keys.join("|") === "12|2025" && !row.isSubtotal
+    ),
+    "aralik then 2025 leaf"
+  );
 
   const swapped = moveIncomeField(
     moveIncomeField(DEFAULT_INCOME_CUBE_LAYOUT, "reservationMonth", "palette"),

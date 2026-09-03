@@ -195,7 +195,8 @@ function parseDateParts(dateKey: string) {
   }
   return {
     year: match[1],
-    month: `${match[1]}-${match[2]}`,
+    // Ay boyutu takvim ayıdır (01–12); yıl ayrı alandır → Ay→Yıl pivot'u doğru çalışır
+    month: match[2],
     day: dateKey,
     monthIndex: Number(match[2]),
     dayNum: Number(match[3]),
@@ -242,11 +243,17 @@ export function getFactDimensionKey(
   }
 }
 
-function formatMonthLabel(monthKey: string, includeYear: boolean) {
-  const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
-  if (!match) return monthKey || MISSING_REGION_LABEL;
-  const monthName = MONTH_LABELS_TR[Number(match[2]) - 1] ?? match[2];
-  return includeYear ? `${monthName} ${match[1]}` : monthName;
+function formatMonthLabel(monthKey: string) {
+  const monthOnly = /^(\d{1,2})$/.exec(monthKey);
+  if (monthOnly) {
+    return MONTH_LABELS_TR[Number(monthOnly[1]) - 1] ?? monthKey;
+  }
+  // Eski YYYY-MM anahtarları (filtre/localStorage kalıntısı) için geriye dönük uyum
+  const withYear = /^(\d{4})-(\d{2})$/.exec(monthKey);
+  if (withYear) {
+    return MONTH_LABELS_TR[Number(withYear[2]) - 1] ?? withYear[2];
+  }
+  return monthKey || MISSING_REGION_LABEL;
 }
 
 function formatDayLabel(dayKey: string, includeMonthYear: boolean) {
@@ -268,9 +275,8 @@ export function getDimensionKeyLabel(
     case "stayYear":
       return key;
     case "reservationMonth":
-      return formatMonthLabel(key, !axisFields.includes("reservationYear"));
     case "stayMonth":
-      return formatMonthLabel(key, !axisFields.includes("stayYear"));
+      return formatMonthLabel(key);
     case "reservationDay":
       return formatDayLabel(
         key,
@@ -302,11 +308,24 @@ export function compareDimensionKeys(
     return leftOrder - rightOrder;
   }
 
+  if (fieldId === "reservationMonth" || fieldId === "stayMonth") {
+    const monthOrdinal = (key: string) => {
+      const withYear = /^(\d{4})-(\d{2})$/.exec(key);
+      if (withYear) return Number(withYear[2]);
+      const monthOnly = /^(\d{1,2})$/.exec(key);
+      if (monthOnly) return Number(monthOnly[1]);
+      return Number.NaN;
+    };
+    const leftMonth = monthOrdinal(left);
+    const rightMonth = monthOrdinal(right);
+    if (Number.isFinite(leftMonth) && Number.isFinite(rightMonth)) {
+      return leftMonth - rightMonth;
+    }
+  }
+
   if (
     fieldId === "reservationYear" ||
     fieldId === "stayYear" ||
-    fieldId === "reservationMonth" ||
-    fieldId === "stayMonth" ||
     fieldId === "reservationDay" ||
     fieldId === "stayDay"
   ) {
