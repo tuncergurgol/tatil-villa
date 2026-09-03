@@ -15,13 +15,13 @@ const PILL_COUNT = 12;
  * [eq  ] [eq   ] [eq  ]
  */
 const BENTO_SIZES = [
-  "min-h-[240px] lg:row-span-2 lg:min-h-[360px]",
-  "min-h-[180px] lg:min-h-[170px]",
-  "min-h-[240px] lg:row-span-2 lg:min-h-[280px]",
-  "min-h-[180px] lg:min-h-[170px]",
-  "min-h-[180px] lg:min-h-[200px]",
-  "min-h-[180px] lg:min-h-[200px]",
-  "min-h-[180px] lg:min-h-[200px]",
+  "min-h-[240px] lg:row-span-2 lg:min-h-[180px]",
+  "min-h-[180px] lg:min-h-[85px]",
+  "min-h-[240px] lg:row-span-2 lg:min-h-[140px]",
+  "min-h-[180px] lg:min-h-[85px]",
+  "min-h-[180px] lg:min-h-[100px]",
+  "min-h-[180px] lg:min-h-[100px]",
+  "min-h-[180px] lg:min-h-[100px]",
 ] as const;
 
 const pillClass =
@@ -59,7 +59,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
           ))}
         </div>
 
-        <div className="grid auto-rows-[minmax(140px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid auto-rows-[minmax(140px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 lg:auto-rows-[minmax(70px,auto)] lg:grid-cols-3">
           {featured.map((region, index) => (
             <Link
               key={region.id}
