@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type DragEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type DragEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -230,6 +231,8 @@ function DimensionHeaderMenu({
   facts,
   selected,
   sort,
+  anchorRect,
+  onClose,
   onChangeFilter,
   onChangeSort,
 }: {
@@ -237,9 +240,12 @@ function DimensionHeaderMenu({
   facts: IncomeFact[];
   selected: string[] | undefined;
   sort: IncomeRowSort | null;
+  anchorRect: DOMRect;
+  onClose: () => void;
   onChangeFilter: (values: string[] | undefined) => void;
   onChangeSort: (direction: "asc" | "desc" | null) => void;
 }) {
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const options = useMemo(
     () => uniqueFilterValues(facts, fieldId),
     [facts, fieldId]
@@ -248,8 +254,49 @@ function DimensionHeaderMenu({
   const allSelected = options.every((item) => selectedSet.has(item.key));
   const activeSort = sort?.fieldId === fieldId ? sort.direction : null;
 
-  return (
-    <div className="absolute left-0 top-full z-30 mt-1 max-h-72 w-60 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+  const style = useMemo(() => {
+    const width = 240;
+    const left = Math.min(
+      Math.max(8, anchorRect.left),
+      window.innerWidth - width - 8
+    );
+    const top = Math.min(anchorRect.bottom + 4, window.innerHeight - 16);
+    const maxHeight = Math.max(160, window.innerHeight - top - 16);
+    return {
+      position: "fixed" as const,
+      top,
+      left,
+      width,
+      maxHeight,
+      zIndex: 80,
+    };
+  }, [anchorRect]);
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (menuRef.current?.contains(target)) return;
+      if (target.closest(`[data-income-dim-filter="${fieldId}"]`)) return;
+      onClose();
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [fieldId, onClose]);
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      style={style}
+      className="overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-2xl ring-1 ring-black/5"
+    >
       <div className="mb-2 border-b border-gray-100 pb-2">
         <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
           Sıralama
@@ -293,18 +340,19 @@ function DimensionHeaderMenu({
       <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
         Filtre
       </p>
-      <label className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+      <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
         <input
           type="checkbox"
           checked={allSelected}
           onChange={() => onChangeFilter(undefined)}
+          className="h-3.5 w-3.5 shrink-0 rounded border-gray-300"
         />
         Tümü
       </label>
       {options.map((option) => (
         <label
           key={option.key}
-          className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
         >
           <input
             type="checkbox"
@@ -317,11 +365,105 @@ function DimensionHeaderMenu({
                 );
               onChangeFilter(next.length === options.length ? undefined : next);
             }}
+            className="h-3.5 w-3.5 shrink-0 rounded border-gray-300"
           />
-          <span className="truncate">{option.label}</span>
+          <span className="min-w-0 flex-1 truncate">{option.label}</span>
         </label>
       ))}
-    </div>
+    </div>,
+    document.body
+  );
+}
+
+function RowDimensionHeader({
+  fieldId,
+  rowIndex,
+  facts,
+  selected,
+  sort,
+  menuOpen,
+  onToggleMenu,
+  onCloseMenu,
+  onChangeFilter,
+  onChangeSort,
+}: {
+  fieldId: IncomeDimensionId;
+  rowIndex: number;
+  facts: IncomeFact[];
+  selected: string[] | undefined;
+  sort: IncomeRowSort | null;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+  onChangeFilter: (values: string[] | undefined) => void;
+  onChangeSort: (direction: "asc" | "desc" | null) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!menuOpen || !buttonRef.current) {
+      setAnchorRect(null);
+      return;
+    }
+    const update = () => {
+      if (buttonRef.current) setAnchorRect(buttonRef.current.getBoundingClientRect());
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [menuOpen]);
+
+  return (
+    <th
+      className={`sticky border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500 ${
+        menuOpen ? "z-20" : "z-10"
+      }`}
+      style={{ left: rowIndex * 140, minWidth: 140 }}
+    >
+      <button
+        ref={buttonRef}
+        type="button"
+        data-income-dim-filter={fieldId}
+        onClick={onToggleMenu}
+        className="flex w-full items-center justify-between gap-1 text-left"
+      >
+        <span className="truncate">{getIncomeFieldLabel(fieldId)}</span>
+        <span className="inline-flex shrink-0 items-center gap-0.5">
+          {selected != null ? (
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+          ) : null}
+          {sort?.fieldId === fieldId ? (
+            sort.direction === "asc" ? (
+              <ArrowUp className="h-3 w-3 text-indigo-600" />
+            ) : (
+              <ArrowDown className="h-3 w-3 text-indigo-600" />
+            )
+          ) : null}
+          <ChevronDown
+            className={`h-3 w-3 text-gray-400 transition ${
+              menuOpen ? "rotate-180" : ""
+            }`}
+          />
+        </span>
+      </button>
+      {menuOpen && anchorRect ? (
+        <DimensionHeaderMenu
+          fieldId={fieldId}
+          facts={facts}
+          selected={selected}
+          sort={sort}
+          anchorRect={anchorRect}
+          onClose={onCloseMenu}
+          onChangeFilter={onChangeFilter}
+          onChangeSort={onChangeSort}
+        />
+      ) : null}
+    </th>
   );
 }
 
@@ -684,65 +826,36 @@ export default function IncomeReportPage({
                       </th>
                     ) : (
                       layout.rows.map((fieldId, rowIndex) => (
-                        <th
+                        <RowDimensionHeader
                           key={fieldId}
-                          className="relative sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500"
-                          style={{ left: rowIndex * 140, minWidth: 140 }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setOpenHeaderMenu((current) =>
-                                current === fieldId ? null : fieldId
-                              )
+                          fieldId={fieldId}
+                          rowIndex={rowIndex}
+                          facts={facts}
+                          selected={valueFilters[fieldId]}
+                          sort={rowSort}
+                          menuOpen={openHeaderMenu === fieldId}
+                          onToggleMenu={() =>
+                            setOpenHeaderMenu((current) =>
+                              current === fieldId ? null : fieldId
+                            )
+                          }
+                          onCloseMenu={() => setOpenHeaderMenu(null)}
+                          onChangeFilter={(values) =>
+                            setValueFilters((current) => ({
+                              ...current,
+                              [fieldId]: values,
+                            }))
+                          }
+                          onChangeSort={(direction) => {
+                            if (direction == null) {
+                              setRowSort((current) =>
+                                current?.fieldId === fieldId ? null : current
+                              );
+                              return;
                             }
-                            className="flex w-full items-center justify-between gap-1 text-left"
-                          >
-                            <span className="truncate">
-                              {getIncomeFieldLabel(fieldId)}
-                            </span>
-                            <span className="inline-flex shrink-0 items-center gap-0.5">
-                              {valueFilters[fieldId] != null ? (
-                                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                              ) : null}
-                              {rowSort?.fieldId === fieldId ? (
-                                rowSort.direction === "asc" ? (
-                                  <ArrowUp className="h-3 w-3 text-indigo-600" />
-                                ) : (
-                                  <ArrowDown className="h-3 w-3 text-indigo-600" />
-                                )
-                              ) : null}
-                              <ChevronDown
-                                className={`h-3 w-3 text-gray-400 transition ${
-                                  openHeaderMenu === fieldId ? "rotate-180" : ""
-                                }`}
-                              />
-                            </span>
-                          </button>
-                          {openHeaderMenu === fieldId ? (
-                            <DimensionHeaderMenu
-                              fieldId={fieldId}
-                              facts={facts}
-                              selected={valueFilters[fieldId]}
-                              sort={rowSort}
-                              onChangeFilter={(values) =>
-                                setValueFilters((current) => ({
-                                  ...current,
-                                  [fieldId]: values,
-                                }))
-                              }
-                              onChangeSort={(direction) => {
-                                if (direction == null) {
-                                  setRowSort((current) =>
-                                    current?.fieldId === fieldId ? null : current
-                                  );
-                                  return;
-                                }
-                                setRowSort({ fieldId, direction });
-                              }}
-                            />
-                          ) : null}
-                        </th>
+                            setRowSort({ fieldId, direction });
+                          }}
+                        />
                       ))
                     )}
                     {pivot.columnLeaves.flatMap((column, columnIndex) =>
