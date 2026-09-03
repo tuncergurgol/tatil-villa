@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { VillaDayOccupancy } from "@prisma/client";
-import { buildOccupancyMap, isNightBlocked, rangeHasBlockedNight } from "@/lib/booking-calendar-selection";
+import { buildCheckInDateKeys, buildOccupancyMap, isNightBlocked, rangeHasBlockedNight } from "@/lib/booking-calendar-selection";
 import type { GuestCounts } from "@/lib/types";
 import { compareDates, parseDateKey, todayDate } from "@/lib/villa-period-calendar";
 import {
@@ -20,6 +20,7 @@ import {
 type CalendarDayInput = {
   date: string;
   occupancyStatus: string;
+  occupancyCheckIn?: boolean | null;
 };
 
 type VillaStaySelectionContextValue = {
@@ -31,6 +32,7 @@ type VillaStaySelectionContextValue = {
   datesOpen: boolean;
   guestsOpen: boolean;
   occupancyMap: Map<string, VillaDayOccupancy>;
+  checkInDateKeys: ReadonlySet<string>;
   previewStart: string;
   previewEnd: string;
   previewNights: number;
@@ -62,7 +64,17 @@ function resolveInitialStayRange(
     return { checkIn: "", checkOut: "" };
   }
   const occupancyMap = buildOccupancyMap(calendarDays);
-  if (rangeHasBlockedNight(start, end, occupancyMap, undefined, { allowOption: true })) {
+  const checkInDateKeys = buildCheckInDateKeys(calendarDays);
+  if (
+    rangeHasBlockedNight(
+      start,
+      end,
+      occupancyMap,
+      undefined,
+      { allowOption: true },
+      checkInDateKeys
+    )
+  ) {
     return { checkIn: "", checkOut: "" };
   }
   return { checkIn: start, checkOut: end };
@@ -114,6 +126,10 @@ export function VillaStaySelectionProvider({
     () => buildOccupancyMap(calendarDays),
     [calendarDays]
   );
+  const checkInDateKeys = useMemo(
+    () => buildCheckInDateKeys(calendarDays),
+    [calendarDays]
+  );
 
   const today = useMemo(() => todayDate(), []);
 
@@ -136,7 +152,17 @@ export function VillaStaySelectionProvider({
       if (compareDates(parseDateKey(dateKey), today) < 0) return;
 
       if (!pendingStart) {
-        if (isNightBlocked(occupancyMap, dateKey, undefined, { allowOption: true })) return;
+        if (
+          isNightBlocked(
+            occupancyMap,
+            dateKey,
+            undefined,
+            { allowOption: true },
+            checkInDateKeys
+          )
+        ) {
+          return;
+        }
         setPendingStart(dateKey);
         setHoverDate(dateKey);
         setCheckIn(dateKey);
@@ -148,7 +174,17 @@ export function VillaStaySelectionProvider({
       if (
         compareDates(parseDateKey(dateKey), parseDateKey(pendingStart)) <= 0
       ) {
-        if (isNightBlocked(occupancyMap, dateKey, undefined, { allowOption: true })) return;
+        if (
+          isNightBlocked(
+            occupancyMap,
+            dateKey,
+            undefined,
+            { allowOption: true },
+            checkInDateKeys
+          )
+        ) {
+          return;
+        }
         setPendingStart(dateKey);
         setHoverDate(dateKey);
         setCheckIn(dateKey);
@@ -158,10 +194,21 @@ export function VillaStaySelectionProvider({
 
       const { start, end } = normalizeDateRange(pendingStart, dateKey);
       if (start === end) return;
-      if (rangeHasBlockedNight(start, end, occupancyMap, undefined, { allowOption: true })) return;
+      if (
+        rangeHasBlockedNight(
+          start,
+          end,
+          occupancyMap,
+          undefined,
+          { allowOption: true },
+          checkInDateKeys
+        )
+      ) {
+        return;
+      }
       completeRange(start, end);
     },
-    [completeRange, occupancyMap, pendingStart, today]
+    [checkInDateKeys, completeRange, occupancyMap, pendingStart, today]
   );
 
   const openDatePicker = useCallback(() => {
@@ -182,9 +229,14 @@ export function VillaStaySelectionProvider({
     previewStart &&
       previewEnd &&
       previewStart !== previewEnd &&
-      rangeHasBlockedNight(previewStart, previewEnd, occupancyMap, undefined, {
-        allowOption: true,
-      })
+      rangeHasBlockedNight(
+        previewStart,
+        previewEnd,
+        occupancyMap,
+        undefined,
+        { allowOption: true },
+        checkInDateKeys
+      )
   );
 
   const value = useMemo<VillaStaySelectionContextValue>(
@@ -197,6 +249,7 @@ export function VillaStaySelectionProvider({
       datesOpen,
       guestsOpen,
       occupancyMap,
+      checkInDateKeys,
       previewStart,
       previewEnd,
       previewNights,
@@ -212,6 +265,7 @@ export function VillaStaySelectionProvider({
     [
       allowPets,
       checkIn,
+      checkInDateKeys,
       checkOut,
       datesOpen,
       guests,

@@ -47,8 +47,12 @@ assert(
   "12 Ağustos giriş+çıkış görünür"
 );
 assert(
+  isOccupancyNightBlocked(occupancyMap, "2026-08-06", undefined, undefined, checkInDateKeys) === true,
+  "turnover gecesi engellenir (checkIn işaretiyle)"
+);
+assert(
   isOccupancyNightBlocked(occupancyMap, "2026-08-06") === true,
-  "turnover gecesi engellenir"
+  "turnover gecesi engellenir (bitişik blok fallback)"
 );
 assert(
   resolveVillaDayVisualFromMap("2026-08-05", occupancyMap, checkInDateKeys) ===
@@ -81,6 +85,58 @@ assert(
 assert(
   isOccupancyNightBlocked(checkoutOnly, "2026-07-16") === false,
   "çıkış günü gece olarak açık kalır"
+);
+
+// Rezervasyon formu bug'ı: giriş işareti yoksa 5 çıkış / 6 giriş görünür;
+// işaretle birlikte 5 giriş+çıkış, 6 dolu olmalı.
+const beyazIslamlarMap = buildOccupancyMap([
+  { date: "2026-09-04", occupancyStatus: "BOOKED" },
+  { date: "2026-09-05", occupancyStatus: "EMPTY" },
+  { date: "2026-09-06", occupancyStatus: "BOOKED" },
+  { date: "2026-09-07", occupancyStatus: "BOOKED" },
+  { date: "2026-09-08", occupancyStatus: "EMPTY" },
+  { date: "2026-09-09", occupancyStatus: "BOOKED" },
+]);
+const beyazIslamlarCheckIns = new Set(["2026-09-05", "2026-09-08"]);
+assert(
+  resolveVillaDayVisualFromMap("2026-09-05", beyazIslamlarMap) === "check_out",
+  "işaret yoksa 5 yalnızca çıkış (eski rezervasyon formu hatası)"
+);
+assert(
+  resolveVillaDayVisualFromMap("2026-09-06", beyazIslamlarMap) === "check_in",
+  "işaret yoksa 6 yanlış giriş görünür"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-09-05",
+    beyazIslamlarMap,
+    beyazIslamlarCheckIns
+  ) === "turnover_booked",
+  "işaretle 5 giriş+çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-09-06",
+    beyazIslamlarMap,
+    beyazIslamlarCheckIns
+  ) === "full",
+  "işaretle 6 dolu"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-09-08",
+    beyazIslamlarMap,
+    beyazIslamlarCheckIns
+  ) === "turnover_booked",
+  "işaretle 8 giriş+çıkış"
+);
+assert(
+  resolveVillaDayVisualFromMap(
+    "2026-09-09",
+    beyazIslamlarMap,
+    beyazIslamlarCheckIns
+  ) === "full",
+  "işaretle 9 dolu"
 );
 
 console.log("\nTüm turnover smoke senaryoları geçti.");

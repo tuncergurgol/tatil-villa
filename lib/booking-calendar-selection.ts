@@ -37,13 +37,14 @@ export function isNightInAllowStay(
 
 /**
  * BOOKED gece kapalıdır; public talepte OPTION isteğe bağlı olarak açıktır.
- * Giriş+çıkış günü (iki dolu blok arası EMPTY) yeni misafirin gecesidir → kapalı.
+ * Giriş+çıkış günü (iki dolu blok arası EMPTY veya BOOKED+checkIn) yeni misafirin gecesidir → kapalı.
  */
 export function isOccupancyNightBlocked(
   occupancyMap: ReadonlyMap<string, VillaDayOccupancy>,
   dateKey: string,
   allowStay?: AllowStayRange | null,
-  options?: OccupancySelectionOptions
+  options?: OccupancySelectionOptions,
+  checkInDateKeys?: ReadonlySet<string>
 ): boolean {
   if (isNightInAllowStay(dateKey, allowStay)) return false;
   const status = occupancyMap.get(dateKey) ?? "EMPTY";
@@ -52,13 +53,14 @@ export function isOccupancyNightBlocked(
     status === "RESERVED" ||
     (status === "OPTION" && !options?.allowOption)
   ) {
+    // BOOKED gece üzerinde giriş işareti olsa da gece doludur (zaten kapalı).
     return true;
   }
   return isTurnoverOccupancyDay(
     status,
     occupancyMap.get(offsetDateKey(dateKey, -1)),
     occupancyMap.get(offsetDateKey(dateKey, 1)),
-    { dateKey, occupancyMap }
+    { dateKey, occupancyMap, checkInDateKeys }
   );
 }
 
@@ -71,9 +73,16 @@ export function isNightBlocked(
   occupancyMap: Map<string, VillaDayOccupancy>,
   dateKey: string,
   allowStay?: AllowStayRange | null,
-  options?: OccupancySelectionOptions
+  options?: OccupancySelectionOptions,
+  checkInDateKeys?: ReadonlySet<string>
 ) {
-  return isOccupancyNightBlocked(occupancyMap, dateKey, allowStay, options);
+  return isOccupancyNightBlocked(
+    occupancyMap,
+    dateKey,
+    allowStay,
+    options,
+    checkInDateKeys
+  );
 }
 
 /** checkIn dahil, checkOut hariç geceler dolu mu? */
@@ -82,12 +91,15 @@ export function rangeHasBlockedNight(
   end: string,
   occupancyMap: Map<string, VillaDayOccupancy>,
   allowStay?: AllowStayRange | null,
-  options?: OccupancySelectionOptions
+  options?: OccupancySelectionOptions,
+  checkInDateKeys?: ReadonlySet<string>
 ) {
   if (compareDates(parseDateKey(start), parseDateKey(end)) >= 0) return true;
   let key = start;
   while (compareDates(parseDateKey(key), parseDateKey(end)) < 0) {
-    if (isNightBlocked(occupancyMap, key, allowStay, options)) return true;
+    if (isNightBlocked(occupancyMap, key, allowStay, options, checkInDateKeys)) {
+      return true;
+    }
     key = offsetDateKey(key, 1);
   }
   return false;
@@ -101,6 +113,7 @@ export function canSelectStayDay(options: {
   occupancyMap: Map<string, VillaDayOccupancy>;
   allowStay?: AllowStayRange | null;
   allowOption?: boolean;
+  checkInDateKeys?: ReadonlySet<string>;
 }): boolean {
   const {
     dateKey,
@@ -109,20 +122,38 @@ export function canSelectStayDay(options: {
     occupancyMap,
     allowStay,
     allowOption,
+    checkInDateKeys,
   } = options;
   if (compareDates(parseDateKey(dateKey), today) < 0) return false;
 
   if (!pendingStart) {
-    return !isNightBlocked(occupancyMap, dateKey, allowStay, { allowOption });
+    return !isNightBlocked(
+      occupancyMap,
+      dateKey,
+      allowStay,
+      { allowOption },
+      checkInDateKeys
+    );
   }
 
   if (compareDates(parseDateKey(dateKey), parseDateKey(pendingStart)) <= 0) {
-    return !isNightBlocked(occupancyMap, dateKey, allowStay, { allowOption });
+    return !isNightBlocked(
+      occupancyMap,
+      dateKey,
+      allowStay,
+      { allowOption },
+      checkInDateKeys
+    );
   }
 
-  return !rangeHasBlockedNight(pendingStart, dateKey, occupancyMap, allowStay, {
-    allowOption,
-  });
+  return !rangeHasBlockedNight(
+    pendingStart,
+    dateKey,
+    occupancyMap,
+    allowStay,
+    { allowOption },
+    checkInDateKeys
+  );
 }
 
 export function buildOccupancyMap(
@@ -133,4 +164,14 @@ export function buildOccupancyMap(
     map.set(day.date, toOccupancyStatus(day.occupancyStatus));
   }
   return map;
+}
+
+export function buildCheckInDateKeys(
+  days: Array<{ date: string; occupancyCheckIn?: boolean | null }>
+): Set<string> {
+  const set = new Set<string>();
+  for (const day of days) {
+    if (day.occupancyCheckIn) set.add(day.date);
+  }
+  return set;
 }

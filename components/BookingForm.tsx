@@ -195,6 +195,7 @@ export default function BookingForm({
     datesOpen,
     guestsOpen,
     occupancyMap,
+    checkInDateKeys,
     previewStart,
     previewEnd,
     previewNights,
@@ -456,7 +457,11 @@ export default function BookingForm({
             const dateKey = toDateKey(cell.date);
             const isPast = compareDates(cell.date, today) < 0;
             const current = occupancyMap.get(dateKey) ?? "EMPTY";
-            const kind = resolveVillaDayVisualFromMap(dateKey, occupancyMap);
+            const kind = resolveVillaDayVisualFromMap(
+              dateKey,
+              occupancyMap,
+              checkInDateKeys
+            );
             const visual = getPublicVillaDayVisualStyle(kind);
 
             const inRange =
@@ -473,6 +478,7 @@ export default function BookingForm({
               pendingStart,
               occupancyMap,
               allowOption: true,
+              checkInDateKeys,
             });
 
             const showOccupancyBg =

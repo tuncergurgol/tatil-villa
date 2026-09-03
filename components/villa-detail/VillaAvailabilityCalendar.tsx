@@ -181,6 +181,7 @@ function MonthGrid({
             pendingStart,
             occupancyMap,
             allowOption: true,
+            checkInDateKeys,
           });
 
           const showNightHint =
