@@ -654,8 +654,10 @@ export function resolveBookingCommissionAmount(
   }
 
   const fromQuoteFees = details.feesFromQuote === true;
+  // Bazı kayıt tiplerinde `feesFromQuote=true` kalıp `grossPrice` boş gelebiliyor.
+  // Bu durumda totalPrice fallback'i olmadan komisyon 0'a düşüyor.
   const gross = fromQuoteFees
-    ? (details.grossPrice ?? null)
+    ? (details.grossPrice ?? totalPrice ?? null)
     : (details.grossPrice ?? totalPrice ?? null);
   const rate = details.commissionRate ?? 20;
 

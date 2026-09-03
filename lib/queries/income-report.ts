@@ -6,7 +6,6 @@ import {
 } from "@/lib/booking-form-details";
 import { formatBookingReservationNo } from "@/lib/booking-display";
 import {
-  isStoredCommissionEmpty,
   type IncomeFact,
   type IncomeTypeId,
   type MissingCommissionBooking,
@@ -158,7 +157,11 @@ export async function getIncomeReportData(): Promise<{
     facts.push(toKonaklamaFact(booking));
     if (booking.status !== BookingStatus.CONFIRMED) continue;
     const details = parseBookingDetails(booking.details);
-    if (isStoredCommissionEmpty(details.commissionAmount)) {
+    const commission = resolveBookingCommissionAmount(
+      details,
+      booking.totalPrice
+    );
+    if (commission <= 0) {
       missingCommission.push(toMissingCommissionRow(booking));
     }
   }
