@@ -41,6 +41,7 @@ import {
   type IncomeFact,
   type IncomeFieldId,
   type IncomeMeasureId,
+  type IncomePivotRow,
   type IncomeRowSort,
   type IncomeValueFilters,
   type MissingCommissionBooking,
@@ -377,6 +378,326 @@ function DimensionHeaderMenu({
   );
 }
 
+type MeasureColumnSort = {
+  key: string;
+  direction: "asc" | "desc";
+};
+
+function measureColumnKey(columnIndex: number | "total", measureIndex: number) {
+  return `${columnIndex}|${measureIndex}`;
+}
+
+function getRowMeasureValue(row: IncomePivotRow, key: string): number {
+  const [columnPart, measurePart] = key.split("|");
+  const measureIndex = Number(measurePart);
+  if (columnPart === "total") {
+    return row.totals[measureIndex] ?? 0;
+  }
+  const columnIndex = Number(columnPart);
+  return row.cells[columnIndex]?.[measureIndex] ?? 0;
+}
+
+function uniqueMeasureColumnValues(
+  rows: IncomePivotRow[],
+  key: string,
+  measureId: IncomeMeasureId
+) {
+  const values = new Set<number>();
+  for (const row of rows) {
+    if (row.isSubtotal) continue;
+    values.add(Math.round(getRowMeasureValue(row, key)));
+  }
+  return [...values]
+    .sort((left, right) => left - right)
+    .map((value) => ({
+      value,
+      label: isMoneyMeasure(measureId)
+        ? value
+          ? formatMoneyPlain(value)
+          : "—"
+        : value.toLocaleString("tr-TR"),
+    }));
+}
+
+function applyMeasureColumnView(
+  rows: IncomePivotRow[],
+  measureFilters: Record<string, number[] | undefined>,
+  measureSort: MeasureColumnSort | null
+): IncomePivotRow[] {
+  let next = rows;
+
+  for (const [key, selected] of Object.entries(measureFilters)) {
+    if (selected == null) continue;
+    const allowed = new Set(selected);
+    next = next.filter((row) => {
+      if (row.isSubtotal) return false;
+      return allowed.has(Math.round(getRowMeasureValue(row, key)));
+    });
+  }
+
+  if (measureSort) {
+    const leaves = next.filter((row) => !row.isSubtotal);
+    leaves.sort((left, right) => {
+      const cmp =
+        getRowMeasureValue(left, measureSort.key) -
+        getRowMeasureValue(right, measureSort.key);
+      return measureSort.direction === "asc" ? cmp : -cmp;
+    });
+    next = leaves;
+  }
+
+  return next;
+}
+
+function MeasureHeaderMenu({
+  menuKey,
+  measureId,
+  options,
+  selected,
+  sortDirection,
+  anchorRect,
+  onClose,
+  onChangeFilter,
+  onChangeSort,
+}: {
+  menuKey: string;
+  measureId: IncomeMeasureId;
+  options: Array<{ value: number; label: string }>;
+  selected: number[] | undefined;
+  sortDirection: "asc" | "desc" | null;
+  anchorRect: DOMRect;
+  onClose: () => void;
+  onChangeFilter: (values: number[] | undefined) => void;
+  onChangeSort: (direction: "asc" | "desc" | null) => void;
+}) {
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const selectedSet = new Set(selected ?? options.map((item) => item.value));
+  const allSelected =
+    options.length > 0 && options.every((item) => selectedSet.has(item.value));
+
+  const style = useMemo(() => {
+    const width = 240;
+    const left = Math.min(
+      Math.max(8, anchorRect.left),
+      window.innerWidth - width - 8
+    );
+    const top = Math.min(anchorRect.bottom + 4, window.innerHeight - 16);
+    const maxHeight = Math.max(160, window.innerHeight - top - 16);
+    return {
+      position: "fixed" as const,
+      top,
+      left,
+      width,
+      maxHeight,
+      zIndex: 80,
+    };
+  }, [anchorRect]);
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (menuRef.current?.contains(target)) return;
+      if (target.closest(`[data-income-dim-filter="${menuKey}"]`)) return;
+      onClose();
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuKey, onClose]);
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      style={style}
+      className="overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-2xl ring-1 ring-black/5"
+    >
+      <div className="mb-2 border-b border-gray-100 pb-2">
+        <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+          Sıralama
+        </p>
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => onChangeSort("asc")}
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${
+              sortDirection === "asc"
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <ArrowUp className="h-3 w-3" />
+            Küçükten büyüğe
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeSort("desc")}
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${
+              sortDirection === "desc"
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <ArrowDown className="h-3 w-3" />
+            Büyükten küçüğe
+          </button>
+          {sortDirection ? (
+            <button
+              type="button"
+              onClick={() => onChangeSort(null)}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-gray-500 hover:bg-gray-100"
+            >
+              Sıfırla
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        Filtre ({isMoneyMeasure(measureId) ? "Tutar" : "Sayı"})
+      </p>
+      {options.length === 0 ? (
+        <p className="px-2 py-2 text-xs text-gray-500">Değer yok</p>
+      ) : (
+        <>
+          <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={() => onChangeFilter(undefined)}
+              className="h-3.5 w-3.5 shrink-0 rounded border-gray-300"
+            />
+            Tümü
+          </label>
+          {options.map((option) => (
+            <label
+              key={option.value}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                checked={selectedSet.has(option.value)}
+                onChange={() => {
+                  const next = options
+                    .map((item) => item.value)
+                    .filter((value) =>
+                      value === option.value
+                        ? !selectedSet.has(value)
+                        : selectedSet.has(value)
+                    );
+                  onChangeFilter(
+                    next.length === options.length ? undefined : next
+                  );
+                }}
+                className="h-3.5 w-3.5 shrink-0 rounded border-gray-300"
+              />
+              <span className="min-w-0 flex-1 truncate tabular-nums">
+                {option.label}
+              </span>
+            </label>
+          ))}
+        </>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+function MeasureHeaderButton({
+  menuKey,
+  label,
+  measureId,
+  options,
+  selected,
+  sortDirection,
+  menuOpen,
+  onToggleMenu,
+  onCloseMenu,
+  onChangeFilter,
+  onChangeSort,
+}: {
+  menuKey: string;
+  label: string;
+  measureId: IncomeMeasureId;
+  options: Array<{ value: number; label: string }>;
+  selected: number[] | undefined;
+  sortDirection: "asc" | "desc" | null;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+  onChangeFilter: (values: number[] | undefined) => void;
+  onChangeSort: (direction: "asc" | "desc" | null) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!menuOpen || !buttonRef.current) {
+      setAnchorRect(null);
+      return;
+    }
+    const update = () => {
+      if (buttonRef.current) {
+        setAnchorRect(buttonRef.current.getBoundingClientRect());
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [menuOpen]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        data-income-dim-filter={menuKey}
+        onClick={onToggleMenu}
+        className="flex w-full items-center justify-end gap-1 text-right"
+      >
+        <span className="truncate">{label}</span>
+        <span className="inline-flex shrink-0 items-center gap-0.5">
+          {selected != null ? (
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+          ) : null}
+          {sortDirection === "asc" ? (
+            <ArrowUp className="h-3 w-3 text-indigo-600" />
+          ) : sortDirection === "desc" ? (
+            <ArrowDown className="h-3 w-3 text-indigo-600" />
+          ) : null}
+          <ChevronDown
+            className={`h-3 w-3 text-gray-400 transition ${
+              menuOpen ? "rotate-180" : ""
+            }`}
+          />
+        </span>
+      </button>
+      {menuOpen && anchorRect ? (
+        <MeasureHeaderMenu
+          menuKey={menuKey}
+          measureId={measureId}
+          options={options}
+          selected={selected}
+          sortDirection={sortDirection}
+          anchorRect={anchorRect}
+          onClose={onCloseMenu}
+          onChangeFilter={onChangeFilter}
+          onChangeSort={onChangeSort}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function HeaderFilterButton({
   menuKey,
   label,
@@ -538,6 +859,10 @@ export default function IncomeReportPage({
   const [valueFilters, setValueFilters] = useState<IncomeValueFilters>({});
   const [rowSort, setRowSort] = useState<IncomeRowSort | null>(null);
   const [columnSort, setColumnSort] = useState<IncomeRowSort | null>(null);
+  const [measureSort, setMeasureSort] = useState<MeasureColumnSort | null>(null);
+  const [measureFilters, setMeasureFilters] = useState<
+    Record<string, number[] | undefined>
+  >({});
   const [openHeaderMenu, setOpenHeaderMenu] = useState<{
     menuKey: string;
     anchorKey: string;
@@ -593,10 +918,10 @@ export default function IncomeReportPage({
     [filteredFacts, layout, columnValueFilters, columnSort]
   );
 
-  const displayRows = useMemo(
-    () => sortPivotRows(pivot.rows, layout.rows, rowSort),
-    [pivot.rows, layout.rows, rowSort]
-  );
+  const displayRows = useMemo(() => {
+    const sorted = sortPivotRows(pivot.rows, layout.rows, rowSort);
+    return applyMeasureColumnView(sorted, measureFilters, measureSort);
+  }, [pivot.rows, layout.rows, rowSort, measureFilters, measureSort]);
 
   const used = usedFieldIds(layout);
   const hasMeasure = layout.values.length > 0;
@@ -626,6 +951,8 @@ export default function IncomeReportPage({
     setValueFilters({});
     setRowSort(null);
     setColumnSort(null);
+    setMeasureSort(null);
+    setMeasureFilters({});
     setOpenHeaderMenu(null);
   }
 
@@ -888,6 +1215,7 @@ export default function IncomeReportPage({
                           }))
                         }
                         onChangeSort={(direction) => {
+                          setMeasureSort(null);
                           if (direction == null) {
                             setRowSort((current) =>
                               current?.fieldId === fieldId ? null : current
@@ -900,92 +1228,131 @@ export default function IncomeReportPage({
                     ))
                   )}
                   {pivot.columnLeaves.flatMap((column, columnIndex) =>
-                    measures.map((measureId) => {
+                    measures.map((measureId, measureIndex) => {
                       const label = columnLeafMeasureLabel(
                         column.labels,
                         measureId
                       );
-                      const anchorKey = `${column.keys.join("|")}-${measureId}`;
-                      const columnFieldId =
-                        layout.columns[layout.columns.length - 1];
-
-                      if (!columnFieldId) {
-                        return (
-                          <th
-                            key={`${anchorKey}-${columnIndex}`}
-                            className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-600"
-                            style={{ minWidth: 140 }}
-                          >
-                            {label}
-                          </th>
-                        );
-                      }
-
-                      const menuKey = `col:${columnFieldId}`;
+                      const key = measureColumnKey(columnIndex, measureIndex);
+                      const menuKey = `measure:${key}`;
                       const isOpen =
                         openHeaderMenu?.menuKey === menuKey &&
-                        openHeaderMenu.anchorKey === anchorKey;
+                        openHeaderMenu.anchorKey === key;
+                      const options = uniqueMeasureColumnValues(
+                        pivot.rows,
+                        key,
+                        measureId
+                      );
                       return (
                         <th
-                          key={`${anchorKey}-${columnIndex}`}
+                          key={`${key}-${column.keys.join("|")}`}
                           className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-700"
                           style={{ minWidth: 140 }}
                         >
-                          <HeaderFilterButton
+                          <MeasureHeaderButton
                             menuKey={menuKey}
                             label={label}
-                            align="right"
-                            facts={facts}
-                            fieldId={columnFieldId}
-                            selected={valueFilters[columnFieldId]}
-                            sort={columnSort}
+                            measureId={measureId}
+                            options={options}
+                            selected={measureFilters[key]}
+                            sortDirection={
+                              measureSort?.key === key
+                                ? measureSort.direction
+                                : null
+                            }
                             menuOpen={isOpen}
-                            renderMenu={isOpen}
                             onToggleMenu={() =>
                               setOpenHeaderMenu((current) =>
                                 current?.menuKey === menuKey &&
-                                current.anchorKey === anchorKey
+                                current.anchorKey === key
                                   ? null
-                                  : { menuKey, anchorKey }
+                                  : { menuKey, anchorKey: key }
                               )
                             }
                             onCloseMenu={() => setOpenHeaderMenu(null)}
                             onChangeFilter={(values) =>
-                              setValueFilters((current) => ({
+                              setMeasureFilters((current) => ({
                                 ...current,
-                                [columnFieldId]: values,
+                                [key]: values,
                               }))
                             }
                             onChangeSort={(direction) => {
+                              setRowSort(null);
                               if (direction == null) {
-                                setColumnSort((current) =>
-                                  current?.fieldId === columnFieldId
-                                    ? null
-                                    : current
+                                setMeasureSort((current) =>
+                                  current?.key === key ? null : current
                                 );
                                 return;
                               }
-                              setColumnSort({
-                                fieldId: columnFieldId,
-                                direction,
-                              });
+                              setMeasureSort({ key, direction });
                             }}
                           />
                         </th>
                       );
                     })
                   )}
-                  {measures.map((measureId) => (
-                    <th
-                      key={`tm-${measureId}`}
-                      className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900"
-                      style={{ minWidth: 130 }}
-                    >
-                      {layout.columns.length === 0
+                  {measures.map((measureId, measureIndex) => {
+                    const key = measureColumnKey("total", measureIndex);
+                    const menuKey = `measure:${key}`;
+                    const isOpen =
+                      openHeaderMenu?.menuKey === menuKey &&
+                      openHeaderMenu.anchorKey === key;
+                    const label =
+                      layout.columns.length === 0
                         ? getIncomeFieldLabel(measureId)
-                        : totalMeasureLabel(measureId)}
-                    </th>
-                  ))}
+                        : totalMeasureLabel(measureId);
+                    const options = uniqueMeasureColumnValues(
+                      pivot.rows,
+                      key,
+                      measureId
+                    );
+                    return (
+                      <th
+                        key={key}
+                        className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900"
+                        style={{ minWidth: 140 }}
+                      >
+                        <MeasureHeaderButton
+                          menuKey={menuKey}
+                          label={label}
+                          measureId={measureId}
+                          options={options}
+                          selected={measureFilters[key]}
+                          sortDirection={
+                            measureSort?.key === key
+                              ? measureSort.direction
+                              : null
+                          }
+                          menuOpen={isOpen}
+                          onToggleMenu={() =>
+                            setOpenHeaderMenu((current) =>
+                              current?.menuKey === menuKey &&
+                              current.anchorKey === key
+                                ? null
+                                : { menuKey, anchorKey: key }
+                            )
+                          }
+                          onCloseMenu={() => setOpenHeaderMenu(null)}
+                          onChangeFilter={(values) =>
+                            setMeasureFilters((current) => ({
+                              ...current,
+                              [key]: values,
+                            }))
+                          }
+                          onChangeSort={(direction) => {
+                            setRowSort(null);
+                            if (direction == null) {
+                              setMeasureSort((current) =>
+                                current?.key === key ? null : current
+                              );
+                              return;
+                            }
+                            setMeasureSort({ key, direction });
+                          }}
+                        />
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
