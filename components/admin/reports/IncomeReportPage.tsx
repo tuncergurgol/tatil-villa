@@ -67,7 +67,7 @@ const ZONE_META: Record<
   },
   values: {
     title: "Değerler",
-    hint: "Rezervasyon sayısı ve tutarını bırakın",
+    hint: "Rezervasyon sayısı ve gelir tutarını bırakın",
   },
 };
 
@@ -629,7 +629,7 @@ export default function IncomeReportPage({
 
         {!hasMeasure ? (
           <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-            Raporu görmek için Rezervasyon Sayısı veya Rezervasyon Tutarı alanını
+            Raporu görmek için Rezervasyon Sayısı veya Gelir Tutarı alanını
             Değerler bölgesine sürükleyin.
           </p>
         ) : pivot.factCount === 0 ? (

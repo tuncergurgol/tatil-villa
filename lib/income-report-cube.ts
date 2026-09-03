@@ -47,7 +47,7 @@ export const INCOME_DIMENSION_FIELDS = [
 
 export const INCOME_MEASURE_FIELDS = [
   { id: "reservationCount", label: "Rezervasyon Sayısı", kind: "measure" },
-  { id: "commissionAmount", label: "Rezervasyon Tutarı", kind: "measure" },
+  { id: "commissionAmount", label: "Gelir Tutarı", kind: "measure" },
 ] as const;
 
 export type IncomeDimensionId = (typeof INCOME_DIMENSION_FIELDS)[number]["id"];
