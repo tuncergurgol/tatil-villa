@@ -101,6 +101,11 @@ export type IncomeDateFilters = {
 
 export type IncomeValueFilters = Partial<Record<IncomeDimensionId, string[]>>;
 
+export type IncomeRowSort = {
+  fieldId: IncomeDimensionId;
+  direction: "asc" | "desc";
+};
+
 export const EMPTY_INCOME_DATE_FILTERS: IncomeDateFilters = {
   reservationFrom: "",
   reservationTo: "",
@@ -315,19 +320,28 @@ export function compareDimensionKeys(
 
 function uniqueKeysForField(
   facts: IncomeFact[],
-  fieldId: IncomeDimensionId
+  fieldId: IncomeDimensionId,
+  allowedKeys?: string[] | null
 ): string[] {
+  let keys: string[];
   if (fieldId === "incomeType") {
-    return INCOME_TYPES.map((item) => item.id);
+    keys = INCOME_TYPES.map((item) => item.id);
+  } else {
+    const set = new Set<string>();
+    for (const fact of facts) {
+      set.add(getFactDimensionKey(fact, fieldId));
+    }
+    keys = [...set].sort((left, right) =>
+      compareDimensionKeys(fieldId, left, right)
+    );
   }
 
-  const keys = new Set<string>();
-  for (const fact of facts) {
-    keys.add(getFactDimensionKey(fact, fieldId));
+  if (allowedKeys != null) {
+    const allowed = new Set(allowedKeys);
+    keys = keys.filter((key) => allowed.has(key));
   }
-  return [...keys].sort((left, right) =>
-    compareDimensionKeys(fieldId, left, right)
-  );
+
+  return keys;
 }
 
 function inDateRange(dateKey: string, from: string, to: string) {
@@ -370,15 +384,31 @@ export function filterIncomeFacts(
 
 function cartesianColumns(
   facts: IncomeFact[],
-  columnFields: IncomeDimensionId[]
+  columnFields: IncomeDimensionId[],
+  options?: {
+    valueFilters?: IncomeValueFilters;
+    columnSort?: IncomeRowSort | null;
+  }
 ): IncomePivotColumn[] {
   if (columnFields.length === 0) {
     return [{ keys: [], labels: [] }];
   }
 
-  const valueSets = columnFields.map((fieldId) =>
-    uniqueKeysForField(facts, fieldId)
-  );
+  const valueSets = columnFields.map((fieldId) => {
+    let keys = uniqueKeysForField(
+      facts,
+      fieldId,
+      options?.valueFilters?.[fieldId]
+    );
+    const sort = options?.columnSort;
+    if (sort?.fieldId === fieldId) {
+      keys = [...keys].sort((left, right) => {
+        const cmp = compareDimensionKeys(fieldId, left, right);
+        return sort.direction === "asc" ? cmp : -cmp;
+      });
+    }
+    return keys;
+  });
 
   let combinations: string[][] = [[]];
   for (const values of valueSets) {
@@ -595,11 +625,6 @@ function flattenGroups(
   return rows;
 }
 
-export type IncomeRowSort = {
-  fieldId: IncomeDimensionId;
-  direction: "asc" | "desc";
-};
-
 function partitionPivotBlocksAtDepth(
   rows: IncomePivotRow[],
   depth: number
@@ -670,12 +695,19 @@ export function sortPivotRows(
 
 export function buildIncomePivot(
   facts: IncomeFact[],
-  layout: IncomeCubeLayout
+  layout: IncomeCubeLayout,
+  options?: {
+    columnValueFilters?: IncomeValueFilters;
+    columnSort?: IncomeRowSort | null;
+  }
 ): IncomePivotResult {
   const columnFields = layout.columns;
   const rowFields = layout.rows;
   const measures = layout.values;
-  const columnLeaves = cartesianColumns(facts, columnFields);
+  const columnLeaves = cartesianColumns(facts, columnFields, {
+    valueFilters: options?.columnValueFilters,
+    columnSort: options?.columnSort ?? null,
+  });
   const indexByKey = columnIndexMap(columnLeaves);
   const columnCount = Math.max(1, columnLeaves.length);
 

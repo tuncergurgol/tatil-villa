@@ -204,6 +204,33 @@ function main() {
   const firstYear = descSorted.find((row) => row.isSubtotal)?.keys[0];
   assert(firstYear === "2026", "desc sort puts 2026 first");
 
+  const onlyKonaklama = filterIncomeFacts(
+    facts,
+    {
+      reservationFrom: "",
+      reservationTo: "",
+      stayFrom: "",
+      stayTo: "",
+    },
+    { incomeType: ["konaklama"] }
+  );
+  const konaklamaCols = buildIncomePivot(onlyKonaklama, DEFAULT_INCOME_CUBE_LAYOUT, {
+    columnValueFilters: { incomeType: ["konaklama"] },
+  });
+  assert(
+    konaklamaCols.columnLeaves.length === 1 &&
+      konaklamaCols.columnLeaves[0].keys[0] === "konaklama",
+    "column filter keeps only konaklama"
+  );
+
+  const reversedCols = buildIncomePivot(facts, DEFAULT_INCOME_CUBE_LAYOUT, {
+    columnSort: { fieldId: "incomeType", direction: "desc" },
+  });
+  assert(
+    reversedCols.columnLeaves[0].keys[0] === "transfer",
+    "column sort desc starts with transfer"
+  );
+
   console.log("smoke-income-report-cube: OK");
 }
 

@@ -227,6 +227,7 @@ function DropZone({
 }
 
 function DimensionHeaderMenu({
+  menuKey,
   fieldId,
   facts,
   selected,
@@ -236,6 +237,7 @@ function DimensionHeaderMenu({
   onChangeFilter,
   onChangeSort,
 }: {
+  menuKey: string;
   fieldId: IncomeDimensionId;
   facts: IncomeFact[];
   selected: string[] | undefined;
@@ -277,7 +279,7 @@ function DimensionHeaderMenu({
       const target = event.target as HTMLElement | null;
       if (!target) return;
       if (menuRef.current?.contains(target)) return;
-      if (target.closest(`[data-income-dim-filter="${fieldId}"]`)) return;
+      if (target.closest(`[data-income-dim-filter="${menuKey}"]`)) return;
       onClose();
     }
     function onKeyDown(event: KeyboardEvent) {
@@ -289,7 +291,7 @@ function DimensionHeaderMenu({
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [fieldId, onClose]);
+  }, [menuKey, onClose]);
 
   return createPortal(
     <div
@@ -375,6 +377,108 @@ function DimensionHeaderMenu({
   );
 }
 
+function HeaderFilterButton({
+  menuKey,
+  label,
+  align = "left",
+  facts,
+  fieldId,
+  selected,
+  sort,
+  menuOpen,
+  renderMenu = true,
+  onToggleMenu,
+  onCloseMenu,
+  onChangeFilter,
+  onChangeSort,
+}: {
+  menuKey: string;
+  label: string;
+  align?: "left" | "right" | "center";
+  facts: IncomeFact[];
+  fieldId: IncomeDimensionId;
+  selected: string[] | undefined;
+  sort: IncomeRowSort | null;
+  menuOpen: boolean;
+  renderMenu?: boolean;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
+  onChangeFilter: (values: string[] | undefined) => void;
+  onChangeSort: (direction: "asc" | "desc" | null) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!menuOpen || !renderMenu || !buttonRef.current) {
+      if (!renderMenu) return;
+      setAnchorRect(null);
+      return;
+    }
+    const update = () => {
+      if (buttonRef.current) setAnchorRect(buttonRef.current.getBoundingClientRect());
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [menuOpen, renderMenu]);
+
+  const justify =
+    align === "right"
+      ? "justify-end"
+      : align === "center"
+        ? "justify-center"
+        : "justify-between";
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        data-income-dim-filter={menuKey}
+        onClick={onToggleMenu}
+        className={`flex w-full items-center gap-1 text-left ${justify}`}
+      >
+        <span className="truncate">{label}</span>
+        <span className="inline-flex shrink-0 items-center gap-0.5">
+          {selected != null ? (
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+          ) : null}
+          {sort?.fieldId === fieldId ? (
+            sort.direction === "asc" ? (
+              <ArrowUp className="h-3 w-3 text-indigo-600" />
+            ) : (
+              <ArrowDown className="h-3 w-3 text-indigo-600" />
+            )
+          ) : null}
+          <ChevronDown
+            className={`h-3 w-3 text-gray-400 transition ${
+              menuOpen ? "rotate-180" : ""
+            }`}
+          />
+        </span>
+      </button>
+      {renderMenu && menuOpen && anchorRect ? (
+        <DimensionHeaderMenu
+          menuKey={menuKey}
+          fieldId={fieldId}
+          facts={facts}
+          selected={selected}
+          sort={sort}
+          anchorRect={anchorRect}
+          onClose={onCloseMenu}
+          onChangeFilter={onChangeFilter}
+          onChangeSort={onChangeSort}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function RowDimensionHeader({
   fieldId,
   rowIndex,
@@ -398,26 +502,6 @@ function RowDimensionHeader({
   onChangeFilter: (values: string[] | undefined) => void;
   onChangeSort: (direction: "asc" | "desc" | null) => void;
 }) {
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-
-  useLayoutEffect(() => {
-    if (!menuOpen || !buttonRef.current) {
-      setAnchorRect(null);
-      return;
-    }
-    const update = () => {
-      if (buttonRef.current) setAnchorRect(buttonRef.current.getBoundingClientRect());
-    };
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
-    };
-  }, [menuOpen]);
-
   return (
     <th
       className={`sticky border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500 ${
@@ -425,44 +509,19 @@ function RowDimensionHeader({
       }`}
       style={{ left: rowIndex * 140, minWidth: 140 }}
     >
-      <button
-        ref={buttonRef}
-        type="button"
-        data-income-dim-filter={fieldId}
-        onClick={onToggleMenu}
-        className="flex w-full items-center justify-between gap-1 text-left"
-      >
-        <span className="truncate">{getIncomeFieldLabel(fieldId)}</span>
-        <span className="inline-flex shrink-0 items-center gap-0.5">
-          {selected != null ? (
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-          ) : null}
-          {sort?.fieldId === fieldId ? (
-            sort.direction === "asc" ? (
-              <ArrowUp className="h-3 w-3 text-indigo-600" />
-            ) : (
-              <ArrowDown className="h-3 w-3 text-indigo-600" />
-            )
-          ) : null}
-          <ChevronDown
-            className={`h-3 w-3 text-gray-400 transition ${
-              menuOpen ? "rotate-180" : ""
-            }`}
-          />
-        </span>
-      </button>
-      {menuOpen && anchorRect ? (
-        <DimensionHeaderMenu
-          fieldId={fieldId}
-          facts={facts}
-          selected={selected}
-          sort={sort}
-          anchorRect={anchorRect}
-          onClose={onCloseMenu}
-          onChangeFilter={onChangeFilter}
-          onChangeSort={onChangeSort}
-        />
-      ) : null}
+      <HeaderFilterButton
+        menuKey={`row:${fieldId}`}
+        label={getIncomeFieldLabel(fieldId)}
+        facts={facts}
+        fieldId={fieldId}
+        selected={selected}
+        sort={sort}
+        menuOpen={menuOpen}
+        onToggleMenu={onToggleMenu}
+        onCloseMenu={onCloseMenu}
+        onChangeFilter={onChangeFilter}
+        onChangeSort={onChangeSort}
+      />
     </th>
   );
 }
@@ -478,9 +537,11 @@ export default function IncomeReportPage({
   const [layoutReady, setLayoutReady] = useState(false);
   const [valueFilters, setValueFilters] = useState<IncomeValueFilters>({});
   const [rowSort, setRowSort] = useState<IncomeRowSort | null>(null);
-  const [openHeaderMenu, setOpenHeaderMenu] = useState<IncomeDimensionId | null>(
-    null
-  );
+  const [columnSort, setColumnSort] = useState<IncomeRowSort | null>(null);
+  const [openHeaderMenu, setOpenHeaderMenu] = useState<{
+    menuKey: string;
+    anchorKey: string;
+  } | null>(null);
   const [fieldsPanelOpen, setFieldsPanelOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(missingCommission.length > 0);
   const [isPending, startTransition] = useTransition();
@@ -513,9 +574,23 @@ export default function IncomeReportPage({
     [facts, valueFilters]
   );
 
+  const columnValueFilters = useMemo(() => {
+    const next: IncomeValueFilters = {};
+    for (const fieldId of layout.columns) {
+      if (fieldId in valueFilters) {
+        next[fieldId] = valueFilters[fieldId];
+      }
+    }
+    return next;
+  }, [layout.columns, valueFilters]);
+
   const pivot = useMemo(
-    () => buildIncomePivot(filteredFacts, layout),
-    [filteredFacts, layout]
+    () =>
+      buildIncomePivot(filteredFacts, layout, {
+        columnValueFilters,
+        columnSort,
+      }),
+    [filteredFacts, layout, columnValueFilters, columnSort]
   );
 
   const displayRows = useMemo(
@@ -550,6 +625,7 @@ export default function IncomeReportPage({
     setLayout(DEFAULT_INCOME_CUBE_LAYOUT);
     setValueFilters({});
     setRowSort(null);
+    setColumnSort(null);
     setOpenHeaderMenu(null);
   }
 
@@ -573,22 +649,7 @@ export default function IncomeReportPage({
 
   const showMeasureSubheader =
     layout.rows.length > 0 || measures.length > 1 || layout.columns.length === 0;
-  const dimensionHeaderRows = useMemo(() => {
-    const depth = layout.columns.length;
-    if (depth === 0) return [] as string[][];
-    const rows: string[][] = [];
-    for (let level = 0; level < depth; level += 1) {
-      const row: string[] = [];
-      for (const column of pivot.columnLeaves) {
-        const label = column.labels[level] ?? "";
-        for (let i = 0; i < Math.max(1, measures.length); i += 1) {
-          row.push(label);
-        }
-      }
-      rows.push(row);
-    }
-    return rows;
-  }, [layout.columns.length, measures.length, pivot.columnLeaves]);
+  const measureSpan = Math.max(1, measures.length);
 
   return (
     <div className="space-y-4">
@@ -782,42 +843,106 @@ export default function IncomeReportPage({
           <div className="overflow-auto rounded-xl border border-gray-200">
             <table className="min-w-full border-collapse text-sm">
               <thead>
-                {dimensionHeaderRows.map((headerRow, headerIndex) => (
-                  <tr key={`h-${headerIndex}`} className="bg-slate-50">
-                    {layout.rows.length === 0 ? (
-                      <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2" />
-                    ) : (
-                      layout.rows.map((fieldId, rowIndex) => (
+                {layout.columns.map((columnFieldId, headerIndex) => {
+                  const menuKey = `col:${columnFieldId}`;
+                  // Ardışık aynı etiketleri colspan ile birleştir
+                  const groups: Array<{
+                    label: string;
+                    colSpan: number;
+                    key: string;
+                  }> = [];
+                  for (const column of pivot.columnLeaves) {
+                    const label = column.labels[headerIndex] ?? "";
+                    const leafKey = column.keys.join("|");
+                    const last = groups[groups.length - 1];
+                    if (last && last.label === label) {
+                      last.colSpan += measureSpan;
+                    } else {
+                      groups.push({
+                        label,
+                        colSpan: measureSpan,
+                        key: `${leafKey}-${headerIndex}`,
+                      });
+                    }
+                  }
+
+                  return (
+                    <tr key={`h-${columnFieldId}`} className="bg-slate-50">
+                      {layout.rows.length === 0 ? (
+                        <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2" />
+                      ) : (
+                        layout.rows.map((fieldId, rowIndex) => (
+                          <th
+                            key={fieldId}
+                            className="sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2"
+                            style={{ left: rowIndex * 140, minWidth: 140 }}
+                          />
+                        ))
+                      )}
+                      {groups.map((group) => {
+                        const isOpen =
+                          openHeaderMenu?.menuKey === menuKey &&
+                          openHeaderMenu.anchorKey === group.key;
+                        return (
                         <th
-                          key={fieldId}
-                          className="sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2"
-                          style={{ left: rowIndex * 140, minWidth: 140 }}
-                        />
-                      ))
-                    )}
-                    {headerRow.map((label, columnIndex) => (
-                      <th
-                        key={`c-${headerIndex}-${columnIndex}`}
-                        className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-700"
-                      >
-                        {label}
-                      </th>
-                    ))}
-                    {Array.from({ length: Math.max(1, measures.length) }).map(
-                      (_, index) => (
-                        <th
-                          key={`t-${headerIndex}-${index}`}
-                          className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900"
+                          key={group.key}
+                          colSpan={group.colSpan}
+                          className="border-b border-gray-200 px-3 py-2 text-center text-xs font-bold text-gray-700"
                         >
-                          {headerIndex === dimensionHeaderRows.length - 1 &&
-                          index === 0
-                            ? "Toplam"
-                            : ""}
+                          <HeaderFilterButton
+                            menuKey={menuKey}
+                            label={group.label}
+                            align="center"
+                            facts={facts}
+                            fieldId={columnFieldId}
+                            selected={valueFilters[columnFieldId]}
+                            sort={columnSort}
+                            menuOpen={isOpen}
+                            renderMenu={isOpen}
+                            onToggleMenu={() =>
+                              setOpenHeaderMenu((current) =>
+                                current?.menuKey === menuKey &&
+                                current.anchorKey === group.key
+                                  ? null
+                                  : { menuKey, anchorKey: group.key }
+                              )
+                            }
+                            onCloseMenu={() => setOpenHeaderMenu(null)}
+                            onChangeFilter={(values) =>
+                              setValueFilters((current) => ({
+                                ...current,
+                                [columnFieldId]: values,
+                              }))
+                            }
+                            onChangeSort={(direction) => {
+                              if (direction == null) {
+                                setColumnSort((current) =>
+                                  current?.fieldId === columnFieldId
+                                    ? null
+                                    : current
+                                );
+                                return;
+                              }
+                              setColumnSort({
+                                fieldId: columnFieldId,
+                                direction,
+                              });
+                            }}
+                          />
                         </th>
-                      )
-                    )}
-                  </tr>
-                ))}
+                        );
+                      })}
+                      <th
+                        colSpan={measureSpan}
+                        className="border-b border-gray-200 px-3 py-2 text-center text-xs font-bold text-gray-900"
+                      >
+                        {headerIndex === layout.columns.length - 1
+                          ? "Toplam"
+                          : ""}
+                      </th>
+                    </tr>
+                  );
+                })}
                 {showMeasureSubheader ? (
                   <tr className="bg-slate-50">
                     {layout.rows.length === 0 ? (
@@ -833,10 +958,17 @@ export default function IncomeReportPage({
                           facts={facts}
                           selected={valueFilters[fieldId]}
                           sort={rowSort}
-                          menuOpen={openHeaderMenu === fieldId}
+                          menuOpen={
+                            openHeaderMenu?.menuKey === `row:${fieldId}`
+                          }
                           onToggleMenu={() =>
                             setOpenHeaderMenu((current) =>
-                              current === fieldId ? null : fieldId
+                              current?.menuKey === `row:${fieldId}`
+                                ? null
+                                : {
+                                    menuKey: `row:${fieldId}`,
+                                    anchorKey: fieldId,
+                                  }
                             )
                           }
                           onCloseMenu={() => setOpenHeaderMenu(null)}
