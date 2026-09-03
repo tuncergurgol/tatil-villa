@@ -18,6 +18,13 @@ const INCOME_BOOKING_STATUSES: BookingStatus[] = [
   BookingStatus.COMPENSATION,
 ];
 
+/**
+ * Kullanıcı tarafından "komisyon alınmadı" olarak işaretlenmiş
+ * rezervasyon externalCode'ları — bu rezervasyonlar "komisyonu boş" uyarı
+ * listesine dahil edilmez.
+ */
+const NO_COMMISSION_EXTERNAL_CODES = new Set<number>([113497]);
+
 const bookingSelect = {
   id: true,
   externalCode: true,
@@ -163,7 +170,11 @@ export async function getIncomeReportData(): Promise<{
       details,
       booking.totalPrice
     );
-    if (commission <= 0 && booking.villa.salesType === "komisyon") {
+    if (
+      commission <= 0 &&
+      booking.villa.salesType === "komisyon" &&
+      !NO_COMMISSION_EXTERNAL_CODES.has(booking.externalCode ?? -1)
+    ) {
       missingCommission.push(toMissingCommissionRow(booking));
     }
   }

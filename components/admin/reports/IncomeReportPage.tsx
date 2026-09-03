@@ -481,11 +481,6 @@ export default function IncomeReportPage({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Rapora yalnızca Onaylandı ve Tazminat rezervasyonları alınır. Otel,
-        Bilet, Araç Kiralama ve Transfer komisyon kayıtları bağlanınca aynı
-        küpte görünecektir.
-      </div>
 
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
         <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
