@@ -14,6 +14,8 @@ export type StayQuoteDayInput = {
   nightlyPriceCurrency: VillaPeriodCurrency;
   availability: VillaPeriodAvailability;
   occupancyStatus: VillaDayOccupancy;
+  /** Aynı gün giriş+çıkış işareti — doluluk engeli / görsel için */
+  occupancyCheckIn?: boolean;
   minStayNights: number | null;
   prepaymentRate: number | null;
   cleaningFee: number | null;
@@ -236,6 +238,7 @@ export function buildStayQuoteDayMap(
   days: Array<{
     date: string;
     occupancyStatus?: string | null;
+    occupancyCheckIn?: boolean | null;
     nightlyPrice?: number;
     nightlyPriceWithoutCommission?: number | null;
     discountedNightlyPrice?: number | null;
@@ -274,6 +277,7 @@ export function buildStayQuoteDayMap(
       nightlyPriceCurrency: currency,
       availability,
       occupancyStatus: occupancy,
+      occupancyCheckIn: Boolean(day.occupancyCheckIn),
       minStayNights: day.minStayNights ?? null,
       prepaymentRate: day.prepaymentRate ?? null,
       cleaningFee: day.cleaningFee ?? null,

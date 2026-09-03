@@ -45,6 +45,7 @@ const QUOTE_DAY_SELECT = {
   nightlyPriceCurrency: true,
   availability: true,
   occupancyStatus: true,
+  occupancyCheckIn: true,
   minStayNights: true,
   prepaymentRate: true,
   cleaningFee: true,
@@ -66,6 +67,7 @@ export function mapDbPeriodDayToQuoteInput(
     nightlyPriceCurrency: StayQuoteDayInput["nightlyPriceCurrency"];
     availability: StayQuoteDayInput["availability"];
     occupancyStatus: VillaDayOccupancy;
+    occupancyCheckIn?: boolean | null;
     minStayNights: number | null;
     prepaymentRate: number | null;
     cleaningFee: number | null;
@@ -82,6 +84,7 @@ export function mapDbPeriodDayToQuoteInput(
     nightlyPriceCurrency: day.nightlyPriceCurrency,
     availability: day.availability,
     occupancyStatus: day.occupancyStatus,
+    occupancyCheckIn: Boolean(day.occupancyCheckIn),
     minStayNights: day.minStayNights,
     prepaymentRate: day.prepaymentRate,
     cleaningFee: day.cleaningFee,

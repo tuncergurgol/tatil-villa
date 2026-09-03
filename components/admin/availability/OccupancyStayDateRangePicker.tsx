@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  buildCheckInDateKeys,
   buildOccupancyMap,
   canSelectStayDay,
   rangeHasBlockedNight,
@@ -45,6 +46,7 @@ function formatDisplayDate(dateKey: string): string {
 export type OccupancyCalendarDay = {
   date: string;
   occupancyStatus: string;
+  occupancyCheckIn?: boolean | null;
 };
 
 interface OccupancyStayDateRangePickerProps {
@@ -94,6 +96,10 @@ export default function OccupancyStayDateRangePicker({
     () => buildOccupancyMap(calendarDays),
     [calendarDays]
   );
+  const checkInDateKeys = useMemo(
+    () => buildCheckInDateKeys(calendarDays),
+    [calendarDays]
+  );
 
   const rightMonth = viewMonth === 11 ? 0 : viewMonth + 1;
   const rightYear = viewMonth === 11 ? viewYear + 1 : viewYear;
@@ -115,7 +121,9 @@ export default function OccupancyStayDateRangePicker({
         previewStart,
         previewEnd,
         occupancyMap,
-        allowStayRange
+        allowStayRange,
+        undefined,
+        checkInDateKeys
       )
   );
 
@@ -148,6 +156,7 @@ export default function OccupancyStayDateRangePicker({
         pendingStart,
         occupancyMap,
         allowStay: allowStayRange,
+        checkInDateKeys,
       })
     ) {
       return;
@@ -169,7 +178,18 @@ export default function OccupancyStayDateRangePicker({
 
     const { start, end } = normalizeDateRange(pendingStart, dateKey);
     if (start === end) return;
-    if (rangeHasBlockedNight(start, end, occupancyMap, allowStayRange)) return;
+    if (
+      rangeHasBlockedNight(
+        start,
+        end,
+        occupancyMap,
+        allowStayRange,
+        undefined,
+        checkInDateKeys
+      )
+    ) {
+      return;
+    }
 
     onChange(start, end);
     setPendingStart(null);
@@ -198,7 +218,11 @@ export default function OccupancyStayDateRangePicker({
             const dateKey = toDateKey(cell.date);
             const isPast = compareDates(cell.date, today) < 0;
             const current = occupancyMap.get(dateKey) ?? "EMPTY";
-            const kind = resolveVillaDayVisualFromMap(dateKey, occupancyMap);
+            const kind = resolveVillaDayVisualFromMap(
+              dateKey,
+              occupancyMap,
+              checkInDateKeys
+            );
             const visual = getPublicVillaDayVisualStyle(kind);
             const canClick = canSelectStayDay({
               dateKey,
@@ -206,6 +230,7 @@ export default function OccupancyStayDateRangePicker({
               pendingStart,
               occupancyMap,
               allowStay: allowStayRange,
+              checkInDateKeys,
             });
 
             const inRange =

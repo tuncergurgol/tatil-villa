@@ -15,11 +15,12 @@ function addMonthsUtc(date: Date, months: number) {
 export type VillaOccupancyCalendarDay = {
   date: string;
   occupancyStatus: string;
+  occupancyCheckIn?: boolean;
 };
 
 /**
  * Villa Detay doluluk takvimi ile aynı kaynak:
- * VillaPricePeriodDay.occupancyStatus (BOOKED / OPTION / EMPTY).
+ * VillaPricePeriodDay.occupancyStatus + occupancyCheckIn.
  */
 export async function getVillaOccupancyCalendarDays(
   villaId: string,
@@ -39,11 +40,13 @@ export async function getVillaOccupancyCalendarDays(
     select: {
       date: true,
       occupancyStatus: true,
+      occupancyCheckIn: true,
     },
   });
 
   return days.map((day) => ({
     date: dbDateToDateKey(day.date),
     occupancyStatus: day.occupancyStatus,
+    occupancyCheckIn: day.occupancyCheckIn,
   }));
 }

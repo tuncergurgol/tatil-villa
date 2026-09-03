@@ -138,5 +138,25 @@ assert(
   ) === "full",
   "işaretle 9 dolu"
 );
+assert(
+  isOccupancyNightBlocked(
+    beyazIslamlarMap,
+    "2026-09-05",
+    undefined,
+    undefined,
+    beyazIslamlarCheckIns
+  ) === true,
+  "turnover gecesi 5 seçilemez"
+);
+assert(
+  isOccupancyNightBlocked(
+    beyazIslamlarMap,
+    "2026-09-06",
+    undefined,
+    undefined,
+    beyazIslamlarCheckIns
+  ) === true,
+  "dolu gece 6 seçilemez"
+);
 
 console.log("\nTüm turnover smoke senaryoları geçti.");

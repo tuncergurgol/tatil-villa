@@ -520,6 +520,7 @@ async function resolvePublicSearchStay(
         nightlyPriceCurrency: true,
         availability: true,
         occupancyStatus: true,
+        occupancyCheckIn: true,
         minStayNights: true,
         prepaymentRate: true,
         cleaningFee: true,
@@ -576,11 +577,20 @@ async function resolvePublicSearchStay(
     let available = false;
     if (allNightsOnCalendar) {
       const occupancyMap = new Map<string, VillaDayOccupancy>();
+      const checkInDateKeys = new Set<string>();
       for (const [key, day] of daysByDateKey) {
         occupancyMap.set(key, day.occupancyStatus);
+        if (day.occupancyCheckIn) checkInDateKeys.add(key);
       }
       available = nightKeys.every(
-        (key) => !isOccupancyNightBlocked(occupancyMap, key)
+        (key) =>
+          !isOccupancyNightBlocked(
+            occupancyMap,
+            key,
+            undefined,
+            undefined,
+            checkInDateKeys
+          )
       );
     } else {
       const bookings = bookingsByVilla.get(villaId) ?? [];

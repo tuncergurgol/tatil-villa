@@ -98,6 +98,7 @@ interface BookingFormProps {
   calendarDays?: Array<{
     date: string;
     occupancyStatus: string;
+    occupancyCheckIn?: boolean | null;
     availability?: string;
     nightlyPrice: number;
     nightlyPriceWithoutCommission?: number | null;

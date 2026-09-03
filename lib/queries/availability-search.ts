@@ -26,6 +26,7 @@ import {
   type StayQuote,
   type StayQuoteDayInput,
 } from "@/lib/stay-quote";
+import { isOccupancyNightBlocked } from "@/lib/booking-calendar-selection";
 import type { PublicExchangeRates } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import { formatVillaRegionLabelMahalleIlceIl } from "@/lib/villa-location-helpers";
@@ -101,10 +102,6 @@ export type AvailabilitySearchPageData = {
   amenities: { id: string; name: string }[];
 };
 
-function isBlockingOccupancy(status: VillaDayOccupancy): boolean {
-  return status === "BOOKED" || status === "RESERVED" || status === "OPTION";
-}
-
 async function resolveRegionIds(slugs: string[]): Promise<string[]> {
   if (slugs.length === 0) return [];
 
@@ -144,6 +141,7 @@ function mapPeriodDayToQuoteInput(
     nightlyPriceCurrency: StayQuoteDayInput["nightlyPriceCurrency"];
     availability: StayQuoteDayInput["availability"];
     occupancyStatus: VillaDayOccupancy;
+    occupancyCheckIn?: boolean | null;
     minStayNights: number | null;
     prepaymentRate: number | null;
     cleaningFee: number | null;
@@ -161,6 +159,7 @@ function mapPeriodDayToQuoteInput(
     nightlyPriceCurrency: day.nightlyPriceCurrency,
     availability: day.availability,
     occupancyStatus: day.occupancyStatus,
+    occupancyCheckIn: Boolean(day.occupancyCheckIn),
     minStayNights: day.minStayNights,
     prepaymentRate: day.prepaymentRate,
     cleaningFee: day.cleaningFee,
@@ -178,11 +177,28 @@ function isStayAvailable(
   const nightKeys = getStayNightKeys(checkIn, checkOut);
   if (nightKeys.length === 0) return false;
 
+  const occupancyMap = new Map<string, VillaDayOccupancy>();
+  const checkInDateKeys = new Set<string>();
+  for (const [key, day] of daysByDateKey) {
+    occupancyMap.set(key, day.occupancyStatus);
+    if (day.occupancyCheckIn) checkInDateKeys.add(key);
+  }
+
   for (const dateKey of nightKeys) {
     const day = daysByDateKey.get(dateKey);
     if (!day) return false;
     if (!fillEmptyDates && day.availability === "closed") return false;
-    if (isBlockingOccupancy(day.occupancyStatus)) return false;
+    if (
+      isOccupancyNightBlocked(
+        occupancyMap,
+        dateKey,
+        undefined,
+        undefined,
+        checkInDateKeys
+      )
+    ) {
+      return false;
+    }
   }
 
   return true;
@@ -476,6 +492,7 @@ export async function searchAvailability(
         nightlyPriceCurrency: true,
         availability: true,
         occupancyStatus: true,
+        occupancyCheckIn: true,
         minStayNights: true,
         prepaymentRate: true,
         cleaningFee: true,
@@ -555,6 +572,7 @@ export async function searchAvailability(
       nightlyPriceCurrency: true,
       availability: true,
       occupancyStatus: true,
+      occupancyCheckIn: true,
     },
   });
 
@@ -569,6 +587,7 @@ export async function searchAvailability(
       nightlyPriceCurrency: day.nightlyPriceCurrency,
       availability: day.availability,
       occupancyStatus: day.occupancyStatus,
+      occupancyCheckIn: day.occupancyCheckIn,
     };
 
     if (!calendarDaysByVilla.has(day.villaId)) {

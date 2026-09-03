@@ -149,11 +149,16 @@ export async function isVillaAvailable(
       villaId,
       date: { in: calendarKeys.map((key) => dateKeyToDbDate(key)) },
     },
-    select: { date: true, occupancyStatus: true },
+    select: { date: true, occupancyStatus: true, occupancyCheckIn: true },
   });
 
   const occupancyByKey = new Map(
     periodDays.map((day) => [dbDateToDateKey(day.date), day.occupancyStatus])
+  );
+  const checkInDateKeys = new Set(
+    periodDays
+      .filter((day) => day.occupancyCheckIn)
+      .map((day) => dbDateToDateKey(day.date))
   );
 
   const allNightsOnCalendar = nightKeys.every((key) =>
@@ -170,7 +175,8 @@ export async function isVillaAvailable(
           occupancyByKey,
           nightKey,
           excludedAllowStay,
-          options
+          options,
+          checkInDateKeys
         )
       ) {
         return false;
