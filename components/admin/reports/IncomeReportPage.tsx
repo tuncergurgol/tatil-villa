@@ -647,9 +647,19 @@ export default function IncomeReportPage({
     });
   }
 
-  const showMeasureSubheader =
-    layout.rows.length > 0 || measures.length > 1 || layout.columns.length === 0;
-  const measureSpan = Math.max(1, measures.length);
+  function columnLeafMeasureLabel(
+    columnLabels: string[],
+    measureId: IncomeMeasureId
+  ) {
+    const dimensionLabel = columnLabels.filter(Boolean).join(" ").trim();
+    const measureLabel = getIncomeFieldLabel(measureId);
+    return dimensionLabel ? `${dimensionLabel} ${measureLabel}` : measureLabel;
+  }
+
+  function totalMeasureLabel(measureId: IncomeMeasureId) {
+    if (measures.length <= 1) return "Toplam";
+    return `Toplam ${getIncomeFieldLabel(measureId)}`;
+  }
 
   return (
     <div className="space-y-4">
@@ -843,56 +853,88 @@ export default function IncomeReportPage({
           <div className="overflow-auto rounded-xl border border-gray-200">
             <table className="min-w-full border-collapse text-sm">
               <thead>
-                {layout.columns.map((columnFieldId, headerIndex) => {
-                  const menuKey = `col:${columnFieldId}`;
-                  // Ardışık aynı etiketleri colspan ile birleştir
-                  const groups: Array<{
-                    label: string;
-                    colSpan: number;
-                    key: string;
-                  }> = [];
-                  for (const column of pivot.columnLeaves) {
-                    const label = column.labels[headerIndex] ?? "";
-                    const leafKey = column.keys.join("|");
-                    const last = groups[groups.length - 1];
-                    if (last && last.label === label) {
-                      last.colSpan += measureSpan;
-                    } else {
-                      groups.push({
-                        label,
-                        colSpan: measureSpan,
-                        key: `${leafKey}-${headerIndex}`,
-                      });
-                    }
-                  }
+                <tr className="bg-slate-50">
+                  {layout.rows.length === 0 ? (
+                    <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
+                      Toplam
+                    </th>
+                  ) : (
+                    layout.rows.map((fieldId, rowIndex) => (
+                      <RowDimensionHeader
+                        key={fieldId}
+                        fieldId={fieldId}
+                        rowIndex={rowIndex}
+                        facts={facts}
+                        selected={valueFilters[fieldId]}
+                        sort={rowSort}
+                        menuOpen={
+                          openHeaderMenu?.menuKey === `row:${fieldId}`
+                        }
+                        onToggleMenu={() =>
+                          setOpenHeaderMenu((current) =>
+                            current?.menuKey === `row:${fieldId}`
+                              ? null
+                              : {
+                                  menuKey: `row:${fieldId}`,
+                                  anchorKey: fieldId,
+                                }
+                          )
+                        }
+                        onCloseMenu={() => setOpenHeaderMenu(null)}
+                        onChangeFilter={(values) =>
+                          setValueFilters((current) => ({
+                            ...current,
+                            [fieldId]: values,
+                          }))
+                        }
+                        onChangeSort={(direction) => {
+                          if (direction == null) {
+                            setRowSort((current) =>
+                              current?.fieldId === fieldId ? null : current
+                            );
+                            return;
+                          }
+                          setRowSort({ fieldId, direction });
+                        }}
+                      />
+                    ))
+                  )}
+                  {pivot.columnLeaves.flatMap((column, columnIndex) =>
+                    measures.map((measureId) => {
+                      const label = columnLeafMeasureLabel(
+                        column.labels,
+                        measureId
+                      );
+                      const anchorKey = `${column.keys.join("|")}-${measureId}`;
+                      const columnFieldId =
+                        layout.columns[layout.columns.length - 1];
 
-                  return (
-                    <tr key={`h-${columnFieldId}`} className="bg-slate-50">
-                      {layout.rows.length === 0 ? (
-                        <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2" />
-                      ) : (
-                        layout.rows.map((fieldId, rowIndex) => (
-                          <th
-                            key={fieldId}
-                            className="sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2"
-                            style={{ left: rowIndex * 140, minWidth: 140 }}
-                          />
-                        ))
-                      )}
-                      {groups.map((group) => {
-                        const isOpen =
-                          openHeaderMenu?.menuKey === menuKey &&
-                          openHeaderMenu.anchorKey === group.key;
+                      if (!columnFieldId) {
                         return (
+                          <th
+                            key={`${anchorKey}-${columnIndex}`}
+                            className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-600"
+                            style={{ minWidth: 140 }}
+                          >
+                            {label}
+                          </th>
+                        );
+                      }
+
+                      const menuKey = `col:${columnFieldId}`;
+                      const isOpen =
+                        openHeaderMenu?.menuKey === menuKey &&
+                        openHeaderMenu.anchorKey === anchorKey;
+                      return (
                         <th
-                          key={group.key}
-                          colSpan={group.colSpan}
-                          className="border-b border-gray-200 px-3 py-2 text-center text-xs font-bold text-gray-700"
+                          key={`${anchorKey}-${columnIndex}`}
+                          className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-700"
+                          style={{ minWidth: 140 }}
                         >
                           <HeaderFilterButton
                             menuKey={menuKey}
-                            label={group.label}
-                            align="center"
+                            label={label}
+                            align="right"
                             facts={facts}
                             fieldId={columnFieldId}
                             selected={valueFilters[columnFieldId]}
@@ -902,9 +944,9 @@ export default function IncomeReportPage({
                             onToggleMenu={() =>
                               setOpenHeaderMenu((current) =>
                                 current?.menuKey === menuKey &&
-                                current.anchorKey === group.key
+                                current.anchorKey === anchorKey
                                   ? null
-                                  : { menuKey, anchorKey: group.key }
+                                  : { menuKey, anchorKey }
                               )
                             }
                             onCloseMenu={() => setOpenHeaderMenu(null)}
@@ -930,93 +972,21 @@ export default function IncomeReportPage({
                             }}
                           />
                         </th>
-                        );
-                      })}
-                      <th
-                        colSpan={measureSpan}
-                        className="border-b border-gray-200 px-3 py-2 text-center text-xs font-bold text-gray-900"
-                      >
-                        {headerIndex === layout.columns.length - 1
-                          ? "Toplam"
-                          : ""}
-                      </th>
-                    </tr>
-                  );
-                })}
-                {showMeasureSubheader ? (
-                  <tr className="bg-slate-50">
-                    {layout.rows.length === 0 ? (
-                      <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
-                        Toplam
-                      </th>
-                    ) : (
-                      layout.rows.map((fieldId, rowIndex) => (
-                        <RowDimensionHeader
-                          key={fieldId}
-                          fieldId={fieldId}
-                          rowIndex={rowIndex}
-                          facts={facts}
-                          selected={valueFilters[fieldId]}
-                          sort={rowSort}
-                          menuOpen={
-                            openHeaderMenu?.menuKey === `row:${fieldId}`
-                          }
-                          onToggleMenu={() =>
-                            setOpenHeaderMenu((current) =>
-                              current?.menuKey === `row:${fieldId}`
-                                ? null
-                                : {
-                                    menuKey: `row:${fieldId}`,
-                                    anchorKey: fieldId,
-                                  }
-                            )
-                          }
-                          onCloseMenu={() => setOpenHeaderMenu(null)}
-                          onChangeFilter={(values) =>
-                            setValueFilters((current) => ({
-                              ...current,
-                              [fieldId]: values,
-                            }))
-                          }
-                          onChangeSort={(direction) => {
-                            if (direction == null) {
-                              setRowSort((current) =>
-                                current?.fieldId === fieldId ? null : current
-                              );
-                              return;
-                            }
-                            setRowSort({ fieldId, direction });
-                          }}
-                        />
-                      ))
-                    )}
-                    {pivot.columnLeaves.flatMap((column, columnIndex) =>
-                      measures.map((measureId) => (
-                        <th
-                          key={`${column.keys.join("|")}-${measureId}-${columnIndex}`}
-                          className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-600"
-                        >
-                          {layout.columns.length === 0
-                            ? getIncomeFieldLabel(measureId)
-                            : measures.length > 1
-                              ? getIncomeFieldLabel(measureId)
-                              : column.labels[column.labels.length - 1] ??
-                                getIncomeFieldLabel(measureId)}
-                        </th>
-                      ))
-                    )}
-                    {measures.map((measureId) => (
-                      <th
-                        key={`tm-${measureId}`}
-                        className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900"
-                      >
-                        {measures.length > 1
-                          ? getIncomeFieldLabel(measureId)
-                          : "Toplam"}
-                      </th>
-                    ))}
-                  </tr>
-                ) : null}
+                      );
+                    })
+                  )}
+                  {measures.map((measureId) => (
+                    <th
+                      key={`tm-${measureId}`}
+                      className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900"
+                      style={{ minWidth: 130 }}
+                    >
+                      {layout.columns.length === 0
+                        ? getIncomeFieldLabel(measureId)
+                        : totalMeasureLabel(measureId)}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {displayRows.map((row, rowIndex) => {

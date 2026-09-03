@@ -904,17 +904,17 @@ export function pivotToExcelRows(
     pivot.measures.length > 0 ? pivot.measures : layout.values;
 
   const columnHeaders = pivot.columnLeaves.flatMap((column) => {
-    const base = column.labels.filter(Boolean).join(" / ");
+    const base = column.labels.filter(Boolean).join(" ");
     if (measures.length === 0) return [base || "Değer"];
     return measures.map((measureId) => {
       const measureLabel = getIncomeFieldLabel(measureId);
-      return base ? `${base} / ${measureLabel}` : measureLabel;
+      return base ? `${base} ${measureLabel}` : measureLabel;
     });
   });
   const totalHeaders = measures.map((measureId) =>
     measures.length === 1
       ? "Toplam"
-      : `Toplam / ${getIncomeFieldLabel(measureId)}`
+      : `Toplam ${getIncomeFieldLabel(measureId)}`
   );
 
   const header = [...rowHeaders, ...columnHeaders, ...totalHeaders];
