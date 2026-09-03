@@ -1176,10 +1176,6 @@ export default function IncomeReportPage({
             Raporu görmek için Rezervasyon Sayısı veya Gelir Tutarı alanını
             Değerler bölgesine sürükleyin.
           </p>
-        ) : pivot.factCount === 0 ? (
-          <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-            Seçilen alanlar ve filtrelere uygun gelir kaydı bulunamadı.
-          </p>
         ) : (
           <div className="overflow-auto rounded-xl border border-gray-200">
             <table className="min-w-full border-collapse text-sm">
@@ -1360,7 +1356,23 @@ export default function IncomeReportPage({
                 </tr>
               </thead>
               <tbody>
-                {displayRows.map((row, rowIndex) => {
+                {displayRows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={
+                        Math.max(layout.rows.length, 1) +
+                        Math.max(1, pivot.columnLeaves.length) *
+                          Math.max(1, measures.length) +
+                        Math.max(1, measures.length)
+                      }
+                      className="px-3 py-8 text-center text-sm text-gray-500"
+                    >
+                      Seçilen filtrelere uygun gelir kaydı bulunamadı. Tümü’yü
+                      işaretleyerek listeyi geri getirebilirsiniz.
+                    </td>
+                  </tr>
+                ) : (
+                displayRows.map((row, rowIndex) => {
                   const isGroup = row.isSubtotal;
                   const rowBg = isGroup
                     ? row.depth === 0
@@ -1405,7 +1417,8 @@ export default function IncomeReportPage({
                       ))}
                     </tr>
                   );
-                })}
+                })
+                )}
               </tbody>
               <tfoot>
                 <tr className="bg-teal-50 font-bold">
