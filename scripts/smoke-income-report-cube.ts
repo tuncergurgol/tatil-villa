@@ -11,6 +11,7 @@ import {
   isStoredCommissionEmpty,
   moveIncomeField,
   pivotToExcelRows,
+  sortPivotRows,
   type IncomeFact,
 } from "../lib/income-report-cube";
 
@@ -87,7 +88,8 @@ function main() {
   const defaultPivot = buildIncomePivot(facts, DEFAULT_INCOME_CUBE_LAYOUT);
   assert(defaultPivot.grandTotal === 4700, "default grand total");
   assert(defaultPivot.factCount === 4, "fact count");
-  assert(defaultPivot.grandTotals[1] === 4, "reservation count total");
+  assert(defaultPivot.grandTotals[0] === 4, "reservation count total");
+  assert(defaultPivot.grandTotals[1] === 4700, "commission total");
   assert(
     defaultPivot.columnLeaves.some((column) => column.keys[0] === "konaklama"),
     "konaklama column"
@@ -101,13 +103,15 @@ function main() {
     (row) => row.keys[0] === "2026" && row.isSubtotal
   );
   assert(year2026?.total === 3900, "2026 subtotal");
-  assert(year2026?.totals[1] === 3, "2026 reservation count");
+  assert(year2026?.totals[0] === 3, "2026 reservation count");
+  assert(year2026?.totals[1] === 3900, "2026 commission subtotal");
 
   const january = defaultPivot.rows.find(
     (row) => row.keys.join("|") === "2026|2026-01" && !row.isSubtotal
   );
   assert(january?.total === 3500, "january 2026 total");
-  assert(january?.totals[1] === 2, "january reservation count");
+  assert(january?.totals[0] === 2, "january reservation count");
+  assert(january?.totals[1] === 3500, "january 2026 commission");
 
   const swapped = moveIncomeField(
     moveIncomeField(DEFAULT_INCOME_CUBE_LAYOUT, "reservationMonth", "palette"),
@@ -121,7 +125,8 @@ function main() {
     (row) => row.keys[0] === "konaklama" && row.isSubtotal
   );
   assert(konaklamaRow?.total === 4300, "konaklama after reorder");
-  assert(konaklamaRow?.totals[1] === 3, "konaklama reservation count");
+  assert(konaklamaRow?.totals[0] === 3, "konaklama reservation count");
+  assert(konaklamaRow?.totals[1] === 4300, "konaklama commission after reorder");
 
   const muglaOnly = filterIncomeFacts(
     facts,
@@ -136,7 +141,7 @@ function main() {
   const muglaPivot = buildIncomePivot(muglaOnly, DEFAULT_INCOME_CUBE_LAYOUT);
   assert(muglaPivot.grandTotal === 4300, "province filter");
   assert(muglaPivot.factCount === 3, "province filter count");
-  assert(muglaPivot.grandTotals[1] === 3, "province reservation count");
+  assert(muglaPivot.grandTotals[0] === 3, "province reservation count");
 
   const noneSelected = filterIncomeFacts(
     facts,
@@ -162,8 +167,8 @@ function main() {
   const excelRows = pivotToExcelRows(defaultPivot, DEFAULT_INCOME_CUBE_LAYOUT);
   const lastRow = excelRows[excelRows.length - 1];
   assert(lastRow[0] === "Genel Toplam", "excel total label");
-  assert(lastRow[lastRow.length - 2] === 4700, "excel commission total");
-  assert(lastRow[lastRow.length - 1] === 4, "excel reservation count");
+  assert(lastRow[lastRow.length - 2] === 4, "excel reservation count");
+  assert(lastRow[lastRow.length - 1] === 4700, "excel commission total");
 
   const byDayLayout = moveIncomeField(
     DEFAULT_INCOME_CUBE_LAYOUT,
@@ -189,7 +194,15 @@ function main() {
     (row) => row.keys[0] === "Villa Test A" && row.isSubtotal
   );
   assert(villaA?.total === 1800, "villa A commission");
-  assert(villaA?.totals[1] === 2, "villa A reservation count");
+  assert(villaA?.totals[0] === 2, "villa A reservation count");
+  assert(villaA?.totals[1] === 1800, "villa A commission");
+
+  const descSorted = sortPivotRows(defaultPivot.rows, DEFAULT_INCOME_CUBE_LAYOUT.rows, {
+    fieldId: "reservationYear",
+    direction: "desc",
+  });
+  const firstYear = descSorted.find((row) => row.isSubtotal)?.keys[0];
+  assert(firstYear === "2026", "desc sort puts 2026 first");
 
   console.log("smoke-income-report-cube: OK");
 }

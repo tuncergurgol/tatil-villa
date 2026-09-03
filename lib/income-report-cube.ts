@@ -46,8 +46,8 @@ export const INCOME_DIMENSION_FIELDS = [
 ] as const;
 
 export const INCOME_MEASURE_FIELDS = [
-  { id: "commissionAmount", label: "Komisyon Tutarı", kind: "measure" },
   { id: "reservationCount", label: "Rezervasyon Sayısı", kind: "measure" },
+  { id: "commissionAmount", label: "Rezervasyon Tutarı", kind: "measure" },
 ] as const;
 
 export type IncomeDimensionId = (typeof INCOME_DIMENSION_FIELDS)[number]["id"];
@@ -112,8 +112,13 @@ export const DEFAULT_INCOME_CUBE_LAYOUT: IncomeCubeLayout = {
   filters: [],
   rows: ["reservationYear", "reservationMonth"],
   columns: ["incomeType"],
-  values: ["commissionAmount", "reservationCount"],
+  values: ["reservationCount", "commissionAmount"],
 };
+
+const PREFERRED_MEASURE_ORDER: IncomeMeasureId[] = [
+  "reservationCount",
+  "commissionAmount",
+];
 
 export const MISSING_REGION_LABEL = "Belirtilmedi";
 
@@ -590,6 +595,79 @@ function flattenGroups(
   return rows;
 }
 
+export type IncomeRowSort = {
+  fieldId: IncomeDimensionId;
+  direction: "asc" | "desc";
+};
+
+function partitionPivotBlocksAtDepth(
+  rows: IncomePivotRow[],
+  depth: number
+): IncomePivotRow[][] {
+  if (rows.length === 0) return [];
+  const blocks: IncomePivotRow[][] = [];
+  let start = 0;
+  for (let index = 1; index < rows.length; index += 1) {
+    if (rows[index].depth === depth && rows[index].isSubtotal) {
+      blocks.push(rows.slice(start, index));
+      start = index;
+    }
+  }
+  blocks.push(rows.slice(start));
+  return blocks;
+}
+
+export function sortPivotRows(
+  rows: IncomePivotRow[],
+  rowFields: IncomeDimensionId[],
+  sort: IncomeRowSort | null
+): IncomePivotRow[] {
+  if (!sort || rows.length === 0 || rowFields.length === 0) return rows;
+
+  const fieldIndex = rowFields.indexOf(sort.fieldId);
+  if (fieldIndex < 0) return rows;
+
+  const fieldId = sort.fieldId;
+  const compareKeys = (left: string, right: string) => {
+    const cmp = compareDimensionKeys(fieldId, left, right);
+    return sort.direction === "asc" ? cmp : -cmp;
+  };
+
+  function sortLevel(slice: IncomePivotRow[], depth: number): IncomePivotRow[] {
+    if (slice.length === 0) return slice;
+
+    if (depth === fieldIndex && depth === rowFields.length - 1) {
+      return [...slice].sort((left, right) =>
+        compareKeys(left.keys[depth] ?? "", right.keys[depth] ?? "")
+      );
+    }
+
+    if (depth === fieldIndex) {
+      const blocks = partitionPivotBlocksAtDepth(slice, depth);
+      blocks.sort((left, right) =>
+        compareKeys(
+          left[0]?.keys[depth] ?? "",
+          right[0]?.keys[depth] ?? ""
+        )
+      );
+      return blocks.flat();
+    }
+
+    if (depth < fieldIndex) {
+      const blocks = partitionPivotBlocksAtDepth(slice, depth);
+      return blocks.flatMap((block) => {
+        if (block.length === 0) return block;
+        const [header, ...rest] = block;
+        return [header, ...sortLevel(rest, depth + 1)];
+      });
+    }
+
+    return slice;
+  }
+
+  return sortLevel(rows, 0);
+}
+
 export function buildIncomePivot(
   facts: IncomeFact[],
   layout: IncomeCubeLayout
@@ -770,11 +848,17 @@ export function normalizeIncomeCubeLayout(
     return result;
   };
 
+  const values = takeMeasures(layout?.values);
+  const orderedValues = [
+    ...PREFERRED_MEASURE_ORDER.filter((measureId) => values.includes(measureId)),
+    ...values.filter((measureId) => !PREFERRED_MEASURE_ORDER.includes(measureId)),
+  ];
+
   return {
     filters: takeDimensions(layout?.filters),
     rows: takeDimensions(layout?.rows),
     columns: takeDimensions(layout?.columns),
-    values: takeMeasures(layout?.values),
+    values: orderedValues.length > 0 ? orderedValues : [...PREFERRED_MEASURE_ORDER],
   };
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type DragEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type DragEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   ChevronDown,
   FileSpreadsheet,
-  Filter,
   GripVertical,
   RotateCcw,
   X,
@@ -15,7 +16,6 @@ import {
 import { formatMoneyPlain } from "@/lib/booking-display";
 import {
   DEFAULT_INCOME_CUBE_LAYOUT,
-  EMPTY_INCOME_DATE_FILTERS,
   INCOME_DIMENSION_FIELDS,
   INCOME_MEASURE_FIELDS,
   buildIncomePivot,
@@ -31,20 +31,21 @@ import {
   moveIncomeField,
   normalizeIncomeCubeLayout,
   pivotToExcelRows,
+  sortPivotRows,
   uniqueFilterValues,
   usedFieldIds,
   type IncomeCubeLayout,
   type IncomeCubeZone,
-  type IncomeDateFilters,
   type IncomeDimensionId,
   type IncomeFact,
   type IncomeFieldId,
   type IncomeMeasureId,
+  type IncomeRowSort,
   type IncomeValueFilters,
   type MissingCommissionBooking,
 } from "@/lib/income-report-cube";
 
-const STORAGE_KEY = "tatil-villa:gelir-raporu-layout-v2";
+const STORAGE_KEY = "tatil-villa:gelir-raporu-layout-v3";
 const DND_MIME = "application/x-tatil-income-field";
 
 type DragPayload = {
@@ -53,13 +54,9 @@ type DragPayload = {
 };
 
 const ZONE_META: Record<
-  Exclude<IncomeCubeZone, "palette">,
+  Exclude<IncomeCubeZone, "palette" | "filters">,
   { title: string; hint: string }
 > = {
-  filters: {
-    title: "Filtre alanları",
-    hint: "Raporu daraltmak için alan bırakın",
-  },
   rows: {
     title: "Satırlar",
     hint: "Sıra gruplama hiyerarşisini belirler",
@@ -70,7 +67,7 @@ const ZONE_META: Record<
   },
   values: {
     title: "Değerler",
-    hint: "Komisyon tutarı ve rezervasyon sayısını bırakın",
+    hint: "Rezervasyon sayısı ve tutarını bırakın",
   },
 };
 
@@ -122,17 +119,6 @@ function formatPivotCell(measureId: IncomeMeasureId, value: number) {
     return value ? formatMoneyPlain(value) : "—";
   }
   return value.toLocaleString("tr-TR");
-}
-
-function countActiveFilters(
-  dateFilters: IncomeDateFilters,
-  valueFilters: IncomeValueFilters
-) {
-  const dates = Object.values(dateFilters).filter((value) => value.trim()).length;
-  const values = Object.values(valueFilters).filter(
-    (selected) => selected != null
-  ).length;
-  return dates + values;
 }
 
 async function downloadExcel(rows: (string | number)[][], fileName: string) {
@@ -188,7 +174,7 @@ function DropZone({
   children,
   onDropField,
 }: {
-  zone: Exclude<IncomeCubeZone, "palette">;
+  zone: Exclude<IncomeCubeZone, "palette" | "filters">;
   fieldIds: string[];
   children: ReactNode;
   onDropField: (fieldId: IncomeFieldId, zone: IncomeCubeZone, index: number) => void;
@@ -239,16 +225,20 @@ function DropZone({
   );
 }
 
-function FilterValueMenu({
+function DimensionHeaderMenu({
   fieldId,
   facts,
   selected,
-  onChange,
+  sort,
+  onChangeFilter,
+  onChangeSort,
 }: {
   fieldId: IncomeDimensionId;
   facts: IncomeFact[];
   selected: string[] | undefined;
-  onChange: (values: string[] | undefined) => void;
+  sort: IncomeRowSort | null;
+  onChangeFilter: (values: string[] | undefined) => void;
+  onChangeSort: (direction: "asc" | "desc" | null) => void;
 }) {
   const options = useMemo(
     () => uniqueFilterValues(facts, fieldId),
@@ -256,14 +246,58 @@ function FilterValueMenu({
   );
   const selectedSet = new Set(selected ?? options.map((item) => item.key));
   const allSelected = options.every((item) => selectedSet.has(item.key));
+  const activeSort = sort?.fieldId === fieldId ? sort.direction : null;
 
   return (
-    <div className="absolute left-0 top-full z-30 mt-1 max-h-64 w-56 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+    <div className="absolute left-0 top-full z-30 mt-1 max-h-72 w-60 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+      <div className="mb-2 border-b border-gray-100 pb-2">
+        <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+          Sıralama
+        </p>
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => onChangeSort("asc")}
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${
+              activeSort === "asc"
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <ArrowUp className="h-3 w-3" />
+            Küçükten büyüğe
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeSort("desc")}
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${
+              activeSort === "desc"
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <ArrowDown className="h-3 w-3" />
+            Büyükten küçüğe
+          </button>
+          {activeSort ? (
+            <button
+              type="button"
+              onClick={() => onChangeSort(null)}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-gray-500 hover:bg-gray-100"
+            >
+              Sıfırla
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        Filtre
+      </p>
       <label className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50">
         <input
           type="checkbox"
           checked={allSelected}
-          onChange={() => onChange(undefined)}
+          onChange={() => onChangeFilter(undefined)}
         />
         Tümü
       </label>
@@ -281,7 +315,7 @@ function FilterValueMenu({
                 .filter((key) =>
                   key === option.key ? !selectedSet.has(key) : selectedSet.has(key)
                 );
-              onChange(next.length === options.length ? undefined : next);
+              onChangeFilter(next.length === options.length ? undefined : next);
             }}
           />
           <span className="truncate">{option.label}</span>
@@ -300,17 +334,14 @@ export default function IncomeReportPage({
 }) {
   const [layout, setLayout] = useState<IncomeCubeLayout>(DEFAULT_INCOME_CUBE_LAYOUT);
   const [layoutReady, setLayoutReady] = useState(false);
-  const [dateFilters, setDateFilters] = useState<IncomeDateFilters>(
-    EMPTY_INCOME_DATE_FILTERS
-  );
   const [valueFilters, setValueFilters] = useState<IncomeValueFilters>({});
-  const [openFilterField, setOpenFilterField] = useState<IncomeDimensionId | null>(
+  const [rowSort, setRowSort] = useState<IncomeRowSort | null>(null);
+  const [openHeaderMenu, setOpenHeaderMenu] = useState<IncomeDimensionId | null>(
     null
   );
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [fieldsPanelOpen, setFieldsPanelOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(missingCommission.length > 0);
   const [isPending, startTransition] = useTransition();
-  const filterPanelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     try {
@@ -330,8 +361,14 @@ export default function IncomeReportPage({
   }, [layout, layoutReady]);
 
   const filteredFacts = useMemo(
-    () => filterIncomeFacts(facts, dateFilters, valueFilters),
-    [facts, dateFilters, valueFilters]
+    () =>
+      filterIncomeFacts(facts, {
+        reservationFrom: "",
+        reservationTo: "",
+        stayFrom: "",
+        stayTo: "",
+      }, valueFilters),
+    [facts, valueFilters]
   );
 
   const pivot = useMemo(
@@ -339,26 +376,14 @@ export default function IncomeReportPage({
     [filteredFacts, layout]
   );
 
-  const filteredMissing = useMemo(() => {
-    const from = dateFilters.reservationFrom;
-    const to = dateFilters.reservationTo;
-    const stayFrom = dateFilters.stayFrom;
-    const stayTo = dateFilters.stayTo;
-    return missingCommission.filter((row) => {
-      const reservationKey = row.reservationDate.split(".").reverse().join("-");
-      const stayKey = row.checkIn.split(".").reverse().join("-");
-      if (from && reservationKey < from) return false;
-      if (to && reservationKey > to) return false;
-      if (stayFrom && stayKey < stayFrom) return false;
-      if (stayTo && stayKey > stayTo) return false;
-      return true;
-    });
-  }, [missingCommission, dateFilters]);
+  const displayRows = useMemo(
+    () => sortPivotRows(pivot.rows, layout.rows, rowSort),
+    [pivot.rows, layout.rows, rowSort]
+  );
 
   const used = usedFieldIds(layout);
   const hasMeasure = layout.values.length > 0;
   const measures = pivot.measures;
-  const activeFilterCount = countActiveFilters(dateFilters, valueFilters);
   const countMeasureIndex = measures.indexOf("reservationCount");
   const reservationTotal =
     countMeasureIndex >= 0 ? pivot.grandTotals[countMeasureIndex] ?? 0 : pivot.factCount;
@@ -377,23 +402,13 @@ export default function IncomeReportPage({
         return next;
       });
     }
-    if (zone === "filters") {
-      setFiltersOpen(true);
-    }
   }
 
   function handleReset() {
     setLayout(DEFAULT_INCOME_CUBE_LAYOUT);
-    setDateFilters(EMPTY_INCOME_DATE_FILTERS);
     setValueFilters({});
-    setOpenFilterField(null);
-  }
-
-  function openFilters() {
-    setFiltersOpen(true);
-    requestAnimationFrame(() => {
-      filterPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    setRowSort(null);
+    setOpenHeaderMenu(null);
   }
 
   function handleExport() {
@@ -408,13 +423,14 @@ export default function IncomeReportPage({
   function handleMissingExport() {
     startTransition(async () => {
       await downloadExcel(
-        missingCommissionToExcelRows(filteredMissing),
+        missingCommissionToExcelRows(missingCommission),
         buildMissingCommissionFilename()
       );
     });
   }
 
-  const showMeasureSubheader = measures.length > 1 || layout.columns.length === 0;
+  const showMeasureSubheader =
+    layout.rows.length > 0 || measures.length > 1 || layout.columns.length === 0;
   const dimensionHeaderRows = useMemo(() => {
     const depth = layout.columns.length;
     if (depth === 0) return [] as string[][];
@@ -443,24 +459,11 @@ export default function IncomeReportPage({
             <h1 className="text-2xl font-bold text-gray-900">Gelir Raporu</h1>
             <p className="text-sm text-gray-500">
               Küp rapor: alanları sürükleyerek satır, sütun ve değer sırasını
-              değiştirin. Filtreler sayfanın altındadır.
+              değiştirin. Tablo başlıklarından filtre ve sıralama yapabilirsiniz.
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={openFilters}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <Filter className="h-4 w-4" />
-            Filtre
-            {activeFilterCount > 0 ? (
-              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </button>
           <button
             type="button"
             onClick={handleReset}
@@ -482,117 +485,129 @@ export default function IncomeReportPage({
       </div>
 
 
-      <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
-        <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-bold text-gray-900">Rapor Alanları</h2>
-          <p className="mt-1 text-xs text-gray-500">
-            Alanı tutup satır / sütun / değer bölgelerine bırakın. Filtreler
-            altta açılır.
-          </p>
-          <div className="mt-3 flex flex-col gap-2">
-            {[...INCOME_DIMENSION_FIELDS, ...INCOME_MEASURE_FIELDS].map(
-              (field) => {
-                const placed = used.has(field.id);
-                return (
-                  <button
-                    key={field.id}
-                    type="button"
-                    draggable
-                    onDragStart={(event) => {
-                      const payload: DragPayload = {
-                        fieldId: field.id,
-                        from: fieldZone(layout, field.id),
-                      };
-                      event.dataTransfer.setData(
-                        DND_MIME,
-                        JSON.stringify(payload)
-                      );
-                      event.dataTransfer.setData(
-                        "text/plain",
-                        JSON.stringify(payload)
-                      );
-                      event.dataTransfer.effectAllowed = "move";
-                    }}
-                    onClick={() => {
-                      if (placed) return;
-                      if (isIncomeMeasureId(field.id)) {
-                        handleDropField(field.id, "values", layout.values.length);
-                        return;
-                      }
-                      handleDropField(field.id, "rows", layout.rows.length);
-                    }}
-                    className={`${chipClass(field.id, placed)} w-full cursor-grab justify-start text-left active:cursor-grabbing`}
-                  >
-                    <GripVertical className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                    <span className="truncate">{field.label}</span>
-                    {placed ? (
-                      <span className="ml-auto text-[10px] font-bold uppercase text-gray-400">
-                        {fieldZone(layout, field.id) === "rows"
-                          ? "Satır"
-                          : fieldZone(layout, field.id) === "columns"
-                            ? "Sütun"
-                            : fieldZone(layout, field.id) === "filters"
-                              ? "Filtre"
-                              : "Değer"}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              }
-            )}
-          </div>
-        </section>
+      <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setFieldsPanelOpen((open) => !open)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <span className="text-sm font-bold text-gray-900">Rapor Alanları</span>
+          <ChevronDown
+            className={`h-4 w-4 text-gray-500 transition ${
+              fieldsPanelOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {fieldsPanelOpen ? (
+          <div className="grid gap-4 border-t border-gray-100 p-4 xl:grid-cols-[260px_minmax(0,1fr)]">
+            <div>
+              <p className="text-xs text-gray-500">
+                Alanı tutup satır / sütun / değer bölgelerine bırakın.
+              </p>
+              <div className="mt-3 flex flex-col gap-2">
+                {[...INCOME_DIMENSION_FIELDS, ...INCOME_MEASURE_FIELDS].map(
+                  (field) => {
+                    const placed = used.has(field.id);
+                    return (
+                      <button
+                        key={field.id}
+                        type="button"
+                        draggable
+                        onDragStart={(event) => {
+                          const payload: DragPayload = {
+                            fieldId: field.id,
+                            from: fieldZone(layout, field.id),
+                          };
+                          event.dataTransfer.setData(
+                            DND_MIME,
+                            JSON.stringify(payload)
+                          );
+                          event.dataTransfer.setData(
+                            "text/plain",
+                            JSON.stringify(payload)
+                          );
+                          event.dataTransfer.effectAllowed = "move";
+                        }}
+                        onClick={() => {
+                          if (placed) return;
+                          if (isIncomeMeasureId(field.id)) {
+                            handleDropField(field.id, "values", layout.values.length);
+                            return;
+                          }
+                          handleDropField(field.id, "rows", layout.rows.length);
+                        }}
+                        className={`${chipClass(field.id, placed)} w-full cursor-grab justify-start text-left active:cursor-grabbing`}
+                      >
+                        <GripVertical className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                        <span className="truncate">{field.label}</span>
+                        {placed ? (
+                          <span className="ml-auto text-[10px] font-bold uppercase text-gray-400">
+                            {fieldZone(layout, field.id) === "rows"
+                              ? "Satır"
+                              : fieldZone(layout, field.id) === "columns"
+                                ? "Sütun"
+                                : "Değer"}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+            </div>
 
-        <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-3 lg:grid-cols-2">
-            <DropZone
-              zone="rows"
-              fieldIds={layout.rows}
-              onDropField={handleDropField}
-            >
-              {layout.rows.map((fieldId, index) => (
-                <span key={fieldId} data-drop-index={index}>
-                  <FieldChip
-                    fieldId={fieldId}
-                    from="rows"
-                    onRemove={() => handleDropField(fieldId, "palette", 0)}
-                  />
-                </span>
-              ))}
-            </DropZone>
-            <DropZone
-              zone="columns"
-              fieldIds={layout.columns}
-              onDropField={handleDropField}
-            >
-              {layout.columns.map((fieldId, index) => (
-                <span key={fieldId} data-drop-index={index}>
-                  <FieldChip
-                    fieldId={fieldId}
-                    from="columns"
-                    onRemove={() => handleDropField(fieldId, "palette", 0)}
-                  />
-                </span>
-              ))}
-            </DropZone>
+            <div className="space-y-3">
+              <div className="grid gap-3 lg:grid-cols-2">
+                <DropZone
+                  zone="rows"
+                  fieldIds={layout.rows}
+                  onDropField={handleDropField}
+                >
+                  {layout.rows.map((fieldId, index) => (
+                    <span key={fieldId} data-drop-index={index}>
+                      <FieldChip
+                        fieldId={fieldId}
+                        from="rows"
+                        onRemove={() => handleDropField(fieldId, "palette", 0)}
+                      />
+                    </span>
+                  ))}
+                </DropZone>
+                <DropZone
+                  zone="columns"
+                  fieldIds={layout.columns}
+                  onDropField={handleDropField}
+                >
+                  {layout.columns.map((fieldId, index) => (
+                    <span key={fieldId} data-drop-index={index}>
+                      <FieldChip
+                        fieldId={fieldId}
+                        from="columns"
+                        onRemove={() => handleDropField(fieldId, "palette", 0)}
+                      />
+                    </span>
+                  ))}
+                </DropZone>
+              </div>
+              <DropZone
+                zone="values"
+                fieldIds={layout.values}
+                onDropField={handleDropField}
+              >
+                {layout.values.map((fieldId, index) => (
+                  <span key={fieldId} data-drop-index={index}>
+                    <FieldChip
+                      fieldId={fieldId}
+                      from="values"
+                      onRemove={() => handleDropField(fieldId, "palette", 0)}
+                    />
+                  </span>
+                ))}
+              </DropZone>
+            </div>
           </div>
-          <DropZone
-            zone="values"
-            fieldIds={layout.values}
-            onDropField={handleDropField}
-          >
-            {layout.values.map((fieldId, index) => (
-              <span key={fieldId} data-drop-index={index}>
-                <FieldChip
-                  fieldId={fieldId}
-                  from="values"
-                  onRemove={() => handleDropField(fieldId, "palette", 0)}
-                />
-              </span>
-            ))}
-          </DropZone>
-        </section>
-      </div>
+        ) : null}
+      </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
@@ -614,7 +629,7 @@ export default function IncomeReportPage({
 
         {!hasMeasure ? (
           <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-            Raporu görmek için Komisyon Tutarı veya Rezervasyon Sayısı alanını
+            Raporu görmek için Rezervasyon Sayısı veya Rezervasyon Tutarı alanını
             Değerler bölgesine sürükleyin.
           </p>
         ) : pivot.factCount === 0 ? (
@@ -671,10 +686,62 @@ export default function IncomeReportPage({
                       layout.rows.map((fieldId, rowIndex) => (
                         <th
                           key={fieldId}
-                          className="sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500"
+                          className="relative sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500"
                           style={{ left: rowIndex * 140, minWidth: 140 }}
                         >
-                          {getIncomeFieldLabel(fieldId)}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenHeaderMenu((current) =>
+                                current === fieldId ? null : fieldId
+                              )
+                            }
+                            className="flex w-full items-center justify-between gap-1 text-left"
+                          >
+                            <span className="truncate">
+                              {getIncomeFieldLabel(fieldId)}
+                            </span>
+                            <span className="inline-flex shrink-0 items-center gap-0.5">
+                              {valueFilters[fieldId] != null ? (
+                                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                              ) : null}
+                              {rowSort?.fieldId === fieldId ? (
+                                rowSort.direction === "asc" ? (
+                                  <ArrowUp className="h-3 w-3 text-indigo-600" />
+                                ) : (
+                                  <ArrowDown className="h-3 w-3 text-indigo-600" />
+                                )
+                              ) : null}
+                              <ChevronDown
+                                className={`h-3 w-3 text-gray-400 transition ${
+                                  openHeaderMenu === fieldId ? "rotate-180" : ""
+                                }`}
+                              />
+                            </span>
+                          </button>
+                          {openHeaderMenu === fieldId ? (
+                            <DimensionHeaderMenu
+                              fieldId={fieldId}
+                              facts={facts}
+                              selected={valueFilters[fieldId]}
+                              sort={rowSort}
+                              onChangeFilter={(values) =>
+                                setValueFilters((current) => ({
+                                  ...current,
+                                  [fieldId]: values,
+                                }))
+                              }
+                              onChangeSort={(direction) => {
+                                if (direction == null) {
+                                  setRowSort((current) =>
+                                    current?.fieldId === fieldId ? null : current
+                                  );
+                                  return;
+                                }
+                                setRowSort({ fieldId, direction });
+                              }}
+                            />
+                          ) : null}
                         </th>
                       ))
                     )}
@@ -707,7 +774,7 @@ export default function IncomeReportPage({
                 ) : null}
               </thead>
               <tbody>
-                {pivot.rows.map((row, rowIndex) => {
+                {displayRows.map((row, rowIndex) => {
                   const isGroup = row.isSubtotal;
                   const rowBg = isGroup
                     ? row.depth === 0
@@ -798,6 +865,7 @@ export default function IncomeReportPage({
         )}
       </section>
 
+      {missingCommission.length > 0 ? (
       <section className="rounded-2xl border border-amber-200 bg-white shadow-sm">
         <button
           type="button"
@@ -808,7 +876,7 @@ export default function IncomeReportPage({
             <AlertTriangle className="h-4 w-4" />
             Komisyonu boş onaylı rezervasyonlar
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs">
-              {filteredMissing.length}
+              {missingCommission.length}
             </span>
           </span>
           <ChevronDown
@@ -827,162 +895,58 @@ export default function IncomeReportPage({
               <button
                 type="button"
                 onClick={handleMissingExport}
-                disabled={isPending || filteredMissing.length === 0}
+                disabled={isPending}
                 className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
               >
                 <FileSpreadsheet className="h-3.5 w-3.5" />
                 Excel
               </button>
             </div>
-            {filteredMissing.length === 0 ? (
-              <p className="rounded-xl bg-amber-50 px-4 py-6 text-center text-sm text-amber-800">
-                Bu filtreye uyan boş komisyon kaydı yok.
-              </p>
-            ) : (
-              <div className="max-h-[420px] overflow-auto rounded-xl border border-amber-100">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-amber-50 text-left text-xs font-bold uppercase tracking-wide text-amber-900">
-                    <tr>
-                      <th className="px-3 py-2">Rezervasyon</th>
-                      <th className="px-3 py-2">Villa Adı</th>
-                      <th className="px-3 py-2">Misafir</th>
-                      <th className="px-3 py-2">Rezervasyon</th>
-                      <th className="px-3 py-2">Konaklama</th>
-                      <th className="px-3 py-2 text-right">Toplam</th>
+            <div className="max-h-[420px] overflow-auto rounded-xl border border-amber-100">
+              <table className="min-w-full text-sm">
+                <thead className="bg-amber-50 text-left text-xs font-bold uppercase tracking-wide text-amber-900">
+                  <tr>
+                    <th className="px-3 py-2">Rezervasyon</th>
+                    <th className="px-3 py-2">Villa Adı</th>
+                    <th className="px-3 py-2">Misafir</th>
+                    <th className="px-3 py-2">Rezervasyon</th>
+                    <th className="px-3 py-2">Konaklama</th>
+                    <th className="px-3 py-2 text-right">Toplam</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missingCommission.map((row) => (
+                    <tr key={row.id} className="border-t border-amber-50">
+                      <td className="px-3 py-2">
+                        <Link
+                          href={`/admin/rezervasyonlar/${row.id}`}
+                          className="font-semibold text-teal-700 hover:underline"
+                        >
+                          {row.reservationNo}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 text-gray-800">{row.villaName}</td>
+                      <td className="px-3 py-2 text-gray-800">{row.guestName}</td>
+                      <td className="px-3 py-2 text-gray-600">
+                        {row.reservationDate}
+                      </td>
+                      <td className="px-3 py-2 text-gray-600">
+                        {row.checkIn} — {row.checkOut}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-gray-800">
+                        {row.totalPrice != null
+                          ? formatMoneyPlain(row.totalPrice)
+                          : "—"}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredMissing.map((row) => (
-                      <tr key={row.id} className="border-t border-amber-50">
-                        <td className="px-3 py-2">
-                          <Link
-                            href={`/admin/rezervasyonlar/${row.id}`}
-                            className="font-semibold text-teal-700 hover:underline"
-                          >
-                            {row.reservationNo}
-                          </Link>
-                        </td>
-                        <td className="px-3 py-2 text-gray-800">{row.villaName}</td>
-                        <td className="px-3 py-2 text-gray-800">{row.guestName}</td>
-                        <td className="px-3 py-2 text-gray-600">
-                          {row.reservationDate}
-                        </td>
-                        <td className="px-3 py-2 text-gray-600">
-                          {row.checkIn} — {row.checkOut}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-gray-800">
-                          {row.totalPrice != null
-                            ? formatMoneyPlain(row.totalPrice)
-                            : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ) : null}
-      </section>
-
-      <section
-        ref={filterPanelRef}
-        className="rounded-2xl border border-gray-200 bg-white shadow-sm"
-      >
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((open) => !open)}
-          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-        >
-          <span className="flex items-center gap-2 text-sm font-bold text-gray-900">
-            <Filter className="h-4 w-4" />
-            Filtreler
-            {activeFilterCount > 0 ? (
-              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 text-gray-500 transition ${
-              filtersOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-        {filtersOpen ? (
-          <div className="space-y-4 border-t border-gray-100 px-4 py-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {(
-                [
-                  ["reservationFrom", "Rezervasyon başlangıç"],
-                  ["reservationTo", "Rezervasyon bitiş"],
-                  ["stayFrom", "Konaklama/hizmet başlangıç"],
-                  ["stayTo", "Konaklama/hizmet bitiş"],
-                ] as const
-              ).map(([key, label]) => (
-                <label key={key} className="block text-xs font-semibold text-gray-600">
-                  {label}
-                  <input
-                    type="date"
-                    value={dateFilters[key]}
-                    onChange={(event) =>
-                      setDateFilters((current) => ({
-                        ...current,
-                        [key]: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800"
-                  />
-                </label>
-              ))}
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <DropZone
-              zone="filters"
-              fieldIds={layout.filters}
-              onDropField={handleDropField}
-            >
-              {layout.filters.map((fieldId, index) => (
-                <div key={fieldId} data-drop-index={index} className="relative">
-                  <FieldChip
-                    fieldId={fieldId}
-                    from="filters"
-                    onRemove={() => {
-                      handleDropField(fieldId, "palette", 0);
-                      setOpenFilterField(null);
-                    }}
-                    trailing={
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOpenFilterField((current) =>
-                            current === fieldId ? null : fieldId
-                          )
-                        }
-                        className="rounded px-1 text-[10px] font-bold uppercase text-current/70 hover:bg-black/10"
-                      >
-                        Seç
-                      </button>
-                    }
-                  />
-                  {openFilterField === fieldId ? (
-                    <FilterValueMenu
-                      fieldId={fieldId}
-                      facts={facts}
-                      selected={valueFilters[fieldId]}
-                      onChange={(values) =>
-                        setValueFilters((current) => ({
-                          ...current,
-                          [fieldId]: values,
-                        }))
-                      }
-                    />
-                  ) : null}
-                </div>
-              ))}
-            </DropZone>
           </div>
         ) : null}
       </section>
+      ) : null}
     </div>
   );
 }
