@@ -30,6 +30,7 @@ const bookingSelect = {
   details: true,
   villa: {
     select: {
+      salesType: true,
       name: true,
       originalName: true,
       region: {
@@ -65,6 +66,7 @@ type IncomeBookingRecord = {
   status: BookingStatus;
   details: unknown;
   villa: {
+    salesType: "komisyon" | "garanti";
     name: string;
     originalName: string;
     region: {
@@ -161,7 +163,7 @@ export async function getIncomeReportData(): Promise<{
       details,
       booking.totalPrice
     );
-    if (commission <= 0) {
+    if (commission <= 0 && booking.villa.salesType === "komisyon") {
       missingCommission.push(toMissingCommissionRow(booking));
     }
   }
