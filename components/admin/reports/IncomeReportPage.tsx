@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type DragEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type DragEvent, type ReactNode } from "react";
+import Link from "next/link";
 import {
+  AlertTriangle,
   BarChart3,
+  ChevronDown,
   FileSpreadsheet,
+  Filter,
   GripVertical,
   RotateCcw,
   X,
@@ -16,11 +20,14 @@ import {
   INCOME_MEASURE_FIELDS,
   buildIncomePivot,
   buildIncomeReportFilename,
+  buildMissingCommissionFilename,
   fieldZone,
   filterIncomeFacts,
   getIncomeFieldLabel,
   isIncomeDimensionId,
   isIncomeMeasureId,
+  isMoneyMeasure,
+  missingCommissionToExcelRows,
   moveIncomeField,
   normalizeIncomeCubeLayout,
   pivotToExcelRows,
@@ -32,10 +39,12 @@ import {
   type IncomeDimensionId,
   type IncomeFact,
   type IncomeFieldId,
+  type IncomeMeasureId,
   type IncomeValueFilters,
+  type MissingCommissionBooking,
 } from "@/lib/income-report-cube";
 
-const STORAGE_KEY = "tatil-villa:gelir-raporu-layout";
+const STORAGE_KEY = "tatil-villa:gelir-raporu-layout-v2";
 const DND_MIME = "application/x-tatil-income-field";
 
 type DragPayload = {
@@ -48,7 +57,7 @@ const ZONE_META: Record<
   { title: string; hint: string }
 > = {
   filters: {
-    title: "Filtreler",
+    title: "Filtre alanları",
     hint: "Raporu daraltmak için alan bırakın",
   },
   rows: {
@@ -61,7 +70,7 @@ const ZONE_META: Record<
   },
   values: {
     title: "Değerler",
-    hint: "Komisyon tutarını buraya bırakın",
+    hint: "Komisyon tutarı ve rezervasyon sayısını bırakın",
   },
 };
 
@@ -69,11 +78,17 @@ function chipClass(fieldId: IncomeFieldId, muted = false) {
   const base =
     "inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold shadow-sm";
   const dim = muted ? " opacity-50" : "";
+  if (fieldId === "reservationCount") {
+    return `${base} border-cyan-200 bg-cyan-50 text-cyan-800${dim}`;
+  }
   if (isIncomeMeasureId(fieldId)) {
     return `${base} border-teal-200 bg-teal-50 text-teal-800${dim}`;
   }
   if (fieldId === "incomeType") {
     return `${base} border-amber-200 bg-amber-50 text-amber-900${dim}`;
+  }
+  if (fieldId === "villaName") {
+    return `${base} border-emerald-200 bg-emerald-50 text-emerald-800${dim}`;
   }
   if (
     fieldId === "province" ||
@@ -102,11 +117,29 @@ function readDragPayload(event: DragEvent): DragPayload | null {
   }
 }
 
+function formatPivotCell(measureId: IncomeMeasureId, value: number) {
+  if (isMoneyMeasure(measureId)) {
+    return value ? formatMoneyPlain(value) : "—";
+  }
+  return value.toLocaleString("tr-TR");
+}
+
+function countActiveFilters(
+  dateFilters: IncomeDateFilters,
+  valueFilters: IncomeValueFilters
+) {
+  const dates = Object.values(dateFilters).filter((value) => value.trim()).length;
+  const values = Object.values(valueFilters).filter(
+    (selected) => selected != null
+  ).length;
+  return dates + values;
+}
+
 async function downloadExcel(rows: (string | number)[][], fileName: string) {
   const XLSX = await import("xlsx");
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Gelir Raporu");
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Sayfa1");
   XLSX.writeFile(workbook, fileName);
 }
 
@@ -258,7 +291,13 @@ function FilterValueMenu({
   );
 }
 
-export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
+export default function IncomeReportPage({
+  facts,
+  missingCommission,
+}: {
+  facts: IncomeFact[];
+  missingCommission: MissingCommissionBooking[];
+}) {
   const [layout, setLayout] = useState<IncomeCubeLayout>(DEFAULT_INCOME_CUBE_LAYOUT);
   const [layoutReady, setLayoutReady] = useState(false);
   const [dateFilters, setDateFilters] = useState<IncomeDateFilters>(
@@ -268,7 +307,10 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
   const [openFilterField, setOpenFilterField] = useState<IncomeDimensionId | null>(
     null
   );
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [missingOpen, setMissingOpen] = useState(missingCommission.length > 0);
   const [isPending, startTransition] = useTransition();
+  const filterPanelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     try {
@@ -297,8 +339,29 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
     [filteredFacts, layout]
   );
 
+  const filteredMissing = useMemo(() => {
+    const from = dateFilters.reservationFrom;
+    const to = dateFilters.reservationTo;
+    const stayFrom = dateFilters.stayFrom;
+    const stayTo = dateFilters.stayTo;
+    return missingCommission.filter((row) => {
+      const reservationKey = row.reservationDate.split(".").reverse().join("-");
+      const stayKey = row.checkIn.split(".").reverse().join("-");
+      if (from && reservationKey < from) return false;
+      if (to && reservationKey > to) return false;
+      if (stayFrom && stayKey < stayFrom) return false;
+      if (stayTo && stayKey > stayTo) return false;
+      return true;
+    });
+  }, [missingCommission, dateFilters]);
+
   const used = usedFieldIds(layout);
   const hasMeasure = layout.values.length > 0;
+  const measures = pivot.measures;
+  const activeFilterCount = countActiveFilters(dateFilters, valueFilters);
+  const countMeasureIndex = measures.indexOf("reservationCount");
+  const reservationTotal =
+    countMeasureIndex >= 0 ? pivot.grandTotals[countMeasureIndex] ?? 0 : pivot.factCount;
 
   function handleDropField(
     fieldId: IncomeFieldId,
@@ -314,6 +377,9 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
         return next;
       });
     }
+    if (zone === "filters") {
+      setFiltersOpen(true);
+    }
   }
 
   function handleReset() {
@@ -321,6 +387,13 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
     setDateFilters(EMPTY_INCOME_DATE_FILTERS);
     setValueFilters({});
     setOpenFilterField(null);
+  }
+
+  function openFilters() {
+    setFiltersOpen(true);
+    requestAnimationFrame(() => {
+      filterPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function handleExport() {
@@ -332,21 +405,32 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
     });
   }
 
-  const columnHeaderRows = useMemo(() => {
+  function handleMissingExport() {
+    startTransition(async () => {
+      await downloadExcel(
+        missingCommissionToExcelRows(filteredMissing),
+        buildMissingCommissionFilename()
+      );
+    });
+  }
+
+  const showMeasureSubheader = measures.length > 1 || layout.columns.length === 0;
+  const dimensionHeaderRows = useMemo(() => {
     const depth = layout.columns.length;
-    if (depth === 0) {
-      return [pivot.columnLeaves.map((column) => column.labels[0] ?? "Komisyon Tutarı")];
-    }
+    if (depth === 0) return [] as string[][];
     const rows: string[][] = [];
     for (let level = 0; level < depth; level += 1) {
       const row: string[] = [];
       for (const column of pivot.columnLeaves) {
-        row.push(column.labels[level] ?? "");
+        const label = column.labels[level] ?? "";
+        for (let i = 0; i < Math.max(1, measures.length); i += 1) {
+          row.push(label);
+        }
       }
       rows.push(row);
     }
     return rows;
-  }, [layout.columns.length, pivot.columnLeaves]);
+  }, [layout.columns.length, measures.length, pivot.columnLeaves]);
 
   return (
     <div className="space-y-4">
@@ -358,12 +442,25 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Gelir Raporu</h1>
             <p className="text-sm text-gray-500">
-              Küp rapor: alanları sürükleyerek satır, sütun ve filtre sırasını
-              değiştirin. Sıralama gruplamayı anında günceller.
+              Küp rapor: alanları sürükleyerek satır, sütun ve değer sırasını
+              değiştirin. Filtreler sayfanın altındadır.
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={openFilters}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <Filter className="h-4 w-4" />
+            Filtre
+            {activeFilterCount > 0 ? (
+              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </button>
           <button
             type="button"
             onClick={handleReset}
@@ -385,17 +482,17 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Otel, Bilet, Araç Kiralama ve Transfer komisyon kayıtları henüz gelir
-        akışına bağlanmadığı için şu an yalnızca Konaklama rezervasyon
-        komisyonları görünür. Ön ödeme, onay gönderildi, onaylandı ve
-        tazminat statüsündeki kayıtlar dahildir.
+        Rapora yalnızca Onaylandı ve Tazminat rezervasyonları alınır. Otel,
+        Bilet, Araç Kiralama ve Transfer komisyon kayıtları bağlanınca aynı
+        küpte görünecektir.
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
         <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-bold text-gray-900">Rapor Alanları</h2>
           <p className="mt-1 text-xs text-gray-500">
-            Alanı tutup satır / sütun / filtre / değer bölgelerine bırakın.
+            Alanı tutup satır / sütun / değer bölgelerine bırakın. Filtreler
+            altta açılır.
           </p>
           <div className="mt-3 flex flex-col gap-2">
             {[...INCOME_DIMENSION_FIELDS, ...INCOME_MEASURE_FIELDS].map(
@@ -451,8 +548,374 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
           </div>
         </section>
 
-        <div className="space-y-4">
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="grid gap-3 lg:grid-cols-2">
+            <DropZone
+              zone="rows"
+              fieldIds={layout.rows}
+              onDropField={handleDropField}
+            >
+              {layout.rows.map((fieldId, index) => (
+                <span key={fieldId} data-drop-index={index}>
+                  <FieldChip
+                    fieldId={fieldId}
+                    from="rows"
+                    onRemove={() => handleDropField(fieldId, "palette", 0)}
+                  />
+                </span>
+              ))}
+            </DropZone>
+            <DropZone
+              zone="columns"
+              fieldIds={layout.columns}
+              onDropField={handleDropField}
+            >
+              {layout.columns.map((fieldId, index) => (
+                <span key={fieldId} data-drop-index={index}>
+                  <FieldChip
+                    fieldId={fieldId}
+                    from="columns"
+                    onRemove={() => handleDropField(fieldId, "palette", 0)}
+                  />
+                </span>
+              ))}
+            </DropZone>
+          </div>
+          <DropZone
+            zone="values"
+            fieldIds={layout.values}
+            onDropField={handleDropField}
+          >
+            {layout.values.map((fieldId, index) => (
+              <span key={fieldId} data-drop-index={index}>
+                <FieldChip
+                  fieldId={fieldId}
+                  from="values"
+                  onRemove={() => handleDropField(fieldId, "palette", 0)}
+                />
+              </span>
+            ))}
+          </DropZone>
+        </section>
+      </div>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
+          <p>
+            {pivot.factCount.toLocaleString("tr-TR")} kayıt · Rezervasyon:{" "}
+            <span className="font-bold text-gray-900">
+              {reservationTotal.toLocaleString("tr-TR")}
+            </span>
+            {" · "}
+            Toplam komisyon:{" "}
+            <span className="font-bold text-gray-900">
+              {formatMoneyPlain(pivot.grandTotal)}
+            </span>
+          </p>
+          <p className="text-xs text-gray-400">
+            Satır sırası gruplamayı, sütun sırası kırılımı değiştirir.
+          </p>
+        </div>
+
+        {!hasMeasure ? (
+          <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+            Raporu görmek için Komisyon Tutarı veya Rezervasyon Sayısı alanını
+            Değerler bölgesine sürükleyin.
+          </p>
+        ) : pivot.factCount === 0 ? (
+          <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+            Seçilen alanlar ve filtrelere uygun gelir kaydı bulunamadı.
+          </p>
+        ) : (
+          <div className="overflow-auto rounded-xl border border-gray-200">
+            <table className="min-w-full border-collapse text-sm">
+              <thead>
+                {dimensionHeaderRows.map((headerRow, headerIndex) => (
+                  <tr key={`h-${headerIndex}`} className="bg-slate-50">
+                    {layout.rows.length === 0 ? (
+                      <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2" />
+                    ) : (
+                      layout.rows.map((fieldId, rowIndex) => (
+                        <th
+                          key={fieldId}
+                          className="sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2"
+                          style={{ left: rowIndex * 140, minWidth: 140 }}
+                        />
+                      ))
+                    )}
+                    {headerRow.map((label, columnIndex) => (
+                      <th
+                        key={`c-${headerIndex}-${columnIndex}`}
+                        className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-700"
+                      >
+                        {label}
+                      </th>
+                    ))}
+                    {Array.from({ length: Math.max(1, measures.length) }).map(
+                      (_, index) => (
+                        <th
+                          key={`t-${headerIndex}-${index}`}
+                          className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900"
+                        >
+                          {headerIndex === dimensionHeaderRows.length - 1 &&
+                          index === 0
+                            ? "Toplam"
+                            : ""}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                ))}
+                {showMeasureSubheader ? (
+                  <tr className="bg-slate-50">
+                    {layout.rows.length === 0 ? (
+                      <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
+                        Toplam
+                      </th>
+                    ) : (
+                      layout.rows.map((fieldId, rowIndex) => (
+                        <th
+                          key={fieldId}
+                          className="sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500"
+                          style={{ left: rowIndex * 140, minWidth: 140 }}
+                        >
+                          {getIncomeFieldLabel(fieldId)}
+                        </th>
+                      ))
+                    )}
+                    {pivot.columnLeaves.flatMap((column, columnIndex) =>
+                      measures.map((measureId) => (
+                        <th
+                          key={`${column.keys.join("|")}-${measureId}-${columnIndex}`}
+                          className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-600"
+                        >
+                          {layout.columns.length === 0
+                            ? getIncomeFieldLabel(measureId)
+                            : measures.length > 1
+                              ? getIncomeFieldLabel(measureId)
+                              : column.labels[column.labels.length - 1] ??
+                                getIncomeFieldLabel(measureId)}
+                        </th>
+                      ))
+                    )}
+                    {measures.map((measureId) => (
+                      <th
+                        key={`tm-${measureId}`}
+                        className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900"
+                      >
+                        {measures.length > 1
+                          ? getIncomeFieldLabel(measureId)
+                          : "Toplam"}
+                      </th>
+                    ))}
+                  </tr>
+                ) : null}
+              </thead>
+              <tbody>
+                {pivot.rows.map((row, rowIndex) => {
+                  const isGroup = row.isSubtotal;
+                  const rowBg = isGroup
+                    ? row.depth === 0
+                      ? "bg-slate-100 font-semibold"
+                      : "bg-slate-50 font-medium"
+                    : "bg-white";
+                  const labelCount = Math.max(layout.rows.length, 1);
+                  return (
+                    <tr key={`${row.keys.join("|")}-${rowIndex}`} className={rowBg}>
+                      {Array.from({ length: labelCount }).map((_, labelIndex) => (
+                        <td
+                          key={`l-${labelIndex}`}
+                          className={`sticky z-10 border-b border-r border-gray-100 px-3 py-2 text-gray-800 ${rowBg}`}
+                          style={{ left: labelIndex * 140, minWidth: 140 }}
+                        >
+                          {row.labels[labelIndex] ?? ""}
+                        </td>
+                      ))}
+                      {row.cells.flatMap((column, columnIndex) =>
+                        column.map((value, measureIndex) => (
+                          <td
+                            key={`v-${columnIndex}-${measureIndex}`}
+                            className="border-b border-gray-100 px-3 py-2 text-right tabular-nums text-gray-800"
+                          >
+                            {formatPivotCell(
+                              measures[measureIndex] ?? "commissionAmount",
+                              value
+                            )}
+                          </td>
+                        ))
+                      )}
+                      {row.totals.map((value, measureIndex) => (
+                        <td
+                          key={`rt-${measureIndex}`}
+                          className="border-b border-gray-100 px-3 py-2 text-right tabular-nums font-semibold text-gray-900"
+                        >
+                          {formatPivotCell(
+                            measures[measureIndex] ?? "commissionAmount",
+                            value
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-teal-50 font-bold">
+                  {Array.from({
+                    length: Math.max(layout.rows.length, 1),
+                  }).map((_, index) => (
+                    <td
+                      key={`t-${index}`}
+                      className="sticky z-10 border-t border-r border-teal-100 bg-teal-50 px-3 py-2 text-teal-900"
+                      style={{ left: index * 140 }}
+                    >
+                      {index === 0 ? "Genel Toplam" : ""}
+                    </td>
+                  ))}
+                  {pivot.columnTotals.flatMap((column, columnIndex) =>
+                    column.map((value, measureIndex) => (
+                      <td
+                        key={`tv-${columnIndex}-${measureIndex}`}
+                        className="border-t border-teal-100 px-3 py-2 text-right tabular-nums text-teal-900"
+                      >
+                        {formatPivotCell(
+                          measures[measureIndex] ?? "commissionAmount",
+                          value
+                        )}
+                      </td>
+                    ))
+                  )}
+                  {pivot.grandTotals.map((value, measureIndex) => (
+                    <td
+                      key={`gt-${measureIndex}`}
+                      className="border-t border-teal-100 px-3 py-2 text-right tabular-nums text-teal-950"
+                    >
+                      {formatPivotCell(
+                        measures[measureIndex] ?? "commissionAmount",
+                        value
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-amber-200 bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setMissingOpen((open) => !open)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <span className="flex items-center gap-2 text-sm font-bold text-amber-900">
+            <AlertTriangle className="h-4 w-4" />
+            Komisyonu boş onaylı rezervasyonlar
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs">
+              {filteredMissing.length}
+            </span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-amber-700 transition ${
+              missingOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {missingOpen ? (
+          <div className="space-y-3 border-t border-amber-100 px-4 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-amber-900">
+                Onaylandı durumunda olup rezervasyon formundaki komisyon tutarı
+                boş veya 0 olan kayıtlar.
+              </p>
+              <button
+                type="button"
+                onClick={handleMissingExport}
+                disabled={isPending || filteredMissing.length === 0}
+                className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                Excel
+              </button>
+            </div>
+            {filteredMissing.length === 0 ? (
+              <p className="rounded-xl bg-amber-50 px-4 py-6 text-center text-sm text-amber-800">
+                Bu filtreye uyan boş komisyon kaydı yok.
+              </p>
+            ) : (
+              <div className="max-h-[420px] overflow-auto rounded-xl border border-amber-100">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-amber-50 text-left text-xs font-bold uppercase tracking-wide text-amber-900">
+                    <tr>
+                      <th className="px-3 py-2">Rezervasyon</th>
+                      <th className="px-3 py-2">Villa Adı</th>
+                      <th className="px-3 py-2">Misafir</th>
+                      <th className="px-3 py-2">Rezervasyon</th>
+                      <th className="px-3 py-2">Konaklama</th>
+                      <th className="px-3 py-2 text-right">Toplam</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMissing.map((row) => (
+                      <tr key={row.id} className="border-t border-amber-50">
+                        <td className="px-3 py-2">
+                          <Link
+                            href={`/admin/rezervasyonlar/${row.id}`}
+                            className="font-semibold text-teal-700 hover:underline"
+                          >
+                            {row.reservationNo}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-2 text-gray-800">{row.villaName}</td>
+                        <td className="px-3 py-2 text-gray-800">{row.guestName}</td>
+                        <td className="px-3 py-2 text-gray-600">
+                          {row.reservationDate}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">
+                          {row.checkIn} — {row.checkOut}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-gray-800">
+                          {row.totalPrice != null
+                            ? formatMoneyPlain(row.totalPrice)
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </section>
+
+      <section
+        ref={filterPanelRef}
+        className="rounded-2xl border border-gray-200 bg-white shadow-sm"
+      >
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <span className="flex items-center gap-2 text-sm font-bold text-gray-900">
+            <Filter className="h-4 w-4" />
+            Filtreler
+            {activeFilterCount > 0 ? (
+              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-gray-500 transition ${
+              filtersOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {filtersOpen ? (
+          <div className="space-y-4 border-t border-gray-100 px-4 py-4">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {(
                 [
@@ -478,20 +941,13 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
                 </label>
               ))}
             </div>
-          </section>
-
-          <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
             <DropZone
               zone="filters"
               fieldIds={layout.filters}
               onDropField={handleDropField}
             >
               {layout.filters.map((fieldId, index) => (
-                <div
-                  key={fieldId}
-                  data-drop-index={index}
-                  className="relative"
-                >
+                <div key={fieldId} data-drop-index={index} className="relative">
                   <FieldChip
                     fieldId={fieldId}
                     from="filters"
@@ -529,186 +985,8 @@ export default function IncomeReportPage({ facts }: { facts: IncomeFact[] }) {
                 </div>
               ))}
             </DropZone>
-
-            <div className="grid gap-3 lg:grid-cols-2">
-              <DropZone
-                zone="rows"
-                fieldIds={layout.rows}
-                onDropField={handleDropField}
-              >
-                {layout.rows.map((fieldId, index) => (
-                  <span key={fieldId} data-drop-index={index}>
-                    <FieldChip
-                      fieldId={fieldId}
-                      from="rows"
-                      onRemove={() => handleDropField(fieldId, "palette", 0)}
-                    />
-                  </span>
-                ))}
-              </DropZone>
-              <DropZone
-                zone="columns"
-                fieldIds={layout.columns}
-                onDropField={handleDropField}
-              >
-                {layout.columns.map((fieldId, index) => (
-                  <span key={fieldId} data-drop-index={index}>
-                    <FieldChip
-                      fieldId={fieldId}
-                      from="columns"
-                      onRemove={() => handleDropField(fieldId, "palette", 0)}
-                    />
-                  </span>
-                ))}
-              </DropZone>
-            </div>
-
-            <DropZone
-              zone="values"
-              fieldIds={layout.values}
-              onDropField={handleDropField}
-            >
-              {layout.values.map((fieldId, index) => (
-                <span key={fieldId} data-drop-index={index}>
-                  <FieldChip
-                    fieldId={fieldId}
-                    from="values"
-                    onRemove={() => handleDropField(fieldId, "palette", 0)}
-                  />
-                </span>
-              ))}
-            </DropZone>
-          </section>
-        </div>
-      </div>
-
-      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
-          <p>
-            {pivot.factCount.toLocaleString("tr-TR")} kayıt · Toplam komisyon:{" "}
-            <span className="font-bold text-gray-900">
-              {formatMoneyPlain(pivot.grandTotal)}
-            </span>
-          </p>
-          <p className="text-xs text-gray-400">
-            Satır sırası gruplamayı, sütun sırası kırılımı değiştirir.
-          </p>
-        </div>
-
-        {!hasMeasure ? (
-          <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-            Raporu görmek için Komisyon Tutarı alanını Değerler bölgesine
-            sürükleyin.
-          </p>
-        ) : pivot.factCount === 0 ? (
-          <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-            Seçilen alanlar ve filtrelere uygun gelir kaydı bulunamadı.
-          </p>
-        ) : (
-          <div className="overflow-auto rounded-xl border border-gray-200">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                {columnHeaderRows.map((headerRow, headerIndex) => (
-                  <tr key={`h-${headerIndex}`} className="bg-slate-50">
-                    {layout.rows.length === 0 ? (
-                      <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500">
-                        {headerIndex === columnHeaderRows.length - 1
-                          ? "Toplam"
-                          : ""}
-                      </th>
-                    ) : (
-                      layout.rows.map((fieldId, rowIndex) => (
-                        <th
-                          key={fieldId}
-                          className="sticky z-10 border-b border-r border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-gray-500"
-                          style={{ left: rowIndex * 140, minWidth: 140 }}
-                        >
-                          {headerIndex === columnHeaderRows.length - 1
-                            ? getIncomeFieldLabel(fieldId)
-                            : ""}
-                        </th>
-                      ))
-                    )}
-                    {headerRow.map((label, columnIndex) => (
-                      <th
-                        key={`c-${headerIndex}-${columnIndex}`}
-                        className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-700"
-                      >
-                        {label}
-                      </th>
-                    ))}
-                    <th className="border-b border-gray-200 px-3 py-2 text-right text-xs font-bold text-gray-900">
-                      {headerIndex === columnHeaderRows.length - 1
-                        ? "Toplam"
-                        : ""}
-                    </th>
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {pivot.rows.map((row, rowIndex) => {
-                  const isGroup = row.isSubtotal;
-                  const rowBg = isGroup
-                    ? row.depth === 0
-                      ? "bg-slate-100 font-semibold"
-                      : "bg-slate-50 font-medium"
-                    : "bg-white";
-                  const labelCount = Math.max(layout.rows.length, 1);
-                  return (
-                    <tr key={`${row.keys.join("|")}-${rowIndex}`} className={rowBg}>
-                      {Array.from({ length: labelCount }).map((_, labelIndex) => (
-                        <td
-                          key={`l-${labelIndex}`}
-                          className={`sticky z-10 border-b border-r border-gray-100 px-3 py-2 text-gray-800 ${rowBg}`}
-                          style={{ left: labelIndex * 140, minWidth: 140 }}
-                        >
-                          {row.labels[labelIndex] ?? ""}
-                        </td>
-                      ))}
-                      {row.values.map((value, valueIndex) => (
-                        <td
-                          key={`v-${valueIndex}`}
-                          className="border-b border-gray-100 px-3 py-2 text-right tabular-nums text-gray-800"
-                        >
-                          {value ? formatMoneyPlain(value) : "—"}
-                        </td>
-                      ))}
-                      <td className="border-b border-gray-100 px-3 py-2 text-right tabular-nums font-semibold text-gray-900">
-                        {formatMoneyPlain(row.total)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="bg-teal-50 font-bold">
-                  {Array.from({
-                    length: Math.max(layout.rows.length, 1),
-                  }).map((_, index) => (
-                    <td
-                      key={`t-${index}`}
-                      className="sticky z-10 border-t border-r border-teal-100 bg-teal-50 px-3 py-2 text-teal-900"
-                      style={{ left: index * 140 }}
-                    >
-                      {index === 0 ? "Genel Toplam" : ""}
-                    </td>
-                  ))}
-                  {pivot.columnTotals.map((value, index) => (
-                    <td
-                      key={`tv-${index}`}
-                      className="border-t border-teal-100 px-3 py-2 text-right tabular-nums text-teal-900"
-                    >
-                      {formatMoneyPlain(value)}
-                    </td>
-                  ))}
-                  <td className="border-t border-teal-100 px-3 py-2 text-right tabular-nums text-teal-950">
-                    {formatMoneyPlain(pivot.grandTotal)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
           </div>
-        )}
+        ) : null}
       </section>
     </div>
   );

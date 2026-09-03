@@ -36,6 +36,7 @@ export const INCOME_DIMENSION_FIELDS = [
   { id: "reservationMonth", label: "Ay (Rezervasyon)", kind: "month" },
   { id: "reservationDay", label: "Gün (Rezervasyon)", kind: "day" },
   { id: "incomeType", label: "Gelir Türü", kind: "incomeType" },
+  { id: "villaName", label: "Villa Adı", kind: "villa" },
   { id: "province", label: "Bölge (İl)", kind: "region" },
   { id: "district", label: "Bölge (İlçe)", kind: "region" },
   { id: "neighborhood", label: "Bölge (Mahalle)", kind: "region" },
@@ -46,6 +47,7 @@ export const INCOME_DIMENSION_FIELDS = [
 
 export const INCOME_MEASURE_FIELDS = [
   { id: "commissionAmount", label: "Komisyon Tutarı", kind: "measure" },
+  { id: "reservationCount", label: "Rezervasyon Sayısı", kind: "measure" },
 ] as const;
 
 export type IncomeDimensionId = (typeof INCOME_DIMENSION_FIELDS)[number]["id"];
@@ -59,11 +61,29 @@ export type IncomeFact = {
   incomeType: IncomeTypeId;
   reservationDate: string;
   stayDate: string;
+  villaName: string;
   province: string;
   district: string;
   neighborhood: string;
   commissionAmount: number;
 };
+
+export type MissingCommissionBooking = {
+  id: string;
+  reservationNo: string;
+  villaName: string;
+  guestName: string;
+  reservationDate: string;
+  checkIn: string;
+  checkOut: string;
+  totalPrice: number | null;
+};
+
+export function isStoredCommissionEmpty(
+  amount: number | null | undefined
+): boolean {
+  return amount == null || !Number.isFinite(amount) || amount <= 0;
+}
 
 export type IncomeCubeLayout = {
   filters: IncomeDimensionId[];
@@ -92,7 +112,7 @@ export const DEFAULT_INCOME_CUBE_LAYOUT: IncomeCubeLayout = {
   filters: [],
   rows: ["reservationYear", "reservationMonth"],
   columns: ["incomeType"],
-  values: ["commissionAmount"],
+  values: ["commissionAmount", "reservationCount"],
 };
 
 export const MISSING_REGION_LABEL = "Belirtilmedi";
@@ -105,7 +125,8 @@ export type IncomePivotColumn = {
 export type IncomePivotRow = {
   keys: string[];
   labels: string[];
-  values: number[];
+  cells: number[][];
+  totals: number[];
   total: number;
   depth: number;
   isSubtotal: boolean;
@@ -113,11 +134,23 @@ export type IncomePivotRow = {
 
 export type IncomePivotResult = {
   columnLeaves: IncomePivotColumn[];
+  measures: IncomeMeasureId[];
   rows: IncomePivotRow[];
-  columnTotals: number[];
+  columnTotals: number[][];
+  grandTotals: number[];
   grandTotal: number;
   factCount: number;
 };
+
+export function isMoneyMeasure(measureId: IncomeMeasureId) {
+  return measureId === "commissionAmount";
+}
+
+export function measureDelta(fact: IncomeFact, measureId: IncomeMeasureId): number {
+  if (measureId === "commissionAmount") return fact.commissionAmount;
+  if (measureId === "reservationCount") return 1;
+  return 0;
+}
 
 const DIMENSION_IDS = new Set<string>(
   INCOME_DIMENSION_FIELDS.map((field) => field.id)
@@ -186,6 +219,8 @@ export function getFactDimensionKey(
       return stay.day;
     case "incomeType":
       return fact.incomeType;
+    case "villaName":
+      return regionValue(fact.villaName);
     case "province":
       return regionValue(fact.province);
     case "district":
@@ -333,7 +368,7 @@ function cartesianColumns(
   columnFields: IncomeDimensionId[]
 ): IncomePivotColumn[] {
   if (columnFields.length === 0) {
-    return [{ keys: [], labels: ["Komisyon Tutarı"] }];
+    return [{ keys: [], labels: [] }];
   }
 
   const valueSets = columnFields.map((fieldId) =>
@@ -343,7 +378,7 @@ function cartesianColumns(
   let combinations: string[][] = [[]];
   for (const values of valueSets) {
     if (values.length === 0) {
-      return [{ keys: [], labels: ["Komisyon Tutarı"] }];
+      return [{ keys: [], labels: [] }];
     }
     const next: string[][] = [];
     for (const current of combinations) {
@@ -374,8 +409,27 @@ function emptyValues(size: number) {
   return Array.from({ length: size }, () => 0);
 }
 
-function sumValues(values: number[]) {
-  return values.reduce((sum, value) => sum + value, 0);
+function emptyCells(columnCount: number, measureCount: number) {
+  return Array.from({ length: Math.max(1, columnCount) }, () =>
+    emptyValues(Math.max(1, measureCount))
+  );
+}
+
+function measureTotalsFromCells(cells: number[][]) {
+  const measureCount = cells[0]?.length ?? 0;
+  const totals = emptyValues(measureCount);
+  for (const column of cells) {
+    column.forEach((value, index) => {
+      totals[index] += value;
+    });
+  }
+  return totals;
+}
+
+function leadingMeasureTotal(totals: number[], measures: IncomeMeasureId[]) {
+  const moneyIndex = measures.indexOf("commissionAmount");
+  if (moneyIndex >= 0) return totals[moneyIndex] ?? 0;
+  return totals[0] ?? 0;
 }
 
 type GroupNode = {
@@ -422,18 +476,43 @@ function accumulateFacts(
   facts: IncomeFact[],
   columnFields: IncomeDimensionId[],
   indexByKey: Map<string, number>,
-  columnCount: number
+  columnCount: number,
+  measures: IncomeMeasureId[]
 ) {
-  const values = emptyValues(columnCount);
+  const cells = emptyCells(columnCount, measures.length || 1);
+  if (measures.length === 0) return cells;
+
   for (const fact of facts) {
     const columnKey =
       columnFields.length === 0
         ? ""
         : columnFields.map((fieldId) => getFactDimensionKey(fact, fieldId)).join("\0");
     const index = indexByKey.get(columnKey) ?? 0;
-    values[index] += fact.commissionAmount;
+    for (let measureIndex = 0; measureIndex < measures.length; measureIndex += 1) {
+      cells[index][measureIndex] += measureDelta(fact, measures[measureIndex]);
+    }
   }
-  return values;
+  return cells;
+}
+
+function toPivotRow(
+  keys: string[],
+  labels: string[],
+  cells: number[][],
+  depth: number,
+  isSubtotal: boolean,
+  measures: IncomeMeasureId[]
+): IncomePivotRow {
+  const totals = measureTotalsFromCells(cells);
+  return {
+    keys,
+    labels,
+    cells,
+    totals,
+    total: leadingMeasureTotal(totals, measures),
+    depth,
+    isSubtotal,
+  };
 }
 
 function flattenGroups(
@@ -442,24 +521,11 @@ function flattenGroups(
   columnFields: IncomeDimensionId[],
   indexByKey: Map<string, number>,
   columnCount: number,
+  measures: IncomeMeasureId[],
   depth: number,
   parentKeys: string[],
   parentLabels: string[]
 ): IncomePivotRow[] {
-  if (rowFields.length === 0) {
-    const values = accumulateFacts([], columnFields, indexByKey, columnCount);
-    return [
-      {
-        keys: [],
-        labels: ["Toplam"],
-        values,
-        total: sumValues(values),
-        depth: 0,
-        isSubtotal: false,
-      },
-    ];
-  }
-
   const fieldId = rowFields[depth];
   const rows: IncomePivotRow[] = [];
 
@@ -477,20 +543,22 @@ function flattenGroups(
     const isLeaf = depth === rowFields.length - 1;
 
     if (isLeaf) {
-      const values = accumulateFacts(
-        group.facts,
-        columnFields,
-        indexByKey,
-        columnCount
+      rows.push(
+        toPivotRow(
+          keys,
+          labels,
+          accumulateFacts(
+            group.facts,
+            columnFields,
+            indexByKey,
+            columnCount,
+            measures
+          ),
+          depth,
+          false,
+          measures
+        )
       );
-      rows.push({
-        keys,
-        labels,
-        values,
-        total: sumValues(values),
-        depth,
-        isSubtotal: false,
-      });
       continue;
     }
 
@@ -500,26 +568,22 @@ function flattenGroups(
       columnFields,
       indexByKey,
       columnCount,
+      measures,
       depth + 1,
       keys,
       labels
     );
-    const values = emptyValues(columnCount);
+    const cells = emptyCells(columnCount, measures.length || 1);
     for (const child of childRows) {
       if (child.depth !== rowFields.length - 1) continue;
-      child.values.forEach((value, index) => {
-        values[index] += value;
+      child.cells.forEach((column, columnIndex) => {
+        column.forEach((value, measureIndex) => {
+          cells[columnIndex][measureIndex] += value;
+        });
       });
     }
 
-    rows.push({
-      keys,
-      labels,
-      values,
-      total: sumValues(values),
-      depth,
-      isSubtotal: true,
-    });
+    rows.push(toPivotRow(keys, labels, cells, depth, true, measures));
     rows.push(...childRows);
   }
 
@@ -532,26 +596,29 @@ export function buildIncomePivot(
 ): IncomePivotResult {
   const columnFields = layout.columns;
   const rowFields = layout.rows;
+  const measures = layout.values;
   const columnLeaves = cartesianColumns(facts, columnFields);
   const indexByKey = columnIndexMap(columnLeaves);
   const columnCount = Math.max(1, columnLeaves.length);
 
   if (rowFields.length === 0) {
-    const values = accumulateFacts(facts, columnFields, indexByKey, columnCount);
+    const cells = accumulateFacts(
+      facts,
+      columnFields,
+      indexByKey,
+      columnCount,
+      measures
+    );
+    const grandTotals = measureTotalsFromCells(cells);
     return {
       columnLeaves,
+      measures,
       rows: [
-        {
-          keys: [],
-          labels: ["Toplam"],
-          values,
-          total: sumValues(values),
-          depth: 0,
-          isSubtotal: false,
-        },
+        toPivotRow(["toplam"], ["Toplam"], cells, 0, false, measures),
       ],
-      columnTotals: [...values],
-      grandTotal: sumValues(values),
+      columnTotals: cells,
+      grandTotals,
+      grandTotal: leadingMeasureTotal(grandTotals, measures),
       factCount: facts.length,
     };
   }
@@ -563,24 +630,30 @@ export function buildIncomePivot(
     columnFields,
     indexByKey,
     columnCount,
+    measures,
     0,
     [],
     []
   );
 
-  const columnTotals = emptyValues(columnCount);
+  const columnTotals = emptyCells(columnCount, measures.length || 1);
   for (const row of rows) {
     if (row.depth !== rowFields.length - 1) continue;
-    row.values.forEach((value, index) => {
-      columnTotals[index] += value;
+    row.cells.forEach((column, columnIndex) => {
+      column.forEach((value, measureIndex) => {
+        columnTotals[columnIndex][measureIndex] += value;
+      });
     });
   }
+  const grandTotals = measureTotalsFromCells(columnTotals);
 
   return {
     columnLeaves,
+    measures,
     rows,
     columnTotals,
-    grandTotal: sumValues(columnTotals),
+    grandTotals,
+    grandTotal: leadingMeasureTotal(grandTotals, measures),
     factCount: facts.length,
   };
 }
@@ -711,12 +784,24 @@ export function pivotToExcelRows(
 ): (string | number)[][] {
   const rowHeaders = layout.rows.map((fieldId) => getIncomeFieldLabel(fieldId));
   if (rowHeaders.length === 0) rowHeaders.push("Toplam");
+  const measures =
+    pivot.measures.length > 0 ? pivot.measures : layout.values;
 
-  const columnHeaders = pivot.columnLeaves.map((column) =>
-    column.labels.join(" / ")
+  const columnHeaders = pivot.columnLeaves.flatMap((column) => {
+    const base = column.labels.filter(Boolean).join(" / ");
+    if (measures.length === 0) return [base || "Değer"];
+    return measures.map((measureId) => {
+      const measureLabel = getIncomeFieldLabel(measureId);
+      return base ? `${base} / ${measureLabel}` : measureLabel;
+    });
+  });
+  const totalHeaders = measures.map((measureId) =>
+    measures.length === 1
+      ? "Toplam"
+      : `Toplam / ${getIncomeFieldLabel(measureId)}`
   );
 
-  const header = [...rowHeaders, ...columnHeaders, "Toplam"];
+  const header = [...rowHeaders, ...columnHeaders, ...totalHeaders];
   const rows: (string | number)[][] = [header];
 
   for (const row of pivot.rows) {
@@ -728,14 +813,25 @@ export function pivotToExcelRows(
         labels[last] = `${labels[last]} (Toplam)`;
       }
     }
-    rows.push([...labels, ...row.values.map((value) => Math.round(value)), Math.round(row.total)]);
+    const cellValues = row.cells.flatMap((column) =>
+      column.map((value) => Math.round(value))
+    );
+    rows.push([
+      ...labels,
+      ...cellValues,
+      ...row.totals.map((value) => Math.round(value)),
+    ]);
   }
 
-  const totalLabels = rowHeaders.map((_, index) => (index === 0 ? "Genel Toplam" : ""));
+  const totalLabels = rowHeaders.map((_, index) =>
+    index === 0 ? "Genel Toplam" : ""
+  );
   rows.push([
     ...totalLabels,
-    ...pivot.columnTotals.map((value) => Math.round(value)),
-    Math.round(pivot.grandTotal),
+    ...pivot.columnTotals.flatMap((column) =>
+      column.map((value) => Math.round(value))
+    ),
+    ...pivot.grandTotals.map((value) => Math.round(value)),
   ]);
 
   return rows;
@@ -746,4 +842,36 @@ export function buildIncomeReportFilename(now = new Date()) {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `gelir-raporu-${year}${month}${day}.xlsx`;
+}
+
+export function buildMissingCommissionFilename(now = new Date()) {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `komisyonu-bos-onayli-rezervasyonlar-${year}${month}${day}.xlsx`;
+}
+
+export function missingCommissionToExcelRows(
+  rows: MissingCommissionBooking[]
+): (string | number)[][] {
+  return [
+    [
+      "Rezervasyon No",
+      "Villa Adı",
+      "Misafir",
+      "Rezervasyon Tarihi",
+      "Giriş",
+      "Çıkış",
+      "Toplam Tutar",
+    ],
+    ...rows.map((row) => [
+      row.reservationNo,
+      row.villaName,
+      row.guestName,
+      row.reservationDate,
+      row.checkIn,
+      row.checkOut,
+      row.totalPrice ?? "",
+    ]),
+  ];
 }
