@@ -8,6 +8,7 @@ import type { BookingActivityLogEntry } from "@/lib/booking-activity-log-core";
 import { alertBookingClosedDatesError } from "@/lib/booking-closed-dates";
 import {
   BOOKING_PREPAYMENT_OPTION_HOURS,
+  DEFAULT_BOOKING_PREPAYMENT_OPTION_HOURS,
   formatPrepaymentOptionLabel,
   getPrepaymentShareChannelLabel,
 } from "@/lib/booking-prepayment-share";
@@ -51,7 +52,9 @@ export default function PrepaymentShareModal({
   prepaymentAmount,
   paymentMethod,
 }: PrepaymentShareModalProps) {
-  const [optionHours, setOptionHours] = useState<number>(12);
+  const [optionHours, setOptionHours] = useState<number>(
+    DEFAULT_BOOKING_PREPAYMENT_OPTION_HOURS
+  );
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
   const [sendSms, setSendSms] = useState(false);
@@ -66,7 +69,7 @@ export default function PrepaymentShareModal({
 
   useEffect(() => {
     if (!open) return;
-    setOptionHours(12);
+    setOptionHours(DEFAULT_BOOKING_PREPAYMENT_OPTION_HOURS);
     setSendWhatsApp(true);
     setSendEmail(true);
     setSendSms(false);

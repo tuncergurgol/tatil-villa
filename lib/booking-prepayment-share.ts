@@ -5,6 +5,8 @@ export const BOOKING_PREPAYMENT_OPTION_HOURS = [
 export type BookingPrepaymentOptionHours =
   (typeof BOOKING_PREPAYMENT_OPTION_HOURS)[number];
 
+export const DEFAULT_BOOKING_PREPAYMENT_OPTION_HOURS: BookingPrepaymentOptionHours = 3;
+
 export type PrepaymentShareChannel = "whatsapp" | "email" | "sms";
 
 export function formatPrepaymentOptionLabel(hours: number): string {
