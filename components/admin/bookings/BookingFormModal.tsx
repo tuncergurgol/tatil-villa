@@ -15,6 +15,7 @@ import {
   createAdminBookingAction,
   getAdminBookingWizardQuoteAction,
   getAdminBookingWizardVillasAction,
+  getVillaOccupancyCalendarAction,
   type AdminBookingActionState,
 } from "@/app/actions/admin/bookings";
 import { lookupReturningGuestAdminAction } from "@/app/actions/returning-guest";
@@ -41,6 +42,7 @@ import type {
   AdminBookingWizardQuote,
   AdminBookingWizardVilla,
 } from "@/lib/queries/admin-booking-wizard";
+import type { VillaOccupancyCalendarDay } from "@/lib/queries/villa-occupancy-calendar";
 import { splitFullName, type ReturningGuestPreview } from "@/lib/returning-guest-shared";
 import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 import { formatMoneyPlain } from "@/lib/booking-display";
@@ -112,6 +114,9 @@ export default function BookingFormModal({
     null
   );
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [occupancyCalendarDays, setOccupancyCalendarDays] = useState<
+    VillaOccupancyCalendarDay[]
+  >([]);
 
   const [guestFirstName, setGuestFirstName] = useState("");
   const [guestLastName, setGuestLastName] = useState("");
@@ -150,6 +155,7 @@ export default function BookingFormModal({
     setAgencyDiscountRate(0);
     setAgencyDiscountAmount(0);
     setQuoteData(null);
+    setOccupancyCalendarDays([]);
     setGuestFirstName("");
     setGuestLastName("");
     setGuestEmail("");
@@ -191,6 +197,28 @@ export default function BookingFormModal({
       cancelled = true;
     };
   }, [selectedVilla?.id, checkIn, checkOut]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!selectedVilla?.id) {
+      setOccupancyCalendarDays([]);
+      return;
+    }
+
+    let cancelled = false;
+    setOccupancyCalendarDays([]);
+    getVillaOccupancyCalendarAction(selectedVilla.id)
+      .then((days) => {
+        if (!cancelled) setOccupancyCalendarDays(days);
+      })
+      .catch(() => {
+        if (!cancelled) setOccupancyCalendarDays([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, selectedVilla?.id]);
 
   const guestName = `${guestFirstName.trim()} ${guestLastName.trim()}`.trim();
   const phoneValue = normalizeTurkishPhoneFieldValue(guestPhone);
@@ -484,6 +512,7 @@ export default function BookingFormModal({
                       <StayDateRangePicker
                         checkIn={checkIn}
                         checkOut={checkOut}
+                        calendarDays={occupancyCalendarDays}
                         onChange={(nextCheckIn, nextCheckOut) => {
                           setCheckIn(nextCheckIn);
                           setCheckOut(nextCheckOut);

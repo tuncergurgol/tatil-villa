@@ -3,6 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  buildCheckInDateKeys,
+  buildOccupancyMap,
+} from "@/lib/booking-calendar-selection";
+import {
+  getVillaDayVisualStyle,
+  resolveVillaDayVisualFromMap,
+  type VillaDayVisualKind,
+} from "@/lib/villa-period-day-visual";
+import {
   buildMonthGrid,
   compareDates,
   getMonthLabel,
@@ -31,11 +40,57 @@ function formatDisplayDate(dateKey: string): string {
   });
 }
 
+const COMPACT_OCCUPANCY_LEGEND: Array<{
+  kind: VillaDayVisualKind;
+  label: string;
+}> = [
+  { kind: "full", label: "Kapama" },
+  { kind: "reserved_full", label: "Rezervasyon" },
+  { kind: "option_full", label: "Opsiyon" },
+  { kind: "check_in", label: "Giriş / Çıkış" },
+];
+
+const OCCUPANCY_KIND_TITLE: Partial<Record<VillaDayVisualKind, string>> = {
+  full: "Kapama (Dolu)",
+  check_in: "Kapama giriş",
+  check_out: "Kapama çıkış",
+  turnover_booked: "Kapama giriş+çıkış",
+  reserved_full: "Bizim rezervasyon",
+  reserved_check_in: "Rezervasyon giriş",
+  reserved_check_out: "Rezervasyon çıkış",
+  turnover_reserved: "Rezervasyon giriş+çıkış",
+  option_full: "Opsiyon",
+  option_check_in: "Opsiyon giriş",
+  option_check_out: "Opsiyon çıkış",
+  turnover_option: "Opsiyon giriş+çıkış",
+  option_out_booked_in: "Giriş+çıkış",
+  booked_out_option_in: "Giriş+çıkış",
+  booked_out_reserved_in: "Giriş+çıkış",
+  reserved_out_booked_in: "Giriş+çıkış",
+  reserved_out_option_in: "Giriş+çıkış",
+  option_out_reserved_in: "Giriş+çıkış",
+};
+
+export type StayPickerCalendarDay = {
+  date: string;
+  occupancyStatus: string;
+  occupancyCheckIn?: boolean | null;
+};
+
 interface StayDateRangePickerProps {
   checkIn: string;
   checkOut: string;
   onChange: (checkIn: string, checkOut: string) => void;
   className?: string;
+  /** Villa doluluk günleri — gösterilir, seçimi engellemez */
+  calendarDays?: StayPickerCalendarDay[];
+}
+
+function dayTitle(dateKey: string, kind: VillaDayVisualKind): string | undefined {
+  const holiday = holidayDayTitle(dateKey);
+  const occupancy = kind === "empty" ? undefined : OCCUPANCY_KIND_TITLE[kind];
+  const parts = [holiday, occupancy].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 export default function StayDateRangePicker({
@@ -43,6 +98,7 @@ export default function StayDateRangePicker({
   checkOut,
   onChange,
   className = "",
+  calendarDays = [],
 }: StayDateRangePickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -59,6 +115,15 @@ export default function StayDateRangePicker({
 
   const today = useMemo(() => todayDate(), []);
   const weekdayLabels = getWeekdayLabels();
+  const occupancyMap = useMemo(
+    () => buildOccupancyMap(calendarDays),
+    [calendarDays]
+  );
+  const checkInDateKeys = useMemo(
+    () => buildCheckInDateKeys(calendarDays),
+    [calendarDays]
+  );
+  const showOccupancy = calendarDays.length > 0;
 
   const rightMonth = viewMonth === 11 ? 0 : viewMonth + 1;
   const rightYear = viewMonth === 11 ? viewYear + 1 : viewYear;
@@ -145,13 +210,24 @@ export default function StayDateRangePicker({
               previewStart && previewEnd
                 ? countNightsBetween(previewStart, previewEnd)
                 : 0;
+            const kind = resolveVillaDayVisualFromMap(
+              dateKey,
+              occupancyMap,
+              checkInDateKeys
+            );
+            const visual = getVillaDayVisualStyle(kind);
+            const current = occupancyMap.get(dateKey) ?? "EMPTY";
+            const showOccupancyBg =
+              showOccupancy &&
+              !isPast &&
+              (current !== "EMPTY" || kind !== "empty");
 
             return (
               <button
                 key={`${year}-${month}-${index}`}
                 type="button"
                 disabled={isPast}
-                title={holidayDayTitle(dateKey)}
+                title={dayTitle(dateKey, kind)}
                 onMouseEnter={() => {
                   if (pendingStart) setHoverDate(dateKey);
                 }}
@@ -159,20 +235,45 @@ export default function StayDateRangePicker({
                   if (pendingStart) setHoverDate(pendingStart);
                 }}
                 onClick={() => handleDayClick(dateKey)}
-                className={`relative flex h-8 items-center justify-center rounded-md text-xs font-medium transition ${
+                className={`relative flex items-center justify-center rounded-md text-xs font-medium transition ${
+                  showOccupancy ? "h-9 border border-slate-100/80" : "h-8"
+                } ${
                   isPast
                     ? "cursor-not-allowed text-gray-300"
                     : inMonth
-                      ? "text-gray-800 hover:bg-violet-50"
+                      ? showOccupancy
+                        ? visual.useLightText && showOccupancyBg
+                          ? "text-white hover:brightness-[0.98]"
+                          : "text-gray-800 hover:brightness-[0.98]"
+                        : "text-gray-800 hover:bg-violet-50"
                       : "text-gray-400 hover:bg-gray-50"
                 } ${
-                  inRange ? "bg-violet-100 text-violet-900" : ""
-                } ${isStart || isEnd ? "bg-violet-600 text-white hover:bg-violet-600" : ""}`}
+                  showOccupancy
+                    ? isStart || isEnd
+                      ? "z-[1] ring-2 ring-violet-600 ring-offset-0"
+                      : inRange
+                        ? "ring-1 ring-violet-300"
+                        : ""
+                    : `${inRange ? "bg-violet-100 text-violet-900" : ""} ${
+                        isStart || isEnd
+                          ? "bg-violet-600 text-white hover:bg-violet-600"
+                          : ""
+                      }`
+                }`}
+                style={
+                  isPast
+                    ? undefined
+                    : showOccupancyBg
+                      ? { background: visual.background }
+                      : undefined
+                }
               >
                 {cell.date.getDate()}
                 <HolidayMarker
                   dateKey={dateKey}
-                  tone={isStart || isEnd ? "onDark" : "default"}
+                  tone={
+                    !showOccupancy && (isStart || isEnd) ? "onDark" : "default"
+                  }
                 />
                 {isEnd && nights > 0 ? (
                   <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-violet-600">
@@ -281,9 +382,30 @@ export default function StayDateRangePicker({
               {renderMonth(rightYear, rightMonth)}
             </div>
           </div>
-          <p className="mt-2 text-center text-[10px] text-gray-500">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-gray-500">
+            {showOccupancy
+              ? COMPACT_OCCUPANCY_LEGEND.map((item) => (
+                  <span
+                    key={item.kind}
+                    className="inline-flex items-center gap-1"
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-sm border border-gray-200"
+                      style={{
+                        background: getVillaDayVisualStyle(item.kind).background,
+                      }}
+                    />
+                    {item.label}
+                  </span>
+                ))
+              : null}
             <HolidayCalendarLegend />
-          </p>
+          </div>
+          {showOccupancy ? (
+            <p className="mt-1 text-center text-[10px] text-gray-400">
+              Kapalı günler işaretlidir; yine de seçilebilir.
+            </p>
+          ) : null}
           {pendingStart ? (
             <p className="mt-3 text-center text-[11px] text-gray-500">
               Çıkış tarihini seçin
