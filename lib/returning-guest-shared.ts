@@ -49,7 +49,10 @@ export function splitFullName(fullName: string): { first: string; last: string }
 export function shouldAutoApplyLoyaltyDiscount(match: {
   stayCount: number;
   loyaltyTier: LoyaltyTier;
+  /** Üye hesabı varsa Bronz (%3) dahil sınıf oranı uygulanır */
+  hasMemberAccount?: boolean;
 }): boolean {
+  if (match.hasMemberAccount) return true;
   return match.stayCount > 0 || match.loyaltyTier !== "BRONZE";
 }
 

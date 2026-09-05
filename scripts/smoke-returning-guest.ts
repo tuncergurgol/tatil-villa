@@ -55,7 +55,15 @@ assert(
 assert(
   shouldAutoApplyLoyaltyDiscount({ stayCount: 0, loyaltyTier: "BRONZE" }) ===
     false,
-  "bronz 0 konaklama otomatik uygulanmaz"
+  "bronz 0 konaklama (üyelik yok) otomatik uygulanmaz"
+);
+assert(
+  shouldAutoApplyLoyaltyDiscount({
+    stayCount: 0,
+    loyaltyTier: "BRONZE",
+    hasMemberAccount: true,
+  }) === true,
+  "bronz üye hesabı otomatik uygulanır"
 );
 
 const raised = raiseAgencyDiscountForLoyalty({

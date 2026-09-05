@@ -29,6 +29,11 @@ import {
   applyMemberDiscountAfterBooking,
   validateMemberDiscountSubmission,
 } from "@/lib/member-discount-apply";
+import { LOYALTY_TIER_META } from "@/lib/loyalty-config";
+import {
+  applyLoyaltyFloorToBookingDetails,
+  raiseAgencyDiscountForLoyalty,
+} from "@/lib/returning-guest";
 import { prisma } from "@/lib/db";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 import { verifyUndocumentedVillaBookingAccessToken } from "@/lib/undocumented-villa-booking-access";
@@ -290,6 +295,37 @@ export async function submitBooking(
     appliedCouponCode = couponResult.coupon.code;
   }
 
+  // Üye / dönen misafir sadakat sınıfı — istemci indirimi unutsa bile taban uygula
+  let resolvedLoyaltyTier = member?.loyaltyTier ?? null;
+  if (member) {
+    const tierFloor = raiseAgencyDiscountForLoyalty({
+      grossPrice: accommodationTotal,
+      agencyDiscountRate,
+      agencyDiscountAmount,
+      loyaltyPercent: LOYALTY_TIER_META[member.loyaltyTier].voucherPercent,
+    });
+    if (tierFloor.raised) {
+      agencyDiscountRate = tierFloor.agencyDiscountRate;
+      agencyDiscountAmount = tierFloor.agencyDiscountAmount;
+    }
+  }
+  const loyaltyFloor = await applyLoyaltyFloorToBookingDetails({
+    guestPhone,
+    guestEmail,
+    details: {
+      grossPrice: accommodationTotal,
+      agencyDiscountRate,
+      agencyDiscountAmount,
+    },
+  });
+  if (loyaltyFloor.raised) {
+    agencyDiscountRate = loyaltyFloor.details.agencyDiscountRate ?? 0;
+    agencyDiscountAmount = loyaltyFloor.details.agencyDiscountAmount ?? 0;
+  }
+  if (loyaltyFloor.match?.loyaltyTier) {
+    resolvedLoyaltyTier = loyaltyFloor.match.loyaltyTier;
+  }
+
   const verifiedTotal = Math.max(
     0,
     accommodationTotal + verifiedExtraTotal - agencyDiscountAmount
@@ -360,7 +396,7 @@ export async function submitBooking(
           couponDiscountAmount: agencyDiscountAmount,
           loyaltyVoucherId: appliedLoyaltyVoucherId,
           couponBalanceAmount: appliedCouponBalance > 0 ? appliedCouponBalance : undefined,
-          memberLoyaltyTier: member?.loyaltyTier ?? undefined,
+          memberLoyaltyTier: resolvedLoyaltyTier ?? undefined,
         },
         buildActivityLogEntry({
           action: "booking_created",
@@ -391,6 +427,14 @@ export async function submitBooking(
       },
     });
     await linkMemberToCustomer(member.id);
+  } else if (loyaltyFloor.match?.memberId) {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        memberId: loyaltyFloor.match.memberId,
+        customerId: loyaltyFloor.match.customerId ?? undefined,
+      },
+    });
   }
 
   if (member && agencyDiscountAmount > 0) {

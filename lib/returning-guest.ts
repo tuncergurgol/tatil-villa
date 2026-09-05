@@ -15,6 +15,7 @@ import {
 import {
   buildReturningGuestWelcome,
   firstNameFromFullName,
+  higherLoyaltyTier,
   shouldAutoApplyLoyaltyDiscount,
   raiseAgencyDiscountForLoyalty,
   type ReturningGuestMatch,
@@ -199,8 +200,11 @@ export async function recognizeReturningGuest(input: {
     bookingCount: Math.max(bookingCount, member?.completedStays ?? 0),
     tags: customer?.tags.map((entry) => entry.tag) ?? [],
   });
-  const loyaltyTier = resolveCustomerLoyaltyTier(
-    Math.max(stayCount, member?.completedStays ?? 0)
+  const loyaltyTier = higherLoyaltyTier(
+    resolveCustomerLoyaltyTier(
+      Math.max(stayCount, member?.completedStays ?? 0)
+    ),
+    member?.loyaltyTier ?? "BRONZE"
   );
 
   const fullName =
