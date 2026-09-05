@@ -1,5 +1,7 @@
 /**
- * Villa Elmadibi 2 — tatildekirala ilan 45863 galeri import.
+ * Villa Elmadibi 2 — tatildekirala ilan 45863 galeri import (tam galeri).
+ *
+ * SSR yalnızca ilk 5 medyayı verir; tam set assets URL'lerinde ardışık id ile bulunur.
  *
  *   npx tsx scripts/import-villa-elmadibi-2-tatildekirala.ts
  *   npx tsx scripts/import-villa-elmadibi-2-tatildekirala.ts --dry-run
@@ -10,6 +12,7 @@ import { importVillaGalleryFromUrls } from "../lib/external-villa-gallery-import
 const SOURCE_PAGE =
   "https://www.tatildekirala.com/kiralik-villa/seydikemer-gerisburnunda-modern-tasarimli-ozel-havuzlu-ikiz-villa-45863";
 const TARGET_SLUG = "villa-elmadibi-2";
+const MAX_SEQUENTIAL = 80;
 
 const BROWSER_HEADERS = {
   "User-Agent":
@@ -20,10 +23,45 @@ const BROWSER_HEADERS = {
 };
 
 type AdvertMedia = {
-  file?: { url?: string | null } | null;
+  file?: { id?: number | null; url?: string | null } | null;
 };
 
-async function fetchAdvertImageUrls(pageUrl: string): Promise<string[]> {
+function assetUrlFromFileUrl(fileUrl: string, fileId: number): string {
+  const match = fileUrl.match(
+    /^(https?:\/\/assets\.tatildekirala\.com\/)(.+-)(\d+)(\.(?:jpe?g|png|webp))$/i
+  );
+  if (match) {
+    return `${match[1]}${match[2]}${fileId}${match[4]}`;
+  }
+  return `https://assets.tatildekirala.com/seydikemer-gerisburnunda-modern-tasarimli-ozel-havuzlu-ikiz-villa-${fileId}.jpeg`;
+}
+
+async function urlExists(url: string): Promise<boolean> {
+  try {
+    const head = await fetch(url, {
+      method: "HEAD",
+      headers: {
+        ...BROWSER_HEADERS,
+        Accept: "image/*,*/*;q=0.8",
+      },
+    });
+    if (head.ok) return true;
+    // bazı CDN'ler HEAD'i reddeder; GET Range ile doğrula
+    const get = await fetch(url, {
+      method: "GET",
+      headers: {
+        ...BROWSER_HEADERS,
+        Accept: "image/*,*/*;q=0.8",
+        Range: "bytes=0-0",
+      },
+    });
+    return get.ok || get.status === 206;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchAdvertSeedMedias(pageUrl: string) {
   const response = await fetch(pageUrl, { headers: BROWSER_HEADERS });
   if (!response.ok) {
     throw new Error(`Sayfa alınamadı (${response.status})`);
@@ -43,10 +81,28 @@ async function fetchAdvertImageUrls(pageUrl: string): Promise<string[]> {
     };
   };
   const medias = data.props?.pageProps?.advert?.medias ?? [];
-  const urls = medias
-    .map((item) => item.file?.url?.trim() ?? "")
-    .filter((url) => /^https?:\/\//i.test(url));
-  return [...new Set(urls)];
+  return medias
+    .map((item) => ({
+      id: Number(item.file?.id ?? NaN),
+      url: item.file?.url?.trim() ?? "",
+    }))
+    .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.url);
+}
+
+async function expandSequentialGalleryUrls(
+  seed: Array<{ id: number; url: string }>
+): Promise<string[]> {
+  if (seed.length === 0) return [];
+  const first = seed[0]!;
+  const urls: string[] = [];
+  for (let offset = 0; offset < MAX_SEQUENTIAL; offset += 1) {
+    const id = first.id + offset;
+    const url = assetUrlFromFileUrl(first.url, id);
+    const exists = await urlExists(url);
+    if (!exists) break;
+    urls.push(url);
+  }
+  return urls;
 }
 
 async function main() {
@@ -59,15 +115,18 @@ async function main() {
     throw new Error(`Villa bulunamadı: ${TARGET_SLUG}`);
   }
 
-  const urls = await fetchAdvertImageUrls(SOURCE_PAGE);
+  const seed = await fetchAdvertSeedMedias(SOURCE_PAGE);
+  const urls = await expandSequentialGalleryUrls(seed);
   console.log(
     JSON.stringify(
       {
         villa: `${villa.name} (#${villa.villaId})`,
         slug: villa.slug,
         existingImageCount: Array.isArray(villa.images) ? villa.images.length : 0,
+        seedCount: seed.length,
         sourceUrlCount: urls.length,
-        urls,
+        firstUrl: urls[0] ?? null,
+        lastUrl: urls[urls.length - 1] ?? null,
         dryRun,
       },
       null,
@@ -82,7 +141,7 @@ async function main() {
 
   const result = await importVillaGalleryFromUrls(villa.id, urls, {
     force: true,
-    delayMs: 250,
+    delayMs: 200,
   });
   console.log(
     JSON.stringify(
