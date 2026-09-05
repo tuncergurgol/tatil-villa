@@ -7,7 +7,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db";
 import {
   computeCheckInPayment,
-  computeNetPrice,
+  computePayableReservationTotal,
+  computePrepaymentAmount,
   parseBookingDetails,
 } from "../lib/booking-form-details";
 import {
@@ -44,6 +45,7 @@ async function main() {
       guestPhone: true,
       guestEmail: true,
       totalPrice: true,
+      memberId: true,
       details: true,
       createdAt: true,
     },
@@ -77,6 +79,7 @@ async function main() {
             tier: floor.match.loyaltyTier,
             stays: floor.match.stayCount,
             percent: floor.match.discountPercent,
+            memberId: floor.match.memberId,
           }
         : null,
       raised: floor.raised,
@@ -87,9 +90,23 @@ async function main() {
       continue;
     }
 
+    const floored = floor.details;
+    const nextPrepayment =
+      computePrepaymentAmount(
+        floored.grossPrice,
+        floored.ownerDiscountAmount ?? floored.discountAmount ?? 0,
+        floored.prepaymentRate,
+        floored.agencyDiscountAmount ?? 0,
+        floored.prepaymentAmount
+      ) ?? floored.prepaymentAmount;
+    const withPrepay = {
+      ...floored,
+      prepaymentAmount: nextPrepayment,
+      memberLoyaltyTier: floor.match.loyaltyTier,
+    };
     const nextDetails = {
-      ...floor.details,
-      checkInPayment: computeCheckInPayment(floor.details),
+      ...withPrepay,
+      checkInPayment: computeCheckInPayment(withPrepay),
       activityLogs: normalizeActivityLogs([
         ...normalizeActivityLogs(details.activityLogs),
         buildActivityLogEntry({
@@ -99,13 +116,19 @@ async function main() {
         }),
       ]),
     };
-    const nextTotal = computeNetPrice(nextDetails);
+    const nextTotal = computePayableReservationTotal(nextDetails);
 
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
         details: nextDetails as Prisma.InputJsonValue,
         ...(nextTotal != null ? { totalPrice: nextTotal } : {}),
+        ...(floor.match.memberId && !booking.memberId
+          ? { memberId: floor.match.memberId }
+          : {}),
+        ...(floor.match.customerId
+          ? { customerId: floor.match.customerId }
+          : {}),
       },
     });
 
@@ -117,6 +140,8 @@ async function main() {
             rate: nextDetails.agencyDiscountRate ?? 0,
             amount: nextDetails.agencyDiscountAmount ?? 0,
             total: nextTotal,
+            prepayment: nextDetails.prepaymentAmount ?? 0,
+            checkIn: nextDetails.checkInPayment ?? 0,
           },
         },
         null,
