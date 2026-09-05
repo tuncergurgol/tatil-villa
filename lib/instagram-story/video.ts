@@ -37,15 +37,52 @@ function runFfmpeg(args: string[]): Promise<void> {
       }
       reject(
         new Error(
-          `ffmpeg hata kodu ${code}: ${stderr.slice(-1200) || "bilinmeyen hata"}`
+          `ffmpeg hata kodu ${code}: ${stderr.slice(-1500) || "bilinmeyen hata"}`
         )
       );
     });
   });
 }
 
+async function renderSlideClip(options: {
+  slidePath: string;
+  outPath: string;
+  seconds: number;
+  fps: number;
+  zoomIn: boolean;
+}): Promise<void> {
+  const frames = Math.round(options.seconds * options.fps);
+  const zoomExpr = options.zoomIn
+    ? "min(1+0.0015*on,1.1)"
+    : "if(eq(on,1),1.1,max(1.1-0.0015*on,1))";
+
+  // Tek slayt: düşük bellek (2x upscale yok), ultrafast encode
+  await runFfmpeg([
+    "-y",
+    "-loop",
+    "1",
+    "-i",
+    options.slidePath,
+    "-vf",
+    `scale=${INSTAGRAM_STORY_WIDTH}:${INSTAGRAM_STORY_HEIGHT}:force_original_aspect_ratio=increase,crop=${INSTAGRAM_STORY_WIDTH}:${INSTAGRAM_STORY_HEIGHT},zoompan=z='${zoomExpr}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${INSTAGRAM_STORY_WIDTH}x${INSTAGRAM_STORY_HEIGHT}:fps=${options.fps},format=yuv420p`,
+    "-t",
+    String(options.seconds),
+    "-c:v",
+    "libx264",
+    "-preset",
+    "ultrafast",
+    "-crf",
+    "26",
+    "-pix_fmt",
+    "yuv420p",
+    "-an",
+    options.outPath,
+  ]);
+}
+
 /**
- * Instagram Story (9:16) MP4 — her slaytta hafif zoom, slaytlar arası fade.
+ * Instagram Story (9:16) MP4.
+ * Slaytlar sırayla encode edilir, sonra concat — 8 görselde bellek/timeout patlamaz.
  */
 export async function renderInstagramStoryVideo(
   frames: Buffer[],
@@ -56,81 +93,60 @@ export async function renderInstagramStoryVideo(
   }
 
   const secondsPerSlide = Math.min(
-    8,
-    Math.max(2, options?.secondsPerSlide ?? 4)
+    6,
+    Math.max(2, options?.secondsPerSlide ?? 3)
   );
-  const fps = options?.fps ?? 25;
-  const framesPerSlide = Math.round(secondsPerSlide * fps);
-  const fadeDur = Math.min(0.5, secondsPerSlide / 5);
+  const fps = options?.fps ?? 24;
   const workDir = await mkdtemp(path.join(tmpdir(), "ig-story-"));
 
   try {
-    const slidePaths: string[] = [];
+    const clipPaths: string[] = [];
+
     for (let i = 0; i < frames.length; i += 1) {
       const slidePath = path.join(
         workDir,
         `slide-${String(i).padStart(3, "0")}.jpg`
       );
+      const clipPath = path.join(
+        workDir,
+        `clip-${String(i).padStart(3, "0")}.mp4`
+      );
       await writeFile(slidePath, frames[i]!);
-      slidePaths.push(slidePath);
-    }
-
-    const inputArgs: string[] = [];
-    for (const slidePath of slidePaths) {
-      inputArgs.push(
-        "-loop",
-        "1",
-        "-t",
-        String(secondsPerSlide),
-        "-i",
-        slidePath
-      );
-    }
-
-    const filterParts: string[] = [];
-    for (let i = 0; i < slidePaths.length; i += 1) {
-      const zoomExpr =
-        i % 2 === 0
-          ? "min(1+0.0012*on,1.12)"
-          : "if(eq(on,1),1.12,max(1.12-0.0012*on,1))";
-      filterParts.push(
-        `[${i}:v]scale=${INSTAGRAM_STORY_WIDTH * 2}:${INSTAGRAM_STORY_HEIGHT * 2}:force_original_aspect_ratio=increase,crop=${INSTAGRAM_STORY_WIDTH * 2}:${INSTAGRAM_STORY_HEIGHT * 2},zoompan=z='${zoomExpr}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${framesPerSlide}:s=${INSTAGRAM_STORY_WIDTH}x${INSTAGRAM_STORY_HEIGHT}:fps=${fps},format=yuv420p[v${i}]`
-      );
-    }
-
-    let mapLabel = "[v0]";
-    if (slidePaths.length > 1) {
-      let lastLabel = "v0";
-      for (let i = 1; i < slidePaths.length; i += 1) {
-        const outLabel = i === slidePaths.length - 1 ? "vout" : `vx${i}`;
-        const chainOffset = i * (secondsPerSlide - fadeDur);
-        filterParts.push(
-          `[${lastLabel}][v${i}]xfade=transition=fade:duration=${fadeDur}:offset=${chainOffset.toFixed(3)}[${outLabel}]`
-        );
-        lastLabel = outLabel;
-      }
-      mapLabel = "[vout]";
+      await renderSlideClip({
+        slidePath,
+        outPath: clipPath,
+        seconds: secondsPerSlide,
+        fps,
+        zoomIn: i % 2 === 0,
+      });
+      clipPaths.push(clipPath);
     }
 
     const outPath = path.join(workDir, "story.mp4");
+
+    if (clipPaths.length === 1) {
+      return readFile(clipPaths[0]!);
+    }
+
+    // Concat demuxer — hard cut (hızlı, güvenilir)
+    const listPath = path.join(workDir, "concat.txt");
+    const listBody = clipPaths
+      .map((clip) => `file '${clip.replace(/\\/g, "/")}'`)
+      .join("\n");
+    await writeFile(listPath, listBody, "utf8");
+
     await runFfmpeg([
       "-y",
-      ...inputArgs,
-      "-filter_complex",
-      filterParts.join(";"),
-      "-map",
-      mapLabel,
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "20",
-      "-pix_fmt",
-      "yuv420p",
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      listPath,
+      "-c",
+      "copy",
       "-movflags",
       "+faststart",
-      "-an",
       outPath,
     ]);
 

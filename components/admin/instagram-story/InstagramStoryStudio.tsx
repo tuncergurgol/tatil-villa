@@ -58,7 +58,7 @@ export default function InstagramStoryStudio() {
   const [meta, setMeta] = useState("");
   const [location, setLocation] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
-  const [secondsPerSlide, setSecondsPerSlide] = useState(4);
+  const [secondsPerSlide, setSecondsPerSlide] = useState(3);
   const [slides, setSlides] = useState<InstagramStorySlideResult[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoName, setVideoName] = useState("");
@@ -204,7 +204,13 @@ export default function InstagramStoryStudio() {
         const data = (await response.json().catch(() => null)) as {
           error?: string;
         } | null;
-        throw new Error(data?.error || "Video üretilemedi");
+        if (data?.error) throw new Error(data.error);
+        if (response.status === 504 || response.status === 502) {
+          throw new Error(
+            "Video üretimi zaman aşımına uğradı. Daha az görsel seçin veya slayt süresini kısaltın."
+          );
+        }
+        throw new Error(`Video üretilemedi (HTTP ${response.status})`);
       }
 
       const blob = await response.blob();

@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { generateInstagramStoryVideoBuffer } from "@/lib/instagram-story/generate";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const bodySchema = z.object({
   villaId: z.string().min(1),
