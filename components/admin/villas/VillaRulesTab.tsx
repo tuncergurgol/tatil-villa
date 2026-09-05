@@ -9,6 +9,8 @@ import {
   resolveAllowChildrenDefault,
   resolvePrepaymentPaymentTypeId,
 } from "@/lib/villa-rules-defaults";
+import { VILLA_NATURE_PEST_NOTICE } from "@/lib/villa-nature-pest-notice";
+import { amenitiesAllowPets } from "@/lib/villa-pets-amenity";
 
 interface PrepaymentPaymentTypeOption {
   id: string;
@@ -61,7 +63,18 @@ export default function VillaRulesTab({
   );
   const [allowEvents, setAllowEvents] = useState(villa.allowEvents);
   const [allowSmoking, setAllowSmoking] = useState(villa.allowSmoking);
-  const [allowPets, setAllowPets] = useState(villa.allowPets);
+  const [allowPets, setAllowPets] = useState(
+    villa.allowPets || amenitiesAllowPets(villa.amenities)
+  );
+  const [allowPrepaymentOption, setAllowPrepaymentOption] = useState(
+    villa.allowPrepaymentOption !== false
+  );
+  const [allowFullPaymentOption, setAllowFullPaymentOption] = useState(
+    villa.allowFullPaymentOption === true
+  );
+  const [showNaturePestNotice, setShowNaturePestNotice] = useState(
+    villa.showNaturePestNotice
+  );
   const [customRules, setCustomRules] = useState(villa.customRules);
   const [customRuleInput, setCustomRuleInput] = useState("");
 
@@ -82,26 +95,56 @@ export default function VillaRulesTab({
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Ön Ödeme Farkı Ödeme Tipi">
-        <p className="mb-3 text-xs text-gray-500">
-          Rezervasyonda &apos;Tesis Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
-          Yapılacak Tarih&apos;i otomatik önerir. Tanımlamalar menüsünden yeni
-          tipler ekleyebilirsiniz.
-        </p>
-        <select
-          name="prepaymentPaymentTypeId"
-          defaultValue={defaultPrepaymentId}
-          className={`${inputClass} max-w-md`}
-        >
-          {prepaymentPaymentTypes.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+      <SectionCard title="Ödeme Ayarları">
+        <div className="grid gap-4 md:grid-cols-2 md:items-start">
+          <label className="block">
+            <span className={labelClass}>Ön Ödeme Farkı Ödeme Tipi</span>
+            <p className="mb-2 mt-1 text-xs text-gray-500">
+              Rezervasyonda &apos;Ev Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
+              Yapılacak Tarih&apos;i otomatik önerir.
+            </p>
+            <select
+              name="prepaymentPaymentTypeId"
+              defaultValue={defaultPrepaymentId}
+              className={inputClass}
+            >
+              {prepaymentPaymentTypes.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <span className={labelClass}>Ödeme Bilgisi</span>
+            <p className="mb-2 mt-1 text-xs text-gray-500">
+              Rezervasyon Yap ödeme ekranında görünecek tutar seçenekleri.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <StatusPillToggle
+                label="Ön Ödeme"
+                name="allowPrepaymentOption"
+                checked={allowPrepaymentOption}
+                onChange={(value) => {
+                  if (!value && !allowFullPaymentOption) return;
+                  setAllowPrepaymentOption(value);
+                }}
+              />
+              <StatusPillToggle
+                label="Tam Ödeme"
+                name="allowFullPaymentOption"
+                checked={allowFullPaymentOption}
+                onChange={(value) => {
+                  if (!value && !allowPrepaymentOption) return;
+                  setAllowFullPaymentOption(value);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </SectionCard>
 
-      <SectionCard title="Tesis Kuralları">
+      <SectionCard title="Ev Kuralları">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Check-in Saati</span>
@@ -154,6 +197,31 @@ export default function VillaRulesTab({
             checked={allowPets}
             onChange={setAllowPets}
           />
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Böcek / İlaçlama Bilgilendirmesi">
+        <p className="mb-4 text-xs text-gray-500">
+          Villa detay sayfasında &quot;Bilmeniz Gerekenler&quot; bölümünün en
+          altında gösterilir. Yeni villalarda varsayılan olarak açıktır.
+        </p>
+        <StatusPillToggle
+          label="Villa detayında göster"
+          name="showNaturePestNotice"
+          checked={showNaturePestNotice}
+          onChange={setShowNaturePestNotice}
+        />
+        <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-gray-50/80 p-4 text-sm text-gray-700">
+          <p className="font-semibold text-gray-900">
+            {VILLA_NATURE_PEST_NOTICE.title}
+          </p>
+          <p>{VILLA_NATURE_PEST_NOTICE.intro}</p>
+          {VILLA_NATURE_PEST_NOTICE.items.map((item) => (
+            <p key={item.label}>
+              <span className="font-semibold text-gray-900">{item.label}:</span>{" "}
+              {item.text}
+            </p>
+          ))}
         </div>
       </SectionCard>
 

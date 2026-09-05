@@ -1,13 +1,40 @@
 import { prisma } from "@/lib/db";
 import type { AdminBookingListItem } from "@/lib/booking-display";
+import {
+  normalizeActivityLogs,
+  resolveBookingConfirmedAtFromLogs,
+} from "@/lib/booking-activity-log-core";
+import {
+  normalizeBookingSiteInfo,
+  parseBookingDetails,
+} from "@/lib/booking-form-details";
+import {
+  buildAgencySiteDomainMap,
+  resolveBookingSiteBrand,
+  resolveDomainFromSiteMap,
+} from "@/lib/booking-site-brand";
+import { cancelExpiredPrepaymentBookings } from "@/lib/queries/bookings";
+
+function resolveConfirmedAt(
+  details: unknown,
+  confirmationSentAt?: Date | string | null
+): Date | null {
+  return resolveBookingConfirmedAtFromLogs(
+    normalizeActivityLogs(parseBookingDetails(details).activityLogs),
+    confirmationSentAt
+  );
+}
 
 export async function getAdminBookingListData() {
-  const [bookings, villas, companySettings] = await Promise.all([
+  await cancelExpiredPrepaymentBookings();
+
+  const [bookings, villas, companySettings, agencySites] = await Promise.all([
     prisma.booking.findMany({
       include: {
         villa: {
           select: {
             id: true,
+            villaId: true,
             slug: true,
             name: true,
             originalName: true,
@@ -23,16 +50,80 @@ export async function getAdminBookingListData() {
     }),
     prisma.companySettings.findUnique({
       where: { id: "default" },
-      select: { domain: true, brandName: true },
+      select: { domain: true, brandName: true, logoUrl: true },
+    }),
+    prisma.agencySite.findMany({
+      where: { active: true },
+      select: { name: true, domain: true },
     }),
   ]);
 
+  const fallbackDomain =
+    companySettings?.domain?.trim() ||
+    companySettings?.brandName?.trim() ||
+    "www.tatildeyiz.com.tr";
+  const domainBySiteName = buildAgencySiteDomainMap(agencySites);
+  const companyBrand = {
+    brandName: companySettings?.brandName?.trim() || "Tatildeyiz",
+    domain: fallbackDomain,
+    logoUrl: companySettings?.logoUrl?.trim() || "",
+  };
+
+  const mapped: AdminBookingListItem[] = bookings.map((booking) => {
+    const details = parseBookingDetails(booking.details);
+    const prepaymentAmount =
+      details.prepaymentAmount != null &&
+      Number.isFinite(details.prepaymentAmount)
+        ? Math.round(details.prepaymentAmount)
+        : null;
+    const paymentMethod =
+      details.importPaymentMethod?.trim() ||
+      details.prepaymentBank?.trim() ||
+      details.paymentMethod?.trim() ||
+      null;
+
+    const siteInfo = normalizeBookingSiteInfo(details.siteInfo);
+    const brand = resolveBookingSiteBrand({
+      siteInfo,
+      originDomain: details.originDomain,
+      company: companyBrand,
+      agencySites,
+    });
+    const siteDomain =
+      brand.domain ||
+      resolveDomainFromSiteMap(siteInfo, domainBySiteName, fallbackDomain);
+
+    return {
+      id: booking.id,
+      externalCode: booking.externalCode,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      adults: booking.adults,
+      children: booking.children,
+      babies: booking.babies,
+      pets: booking.pets,
+      guestName: booking.guestName,
+      guestEmail: booking.guestEmail,
+      guestPhone: booking.guestPhone,
+      totalPrice: booking.totalPrice,
+      status: booking.status,
+      createdAt: booking.createdAt,
+      confirmedAt: resolveConfirmedAt(
+        booking.details,
+        booking.confirmationSentAt
+      ),
+      optionExpiresAt: booking.optionExpiresAt,
+      prepaymentAmount,
+      paymentMethod,
+      siteInfo,
+      siteDomain,
+      villa: booking.villa,
+    };
+  });
+
   return {
-    bookings: bookings as AdminBookingListItem[],
+    bookings: mapped,
     villas,
-    siteDomain:
-      companySettings?.domain ||
-      companySettings?.brandName ||
-      "www.tatildeyiz.com.tr",
+    siteDomain: fallbackDomain,
   };
 }

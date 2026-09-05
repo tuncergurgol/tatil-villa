@@ -1,17 +1,5 @@
-import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payment-types/PrepaymentPaymentTypeManagement";
-import { getPrepaymentPaymentTypeAdminData } from "@/lib/queries/prepayment-payment-types";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function OnOdemeOdemeTipleriPage() {
-  const { items, totalCount, activeCount } =
-    await getPrepaymentPaymentTypeAdminData();
-
-  return (
-    <PrepaymentPaymentTypeManagement
-      items={items}
-      totalCount={totalCount}
-      activeCount={activeCount}
-    />
-  );
+export default function OnOdemeOdemeTipleriPage() {
+  redirect("/admin/acente/sirket?tab=on-odeme-odeme-tipleri");
 }

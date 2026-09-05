@@ -1,0 +1,478 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { BookingStatus, Prisma } from "@prisma/client";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth-helpers";
+import { assertBookingDatesOpenForActions } from "@/lib/booking-action-date-guard";
+import {
+  buildBookingConfirmationTemplateValues,
+  ensureWhatsAppRawConfirmationUrl,
+  renderAgencyMessageTemplate,
+} from "@/lib/agency-message-render";
+import { AGENCY_MESSAGE_TEMPLATE_ROW_10_4 } from "@/lib/agency-message-row-no";
+import {
+  buildActivityLogEntry,
+  normalizeActivityLogs,
+  resolveActivityActor,
+  type BookingActivityLogEntry,
+} from "@/lib/booking-activity-log";
+import {
+  getPrepaymentShareChannelLabel,
+  type PrepaymentShareChannel,
+} from "@/lib/booking-prepayment-share";
+import {
+  computeNetPrice,
+  computeSalesRepCommissionEarned,
+  normalizeConfirmationSends,
+  parseBookingDetails,
+  resolveExternalCode,
+  type BookingConfirmationSendRecord,
+  type BookingDetails,
+} from "@/lib/booking-form-details";
+import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
+import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
+import { prisma } from "@/lib/db";
+import { sendCompanyMail } from "@/lib/email";
+import { toHtmlFromText } from "@/lib/email-html";
+import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
+import {
+  isValidWhatsAppPhoneE164,
+  normalizePhoneToE164,
+} from "@/lib/phone";
+import {
+  appendBookingSiteFooter,
+  resolveBookingSiteBrand,
+} from "@/lib/booking-site-brand";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
+import { getAgencyMessageTemplateByRowNo } from "@/lib/queries/agency-message-templates";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { isSmsProviderConfigured, sendSmsMessage } from "@/lib/sms-delivery";
+import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
+
+const sendConfirmationSchema = z.object({
+  bookingId: z.string().min(1),
+  sendWhatsApp: z.boolean(),
+  sendEmail: z.boolean(),
+  sendSms: z.boolean(),
+});
+
+export type SendBookingConfirmationResult =
+  | {
+      success: true;
+      channels: PrepaymentShareChannel[];
+      confirmationSentAt: string;
+      confirmationSend: BookingConfirmationSendRecord;
+      confirmationSends: BookingConfirmationSendRecord[];
+      activityLogs: BookingActivityLogEntry[];
+      salesRep: {
+        salesRepUserId: string;
+        salesRepName: string;
+        salesRepCommissionRate: number;
+        salesRepCommissionEarned: number | null;
+      } | null;
+    }
+  | { success: false; error: string };
+
+function pickChannelBody(
+  template: {
+    smsBody: string;
+    whatsappBody: string;
+    mailBody: string;
+  },
+  channel: PrepaymentShareChannel
+): string {
+  switch (channel) {
+    case "sms":
+      return template.smsBody || template.whatsappBody || template.mailBody;
+    case "whatsapp":
+      return template.whatsappBody || template.mailBody || template.smsBody;
+    case "email":
+      return template.mailBody || template.whatsappBody || template.smsBody;
+  }
+}
+
+async function resolveBankAccount(paymentMethod: string) {
+  const normalized = normalizeCompanyPaymentType(paymentMethod);
+  if (normalized !== "bank_transfer") return null;
+
+  return prisma.companyBankAccount.findFirst({
+    where: {
+      active: true,
+      OR: [{ paymentType: normalized }, { paymentType: "" }],
+    },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: {
+      bankName: true,
+      accountHolder: true,
+      iban: true,
+    },
+  });
+}
+
+export async function sendBookingConfirmationAction(
+  payload: z.infer<typeof sendConfirmationSchema>
+): Promise<SendBookingConfirmationResult> {
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
+  const actorUserId = actor.actorUserId ?? "";
+
+  const parsed = sendConfirmationSchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi",
+    };
+  }
+
+  const data = parsed.data;
+
+  if (!data.sendWhatsApp && !data.sendEmail && !data.sendSms) {
+    return {
+      success: false,
+      error: "En az bir bildirim kanalı seçilmelidir",
+    };
+  }
+
+  const [booking, template, companySettings, agencySites] = await Promise.all([
+    prisma.booking.findUnique({
+      where: { id: data.bookingId },
+      include: {
+        villa: {
+          select: {
+            name: true,
+          },
+        },
+        prepayments: {
+          select: {
+            amount: true,
+            paymentChannel: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    }),
+    getAgencyMessageTemplateByRowNo(AGENCY_MESSAGE_TEMPLATE_ROW_10_4),
+    getCompanySettings(),
+    getAgencySitesForPicker(),
+  ]);
+
+  if (!booking) {
+    return { success: false, error: "Rezervasyon bulunamadı" };
+  }
+
+  const datesGuard = await assertBookingDatesOpenForActions(data.bookingId);
+  if (!datesGuard.ok) {
+    return { success: false, error: datesGuard.error };
+  }
+
+  if (booking.prepayments.length === 0) {
+    return {
+      success: false,
+      error: "Konfirme göndermek için en az bir ön ödeme kaydı gerekli",
+    };
+  }
+
+  if (!template) {
+    return {
+      success: false,
+      error: `Mesaj şablonu bulunamadı (${AGENCY_MESSAGE_TEMPLATE_ROW_10_4})`,
+    };
+  }
+
+  const phone = booking.guestPhone.trim();
+  const email = booking.guestEmail.trim();
+  const reservationCode =
+    resolveExternalCode(booking.externalCode, booking.guestEmail) || "—";
+
+  if (data.sendWhatsApp) {
+    if (!phone) {
+      return {
+        success: false,
+        error: "WhatsApp gönderimi için müşteri telefonu gerekli",
+      };
+    }
+    const e164 = normalizePhoneToE164(phone);
+    if (!e164 || !isValidWhatsAppPhoneE164(e164)) {
+      return {
+        success: false,
+        error: "Geçersiz telefon numarası",
+      };
+    }
+  }
+
+  if (data.sendSms) {
+    if (!isSmsProviderConfigured()) {
+      return {
+        success: false,
+        error:
+          "SMS sağlayıcısı yapılandırılmadı. .env içine NETGSM_USERCODE, NETGSM_PASSWORD, NETGSM_MSGHEADER ekleyin.",
+      };
+    }
+    if (!phone.trim()) {
+      return {
+        success: false,
+        error: "SMS gönderimi için müşteri telefonu gerekli",
+      };
+    }
+    const e164Sms = normalizePhoneToE164(phone);
+    if (!e164Sms || !isValidWhatsAppPhoneE164(e164Sms)) {
+      return {
+        success: false,
+        error: "Geçersiz telefon numarası",
+      };
+    }
+  }
+
+  if (data.sendEmail && (!email || isImportedPlaceholderEmail(email))) {
+    return {
+      success: false,
+      error: "E-posta gönderimi için geçerli müşteri e-postası gerekli",
+    };
+  }
+
+  const details = parseBookingDetails(booking.details);
+  const paymentMethod =
+    booking.prepayments[0]?.paymentChannel?.trim() ||
+    details.importPaymentMethod?.trim() ||
+    details.prepaymentBank?.trim() ||
+    "";
+  const prepaymentAmount = booking.prepayments.reduce(
+    (sum, item) => sum + item.amount,
+    0
+  );
+  const bankAccount = await resolveBankAccount(paymentMethod);
+
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo: details.siteInfo,
+    originDomain: details.originDomain,
+    company: {
+      brandName: companySettings.brandName,
+      domain: companySettings.domain,
+      logoUrl: companySettings.logoUrl,
+    },
+    agencySites,
+  });
+  const publicDomain = siteBrand.domain;
+
+  const templateValues = buildBookingConfirmationTemplateValues({
+    reservationCode,
+    guestName: booking.guestName,
+    guestEmail: email,
+    guestPhone: booking.guestPhone,
+    villaName: booking.villa.name,
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    adults: booking.adults,
+    children: booking.children,
+    details,
+    prepaymentAmount,
+    paymentMethod,
+    company: {
+      agencyName: companySettings.agencyName,
+      brandName: siteBrand.siteInfo || companySettings.brandName,
+      companyTitle: companySettings.companyTitle,
+      domain: publicDomain,
+      logoUrl: siteBrand.logoUrl || companySettings.logoUrl,
+      email: companySettings.email,
+      phone: companySettings.phone,
+      address: companySettings.address,
+    },
+    bankAccount,
+  });
+
+  const sentChannels: PrepaymentShareChannel[] = [];
+  const mailSubject = `${reservationCode} nolu rezervasyon konfirmasyonu`;
+  const emailLogo = data.sendEmail
+    ? await prepareCompanyLogoForEmail(
+        siteBrand.logoUrl || companySettings.logoUrl,
+        publicDomain
+      )
+    : null;
+
+  const channelRequests: Array<{
+    channel: PrepaymentShareChannel;
+    enabled: boolean;
+  }> = [
+    { channel: "whatsapp", enabled: data.sendWhatsApp },
+    { channel: "email", enabled: data.sendEmail },
+    { channel: "sms", enabled: data.sendSms },
+  ];
+
+  for (const { channel, enabled } of channelRequests) {
+    if (!enabled) continue;
+
+    const bodyTemplate = pickChannelBody(template, channel);
+    if (!bodyTemplate.trim()) {
+      return {
+        success: false,
+        error: `${channel.toUpperCase()} kanalı için mesaj şablonu boş`,
+      };
+    }
+
+    const message = renderAgencyMessageTemplate(bodyTemplate, templateValues);
+
+    if (channel === "email") {
+      try {
+        await sendCompanyMail(companySettings, {
+          to: email,
+          subject: mailSubject,
+          text: message,
+          html: toHtmlFromText(message, {
+            logoUrl: emailLogo?.src,
+          }),
+          attachments: emailLogo?.attachments,
+        });
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "E-posta gönderilemedi",
+        };
+      }
+    } else if (channel === "whatsapp") {
+      const whatsappMessage = appendBookingSiteFooter(
+        ensureWhatsAppRawConfirmationUrl(message),
+        siteBrand.siteInfo
+      );
+      const wa = await sendCustomerNotificationWhatsApp(phone, whatsappMessage);
+      if (!wa.ok) {
+        return {
+          success: false,
+          error: wa.error ?? "WhatsApp mesajı gönderilemedi",
+        };
+      }
+    } else {
+      const sms = await sendSmsMessage({
+        phone,
+        message,
+        purpose: `booking-confirmation:${booking.id}`,
+      });
+      if (!sms.ok) {
+        return {
+          success: false,
+          error: sms.detail ?? "SMS gönderilemedi",
+        };
+      }
+    }
+
+    sentChannels.push(channel);
+  }
+
+  const sentAt = new Date();
+  const confirmationSend: BookingConfirmationSendRecord = {
+    id: crypto.randomUUID(),
+    sentAt: sentAt.toISOString(),
+    channels: sentChannels,
+    status: "sent",
+  };
+
+  const existingSends = normalizeConfirmationSends(details.confirmationSends);
+  const confirmationSends = [...existingSends, confirmationSend];
+
+  const channelLabels = sentChannels
+    .map((channel) => getPrepaymentShareChannelLabel(channel))
+    .join(", ");
+  const confirmationLog = buildActivityLogEntry({
+    action: "confirmation_sent",
+    message: `Konfirme gönderildi (${channelLabels})`,
+    actorUserId: actor.actorUserId,
+    actorName: actor.actorName,
+    meta: {
+      channels: channelLabels,
+    },
+  });
+  const activityLogs = normalizeActivityLogs([
+    ...normalizeActivityLogs(details.activityLogs),
+    confirmationLog,
+  ]);
+
+  // Satış temsilcisi: ilk konfirme gönderen kullanıcı; yönetici değiştirene kadar sabit
+  let salesRepPatch: Partial<BookingDetails> = {};
+  let salesRepResult: {
+    salesRepUserId: string;
+    salesRepName: string;
+    salesRepCommissionRate: number;
+    salesRepCommissionEarned: number | null;
+  } | null = null;
+
+  if (!details.salesRepUserId?.trim()) {
+    const salesRepUser = actorUserId
+      ? await prisma.user.findUnique({
+          where: { id: actorUserId },
+          select: {
+            id: true,
+            name: true,
+            salesCommissionRate: true,
+          },
+        })
+      : null;
+
+    if (salesRepUser) {
+      const rate = Number(salesRepUser.salesCommissionRate) || 0;
+      const earned = computeSalesRepCommissionEarned(
+        computeNetPrice(details),
+        rate
+      );
+      salesRepPatch = {
+        salesRepUserId: salesRepUser.id,
+        salesRepName: salesRepUser.name,
+        salesRepCommissionRate: rate,
+        salesRepCommissionEarned: earned,
+      };
+      salesRepResult = {
+        salesRepUserId: salesRepUser.id,
+        salesRepName: salesRepUser.name,
+        salesRepCommissionRate: rate,
+        salesRepCommissionEarned: earned,
+      };
+    } else if (actorUserId || actor.actorName) {
+      // JWT stale id / kullanıcı silinmiş olsa bile adı damgala
+      salesRepPatch = {
+        salesRepUserId: actorUserId || "",
+        salesRepName: actor.actorName,
+        salesRepCommissionRate: 0,
+        salesRepCommissionEarned: null,
+      };
+      salesRepResult = {
+        salesRepUserId: actorUserId || "",
+        salesRepName: actor.actorName,
+        salesRepCommissionRate: 0,
+        salesRepCommissionEarned: null,
+      };
+    }
+  } else if (details.salesRepUserId?.trim()) {
+    salesRepResult = {
+      salesRepUserId: details.salesRepUserId,
+      salesRepName: details.salesRepName ?? "",
+      salesRepCommissionRate: details.salesRepCommissionRate ?? 0,
+      salesRepCommissionEarned: details.salesRepCommissionEarned ?? null,
+    };
+  }
+
+  await prisma.booking.update({
+    where: { id: data.bookingId },
+    data: {
+      status: BookingStatus.CONFIRMATION_SENT,
+      confirmationSentAt: sentAt,
+      details: {
+        ...details,
+        ...salesRepPatch,
+        confirmationSends,
+        activityLogs,
+      } as Prisma.InputJsonValue,
+    },
+  });
+
+  revalidatePath("/admin/rezervasyonlar");
+
+  return {
+    success: true,
+    channels: sentChannels,
+    confirmationSentAt: sentAt.toISOString(),
+    confirmationSend,
+    confirmationSends,
+    activityLogs,
+    salesRep: salesRepResult,
+  };
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { Star, X } from "lucide-react";
+import { Star, Search, X } from "lucide-react";
 import {
   createAmenity,
   updateAmenity,
@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/admin/amenities";
 import type { AmenityCategoryItem, AmenityItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface AmenityFormModalProps {
   categories: AmenityCategoryItem[];
@@ -28,10 +29,13 @@ export default function AmenityFormModal({
   const isEdit = Boolean(amenity);
   const action = isEdit ? updateAmenity : createAmenity;
   const [isDefault, setIsDefault] = useState(amenity?.isDefault ?? false);
+  const [showInSearch, setShowInSearch] = useState(amenity?.showInSearch ?? false);
   const [state, formAction, pending] = useActionState<
     AmenityActionState,
     FormData
   >(action, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();
@@ -64,6 +68,7 @@ export default function AmenityFormModal({
         <form action={formAction} className="space-y-4 p-6">
           {amenity && <input type="hidden" name="id" value={amenity.id} />}
           <input type="hidden" name="isDefault" value={isDefault ? "true" : "false"} />
+          <input type="hidden" name="showInSearch" value={showInSearch ? "true" : "false"} />
 
           {state.error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -153,6 +158,29 @@ export default function AmenityFormModal({
                     checked={isDefault}
                     onChange={(e) => setIsDefault(e.target.checked)}
                     className="mt-1 h-5 w-5 rounded border-sky-300 text-sky-600 focus:ring-sky-500"
+                  />
+                </div>
+              </label>
+
+              <label className="block cursor-pointer rounded-xl border-2 border-teal-200 bg-teal-50 p-4 transition hover:bg-teal-100/70">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-lg bg-white p-2 text-teal-600 shadow-sm">
+                    <Search className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-teal-900">
+                      Detaylı aramada listelensin
+                    </p>
+                    <p className="mt-1 text-sm text-teal-700">
+                      İşaretlenirse villalar arama sayfasındaki Olanaklar
+                      filtresinde görünür.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={showInSearch}
+                    onChange={(e) => setShowInSearch(e.target.checked)}
+                    className="mt-1 h-5 w-5 rounded border-teal-300 text-teal-600 focus:ring-teal-500"
                   />
                 </div>
               </label>

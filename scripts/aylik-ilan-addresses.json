@@ -1,0 +1,2032 @@
+[
+  {
+    "slug": "villa-otantik",
+    "documentNo": "07-8041",
+    "address": "KALKAN MAHALLESİ, ZİRCE SOKAK, DIŞ KAPI: 9, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-eymen",
+    "documentNo": "48-9324",
+    "address": "KARAÇULHA MAHALLESİ, BÖLÜKÇAM (KRC) CADDE, DIŞ KAPI: 8 /1, İÇ KAPI: 3, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-seyirtepe-1",
+    "documentNo": "07-1600",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 41 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-buse",
+    "documentNo": "07-556",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 121 /5, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-bauer",
+    "documentNo": "48-7900",
+    "address": "NİF MAHALLESİ, BAŞARIK (NIF) SOKAK, DIŞ KAPI: 38 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-sefa",
+    "documentNo": "48-11806",
+    "address": "KAYAKÖY MAHALLESİ, BELEN (KYK) CADDE, DIŞ KAPI: 104, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-lavanta",
+    "documentNo": "48-12529",
+    "address": "KAYAKÖY KÖYÜ MAHALLESİ, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-ecrin",
+    "documentNo": "07-4142",
+    "address": "KALKAN MAHALLESİ, GÜNLÜK SOKAK, DIŞ KAPI: 18, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-cassa",
+    "documentNo": "07-12021",
+    "address": "KALKAN MAHALLESI, LIMONÇIÇEGI SOKAK, DIS KAPI: 6, KAS / ANTALYA"
+  },
+  {
+    "slug": "villa-optimum",
+    "documentNo": "07-2053",
+    "address": "KALKAN MAHALLESİ, KIZILCIK SOKAK, DIŞ KAPI: 36, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ruzgar",
+    "documentNo": "07-9071",
+    "address": "KALKAN MAHALLESİ, FUL SOKAK, DIŞ KAPI: 9, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-doga",
+    "documentNo": "07-11795",
+    "address": "ÜZÜMLÜ MAHALLESİ, LAPAZ SOKAK, DIŞ KAPI: 36 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-eylul",
+    "documentNo": "07-4230",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 53 /1D, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-alara",
+    "documentNo": "07-6433",
+    "address": "İSLAMLAR MAHALLESİ, BALCIBAĞ SOKAK, DIŞ KAPI: 23, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ayisigi",
+    "documentNo": "07-3721",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 2 /9, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kuzey",
+    "documentNo": "07-8045",
+    "address": "SLAMLAR MAHALLESİ, PINARBAŞI İSLAMLAR SOKAK, DIŞ KAPI: 42 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nar-cicegi",
+    "documentNo": "07-3284",
+    "address": "GELEMİŞ MAHALLESİ, GEMİCİK SOKAK, DIŞ KAPI: 13 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-betul",
+    "documentNo": "07-8996",
+    "address": "BEZİRGAN MAHALLESİ, HACIKARALAR SOKAK, DIŞ KAPI: 562, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-yagmur",
+    "documentNo": "07-8995",
+    "address": "BEZİRGAN MAHALLESİ, HACIKARALAR SOKAK, DIŞ KAPI: 582 /4, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-blue-sirena",
+    "documentNo": "07-9075",
+    "address": "BEZİRGAN MAHALLESİ, HACIKARALAR SOKAK, DIŞ KAPI: 582, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-zeplin",
+    "documentNo": "07-7293",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 66 /3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sunset-2",
+    "documentNo": "07-9358-2",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sunset-3",
+    "documentNo": "07-9358-3",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-mecanblu",
+    "documentNo": "07-8785",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 660 /5, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sinemis",
+    "documentNo": "48-11726",
+    "address": "YEŞİLÜZÜMLÜ MAHALLESİ, HÜRRİYET (YENİ) (YSU) CADDE, DIŞ KAPI: 38 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-masal",
+    "documentNo": "48-962",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT CUMHURİYET KÜME EVLER, DIŞ KAPI: 255, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-melisa",
+    "documentNo": "07-4676",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 2 /12, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-felix",
+    "documentNo": "07-10246",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 676, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-polo-1",
+    "documentNo": "48-2853",
+    "address": "ÇİFTLİK MAHALLESİ, 114 (CFT) SOKAK, DIŞ KAPI: 9 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-serenity",
+    "documentNo": "07-9951",
+    "address": "İSLAMLAR MAHALLESİ, PINARBAŞI İSLAMLAR SOKAK, DIŞ KAPI: 7, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-memo",
+    "documentNo": "07-2454",
+    "address": "GELEMİŞ MAHALLESİ, GEMİCİK SOKAK, DIŞ KAPI: 9 /9A, İÇ KAPI: 9A, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "suit-mulberry",
+    "documentNo": "07-1619-1",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 692 /1, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "suit-blueberry",
+    "documentNo": "07-1619-2",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 692 /1, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gece",
+    "documentNo": "07-8784",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 660 /4, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-mevsim",
+    "documentNo": "07-847",
+    "address": "ÜZÜMLÜ MAHALLESİ, LAPAZ SOKAK, DIŞ KAPI: 53 /1, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-a-plus",
+    "documentNo": "48-7578",
+    "address": "ÖLÜDENİZ MAHALLESİ, 203 (OLD) SOKAK, DIŞ KAPI: 2 /18, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-yaprak-kalkan",
+    "documentNo": "07-5123",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 396 /6, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ask-evi",
+    "documentNo": "07-4801",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 115, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-lumiere-3",
+    "documentNo": "07-1637",
+    "address": "KALKAN MAHALLESİ, ÇAM SOKAK, DIŞ KAPI: 20, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-lumiere-2",
+    "documentNo": "07-1635",
+    "address": "KALKAN MAHALLESİ, VATAN CADDE, DIŞ KAPI: 11, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-lumiere-1",
+    "documentNo": "07-1636",
+    "address": "KALKAN MAHALLESİ, VATAN CADDE, DIŞ KAPI: 9, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-hanedan",
+    "documentNo": "48-654",
+    "address": "HİSARÖNÜ MAHALLESİ, DEĞİRMENYANI MERKEZ KÜME EVLER, DIŞ KAPI: 88, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-alis",
+    "documentNo": "07-8558",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 426, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-alfa-delta",
+    "documentNo": "07-10302",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 660 /3B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-efecan",
+    "documentNo": "07-10303",
+    "address": "YEŞİLKÖY MAHALLESİ, HAYITLI CADDE, DIŞ KAPI: 23, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-baris",
+    "documentNo": "07-987",
+    "address": "İKİZCE MAHALLESİ, YASLI PINAR KÜME EVLER, DIŞ KAPI: 7, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-karmen",
+    "documentNo": "07-1753",
+    "address": "ÜZÜMLÜ MAHALLESİ, SENİR SOKAK, DIŞ KAPI: 3 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-dalyan-palas",
+    "documentNo": "48-5699",
+    "address": "DALYAN MAHALLESİ, 211 SOKAK, DIŞ KAPI: 1, İÇ KAPI: 1, ORTACA/MUĞLA"
+  },
+  {
+    "slug": "villa-zeybek-patara",
+    "documentNo": "07-10646",
+    "address": "GELEMİŞ MAHALLESİ, KARAAĞAÇLIBOĞAZ SOKAK, DIŞ KAPI: 60 /8, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-fener",
+    "documentNo": "07-5557",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 167, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-angel",
+    "documentNo": "07-6890",
+    "address": "KALKAN MAHALLESİ, BÖĞÜRTLEN SOKAK, DIŞ KAPI: 20, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-antik",
+    "documentNo": "07-8795",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 396 /3, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-etiler",
+    "documentNo": "07-9318",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 A, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-excellence",
+    "documentNo": "07-8752",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 A, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-spring",
+    "documentNo": "07-8746",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 F, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-zirve-hill",
+    "documentNo": "07-8747",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sato-hill",
+    "documentNo": "07-8798",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 396 /4, İÇ KAPI: 3, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nature",
+    "documentNo": "07-8751",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 E, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-paris",
+    "documentNo": "07-8796",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 396 /3, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-firuze",
+    "documentNo": "07-8750",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-istanbul",
+    "documentNo": "07-8745",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 F, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-premium",
+    "documentNo": "07-8749",
+    "address": "FIRATLAR MADENCİLİK LTD.ŞTİ."
+  },
+  {
+    "slug": "villa-gelincik-hill",
+    "documentNo": "07-8797",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 396 /4, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-heart",
+    "documentNo": "07-8743",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 B, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-anka-2",
+    "documentNo": "07-5312",
+    "address": "SARIBELEN MAHALLESİ, YURTİÇİ SOKAK, DIŞ KAPI: 65 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-hardal",
+    "documentNo": "07-11795",
+    "address": "İSLAMLAR KÖYÜ MAHALLESİ, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-atesim",
+    "documentNo": "07-9935",
+    "address": "GÖKÇEÖREN MAHALLESİ, GÖKSEKİ SOKAK, DIŞ KAPI: 109 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-senir",
+    "documentNo": "07-1491",
+    "address": "SARIBELEN MAHALLESİ, AMBARLARARASI SOKAK, DIŞ KAPI: 79 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-abihayat",
+    "documentNo": "07-9054",
+    "address": "İSLAMLAR MAHALLESİ, PINARBAŞI İSLAMLAR SOKAK, DIŞ KAPI: 39, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-londra",
+    "documentNo": "07-8744",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 398, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-eser",
+    "documentNo": "48-3232",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT CUMHURİYET KÜME EVLER, DIŞ KAPI: 273, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-leyla",
+    "documentNo": "48-12285",
+    "address": "İNLİCE MAHALLESİ, İNLİCE (INL) SOKAK, DIŞ KAPI: 143, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-elfuze",
+    "documentNo": "07-9080",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 456, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-big-boss",
+    "documentNo": "07-7204",
+    "address": "İSLAMLAR MAHALLESİ, PINARBAŞI İSLAMLAR SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kavak-hisar",
+    "documentNo": "48-6223",
+    "address": "ÖLÜDENİZ MAHALLESİ, MAKMARA (OLD) CADDE, DIŞ KAPI: 22 /13, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-cazibeli",
+    "documentNo": "07-1999",
+    "address": "İSLAMLAR MAHALLESİ, BALCIBAĞ SOKAK, DIŞ KAPI: 38, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-bala-1",
+    "documentNo": "07-8794",
+    "address": "OVA MAHALLESİ, KUM SOKAK, DIŞ KAPI: 20 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-bala-2",
+    "documentNo": "07-8839",
+    "address": "OVA MAHALLESİ, KUM SOKAK, DIŞ KAPI: 20, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-imparator",
+    "documentNo": "07-467",
+    "address": "KALKAN MAHALLESİ, HÜRRİYET CADDE, DIŞ KAPI: 50 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nar-tanem",
+    "documentNo": "07-4709",
+    "address": "GELEMİŞ MAHALLESİ, GEMİCİK SOKAK, DIŞ KAPI: 13, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-zeyno-3",
+    "documentNo": "07-8836",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 384 /4E, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-zeyno-4",
+    "documentNo": "07-11326",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 384 /4E, İÇ KAPI: 3, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ahla",
+    "documentNo": "48-7204",
+    "address": "ÖLÜDENİZ MAHALLESİ, SARNIÇ (OLD) CADDE, DIŞ KAPI: 10 /3, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-ayla",
+    "documentNo": "48-1281",
+    "address": "DALYAN MAHALLESİ, 222 SOKAK, DIŞ KAPI: 8, İÇ KAPI: , ORTACA/MUĞLA"
+  },
+  {
+    "slug": "villa-yaprak",
+    "documentNo": "48-12399",
+    "address": "YANIKLAR MAHALLESİ, DOLMUŞ (YNK) CADDE, DIŞ KAPI: 62 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-melek-duo",
+    "documentNo": "48-3121",
+    "address": "BABATAŞI MAHALLESİ, 732 (BBT) SOKAK, DIŞ KAPI: 9 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-alyans",
+    "documentNo": "07-10918",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gun-isigi",
+    "documentNo": "07-9709",
+    "address": "AKLAR MAHALLESİ, SAHİL AKLAR SOKAK, DIŞ KAPI: 45, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-salkim-sogut",
+    "documentNo": "48-10466",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT CUMHURİYET KÜME EVLER, DIŞ KAPI: 82, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-berlin",
+    "documentNo": "07-8865",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 H, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-munih",
+    "documentNo": "07-8864",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 G, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sirin-duo",
+    "documentNo": "07-3799",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-koln",
+    "documentNo": "07-8935",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 394 H, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-dk",
+    "documentNo": "07-2374",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 26 -, İÇ KAPI: -, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-tashan",
+    "documentNo": "48-2726",
+    "address": "ARSAKÖY MAHALLESİ, ORTA_4 SOKAK, DIŞ KAPI: 61 /1, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-grando-1",
+    "documentNo": "07-2183",
+    "address": "BAYINDIR MAHALLESİ, AĞALAR SOKAK, DIŞ KAPI: 27, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-poseidon-marine-cesme",
+    "documentNo": "35-162",
+    "address": "ILDIR MAHALLESİ, 37256 SOKAK, DIŞ KAPI: 2 /21, İÇ KAPI: , ÇEŞME/İZMİR"
+  },
+  {
+    "slug": "villa-supernova",
+    "documentNo": "07-9068",
+    "address": "KALKAN MAHALLESİ, KAVAK SOKAK, DIŞ KAPI: 3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kaya-duo",
+    "documentNo": "48-2794",
+    "address": "ÖLÜDENİZ MAHALLESİ, 119 (OLD) SOKAK, DIŞ KAPI: 13 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-grando-2",
+    "documentNo": "07-2184",
+    "address": "BAYINDIR MAHALLESİ, AĞALAR SOKAK, DIŞ KAPI: 28, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ea",
+    "documentNo": "07-7092",
+    "address": "KALKAN MAHALLESİ, GÜRGEN SOKAK, DIŞ KAPI: 29, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gala-2",
+    "documentNo": "07-575",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 40, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ay-1",
+    "documentNo": "07-9877",
+    "address": "ANDİFLİ MAHALLESİ, GÖKKUŞAĞI CADDE, DIŞ KAPI: 48 A, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-bozo-1",
+    "documentNo": "07-5457",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 14 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-bozo-2",
+    "documentNo": "07-2628",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kalu",
+    "documentNo": "07-7930",
+    "address": "KALKAN MAHALLESİ, KALKAN 19 SOKAK, DIŞ KAPI: 2 C, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sidera",
+    "documentNo": "48-1673",
+    "address": "KAYAKÖY MAHALLESİ, KARAYAKA (KYK) SOKAK, DIŞ KAPI: 3 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-ahududu",
+    "documentNo": "48-12960",
+    "address": "KAYAKÖY MAHALLESİ, KARAYAKA (KYK) SOKAK, DIŞ KAPI: 28, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-elif-1",
+    "documentNo": "48-972",
+    "address": "KARAGEDİK MAHALLESİ, 1478 (KGE) SOKAK, DIŞ KAPI: 31 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-elif-2",
+    "documentNo": "48-973",
+    "address": "KARAGEDİK MAHALLESİ, 1478 (KGE) SOKAK, DIŞ KAPI: 31 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-defne-ovacik-1",
+    "documentNo": "48-11442",
+    "address": "ÖLÜDENİZ MAHALLESİ, 290 (OLD) SOKAK, DIŞ KAPI: 3 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-defne-ovacik-2",
+    "documentNo": "48-11403",
+    "address": "ÖLÜDENİZ MAHALLESİ, 290 (OLD) SOKAK, DIŞ KAPI: 3 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-gala-3",
+    "documentNo": "07-1875",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 41, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-cesi",
+    "documentNo": "48-4083",
+    "address": "ESENKÖY MAHALLESİ, KARAMERSİN (ESK) SOKAK, DIŞ KAPI: 12 /2A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-sensil",
+    "documentNo": "48-11060",
+    "address": "KARAÇULHA MAHALLESİ, ADNAN MENDERES (CUMHURİYET) (KRC) BULVAR, DIŞ KAPI: 72, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-saba",
+    "documentNo": "07-10202",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 665 /2, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-esma",
+    "documentNo": "07-2814",
+    "address": "KALKAN MAHALLESİ, AKASYA 1 SOKAK, DIŞ KAPI: 9, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gloria",
+    "documentNo": "48-2099",
+    "address": "KARAÇULHA MAHALLESİ, MUSTAFA SEVEROĞLU (KRC) CADDE, DIŞ KAPI: 46 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-bercestem",
+    "documentNo": "07-10880",
+    "address": "SARIBELEN MAHALLESİ, KOCAARMUT SOKAK, DIŞ KAPI: 16, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gala-mini",
+    "documentNo": "07-728",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 38, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-melodika",
+    "documentNo": "48-12291",
+    "address": "İNLİCE MAHALLESİ, İNLİCE (INL) SOKAK, DIŞ KAPI: 143 /2, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-dessa",
+    "documentNo": "07-1744",
+    "address": "HACIOĞLAN MAHALLESİ, HACIOĞLAN MERKEZ SOKAK, DIŞ KAPI: 20, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-arel-2",
+    "documentNo": "48-6695",
+    "address": "KARAGEDİK MAHALLESİ, 1452 (KGE) SOKAK, DIŞ KAPI: 43 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-arel-1",
+    "documentNo": "48-7938",
+    "address": "KARAGEDİK MAHALLESİ, 1452 (KGE) SOKAK, DIŞ KAPI: 43, İÇ KAPI: 1, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-hayal-duo",
+    "documentNo": "48-13583",
+    "address": "KAYAKÖY MAHALLESİ, BELEN (KYK) CADDE, DIŞ KAPI: 104 /5, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-ugurlu",
+    "documentNo": "07-8987",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 422 /3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-plus",
+    "documentNo": "07-6856",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-peri-masali",
+    "documentNo": "07-1577",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 127 /1D, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-mamon-life",
+    "documentNo": "48-23",
+    "address": "KAYAKÖY MAHALLESİ, BELEN (KYK) CADDE, DIŞ KAPI: 95 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-tepe",
+    "documentNo": "48-13387",
+    "address": "ARSAKÖY MAHALLESİ, ORTA_4 SOKAK, DIŞ KAPI: 85, SEYDİKEMER / MUĞLA"
+  },
+  {
+    "slug": "villa-ugurlu-duo",
+    "documentNo": "07-574",
+    "address": "KALKAN MAHALLESİ, GÜNLÜK SOKAK, DIŞ KAPI: 14, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-golden-2",
+    "documentNo": "07-3953",
+    "address": "SARIBELEN MAHALLESİ, KOCAARMUT SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-marti-2",
+    "documentNo": "48-4722",
+    "address": "SÖĞÜT MAHALLESİ, EREKTEPESİ KÜME EVLER, DIŞ KAPI: 79 /1, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-mavi-ada",
+    "documentNo": "07-2020",
+    "address": "BEZİRGAN MAHALLESİ, CEVİZDİBİ SOKAK, DIŞ KAPI: 17 /6B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-zeyno-6",
+    "documentNo": "07-8733",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 384 /1A, İÇ KAPI: , KAŞ/ANTALYA2"
+  },
+  {
+    "slug": "villa-best",
+    "documentNo": "07-10087",
+    "address": "KALKAN MAHALLESİ, KALKAN 19 SOKAK, DIŞ KAPI: 22 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-rose",
+    "documentNo": "48-10851",
+    "address": "KARAKÖY MAHALLESİ, KUMLUOVA YOLU CADDE, DIŞ KAPI: 4 /1-, İÇ KAPI: 2-, SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-buyaz",
+    "documentNo": "07-10034",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 128, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-star-1",
+    "documentNo": "48-2145",
+    "address": "AKINCI KÖYÜ MAHALLESİ, ORTACA/MUĞLA"
+  },
+  {
+    "slug": "villa-last-summer",
+    "documentNo": "07-7188",
+    "address": "KINIK MAHALLESİ, YÜKSEKYER CADDE, DIŞ KAPI: 10, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nova",
+    "documentNo": "07-2114",
+    "address": "KALKAN MAHALLESİ, HARNUP1 SOKAK, DIŞ KAPI: 31, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "bungalov-masal-2",
+    "documentNo": "48-9434",
+    "address": "ÇAMKÖY MAHALLESİ, KIZIL DEĞİRMEN (CMK) CADDE, DIŞ KAPI: 6 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-carpediem",
+    "documentNo": "07-9595",
+    "address": "İSLAMLAR MAHALLESİ, PINARBAŞI İSLAMLAR SOKAK, DIŞ KAPI: 58, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-istanblue",
+    "documentNo": "07-681",
+    "address": "KALKAN MERKEZ MAH. ORTA ALAN MEVKİ PORTAKAL ÇİÇEĞİ SOK. NO:21/2 KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-can-duo",
+    "documentNo": "48-5938",
+    "address": "KARAGEDİK MAHALLESİ, 1449 (KGE) SOKAK, DIŞ KAPI: 28 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-olcay",
+    "documentNo": "48-12681",
+    "address": "GİRMELER MAHALLESİ, NACAKLAR SOKAK, DIŞ KAPI: 25 /1, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-milid",
+    "documentNo": "07-1874",
+    "address": "ÜZÜMLÜ MAHALLESİ, ODAYANI SOKAK, DIŞ KAPI: 72, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-pinara-ugur",
+    "documentNo": "48-10755",
+    "address": "MİNARE MAHALLESİ, ATATÜRK_2 SOKAK, DIŞ KAPI: 47, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-emek",
+    "documentNo": "07-6693",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 167 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-aysena",
+    "documentNo": "07-800",
+    "address": "ÇUKURBAĞ MAHALLESİ, ÇAMURKÖY SOKAK, DIŞ KAPI: 27, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sehzade",
+    "documentNo": "48-202",
+    "address": "HİSARÖNÜ MAHALLESİ, DEĞİRMENYANI MERKEZ KÜME EVLER, DIŞ KAPI: 51 /1, İÇ KAPI: 1, MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-fey",
+    "documentNo": "07-2061",
+    "address": "KALKAN MAHALLESİ, BARIŞ CADDE, DIŞ KAPI: 19 /1, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-orange",
+    "documentNo": "07-2060",
+    "address": "KALKAN MAHALLESİ, MİLLİ EGEMENLİK CADDE, DIŞ KAPI: 39, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-patika-3",
+    "documentNo": "07-6376",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 639 /3C, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-patika-5",
+    "documentNo": "07-6378",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 639 /2A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-patika-6",
+    "documentNo": "07-6377",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 639, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-pine-garden",
+    "documentNo": "48-10851",
+    "address": "KARAKÖY MAHALLESİ, KUMLUOVA YOLU CADDE, DIŞ KAPI: 4 /1-, İÇ KAPI: 2-, SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-simay-1",
+    "documentNo": "07-11952",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 113, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-reis-2",
+    "documentNo": "07-3533",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 521 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-reis-1",
+    "documentNo": "07-3584",
+    "address": "İKİZCE KÖYÜ MAHALLESİ, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-akca",
+    "documentNo": "07-7790",
+    "address": "YEŞİLKÖY MAHALLESİ, ÖMER OK SOKAK, DIŞ KAPI: 2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gulfidan",
+    "documentNo": "07-7130",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 449, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-yagiz-efe",
+    "documentNo": "48-11763",
+    "address": "KAYAKÖY MAHALLESİ, NADİR NADİ (KYK) CADDE, DIŞ KAPI: 29, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-melissun",
+    "documentNo": "48-8521",
+    "address": "ÖLÜDENİZ MAHALLESİ, HIDIR KUYUSU (OLD) CADDE, DIŞ KAPI: 30, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-lime",
+    "documentNo": "07-9005",
+    "address": "ANDİFLİ MAHALLESİ, GÖKKUŞAĞI CADDE, DIŞ KAPI: 56 B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-mese-kayakoy",
+    "documentNo": "48-12153",
+    "address": "KAYAKÖY MAHALLESİ, KARAYAKA (KUYUBAŞI) (KYK) SOKAK, DIŞ KAPI: 23 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-limon-kayakoy",
+    "documentNo": "48-12152",
+    "address": "KAYAKÖY MAHALLESİ, KARAYAKA (KUYUBAŞI) (KYK) SOKAK, DIŞ KAPI: 25 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-kayadibi",
+    "documentNo": "07-5139",
+    "address": "BEZİRGAN MAHALLESİ, ULUGÖL SOKAK, DIŞ KAPI: 792 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-malibu",
+    "documentNo": "48-6198",
+    "address": "ÇAMKÖY MAHALLESİ, APON (CMK) CADDE, DIŞ KAPI: 12 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-isil",
+    "documentNo": "48-1532",
+    "address": "SÖĞÜT MAHALLESİ, GÖÇÜPINARI KÜME EVLER, DIŞ KAPI: 88 /1, İÇ KAPI: 1, MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-saena",
+    "documentNo": "48-12292",
+    "address": "İNLİCE MAHALLESİ, İNLİCE (INL) SOKAK, DIŞ KAPI: 143 /3, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-aden",
+    "documentNo": "07-9889",
+    "address": "İSLAMLAR MAHALLESİ, PINARBAŞI İSLAMLAR SOKAK, DIŞ KAPI: 33 /3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-haven-camkoy",
+    "documentNo": "48-10881",
+    "address": "ELDİREK MAHALLESİ, KARŞIYAKA(ELD) SOKAK SOKAK, DIŞ KAPI: 231, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-cenk",
+    "documentNo": "07-10059",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 70, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-siri",
+    "documentNo": "07-5806",
+    "address": "KALKAN MAHALLESİ, ÇİĞDEM SOKAK, DIŞ KAPI: 14, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-yildiz-cavdir",
+    "documentNo": "07-11385",
+    "address": "ÇAVDIR MAHALLESİ, KAVAKYANI SOKAK, DIŞ KAPI: 2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kavak-garden",
+    "documentNo": "48-6220",
+    "address": "FOÇA MAHALLESİ, 958 (FCA) SOKAK, DIŞ KAPI: 31, İÇ KAPI: 2, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-feniks",
+    "documentNo": "48-11962",
+    "address": "DALYAN MAHALLESİ, 251 SOKAK, DIŞ KAPI: 9, İÇ KAPI: 1, ORTACA/MUĞLA"
+  },
+  {
+    "slug": "villa-swan",
+    "documentNo": "07-6438",
+    "address": "KALKAN MAHALLESİ, KAKTÜS SOKAK, DIŞ KAPI: 3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-eftelya",
+    "documentNo": "07-10124",
+    "address": "ÇAVDIR MAHALLESİ, YUKARI ÇAVDIR SOKAK, DIŞ KAPI: 83 -, İÇ KAPI: -, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-inci-duo",
+    "documentNo": "07-11274",
+    "address": "ÇAVDIR MAHALLESİ, YUKARI ÇAVDIR SOKAK, DIŞ KAPI: 83 /2, İÇ KAPI: 3, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sidelya-duo",
+    "documentNo": "07-11179",
+    "address": "ÇAVDIR MAHALLESİ, YUKARI ÇAVDIR SOKAK, DIŞ KAPI: 83 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-stella",
+    "documentNo": "07-2179",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 16 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-yasam-1",
+    "documentNo": "48-13350",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT KAYGISEKİ KÜME EVLER, DIŞ KAPI: 49, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-yasam-2",
+    "documentNo": "48-13380",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT KAYGISEKİ KÜME EVLER, DIŞ KAPI: 50, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-duru-sogut",
+    "documentNo": "48-4213",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT CUMHURİYET KÜME EVLER, DIŞ KAPI: 274, İÇ KAPI: 1, MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "sinmel-apart",
+    "documentNo": "07-2268",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 13, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-arokarya",
+    "documentNo": "48-6342",
+    "address": "ÖLÜDENİZ MAHALLESİ, 146 (OLD) SOKAK, DIŞ KAPI: 14, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-almira",
+    "documentNo": "07-562",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 2 /3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nerim",
+    "documentNo": "48-2071",
+    "address": "ÖLÜDENİZ MAHALLESİ, 329 (OLD) SOKAK, DIŞ KAPI: 10, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-zulfikar",
+    "documentNo": "07-9756",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 123, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-oba-1",
+    "documentNo": "48-11585",
+    "address": "KARADERE MAHALLESİ, GUZPINAR CADDE, DIŞ KAPI: 6, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-oba-2",
+    "documentNo": "48-11584",
+    "address": "KARADERE MAHALLESİ, GUZPINAR CADDE, DIŞ KAPI: 6, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-erdem-1",
+    "documentNo": "07-9283",
+    "address": "ANDİFLİ MAHALLESİ, GÖKKUŞAĞI CADDE, DIŞ KAPI: 52 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-erdem-2",
+    "documentNo": "07-9282",
+    "address": "ANDİFLİ MAHALLESİ, GÖKKUŞAĞI CADDE, DIŞ KAPI: 52 B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-savoye",
+    "documentNo": "07-1328",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 448 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ela-ece",
+    "documentNo": "07-8436",
+    "address": "BEZİRGAN MAHALLESİ, HACIKARALAR SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-elysium",
+    "documentNo": "07-10618",
+    "address": "ÇAVDIR MAHALLESİ, MERKEZ ÇAVDIR SOKAK, DIŞ KAPI: 128 -, İÇ KAPI: -, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-odesa",
+    "documentNo": "07-2596",
+    "address": "İSLAMLAR MAHALLESİ, BALCIBAĞ SOKAK, DIŞ KAPI: 3 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-mermaid",
+    "documentNo": "07-2595",
+    "address": "İSLAMLAR MAHALLESİ, BALCIBAĞ SOKAK, DIŞ KAPI: 4, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-diamante",
+    "documentNo": "07-10254",
+    "address": "36.274543, 29.411345"
+  },
+  {
+    "slug": "bungalov-nil",
+    "documentNo": "07-9891",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 58 -, İÇ KAPI: -, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-myra",
+    "documentNo": "07-9671",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 80 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-yildiz-bayindir",
+    "documentNo": "07-2766",
+    "address": "BAYINDIR MAHALLESİ, BAYINDIR ASAR SOKAK, DIŞ KAPI: 10, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-blue-star",
+    "documentNo": "07-8790",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 516 /2C, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-divan",
+    "documentNo": "07-11548",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 423, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-oran",
+    "documentNo": "07-11682",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 129, KAŞ / ANTALYA"
+  },
+  {
+    "slug": "",
+    "documentNo": "07-9667",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 119 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-north-star",
+    "documentNo": "07-7240",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 516 /2C, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-jungle",
+    "documentNo": "07-8813",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-jungle-duo",
+    "documentNo": "07-8812",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-avenir",
+    "documentNo": "07-7875",
+    "address": "GÖKÇEÖREN MAHALLESİ, BALDIRAZ SOKAK, DIŞ KAPI: 6 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-bella-rose",
+    "documentNo": "07-7746",
+    "address": "GÖKÇEÖREN MAHALLESİ, BALDIRAZ SOKAK, DIŞ KAPI: 6 B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-burgu-1",
+    "documentNo": "48-10162",
+    "address": "ANDİFLİ MAHALLESİ, GÖKKUŞAĞI CADDE, DIŞ KAPI: 6 B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-burgu-2",
+    "documentNo": "07-10163",
+    "address": "ANDİFLİ MAHALLESİ, GÖKKUŞAĞI CADDE, DIŞ KAPI: 6 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kaya-petunya",
+    "documentNo": "48-3054",
+    "address": "KAYAKÖY MAHALLESİ, HACI ÖMER (KYK) SOKAK, DIŞ KAPI: 116 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-kaya-abelya",
+    "documentNo": "48-3055",
+    "address": "KAYAKÖY MAHALLESİ, HACI ÖMER (KYK) SOKAK, DIŞ KAPI: 116 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-nazeren",
+    "documentNo": "07-3492",
+    "address": "HACIOĞLAN MAHALLESİ, HACIOĞLAN MERKEZ SOKAK, DIŞ KAPI: 19, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-the-brother",
+    "documentNo": "07-3824",
+    "address": "ÇAYKÖY MAHALLESİ, YUKARI ÇAYKÖY SOKAK, DIŞ KAPI: 68, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sultan-islamlar",
+    "documentNo": "07-1607",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 23 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ceylan",
+    "documentNo": "48-2992",
+    "address": "SAHİLCEYLAN MAHALLESİ, MERKEZ_11 SOKAK, DIŞ KAPI: 90, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-opulent",
+    "documentNo": "07-4491",
+    "address": "SARIBELEN MAHALLESI, KOCAARMUT SOKAK, DIS KAPI: 50, KAS / ANTALYA"
+  },
+  {
+    "slug": "villa-ata-kalkan",
+    "documentNo": "07-9264",
+    "address": "KALKAN MAHALLESİ, KADİFE SOKAK, DIŞ KAPI: 13, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ural-uzumlu",
+    "documentNo": "07-3311",
+    "address": "ÜZÜMLÜ MAHALLESİ, ÜZÜMLÜ DEĞİRMENYANI SOKAK, DIŞ KAPI: 48, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-mavna-ozlem",
+    "documentNo": "07-6947",
+    "address": "KALKAN MAHALLESİ, KIŞLA CADDE, DIŞ KAPI: 68, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-dogan",
+    "documentNo": "07-6984",
+    "address": "KALKAN MAHALLESİ, ZEYTİNLİK CADDE, DIŞ KAPI: 23, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ozkan",
+    "documentNo": "07-6443",
+    "address": "ÇAVDIR MAHALLESİ, YUKARI ÇAVDIR SOKAK, DIŞ KAPI: 11 /2, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-chremado",
+    "documentNo": "07-5951",
+    "address": "KALKAN MAHALLESİ, KALKAN 7 SOKAK, DIŞ KAPI: 6, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-elyase",
+    "documentNo": "07-9162",
+    "address": "ÇAVDIR MAHALLESİ, YUKARI ÇAVDIR SOKAK, DIŞ KAPI: 116, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-zilan",
+    "documentNo": "07-9673",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 81 /11, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-arhan",
+    "documentNo": "07-2950",
+    "address": "KALKAN MAHALLESİ, MERCAN SOKAK, DIŞ KAPI: 11, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-manzara-islamlar",
+    "documentNo": "07-7779",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 25, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-tahanci-1",
+    "documentNo": "48-7495",
+    "address": "ÖLÜDENİZ MAHALLESİ, SARNIÇ (OLD) CADDE, DIŞ KAPI: 24 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-erisa",
+    "documentNo": "07-4967",
+    "address": "SARIBELEN MAHALLESI, KOCAARMUT SOKAK, DIS KAPI: 28, KAS / ANTALYA"
+  },
+  {
+    "slug": "villa-sato-buket",
+    "documentNo": "07-6578",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 434 -, İÇ KAPI: 0-, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-xanthos",
+    "documentNo": "07-3471",
+    "address": "KALKAN MAHALLESİ, VATAN CADDE, DIŞ KAPI: 6 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nautilus",
+    "documentNo": "07-844",
+    "address": "KALKAN MAHALLESİ, ITIR SOKAK, DIŞ KAPI: 4, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-akasya-uno",
+    "documentNo": "07-10265",
+    "address": "KALKAN MAHALLESİ, HANIMELİ SOKAK, DIŞ KAPI: 8, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-steve",
+    "documentNo": "48-6190",
+    "address": "ÖLÜDENİZ MAHALLESİ, 82 (OLD) SOKAK, DIŞ KAPI: 10, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-sila-nur",
+    "documentNo": "07-8559",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-anil",
+    "documentNo": "07-8563",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-star-light-1",
+    "documentNo": "07-8205",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 18 E, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-star-light-2",
+    "documentNo": "07-8215",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 18 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-star-light-3",
+    "documentNo": "07-8216",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 18 G, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-star-light-4",
+    "documentNo": "07-8217",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 18 D, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-star-light-5",
+    "documentNo": "07-8218",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 18 C, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kardelen-duo",
+    "documentNo": "07-5539",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 66, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sakayik",
+    "documentNo": "07-869",
+    "address": "İKİZCE MAHALLESİ, İKİZCE MERKEZ KÜME EVLER, DIŞ KAPI: 44 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-posthane",
+    "documentNo": "07-5330",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 660 /10, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-yudum",
+    "documentNo": "07-3015",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 137, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-oliva-nera-dalyan",
+    "documentNo": "48-10542",
+    "address": "DALYAN MAHALLESİ, 222 SOKAK, DIŞ KAPI: 6, İÇ KAPI: , ORTACA/MUĞLA"
+  },
+  {
+    "slug": "villa-escalade",
+    "documentNo": "48-4461",
+    "address": "AKARCA MAHALLESİ, 901 (AKR) SOKAK, DIŞ KAPI: 16 C, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-nilda",
+    "documentNo": "48-2915",
+    "address": "GERİŞBURNU MAHALLESİ, 4034 SOKAK, DIŞ KAPI: 5, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-nisa-duo",
+    "documentNo": "48-2720",
+    "address": "GERİŞBURNU MAHALLESİ, 4034 SOKAK, DIŞ KAPI: 5, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-petek-2",
+    "documentNo": "07-9497",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 35 -, İÇ KAPI: -, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-fiyona",
+    "documentNo": "07-9724",
+    "address": "ÜZÜMLÜ MAHALLESİ, ÜZÜMLÜ MERKEZ SOKAK, DIŞ KAPI: 88, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-inci-incir",
+    "documentNo": "07-11276",
+    "address": "ÇAVDIR MAHALLESİ, YUKARI ÇAVDIR SOKAK, DIŞ KAPI: 83 /2, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-simirna",
+    "documentNo": "07-11273",
+    "address": "ÇAVDIR MAHALLESİ, YUKARI ÇAVDIR SOKAK, DIŞ KAPI: 83 /2, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ege",
+    "documentNo": "48-11352",
+    "address": "ÖLÜDENİZ MAHALLESİ, YENİKÖY (OLD) CADDE, DIŞ KAPI: 24, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-tan",
+    "documentNo": "48-7839",
+    "address": "KARAÇULHA MAHALLESİ, 13 (KRC) SOKAK, DIŞ KAPI: 1 /2, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-likya",
+    "documentNo": "48-10385",
+    "address": "GERİŞBURNU MAHALLESİ, 4006 SOKAK, DIŞ KAPI: 2 /1, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-letonya",
+    "documentNo": "48-10386",
+    "address": "GERİŞBURNU MAHALLESİ, 4006 SOKAK, DIŞ KAPI: 2, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-uca-royal-1",
+    "documentNo": "48-10217",
+    "address": "DÖĞER MAHALLESİ, MERKEZ_4 SOKAK, DIŞ KAPI: 46 /1, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-uca-royal-2",
+    "documentNo": "48-11730",
+    "address": "DÖĞER MAHALLESİ, MERKEZ_4 SOKAK, DIŞ KAPI: 46 /1A, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-arslanbey",
+    "documentNo": "07-10057",
+    "address": "ÇAVDIR MAHALLESİ, ÇAVDIR KARABİT SOKAK, DIŞ KAPI: 31 /2, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-norvec",
+    "documentNo": "48-11711",
+    "address": "KARAGEDİK MAHALLESİ, 1502 (KGE) SOKAK, DIŞ KAPI: 46 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-gorkem",
+    "documentNo": "07-9967",
+    "address": "ÇAVDIR MAHALLESİ, ÇAVDIR KARABİT SOKAK, DIŞ KAPI: 31 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nur",
+    "documentNo": "07-10207",
+    "address": "YEŞİLKÖY MAHALLESİ, ÇETİLİK 7 SOKAK, DIŞ KAPI: 10 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-elit",
+    "documentNo": "07-1168",
+    "address": "İSLAMLAR MAHALLESİ, AKBEL SOKAK, DIŞ KAPI: 459 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sari-yaz",
+    "documentNo": "48-11390",
+    "address": "YEŞİLÜZÜMLÜ MAHALLESİ, 206 (YSU) SOKAK, DIŞ KAPI: 2, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-dolasma",
+    "documentNo": "48-8622",
+    "address": "SARIYER MAHALLESİ, TOYBELENİ SOKAK, DIŞ KAPI: 8, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-sarnic-kordere",
+    "documentNo": "07-31335",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI:488 KAŞ / ANTALYA"
+  },
+  {
+    "slug": "villa-yakamoz-ovacik",
+    "documentNo": "48-11630",
+    "address": "ÖLÜDENİZ MAHALLESİ, 141 (OLD) SOKAK, DIŞ KAPI: 5 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-melisa-kiziltas",
+    "documentNo": "07-1957",
+    "address": "KALKAN MAHALLESİ, HARNUP1 SOKAK, DIŞ KAPI: 6, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sehlen-marti",
+    "documentNo": "07-1227",
+    "address": "SARIBELEN MAHALLESİ, DÖŞEME SOKAK, DIŞ KAPI: 36, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sehlen-iskele",
+    "documentNo": "07-1230",
+    "address": "SARIBELEN MAHALLESİ, DÖŞEME SOKAK, DIŞ KAPI: 36 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-alara-islamlar",
+    "documentNo": "07-9194",
+    "address": "İSLAMLAR MAHALLESİ, USTALİLER SOKAK, DIŞ KAPI: 1 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ozgur",
+    "documentNo": "48-558",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT KAYGISEKİ KÜME EVLER, DIŞ KAPI: 57, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-deep-sea-vip",
+    "documentNo": "48-11649",
+    "address": "ÖLÜDENİZ MAHALLESİ, LİKYA (OLD) CADDE, DIŞ KAPI: 11 -1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-adin-cukurbag",
+    "documentNo": "07-9964",
+    "address": "ÇUKURBAĞ MAHALLESİ, PHELLOS SOKAK, DIŞ KAPI: 21, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-seyirtepe-2",
+    "documentNo": "07-1599",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 41 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-tarus-mara",
+    "documentNo": "07-4417",
+    "address": "KALKAN MAHALLESİ, İSTİKLAL CADDE, DIŞ KAPI: 13 /2, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-azra",
+    "documentNo": "48-8820",
+    "address": "ÖLÜDENİZ MAHALLESİ, BADEMLİK (OLD) CADDE, DIŞ KAPI: 28 -2, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-white-house-oludeniz",
+    "documentNo": "48-9463",
+    "address": "ÖLÜDENİZ MAHALLESİ, ELEKLİ (OLD) SOKAK, DIŞ KAPI: 11, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-nefes-oludeniz",
+    "documentNo": "48-8820",
+    "address": "ÖLÜDENİZ MAHALLESİ, BADEMLİK (OLD) CADDE, DIŞ KAPI: 28 -2, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-aden-cukurbag",
+    "documentNo": "07-9869",
+    "address": "ÇUKURBAĞ MAHALLESİ, CEVİZ SOKAK, DIŞ KAPI: 6, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-palya",
+    "documentNo": "07-9827",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 703 /5, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-mars",
+    "documentNo": "48-12029",
+    "address": "KARAÇULHA MAHALLESİ, 129 (KRC) SOKAK, DIŞ KAPI: 9 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-grace",
+    "documentNo": "07-10291",
+    "address": "YEŞİLKÖY MAHALLESİ, HAYITLI CADDE, DIŞ KAPI: 25, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-miray",
+    "documentNo": "48-12118",
+    "address": "ÖLÜDENİZ MAHALLESİ, 86 (OLD) SOKAK, DIŞ KAPI: 7 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-dikili-oludeniz",
+    "documentNo": "48-11099",
+    "address": "ÖLÜDENİZ MAHALLESİ, MAKMARA (OLD) CADDE, DIŞ KAPI: 22 /9, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-nordic-dream",
+    "documentNo": "07-11311",
+    "address": "KALKAN MAHALLESİ, İÇTEPE SOKAK, DIŞ KAPI: 3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-bora-2",
+    "documentNo": "48-5939",
+    "address": "KARAGEDİK MAHALLESİ, 1449 (KGE) SOKAK, DIŞ KAPI: 28 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-cay",
+    "documentNo": "48-11798",
+    "address": "KARGI MAHALLESİ, GÖL (KRG) SOKAK, DIŞ KAPI: 26 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-deep-x",
+    "documentNo": "48-12147",
+    "address": "ÖLÜDENİZ MAHALLESİ, MAKMARA (OLD) CADDE, DIŞ KAPI: 20 İÇ KAPI: 1, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-sirinler",
+    "documentNo": "48-11888",
+    "address": "KUMLUOVA MAHALLESİ, 1007 CADDE, DIŞ KAPI: 12, İÇ KAPI: 2, SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-starlice-1",
+    "documentNo": "07-9800",
+    "address": "ÇAVDIR MAHALLESİ, ÇAVDIR KARABİT SOKAK, DIŞ KAPI: 41, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-eren",
+    "documentNo": "48-11594",
+    "address": "DÖĞER MAHALLESİ, ACAR SOKAK, DIŞ KAPI: 19 /3, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-sirinler-2",
+    "documentNo": "48-11889",
+    "address": "KUMLUOVA MAHALLESİ, 1007 CADDE, DIŞ KAPI: 12, İÇ KAPI: 1, SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-sena-doger",
+    "documentNo": "48-11595",
+    "address": "DÖĞER MAHALLESİ, ACAR SOKAK, DIŞ KAPI: 19 /4, İÇ KAPI: 1, SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-petra",
+    "documentNo": "07-3658",
+    "address": "İSLAMLAR MAHALLESİ, BALCIBAĞ SOKAK, DIŞ KAPI: 18 -, İÇ KAPI: -, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-tepe-evi",
+    "documentNo": "07-2072",
+    "address": "İSLAMLAR MAHALLESİ, USTALİLER SOKAK, DIŞ KAPI: 15 /6, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sunset-1",
+    "documentNo": "07-9358-1",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: , İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-buse-duo",
+    "documentNo": "07-9068",
+    "address": "KALKAN MAHALLESİ, KAVAK SOKAK, DIŞ KAPI: 3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-kayra",
+    "documentNo": "07-2075",
+    "address": "KALKAN MAHALLESİ, HÜRRİYET CADDE, DIŞ KAPI: 84 C, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-waratah",
+    "documentNo": "07-9070",
+    "address": "KALKAN MAHALLESİ, İSTİKLAL CADDE, DIŞ KAPI: 54, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sarnic",
+    "documentNo": "07-2088",
+    "address": "KALKAN MAHALLESİ, KİRAZ SOKAK, DIŞ KAPI: 7 C, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-koybal",
+    "documentNo": "07-2076",
+    "address": "İSLAMLAR MAHALLESİ, USTALİLER SOKAK, DIŞ KAPI: 15 /4, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-likya-avci",
+    "documentNo": "07-9273",
+    "address": "ÇEVRELİ MAHALLESİ, ÇEVRELİ SOKAK, DIŞ KAPI: 88, İÇ KAPI: 1, DEMRE/ANTALYA"
+  },
+  {
+    "slug": "villa-asiyan-1",
+    "documentNo": "48-12046",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT CUMHURİYET KÜME EVLER, DIŞ KAPI: 80 /1, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-asiyan-2",
+    "documentNo": "48-12047",
+    "address": "SÖĞÜT MAHALLESİ, SÖĞÜT CUMHURİYET KÜME EVLER, DIŞ KAPI: 80 /2, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-deep-sea",
+    "documentNo": "48-7958",
+    "address": "ÖLÜDENİZ MAHALLESİ, OVACIK (OLD) CADDE, DIŞ KAPI: 63, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "bungalov-habitat-1",
+    "documentNo": "48-11574",
+    "address": "KARADERE MAHALLESİ, PINARCIK CADDE, DIŞ KAPI: 12, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-gol-1",
+    "documentNo": "48-1270",
+    "address": "BAHÇELİEVLER MAHALLESİ, 227. SOKAK, DIŞ KAPI: 10, İÇ KAPI: 1, ORTACA/MUĞLA"
+  },
+  {
+    "slug": "villa-gol-2",
+    "documentNo": "48-2768",
+    "address": "AKARCA MAHALLESİ, NADİR NADİ (AKR) CADDE, DIŞ KAPI: 38 C, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-starlice-2",
+    "documentNo": "07-9800",
+    "address": "ÇAVDIR MAHALLESİ, ÇAVDIR KARABİT SOKAK, DIŞ KAPI: 41, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ranya-oludeniz",
+    "documentNo": "48-12140",
+    "address": "ÖLÜDENİZ MAHALLESİ, BADEMLİK (OLD) CADDE, DIŞ KAPI: 7 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-bel-la",
+    "documentNo": "48-11654",
+    "address": "İNLİCE MAHALLESİ, DEĞİRMEN (INL) SOKAK, DIŞ KAPI: 1 /4, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-mila",
+    "documentNo": "48-11241",
+    "address": "BEYOBASI MAHALLESİ, 55 NOLU SOKAK, DIŞ KAPI: 28 C, İÇ KAPI: , KÖYCEĞİZ/MUĞLA"
+  },
+  {
+    "slug": "bungalov-kumsal",
+    "documentNo": "07-10623",
+    "address": "KASABA MAHALLESİ, ARISOYLAR SOKAK, DIŞ KAPI: 3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gorgec",
+    "documentNo": "48-12151",
+    "address": "GERİŞBURNU MAHALLESİ, 36 CADDE, DIŞ KAPI: 7, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-isabella",
+    "documentNo": "07-9081",
+    "address": "SARIBELEN MAHALLESİ, KOCAARMUT SOKAK, DIŞ KAPI: 39, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-diva",
+    "documentNo": "48-11395",
+    "address": "ÖLÜDENİZ MAHALLESİ, 201 (OLD) SOKAK, DIŞ KAPI: 1 /1B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-karaagac",
+    "documentNo": "07-9493",
+    "address": "HACIOĞLAN MAHALLESİ, HACIOĞLAN MERKEZ SOKAK, DIŞ KAPI: 50, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-asel-oludeniz",
+    "documentNo": "48-12455",
+    "address": "ÖLÜDENİZ MAHALLESİ, 119 (OLD) SOKAK, DIŞ KAPI: 13 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-likya-koycegiz",
+    "documentNo": "48-10105",
+    "address": "GELİŞİM MAHALLESİ, BAHRİYE ÜÇOK CADDE, DIŞ KAPI: 20, İÇ KAPI: , KÖYCEĞİZ/MUĞLA"
+  },
+  {
+    "slug": "villa-karya-koycegiz",
+    "documentNo": "48-10106",
+    "address": "GELİŞİM MAHALLESİ, BAHRİYE ÜÇOK CADDE, DIŞ KAPI: 22, İÇ KAPI: , KÖYCEĞİZ/MUĞLA"
+  },
+  {
+    "slug": "villa-casaba-ugrar",
+    "documentNo": "48-10857",
+    "address": "UĞRAR MAHALLESİ, AŞAĞI UĞRAR SOKAK, DIŞ KAPI: 47 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "bungalov-habitat-2",
+    "documentNo": "48-11574",
+    "address": "KARADERE MAHALLESİ, PINARCIK CADDE, DIŞ KAPI: 12, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-casaba-ugrar-2",
+    "documentNo": "48-10857",
+    "address": "UĞRAR MAHALLESİ, AŞAĞI UĞRAR SOKAK, DIŞ KAPI: 47 A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-nar-cicegi-2",
+    "documentNo": "07-9667",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 119 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-petek-1",
+    "documentNo": "07-5632",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 35 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "ilgim-apart-1",
+    "documentNo": "48-7966-1",
+    "address": "KARAÇULHA MAHALLESİ, MUSTAFA SEVEROĞLU (KRC) CADDE, DIŞ KAPI: 169, İÇ KAPI: 1, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "ilgim-apart-2",
+    "documentNo": "48-7966-2",
+    "address": "KARAÇULHA MAHALLESİ, MUSTAFA SEVEROĞLU (KRC) CADDE, DIŞ KAPI: 169, İÇ KAPI: 1, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-suit-yin",
+    "documentNo": "07-11475",
+    "address": "BEZİRGAN MAHALLESİ, KÖRDERE SOKAK, DIŞ KAPI: 687, İÇ KAPI: 5, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-istefani",
+    "documentNo": "07-10240",
+    "address": "KARABUCAK MAHALLESİ, BOZDAĞ 26. SOKAK, DIŞ KAPI: 7, İÇ KAPI: 1, DEMRE/ANTALYA"
+  },
+  {
+    "slug": "villa-lena",
+    "documentNo": "48-12849",
+    "address": "BEYOBASI MAHALLESİ, 55 NOLU SOKAK, DIŞ KAPI: 28 D, İÇ KAPI: , KÖYCEĞİZ/MUĞLA"
+  },
+  {
+    "slug": "villa-zenith",
+    "documentNo": "48-13343",
+    "address": "NİF MAHALLESİ, CEBECİ (NIF) SOKAK, DIŞ KAPI: 15 /1A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-majestik",
+    "documentNo": "48-13342",
+    "address": "NİF MAHALLESİ, CEBECİ (NIF) SOKAK, DIŞ KAPI: 15 /1A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-bella-doger",
+    "documentNo": "48-9678",
+    "address": "DÖĞER MAHALLESİ, MERKEZ_4 SOKAK, DIŞ KAPI: 44 /1, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-alina-islamlar",
+    "documentNo": "07-4801",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 115, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-celia",
+    "documentNo": "07-4801",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 115, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-yesim",
+    "documentNo": "07-7863",
+    "address": "KALKAN MAHALLESİ, MİLLİ EGEMENLİK CADDE, DIŞ KAPI: 47 B, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-tahanci-2",
+    "documentNo": "48-7496",
+    "address": "ÖLÜDENİZ MAHALLESİ, SARNIÇ (OLD) CADDE, DIŞ KAPI: 24 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-tahanci-3",
+    "documentNo": "48-13650",
+    "address": "ÖLÜDENİZ MAHALLESİ, SARNIÇ (OLD) CADDE, DIŞ KAPI: 22 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-tahanci-4",
+    "documentNo": "48-13593",
+    "address": "ÖLÜDENİZ MAHALLESİ, SARNIÇ (OLD) CADDE, DIŞ KAPI: 22 B, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-akbulut-3",
+    "documentNo": "07-8433",
+    "address": "PINARBAŞI MAHALLESİ, PINARBAŞI MERKEZ KÜME EVLER, DIŞ KAPI: 12, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-lazuli",
+    "documentNo": "48-1224",
+    "address": "ÖLÜDENİZ MAHALLESİ, 175 (OLD) SOKAK, DIŞ KAPI: 2 K, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-karacabey",
+    "documentNo": "48-11861",
+    "address": "KARAGEDİK MAHALLESİ, 1502 (KGE) SOKAK, DIŞ KAPI: 33 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-son-yaz-1",
+    "documentNo": "07-9647",
+    "address": "ÇUKURBAĞ MAHALLESİ, SALEP SOKAK, DIŞ KAPI: 13, KAŞ / ANTALYA"
+  },
+  {
+    "slug": "villa-son-yaz-2",
+    "documentNo": "07-9706",
+    "address": "ÇUKURBAĞ MAHALLESİ, SALEP SOKAK, DIŞ KAPI: 15, KAŞ / ANTALYA"
+  },
+  {
+    "slug": "villa-zeon",
+    "documentNo": "07-4925",
+    "address": "İSLAMLAR MAHALLESİ, ÖZ SOKAK, DIŞ KAPI: 158, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-gokkusagi",
+    "documentNo": "07-10842",
+    "address": "AKLAR MAHALLESİİ, SAHİL AKLAR SOKAK, DIŞ KAPI: 2, KAŞ / ANTALYA"
+  },
+  {
+    "slug": "villa-deniz-oludeniz",
+    "documentNo": "48-6116",
+    "address": "ÖLÜDENİZ MAHALLESİ, ATATÜRK (OLD) CADDE, DIŞ KAPI: 27 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-health",
+    "documentNo": "07-3812",
+    "address": "SARIBELEN MAHALLESİ, AMBARLARARASI SOKAK, DIŞ KAPI: 121 /7, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-lara",
+    "documentNo": "07-801",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 430, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-lipsos-2",
+    "documentNo": "07-1386",
+    "address": "KALKAN MAHALLESİ, KALKAN MENEKŞE SOKAK, DIŞ KAPI: 18, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-atlas-oludeniz",
+    "documentNo": "48-6116",
+    "address": "ÖLÜDENİZ MAHALLESİ, ATATÜRK (OLD) CADDE, DIŞ KAPI: 27 /1, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-erenbey-2",
+    "documentNo": "48-13460",
+    "address": "YENİ MAHALLESİ, 1203. (YNI) SOKAK, DIŞ KAPI: 16 D, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-loft-islamlar",
+    "documentNo": "07-11461",
+    "address": "İSLAMLAR MAHALLESİ, İSLAMLAR SOKAK, DIŞ KAPI: 5 /1, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-lemon-1",
+    "documentNo": "48-11566",
+    "address": "ÖLÜDENİZ MAHALLESİ, 282 (OLD) SOKAK, DIŞ KAPI: 6 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-lemon-2",
+    "documentNo": "48-11515",
+    "address": "ÖLÜDENİZ MAHALLESİ, 282 (OLD) SOKAK, DIŞ KAPI: 6 /2, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-lemon-3",
+    "documentNo": "48-11516",
+    "address": "ÖLÜDENİZ MAHALLESİ, 282 (OLD) SOKAK, DIŞ KAPI: 6, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-kaya-3",
+    "documentNo": "07-10722",
+    "address": "ÇAVDIR MAHALLESİ, MERKEZ ÇAVDIR SOKAK, DIŞ KAPI: 286, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-eskiagac",
+    "documentNo": "48-10783",
+    "address": "ÖLÜDENİZ MAHALLESİ, KOCAPIYNAR (OLD) CADDE, DIŞ KAPI: 47, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-vionel",
+    "documentNo": "48-502",
+    "address": "KAYAKÖY MAHALLESİ, GEMİLER (KYK) CADDE, DIŞ KAPI: 13 /1, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-doreana",
+    "documentNo": "07-6010",
+    "address": "KALKAN MAHALLESİ, HÜRRİYET CADDE, DIŞ KAPI: 6, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-berfin",
+    "documentNo": "48-13376",
+    "address": "KARAGEDİK MAHALLESİ, 1499 (KGE) SOKAK, DIŞ KAPI: 13 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-oasis-dalaman",
+    "documentNo": "48-2446",
+    "address": "KARAÇALI MAHALLESİ, NENE HATUN CADDE, DIŞ KAPI: 1, İÇ KAPI: , DALAMAN/MUĞLA"
+  },
+  {
+    "slug": "casa-de-piedra-1",
+    "documentNo": "48-11875",
+    "address": "KAYAKÖY MAHALLESİ, NADİR NADİ (KYK) CADDE, DIŞ KAPI: 70, İÇ KAPI: 1, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "casa-de-piedra-2",
+    "documentNo": "48-11572",
+    "address": "KAYAKÖY MAHALLESİ, NADİR NADİ (KYK) CADDE, DIŞ KAPI: 70, İÇ KAPI: 2, FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-prime-1",
+    "documentNo": "48-13132",
+    "address": "ALAÇAT MAHALLESİ, KABAAĞAÇ SOKAK, DIŞ KAPI: 66 /1, SEYDİKEMER / MUĞLA"
+  },
+  {
+    "slug": "villa-prime-2",
+    "documentNo": "48-13133",
+    "address": "ALAÇAT MAHALLESİ, KABAAĞAÇ SOKAK, DIŞ KAPI: 66 /1A, SEYDİKEMER / MUĞLA"
+  },
+  {
+    "slug": "villa-velaris",
+    "documentNo": "07-11209",
+    "address": "İSLAMLAR MAHALLESİ, USTALİLER SOKAK, DIŞ KAPI: 15 /3, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-beyaz",
+    "documentNo": "07-2090",
+    "address": "KALKAN MAHALLESİ, KİRAZ SOKAK, DIŞ KAPI: 15, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-leyla-duo",
+    "documentNo": "07-10895",
+    "address": "BEZİRGAN MAHALLESİ, ORDU VE SARNIÇBAŞI SOKAK, DIŞ KAPI: 539 /4B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sunrise-demre",
+    "documentNo": "07-11686",
+    "address": "GÜRSES MAHALLESİ, GÜRSES/1 SOKAK, DIŞ KAPI: 1, İÇ KAPI: , DEMRE/ANTALYA"
+  },
+  {
+    "slug": "villa-belenardi",
+    "documentNo": "07-11944",
+    "address": "BELENLİ MAHALLESİ, BELENLİ AĞALAR SOKAK, DIŞ KAPI: 15 /4A, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ilgin-oludeniz",
+    "documentNo": "48-1812",
+    "address": "ÖLÜDENİZ MAHALLESİ, 279 (OLD) SOKAK, DIŞ KAPI: 7 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-agoras-1",
+    "documentNo": "48-11832",
+    "address": "KARGI MAHALLESİ, GÖL (KRG) SOKAK, DIŞ KAPI: 26 /1B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-kaya-4",
+    "documentNo": "07-10723",
+    "address": "ÇAVDIR MAHALLESİ, MERKEZ ÇAVDIR SOKAK, DIŞ KAPI: 285, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "bungalov-avokado-1",
+    "documentNo": "48-10740",
+    "address": "KARGI MAHALLESİ, MENEKŞE (KRG) SOKAK, DIŞ KAPI: 18, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "bungalov-avokado-2",
+    "documentNo": "48-10741",
+    "address": "KARGI MAHALLESİ, MENEKŞE (KRG) SOKAK, DIŞ KAPI: 10 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "bungalov-avokado-3",
+    "documentNo": "48-10742",
+    "address": "KARGI MAHALLESİ, MENEKŞE (KRG) SOKAK, DIŞ KAPI: 10 /2, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "bungalov-avokado-4",
+    "documentNo": "48-10743",
+    "address": "KARGI MAHALLESİ, MENEKŞE (KRG) SOKAK, DIŞ KAPI: 11, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "bungalov-avokado-5",
+    "documentNo": "48-10744",
+    "address": "KARGI MAHALLESİ, MENEKŞE (KRG) SOKAK, DIŞ KAPI: 11 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-fiesta-6",
+    "documentNo": "48-12758",
+    "address": "ÖLÜDENİZ MAHALLESİ, 139 (OLD) SOKAK, DIŞ KAPI: 6, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-frame-house",
+    "documentNo": "48-2500",
+    "address": "HİSARÖNÜ MAHALLESİ, DEĞİRMENYANI ÇAYIROVA KÜME EVLER, DIŞ KAPI: 43 /1, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-violet-duo",
+    "documentNo": "07-2815",
+    "address": "YEŞİLKÖY MAHALLESİ, ÇETİLİK 7 SOKAK, DIŞ KAPI: 8 B, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-sky-life-a",
+    "documentNo": "48-13870",
+    "address": "ÖLÜDENİZ MAHALLESİ, KIZ KUYUSU (OLD) CADDE, DIŞ KAPI: 12 /1B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-marine-ulugol",
+    "documentNo": "07-5749",
+    "address": "BEZİRGAN MAHALLESİ, ULUGÖL SOKAK, DIŞ KAPI: 777, İÇ KAPI: , KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-puzzle",
+    "documentNo": "07-11689",
+    "address": "BEZİRGAN MAHALLESİ, ULUGÖL SOKAK, DIŞ KAPI: 788 /7, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-dicle",
+    "documentNo": "07-10495",
+    "address": "KALKAN MAHALLESİ, ÇİTLENBİK SOKAK, DIŞ KAPI: 5, İÇ KAPI: 1, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-ece-duo",
+    "documentNo": "07-1731",
+    "address": "KALKAN MAHALLESİ, ÇİTLENBİK SOKAK, DIŞ KAPI: 5, İÇ KAPI: 2, KAŞ/ANTALYA"
+  },
+  {
+    "slug": "villa-oscar-1",
+    "documentNo": "48-13898",
+    "address": "ÖLÜDENİZ MAHALLESİ, ALİ ONBAŞI (OLD) CADDE, DIŞ KAPI: 5 C, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-oscar-2",
+    "documentNo": "48-13703",
+    "address": "ÖLÜDENİZ MAHALLESİ, ALİ ONBAŞI (OLD) CADDE, DIŞ KAPI: 5 C, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-sole",
+    "documentNo": "48-6682",
+    "address": "KARAAĞAÇ MAHALLESİ, KİRME (KRA) SOKAK, DIŞ KAPI: 50 /1, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-luna-kirme",
+    "documentNo": "48-6121",
+    "address": "KARAAĞAÇ MAHALLESİ, KİRME (KRA) SOKAK, DIŞ KAPI: 50 /1A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-holiday",
+    "documentNo": "48-5007",
+    "address": "GERİŞBURNU MAHALLESİ, 4052 SOKAK, DIŞ KAPI: 5 /1, İÇ KAPI: , SEYDİKEMER/MUĞLA"
+  },
+  {
+    "slug": "villa-mare-perla",
+    "documentNo": "48-13472",
+    "address": "CAMİAVLU MAHALLESİ, 537 SOKAK, DIŞ KAPI: 8 A, İÇ KAPI: , MARMARİS/MUĞLA"
+  },
+  {
+    "slug": "villa-prestige-1-oludeniz",
+    "documentNo": "48-13690",
+    "address": "ÖLÜDENİZ MAHALLESİ, 340 (OLD) SOKAK, DIŞ KAPI: 2 B, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-prestige-2-oludeniz",
+    "documentNo": "48-13751",
+    "address": "ÖLÜDENİZ MAHALLESİ, 340 (OLD) SOKAK, DIŞ KAPI: 2 A, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-izci-oludeniz",
+    "documentNo": "48-7444",
+    "address": "ÖLÜDENİZ MAHALLESİ, ERBAŞLAR (OLD) CADDE, DIŞ KAPI: 5, İÇ KAPI: , FETHİYE/MUĞLA"
+  },
+  {
+    "slug": "villa-bella-oludeniz",
+    "documentNo": "48-5234",
+    "address": "ÖLÜDENİZ MAHALLESİ, 281 (OLD) SOKAK, DIŞ KAPI: 16 -5, FETHİYE / MUĞLA"
+  },
+  {
+    "slug": "villa-beyaz-islamlar",
+    "documentNo": "07-4095",
+    "address": "İSLAMLAR MAHALLESİ, AKÇABELEN SOKAK, DIŞ KAPI: 33 B, KAŞ / ANTALYA"
+  },
+  {
+    "slug": "villa-hasbel",
+    "documentNo": "48-13762",
+    "address": "FOÇA MAHALLESİ, 1040/1 (FCA) SOKAK, DIŞ KAPI: 4, İÇ KAPI: , FETHİYE/MUĞLA"
+  }
+]

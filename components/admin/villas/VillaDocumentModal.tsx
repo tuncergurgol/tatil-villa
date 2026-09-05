@@ -1,16 +1,32 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
 import Image from "next/image";
-import { FileText, Save, Trash2, UploadCloud, X } from "lucide-react";
+import { FileText, Save, ShieldCheck, Trash2, UploadCloud, X } from "lucide-react";
 import { uploadCompanyAsset } from "@/app/actions/admin/company-assets";
 import {
-  clearVillaDocument,
   getVillaDocumentData,
   saveVillaDocument,
+  verifyVillaKonutBelge,
   type VillaDocumentActionState,
 } from "@/app/actions/admin/villa-document";
-import { TOURISM_DOCUMENT_TYPES } from "@/lib/villa-document-types";
+import {
+  formatKonutBelgeCheckLabel,
+  type KonutBelgeCheckStatus,
+} from "@/lib/konut-belge-check";
+import {
+  hasVillaTourismDocument,
+  inferKonutBelgesiType,
+  resolveVillaDocumentType,
+  TOURISM_DOCUMENT_TYPES,
+} from "@/lib/villa-document-types";
 import type { TourismDocumentType } from "@prisma/client";
 
 interface VillaDocumentModalProps {
@@ -35,11 +51,17 @@ export default function VillaDocumentModal({
   const [roomCapacity, setRoomCapacity] = useState("");
   const [bedCapacity, setBedCapacity] = useState("");
   const [documentNo, setDocumentNo] = useState("");
+  const [hadDocumentInitially, setHadDocumentInitially] = useState(false);
+  const [askShowInSearch, setAskShowInSearch] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [clearError, setClearError] = useState<string | null>(null);
+  const [checkStatus, setCheckStatus] = useState<KonutBelgeCheckStatus | null>(
+    null
+  );
+  const [checkMessage, setCheckMessage] = useState<string | null>(null);
   const [isUploading, startUpload] = useTransition();
-  const [isClearing, startClear] = useTransition();
+  const [isChecking, startCheck] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  const pendingFormDataRef = useRef<FormData | null>(null);
 
   const [state, formAction, pending] = useActionState<
     VillaDocumentActionState,
@@ -59,13 +81,23 @@ export default function VillaDocumentModal({
           setLoadError("Villa bulunamadı");
           return;
         }
-        setDocumentType(data.documentType ?? "");
+        const loadedDocumentNo = data.documentNo ?? "";
+        const loadedType =
+          resolveVillaDocumentType(loadedDocumentNo, data.documentType) ?? "";
+
+        setDocumentType(loadedType);
         setOwnerName(data.documentOwnerName);
         setAddress(data.documentAddress);
         setRoomCapacity(String(data.documentRoomCapacity ?? ""));
         setBedCapacity(String(data.documentBedCapacity ?? ""));
         setDocumentImageUrl(data.documentImageUrl);
-        setDocumentNo(data.documentNo);
+        setDocumentNo(loadedDocumentNo);
+        setHadDocumentInitially(
+          hasVillaTourismDocument({
+            documentNo: loadedDocumentNo,
+            documentType: data.documentType,
+          })
+        );
       } catch {
         if (!cancelled) setLoadError("Belge bilgileri yüklenemedi");
       } finally {
@@ -78,6 +110,49 @@ export default function VillaDocumentModal({
       cancelled = true;
     };
   }, [villaId]);
+
+  function handleDocumentNoChange(value: string) {
+    setDocumentNo(value);
+    setCheckStatus(null);
+    setCheckMessage(null);
+    if (inferKonutBelgesiType(value)) {
+      setDocumentType("KONUT_BELGESI");
+    }
+  }
+
+  function canCheckDocument() {
+    if (!documentNo.trim()) return false;
+    return resolveVillaDocumentType(documentNo, documentType || null) === "KONUT_BELGESI";
+  }
+
+  function handleDocumentCheck() {
+    const normalizedDocumentNo = documentNo.trim();
+    if (!normalizedDocumentNo) {
+      window.alert("Belge no giriniz.");
+      return;
+    }
+
+    if (!canCheckDocument()) {
+      window.alert("Belge kontrolü yalnızca Konut Belgesi (7464 S.K.) için yapılır.");
+      return;
+    }
+
+    startCheck(async () => {
+      setCheckStatus(null);
+      setCheckMessage(null);
+      try {
+        const result = await verifyVillaKonutBelge(normalizedDocumentNo);
+        setCheckStatus(result.status);
+        setCheckMessage(
+          result.errorMessage ??
+            `${formatKonutBelgeCheckLabel(result.status)} — ${result.checkUrl}`
+        );
+      } catch {
+        setCheckStatus("ERROR");
+        setCheckMessage("Belge kontrolü yapılamadı.");
+      }
+    });
+  }
 
   useEffect(() => {
     if (state.success) {
@@ -103,23 +178,122 @@ export default function VillaDocumentModal({
     });
   }
 
-  function handleClear() {
-    if (!window.confirm("Turizm izin belgesi bilgileri temizlensin mi?")) return;
-    setClearError(null);
-    startClear(async () => {
-      const result = await clearVillaDocument(villaId);
-      if (result.error) {
-        setClearError(result.error);
-        return;
-      }
-      onSaved?.();
-      onClose();
-    });
+  function handleClearDocumentForm() {
+    if (
+      !window.confirm(
+        "Formdaki tüm belge bilgileri silinsin mi? Kaydet ile boş olarak saklayabilirsiniz."
+      )
+    ) {
+      return;
+    }
+
+    setDocumentType("");
+    setDocumentNo("");
+    setOwnerName("");
+    setAddress("");
+    setRoomCapacity("");
+    setBedCapacity("");
+    setDocumentImageUrl("");
+    setUploadError(null);
+    setCheckStatus(null);
+    setCheckMessage(null);
+    setAskShowInSearch(false);
+    pendingFormDataRef.current = null;
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
+  }
+
+  function isEmptyDocumentDraft() {
+    return (
+      !documentType &&
+      !documentNo.trim() &&
+      !ownerName.trim() &&
+      !address.trim() &&
+      !documentImageUrl.trim() &&
+      !roomCapacity.trim() &&
+      !bedCapacity.trim()
+    );
+  }
+
+  function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const willHaveDocument = !isEmptyDocumentDraft();
+
+    if (!hadDocumentInitially && willHaveDocument) {
+      pendingFormDataRef.current = formData;
+      setAskShowInSearch(true);
+      return;
+    }
+
+    formAction(formData);
+  }
+
+  function confirmShowInSearch(enable: boolean) {
+    const formData = pendingFormDataRef.current;
+    if (!formData) {
+      setAskShowInSearch(false);
+      return;
+    }
+
+    formData.set("applyShowInSearch", "true");
+    formData.set("showInSearch", enable ? "true" : "false");
+    pendingFormDataRef.current = null;
+    setAskShowInSearch(false);
+    formAction(formData);
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+      <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        {askShowInSearch ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/35 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-base font-bold text-gray-900">
+                Arama alanında görünür olsun mu?
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Belge No eklendi. Bu villayı{" "}
+                <span className="font-semibold text-gray-800">
+                  Arama Alanında Görünür
+                </span>{" "}
+                yapmak ister misiniz?
+              </p>
+              <div className="mt-5 flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmShowInSearch(false)}
+                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+                  >
+                    Hayır — Pasif kalsın
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => confirmShowInSearch(true)}
+                    className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    Evet — Aktif olsun
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    pendingFormDataRef.current = null;
+                    setAskShowInSearch(false);
+                  }}
+                  className="text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-60"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold text-gray-900">
@@ -127,12 +301,12 @@ export default function VillaDocumentModal({
             </h2>
             <button
               type="button"
-              onClick={handleClear}
-              disabled={isClearing || loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+              onClick={handleDocumentCheck}
+              disabled={isChecking || loading || !canCheckDocument()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              Temizle
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {isChecking ? "Kontrol..." : "Belge Kontrol"}
             </button>
           </div>
           <button
@@ -153,19 +327,39 @@ export default function VillaDocumentModal({
             {loadError}
           </div>
         ) : (
-          <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+          <form
+            action={formAction}
+            onSubmit={handleFormSubmit}
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <input type="hidden" name="villaId" value={villaId} />
             <input type="hidden" name="documentImageUrl" value={documentImageUrl} />
-            <input type="hidden" name="documentNo" value={documentNo} />
 
             <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
               <p className="text-sm text-gray-500">{villaName}</p>
 
-              {(state.error || clearError || uploadError) && (
+              {(state.error || uploadError) && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                  {state.error || clearError || uploadError}
+                  {state.error || uploadError}
                 </div>
               )}
+
+              {checkStatus ? (
+                <div
+                  className={`rounded-xl border px-4 py-3 text-sm ${
+                    checkStatus === "VALID"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-rose-200 bg-rose-50 text-rose-800"
+                  }`}
+                >
+                  <p className="font-semibold">
+                    {formatKonutBelgeCheckLabel(checkStatus)}
+                  </p>
+                  {checkMessage ? (
+                    <p className="mt-1 text-xs opacity-90">{checkMessage}</p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <section>
                 <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">
@@ -177,7 +371,6 @@ export default function VillaDocumentModal({
                   </span>
                   <select
                     name="documentType"
-                    required
                     value={documentType}
                     onChange={(e) =>
                       setDocumentType(e.target.value as TourismDocumentType)
@@ -192,11 +385,24 @@ export default function VillaDocumentModal({
                     ))}
                   </select>
                 </label>
+
+                <label className="mt-4 block">
+                  <span className="text-sm font-medium text-gray-700">
+                    Belge No
+                  </span>
+                  <input
+                    name="documentNo"
+                    value={documentNo}
+                    onChange={(event) => handleDocumentNoChange(event.target.value)}
+                    placeholder="Örn. 48-2113"
+                    className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </label>
               </section>
 
               <section>
                 <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">
-                  Tesis & Sahip Bilgileri
+                  Ev & Sahip Bilgileri
                 </h3>
                 <div className="space-y-4">
                   <label className="block">
@@ -205,7 +411,6 @@ export default function VillaDocumentModal({
                     </span>
                     <input
                       name="documentOwnerName"
-                      required
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
                       className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -214,11 +419,10 @@ export default function VillaDocumentModal({
 
                   <label className="block">
                     <span className="text-sm font-medium text-gray-700">
-                      Tesis Adresi
+                      Ev Adresi
                     </span>
                     <input
                       name="documentAddress"
-                      required
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -234,7 +438,6 @@ export default function VillaDocumentModal({
                         name="documentRoomCapacity"
                         type="number"
                         min={0}
-                        required
                         value={roomCapacity}
                         onChange={(e) => setRoomCapacity(e.target.value)}
                         className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -248,7 +451,6 @@ export default function VillaDocumentModal({
                         name="documentBedCapacity"
                         type="number"
                         min={0}
-                        required
                         value={bedCapacity}
                         onChange={(e) => setBedCapacity(e.target.value)}
                         className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -315,9 +517,7 @@ export default function VillaDocumentModal({
             <div className="flex gap-3 border-t border-gray-100 px-6 py-4">
               <button
                 type="button"
-                onClick={() => {
-                  setDocumentImageUrl("");
-                }}
+                onClick={handleClearDocumentForm}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-100"
               >
                 <Trash2 className="h-4 w-4" />

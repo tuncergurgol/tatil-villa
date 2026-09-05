@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { PoolMeasureUnit } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 export type VillaPoolActionState = {
   error?: string;
@@ -16,8 +17,8 @@ function parseFloatField(value: FormDataEntryValue | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function revalidateVillaEdit(villaId: string) {
-  revalidatePath(`/admin/villalar/${villaId}/duzenle`);
+async function revalidateVillaEdit(villaId: string) {
+  await revalidateVillaEditPage(villaId);
   revalidatePath("/admin/villalar");
 }
 
@@ -56,7 +57,46 @@ export async function createVillaPool(
     },
   });
 
-  revalidateVillaEdit(villaId);
+  await revalidateVillaEdit(villaId);
+  return { success: true };
+}
+
+export async function updateVillaPool(
+  formData: FormData
+): Promise<VillaPoolActionState> {
+  await requireAdmin();
+
+  const poolId = String(formData.get("poolId") ?? "");
+  const villaId = String(formData.get("villaId") ?? "");
+  if (!poolId || !villaId) return { error: "Havuz bulunamadı" };
+
+  const pool = await prisma.villaPool.findFirst({
+    where: { id: poolId, villaId },
+    select: { id: true },
+  });
+  if (!pool) return { error: "Havuz bulunamadı" };
+
+  const measureUnit = String(
+    formData.get("measureUnit") ?? "M"
+  ) as PoolMeasureUnit;
+  const heated = formData.get("heated") === "true";
+  const conservative = formData.get("conservative") === "true";
+
+  await prisma.villaPool.update({
+    where: { id: poolId },
+    data: {
+      measureUnit,
+      width: parseFloatField(formData.get("width")),
+      length: parseFloatField(formData.get("length")),
+      depth: parseFloatField(formData.get("depth")),
+      poolType: String(formData.get("poolType") ?? ""),
+      purificationMethod: String(formData.get("purificationMethod") ?? ""),
+      heated,
+      conservative,
+    },
+  });
+
+  await revalidateVillaEdit(villaId);
   return { success: true };
 }
 
@@ -73,6 +113,6 @@ export async function deleteVillaPool(
   if (!pool) return { error: "Havuz bulunamadı" };
 
   await prisma.villaPool.delete({ where: { id: poolId } });
-  revalidateVillaEdit(villaId);
+  await revalidateVillaEdit(villaId);
   return { success: true };
 }
