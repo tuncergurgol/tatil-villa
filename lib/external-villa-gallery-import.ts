@@ -17,6 +17,7 @@ async function downloadImage(url: string) {
   const isDrive =
     /drive\.google\.com|googleusercontent\.com/i.test(url) ||
     /[?&]id=[a-zA-Z0-9_-]+/.test(url);
+  const isTatildekirala = /tatildekirala\.com/i.test(url);
   const response = await fetch(url, {
     headers: {
       "User-Agent":
@@ -24,7 +25,9 @@ async function downloadImage(url: string) {
       Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
       Referer: isDrive
         ? "https://drive.google.com/"
-        : "https://www.villareyonu.com/",
+        : isTatildekirala
+          ? "https://www.tatildekirala.com/"
+          : "https://www.villareyonu.com/",
     },
     redirect: "follow",
   });
