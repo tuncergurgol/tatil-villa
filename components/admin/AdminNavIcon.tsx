@@ -11,6 +11,7 @@ import {
   Car,
   Compass,
   FileCheck2,
+  Film,
   Home,
   Import,
   ListTree,
@@ -55,6 +56,7 @@ const iconMap: Record<AdminNavIcon, LucideIcon> = {
   megaphone: Megaphone,
   phone: Phone,
   bot: Bot,
+  film: Film,
 };
 
 export default function AdminNavIcon({

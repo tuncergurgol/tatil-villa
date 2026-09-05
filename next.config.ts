@@ -17,7 +17,13 @@ const nextConfig: NextConfig = {
     "node-ical",
     "pdfkit",
     "fontkit",
+    "ffmpeg-static",
   ],
+  outputFileTracingIncludes: {
+    "/api/admin/instagram-story/video": [
+      "./node_modules/ffmpeg-static/**/*",
+    ],
+  },
   outputFileTracingExcludes: {
     "*": ["public/uploads/**"],
   },

@@ -23,7 +23,8 @@ export type AdminNavIcon =
   | "chart"
   | "megaphone"
   | "phone"
-  | "bot";
+  | "bot"
+  | "film";
 
 export interface NavLink {
   label: string;
@@ -187,6 +188,11 @@ export const adminNavSections: NavSection[] = [
         label: "Facebook Lead",
         href: "/admin/pazarlama/facebook-lead",
         icon: "megaphone",
+      },
+      {
+        label: "Instagram Story",
+        href: "/admin/pazarlama/instagram-story",
+        icon: "film",
       },
     ],
   },
