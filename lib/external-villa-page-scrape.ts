@@ -3744,6 +3744,40 @@ function parseMinStayFromPriceTexts(
   return null;
 }
 
+/**
+ * Villavillam API `dailyPrice`/`fiyat` zaten indirimli nihai fiyattır.
+ * `oran` ile tekrar indirim uygulanmasın diye liste fiyatına geri çevir.
+ * Yuvarlama: calculateDiscountAmounts ile aynı sonucu veren adayı seç
+ * (ör. 7249 + %19 → 8950, yalnızca Math.round(7249/0.81)=8949 olmaz).
+ */
+function reverseVillavillamListPrice(
+  discountedPrice: number,
+  discount1Rate: number
+): number {
+  const discounted = Math.round(discountedPrice);
+  const factor = 1 - discount1Rate / 100;
+  if (!(discounted > 0 && factor > 0 && factor < 1)) return discounted;
+  const exact = discounted / factor;
+  const seeds = [Math.ceil(exact), Math.round(exact), Math.floor(exact)];
+  for (let delta = 0; delta <= 5; delta++) {
+    const pool =
+      delta === 0
+        ? seeds
+        : seeds.flatMap((seed) => [seed + delta, seed - delta]);
+    for (const candidate of pool) {
+      if (!Number.isFinite(candidate) || candidate <= 0) continue;
+      const { discountedNightlyPrice } = calculateDiscountAmounts(
+        candidate,
+        discount1Rate,
+        0,
+        0
+      );
+      if (discountedNightlyPrice === discounted) return candidate;
+    }
+  }
+  return Math.round(exact);
+}
+
 export function parseVillavillamPriceList(
   rows: unknown[],
   currency: VillaPeriodCurrency,
@@ -3781,6 +3815,21 @@ export function parseVillavillamPriceList(
     const oran = Number(o.oran);
     const discount1Rate =
       Number.isFinite(oran) && oran > 0 && oran < 100 ? Math.round(oran) : null;
+
+    // Villavillam `dailyPrice` / `fiyat` zaten indirimli nihai fiyattır.
+    // `oran` ile birlikte tekrar indirim uygulanırsa çift kesinti olur
+    // (ör. 7249 + %19 → 5872). Liste fiyatına geri çevir.
+    if (discount1Rate != null) {
+      nightlyPrice = reverseVillavillamListPrice(nightlyPrice, discount1Rate);
+    }
+
+    let weeklyPrice: number | undefined =
+      Number.isFinite(gece) && gece === 7 && Number.isFinite(packagePrice)
+        ? Math.round(packagePrice)
+        : undefined;
+    if (weeklyPrice != null && discount1Rate != null) {
+      weeklyPrice = reverseVillavillamListPrice(weeklyPrice, discount1Rate);
+    }
 
     const cleaningFee = Number(
       o.temizlikFiyat ?? o.temizlikfiyat ?? o.temizlik_fiyat
@@ -3830,10 +3879,7 @@ export function parseVillavillamPriceList(
         endDate,
         nightlyPrice,
         currency,
-        weeklyPrice:
-          Number.isFinite(gece) && gece === 7 && Number.isFinite(packagePrice)
-            ? packagePrice
-            : undefined,
+        weeklyPrice,
         minStayNights:
           parseMinStayFromPriceTexts(
             typeof o.subTitle === "string" ? o.subTitle : null,

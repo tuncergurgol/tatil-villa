@@ -157,6 +157,34 @@ assert.equal(villaekstraPeriods[0]?.damageDeposit, 2500);
 assert.equal(villaekstraPeriods[1]?.nightlyPrice, 11250);
 assert.equal(villaekstraPeriods[1]?.minStayNights, 3);
 
+// Villavillam: dailyPrice zaten indirimli; oran ile liste fiyatına çevrilmeli
+const villavillamDiscounted = parseVillavillamPriceList(
+  [
+    {
+      tarih1: "2026-09-10",
+      tarih2: "2026-09-14",
+      dailyPrice: 7249,
+      oran: 19,
+      Symbol: "₺",
+    },
+    {
+      tarih1: "2026-09-18",
+      tarih2: "2026-09-28",
+      dailyPrice: 6525,
+      oran: 10,
+      Symbol: "₺",
+    },
+  ],
+  "TL",
+  null
+);
+assert.equal(villavillamDiscounted[0]?.nightlyPrice, 8950);
+assert.equal(villavillamDiscounted[0]?.discount1Rate, 19);
+assert.equal(villavillamDiscounted[0]?.discountedNightlyPrice, 7249);
+assert.equal(villavillamDiscounted[1]?.nightlyPrice, 7250);
+assert.equal(villavillamDiscounted[1]?.discount1Rate, 10);
+assert.equal(villavillamDiscounted[1]?.discountedNightlyPrice, 6525);
+
 const villacim = await scrapeExternalVillaPage(
   "https://www.villacim.com.tr/villa-tuana-kayakoy"
 );
