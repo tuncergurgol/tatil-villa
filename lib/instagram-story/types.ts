@@ -45,3 +45,12 @@ export type InstagramStoryVillaPayload = {
   logoUrl: string;
   accentColor: string;
 };
+
+export type InstagramStorySiteOption = {
+  key: "tatildeyiz" | "balayi-villacisi" | "tatil-villacisi";
+  label: string;
+  domain: string;
+  logoUrl: string;
+  accentColor: string;
+  ctaLabel: string;
+};

@@ -1,4 +1,5 @@
 import { composeInstagramStoryFrame } from "@/lib/instagram-story/compose";
+import { resolveInstagramStorySite } from "@/lib/instagram-story/sites";
 import { renderInstagramStoryVideo } from "@/lib/instagram-story/video";
 import {
   readPublicAssetBuffer,
@@ -10,11 +11,15 @@ import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
 export type GenerateInstagramStoryInput = {
   villaId: string;
   imageUrls: string[];
+  siteKey?: string;
   tagline?: string;
   meta?: string;
   location?: string;
   ctaLabel?: string;
   secondsPerSlide?: number;
+  musicBuffer?: Buffer | null;
+  musicExt?: string;
+  musicVolume?: number;
 };
 
 function assertOwnedImage(url: string, allowed: Set<string>) {
@@ -30,7 +35,10 @@ export async function generateInstagramStoryStills(
   slides: InstagramStorySlideResult[];
   frames: Buffer[];
 }> {
-  const villa = await getInstagramStoryVilla(input.villaId);
+  const [villa, site] = await Promise.all([
+    getInstagramStoryVilla(input.villaId),
+    resolveInstagramStorySite(input.siteKey),
+  ]);
   if (!villa) throw new Error("Villa bulunamadı");
 
   const imageUrls = input.imageUrls
@@ -44,9 +52,10 @@ export async function generateInstagramStoryStills(
   const allowed = new Set(villa.images);
   for (const url of imageUrls) assertOwnedImage(url, allowed);
 
-  const logoBuffer = villa.logoUrl
-    ? await readPublicAssetBuffer(villa.logoUrl)
-    : null;
+  const logoUrl = site.logoUrl || villa.logoUrl;
+  const logoBuffer = logoUrl ? await readPublicAssetBuffer(logoUrl) : null;
+  const accentColor = site.accentColor || villa.accentColor;
+  const defaultCta = site.ctaLabel || villa.defaultCta;
 
   const frames: Buffer[] = [];
   const slides: InstagramStorySlideResult[] = [];
@@ -66,8 +75,8 @@ export async function generateInstagramStoryStills(
       meta: (input.meta ?? villa.defaultMeta).trim() || villa.defaultMeta,
       tagline:
         (input.tagline ?? villa.defaultTagline).trim() || villa.defaultTagline,
-      ctaLabel: (input.ctaLabel ?? villa.defaultCta).trim() || villa.defaultCta,
-      accentColor: villa.accentColor,
+      ctaLabel: (input.ctaLabel ?? defaultCta).trim() || defaultCta,
+      accentColor,
     });
 
     frames.push(frame);
@@ -89,6 +98,9 @@ export async function generateInstagramStoryVideoBuffer(
   const { villaName, frames } = await generateInstagramStoryStills(input);
   const buffer = await renderInstagramStoryVideo(frames, {
     secondsPerSlide: input.secondsPerSlide,
+    musicBuffer: input.musicBuffer,
+    musicExt: input.musicExt,
+    musicVolume: input.musicVolume,
   });
   const slug = slugifyTurkish(villaName) || "villa";
   return {

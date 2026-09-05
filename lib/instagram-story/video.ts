@@ -56,7 +56,6 @@ async function renderSlideClip(options: {
     ? "min(1+0.0015*on,1.1)"
     : "if(eq(on,1),1.1,max(1.1-0.0015*on,1))";
 
-  // Tek slayt: düşük bellek (2x upscale yok), ultrafast encode
   await runFfmpeg([
     "-y",
     "-loop",
@@ -80,13 +79,59 @@ async function renderSlideClip(options: {
   ]);
 }
 
+async function muxMusicOntoVideo(options: {
+  videoPath: string;
+  musicPath: string;
+  outPath: string;
+  durationSec: number;
+  volume: number;
+}): Promise<void> {
+  const volume = Math.min(1, Math.max(0.05, options.volume));
+  const fadeOutStart = Math.max(0.5, options.durationSec - 2);
+  const audioFilter = `[1:a]volume=${volume.toFixed(3)},afade=t=in:st=0:d=1.2,afade=t=out:st=${fadeOutStart.toFixed(2)}:d=2[a]`;
+
+  await runFfmpeg([
+    "-y",
+    "-i",
+    options.videoPath,
+    "-stream_loop",
+    "-1",
+    "-i",
+    options.musicPath,
+    "-filter_complex",
+    audioFilter,
+    "-map",
+    "0:v:0",
+    "-map",
+    "[a]",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-shortest",
+    "-movflags",
+    "+faststart",
+    options.outPath,
+  ]);
+}
+
+export type RenderInstagramStoryVideoOptions = {
+  secondsPerSlide?: number;
+  fps?: number;
+  musicBuffer?: Buffer | null;
+  musicExt?: string;
+  musicVolume?: number;
+};
+
 /**
  * Instagram Story (9:16) MP4.
- * Slaytlar sırayla encode edilir, sonra concat — 8 görselde bellek/timeout patlamaz.
+ * Slaytlar sırayla encode edilir, sonra concat; isteğe bağlı müzik eklenir.
  */
 export async function renderInstagramStoryVideo(
   frames: Buffer[],
-  options?: { secondsPerSlide?: number; fps?: number }
+  options?: RenderInstagramStoryVideoOptions
 ): Promise<Buffer> {
   if (frames.length === 0) {
     throw new Error("Video için en az bir kare gerekli");
@@ -122,35 +167,55 @@ export async function renderInstagramStoryVideo(
       clipPaths.push(clipPath);
     }
 
-    const outPath = path.join(workDir, "story.mp4");
+    const silentPath = path.join(workDir, "silent.mp4");
 
     if (clipPaths.length === 1) {
-      return readFile(clipPaths[0]!);
+      await writeFile(silentPath, await readFile(clipPaths[0]!));
+    } else {
+      const listPath = path.join(workDir, "concat.txt");
+      const listBody = clipPaths
+        .map((clip) => `file '${clip.replace(/\\/g, "/")}'`)
+        .join("\n");
+      await writeFile(listPath, listBody, "utf8");
+
+      await runFfmpeg([
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        listPath,
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        silentPath,
+      ]);
     }
 
-    // Concat demuxer — hard cut (hızlı, güvenilir)
-    const listPath = path.join(workDir, "concat.txt");
-    const listBody = clipPaths
-      .map((clip) => `file '${clip.replace(/\\/g, "/")}'`)
-      .join("\n");
-    await writeFile(listPath, listBody, "utf8");
+    const musicBuffer = options?.musicBuffer;
+    if (!musicBuffer || musicBuffer.length === 0) {
+      return readFile(silentPath);
+    }
 
-    await runFfmpeg([
-      "-y",
-      "-f",
-      "concat",
-      "-safe",
-      "0",
-      "-i",
-      listPath,
-      "-c",
-      "copy",
-      "-movflags",
-      "+faststart",
-      outPath,
-    ]);
+    const ext = (options.musicExt || ".mp3").toLowerCase();
+    const safeExt = [".mp3", ".m4a", ".aac", ".wav", ".ogg"].includes(ext)
+      ? ext
+      : ".mp3";
+    const musicPath = path.join(workDir, `music${safeExt}`);
+    const withMusicPath = path.join(workDir, "story-with-music.mp4");
+    await writeFile(musicPath, musicBuffer);
 
-    return readFile(outPath);
+    await muxMusicOntoVideo({
+      videoPath: silentPath,
+      musicPath,
+      outPath: withMusicPath,
+      durationSec: frames.length * secondsPerSlide,
+      volume: options?.musicVolume ?? 0.35,
+    });
+
+    return readFile(withMusicPath);
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => undefined);
   }

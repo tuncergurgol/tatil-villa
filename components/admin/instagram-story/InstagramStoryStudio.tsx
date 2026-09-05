@@ -8,6 +8,7 @@ import {
   Film,
   ImageIcon,
   Loader2,
+  Music2,
   Search,
   Sparkles,
   X,
@@ -16,6 +17,7 @@ import {
   generateInstagramStoryStillsAction,
   getInstagramStoryVillaAction,
 } from "@/app/actions/admin/instagram-story";
+import type { InstagramStorySiteOption } from "@/lib/instagram-story/types";
 import {
   INSTAGRAM_STORY_TAGLINES,
   type InstagramStorySlideResult,
@@ -30,6 +32,10 @@ type SearchHit = {
   location: string;
   guests: number;
   bedrooms: number;
+};
+
+type Props = {
+  sites: InstagramStorySiteOption[];
 };
 
 function downloadBase64(fileName: string, mimeType: string, base64: string) {
@@ -48,7 +54,9 @@ function downloadBlob(fileName: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
-export default function InstagramStoryStudio() {
+export default function InstagramStoryStudio({ sites }: Props) {
+  const defaultSite = sites[0]!;
+  const [siteKey, setSiteKey] = useState(defaultSite.key);
   const [search, setSearch] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -57,14 +65,19 @@ export default function InstagramStoryStudio() {
   const [tagline, setTagline] = useState(INSTAGRAM_STORY_TAGLINES[0]);
   const [meta, setMeta] = useState("");
   const [location, setLocation] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("");
+  const [ctaLabel, setCtaLabel] = useState(defaultSite.ctaLabel);
   const [secondsPerSlide, setSecondsPerSlide] = useState(3);
+  const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [musicVolume, setMusicVolume] = useState(0.35);
   const [slides, setSlides] = useState<InstagramStorySlideResult[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoName, setVideoName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [videoPending, setVideoPending] = useState(false);
+
+  const selectedSite =
+    sites.find((site) => site.key === siteKey) ?? defaultSite;
 
   useEffect(() => {
     const query = search.trim();
@@ -110,7 +123,8 @@ export default function InstagramStoryStudio() {
   const canGenerate = Boolean(villa && selectedImages.length > 0);
 
   const selectedCountLabel = useMemo(
-    () => `${selectedImages.length} / ${Math.min(villa?.images.length ?? 0, 8)} seçili`,
+    () =>
+      `${selectedImages.length} / ${Math.min(villa?.images.length ?? 0, 8)} seçili`,
     [selectedImages.length, villa?.images.length]
   );
 
@@ -118,6 +132,14 @@ export default function InstagramStoryStudio() {
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     setVideoUrl(null);
     setVideoName("");
+  }
+
+  function applySite(nextKey: string) {
+    const next = sites.find((site) => site.key === nextKey) ?? defaultSite;
+    setSiteKey(next.key);
+    setCtaLabel(next.ctaLabel);
+    setSlides([]);
+    clearVideo();
   }
 
   function selectVilla(hit: SearchHit) {
@@ -142,7 +164,7 @@ export default function InstagramStoryStudio() {
       setTagline(next.defaultTagline);
       setMeta(next.defaultMeta);
       setLocation(next.location);
-      setCtaLabel(next.defaultCta);
+      setCtaLabel(selectedSite.ctaLabel);
     });
   }
 
@@ -166,6 +188,7 @@ export default function InstagramStoryStudio() {
       const result = await generateInstagramStoryStillsAction({
         villaId: villa.id,
         imageUrls: selectedImages,
+        siteKey: selectedSite.key,
         tagline,
         meta,
         location,
@@ -186,18 +209,21 @@ export default function InstagramStoryStudio() {
     setVideoPending(true);
     clearVideo();
     try {
+      const form = new FormData();
+      form.set("villaId", villa.id);
+      form.set("imageUrls", JSON.stringify(selectedImages));
+      form.set("siteKey", selectedSite.key);
+      form.set("tagline", tagline);
+      form.set("meta", meta);
+      form.set("location", location);
+      form.set("ctaLabel", ctaLabel);
+      form.set("secondsPerSlide", String(secondsPerSlide));
+      form.set("musicVolume", String(musicVolume));
+      if (musicFile) form.set("music", musicFile);
+
       const response = await fetch("/api/admin/instagram-story/video", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          villaId: villa.id,
-          imageUrls: selectedImages,
-          tagline,
-          meta,
-          location,
-          ctaLabel,
-          secondsPerSlide,
-        }),
+        body: form,
       });
 
       if (!response.ok) {
@@ -237,8 +263,41 @@ export default function InstagramStoryStudio() {
               <h1 className="text-xl font-bold">Instagram Story Üretici</h1>
             </div>
             <p className="mt-1 max-w-2xl text-sm text-gray-600">
-              Villa galerisinden görseller seçin; 1080×1920 story görselleri ve
-              Ken Burns efektli MP4 videosu üretin.
+              Site markası, villa görselleri ve isteğe bağlı müzikle 1080×1920
+              story görseli / MP4 videosu üretin.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-gray-700">Site</span>
+            <select
+              value={selectedSite.key}
+              onChange={(event) => applySite(event.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-100"
+            >
+              {sites.map((site) => (
+                <option key={site.key} value={site.key}>
+                  {site.label} ({site.ctaLabel})
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex items-end gap-3">
+            <div className="relative h-12 w-28 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              {selectedSite.logoUrl ? (
+                <Image
+                  src={selectedSite.logoUrl}
+                  alt={selectedSite.label}
+                  fill
+                  className="object-contain p-1.5"
+                  unoptimized
+                />
+              ) : null}
+            </div>
+            <p className="pb-2 text-xs text-gray-500">
+              Logo ve CTA bu siteye göre ayarlanır.
             </p>
           </div>
         </div>
@@ -437,6 +496,62 @@ export default function InstagramStoryStudio() {
               </label>
             </div>
 
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-800">
+                <Music2 className="h-4 w-4 text-teal-600" />
+                Video müziği (opsiyonel)
+              </div>
+              <p className="mb-3 text-xs text-gray-500">
+                Kendi lisanslı MP3 / M4A / WAV dosyanızı yükleyin. Video
+                süresine göre kırpılır / döngüye alınır.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-gray-700">
+                    Müzik dosyası
+                  </span>
+                  <input
+                    type="file"
+                    accept="audio/mpeg,audio/mp4,audio/aac,audio/wav,audio/x-wav,audio/ogg,.mp3,.m4a,.aac,.wav,.ogg"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      setMusicFile(file);
+                      clearVideo();
+                    }}
+                    className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-teal-700"
+                  />
+                  {musicFile ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMusicFile(null);
+                        clearVideo();
+                      }}
+                      className="mt-2 text-xs font-medium text-red-600 hover:underline"
+                    >
+                      Müziği kaldır ({musicFile.name})
+                    </button>
+                  ) : null}
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-gray-700">
+                    Ses seviyesi ({Math.round(musicVolume * 100)}%)
+                  </span>
+                  <input
+                    type="range"
+                    min={5}
+                    max={100}
+                    value={Math.round(musicVolume * 100)}
+                    onChange={(event) =>
+                      setMusicVolume(Number(event.target.value) / 100)
+                    }
+                    className="mt-3 w-full"
+                    disabled={!musicFile}
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -489,7 +604,9 @@ export default function InstagramStoryStudio() {
                     if (!videoUrl) return;
                     void fetch(videoUrl)
                       .then((res) => res.blob())
-                      .then((blob) => downloadBlob(videoName || "story.mp4", blob));
+                      .then((blob) =>
+                        downloadBlob(videoName || "story.mp4", blob)
+                      );
                   }}
                   className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800"
                 >
@@ -537,10 +654,10 @@ export default function InstagramStoryStudio() {
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-16 text-center shadow-sm">
           <Clapperboard className="mx-auto h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-700">
-            Başlamak için bir villa arayıp seçin
+            Site seçip bir villa arayarak başlayın
           </p>
           <p className="mt-1 text-xs text-gray-500">
-            En fazla 8 görsel ile story serisi ve video oluşturulabilir.
+            En fazla 8 görsel; videoya kendi müziğinizi ekleyebilirsiniz.
           </p>
         </div>
       )}
