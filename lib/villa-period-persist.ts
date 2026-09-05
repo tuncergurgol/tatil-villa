@@ -7,6 +7,10 @@ import {
 } from "@/lib/tatildeyiz-period-import";
 import { dateKeyToDbDate, toDateKey } from "@/lib/villa-period-calendar";
 import { loadConfirmedBookingProtectedDateKeys } from "@/lib/confirmed-booking-occupancy-guard";
+import {
+  reapplyConfirmedBookingReservedOccupancy,
+  reapplyImportedIcalBlocksOccupancy,
+} from "@/lib/villa-occupancy-service";
 
 export const PERIOD_IMPORT_TX_OPTIONS = {
   maxWait: 15_000,
@@ -63,4 +67,9 @@ export async function persistVillaPricePeriods(input: {
       }
     }
   }, PERIOD_IMPORT_TX_OPTIONS);
+
+  // Fiyat günleri silinip yeniden oluşturulunca Airbnb/iCal kapamaları
+  // ve onaylı rezervasyonlar updateMany ile geri yazılır.
+  await reapplyImportedIcalBlocksOccupancy(input.villaId);
+  await reapplyConfirmedBookingReservedOccupancy(input.villaId);
 }

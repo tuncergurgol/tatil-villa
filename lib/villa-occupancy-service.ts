@@ -249,3 +249,30 @@ export async function reapplyConfirmedBookingReservedOccupancy(
 
   return { bookingCount: bookings.length, updatedDays };
 }
+
+/**
+ * Fiyat periyotları yeniden yazıldıktan sonra kayıtlı iCal/Airbnb
+ * kapama bloklarını tekrar uygular (updateMany yalnızca var olan günlere yazar).
+ */
+export async function reapplyImportedIcalBlocksOccupancy(
+  villaId: string
+): Promise<{ blockCount: number; updatedDays: number }> {
+  const blocks = await prisma.villaIcalImportedBlock.findMany({
+    where: { villaId },
+    select: { startDate: true, endDate: true },
+    orderBy: { startDate: "asc" },
+  });
+
+  let updatedDays = 0;
+  for (const block of blocks) {
+    const result = await applyVillaPeriodDaysOccupancy(
+      villaId,
+      dbDateToDateKey(block.startDate),
+      dbDateToDateKey(block.endDate),
+      "BOOKED"
+    );
+    updatedDays += result.updatedDays;
+  }
+
+  return { blockCount: blocks.length, updatedDays };
+}

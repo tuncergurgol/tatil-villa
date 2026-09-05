@@ -2,6 +2,10 @@ import { PeriodImportStatus } from "@prisma/client";
 import { WhatsappCalendarMessageStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
+  getExternalLinkSyncBatchOrder,
+  getExternalLinkSyncMode,
+} from "@/lib/external-link-sync-mode";
+import {
   isExternalIcalSourceName,
   isExternalSyncSlot,
   syncVillaExternalLinkSlot,
@@ -194,6 +198,8 @@ export async function runCalendarPriceTransferBatchSync(
 
   // Fiyat/takvim Link 1–3 slot rollerine göre yapılır:
   // Link 1 = takvim+fiyat, Link 2 = takvim, Link 3 = fiyat.
+  // ÖNCE fiyat (gün satırları), SONRA takvim — aksi halde Airbnb kapaması
+  // henüz olmayan günlere yazılamaz.
 
   if (criteria.whatsapp && villa.whatsappGroupId.trim()) {
     const result = await syncWhatsappForVilla(
@@ -202,17 +208,6 @@ export async function runCalendarPriceTransferBatchSync(
     );
     if (result.ok) messages.push(result.message);
     else errors.push(result.message);
-  }
-
-  if (criteria.ical) {
-    const manualSources = villa.icalSources.filter(
-      (source) => !isExternalIcalSourceName(source.name)
-    );
-    for (const source of manualSources) {
-      const result = await syncVillaIcalSource(source.id);
-      if (result.ok) messages.push(`iCal: ${result.message}`);
-      else errors.push(`iCal: ${result.message}`);
-    }
   }
 
   const linkSlots: Array<{
@@ -233,7 +228,13 @@ export async function runCalendarPriceTransferBatchSync(
         isExternalSyncSlot(item.slot) &&
         item.slot <= 3
     )
-    .sort((a, b) => a.slot - b.slot);
+    .sort((a, b) => {
+      const orderDiff =
+        getExternalLinkSyncBatchOrder(getExternalLinkSyncMode(a.slot)) -
+        getExternalLinkSyncBatchOrder(getExternalLinkSyncMode(b.slot));
+      if (orderDiff !== 0) return orderDiff;
+      return a.slot - b.slot;
+    });
 
   const linkMessages: string[] = [];
   let linkOkCount = 0;
@@ -247,6 +248,18 @@ export async function runCalendarPriceTransferBatchSync(
     } else {
       errors.push(`Link ${item.slot}: ${result.message}`);
       linkMessages.push(`Link ${item.slot} HATA: ${result.message}`);
+    }
+  }
+
+  // Manuel iCal kaynakları fiyat günleri oluştuktan sonra uygulanır.
+  if (criteria.ical) {
+    const manualSources = villa.icalSources.filter(
+      (source) => !isExternalIcalSourceName(source.name)
+    );
+    for (const source of manualSources) {
+      const result = await syncVillaIcalSource(source.id);
+      if (result.ok) messages.push(`iCal: ${result.message}`);
+      else errors.push(`iCal: ${result.message}`);
     }
   }
 
