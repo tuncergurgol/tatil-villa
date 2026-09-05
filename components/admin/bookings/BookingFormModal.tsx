@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Check,
   Loader2,
+  MessageCircle,
   Search,
   UserPlus,
   X,
@@ -22,6 +23,7 @@ import { lookupReturningGuestAdminAction } from "@/app/actions/returning-guest";
 import StayDateRangePicker from "@/components/admin/availability/StayDateRangePicker";
 import GuestCounterRow from "@/components/admin/bookings/new-booking/GuestCounterRow";
 import NewBookingPriceSummary from "@/components/admin/bookings/new-booking/NewBookingPriceSummary";
+import NewBookingWhatsAppShareModal from "@/components/admin/bookings/new-booking/NewBookingWhatsAppShareModal";
 import SelectedVillaCard from "@/components/admin/bookings/new-booking/SelectedVillaCard";
 import { DiscountPercentAmountField } from "@/components/admin/bookings/booking-form-ui";
 import ReturningGuestBanner from "@/components/member/ReturningGuestBanner";
@@ -129,6 +131,7 @@ export default function BookingFormModal({
   const [returningGuest, setReturningGuest] =
     useState<ReturningGuestPreview | null>(null);
   const [loyaltyDiscountApplied, setLoyaltyDiscountApplied] = useState(false);
+  const [whatsAppShareOpen, setWhatsAppShareOpen] = useState(false);
 
   useEffect(() => {
     if (state.success) {
@@ -166,6 +169,7 @@ export default function BookingFormModal({
     setCustomerNote("");
     setReturningGuest(null);
     setLoyaltyDiscountApplied(false);
+    setWhatsAppShareOpen(false);
 
     setVillasLoading(true);
     getAdminBookingWizardVillasAction()
@@ -897,15 +901,26 @@ export default function BookingFormModal({
           ) : null}
 
           {step === 2 ? (
-            <button
-              type="button"
-              disabled={!canContinueStep2}
-              onClick={() => setStep(3)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              Müşteri Bilgileri
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!canContinueStep2}
+                onClick={() => setWhatsAppShareOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp&apos;a Paylaş
+              </button>
+              <button
+                type="button"
+                disabled={!canContinueStep2}
+                onClick={() => setStep(3)}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                Müşteri Bilgileri
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           ) : null}
 
           {step === 3 ? (
@@ -925,6 +940,35 @@ export default function BookingFormModal({
           ) : null}
         </div>
       </div>
+
+      <NewBookingWhatsAppShareModal
+        open={whatsAppShareOpen}
+        onClose={() => setWhatsAppShareOpen(false)}
+        initialPhone={guestPhone}
+        payload={
+          selectedVilla && canContinueStep2
+            ? {
+                villaName: selectedVilla.name,
+                checkIn,
+                checkOut,
+                adults,
+                children,
+                babies,
+                accommodationTotal: pricingDetails.grossPrice,
+                ownerDiscountAmount: pricingDetails.ownerDiscountAmount,
+                agencyDiscountAmount: pricingDetails.agencyDiscountAmount,
+                cleaningFee: pricingDetails.cleaningFee,
+                underfloorHeatingFee: pricingDetails.underfloorHeatingFee,
+                reservationTotal: pricingDetails.reservationTotal,
+                prepaymentAmount: pricingDetails.prepaymentAmount,
+                prepaymentRate: pricingDetails.prepaymentRate,
+                entrancePayment: pricingDetails.entrancePayment,
+                damageDeposit: pricingDetails.damageDeposit,
+                guestName: guestName || null,
+              }
+            : null
+        }
+      />
     </div>
   );
 }
