@@ -175,7 +175,11 @@ function periodToRow(period: VillaPricePeriodItem): PeriodRowState {
     startDate: periodDateKey(period.startDate),
     endDate: periodDateKey(period.endDate),
     prepaymentRate:
-      period.prepaymentRate != null ? String(period.prepaymentRate) : "",
+      period.prepaymentRate != null
+        ? String(period.prepaymentRate)
+        : period.commissionRate != null
+          ? String(period.commissionRate)
+          : "20",
     commissionRate:
       period.commissionRate != null ? String(period.commissionRate) : "20",
     nightlyPrice: formatAmountInput(period.nightlyPrice),
@@ -237,8 +241,8 @@ function buildPeriodFormData(
       ? String(parseAmountInput(synced.weeklyPrice) ?? "")
       : String(parseAmountInput(row.weeklyPrice) ?? "")
   );
-  formData.set("prepaymentRate", row.prepaymentRate || "");
-  formData.set("commissionRate", row.commissionRate || "");
+  formData.set("prepaymentRate", row.prepaymentRate || row.commissionRate || "20");
+  formData.set("commissionRate", row.commissionRate || "20");
   formData.set(
     "nightlyPriceWithoutCommission",
     synced

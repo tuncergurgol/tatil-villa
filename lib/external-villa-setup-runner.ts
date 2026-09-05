@@ -13,6 +13,7 @@ import { syncVillaRoomFeatureCatalog } from "@/lib/queries/villa-rooms";
 import { importVillaGalleryFromUrls } from "@/lib/external-villa-gallery-import";
 import { listGoogleDriveImageUrls } from "@/lib/google-drive-gallery";
 import { importVillaPeriodsFromExternalPage } from "@/lib/external-villa-page-import-runner";
+import { alignVillaPeriodPrepaymentToCommission } from "@/lib/villa-period-payment-rates";
 import {
   scrapeExternalVillaListing,
   type ExternalVillaListing,
@@ -35,6 +36,36 @@ import {
 } from "@/lib/villa-slug";
 import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
+
+async function alignSetupVillaPeriodPaymentRates(villaId: string) {
+  const periods = await prisma.villaPricePeriod.findMany({
+    where: { villaId },
+    select: { id: true, prepaymentRate: true, commissionRate: true },
+  });
+  for (const period of periods) {
+    const next = alignVillaPeriodPrepaymentToCommission(period);
+    if (
+      next.prepaymentRate === period.prepaymentRate &&
+      next.commissionRate === period.commissionRate
+    ) {
+      continue;
+    }
+    await prisma.villaPricePeriod.update({
+      where: { id: period.id },
+      data: {
+        prepaymentRate: next.prepaymentRate,
+        commissionRate: next.commissionRate,
+      },
+    });
+    await prisma.villaPricePeriodDay.updateMany({
+      where: { periodId: period.id },
+      data: {
+        prepaymentRate: next.prepaymentRate,
+        commissionRate: next.commissionRate,
+      },
+    });
+  }
+}
 
 export type ExternalVillaSetupResult = {
   created: boolean;
@@ -568,6 +599,9 @@ export async function setupVillaFromExternalUrl(
     bookedDays = imported.bookedDays;
     optionDays = imported.optionDays;
     warnings.push(...imported.warnings);
+    if (periodCount > 0) {
+      await alignSetupVillaPeriodPaymentRates(villaId);
+    }
   } catch (error) {
     warnings.push(
       error instanceof Error
@@ -667,6 +701,7 @@ export async function enrichVillaDetailsFromExternalUrl(
       syncMode: "calendar_and_price",
     });
     if (imported.periodCount > 0) {
+      await alignSetupVillaPeriodPaymentRates(existing.id);
       warnings.push(
         `Fiyat periyotları güncellendi (${imported.periodCount} dönem)`
       );

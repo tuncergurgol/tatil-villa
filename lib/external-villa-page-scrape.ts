@@ -49,6 +49,7 @@ import {
 } from "@/lib/villa-period-calendar";
 import type { MappedVillaPricePeriod } from "@/lib/tatildeyiz-period-import";
 import { sleep } from "@/lib/tatildeyiz-gallery";
+import { fillMissingVillaPeriodPaymentRates } from "@/lib/villa-period-payment-rates";
 
 export type ScrapedVillaPage = {
   sourceHost: string;
@@ -722,6 +723,10 @@ function applyMetaToPeriod(
         meta.damageDepositCurrency ?? defaults.damageDepositCurrency;
     }
   }
+  recomputeWithoutCommission(period);
+  const rates = fillMissingVillaPeriodPaymentRates(period);
+  period.prepaymentRate = rates.prepaymentRate;
+  period.commissionRate = rates.commissionRate;
   recomputeWithoutCommission(period);
 }
 
