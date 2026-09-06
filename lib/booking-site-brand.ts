@@ -56,6 +56,11 @@ const KNOWN_SITE_BRANDS: Array<{
     domain: "www.tatilvillacisi.com",
     logoUrl: "/brands/tatil-villacisi/logo.png",
   },
+  {
+    names: ["Glamping Turkey", "GLAMPING TURKEY"],
+    domain: "www.glampingturkey.com",
+    logoUrl: "/brands/glamping-turkey/logo-horizontal.png",
+  },
 ];
 
 const DEFAULT_PUBLIC_DOMAIN = "www.tatildeyiz.com.tr";

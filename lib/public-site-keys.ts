@@ -27,16 +27,39 @@ export const PUBLIC_SITE_META: Record<
   },
 };
 
+function getSite4KeyFromEnv(): string {
+  return (
+    process.env.PUBLIC_SITE_4_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_4_KEY?.trim() ||
+    ""
+  );
+}
+
+function getSite4DomainFromEnv(): string {
+  return (
+    process.env.PUBLIC_SITE_4_DOMAIN?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_4_DOMAIN?.trim() ||
+    ""
+  );
+}
+
+function getSite4BrandFromEnv(): string {
+  return (
+    process.env.PUBLIC_SITE_4_BRAND?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_4_BRAND?.trim() ||
+    ""
+  );
+}
+
 export function isPublicSiteKey(value: string): value is PublicSiteKey {
   if ((PUBLIC_SITE_KEYS as readonly string[]).includes(value)) return true;
-  // Site 4 env key (runtime)
-  const site4Key = process.env.PUBLIC_SITE_4_KEY?.trim();
+  const site4Key = getSite4KeyFromEnv();
   return Boolean(site4Key && site4Key === value);
 }
 
 export function listPublicSiteKeys(): PublicSiteKey[] {
   const keys: PublicSiteKey[] = [...PUBLIC_SITE_KEYS];
-  const site4Key = process.env.PUBLIC_SITE_4_KEY?.trim();
+  const site4Key = getSite4KeyFromEnv();
   if (site4Key && /^[a-z0-9-]+$/i.test(site4Key) && !keys.includes(site4Key)) {
     keys.push(site4Key);
   }
@@ -50,12 +73,12 @@ export function getPublicSiteMeta(siteKey: PublicSiteKey): {
   if (siteKey in PUBLIC_SITE_META) {
     return PUBLIC_SITE_META[siteKey as BuiltInPublicSiteKey];
   }
-  const site4Key = process.env.PUBLIC_SITE_4_KEY?.trim();
-  const site4Domain = process.env.PUBLIC_SITE_4_DOMAIN?.trim()
+  const site4Key = getSite4KeyFromEnv();
+  const site4Domain = getSite4DomainFromEnv()
     .replace(/^https?:\/\//i, "")
     .replace(/\/+$/, "")
     .toLowerCase();
-  const site4Brand = process.env.PUBLIC_SITE_4_BRAND?.trim();
+  const site4Brand = getSite4BrandFromEnv();
   if (site4Key && siteKey === site4Key && site4Domain && site4Brand) {
     const domain = site4Domain.startsWith("www.")
       ? site4Domain

@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { FileWarning, Globe } from "lucide-react";
 import { setUndocumentedVillaPublishForSite } from "@/app/actions/admin/company-settings";
 import {
-  PUBLIC_SITE_KEYS,
   getPublicSiteMeta,
   isPublicSiteKey,
+  listPublicSiteKeys,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
 
@@ -82,7 +82,7 @@ export default function UndocumentedVillaPublishSettings({
             </tr>
           </thead>
           <tbody>
-            {PUBLIC_SITE_KEYS.map((siteKey) => {
+            {listPublicSiteKeys().map((siteKey) => {
               const meta = getPublicSiteMeta(siteKey);
               const publish = allowed.includes(siteKey);
               const disabled = isPending && pendingKey === siteKey;

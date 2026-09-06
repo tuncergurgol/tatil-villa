@@ -91,7 +91,8 @@ export default function Header({
   brandName?: string;
   logoUrl?: string;
   useDefaultLogo?: boolean;
-  siteKey?: "tatildeyiz" | "balayi-villacisi" | "tatil-villacisi";
+  /** Built-in siteler + opsiyonel Site 4 (örn. glamping-turkey) */
+  siteKey?: string;
   whiteLogoUrl?: string;
   agencyName?: string;
   tursabNo?: string;
@@ -116,11 +117,15 @@ export default function Header({
   const waHref = whatsappHref(rawPhone);
   const logoSrc = logoUrl?.trim() || (useDefaultLogo ? DEFAULT_LOGO : "");
   const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
-  const mobileLogoClass = {
-    tatildeyiz: "h-11 max-w-[148px]",
-    "balayi-villacisi": "h-10 max-w-[76px]",
-    "tatil-villacisi": "h-10 max-w-[170px]",
-  }[siteKey];
+  const mobileLogoClass =
+    (
+      {
+        tatildeyiz: "h-11 max-w-[148px]",
+        "balayi-villacisi": "h-10 max-w-[76px]",
+        "tatil-villacisi": "h-10 max-w-[170px]",
+        "glamping-turkey": "h-10 max-w-[168px]",
+      } as Record<string, string>
+    )[siteKey] ?? "h-10 max-w-[160px]";
 
   useEffect(() => {
     function handleOpenSearch() {

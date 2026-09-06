@@ -35,6 +35,7 @@ import PrepaymentPaymentTypeManagement from "@/components/admin/prepayment-payme
 import CustomerContactChannelManagement from "@/components/admin/customer-contact-channels/CustomerContactChannelManagement";
 import CompanyBankAccountManagement from "@/components/admin/company/CompanyBankAccountManagement";
 import AgencySiteManagement from "@/components/admin/company/AgencySiteManagement";
+import BrandAssetDownloads from "@/components/admin/company/BrandAssetDownloads";
 import UndocumentedVillaPublishSettings from "@/components/admin/company/UndocumentedVillaPublishSettings";
 import PaymentProviderManagement from "@/components/admin/company/PaymentProviderManagement";
 import MailSettingsFields from "@/components/admin/company/MailSettingsFields";
@@ -533,6 +534,7 @@ export default function CompanySettingsForm({
               <UndocumentedVillaPublishSettings
                 allowedSiteKeys={settings.publishUndocumentedVillaSiteKeys}
               />
+              <BrandAssetDownloads />
               <AgencySiteManagement
                 items={agencySites.items}
                 totalCount={agencySites.totalCount}
