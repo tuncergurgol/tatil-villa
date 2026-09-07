@@ -14,6 +14,7 @@
  * - mustakilvillam.com / myvillacity.com / villakilavuzu.com / ovillam.com (routingData id + api PriceList/Availability)
  * - luxuryvillam.com (window.VILLA_CALENDAR gömülü günlük fiyat + müsaitlik)
  * - hepsivilla.com (price_block haftalık/gecelik + AJAX cal.do takvim)
+ * - kastavillam.com (li.price_block data-day1 + span.dt + AJAX cal.do takvim; hepsivilla ailesi)
  * - elitvillam.com (aylık haftalık fiyat + AJAX cal.do; data-p gecelik)
  * - villakalkan.com.tr (Nuxt __NUXT__ price_list_1 + calendar)
  * - tatilvillamda.com / villamgayrimenkul.com (gömülü fiyat_yazilan_tarihler + dolutarihler)
@@ -4933,14 +4934,17 @@ function scrapeProductDetailRscFromHtml(
 
 function looksLikeHepsivilla(pageUrl: string, html: string): boolean {
   try {
-    if (normalizeHost(new URL(pageUrl).hostname).includes("hepsivilla")) {
+    const host = normalizeHost(new URL(pageUrl).hostname);
+    if (host.includes("hepsivilla") || host.includes("kastavillam")) {
       return true;
     }
   } catch {
     return false;
   }
   return (
-    html.includes('class="pb price_block"') && html.includes("url_ajax_cal")
+    (html.includes('class="pb price_block"') ||
+      /class=["'][^"']*\bprice_block\b/.test(html)) &&
+    html.includes("url_ajax_cal")
   );
 }
 
@@ -4978,14 +4982,14 @@ function parseHepsivillaDateRange(raw: string): { start: Date; end: Date } | nul
   return { start, end };
 }
 
-/** hepsivilla.com — `.pb.price_block` (data-day1 / data-week1 + ty tarih aralığı). */
+/** hepsivilla / kastavillam — `.pb.price_block` veya `li.price_block` (data-day1 + tarih aralığı). */
 export function parseHepsivillaPriceBlocks(
   html: string,
   damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
 ): MappedVillaPricePeriod[] {
   const periods: MappedVillaPricePeriod[] = [];
   const blockRe =
-    /<div class="pb price_block"([^>]*)>[\s\S]*?<span class="ty">([\s\S]*?)<\/span>[\s\S]*?<span class="tv">([\s\S]*?)<\/span>/gi;
+    /<(?:div|li)\b([^>]*\bprice_block\b[^>]*)>[\s\S]*?<span class="(?:ty|dt)">([\s\S]*?)<\/span>[\s\S]*?<span class="(?:tv|pr)">([\s\S]*?)<\/span>/gi;
   let match: RegExpExecArray | null;
   let sourceId = 1;
 
@@ -7065,6 +7069,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, akdenizdevilla.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, villareyonu.com, birvillas.com, villadenizi.com.tr (Plato/Macrovilla), kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, kastavillam.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, akdenizdevilla.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, villareyonu.com, birvillas.com, villadenizi.com.tr (Plato/Macrovilla), kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }

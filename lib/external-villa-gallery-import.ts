@@ -18,6 +18,9 @@ async function downloadImage(url: string) {
     /drive\.google\.com|googleusercontent\.com/i.test(url) ||
     /[?&]id=[a-zA-Z0-9_-]+/.test(url);
   const isTatildekirala = /tatildekirala\.com/i.test(url);
+  const isVilladenizi =
+    /villadenizi\.com|plato-static\.s3|macrovilla\.com/i.test(url);
+  const isKastavillam = /kastavillam\.com/i.test(url);
   const response = await fetch(url, {
     headers: {
       "User-Agent":
@@ -27,7 +30,11 @@ async function downloadImage(url: string) {
         ? "https://drive.google.com/"
         : isTatildekirala
           ? "https://www.tatildekirala.com/"
-          : "https://www.villareyonu.com/",
+          : isVilladenizi
+            ? "https://www.villadenizi.com.tr/"
+            : isKastavillam
+              ? "https://www.kastavillam.com/"
+              : "https://www.villareyonu.com/",
     },
     redirect: "follow",
   });
