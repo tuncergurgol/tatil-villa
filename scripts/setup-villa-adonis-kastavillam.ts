@@ -139,6 +139,30 @@ function extractKastavillamGuests(html: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function extractKastavillamRooms(html: string): {
+  bedrooms: number | null;
+  bathrooms: number | null;
+} {
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ");
+  const bedroomsRaw = text.match(/(\d+)\s*yatak\s*odal/i)?.[1];
+  const bathroomsRaw = text.match(/(\d+)\s*banyo/i)?.[1];
+  const bedrooms = bedroomsRaw ? Number(bedroomsRaw) : null;
+  const bathrooms = bathroomsRaw ? Number(bathroomsRaw) : null;
+  return {
+    bedrooms:
+      bedrooms != null && Number.isFinite(bedrooms) && bedrooms > 0
+        ? bedrooms
+        : null,
+    bathrooms:
+      bathrooms != null && Number.isFinite(bathrooms) && bathrooms > 0
+        ? bathrooms
+        : null,
+  };
+}
+
 function extractKastavillamGalleryUrls(html: string): string[] {
   return [
     ...new Set(
@@ -288,6 +312,7 @@ async function main() {
     const kastaHtml = await fetchHtml(target.link1);
     const kastaAmenities = extractKastavillamAmenities(kastaHtml);
     const kastaGuests = extractKastavillamGuests(kastaHtml);
+    const kastaRooms = extractKastavillamRooms(kastaHtml);
     const kastaGallery = extractKastavillamGalleryUrls(kastaHtml);
 
     const amenityLabels = [
@@ -324,11 +349,15 @@ async function main() {
       bedrooms:
         (target.importGalleryFromVilladenizi
           ? villadeniziListing?.bedrooms
-          : null) ?? null,
+          : null) ??
+        kastaRooms.bedrooms ??
+        null,
       bathrooms:
         (target.importGalleryFromVilladenizi
           ? villadeniziListing?.bathrooms
-          : null) ?? null,
+          : null) ??
+        kastaRooms.bathrooms ??
+        null,
       documentNo:
         (target.importGalleryFromVilladenizi
           ? villadeniziListing?.documentNo
