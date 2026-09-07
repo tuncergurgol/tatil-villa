@@ -7,6 +7,7 @@
  * - villavillam.com.tr / villacim.com.tr (NEXT_DATA id + api PriceList/Availability)
  * - tatilpremium.com (RSC routingData id + api.tatilpremium.com PriceList/Availability)
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
+ * - akdenizdevilla.com (HTML Gecelik/Haftalık dönem + calendarBox booked takvim)
  * - villavakti.com (sezon fiyat tablosu + api.php villa_dates takvim)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
  * - villaekstra.com (routingData id + api2.villaekstra.com PriceList/Availability; CF 403 olursa fiyat uydurulmaz)
@@ -73,6 +74,7 @@ export type ScrapedVillaPage = {
     | "villaekstra"
     | "luxuryvillam"
     | "akdenizvillam"
+    | "akdenizdevilla"
     | "villavakti"
     | "product_detail_rsc"
     | "hepsivilla"
@@ -6134,6 +6136,113 @@ function parseYazlikvillaciCalendarMonth(
   return { year, month };
 }
 
+function looksLikeAkdenizdevilla(pageUrl: string): boolean {
+  try {
+    return normalizeHost(new URL(pageUrl).hostname).includes("akdenizdevilla");
+  } catch {
+    return false;
+  }
+}
+
+/** akdenizdevilla.com — Gecelik Fiyat / Haftalık dönem kartları */
+export function parseAkdenizdevillaPeriods(
+  html: string
+): MappedVillaPricePeriod[] {
+  const deposit = extractDamageDeposit(html);
+  const textDeposit =
+    deposit.amount ??
+    (() => {
+      const text = stripTags(html);
+      const match = text.match(
+        /(?:hasar\s*depozito(?:su)?|girişte)\s[^0-9]{0,80}?(\d[\d.\s]*)\s*(?:₺|TL)\s*depozito/i
+      );
+      return match?.[1]
+        ? positiveInt(parseTurkishMoneyAmount(match[1]))
+        : null;
+    })();
+
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+
+  const blockRe =
+    /(\d{1,2}\s+[A-Za-zÇĞİÖŞÜçğıöşü]+\s+\d{4})\s*[-–—]\s*(\d{1,2}\s+[A-Za-zÇĞİÖŞÜçğıöşü]+\s+\d{4})[\s\S]{0,500}?Gecelik\s*Fiyat:\s*₺?\s*([\d.\s]+)[\s\S]{0,200}?Haftalık:\s*₺?\s*([\d.\s]+)/giu;
+
+  let match: RegExpExecArray | null;
+  while ((match = blockRe.exec(html)) !== null) {
+    const range = parseTurkishDateRange(`${match[1]} - ${match[2]}`);
+    if (!range) continue;
+
+    const nightlyPrice = parseTurkishMoneyAmount(match[3] ?? "");
+    const weeklyPrice = parseTurkishMoneyAmount(match[4] ?? "");
+    if (nightlyPrice == null || nightlyPrice <= 0) continue;
+
+    const lookbehind = html.slice(Math.max(0, match.index - 700), match.index);
+    const minStayMatch =
+      lookbehind.match(/Min\.?\s*(\d+)\s*Gece/i) ??
+      stripTags(match[0]).match(/Min\.?\s*(\d+)\s*Gece/i);
+    const minStayNights = minStayMatch ? Number(minStayMatch[1]) : null;
+
+    const key = `${toDateKey(range.start)}_${toDateKey(range.end)}_${nightlyPrice}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate: range.start,
+        endDate: range.end,
+        nightlyPrice,
+        weeklyPrice:
+          weeklyPrice != null && weeklyPrice > 0 ? weeklyPrice : null,
+        currency: "TL",
+        minStayNights,
+        damageDeposit: textDeposit,
+        damageDepositCurrency: "TL",
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
+function scrapeAkdenizdevillaFromHtml(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): ScrapedVillaPage | null {
+  if (!looksLikeAkdenizdevilla(pageUrl)) return null;
+  if (
+    !html.includes("calendarBox") ||
+    !/Gecelik\s*Fiyat/i.test(html)
+  ) {
+    return null;
+  }
+
+  const periods = parseAkdenizdevillaPeriods(html);
+  const occupancyByDateKey = parseYazlikvillaciOccupancy(html);
+
+  if (periods.length === 0 && occupancyByDateKey.size === 0) {
+    warnings.push("akdenizdevilla: fiyat/takvim okunamadı");
+    return null;
+  }
+  if (periods.length === 0) {
+    warnings.push("akdenizdevilla: dönem fiyatı bulunamadı");
+  }
+  if (occupancyByDateKey.size === 0) {
+    warnings.push("akdenizdevilla: dolu gün bulunamadı");
+  }
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "akdenizdevilla",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 /** yazlikvillaci.com.tr — #villaPrices pricingTable2 kartları */
 export function parseYazlikvillaciPeriods(
   html: string
@@ -6644,6 +6753,13 @@ export async function scrapeExternalVillaPage(
   );
   if (tatilvillasi) return finalizeScrapedPage(tatilvillasi, html);
 
+  const akdenizdevilla = scrapeAkdenizdevillaFromHtml(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (akdenizdevilla) return finalizeScrapedPage(akdenizdevilla, html);
+
   const akdenizvillam = scrapeAkdenizvillamFromHtml(
     parsed.toString(),
     html,
@@ -6763,6 +6879,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, villareyonu.com, birvillas.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, akdenizdevilla.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, villareyonu.com, birvillas.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
