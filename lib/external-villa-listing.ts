@@ -658,6 +658,8 @@ export function parseExternalVillaListing(
     if (host.includes("villareyonu")) {
       return parseVillareyonuListing(pageUrl, html);
     }
+    const plato = parsePlatoMacrovillaListing(pageUrl, html);
+    if (plato) return plato;
     // Aynı Next.js / routingData ailesi — hafif kurulum (başlık + görsel + entity)
     if (
       host.includes("villaekstra") ||
@@ -692,6 +694,266 @@ function extractOgImages(html: string): string[] {
     .map((match) => match[1]!.trim())
     .filter((url) => /^https?:\/\//i.test(url));
   return [...new Set(urls)].slice(0, 40);
+}
+
+type PlatoNextVilla = {
+  id?: number | string;
+  slug?: string;
+  name?: string;
+  thumbnail?: string;
+  prices?: unknown[];
+  dates?: unknown[];
+  images?: Array<{ url?: string } | string>;
+  types?: Array<{ VillaType?: { name?: string }; type?: { name?: string } }>;
+  features?: Record<string, Array<{ tr?: string; en?: string; name?: string }>>;
+  region?: {
+    district?: {
+      name?: string;
+      Town?: { name?: string };
+      town?: { name?: string };
+    };
+  };
+  details?: {
+    prePaidRate?: number | string | null;
+    damageDeposit?: number | string | null;
+    bedroom?: number | string | null;
+    bathroom?: number | string | null;
+    maxPerson?: number | string | null;
+    certNo?: string | null;
+    description?: string | null;
+    ranges?: Array<{ key?: string; value?: string }> | string | null;
+    mapIFrame?: string | null;
+    entryDate?: string | null;
+    exitDate?: string | null;
+  };
+  pool?: {
+    pool?: string | null;
+    poolInfo?: string[] | null;
+    heatedPool?: boolean | null;
+    kidPoll?: boolean | null;
+    indoorPool?: boolean | null;
+  } | null;
+};
+
+function extractPlatoNextVilla(html: string): PlatoNextVilla | null {
+  const match = html.match(
+    /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s
+  );
+  if (!match?.[1]) return null;
+  try {
+    const data = JSON.parse(match[1]) as {
+      props?: { pageProps?: { villa?: PlatoNextVilla } };
+    };
+    const villa = data.props?.pageProps?.villa;
+    if (!villa || typeof villa !== "object") return null;
+    if (!villa.name && !villa.slug) return null;
+    return villa;
+  } catch {
+    return null;
+  }
+}
+
+function parsePlatoRangeValue(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (/m$/i.test(trimmed) && !/km$/i.test(trimmed)) {
+    const meters = Number(trimmed.replace(/[^\d.,]/g, "").replace(",", "."));
+    return Number.isFinite(meters) ? meters / 1000 : null;
+  }
+  return parseDistanceToKm(trimmed);
+}
+
+function parsePlatoRanges(
+  ranges: unknown
+): ExternalVillaListingDistance[] {
+  let rows: Array<{ key?: string; value?: string }> = [];
+  if (typeof ranges === "string") {
+    try {
+      const parsed = JSON.parse(ranges);
+      if (Array.isArray(parsed)) rows = parsed;
+    } catch {
+      return [];
+    }
+  } else if (Array.isArray(ranges)) {
+    rows = ranges;
+  }
+
+  const labelByKey: Record<string, { name: string; categoryName: string }> = {
+    airport: { name: "Havalimanı", categoryName: "Ulaşım" },
+    beach: { name: "Deniz/Plaj", categoryName: "Popüler Yerler" },
+    market: { name: "Market", categoryName: "Yakın Yerler" },
+    restaurant: { name: "Restaurant", categoryName: "Yakın Yerler" },
+    medical: { name: "Sağlık Merkezi", categoryName: "Yakın Yerler" },
+    centrum: { name: "Şehir Merkezi", categoryName: "Yakın Yerler" },
+    center: { name: "Şehir Merkezi", categoryName: "Yakın Yerler" },
+  };
+
+  const out: ExternalVillaListingDistance[] = [];
+  for (const row of rows) {
+    const key = String(row.key ?? "").trim().toLowerCase();
+    const value = String(row.value ?? "").trim();
+    if (!key || !value) continue;
+    const mapped = labelByKey[key] ?? {
+      name: key,
+      categoryName: "Yakın Yerler",
+    };
+    const distanceKm = parsePlatoRangeValue(value);
+    if (distanceKm == null || !Number.isFinite(distanceKm)) continue;
+    out.push({
+      name: mapped.name,
+      categoryName: mapped.categoryName,
+      distanceKm,
+    });
+  }
+  return out;
+}
+
+function parsePlatoFeatureLabels(
+  features: PlatoNextVilla["features"]
+): string[] {
+  if (!features || typeof features !== "object") return [];
+  const labels: string[] = [];
+  for (const rows of Object.values(features)) {
+    if (!Array.isArray(rows)) continue;
+    for (const row of rows) {
+      const label = String(row?.tr || row?.en || row?.name || "")
+        .replace(/\t/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (label) labels.push(label);
+    }
+  }
+  return [...new Set(labels)];
+}
+
+function parsePlatoMapCoords(raw: string | null | undefined): {
+  latitude: number;
+  longitude: number;
+} {
+  const text = String(raw ?? "").trim();
+  const match = text.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if (!match) return { latitude: 0, longitude: 0 };
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return { latitude: 0, longitude: 0 };
+  }
+  return { latitude, longitude };
+}
+
+function parsePlatoPool(
+  pool: PlatoNextVilla["pool"]
+): ExternalVillaListingPool | null {
+  if (!pool) return null;
+  const kind = String(pool.pool ?? "").toUpperCase();
+  if (!kind || kind === "NONE") return null;
+  const info = Array.isArray(pool.poolInfo) ? pool.poolInfo : [];
+  const length = Number(info[0]);
+  const width = Number(info[1]);
+  const depth = Number(info[2]);
+  return {
+    poolType: pool.indoorPool
+      ? "kapali"
+      : kind.includes("SHARE") || kind.includes("COMMON")
+        ? "ortak"
+        : "ozel",
+    length: Number.isFinite(length) && length > 0 ? length : null,
+    width: Number.isFinite(width) && width > 0 ? width : null,
+    depth: Number.isFinite(depth) && depth > 0 ? depth : null,
+    conservative: false,
+    heated: Boolean(pool.heatedPool),
+  };
+}
+
+/** villadenizi / Plato-Macrovilla — __NEXT_DATA__.pageProps.villa */
+export function parsePlatoMacrovillaListing(
+  pageUrl: string,
+  html: string
+): ExternalVillaListing | null {
+  const villa = extractPlatoNextVilla(html);
+  if (!villa) return null;
+
+  // Plato imzası: images/details veya plato-static CDN
+  const looksPlato =
+    Boolean(villa.details) ||
+    (Array.isArray(villa.images) && villa.images.length > 0) ||
+    /plato-static\.s3|macrovilla\.com/i.test(html);
+  if (!looksPlato) return null;
+
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  const name = String(villa.name || "").trim();
+  if (!name) return null;
+
+  const districtName = villa.region?.district?.name?.trim() || null;
+  const cityName =
+    villa.region?.district?.Town?.name?.trim() ||
+    villa.region?.district?.town?.name?.trim() ||
+    null;
+  const locationLabel = [cityName, districtName].filter(Boolean).join(" / ");
+  const coords = parsePlatoMapCoords(villa.details?.mapIFrame);
+  const imageUrls = [
+    ...(Array.isArray(villa.images)
+      ? villa.images
+          .map((item) => (typeof item === "string" ? item : item?.url || ""))
+          .filter((url) => /^https?:\/\//i.test(url))
+      : []),
+    ...(villa.thumbnail && /^https?:\/\//i.test(villa.thumbnail)
+      ? [villa.thumbnail]
+      : []),
+  ];
+  const uniqueImages = [...new Set(imageUrls)];
+  const facilityLabels = (villa.types ?? [])
+    .map((row) => row.VillaType?.name || row.type?.name || "")
+    .map((label) => label.trim())
+    .filter(Boolean);
+
+  const prepaymentRate = Number(villa.details?.prePaidRate);
+  const damageDeposit = Number(villa.details?.damageDeposit);
+  const guests = Number(villa.details?.maxPerson);
+  const bedrooms = Number(villa.details?.bedroom);
+  const bathrooms = Number(villa.details?.bathroom);
+
+  return {
+    sourceHost: host,
+    pageUrl,
+    name,
+    originalName: name,
+    locationLabel,
+    districtName,
+    cityName,
+    guests: Number.isFinite(guests) && guests > 0 ? guests : 2,
+    bedrooms: Number.isFinite(bedrooms) && bedrooms > 0 ? bedrooms : 1,
+    bathrooms: Number.isFinite(bathrooms) && bathrooms > 0 ? bathrooms : 1,
+    livingRooms: 1,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    documentNo: String(villa.details?.certNo ?? "").trim(),
+    checkInTime: String(villa.details?.entryDate ?? "16:00").trim() || "16:00",
+    checkOutTime: String(villa.details?.exitDate ?? "10:00").trim() || "10:00",
+    ribbonText1: "",
+    minNightlyPrice: null,
+    damageDeposit:
+      Number.isFinite(damageDeposit) && damageDeposit > 0
+        ? Math.round(damageDeposit)
+        : null,
+    prepaymentRate:
+      Number.isFinite(prepaymentRate) && prepaymentRate > 0
+        ? Math.round(prepaymentRate)
+        : null,
+    descriptionHtml: String(villa.details?.description ?? "").trim(),
+    amenityLabels: parsePlatoFeatureLabels(villa.features),
+    facilityLabels,
+    imageUrls: uniqueImages,
+    distances: parsePlatoRanges(villa.details?.ranges),
+    pool: parsePlatoPool(villa.pool),
+    rooms: [],
+    entityId: villa.id != null ? String(villa.id) : null,
+    allowPets: false,
+    allowEvents: false,
+    allowSmoking: false,
+    allowChildren: true,
+    allowBaby: true,
+  };
 }
 
 function extractPageTitleTag(html: string): string {

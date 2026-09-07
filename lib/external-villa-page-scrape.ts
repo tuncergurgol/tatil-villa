@@ -30,6 +30,7 @@
  * - rezervasyonyap.tr (priceRules + günlük is_available takvim)
  * - villareyonu.com (RSC id + api.villareyonu.com PriceList/Availability)
  * - birvillas.com / birvillas.com.tr (Next.js RSC listing + dynamicPricing + disabledDates)
+ * - villadenizi.com.tr / Plato-Macrovilla (__NEXT_DATA__ villa.prices + villa.dates)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
  */
@@ -92,7 +93,8 @@ export type ScrapedVillaPage = {
     | "villajoye"
     | "rezervasyonyap"
     | "villareyonu"
-    | "birvillas";
+    | "birvillas"
+    | "plato_macrovilla";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -6663,6 +6665,187 @@ export function scrapeBirvillasFromHtml(
   };
 }
 
+function mapPlatoCurrency(raw: string | null | undefined): VillaPeriodCurrency {
+  const value = String(raw ?? "").toUpperCase();
+  if (value.includes("POUND") || value.includes("GBP") || value.includes("£")) {
+    return "GBP";
+  }
+  if (value.includes("EURO") || value.includes("EUR") || value.includes("€")) {
+    return "EUR";
+  }
+  if (value.includes("USD") || value.includes("DOLLAR") || value.includes("$")) {
+    return "USD";
+  }
+  return "TL";
+}
+
+function parsePlatoMoney(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw)) return Math.round(raw);
+  if (typeof raw !== "string") return null;
+  const parsed = parseLocalizedMoney(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
+}
+
+type PlatoPriceRow = {
+  price?: string | number;
+  priceCurrency?: string;
+  minDay?: number | string;
+  cleaningPrice?: string | number;
+  cleaningDay?: number | string;
+  startedAt?: string;
+  finishedAt?: string;
+};
+
+type PlatoDateRow = {
+  status?: string;
+  startedAt?: string;
+  finishedAt?: string;
+};
+
+function extractPlatoVillaPayload(html: string): {
+  name?: string;
+  prices?: PlatoPriceRow[];
+  dates?: PlatoDateRow[];
+  details?: { damageDeposit?: number | string | null };
+} | null {
+  const match = html.match(
+    /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s
+  );
+  if (!match?.[1]) return null;
+  try {
+    const data = JSON.parse(match[1]) as {
+      props?: {
+        pageProps?: {
+          villa?: {
+            name?: string;
+            prices?: PlatoPriceRow[];
+            dates?: PlatoDateRow[];
+            details?: { damageDeposit?: number | string | null };
+            images?: unknown[];
+          };
+        };
+      };
+    };
+    const villa = data.props?.pageProps?.villa;
+    if (!villa || typeof villa !== "object") return null;
+    if (
+      !Array.isArray(villa.prices) &&
+      !Array.isArray(villa.dates) &&
+      !Array.isArray(villa.images)
+    ) {
+      return null;
+    }
+    return villa;
+  } catch {
+    return null;
+  }
+}
+
+function platoDateKeyFromIso(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  return toDateKey(startOfDay(date));
+}
+
+export function scrapePlatoMacrovillaFromHtml(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): ScrapedVillaPage | null {
+  const villa = extractPlatoVillaPayload(html);
+  if (!villa) return null;
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  const looksPlato =
+    host.includes("villadenizi") ||
+    /plato-static\.s3|macrovilla\.com/i.test(html);
+  if (!looksPlato) return null;
+
+  const depositRaw = Number(villa.details?.damageDeposit);
+  const damageDeposit =
+    Number.isFinite(depositRaw) && depositRaw > 0 ? Math.round(depositRaw) : null;
+
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+  for (const row of villa.prices ?? []) {
+    const startKey = platoDateKeyFromIso(row.startedAt);
+    const endKey = platoDateKeyFromIso(row.finishedAt);
+    if (!startKey || !endKey) continue;
+    const startDate = parseDateKey(startKey);
+    const endDate = parseDateKey(endKey);
+    if (!startDate || !endDate || compareDates(startDate, endDate) > 0) continue;
+    const nightlyPrice = parsePlatoMoney(row.price);
+    if (nightlyPrice == null) continue;
+    const currency = mapPlatoCurrency(row.priceCurrency);
+    const minStayNights = Number(row.minDay);
+    const cleaningFee = parsePlatoMoney(row.cleaningPrice);
+    const cleaningDayCount = Number(row.cleaningDay);
+    const key = `${startKey}_${endKey}_${nightlyPrice}_${currency}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate,
+        endDate,
+        nightlyPrice,
+        currency,
+        minStayNights:
+          Number.isFinite(minStayNights) && minStayNights > 0
+            ? minStayNights
+            : null,
+        cleaningFee,
+        cleaningDayCount:
+          Number.isFinite(cleaningDayCount) && cleaningDayCount > 0
+            ? cleaningDayCount
+            : null,
+        damageDeposit,
+        damageDepositCurrency: currency,
+      })
+    );
+  }
+  periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  for (const row of villa.dates ?? []) {
+    const status = String(row.status ?? "").toUpperCase();
+    const isBooked =
+      status.includes("CLOSED") ||
+      status.includes("BOOK") ||
+      status.includes("RESERV") ||
+      status.includes("OCCUP");
+    const isOption = status.includes("OPTION") || status.includes("HOLD");
+    if (!isBooked && !isOption) continue;
+    const startKey = platoDateKeyFromIso(row.startedAt);
+    const endKey = platoDateKeyFromIso(row.finishedAt);
+    if (!startKey || !endKey) continue;
+    const keys = enumerateDateKeys(startKey, endKey);
+    for (const dateKey of keys) {
+      if (dateKey === endKey) continue;
+      occupancyByDateKey.set(dateKey, isOption ? "OPTION" : "BOOKED");
+    }
+  }
+
+  if (periods.length === 0) {
+    warnings.push(
+      "Plato/Macrovilla: fiyat periyodu boş (sitede gizlenmiş veya tanımlanmamış olabilir)"
+    );
+  }
+  if ((villa.dates?.length ?? 0) === 0) {
+    warnings.push("Plato/Macrovilla: takvim (dates) boş");
+  }
+
+  return {
+    sourceHost: host,
+    strategy: "plato_macrovilla",
+    pageTitle: villa.name ?? extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 export async function scrapeExternalVillaPage(
   pageUrl: string
 ): Promise<ScrapedVillaPage> {
@@ -6707,6 +6890,9 @@ export async function scrapeExternalVillaPage(
 
   const birvillas = scrapeBirvillasFromHtml(normalizedUrl, html, warnings);
   if (birvillas) return finalizeScrapedPage(birvillas, html);
+
+  const plato = scrapePlatoMacrovillaFromHtml(normalizedUrl, html, warnings);
+  if (plato) return finalizeScrapedPage(plato, html);
 
   const rezervasyonyap = scrapeRezervasyonyapFromHtml(
     normalizedUrl,
@@ -6879,6 +7065,6 @@ export async function scrapeExternalVillaPage(
   }
 
   throw new Error(
-    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, akdenizdevilla.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, villareyonu.com, birvillas.com, kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
+    "Bu villa sayfasından fiyat/takvim okunamadı. Desteklenen örnekler: heryervillam.com, hepsivilla.com, elitvillam.com, tatilvillamda.com, luxuryvillam.com, kaskavilla.com, villaevreni.com, tatilvillasi.com.tr, villavillam.com.tr, villacim.com.tr, tatilpremium.com, ovillam.com, akdenizvillam.com, akdenizdevilla.com, villavakti.com, villaciniz.com.tr, villapaketi.com, villayolu.com, villaekstra.com, mustakilvillam.com, myvillacity.com, villakilavuzu.com, villakalkan.com.tr, yazlikvillaci.com.tr, yazvillalari.com, yazlikcim.com.tr, risusvillatatili.com, tatilkentim.com, villasayfam.com, villaoteltatili.com, villajoye.com, rezervasyonyap.tr, villareyonu.com, birvillas.com, villadenizi.com.tr (Plato/Macrovilla), kiralikvilladatatil.com / dalvillalari.com (Boceksoft), __NEXT_DATA__ periyot içeren Next.js siteleri, veya HTML dönem fiyat tablosu."
   );
 }
