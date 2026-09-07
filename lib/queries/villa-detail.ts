@@ -32,6 +32,32 @@ function addMonthsUtc(date: Date, months: number) {
   );
 }
 
+/** Takvim/fiyat günleri en az 4, en fazla 24 ay; villanın son fiyat periyodu kadar uzar. */
+const CALENDAR_MIN_MONTHS_AHEAD = 4;
+const CALENDAR_MAX_MONTHS_AHEAD = 24;
+
+function resolveCalendarToDate(
+  fromDate: Date,
+  pricePeriods: { endDate: Date }[]
+) {
+  const minToDate = addMonthsUtc(fromDate, CALENDAR_MIN_MONTHS_AHEAD);
+  const maxToDate = addMonthsUtc(fromDate, CALENDAR_MAX_MONTHS_AHEAD);
+
+  let lastPeriodEnd: Date | null = null;
+  for (const period of pricePeriods) {
+    if (lastPeriodEnd == null || period.endDate > lastPeriodEnd) {
+      lastPeriodEnd = period.endDate;
+    }
+  }
+  if (lastPeriodEnd == null) return minToDate;
+
+  // addMonthsUtc ayın 1'ine sabitler; +1 ay son periyodun ayını tamamen kapsar.
+  const periodToDate = addMonthsUtc(lastPeriodEnd, 1);
+  if (periodToDate < minToDate) return minToDate;
+  if (periodToDate > maxToDate) return maxToDate;
+  return periodToDate;
+}
+
 function formatDistanceKm(km: number) {
   if (km < 1) {
     const meters = Math.round(km * 1000);
@@ -124,7 +150,7 @@ export async function getVillaDetailBySlug(
   }
 
   const fromDate = startOfTodayUtc();
-  const toDate = addMonthsUtc(fromDate, 4);
+  const toDate = resolveCalendarToDate(fromDate, villa.pricePeriods);
   const priceInclusionIds = villa.priceInclusionIds;
 
   const [priceInclusions, reviewAgg, siteReviewAgg, siteFallbackReviews, amenityRows, calendarDays] =

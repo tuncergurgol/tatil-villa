@@ -52,6 +52,8 @@ const MONTHS = [
   "Aralık",
 ] as const;
 
+const MAX_CALENDAR_MONTHS = 48;
+
 function monthKey(year: number, month: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
@@ -282,27 +284,27 @@ export default function VillaAvailabilityCalendar({
   }, [days]);
 
   const months = useMemo(() => {
-    const keys = new Set<string>();
-    for (const day of days) {
-      keys.add(day.date.slice(0, 7));
-    }
-
     const now = new Date();
     const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 4, 1);
+
+    let minKey = monthKey(now.getFullYear(), now.getMonth());
+    let maxKey = monthKey(rangeEnd.getFullYear(), rangeEnd.getMonth());
+    for (const day of days) {
+      const key = day.date.slice(0, 7);
+      if (key < minKey) minKey = key;
+      if (key > maxKey) maxKey = key;
+    }
+
+    // Veride ay boşluğu olsa da ileri/geri gezinme ay atlamamalı.
+    const keys: string[] = [];
     for (
-      let cursor = new Date(now.getFullYear(), now.getMonth(), 1);
-      cursor <= rangeEnd;
-      cursor.setMonth(cursor.getMonth() + 1)
+      let cursor = minKey;
+      cursor <= maxKey && keys.length < MAX_CALENDAR_MONTHS;
+      cursor = addMonthKey(cursor, 1)
     ) {
-      keys.add(monthKey(cursor.getFullYear(), cursor.getMonth()));
+      keys.push(cursor);
     }
-
-    if (keys.size === 0) {
-      keys.add(monthKey(now.getFullYear(), now.getMonth()));
-      keys.add(monthKey(now.getFullYear(), now.getMonth() + 1));
-    }
-
-    return Array.from(keys).sort();
+    return keys;
   }, [days]);
 
   const initialMonthIndex = useMemo(() => {
