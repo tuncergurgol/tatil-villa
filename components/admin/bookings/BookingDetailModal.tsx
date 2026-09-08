@@ -319,8 +319,10 @@ export default function BookingDetailModal({
   const [returningGuest, setReturningGuest] =
     useState<ReturningGuestPreview | null>(null);
   const [periodPrepaymentRate, setPeriodPrepaymentRate] = useState(20);
-  /** Onaylı kayıtta yönetici "Tutarları Değiştir" dedi mi (kilit geçici açık) */
+  /** Yönetici "Tutarları Değiştir" dedi mi — alanlar yazılabilir olur */
   const [pricingEditUnlocked, setPricingEditUnlocked] = useState(false);
+  /** Tarih/misafir değişikliği yapıldı mı — otomatik hesaplama yeniden açılır */
+  const [pricingRecalcUnlocked, setPricingRecalcUnlocked] = useState(false);
   const [pricingOverrideChanges, setPricingOverrideChanges] = useState<
     BookingPricingChange[]
   >([]);
@@ -345,14 +347,20 @@ export default function BookingDetailModal({
     (session?.user as { role?: string } | undefined)?.role === UserRole.ADMIN;
 
   /**
-   * Onaylanmış rezervasyonda fiyat kilidi. Kilit açıkken tutarlar güncel villa
-   * periyodundan yeniden hesaplanmaz; yalnızca son onaylanan değerler gösterilir.
+   * Onaylanmış rezervasyonda fiyat kilidi.
+   *
+   * Kilit iki ayrı şeyi kapsar:
+   * - `pricingFrozen`: tutarların kendiliğinden yeniden hesaplanması. Bu yalnızca
+   *   tarih/misafir değişikliği (yeni fiyat teklifi) akışında açılır.
+   * - `pricingInputsLocked`: alanların elle yazılabilir olması. Yönetici
+   *   "Tutarları Değiştir" dediğinde açılır, otomatik hesaplama yine kapalı kalır.
    */
   const pricingLocked =
     booking?.pricingLockedAt != null &&
     booking.status === BookingStatusEnum.CONFIRMED &&
     status === BookingStatusEnum.CONFIRMED;
-  const pricingFrozen = pricingLocked && !pricingEditUnlocked;
+  const pricingFrozen = pricingLocked && !pricingRecalcUnlocked;
+  const pricingInputsLocked = pricingLocked && !pricingEditUnlocked;
 
   useEffect(() => {
     getSiteInfoOptionsAction()
@@ -433,6 +441,7 @@ export default function BookingDetailModal({
         prepaymentManuallyEdited.current = false;
         salesRepEarnedManuallyEdited.current = false;
         setPricingEditUnlocked(false);
+        setPricingRecalcUnlocked(false);
         setPricingOverrideChanges([]);
         // Kilitli kayıtta ön ödeme oranı da snapshot'tan gelir; periyot
         // sorgusu çalışmayacağı için varsayılan %20'ye düşmemeli.
@@ -993,8 +1002,10 @@ export default function BookingDetailModal({
   }
 
   function handleApplyEntryChanges() {
-    // Tarih/misafir değişikliği fiyatı yeniden hesaplar; kilidi bu tur için aç.
+    // Tarih/misafir değişikliği yeni fiyat teklifi getirir; hem otomatik
+    // hesaplamayı hem de alanları bu düzenleme boyunca aç.
     setPricingEditUnlocked(true);
+    setPricingRecalcUnlocked(true);
     entryCommittedRef.current = {
       checkIn,
       checkOut,
@@ -1395,11 +1406,12 @@ export default function BookingDetailModal({
 
               <TabPanel active={activeTab === "fiyat"}>
               {pricingLocked ? (
-                pricingFrozen ? (
+                pricingInputsLocked ? (
                   <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800 sm:flex-row sm:items-center sm:justify-between">
                     <p>
-                      Rezervasyon onaylandığı için tutarlar donduruldu; kayıt her
-                      açıldığında son onaylanan hesap gösterilir.
+                      Rezervasyon onaylandığı için tutarlar donduruldu; alanlar
+                      salt okunur ve kayıt her açıldığında son onaylanan hesap
+                      gösterilir.
                     </p>
                     {isAdminUser ? (
                       <button
@@ -1413,12 +1425,13 @@ export default function BookingDetailModal({
                   </div>
                 ) : (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
-                    Fiyat kilidi bu düzenleme için açık. Kaydettiğinizde
-                    değişen kalemler için onay sorulacak.
+                    Tutar alanları düzenlemeye açık. Yalnızca elle yazdığınız
+                    değerler değişir; kaydettiğinizde değişen kalemler için onay
+                    sorulacak.
                   </div>
                 )
               ) : null}
-              <FormSection title="Fiyat Bilgileri">
+              <FormSection title="Fiyat Bilgileri" disabled={pricingInputsLocked}>
                 <FormRow label="Konaklama Bedeli Komisyonlu">
                   <input
                     value={
@@ -1545,6 +1558,7 @@ export default function BookingDetailModal({
                           className={bookingInputClass}
                           title="Ön Ödeme Tutarı"
                           placeholder="Tutar"
+                          disabled={pricingInputsLocked}
                         />
                       </div>
                     </FormRow>
@@ -1653,7 +1667,10 @@ export default function BookingDetailModal({
                 </FormRow>
               </FormSection>
 
-              <FormSection title="Villa ve Komisyon Bilgileri">
+              <FormSection
+                title="Villa ve Komisyon Bilgileri"
+                disabled={pricingInputsLocked}
+              >
                 <FormRow label="Satış Türü">
                   <ReadonlyField value={booking.villa.salesType} />
                 </FormRow>

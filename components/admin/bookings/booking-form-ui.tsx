@@ -1,7 +1,7 @@
 import { formatMoneyInputValue } from "@/lib/booking-display";
 
 export const bookingInputClass =
-  "w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100";
+  "w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500";
 
 export const bookingReadonlyClass =
   "w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700";
@@ -13,13 +13,17 @@ export function FormSection({
   title,
   children,
   className = "",
+  disabled = false,
 }: {
   title: string;
   children: React.ReactNode;
   className?: string;
+  /** Alanları salt okunur yapar (onaylı rezervasyonda fiyat kilidi) */
+  disabled?: boolean;
 }) {
   return (
     <fieldset
+      disabled={disabled}
       className={`rounded-lg border border-gray-300 px-4 pb-4 pt-3 ${className}`.trim()}
     >
       <legend className="bg-inherit px-2 text-sm font-semibold text-gray-800">
