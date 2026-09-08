@@ -48,6 +48,7 @@ function resolveSiteLabels(
     active: boolean;
     documentNo: string;
     documentType: TourismDocumentType | null;
+    facilityCategories: string[];
   },
   allowedSiteKeys: readonly PublicSiteKey[]
 ) {
@@ -71,6 +72,7 @@ export async function getVillaContentAiBulkRows(): Promise<VillaContentAiBulkRow
         seoDescription: true,
         documentNo: true,
         documentType: true,
+        facilityCategories: true,
         descriptionAiUpdatedAt: true,
         descriptionAiReport: true,
         seoAiUpdatedAt: true,

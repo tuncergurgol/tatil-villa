@@ -51,6 +51,41 @@ function getSite4BrandFromEnv(): string {
   );
 }
 
+function getSite4FacilityCategoriesFromEnv(): string[] {
+  const raw =
+    process.env.PUBLIC_SITE_4_FACILITY_CATEGORIES?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_4_FACILITY_CATEGORIES?.trim() ||
+    "";
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Bir public sitenin yalnızca belirli tesis kategorilerini yayınlaması için
+ * whitelist. Boş liste = kategori kısıtı yok (tüm villalar yayınlanabilir).
+ */
+const PUBLIC_SITE_FACILITY_CATEGORIES: Record<string, string[]> = {
+  "glamping-turkey": ["Bungalov", "Domes"],
+};
+
+/**
+ * Site bazlı tesis kategorisi whitelist'i. Site 4 için env ile ezilebilir;
+ * env yoksa yerleşik varsayılan kullanılır.
+ */
+export function getPublicSiteFacilityCategories(
+  siteKey: PublicSiteKey | null | undefined
+): string[] {
+  if (!siteKey) return [];
+  const site4Key = getSite4KeyFromEnv();
+  if (site4Key && siteKey === site4Key) {
+    const fromEnv = getSite4FacilityCategoriesFromEnv();
+    if (fromEnv.length > 0) return fromEnv;
+  }
+  return PUBLIC_SITE_FACILITY_CATEGORIES[siteKey] ?? [];
+}
+
 export function isPublicSiteKey(value: string): value is PublicSiteKey {
   if ((PUBLIC_SITE_KEYS as readonly string[]).includes(value)) return true;
   const site4Key = getSite4KeyFromEnv();
