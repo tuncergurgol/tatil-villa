@@ -17,6 +17,7 @@ import { calculateNights } from "@/lib/stay-nights";
 import { offsetDateKey } from "@/lib/villa-period-selection";
 import { syncBookingStayOccupancy } from "@/lib/villa-occupancy-service";
 import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
+import { lockBookingPricingIfConfirmed } from "@/lib/queries/booking-pricing-lock";
 import { processCompletedStayRewards } from "@/lib/loyalty-rewards";
 import { normalizePhoneToE164 } from "@/lib/phone";
 
@@ -376,6 +377,7 @@ export async function createAdminBooking(data: {
       },
     });
     await handleBookingConfirmedTransition(booking.id, null);
+    await lockBookingPricingIfConfirmed(booking.id);
   }
 
   return booking;
@@ -465,6 +467,7 @@ export async function updateAdminBooking(
     existing?.status !== BookingStatus.CONFIRMED
   ) {
     await handleBookingConfirmedTransition(id, existing?.status ?? null);
+    await lockBookingPricingIfConfirmed(id);
     await applyConfirmedBookingCustomerTags({
       customerId: customerSync?.id,
       guestName: data.guestName,
@@ -556,6 +559,7 @@ export async function updateBookingDetail(data: {
     existing.status !== BookingStatus.CONFIRMED
   ) {
     await handleBookingConfirmedTransition(data.id, existing.status);
+    await lockBookingPricingIfConfirmed(data.id);
     await applyConfirmedBookingCustomerTags({
       customerId: customerSync?.id,
       guestName: data.guestName,
@@ -660,6 +664,7 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
     existing.status !== BookingStatus.CONFIRMED
   ) {
     await handleBookingConfirmedTransition(id, existing.status);
+    await lockBookingPricingIfConfirmed(id);
   }
 
   return booking;

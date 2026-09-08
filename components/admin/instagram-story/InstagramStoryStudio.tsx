@@ -62,7 +62,7 @@ export default function InstagramStoryStudio({ sites }: Props) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [villa, setVilla] = useState<InstagramStoryVillaPayload | null>(null);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
-  const [tagline, setTagline] = useState(INSTAGRAM_STORY_TAGLINES[0]);
+  const [tagline, setTagline] = useState<string>(INSTAGRAM_STORY_TAGLINES[0]);
   const [meta, setMeta] = useState("");
   const [location, setLocation] = useState("");
   const [ctaLabel, setCtaLabel] = useState(defaultSite.ctaLabel);

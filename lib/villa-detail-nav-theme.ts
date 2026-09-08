@@ -9,13 +9,6 @@ export type VillaDetailNavTheme = {
 
 export function getVillaDetailNavTheme(siteKey: PublicSiteKey): VillaDetailNavTheme {
   switch (siteKey) {
-    case "tatildeyiz":
-      return {
-        bar: "bg-red-700",
-        activeText: "text-white",
-        inactiveText: "text-red-100",
-        activeIndicator: "bg-amber-400",
-      };
     case "tatil-villacisi":
       return {
         bar: "bg-slate-900",
@@ -29,6 +22,14 @@ export function getVillaDetailNavTheme(siteKey: PublicSiteKey): VillaDetailNavTh
         activeText: "text-white",
         inactiveText: "text-amber-50/90",
         activeIndicator: "bg-white",
+      };
+    // tatildeyiz ve Site 4 (env ile gelen anahtar) varsayılan temayı kullanır
+    default:
+      return {
+        bar: "bg-red-700",
+        activeText: "text-white",
+        inactiveText: "text-red-100",
+        activeIndicator: "bg-amber-400",
       };
   }
 }

@@ -19,7 +19,12 @@ export function fillMissingVillaPeriodPaymentRates<
     prepaymentRate?: number | null;
     commissionRate?: number | null;
   },
->(period: T): T & { prepaymentRate: number; commissionRate: number } {
+>(
+  period: T
+): Omit<T, "prepaymentRate" | "commissionRate"> & {
+  prepaymentRate: number;
+  commissionRate: number;
+} {
   const commissionRate =
     positiveRate(period.commissionRate) ?? DEFAULT_VILLA_PERIOD_COMMISSION_RATE;
   const prepaymentRate =
@@ -39,7 +44,12 @@ export function alignVillaPeriodPrepaymentToCommission<
     prepaymentRate?: number | null;
     commissionRate?: number | null;
   },
->(period: T): T & { prepaymentRate: number; commissionRate: number } {
+>(
+  period: T
+): Omit<T, "prepaymentRate" | "commissionRate"> & {
+  prepaymentRate: number;
+  commissionRate: number;
+} {
   const filled = fillMissingVillaPeriodPaymentRates(period);
   return {
     ...filled,

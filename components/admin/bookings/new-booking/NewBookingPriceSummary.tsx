@@ -45,10 +45,12 @@ export default function NewBookingPriceSummary({
   prepaymentRate,
   entrancePayment,
   damageDeposit,
-  ownerDiscountAmount = 0,
-  agencyDiscountAmount = 0,
+  ownerDiscountAmount: ownerDiscountAmountInput,
+  agencyDiscountAmount: agencyDiscountAmountInput,
   compact = false,
 }: NewBookingPriceSummaryProps) {
+  const ownerDiscountAmount = ownerDiscountAmountInput ?? 0;
+  const agencyDiscountAmount = agencyDiscountAmountInput ?? 0;
   const nights =
     checkIn && checkOut ? countNightsBetween(checkIn, checkOut) : 0;
   const guestSummary = `${adults + children + babies} Misafir (${adults}+${children}+${babies})`;

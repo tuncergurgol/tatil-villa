@@ -1201,6 +1201,10 @@ model Booking {
   optionExpiresAt    DateTime?
   confirmationSentAt DateTime?
   details            Json                @default("{}")
+  /** Onaylı rezervasyonda fiyat kalemleri donduruldu (details.pricingSnapshot) */
+  pricingLockedAt    DateTime?
+  pricingLockedById  String?
+  pricingVersion     Int                 @default(1)
   prepayments        BookingPrepayment[]
   paymentSessions    BookingPaymentSession[]
   guestReviewInvitation GuestReviewInvitation?

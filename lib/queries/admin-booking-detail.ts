@@ -4,11 +4,14 @@ import type {
   BookingPrepaymentRecord,
 } from "@/lib/booking-form-details";
 import { cancelExpiredPrepaymentBookingById } from "@/lib/queries/bookings";
+import { lockBookingPricingIfConfirmed } from "@/lib/queries/booking-pricing-lock";
 
 export async function getAdminBookingDetail(
   id: string
 ): Promise<BookingDetailRecord | null> {
   await cancelExpiredPrepaymentBookingById(id);
+  // Eski onaylı kayıtlarda kilit yoksa mevcut tutarlardan snapshot üretilir
+  await lockBookingPricingIfConfirmed(id);
 
   const booking = await prisma.booking.findUnique({
     where: { id },

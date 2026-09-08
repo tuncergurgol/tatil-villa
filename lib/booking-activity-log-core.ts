@@ -24,7 +24,8 @@ export type BookingActivityAction =
   | "option_request_message_sent"
   | "compensation_applied"
   | "booking_cancelled"
-  | "force_majeure_refund_applied";
+  | "force_majeure_refund_applied"
+  | "pricing_override";
 
 export type BookingActivityLogEntry = {
   id: string;
@@ -60,6 +61,7 @@ const ACTION_LABELS: Record<BookingActivityAction, string> = {
   compensation_applied: "Tazminat uygulandı",
   booking_cancelled: "Rezervasyon iptal edildi",
   force_majeure_refund_applied: "Mücbir sebep iadesi uygulandı",
+  pricing_override: "Onaylı rezervasyon tutarları değiştirildi",
 };
 
 export function getBookingActivityActionLabel(

@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import type { OverlayOptions } from "sharp";
 import { resolveStoryFontPair } from "@/lib/instagram-story/fonts";
 import {
   INSTAGRAM_STORY_HEIGHT,
@@ -101,7 +102,7 @@ export async function composeInstagramStoryFrame(
   <text x="132" y="1806" font-family="StorySansBold" font-size="28" fill="#ffffff">${escapeXml(ctaText)}</text>
 </svg>`);
 
-  const layers: sharp.OverlayOptions[] = [
+  const layers: OverlayOptions[] = [
     { input: overlay, left: 0, top: 0 },
   ];
   if (logoComposite) layers.push(logoComposite);

@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 export const ADMIN_AUDIT_ACTIONS = [
@@ -39,7 +40,9 @@ export async function recordAdminAuditEvent(input: {
         email: (input.email ?? "").trim().toLowerCase(),
         ip: input.ip ?? null,
         userAgent: input.userAgent?.slice(0, 500) ?? null,
-        meta: input.meta ?? undefined,
+        meta: input.meta
+          ? (input.meta as Prisma.InputJsonValue)
+          : undefined,
       },
     });
   } catch (error) {

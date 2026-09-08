@@ -19,8 +19,9 @@ import { sendSmsMessage } from "@/lib/sms-delivery";
 import { sendCompanyMail } from "@/lib/email";
 import { toHtmlFromText } from "@/lib/email-html";
 import {
-  PUBLIC_SITE_KEYS,
   getPublicSiteMeta,
+  isPublicSiteKey,
+  type PublicSiteKey,
 } from "@/lib/public-site-keys";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import { syncCustomerFromAvailabilitySearch } from "@/lib/customer-crm";
@@ -245,7 +246,8 @@ export async function createPublicVillaShareLinkAction(input: {
 const availabilityOfferSchema = z.object({
   villaId: z.string().min(1),
   channel: z.enum(["WHATSAPP", "EMAIL", "SMS"]),
-  siteKey: z.enum(PUBLIC_SITE_KEYS),
+  // Site 4 anahtarı env ile geldiği için sabit enum yerine merkezi kontrol
+  siteKey: z.string().refine(isPublicSiteKey, "Geçersiz site"),
   guestName: z.string().trim().max(150).default(""),
   guestPhone: z.string().trim().max(30).default(""),
   guestEmail: z.string().trim().max(254).default(""),
@@ -261,7 +263,7 @@ const availabilityOfferSchema = z.object({
 export async function sendAvailabilityOfferAction(input: {
   villaId: string;
   channel: "WHATSAPP" | "EMAIL" | "SMS";
-  siteKey: (typeof PUBLIC_SITE_KEYS)[number];
+  siteKey: PublicSiteKey;
   guestName: string;
   guestPhone: string;
   guestEmail: string;
@@ -392,7 +394,7 @@ export async function sendAvailabilityOfferAction(input: {
 
 export async function buildAvailabilityPublicVillaUrlAction(input: {
   villaId: string;
-  siteKey: (typeof PUBLIC_SITE_KEYS)[number];
+  siteKey: PublicSiteKey;
   checkIn?: string;
   checkOut?: string;
   adults?: number;

@@ -796,6 +796,7 @@ export function buildPeriodMetaFallbackFromPeriods(
   periods: Array<{
     prepaymentRate: number | null;
     commissionRate: number | null;
+    minStayNights?: number | null;
     cleaningDayCount: number | null;
     cleaningFee: number | null;
     cleaningFeeCurrency: VillaPeriodCurrency;
@@ -807,7 +808,9 @@ export function buildPeriodMetaFallbackFromPeriods(
   return {
     prepaymentRate: modeValue(periods.map((period) => period.prepaymentRate)),
     commissionRate: modeValue(periods.map((period) => period.commissionRate)),
-    minStayNights: modeValue(periods.map((period) => period.minStayNights)),
+    minStayNights: modeValue(
+      periods.map((period) => period.minStayNights ?? null)
+    ),
     cleaningDayCount: modeValue(periods.map((period) => period.cleaningDayCount)),
     cleaningFee: modeValue(periods.map((period) => period.cleaningFee)),
     cleaningFeeCurrency:
@@ -4097,6 +4100,7 @@ export async function scrapeVillavillamFromPage(
   const emptyDefaults: ScrapedVillaPeriodDefaults = {
     prepaymentRate: null,
     commissionRate: null,
+    minStayNights: null,
     cleaningDayCount: null,
     cleaningFee: null,
     cleaningFeeCurrency: "TL",

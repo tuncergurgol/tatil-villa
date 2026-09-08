@@ -18,6 +18,7 @@ import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 import { applyVillaPeriodDaysOccupancy } from "@/lib/villa-occupancy-service";
 import { handleBookingConfirmedTransition } from "@/lib/booking-excel-export";
+import { lockBookingPricingIfConfirmed } from "@/lib/queries/booking-pricing-lock";
 import {
   syncCustomerFromBookingGuest,
 } from "@/lib/customer-crm";
@@ -317,6 +318,7 @@ export async function confirmBookingGuestInfoAction(
   );
 
   await handleBookingConfirmedTransition(booking.id, booking.status);
+  await lockBookingPricingIfConfirmed(booking.id);
 
   const customerSync = await syncCustomerFromBookingGuest({
     guestName,

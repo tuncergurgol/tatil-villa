@@ -86,7 +86,7 @@ async function main() {
   const categoryWhere = {
     active: true,
     facilityCategories: { hasSome: [DOMES_CATEGORY_NAME, "Bungalov"] },
-  } as const;
+  };
 
   const inCategory = await prisma.villa.count({ where: categoryWhere });
   const withDocument = await prisma.villa.count({

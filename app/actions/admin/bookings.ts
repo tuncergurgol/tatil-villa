@@ -25,16 +25,25 @@ import { getVillaOccupancyCalendarDays } from "@/lib/queries/villa-occupancy-cal
 import { requireAdmin } from "@/lib/auth-helpers";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import {
+  applyPricingSnapshot,
+  buildPricingSnapshot,
   computeCheckInPayment,
   computeNetPrice,
   computePayableReservationTotal,
   DEFAULT_BOOKING_AGENCY_NAME,
   DEFAULT_BOOKING_SITE_INFO,
   dedupeSiteInfoNames,
+  diffPricingSnapshot,
+  formatPricingChangeValue,
+  isBookingPricingLocked,
   parseBookingDetails,
+  parsePricingSnapshot,
   type BookingDetails,
   type BookingGuestEntry,
+  type BookingPricingChange,
+  type BookingPricingSnapshot,
 } from "@/lib/booking-form-details";
+import { bumpBookingPricingVersion } from "@/lib/queries/booking-pricing-lock";
 import {
   appendBookingActivityLog,
   buildActivityLogEntry,
@@ -113,6 +122,9 @@ export type AdminBookingActionState = {
   success?: boolean;
   error?: string;
   activityLogs?: BookingActivityLogEntry[];
+  /** Onaylı rezervasyonda tutar değişti; yönetici onayı bekleniyor (kayıt yapılmadı) */
+  pricingOverrideRequired?: boolean;
+  pricingChanges?: BookingPricingChange[];
 };
 
 function parseAdminBookingForm(formData: FormData) {
@@ -457,6 +469,8 @@ const bookingDetailSchema = z.object({
     .transform((value) => normalizeStoredTurkishPhone(value)),
   totalPrice: z.number().nullable(),
   details: z.record(z.string(), z.unknown()),
+  /** Kilitli (ONAYLANDI) kayıtta tutar değişikliğini yönetici onayladı */
+  confirmPricingOverride: z.boolean().optional().default(false),
 });
 
 export async function getBookingDetailAction(id: string) {
@@ -520,27 +534,15 @@ export async function updateBookingDetailAction(
     return { error: tcError };
   }
 
-  const loyaltyFloor = await applyLoyaltyFloorToBookingDetails({
-    guestPhone: parsed.data.guestPhone,
-    guestEmail: parsed.data.guestEmail,
-    details,
-  });
-  const flooredDetails = loyaltyFloor.raised
-    ? {
-        ...loyaltyFloor.details,
-        checkInPayment: computeCheckInPayment(loyaltyFloor.details),
-      }
-    : loyaltyFloor.details;
-  const flooredTotalPrice = loyaltyFloor.raised
-    ? computeNetPrice(flooredDetails)
-    : parsed.data.totalPrice;
-
   try {
     const existing = await prisma.booking.findUnique({
       where: { id: parsed.data.id },
       select: {
         details: true,
         villaId: true,
+        status: true,
+        totalPrice: true,
+        pricingLockedAt: true,
         prepayments: { select: { amount: true } },
       },
     });
@@ -549,12 +551,67 @@ export async function updateBookingDetailAction(
     }
 
     const existingDetails = parseBookingDetails(existing?.details);
+
+    // Onaylı rezervasyonda tutarlar dondurulur: statü ONAYLANDI kaldığı sürece
+    // hiçbir kalem güncel villa periyodundan yeniden hesaplanmaz.
+    const lockedSnapshot: BookingPricingSnapshot | null =
+      isBookingPricingLocked(existing) &&
+      parsed.data.status === existing.status
+        ? (parsePricingSnapshot(existingDetails.pricingSnapshot) ??
+          buildPricingSnapshot(existingDetails, existing.totalPrice))
+        : null;
+    const pricingFrozen = lockedSnapshot != null;
+
+    const loyaltyFloor = pricingFrozen
+      ? { details, match: null, raised: false as const }
+      : await applyLoyaltyFloorToBookingDetails({
+          guestPhone: parsed.data.guestPhone,
+          guestEmail: parsed.data.guestEmail,
+          details,
+        });
+    const flooredDetails = loyaltyFloor.raised
+      ? {
+          ...loyaltyFloor.details,
+          checkInPayment: computeCheckInPayment(loyaltyFloor.details),
+        }
+      : loyaltyFloor.details;
+    const flooredTotalPrice = loyaltyFloor.raised
+      ? computeNetPrice(flooredDetails)
+      : parsed.data.totalPrice;
+
+    // Kilitli kayıtta gelen tutarlar snapshot ile karşılaştırılır; fark varsa
+    // yönetici onayı gelmeden kayıt uygulanmaz.
+    let pricingSnapshotToKeep = lockedSnapshot;
+    let pricingOverrideChanges: BookingPricingChange[] = [];
+    if (lockedSnapshot) {
+      const incomingSnapshot = buildPricingSnapshot(
+        flooredDetails,
+        flooredTotalPrice
+      );
+      const changes = diffPricingSnapshot(lockedSnapshot, incomingSnapshot);
+      if (changes.length > 0) {
+        if (!parsed.data.confirmPricingOverride) {
+          return { pricingOverrideRequired: true, pricingChanges: changes };
+        }
+        if (!isAdminUser) {
+          return {
+            error:
+              "Onaylanmış rezervasyonun tutarlarını yalnızca yönetici değiştirebilir.",
+          };
+        }
+        pricingSnapshotToKeep = incomingSnapshot;
+        pricingOverrideChanges = changes;
+      }
+    }
+
     const hasRealizedPrepayment =
       existing.prepayments.reduce((sum, item) => sum + item.amount, 0) > 0;
-    const periodFees = await resolveBookingPeriodFees(
-      existing.villaId,
-      new Date(`${parsed.data.checkIn}T00:00:00.000Z`)
-    );
+    const periodFees = pricingFrozen
+      ? null
+      : await resolveBookingPeriodFees(
+          existing.villaId,
+          new Date(`${parsed.data.checkIn}T00:00:00.000Z`)
+        );
     const actor = await resolveActivityActor(session.user);
     const logEntries = [...normalizeActivityLogs(existingDetails.activityLogs)];
 
@@ -571,6 +628,21 @@ export async function updateBookingDetailAction(
         buildActivityLogEntry({
           action: "booking_updated",
           message: `Sadakat sınıfı hatırlandı: ${loyaltyFloor.match.welcomeTitle} — acente indirimi %${loyaltyFloor.match.discountPercent}`,
+          actorUserId: actor.actorUserId,
+          actorName: actor.actorName,
+        })
+      );
+    }
+    if (pricingOverrideChanges.length > 0) {
+      logEntries.push(
+        buildActivityLogEntry({
+          action: "pricing_override",
+          message: `Onaylı rezervasyon tutarları yönetici onayıyla değiştirildi: ${pricingOverrideChanges
+            .map(
+              (change) =>
+                `${change.label} ${formatPricingChangeValue(change.previous)} → ${formatPricingChangeValue(change.next)}`
+            )
+            .join(" · ")}`,
           actorUserId: actor.actorUserId,
           actorName: actor.actorName,
         })
@@ -602,9 +674,14 @@ export async function updateBookingDetailAction(
     const mergedDetails: BookingDetails = {
       ...flooredDetails,
       // Depozitolar her kayıtta giriş tarihinin bağlı olduğu periyottan alınır.
-      damageDeposit: periodFees.damageDeposit,
-      petDamageDeposit:
-        parsed.data.pets > 0 ? periodFees.petDamageDeposit : null,
+      // Kilitli kayıtta bu ezme yapılmaz; snapshot değerleri korunur.
+      ...(periodFees
+        ? {
+            damageDeposit: periodFees.damageDeposit,
+            petDamageDeposit:
+              parsed.data.pets > 0 ? periodFees.petDamageDeposit : null,
+          }
+        : {}),
       confirmationSends:
         flooredDetails.confirmationSends ?? existingDetails.confirmationSends,
       ownerPayments: flooredDetails.ownerPayments ?? existingDetails.ownerPayments,
@@ -634,6 +711,22 @@ export async function updateBookingDetailAction(
           }),
     };
 
+    // Kilitli kayıtta son onaylanan tutarlar tekrar yazılır: onaysız hiçbir
+    // kalem kaymaz, onaylı override'da snapshot yeni değerlerle yenilenir.
+    const detailsToSave: BookingDetails = pricingSnapshotToKeep
+      ? {
+          ...applyPricingSnapshot(mergedDetails, pricingSnapshotToKeep),
+          pricingSnapshot: pricingSnapshotToKeep,
+          pricingSnapshotAt:
+            pricingOverrideChanges.length > 0
+              ? new Date().toISOString()
+              : (existingDetails.pricingSnapshotAt ?? new Date().toISOString()),
+        }
+      : mergedDetails;
+    const totalPriceToSave = pricingSnapshotToKeep
+      ? (pricingSnapshotToKeep.totalPrice ?? flooredTotalPrice)
+      : flooredTotalPrice;
+
     await updateBookingDetail({
       id: parsed.data.id,
       status: parsed.data.status,
@@ -647,9 +740,12 @@ export async function updateBookingDetailAction(
       guestName: parsed.data.guestName,
       guestEmail: parsed.data.guestEmail,
       guestPhone: parsed.data.guestPhone,
-      totalPrice: flooredTotalPrice,
-      details: mergedDetails,
+      totalPrice: totalPriceToSave,
+      details: detailsToSave,
     });
+    if (pricingOverrideChanges.length > 0) {
+      await bumpBookingPricingVersion(parsed.data.id, actor.actorUserId);
+    }
     revalidatePath("/admin/rezervasyonlar");
     revalidatePath("/admin/musteri-yonetimi");
     return { success: true, activityLogs: logEntries };

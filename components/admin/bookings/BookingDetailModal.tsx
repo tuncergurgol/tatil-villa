@@ -53,6 +53,7 @@ import {
   normalizeOwnerPayments,
   resolveExternalCode,
   toDateInputValue,
+  type BookingPricingChange,
 } from "@/lib/booking-form-details";
 import type { AllowStayRange } from "@/lib/booking-calendar-selection";
 import type { VillaOccupancyCalendarDay } from "@/lib/queries/villa-occupancy-calendar";
@@ -84,6 +85,7 @@ import { getActiveSalesRepOptionsAction } from "@/app/actions/admin/users";
 import type { SalesRepOption } from "@/lib/queries/users";
 import PrepaymentShareModal from "@/components/admin/bookings/PrepaymentShareModal";
 import BookingEntryQuotePreviewModal from "@/components/admin/bookings/BookingEntryQuotePreviewModal";
+import BookingPricingOverrideModal from "@/components/admin/bookings/BookingPricingOverrideModal";
 import BookingKonfirmeTab from "@/components/admin/bookings/BookingKonfirmeTab";
 import BookingPrepaymentSection from "@/components/admin/bookings/BookingPrepaymentSection";
 import BookingOwnerPaymentsSection from "@/components/admin/bookings/BookingOwnerPaymentsSection";
@@ -317,6 +319,11 @@ export default function BookingDetailModal({
   const [returningGuest, setReturningGuest] =
     useState<ReturningGuestPreview | null>(null);
   const [periodPrepaymentRate, setPeriodPrepaymentRate] = useState(20);
+  /** Onaylı kayıtta yönetici "Tutarları Değiştir" dedi mi (kilit geçici açık) */
+  const [pricingEditUnlocked, setPricingEditUnlocked] = useState(false);
+  const [pricingOverrideChanges, setPricingOverrideChanges] = useState<
+    BookingPricingChange[]
+  >([]);
   const prepaymentManuallyEdited = useRef(false);
   const talepPrepaymentAmountRef = useRef<number | null>(null);
   const [activeTab, setActiveTab] = useState<BookingDetailTabId>("rezervasyon");
@@ -336,6 +343,16 @@ export default function BookingDetailModal({
   const { data: session } = useSession();
   const isAdminUser =
     (session?.user as { role?: string } | undefined)?.role === UserRole.ADMIN;
+
+  /**
+   * Onaylanmış rezervasyonda fiyat kilidi. Kilit açıkken tutarlar güncel villa
+   * periyodundan yeniden hesaplanmaz; yalnızca son onaylanan değerler gösterilir.
+   */
+  const pricingLocked =
+    booking?.pricingLockedAt != null &&
+    booking.status === BookingStatusEnum.CONFIRMED &&
+    status === BookingStatusEnum.CONFIRMED;
+  const pricingFrozen = pricingLocked && !pricingEditUnlocked;
 
   useEffect(() => {
     getSiteInfoOptionsAction()
@@ -415,6 +432,16 @@ export default function BookingDetailModal({
             : null;
         prepaymentManuallyEdited.current = false;
         salesRepEarnedManuallyEdited.current = false;
+        setPricingEditUnlocked(false);
+        setPricingOverrideChanges([]);
+        // Kilitli kayıtta ön ödeme oranı da snapshot'tan gelir; periyot
+        // sorgusu çalışmayacağı için varsayılan %20'ye düşmemeli.
+        if (
+          record.status === BookingStatusEnum.CONFIRMED &&
+          record.pricingLockedAt != null
+        ) {
+          setPeriodPrepaymentRate(clampDiscountRate(parsed.prepaymentRate ?? 20));
+        }
         setDetails(defaultDetailsFromBooking(record));
         setActiveTab("rezervasyon");
       })
@@ -455,7 +482,7 @@ export default function BookingDetailModal({
   }, [booking?.villa.id]);
 
   useEffect(() => {
-    if (isEntryEditing) return;
+    if (isEntryEditing || pricingFrozen) return;
     if (!booking?.villa.id || !checkIn) return;
 
     let cancelled = false;
@@ -472,10 +499,10 @@ export default function BookingDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [booking?.villa.id, checkIn, isEntryEditing]);
+  }, [booking?.villa.id, checkIn, isEntryEditing, pricingFrozen]);
 
   useEffect(() => {
-    if (isEntryEditing) return;
+    if (isEntryEditing || pricingFrozen) return;
     if (!booking?.villa.id || !checkIn) return;
 
     let cancelled = false;
@@ -496,7 +523,7 @@ export default function BookingDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [booking?.villa.id, checkIn, isEntryEditing, pets]);
+  }, [booking?.villa.id, checkIn, isEntryEditing, pets, pricingFrozen]);
 
   const netPrice = useMemo(() => computeNetPrice(details), [details]);
   const balance = useMemo(
@@ -513,6 +540,7 @@ export default function BookingDetailModal({
   );
 
   useEffect(() => {
+    if (pricingFrozen) return;
     const suggested = computePrepaymentAmount(
       details.grossPrice,
       details.ownerDiscountAmount,
@@ -542,16 +570,19 @@ export default function BookingDetailModal({
     details.grossPrice,
     details.ownerDiscountAmount,
     details.agencyDiscountAmount,
+    pricingFrozen,
   ]);
 
   useEffect(() => {
+    if (pricingFrozen) return;
     setDetails((current) => {
       if (current.checkInPayment === checkInPayment) return current;
       return { ...current, checkInPayment };
     });
-  }, [checkInPayment]);
+  }, [checkInPayment, pricingFrozen]);
 
   useEffect(() => {
+    if (pricingFrozen) return;
     setDetails((current) => {
       const computed = computeCommissionAmount(
         current.grossPrice,
@@ -567,6 +598,7 @@ export default function BookingDetailModal({
     details.ownerDiscountAmount,
     details.agencyDiscountAmount,
     details.commissionRate,
+    pricingFrozen,
   ]);
 
   const ownerPaymentTermName =
@@ -678,7 +710,7 @@ export default function BookingDetailModal({
   }, [hasRealizedPrepayment]);
 
   useEffect(() => {
-    if (salesRepEarnedManuallyEdited.current) return;
+    if (salesRepEarnedManuallyEdited.current || pricingFrozen) return;
     setDetails((current) => {
       const computed = computeSalesRepCommissionEarned(
         netPrice,
@@ -691,6 +723,7 @@ export default function BookingDetailModal({
     netPrice,
     details.salesRepCommissionRate,
     details.salesRepUserId,
+    pricingFrozen,
   ]);
 
   const nightCount = useMemo(() => {
@@ -804,6 +837,8 @@ export default function BookingDetailModal({
         const match = result.match;
         setReturningGuest(match);
         if (!match?.applyDiscount) return;
+        // Kilitli kayıtta sadakat indirimi otomatik yükseltilmez
+        if (pricingFrozen) return;
         setDetails((current) => {
           if ((current.agencyDiscountRate ?? 0) >= match.discountPercent) {
             return current;
@@ -825,7 +860,7 @@ export default function BookingDetailModal({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [guestPhone, guestEmail]);
+  }, [guestPhone, guestEmail, pricingFrozen]);
 
   function handleCommissionRateChange(rate: number) {
     const commissionRate = clampDiscountRate(rate);
@@ -958,6 +993,8 @@ export default function BookingDetailModal({
   }
 
   function handleApplyEntryChanges() {
+    // Tarih/misafir değişikliği fiyatı yeniden hesaplar; kilidi bu tur için aç.
+    setPricingEditUnlocked(true);
     entryCommittedRef.current = {
       checkIn,
       checkOut,
@@ -977,13 +1014,8 @@ export default function BookingDetailModal({
     }
   }
 
-  function handleSave() {
+  function submitBookingDetail(confirmPricingOverride: boolean) {
     if (!booking) return;
-
-    if (!tcFieldsAcceptable) {
-      setError("Lütfen geçersiz T.C. Kimlik No alanlarını düzeltin.");
-      return;
-    }
 
     startTransition(async () => {
       const result = await updateBookingDetailAction({
@@ -1007,9 +1039,16 @@ export default function BookingDetailModal({
           checkInPayment,
           commissionAmount: details.commissionAmount,
         },
+        confirmPricingOverride,
       });
 
+      if (result.pricingOverrideRequired) {
+        setPricingOverrideChanges(result.pricingChanges ?? []);
+        return;
+      }
+
       if (result.error) {
+        setPricingOverrideChanges([]);
         setError(result.error);
         return;
       }
@@ -1018,9 +1057,21 @@ export default function BookingDetailModal({
         syncActivityLogs(result.activityLogs);
       }
 
+      setPricingOverrideChanges([]);
       onSaved();
       onClose();
     });
+  }
+
+  function handleSave() {
+    if (!booking) return;
+
+    if (!tcFieldsAcceptable) {
+      setError("Lütfen geçersiz T.C. Kimlik No alanlarını düzeltin.");
+      return;
+    }
+
+    submitBookingDetail(false);
   }
 
   if (!bookingId) return null;
@@ -1343,6 +1394,30 @@ export default function BookingDetailModal({
               </TabPanel>
 
               <TabPanel active={activeTab === "fiyat"}>
+              {pricingLocked ? (
+                pricingFrozen ? (
+                  <div className="flex flex-col gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800 sm:flex-row sm:items-center sm:justify-between">
+                    <p>
+                      Rezervasyon onaylandığı için tutarlar donduruldu; kayıt her
+                      açıldığında son onaylanan hesap gösterilir.
+                    </p>
+                    {isAdminUser ? (
+                      <button
+                        type="button"
+                        onClick={() => setPricingEditUnlocked(true)}
+                        className="shrink-0 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100"
+                      >
+                        Tutarları Değiştir
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
+                    Fiyat kilidi bu düzenleme için açık. Kaydettiğinizde
+                    değişen kalemler için onay sorulacak.
+                  </div>
+                )
+              ) : null}
               <FormSection title="Fiyat Bilgileri">
                 <FormRow label="Konaklama Bedeli Komisyonlu">
                   <input
@@ -2368,6 +2443,15 @@ export default function BookingDetailModal({
         villaName={booking?.villa.name}
         onApply={handleApplyEntryQuotePreview}
         onClose={handleCloseEntryQuotePreview}
+      />
+
+      <BookingPricingOverrideModal
+        open={pricingOverrideChanges.length > 0}
+        saving={isPending}
+        changes={pricingOverrideChanges}
+        canOverride={isAdminUser}
+        onConfirm={() => submitBookingDetail(true)}
+        onClose={() => setPricingOverrideChanges([])}
       />
     </div>
   );

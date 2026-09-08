@@ -139,6 +139,10 @@ export type BookingDetails = {
   confirmationSends?: BookingConfirmationSendRecord[];
   /** Rezervasyon işlem logları (oluşturma → fatura) */
   activityLogs?: BookingActivityLogEntry[];
+  /** ONAYLANDI rezervasyonda dondurulan fiyat kalemleri (son onaylanan hesap) */
+  pricingSnapshot?: BookingPricingSnapshot | null;
+  /** Snapshot'ın yazıldığı an (ISO) */
+  pricingSnapshotAt?: string | null;
 };
 
 export type BookingConfirmationSendChannel = "whatsapp" | "email" | "sms";
@@ -694,6 +698,192 @@ export function computeSalesRepCommissionEarned(
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Onaylı rezervasyon fiyat kilidi (snapshot)                          */
+/* ------------------------------------------------------------------ */
+
+export type BookingPricingSnapshotKey =
+  | "grossPrice"
+  | "ownerDiscountRate"
+  | "ownerDiscountAmount"
+  | "discountRate"
+  | "discountAmount"
+  | "agencyDiscountRate"
+  | "agencyDiscountAmount"
+  | "couponDiscountRate"
+  | "couponDiscountAmount"
+  | "agencyServiceFee"
+  | BookingExtraFeeFieldKey
+  | "damageDeposit"
+  | "petDamageDeposit"
+  | "prepaymentRate"
+  | "prepaymentAmount"
+  | "commissionRate"
+  | "commissionAmount"
+  | "salesRepCommissionRate"
+  | "salesRepCommissionEarned"
+  | "checkInPayment"
+  | "totalPrice";
+
+/** `totalPrice` Booking kolonundan gelir; diğerleri BookingDetails alanıdır. */
+type BookingPricingDetailKey = Exclude<BookingPricingSnapshotKey, "totalPrice">;
+
+export type BookingPricingSnapshot = Record<
+  BookingPricingSnapshotKey,
+  number | null
+>;
+
+export type BookingPricingSnapshotField = {
+  key: BookingPricingSnapshotKey;
+  label: string;
+  /**
+   * false: türev / legacy alan. Snapshot'ta korunur ama tek başına
+   * yönetici onay sorgusunu tetiklemez (eski kayıtlarda tutarsız olabilir).
+   */
+  compare: boolean;
+};
+
+export const BOOKING_PRICING_SNAPSHOT_FIELDS: BookingPricingSnapshotField[] = [
+  { key: "grossPrice", label: "Konaklama Bedeli", compare: true },
+  {
+    key: "ownerDiscountRate",
+    label: "Villa Sahibi İndirim Oranı",
+    compare: true,
+  },
+  {
+    key: "ownerDiscountAmount",
+    label: "Villa Sahibi İndirim Tutarı",
+    compare: true,
+  },
+  { key: "discountRate", label: "İndirim Oranı", compare: false },
+  { key: "discountAmount", label: "İndirim Tutarı", compare: false },
+  { key: "agencyDiscountRate", label: "Acente İndirim Oranı", compare: true },
+  { key: "agencyDiscountAmount", label: "Acente İndirim Tutarı", compare: true },
+  { key: "couponDiscountRate", label: "Kupon İndirim Oranı", compare: true },
+  { key: "couponDiscountAmount", label: "Kupon İndirim Tutarı", compare: true },
+  { key: "agencyServiceFee", label: "Acente Hizmet Bedeli", compare: true },
+  ...BOOKING_EXTRA_FEE_FIELDS.map(({ key, label }) => ({
+    key: key as BookingPricingSnapshotKey,
+    label,
+    compare: true,
+  })),
+  { key: "damageDeposit", label: "Hasar Depozitosu", compare: true },
+  { key: "petDamageDeposit", label: "Evcil Hayvan Depozitosu", compare: true },
+  { key: "prepaymentRate", label: "Ön Ödeme Oranı", compare: true },
+  { key: "prepaymentAmount", label: "Ön Ödeme Tutarı", compare: true },
+  { key: "commissionRate", label: "Komisyon Oranı", compare: true },
+  { key: "commissionAmount", label: "Komisyon Tutarı", compare: true },
+  {
+    key: "salesRepCommissionRate",
+    label: "Satış Temsilcisi Prim Oranı",
+    compare: true,
+  },
+  {
+    key: "salesRepCommissionEarned",
+    label: "Satış Temsilcisi Prim Hakedişi",
+    compare: true,
+  },
+  { key: "checkInPayment", label: "Girişte Alınacak Ödeme", compare: false },
+  { key: "totalPrice", label: "Kayıtlı Rezervasyon Tutarı", compare: false },
+];
+
+function normalizeSnapshotAmount(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Dondurulacak fiyat kalemlerini details + totalPrice'tan üretir. */
+export function buildPricingSnapshot(
+  details: BookingDetails,
+  totalPrice: number | null | undefined
+): BookingPricingSnapshot {
+  const source = details as unknown as Record<string, unknown>;
+  const snapshot = {} as BookingPricingSnapshot;
+  for (const { key } of BOOKING_PRICING_SNAPSHOT_FIELDS) {
+    snapshot[key] =
+      key === "totalPrice"
+        ? normalizeSnapshotAmount(totalPrice)
+        : normalizeSnapshotAmount(source[key]);
+  }
+  return snapshot;
+}
+
+/** JSON'dan okunan snapshot'ı güvenli şekilde çözer (eski kayıtlarda yok). */
+export function parsePricingSnapshot(
+  value: unknown
+): BookingPricingSnapshot | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const snapshot = {} as BookingPricingSnapshot;
+  let hasAnyValue = false;
+  for (const { key } of BOOKING_PRICING_SNAPSHOT_FIELDS) {
+    const amount = normalizeSnapshotAmount(source[key]);
+    if (amount != null) hasAnyValue = true;
+    snapshot[key] = amount;
+  }
+  return hasAnyValue ? snapshot : null;
+}
+
+/** Snapshot değerlerini details üzerine geri yazar (kilitli kayıt koruması). */
+export function applyPricingSnapshot(
+  details: BookingDetails,
+  snapshot: BookingPricingSnapshot | null | undefined
+): BookingDetails {
+  if (!snapshot) return details;
+  const next = { ...details };
+  const target = next as unknown as Record<string, number | null>;
+  for (const { key } of BOOKING_PRICING_SNAPSHOT_FIELDS) {
+    if (key === "totalPrice") continue;
+    target[key as BookingPricingDetailKey] = snapshot[key];
+  }
+  return next;
+}
+
+export type BookingPricingChange = {
+  key: BookingPricingSnapshotKey;
+  label: string;
+  previous: number | null;
+  next: number | null;
+};
+
+/** Kilitli snapshot ile gelen değerler arasındaki farkları listeler. */
+export function diffPricingSnapshot(
+  previous: BookingPricingSnapshot | null | undefined,
+  next: BookingPricingSnapshot | null | undefined
+): BookingPricingChange[] {
+  if (!previous || !next) return [];
+  const changes: BookingPricingChange[] = [];
+  for (const { key, label, compare } of BOOKING_PRICING_SNAPSHOT_FIELDS) {
+    if (!compare) continue;
+    const before = previous[key] ?? 0;
+    const after = next[key] ?? 0;
+    // Kuruş/oran yuvarlamalarında yanlış alarm vermemek için tolerans
+    if (Math.abs(before - after) < 0.005) continue;
+    changes.push({
+      key,
+      label,
+      previous: previous[key] ?? null,
+      next: next[key] ?? null,
+    });
+  }
+  return changes;
+}
+
+/** Onay modalı ve log mesajı için tutar/oran biçimi */
+export function formatPricingChangeValue(value: number | null): string {
+  if (value == null) return "—";
+  return value.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+}
+
+/** Fiyat kilidi yalnızca ONAYLANDI + kilit damgası olan kayıtlarda geçerlidir. */
+export function isBookingPricingLocked(booking: {
+  status: BookingStatus;
+  pricingLockedAt?: Date | string | null;
+}): boolean {
+  return booking.status === "CONFIRMED" && booking.pricingLockedAt != null;
+}
+
 export function buildGuestRows(
   count: number,
   existing: BookingGuestEntry[] = []
@@ -822,6 +1012,8 @@ export function defaultDetailsFromBooking(booking: {
     originDomain: parsed.originDomain?.trim() || "",
     confirmationSends: normalizeConfirmationSends(parsed.confirmationSends),
     activityLogs: normalizeActivityLogs(parsed.activityLogs),
+    pricingSnapshot: parsePricingSnapshot(parsed.pricingSnapshot),
+    pricingSnapshotAt: parsed.pricingSnapshotAt ?? null,
     adultGuests: buildGuestRows(
       booking.adults,
       parsed.adultGuests?.length
@@ -869,6 +1061,9 @@ export type BookingDetailRecord = {
   optionExpiresAt: Date | null;
   confirmationSentAt: Date | null;
   details: unknown;
+  pricingLockedAt: Date | null;
+  pricingLockedById: string | null;
+  pricingVersion: number;
   createdAt: Date;
   prepayments: BookingPrepaymentRecord[];
   villa: {
