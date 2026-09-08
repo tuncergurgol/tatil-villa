@@ -71,6 +71,9 @@ next-env.d.ts
 # generated villa list screenshots (local scratch)
 /tmp-villa-list/
 
+# one-off inceleme/probe scriptleri ve indirilen kaynak sayfalar
+/tmp/
+
 # broken local symlink created by a font-lookup step (pdfkit)
 /assets/*
 !/assets/fonts/
