@@ -2,6 +2,7 @@ import { formatMoneyPlain } from "@/lib/booking-display";
 import { countNightsBetween } from "@/lib/villa-period-selection";
 
 export type NewBookingWhatsAppSharePayload = {
+  villaId?: string | null;
   villaName: string;
   checkIn: string;
   checkOut: string;
@@ -33,7 +34,8 @@ function moneyLine(label: string, amount: number | null | undefined, negative = 
 
 /** Yeni rezervasyon sihirbazı — WhatsApp teklif/özet metni */
 export function buildNewBookingWhatsAppShareMessage(
-  input: NewBookingWhatsAppSharePayload
+  input: NewBookingWhatsAppSharePayload,
+  villaUrl?: string | null
 ): string {
   const nights =
     input.checkIn && input.checkOut
@@ -61,6 +63,8 @@ export function buildNewBookingWhatsAppShareMessage(
     moneyLine(`Ön Ödeme (%${input.prepaymentRate})`, input.prepaymentAmount),
     moneyLine("Giriş Ödemesi (Kalan)", input.entrancePayment),
     moneyLine("Hasar Depozitosu", input.damageDeposit),
+    villaUrl ? "" : null,
+    villaUrl ?? null,
   ];
 
   return lines.filter((line) => line != null).join("\n").trim();

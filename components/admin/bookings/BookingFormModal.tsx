@@ -948,6 +948,7 @@ export default function BookingFormModal({
         payload={
           selectedVilla && canContinueStep2
             ? {
+                villaId: selectedVilla.id,
                 villaName: selectedVilla.name,
                 checkIn,
                 checkOut,

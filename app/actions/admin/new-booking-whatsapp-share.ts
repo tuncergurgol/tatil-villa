@@ -2,17 +2,34 @@
 
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { appendBookingSiteFooter } from "@/lib/booking-site-brand";
+import {
+  appendBookingSiteFooter,
+  sanitizePublicBookingDomain,
+} from "@/lib/booking-site-brand";
+import { prisma } from "@/lib/db";
 import {
   buildNewBookingWhatsAppShareMessage,
   type NewBookingWhatsAppSharePayload,
 } from "@/lib/new-booking-whatsapp-share";
 import { isValidWhatsAppPhoneE164, normalizePhoneToE164 } from "@/lib/phone";
+import { getPublicSiteMeta, isPublicSiteKey } from "@/lib/public-site-keys";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import {
+  appendUndocumentedBookingAccessParam,
+  createUndocumentedVillaBookingAccessToken,
+} from "@/lib/undocumented-villa-booking-access";
+import { hasVillaTourismDocument } from "@/lib/villa-document-types";
+import { villaPublicPath } from "@/lib/villa-public-path";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
 const shareSchema = z.object({
   phone: z.string().min(1, "WhatsApp numarası gerekli"),
+  villaId: z.string().trim().min(1).nullable().optional(),
+  siteKey: z
+    .string()
+    .trim()
+    .refine((value) => isPublicSiteKey(value), "Geçersiz site")
+    .optional(),
   villaName: z.string().min(1),
   checkIn: z.string().min(1),
   checkOut: z.string().min(1),
@@ -38,8 +55,39 @@ export type ShareNewBookingWhatsAppResult = {
   error?: string;
 };
 
+/** Uygunluk teklifiyle aynı yapıda public villa bağlantısı (tarih + kişi + rez). */
+async function buildShareVillaUrl(input: {
+  villaId: string;
+  siteKey?: string;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+}): Promise<string | null> {
+  const villa = await prisma.villa.findUnique({
+    where: { id: input.villaId },
+    select: { slug: true, documentNo: true, documentType: true },
+  });
+  if (!villa?.slug) return null;
+
+  const domain = sanitizePublicBookingDomain(
+    getPublicSiteMeta(input.siteKey ?? "tatildeyiz").domain
+  );
+  const params = new URLSearchParams();
+  params.set("checkIn", input.checkIn);
+  params.set("checkOut", input.checkOut);
+  params.set("adults", String(Math.max(1, input.adults)));
+
+  const url = `https://${domain}${villaPublicPath(villa.slug)}?${params.toString()}`;
+  if (hasVillaTourismDocument(villa)) return url;
+
+  return appendUndocumentedBookingAccessParam(
+    url,
+    createUndocumentedVillaBookingAccessToken(input.villaId)
+  );
+}
+
 export async function shareNewBookingQuoteWhatsAppAction(
-  payload: NewBookingWhatsAppSharePayload & { phone: string }
+  payload: NewBookingWhatsAppSharePayload & { phone: string; siteKey?: string }
 ): Promise<ShareNewBookingWhatsAppResult> {
   await requireAdmin();
 
@@ -60,8 +108,18 @@ export async function shareNewBookingQuoteWhatsAppAction(
     return { error: "Paylaşmak için geçerli bir fiyat özeti gerekli" };
   }
 
+  const villaUrl = data.villaId
+    ? await buildShareVillaUrl({
+        villaId: data.villaId,
+        siteKey: data.siteKey,
+        checkIn: data.checkIn,
+        checkOut: data.checkOut,
+        adults: data.adults,
+      })
+    : null;
+
   const company = await getCompanySettings();
-  const body = buildNewBookingWhatsAppShareMessage(data);
+  const body = buildNewBookingWhatsAppShareMessage(data, villaUrl);
   const message = appendBookingSiteFooter(
     body,
     company.brandName || "Tatildeyiz"
