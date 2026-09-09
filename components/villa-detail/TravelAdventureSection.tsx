@@ -1,38 +1,46 @@
 import Link from "next/link";
 import { Building2, Bus, Car, Map, Plane, Ship } from "lucide-react";
+import { getPublishedServicesForHost } from "@/lib/queries/agency-sites";
+import { getRequestHostname } from "@/lib/public-site-profile";
 
 const SERVICES = [
   {
+    key: "otel",
     href: "/otel",
     label: "Otel",
     description: "Otelz ile konforlu konaklama",
     icon: Building2,
   },
   {
+    key: "arac",
     href: "/arac-kiralama",
     label: "Araç Kiralama",
     description: "Tatilinize özel araç seçenekleri",
     icon: Car,
   },
   {
+    key: "transfer",
     href: "/vip-transfer",
     label: "VIP Transfer",
     description: "Havalimanı ve şehir transferi",
     icon: Bus,
   },
   {
+    key: "feribot",
     href: "/feribot",
     label: "Feribot",
     description: "Ada ve liman geçişleri",
     icon: Ship,
   },
   {
+    key: "gunubirlik",
     href: "/tur/liste",
     label: "Tur & Aktivite",
     description: "Yerel deneyimler ve turlar",
     icon: Map,
   },
   {
+    key: "ucak-otobus",
     href: "/bilet/ara",
     label: "Uçak / Otobüs",
     description: "Ulaşım planınızı tamamlayın",
@@ -40,7 +48,28 @@ const SERVICES = [
   },
 ] as const;
 
-export default function TravelAdventureSection() {
+export function TravelAdventureSectionView({
+  publishedServices,
+}: {
+  publishedServices?: string[] | null;
+}) {
+  const visible = publishedServices
+    ? SERVICES.filter((service) => publishedServices.includes(service.key))
+    : SERVICES;
+
+  if (visible.length === 0) return null;
+
+  const colsClass =
+    visible.length >= 6
+      ? "xl:grid-cols-6"
+      : visible.length === 5
+        ? "xl:grid-cols-5"
+        : visible.length === 4
+          ? "xl:grid-cols-4"
+          : visible.length === 3
+            ? "xl:grid-cols-3"
+            : "xl:grid-cols-2";
+
   return (
     <section className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-sky-50 px-5 py-8 sm:px-8">
       <div className="max-w-2xl">
@@ -53,8 +82,10 @@ export default function TravelAdventureSection() {
         </p>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {SERVICES.map((service) => {
+      <div
+        className={`mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 ${colsClass}`}
+      >
+        {visible.map((service) => {
           const Icon = service.icon;
           return (
             <Link
@@ -79,4 +110,12 @@ export default function TravelAdventureSection() {
       </div>
     </section>
   );
+}
+
+/** Host’a göre Acente Siteleri yayın ayarını okuyarak kartları filtreler. */
+export default async function TravelAdventureSection() {
+  const publishedServices = await getPublishedServicesForHost(
+    await getRequestHostname()
+  );
+  return <TravelAdventureSectionView publishedServices={publishedServices} />;
 }

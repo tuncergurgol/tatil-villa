@@ -1,5 +1,6 @@
 /**
- * Public sitelerin ana sayfa arama sekmelerinde yayınlanan hizmetler.
+ * Public sitelerin ana sayfa arama sekmelerinde ve
+ * "Seyahat Maceranız" kartlarında yayınlanan hizmetler.
  * Acente Siteleri kaydındaki `publishedServices` ile yönetilir.
  */
 
@@ -18,6 +19,7 @@ export const AGENCY_SITE_SERVICES: AgencySiteService[] = [
   { key: "transfer", label: "Transfer" },
   { key: "arac", label: "Araç Kiralama" },
   { key: "gunubirlik", label: "Günübirlik Tur/Aktiviteler" },
+  { key: "feribot", label: "Feribot" },
 ];
 
 export const AGENCY_SITE_SERVICE_KEYS = AGENCY_SITE_SERVICES.map(

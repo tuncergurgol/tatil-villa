@@ -218,8 +218,8 @@ model AgencySite {
   domain    String
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
-  /** Ana sayfa arama sekmelerinde yayınlanan hizmetler */
-  publishedServices String[] @default(["villa", "tur", "otel", "ucak-otobus", "transfer", "arac", "gunubirlik"])
+  /** Ana sayfa arama sekmeleri + Seyahat Macerası kartlarında yayınlanan hizmetler */
+  publishedServices String[] @default(["villa", "tur", "otel", "ucak-otobus", "transfer", "arac", "gunubirlik", "feribot"])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -12,6 +12,7 @@ import {
   Map,
   Plane,
   Search,
+  Ship,
   Users,
 } from "lucide-react";
 import GuestPicker from "./GuestPicker";
@@ -34,6 +35,7 @@ const SEARCH_TABS = [
     icon: Compass,
     href: "/tur/liste",
   },
+  { id: "feribot", label: "Feribot", icon: Ship, href: "/feribot" },
 ] as const;
 
 interface HeroSearchProps {

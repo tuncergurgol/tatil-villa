@@ -11,7 +11,6 @@ import {
   MapPin,
   User,
 } from "lucide-react";
-import TravelAdventureSection from "@/components/villa-detail/TravelAdventureSection";
 import Yolcu360SearchWidget from "@/components/yolcu360/Yolcu360SearchWidget";
 import type {
   CarRentalCategoryItem,
@@ -345,15 +344,6 @@ export default function CarRentalPublicPage({
           </div>
         </section>
       ) : null}
-
-      <section
-        id="seyahat-macerasi"
-        className="border-t border-slate-200 bg-white py-12 sm:py-16"
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <TravelAdventureSection />
-        </div>
-      </section>
     </div>
   );
 }
