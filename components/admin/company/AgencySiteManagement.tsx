@@ -1,13 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { Globe, Pencil, Plus, Trash2, X } from "lucide-react";
-import {
-  createAgencySite,
-  deleteAgencySite,
-  setAgencySiteActive,
-  updateAgencySite,
-} from "@/app/actions/admin/agency-sites";
+import { useMemo, useState } from "react";
+import { Globe, Pencil, Plus } from "lucide-react";
+import AgencySiteFormModal from "@/components/admin/company/AgencySiteFormModal";
 import type { AgencySiteItem } from "@/lib/queries/agency-sites";
 
 type StatusFilter = "active" | "passive" | "all";
@@ -17,72 +12,8 @@ interface AgencySiteManagementProps {
   totalCount: number;
   activeCount: number;
   passiveCount: number;
+  undocumentedPublishSiteKeys?: string[];
   embedded?: boolean;
-}
-
-const inputClass =
-  "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100";
-
-function SiteFields({
-  item,
-  submitLabel,
-  onCancel,
-  isPending,
-  action,
-}: {
-  item?: AgencySiteItem;
-  submitLabel: string;
-  onCancel?: () => void;
-  isPending: boolean;
-  action: (formData: FormData) => void;
-}) {
-  return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
-      {item ? <input type="hidden" name="id" value={item.id} /> : null}
-      <label className="min-w-[200px] flex-1">
-        <span className="mb-1 block text-xs font-medium text-gray-500">
-          Site Adı
-        </span>
-        <input
-          name="name"
-          required
-          defaultValue={item?.name ?? ""}
-          className={inputClass}
-          placeholder="Örn. TATİL VİLLACISI"
-        />
-      </label>
-      <label className="min-w-[220px] flex-[1.2]">
-        <span className="mb-1 block text-xs font-medium text-gray-500">
-          Domain Adı
-        </span>
-        <input
-          name="domain"
-          required
-          defaultValue={item?.domain ?? ""}
-          className={inputClass}
-          placeholder="ornek.com"
-        />
-      </label>
-      <div className="flex shrink-0 gap-2">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
-        >
-          {submitLabel}
-        </button>
-        {onCancel ? (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        ) : null}
-      </div>
-    </form>
-  );
 }
 
 export default function AgencySiteManagement({
@@ -90,13 +21,12 @@ export default function AgencySiteManagement({
   totalCount,
   activeCount,
   passiveCount,
+  undocumentedPublishSiteKeys = [],
   embedded = false,
 }: AgencySiteManagementProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<AgencySiteItem | null>(null);
 
   const filteredItems = useMemo(() => {
     return items
@@ -109,49 +39,6 @@ export default function AgencySiteManagement({
         a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
       );
   }, [items, statusFilter]);
-
-  function handleCreate(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      const result = await createAgencySite({}, formData);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      setShowAdd(false);
-    });
-  }
-
-  function handleUpdate(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      const result = await updateAgencySite({}, formData);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      setEditingId(null);
-    });
-  }
-
-  function handleDelete(id: string, name: string) {
-    if (!window.confirm(`"${name}" sitesi kalıcı olarak silinsin mi?`)) {
-      return;
-    }
-    setError(null);
-    startTransition(async () => {
-      const result = await deleteAgencySite(id);
-      if (result.error) setError(result.error);
-    });
-  }
-
-  function handleActiveChange(id: string, active: boolean) {
-    setError(null);
-    startTransition(async () => {
-      const result = await setAgencySiteActive(id, active);
-      if (result.error) setError(result.error);
-    });
-  }
 
   const emptyMessage =
     statusFilter === "active"
@@ -175,14 +62,15 @@ export default function AgencySiteManagement({
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-gray-500">
             Rezervasyon formlarında Site Bilgisi seçenekleri ve acente site
-            tanımları için kullanılır.
+            tanımları için kullanılır. Durum, belgesiz villa yayını ve marka
+            görselleri Değiştir penceresinden yönetilir.
           </p>
         </div>
         <button
           type="button"
           onClick={() => {
-            setShowAdd(true);
-            setEditingId(null);
+            setEditingItem(null);
+            setModalOpen(true);
           }}
           className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
         >
@@ -255,33 +143,6 @@ export default function AgencySiteManagement({
         </p>
       </div>
 
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-
-      {showAdd ? (
-        <div className="rounded-2xl border border-teal-200 bg-teal-50/40 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-800">Yeni Site Kaydı</h3>
-            <button
-              type="button"
-              onClick={() => setShowAdd(false)}
-              className="rounded-lg p-1 text-gray-500 hover:bg-white"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <SiteFields
-            submitLabel="Kaydet"
-            isPending={isPending}
-            action={handleCreate}
-            onCancel={() => setShowAdd(false)}
-          />
-        </div>
-      ) : null}
-
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -289,81 +150,53 @@ export default function AgencySiteManagement({
               <th className="px-4 py-3">Site Adı</th>
               <th className="px-4 py-3">Domain Adı</th>
               <th className="px-4 py-3">Durum</th>
-              <th className="w-52 px-4 py-3 text-right">İşlemler</th>
+              <th className="w-40 px-4 py-3 text-right">İşlemler</th>
             </tr>
           </thead>
           <tbody>
             {filteredItems.length > 0 ? (
-              filteredItems.map((item) =>
-                editingId === item.id ? (
-                  <tr key={item.id} className="border-t border-gray-100 bg-teal-50/30">
-                    <td className="px-4 py-3" colSpan={4}>
-                      <SiteFields
-                        item={item}
-                        submitLabel="Güncelle"
-                        isPending={isPending}
-                        action={handleUpdate}
-                        onCancel={() => setEditingId(null)}
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  <tr
-                    key={item.id}
-                    className={`border-t border-gray-100 ${
-                      !item.active ? "bg-gray-50/80" : ""
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-2 font-medium text-gray-900">
-                        <Globe className="h-4 w-4 text-teal-500" />
-                        {item.name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{item.domain}</td>
-                    <td className="px-4 py-3">
-                      <label className="inline-flex cursor-pointer items-center gap-2">
-                        <span className="text-xs font-semibold text-gray-600">
-                          {item.active ? "Aktif" : "Pasif"}
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={item.active}
-                          onChange={(event) =>
-                            handleActiveChange(item.id, event.target.checked)
-                          }
-                          disabled={isPending}
-                          className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                        />
-                      </label>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingId(item.id);
-                            setShowAdd(false);
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Değiştir
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id, item.name)}
-                          disabled={isPending}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Sil
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              )
+              filteredItems.map((item) => (
+                <tr
+                  key={item.id}
+                  className={`border-t border-gray-100 ${
+                    !item.active ? "bg-gray-50/80" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-2 font-medium text-gray-900">
+                      <Globe className="h-4 w-4 text-teal-500" />
+                      {item.name}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-700">{item.domain}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        item.active
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {item.active ? "Aktif" : "Pasif"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingItem(item);
+                          setModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Değiştir
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
                 <td
@@ -377,6 +210,18 @@ export default function AgencySiteManagement({
           </tbody>
         </table>
       </div>
+
+      {modalOpen ? (
+        <AgencySiteFormModal
+          key={editingItem?.id ?? "new"}
+          item={editingItem}
+          undocumentedPublishSiteKeys={undocumentedPublishSiteKeys}
+          onClose={() => {
+            setModalOpen(false);
+            setEditingItem(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
