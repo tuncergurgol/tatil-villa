@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { normalizeAgencySiteServices } from "@/lib/agency-site-services";
 
 export type AgencySiteActionState = {
   success?: boolean;
@@ -30,6 +31,14 @@ const itemSchema = z.object({
 function revalidatePaths() {
   revalidatePath("/admin/acente/sirket");
   revalidatePath("/admin/konaklama/rezervasyonlar");
+  // Ana sayfa arama sekmeleri site hizmetlerine göre render edilir.
+  revalidatePath("/", "layout");
+}
+
+function readPublishedServices(formData: FormData): string[] {
+  return normalizeAgencySiteServices(
+    formData.getAll("services").map((value) => String(value))
+  );
 }
 
 export async function createAgencySite(
@@ -56,6 +65,7 @@ export async function createAgencySite(
         name: parsed.data.name.trim(),
         domain: parsed.data.domain,
         sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+        publishedServices: readPublishedServices(formData),
       },
     });
     revalidatePaths();
@@ -90,6 +100,7 @@ export async function updateAgencySite(
       data: {
         name: parsed.data.name.trim(),
         domain: parsed.data.domain,
+        publishedServices: readPublishedServices(formData),
       },
     });
     revalidatePaths();

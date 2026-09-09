@@ -10,6 +10,10 @@ import {
   updateAgencySite,
 } from "@/app/actions/admin/agency-sites";
 import { setUndocumentedVillaPublishForSite } from "@/app/actions/admin/company-settings";
+import {
+  AGENCY_SITE_SERVICES,
+  normalizeAgencySiteServices,
+} from "@/lib/agency-site-services";
 import type { AgencySiteItem } from "@/lib/queries/agency-sites";
 import { PUBLIC_BRAND_ASSET_GROUPS } from "@/lib/public-brand-assets";
 import {
@@ -110,6 +114,11 @@ export default function AgencySiteFormModal({
     const siteKey = item ? findPublicSiteKey(item.domain) : null;
     return siteKey ? allowedKeys.includes(siteKey) : false;
   });
+  const [services, setServices] = useState<string[]>(() =>
+    normalizeAgencySiteServices(
+      item?.publishedServices ?? AGENCY_SITE_SERVICES.map((entry) => entry.key)
+    )
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -118,6 +127,16 @@ export default function AgencySiteFormModal({
   const initialPublish = publicSiteKey
     ? allowedKeys.includes(publicSiteKey)
     : false;
+
+  function toggleService(key: string, publish: boolean) {
+    setServices((current) =>
+      normalizeAgencySiteServices(
+        publish
+          ? [...current, key]
+          : current.filter((service) => service !== key)
+      )
+    );
+  }
 
   function handleSave() {
     const trimmedName = name.trim();
@@ -137,6 +156,9 @@ export default function AgencySiteFormModal({
       formData.set("name", trimmedName);
       formData.set("domain", trimmedDomain);
       if (item) formData.set("id", item.id);
+      for (const service of normalizeAgencySiteServices(services)) {
+        formData.append("services", service);
+      }
 
       const saved = item
         ? await updateAgencySite({}, formData)
@@ -250,6 +272,79 @@ export default function AgencySiteFormModal({
                 { label: "Aktif", value: true },
               ]}
             />
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Yayındaki hizmetler
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Bu sitenin ana sayfasındaki arama sekmelerinde gösterilecek
+                  hizmetler.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() =>
+                    setServices(
+                      AGENCY_SITE_SERVICES.map((service) => service.key)
+                    )
+                  }
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Tümünü seç
+                </button>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setServices(normalizeAgencySiteServices([]))}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Tümünü kaldır
+                </button>
+              </div>
+            </div>
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-gray-100 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-4 py-2.5">Hizmet</th>
+                  <th className="w-48 px-4 py-2.5 text-right">Yayında</th>
+                </tr>
+              </thead>
+              <tbody>
+                {AGENCY_SITE_SERVICES.map((service) => (
+                  <tr key={service.key} className="border-t border-gray-100">
+                    <td className="px-4 py-2.5">
+                      <span className="font-medium text-gray-900">
+                        {service.label}
+                      </span>
+                      {service.required ? (
+                        <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
+                          Zorunlu
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex justify-end">
+                        <SegmentedChoice
+                          value={services.includes(service.key)}
+                          onChange={(next) => toggleService(service.key, next)}
+                          disabled={isPending || service.required}
+                          options={[
+                            { label: "Kapalı", value: false },
+                            { label: "Açık", value: true },
+                          ]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           <div className="rounded-xl border border-gray-200 px-4 py-3">

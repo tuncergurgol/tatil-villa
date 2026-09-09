@@ -38,9 +38,14 @@ const SEARCH_TABS = [
 
 interface HeroSearchProps {
   regions: HeroSearchRegionOption[];
+  /** Acente Siteleri kaydında yayında işaretlenen hizmetler. */
+  publishedServices?: string[];
 }
 
-export default function HeroSearch({ regions = [] }: HeroSearchProps) {
+export default function HeroSearch({
+  regions = [],
+  publishedServices,
+}: HeroSearchProps) {
   const router = useRouter();
   const guestRef = useRef<HTMLDivElement>(null);
   const guestAnchorRef = useRef<HTMLButtonElement>(null);
@@ -114,12 +119,17 @@ export default function HeroSearch({ regions = [] }: HeroSearchProps) {
   }
 
   const guestTotal = totalGuests(guests);
+  const visibleTabs = publishedServices
+    ? SEARCH_TABS.filter(
+        (tab) => tab.id === "villa" || publishedServices.includes(tab.id)
+      )
+    : SEARCH_TABS;
 
   return (
     <div className="mx-auto w-full max-w-5xl">
         <div className="mb-1.5 flex justify-center">
         <div className="inline-flex max-w-full flex-nowrap items-center justify-start gap-1.5 overflow-x-auto rounded-2xl bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur-sm sm:justify-center sm:px-3">
-          {SEARCH_TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             const href = "href" in tab ? tab.href : undefined;

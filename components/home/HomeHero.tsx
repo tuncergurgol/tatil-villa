@@ -2,6 +2,8 @@ import { getImageProps } from "next/image";
 import { Suspense } from "react";
 import HeroSearch from "@/components/HeroSearch";
 import { getHeroSearchRegions } from "@/lib/queries/regions";
+import { getPublishedServicesForHost } from "@/lib/queries/agency-sites";
+import { getRequestHostname } from "@/lib/public-site-profile";
 import {
   HERO_LCP_QUALITY,
   HERO_LCP_SIZES,
@@ -77,6 +79,9 @@ function HeroSearchFallback() {
 }
 
 async function HomeHeroSearch() {
-  const regions = await getHeroSearchRegions();
-  return <HeroSearch regions={regions} />;
+  const [regions, publishedServices] = await Promise.all([
+    getHeroSearchRegions(),
+    getRequestHostname().then(getPublishedServicesForHost),
+  ]);
+  return <HeroSearch regions={regions} publishedServices={publishedServices} />;
 }
