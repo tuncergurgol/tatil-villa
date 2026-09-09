@@ -57,16 +57,24 @@ export type ShareNewBookingWhatsAppResult = {
 
 /** Uygunluk teklifiyle aynı yapıda public villa bağlantısı (tarih + kişi + rez). */
 async function buildShareVillaUrl(input: {
-  villaId: string;
+  villaId?: string | null;
+  villaName: string;
   siteKey?: string;
   checkIn: string;
   checkOut: string;
   adults: number;
 }): Promise<string | null> {
-  const villa = await prisma.villa.findUnique({
-    where: { id: input.villaId },
-    select: { slug: true, documentNo: true, documentType: true },
-  });
+  // villaId eski admin sekmesinden gelmeyebilir; villa adıyla da bulunur.
+  const villa = input.villaId
+    ? await prisma.villa.findUnique({
+        where: { id: input.villaId },
+        select: { id: true, slug: true, documentNo: true, documentType: true },
+      })
+    : await prisma.villa.findFirst({
+        where: { name: input.villaName.trim(), active: true },
+        select: { id: true, slug: true, documentNo: true, documentType: true },
+        orderBy: { createdAt: "desc" },
+      });
   if (!villa?.slug) return null;
 
   const domain = sanitizePublicBookingDomain(
@@ -82,7 +90,7 @@ async function buildShareVillaUrl(input: {
 
   return appendUndocumentedBookingAccessParam(
     url,
-    createUndocumentedVillaBookingAccessToken(input.villaId)
+    createUndocumentedVillaBookingAccessToken(villa.id)
   );
 }
 
@@ -108,15 +116,14 @@ export async function shareNewBookingQuoteWhatsAppAction(
     return { error: "Paylaşmak için geçerli bir fiyat özeti gerekli" };
   }
 
-  const villaUrl = data.villaId
-    ? await buildShareVillaUrl({
-        villaId: data.villaId,
-        siteKey: data.siteKey,
-        checkIn: data.checkIn,
-        checkOut: data.checkOut,
-        adults: data.adults,
-      })
-    : null;
+  const villaUrl = await buildShareVillaUrl({
+    villaId: data.villaId,
+    villaName: data.villaName,
+    siteKey: data.siteKey,
+    checkIn: data.checkIn,
+    checkOut: data.checkOut,
+    adults: data.adults,
+  });
 
   const company = await getCompanySettings();
   const body = buildNewBookingWhatsAppShareMessage(data, villaUrl);
