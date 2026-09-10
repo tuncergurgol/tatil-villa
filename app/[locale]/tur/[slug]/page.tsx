@@ -1,6 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import {
+  sanitizePublicSeoDescription,
+  sanitizePublicSeoTitle,
+} from "@/lib/public-seo";
 import {
   getPublishedTourBySlug,
   tourExcludes,
@@ -16,12 +22,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const tour = await getPublishedTourBySlug(slug);
   if (!tour) return { title: "Tur bulunamadı" };
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  const title = sanitizePublicSeoTitle(
+    tour.seoTitle || tour.title,
+    site.brandName,
+    tour.title
+  );
+  const description = sanitizePublicSeoDescription(
+    tour.seoDescription || tour.shortDesc,
+    tour.title,
+    site.brandName
+  );
   return {
-    title: tour.seoTitle || `${tour.title} | Tatildeyiz`,
-    description:
-      tour.seoDescription ||
-      tour.shortDesc ||
-      `${tour.title} — Tatildeyiz turları`,
+    title,
+    description,
     keywords: tour.seoKeywords || undefined,
     alternates: {
       canonical: tour.canonicalPath || `/tur/${tour.slug}`,

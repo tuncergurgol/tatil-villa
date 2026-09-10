@@ -2,6 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPublishedBlogPost } from "@/lib/queries/cms-content";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import {
+  demoteCmsHeadingToH2,
+  sanitizePublicSeoDescription,
+  sanitizePublicSeoTitle,
+  upgradeInsecureSiteLinks,
+} from "@/lib/public-seo";
 
 export const dynamic = "force-dynamic";
 
@@ -11,19 +19,40 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getPublishedBlogPost(slug);
+  const [post, company] = await Promise.all([
+    getPublishedBlogPost(slug),
+    getCompanySettings(),
+  ]);
   if (!post) return { title: "Blog Yazısı Bulunamadı" };
+  const site = await getPublicSiteProfile(company);
+  const title = sanitizePublicSeoTitle(
+    post.seoTitle || post.title,
+    site.brandName,
+    post.title
+  );
 
   return {
-    title: post.seoTitle || post.title,
-    description: post.seoDescription || post.excerpt || undefined,
+    title,
+    description: sanitizePublicSeoDescription(
+      post.seoDescription || post.excerpt,
+      post.title,
+      site.brandName
+    ),
+    alternates: { canonical: `/blog/${post.slug}` },
   };
 }
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = await getPublishedBlogPost(slug);
+  const [post, company] = await Promise.all([
+    getPublishedBlogPost(slug),
+    getCompanySettings(),
+  ]);
   if (!post) notFound();
+  const site = await getPublicSiteProfile(company);
+  const contentHtml = demoteCmsHeadingToH2(
+    upgradeInsecureSiteLinks(post.content)
+  );
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -35,7 +64,7 @@ export default async function BlogPostPage({ params }: Props) {
     image: post.coverImage || undefined,
     author: {
       "@type": "Organization",
-      name: "Tatildeyiz",
+      name: site.brandName,
     },
   };
 
@@ -65,7 +94,7 @@ export default async function BlogPostPage({ params }: Props) {
       ) : null}
       <article
         className="prose prose-teal mt-8 max-w-none"
-        dangerouslySetInnerHTML={{ __html: post.content }}
+        dangerouslySetInnerHTML={{ __html: contentHtml }}
       />
     </main>
   );

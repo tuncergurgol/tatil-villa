@@ -23,8 +23,9 @@ import {
   VILLA_SEARCH_PAGE_SIZE,
 } from "@/lib/villa-search-params";
 import {
-  hasNonEmptySearchParams,
+  isIndexableVillaSearch,
   publicIndexingRobots,
+  villaSearchCanonicalPath,
 } from "@/lib/public-indexing";
 
 interface PageProps {
@@ -54,13 +55,21 @@ export async function generateMetadata({
   searchParams,
 }: PageProps): Promise<Metadata> {
   const query = await searchParams;
-  const filtered = hasNonEmptySearchParams(query);
+  const regionSlug = query.region?.trim() || "";
+  const indexable = isIndexableVillaSearch(query);
+  const canonical = villaSearchCanonicalPath(query);
+  const region = regionSlug ? await getRegionBySlug(regionSlug) : null;
+  const regionName = region?.name?.trim() || "";
+
   return {
-    title: "Villalar",
-    description:
-      "Kiralık villa ve bungalov listesi. Filtreleyin ve rezervasyon yapın.",
-    alternates: { canonical: "/villalar" },
-    robots: publicIndexingRobots(!filtered),
+    title: regionName
+      ? `${regionName} Kiralık Villalar`
+      : "Kiralık Villa ve Bungalovlar",
+    description: regionName
+      ? `${regionName} bölgesinde kiralık villa ve bungalovlar. Müsaitliği görün ve rezervasyon yapın.`
+      : "Türkiye'nin öne çıkan bölgelerinde kiralık villa ve bungalovlar. Filtreleyin, müsaitliği görün ve rezervasyon yapın.",
+    alternates: { canonical },
+    robots: publicIndexingRobots(indexable),
   };
 }
 

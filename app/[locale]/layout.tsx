@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import SiteChrome from "@/components/SiteChrome";
 import { routing, type AppLocale } from "@/i18n/routing";
-import { publicIndexingRobots, isIndexableLocale } from "@/lib/public-indexing";
+import {
+  publicIndexingRobots,
+  isIndexableLocale,
+  shouldNoindexPublicUrl,
+  canonicalPublicPath,
+} from "@/lib/public-indexing";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -16,8 +22,16 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const headerList = await headers();
+  const pathname = headerList.get("x-public-pathname") || "/";
+  const search = headerList.get("x-public-search") || "";
+  const indexable =
+    isIndexableLocale(locale) && !shouldNoindexPublicUrl(pathname, search);
+  const canonical = canonicalPublicPath(pathname, search);
+
   return {
-    robots: publicIndexingRobots(isIndexableLocale(locale)),
+    robots: publicIndexingRobots(indexable),
+    alternates: { canonical },
   };
 }
 

@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Bir sonraki seyahatiniz için ilham alın | Blog",
   description: "Villa kiralama rehberi, bölge önerileri ve tatil ipuçları.",
+  alternates: { canonical: "/blog" },
 };
 
 export default async function BlogIndexPage() {
@@ -34,6 +35,7 @@ export default async function BlogIndexPage() {
       />
       <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <BlogInspirationSlider
+          headingLevel={1}
           categories={blogCategories}
           posts={posts.map((post) => ({
             id: post.id,

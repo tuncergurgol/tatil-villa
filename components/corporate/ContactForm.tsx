@@ -124,7 +124,7 @@ export default function ContactForm({ brandName }: ContactFormProps) {
           {brandName} tarafından haber ve kampanyalardan haberdar edilmek
           istiyorum.{" "}
           <Link
-            href="/kurumsal/elektronik-ilet-ve-acik-riza-metni"
+            href="/kurumsal/gizlilik-politikasi"
             target="_blank"
             className="font-medium text-teal-700 underline underline-offset-2 hover:text-teal-800"
           >

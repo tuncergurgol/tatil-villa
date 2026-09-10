@@ -18,6 +18,16 @@ export const NOINDEX_FOLLOW = {
   follow: true,
 } as const;
 
+const NOINDEX_PATH_PREFIXES = [
+  "/uye",
+  "/onay",
+  "/rezervasyon-onay",
+  "/giris-bilgilendirme",
+  "/rezervasyon-dogrulama",
+  "/odemeyonlendir",
+  "/yorum-yaz",
+];
+
 export function isForeignLocalePath(pathname: string): boolean {
   return FOREIGN_LOCALE_PATH_RE.test(pathname);
 }
@@ -38,10 +48,81 @@ export function hasNonEmptySearchParams(
   });
 }
 
+function toSearchParams(
+  search: string | URLSearchParams | Record<string, string | string[] | undefined>
+): URLSearchParams {
+  if (search instanceof URLSearchParams) return search;
+  if (typeof search === "string") {
+    return new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  }
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    if (value == null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (String(item).trim()) params.append(key, String(item));
+      }
+      continue;
+    }
+    if (String(value).trim()) params.set(key, String(value));
+  }
+  return params;
+}
+
+function filledSearchEntries(params: URLSearchParams): Array<[string, string]> {
+  return [...params.entries()].filter(([, value]) => value.trim() !== "");
+}
+
+/** Yalnızca bölge (ve isteğe bağlı page=1) — indekslemeye değer kopyasız URL. */
+export function isIndexableVillaSearch(
+  search:
+    | string
+    | URLSearchParams
+    | Record<string, string | string[] | undefined> = ""
+): boolean {
+  const params = toSearchParams(search);
+  const entries = filledSearchEntries(params);
+  if (entries.length === 0) return true;
+
+  const keys = new Set(entries.map(([key]) => key));
+  const region = params.get("region")?.trim() || "";
+  if (!region || !keys.has("region")) return false;
+
+  if (keys.size === 1) return true;
+  const page = params.get("page")?.trim() || "";
+  return keys.size === 2 && keys.has("page") && (page === "" || page === "1");
+}
+
+export function villaSearchCanonicalPath(
+  search:
+    | string
+    | URLSearchParams
+    | Record<string, string | string[] | undefined> = ""
+): string {
+  const params = toSearchParams(search);
+  const region = params.get("region")?.trim() || "";
+  if (region && isIndexableVillaSearch(params)) {
+    return `/villalar?region=${encodeURIComponent(region)}`;
+  }
+  return "/villalar";
+}
+
+export function canonicalPublicPath(
+  pathname: string,
+  search: string | URLSearchParams = ""
+): string {
+  const path = stripDefaultLocalePrefix(pathname) || "/";
+  if (path === "/villalar") return villaSearchCanonicalPath(search);
+  if (path === "/") return "/";
+  return path.replace(/\/+$/, "") || "/";
+}
+
 /**
  * Google'ın tarayıp dizine eklemediği kopyalar:
  * - Dil önekli sayfalar (içerik Türkçe canonical'da)
+ * - Üye / ödeme / özel token URL'leri
  * - /villalar?filtre... (faceted / sonsuz kombinasyon)
+ * - Yalnızca ?region= slugu indekslenir
  */
 export function shouldNoindexPublicUrl(
   pathname: string,
@@ -50,16 +131,16 @@ export function shouldNoindexPublicUrl(
   if (isForeignLocalePath(pathname)) return true;
 
   const path = stripDefaultLocalePrefix(pathname);
-  if (path !== "/villalar") return false;
+  if (
+    NOINDEX_PATH_PREFIXES.some(
+      (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+    )
+  ) {
+    return true;
+  }
 
-  const params =
-    typeof search === "string"
-      ? new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
-      : search;
-  return [...params.keys()].some((key) => {
-    const value = params.get(key);
-    return value != null && value.trim() !== "";
-  });
+  if (path !== "/villalar") return false;
+  return !isIndexableVillaSearch(search);
 }
 
 export function publicIndexingRobots(indexable: boolean) {

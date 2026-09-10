@@ -86,6 +86,7 @@ export function applyContractBrandDomain(
   const domain = normalizeContractBrandDomain(brandDomain);
   return content
     .replace(/##DOMAIN##/gi, domain)
+    .replace(/https?:\/\/(?:www\.)?tatildeyiz\.com\.tr/gi, `https://${domain}`)
     .replace(/www\.tatildeyiz\.com\.tr/gi, domain);
 }
 

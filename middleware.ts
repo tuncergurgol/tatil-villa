@@ -1,5 +1,4 @@
-﻿import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+﻿import { NextResponse, NextRequest } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { getToken } from "next-auth/jwt";
 import { routing } from "@/i18n/routing";
@@ -15,6 +14,7 @@ import {
   isForeignLocalePath,
   shouldNoindexPublicUrl,
 } from "@/lib/public-indexing";
+import { LEGACY_PUBLIC_REDIRECTS } from "@/lib/legacy-redirects";
 
 const handleI18nRouting = createIntlMiddleware(routing);
 
@@ -77,13 +77,47 @@ function withPublicIndexingHeaders(req: NextRequest, res: NextResponse) {
   return res;
 }
 
+function publicPathRequestHeaders(req: NextRequest): Headers {
+  const headers = new Headers(req.headers);
+  headers.set(
+    "x-public-pathname",
+    stripDefaultLocalePrefix(req.nextUrl.pathname) || "/"
+  );
+  headers.set("x-public-search", req.nextUrl.searchParams.toString());
+  return headers;
+}
+
+function exactLegacyRedirectDestination(pathname: string): string | null {
+  const path = stripDefaultLocalePrefix(pathname) || "/";
+  const match = LEGACY_PUBLIC_REDIRECTS.find(
+    (item) => !item.source.includes(":") && item.source === path
+  );
+  return match?.destination ?? null;
+}
+
+function redirectLegacyPublicPath(req: NextRequest): NextResponse | null {
+  const destination = exactLegacyRedirectDestination(req.nextUrl.pathname);
+  if (!destination || destination === stripDefaultLocalePrefix(req.nextUrl.pathname)) {
+    return null;
+  }
+  const url = req.nextUrl.clone();
+  url.pathname = destination;
+  applyPublicRedirectHost(req, url);
+  return NextResponse.redirect(url, 301);
+}
+
 function rewriteDefaultLocalePath(req: NextRequest, pathname: string) {
   const rewriteUrl = req.nextUrl.clone();
   rewriteUrl.pathname =
     pathname === "/"
       ? `/${routing.defaultLocale}`
       : `/${routing.defaultLocale}${pathname}`;
-  return withPublicIndexingHeaders(req, NextResponse.rewrite(rewriteUrl));
+  return withPublicIndexingHeaders(
+    req,
+    NextResponse.rewrite(rewriteUrl, {
+      request: { headers: publicPathRequestHeaders(req) },
+    })
+  );
 }
 
 function resolvePublicHostForRequest(req: NextRequest): string {
@@ -147,11 +181,16 @@ export default async function middleware(req: NextRequest) {
       return redirectStripTurkishPrefix(req, pathname);
     }
 
+    const legacyRedirect = redirectLegacyPublicPath(req);
+    if (legacyRedirect) return legacyRedirect;
+
     if (!isForeignLocalePath(pathname)) {
       return rewriteDefaultLocalePath(req, pathname);
     }
 
-    const intlResponse = handleI18nRouting(req);
+    const intlResponse = handleI18nRouting(
+      new NextRequest(req, { headers: publicPathRequestHeaders(req) })
+    );
     if (intlResponse.status >= 300 && intlResponse.status < 400) {
       const location = intlResponse.headers.get("location");
       if (location) {

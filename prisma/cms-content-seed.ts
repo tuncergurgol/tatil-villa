@@ -178,6 +178,7 @@ export async function seedCmsContent() {
   }
 
   for (const page of corporatePageSeeds) {
+    const isBrokenLegacyPage = page.slug === "elektronik-ilet-ve-acik-riza-metni";
     const showInMenu = [
       "hakkimizda",
       "iletisim",
@@ -195,16 +196,17 @@ export async function seedCmsContent() {
         excerpt: `${page.title} sayfası`,
         seoTitle: `${page.title} | Tatildeyiz`,
         seoDescription: `${page.title} hakkında detaylı bilgi.`,
-        published: true,
-        showInFooter: true,
-        showInMenu,
+        published: !isBrokenLegacyPage,
+        showInFooter: !isBrokenLegacyPage,
+        showInMenu: showInMenu && !isBrokenLegacyPage,
       },
       update: {
         title: page.title,
         pageType: page.pageType,
         sortOrder: page.sortOrder,
-        showInFooter: true,
-        showInMenu,
+        showInFooter: !isBrokenLegacyPage,
+        showInMenu: showInMenu && !isBrokenLegacyPage,
+        ...(isBrokenLegacyPage ? { published: false } : {}),
       },
     });
   }

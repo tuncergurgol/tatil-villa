@@ -10,10 +10,14 @@ import {
 } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { applyContractBrandDomain } from "@/lib/reservation-document-contract";
 import {
-  applyContractBrandDomain,
-  RESERVATION_CONTRACT_SLUG,
-} from "@/lib/reservation-document-contract";
+  demoteCmsHeadingToH2,
+  looksLikeMissingPageText,
+  sanitizePublicSeoDescription,
+  sanitizePublicSeoTitle,
+  upgradeInsecureSiteLinks,
+} from "@/lib/public-seo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,19 +27,40 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const path =
+    slug === "sizi-arayalim" ? "/sizi-arayalim" : `/kurumsal/${slug}`;
   if (slug === "sizi-arayalim") {
     return {
       title: "Sizi Arayalım",
       description:
         "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın.",
+      alternates: { canonical: "/sizi-arayalim" },
     };
   }
-  const page = await getPublishedCmsPage(slug);
-  if (!page) return { title: "Sayfa Bulunamadı" };
+  const [page, company] = await Promise.all([
+    getPublishedCmsPage(slug),
+    getCompanySettings(),
+  ]);
+  if (!page || looksLikeMissingPageText(page.content)) {
+    return { title: "Sayfa Bulunamadı", robots: { index: false, follow: true } };
+  }
+
+  const site = await getPublicSiteProfile(company);
+  const title = sanitizePublicSeoTitle(
+    page.seoTitle || page.title,
+    site.brandName,
+    page.title
+  );
+  const description = sanitizePublicSeoDescription(
+    page.seoDescription || page.excerpt,
+    page.title,
+    site.brandName
+  );
 
   return {
-    title: page.seoTitle || page.title,
-    description: page.seoDescription || page.excerpt || undefined,
+    title,
+    description,
+    alternates: { canonical: path },
   };
 }
 
@@ -51,6 +76,7 @@ export default async function CorporatePage({ params }: Props) {
     getCompanySettings(),
   ]);
   if (!page) notFound();
+  if (looksLikeMissingPageText(page.content)) notFound();
 
   const site = await getPublicSiteProfile(company);
 
@@ -87,9 +113,11 @@ export default async function CorporatePage({ params }: Props) {
       ? injectCmsCopyButtons(page.content)
       : page.content;
 
-  if (slug === RESERVATION_CONTRACT_SLUG) {
-    contentHtml = applyContractBrandDomain(contentHtml, site.domain);
-  }
+  contentHtml = applyContractBrandDomain(contentHtml, site.domain);
+  contentHtml = upgradeInsecureSiteLinks(contentHtml);
+  contentHtml = demoteCmsHeadingToH2(contentHtml);
+
+  const excerpt = looksLikeMissingPageText(page.excerpt) ? "" : page.excerpt;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
@@ -102,9 +130,9 @@ export default async function CorporatePage({ params }: Props) {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
             {page.title}
           </h1>
-          {page.excerpt ? (
+          {excerpt ? (
             <p className="mt-3 text-base leading-relaxed text-slate-600 sm:text-lg">
-              {page.excerpt}
+              {excerpt}
             </p>
           ) : null}
           <CorporateHtmlContent html={contentHtml} />

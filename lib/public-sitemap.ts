@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
+import { looksLikeMissingPageText } from "@/lib/public-seo";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
@@ -55,7 +56,7 @@ const STATIC_PATHS: Array<{
     priority: 0.8,
   },
   { path: "/tur", title: "Tur rezervasyonu", changeFrequency: "weekly", priority: 0.7 },
-  { path: "/turlar", title: "Turlar", changeFrequency: "weekly", priority: 0.7 },
+  { path: "/tur/liste", title: "Turlar", changeFrequency: "weekly", priority: 0.7 },
   { path: "/vip-transfer", title: "VIP transfer", changeFrequency: "weekly", priority: 0.7 },
   {
     path: "/arac-kiralama",
@@ -97,7 +98,14 @@ export async function getPublicIndexablePages(
     }),
     prisma.cmsPage.findMany({
       where: { published: true },
-      select: { slug: true, title: true, updatedAt: true },
+      select: {
+        slug: true,
+        title: true,
+        updatedAt: true,
+        seoTitle: true,
+        excerpt: true,
+        content: true,
+      },
     }),
     prisma.tour.findMany({
       where: { isActive: true },
@@ -126,14 +134,22 @@ export async function getPublicIndexablePages(
       title: post.title,
       lastModified: post.updatedAt ?? post.publishedAt ?? now,
     })),
-    ...corporatePages.map((page) => ({
-      url: absolutePublicUrl(
-        origin,
-        page.slug === "sizi-arayalim" ? "/sizi-arayalim" : `/kurumsal/${page.slug}`
-      ),
-      title: page.title,
-      lastModified: page.updatedAt,
-    })),
+    ...corporatePages
+      .filter(
+        (page) =>
+          !looksLikeMissingPageText(page.seoTitle) &&
+          !looksLikeMissingPageText(page.excerpt) &&
+          !looksLikeMissingPageText(page.content) &&
+          page.slug !== "elektronik-ilet-ve-acik-riza-metni"
+      )
+      .map((page) => ({
+        url: absolutePublicUrl(
+          origin,
+          page.slug === "sizi-arayalim" ? "/sizi-arayalim" : `/kurumsal/${page.slug}`
+        ),
+        title: page.title,
+        lastModified: page.updatedAt,
+      })),
     ...tours.map((tour) => ({
       url: absolutePublicUrl(origin, `/tur/${tour.slug}`),
       title: tour.title,

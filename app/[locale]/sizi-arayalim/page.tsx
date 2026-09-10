@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Sizi Arayalım",
   description:
     "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın.",
+  alternates: { canonical: "/sizi-arayalim" },
 };
 
 export default function SiziArayalimPage() {

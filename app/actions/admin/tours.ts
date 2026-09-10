@@ -104,12 +104,11 @@ function toTourWriteData(
   parsed: z.infer<typeof tourSchema>,
   slug: string
 ) {
-  const seoTitle =
-    parsed.seoTitle.trim() || `${parsed.title} | Tatildeyiz`;
+  const seoTitle = parsed.seoTitle.trim() || parsed.title.trim();
   const seoDescription =
     parsed.seoDescription.trim() ||
     parsed.shortDesc.trim() ||
-    `${parsed.title} — Tatildeyiz günübirlik tur ve aktiviteler.`;
+    `${parsed.title} — günübirlik tur ve aktiviteler.`;
   const canonicalPath =
     parsed.canonicalPath.trim() || `/tur/${slug}`;
 

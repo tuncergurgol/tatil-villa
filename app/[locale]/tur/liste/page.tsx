@@ -2,17 +2,22 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { MapPin, Clock3 } from "lucide-react";
 import { getPublishedTours, type TourItem } from "@/lib/queries/tours";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Günübirlik Tur ve Aktiviteler | Tatildeyiz",
-  description:
-    "Fethiye ve çevresinde günübirlik turlar, tekne turları, safari ve aktiviteler. Tatildeyiz ile unutulmaz deneyimler.",
-  alternates: {
-    canonical: "/tur/liste",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  return {
+    title: "Günübirlik Tur ve Aktiviteler",
+    description: `Fethiye ve çevresinde günübirlik turlar, tekne turları, safari ve aktiviteler. ${site.brandName} ile unutulmaz deneyimler.`,
+    alternates: {
+      canonical: "/tur/liste",
+    },
+  };
+}
 
 function coverOf(tour: TourItem) {
   return (
@@ -28,7 +33,11 @@ function priceLabel(tour: TourItem) {
 }
 
 export default async function TourListPage() {
-  const tours = await getPublishedTours();
+  const [tours, company] = await Promise.all([
+    getPublishedTours(),
+    getCompanySettings(),
+  ]);
+  const site = await getPublicSiteProfile(company);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f4fbff_0%,#fff8fb_45%,#ffffff_100%)]">
@@ -40,7 +49,7 @@ export default async function TourListPage() {
       <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600">
-            Tatildeyiz Turları
+            {site.brandName} Turları
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Günü Birlik Tur ve Aktiviteler

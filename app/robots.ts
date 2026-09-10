@@ -14,7 +14,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     "/giris-bilgilendirme/",
     "/rezervasyon-onay/",
     "/onay",
-    "/villalar?",
+    "/uye",
+    "/uye/",
   ];
 
   return {

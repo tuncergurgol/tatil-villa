@@ -30,6 +30,7 @@ export const LEGACY_PUBLIC_REDIRECTS: LegacyRedirect[] = [
   { source: "/turlar", destination: "/tur/liste", permanent: true },
   { source: "/aktiviteler", destination: "/tur/liste", permanent: true },
   { source: "/gunubirlik", destination: "/tur/liste", permanent: true },
+  { source: "/tur/list", destination: "/tur/liste", permanent: true },
 
   // Eski üye / iletişim
   { source: "/login", destination: "/uye", permanent: true },
@@ -43,7 +44,17 @@ export const LEGACY_PUBLIC_REDIRECTS: LegacyRedirect[] = [
   { source: "/about", destination: "/kurumsal/hakkimizda", permanent: true },
   { source: "/gizlilik", destination: "/kurumsal/gizlilik-politikasi", permanent: true },
   { source: "/privacy", destination: "/kurumsal/gizlilik-politikasi", permanent: true },
-  { source: "/kvkk", destination: "/kurumsal/kvkk", permanent: true },
+  { source: "/kvkk", destination: "/kurumsal/gizlilik-politikasi", permanent: true },
+  {
+    source: "/kurumsal/kvkk",
+    destination: "/kurumsal/gizlilik-politikasi",
+    permanent: true,
+  },
+  {
+    source: "/kurumsal/elektronik-ilet-ve-acik-riza-metni",
+    destination: "/kurumsal/gizlilik-politikasi",
+    permanent: true,
+  },
 
   // Eski blog yolu
   { source: "/bloglar", destination: "/blog", permanent: true },

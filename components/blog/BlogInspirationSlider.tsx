@@ -52,6 +52,7 @@ export default function BlogInspirationSlider({
   embedded = false,
   ctaHref = "/blog",
   ctaLabel = "Tüm yazıları gör",
+  headingLevel = 2,
 }: {
   posts: BlogInspirationPost[];
   categories?: BlogInspirationCategory[];
@@ -61,6 +62,7 @@ export default function BlogInspirationSlider({
   embedded?: boolean;
   ctaHref?: string;
   ctaLabel?: string;
+  headingLevel?: 1 | 2;
 }) {
   const [activeCategorySlug, setActiveCategorySlug] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
@@ -114,9 +116,15 @@ export default function BlogInspirationSlider({
     <section className={outerClass}>
       {showHeader ? (
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            {title}
-          </h2>
+          {headingLevel === 1 ? (
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              {title}
+            </h1>
+          ) : (
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              {title}
+            </h2>
+          )}
           <p className="mt-2 text-sm text-slate-500 sm:text-base">{subtitle}</p>
           <div className="mt-5">
             <BlogCategoryFilters
@@ -189,7 +197,7 @@ export default function BlogInspirationSlider({
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-sky-50 text-sky-600">
-                    Tatildeyiz Blog
+                    Blog
                   </div>
                 )}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-transparent p-5 pt-16">
