@@ -237,6 +237,10 @@ if [[ ! -f "$STAGING_DIR/BUILD_ID" ]]; then
   echo "    HATA: $STAGING_DIR/BUILD_ID olusmadi. Canli .next bozulmadi."
   exit 1
 fi
+if [[ ! -f "$STAGING_DIR/prerender-manifest.json" ]]; then
+  echo "    HATA: $STAGING_DIR/prerender-manifest.json eksik (yarim build). Canli .next bozulmadi."
+  exit 1
+fi
 echo "    BUILD_ID=$(cat "$STAGING_DIR/BUILD_ID")"
 
 echo "    .next swap + PM2 restart"
