@@ -178,6 +178,7 @@ export async function importVillaPeriodsFromExternalPage(
     select: {
       prepaymentRate: true,
       commissionRate: true,
+      minStayNights: true,
       cleaningDayCount: true,
       cleaningFee: true,
       cleaningFeeCurrency: true,

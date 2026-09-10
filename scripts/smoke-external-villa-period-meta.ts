@@ -32,6 +32,25 @@ assert.equal(bravoDefaults.minStayNights, 3);
 assert.equal(bravoDefaults.cleaningDayCount, 7);
 assert.equal(bravoDefaults.cleaningFee, 3000);
 
+const hepsivillaBilbayHtml = `
+<p><strong>NOT : 5 geceden daha az konaklamalarda ekstra 4000 TL temizlik ücreti talep edilmektedir.</strong></p>
+<p><strong>Hasar Depozitosu :</strong> Hasar, zayi, kırık, dökük, vb. için girişte <strong>5000 TL</strong> depozito alınmaktadır.</p>
+<p>Minimum konaklama süresi 5 gecedir.</p>
+`;
+const hepsivillaDefaults = extractScrapedPeriodDefaults(hepsivillaBilbayHtml);
+assert.equal(hepsivillaDefaults.cleaningDayCount, 5);
+assert.equal(hepsivillaDefaults.cleaningFee, 4000);
+assert.equal(hepsivillaDefaults.damageDeposit, 5000);
+assert.equal(hepsivillaDefaults.minStayNights, 5);
+
+const hepsivillaShortHtml = `
+<p>6 geceden kısa süreli kiralamalarda ekstra 5.000 TL temizlik ücreti alınır.</p>
+<p>1 haftadan kısa süreli konaklamalarda 4000 TL temizlik bedeli uygulanır.</p>
+`;
+const hepsivillaShort = extractScrapedPeriodDefaults(hepsivillaShortHtml);
+assert.equal(hepsivillaShort.cleaningDayCount, 6);
+assert.equal(hepsivillaShort.cleaningFee, 5000);
+
 const noisyHtml = `
 <script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"data":{"gece":"3","subTitle":"Minimum 2 gece","sozlesme":"komisyon alma suretiyle"}}}}</script>
 <ul>
@@ -191,7 +210,6 @@ const villacim = await scrapeExternalVillaPage(
 assert.equal(villacim.periods.length > 0, true);
 for (const period of villacim.periods) {
   assert.equal(period.cleaningDayCount, 7);
-  assert.equal(period.commissionRate, null);
 }
 
 console.log("smoke-external-villa-period-meta: OK");

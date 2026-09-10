@@ -467,6 +467,50 @@ function parseTurkishMoneyAmount(raw: string): number | null {
   return Math.round(parsed);
 }
 
+function parseCleaningDayThreshold(text: string): number | null {
+  const nightPatterns = [
+    /(\d+)\s*gece\s*alt/i,
+    /(\d+)\s*geceden\s+(?:daha\s+)?(?:az|k[ıi]sa)/i,
+    /(\d+)\s*gece\s+ve\s+alt/i,
+  ];
+  for (const pattern of nightPatterns) {
+    const match = text.match(pattern);
+    const nights = match?.[1] ? positiveInt(Number(match[1])) : null;
+    if (nights != null) return nights;
+  }
+
+  const weekMatch = text.match(
+    /(\d+)\s*haftadan\s+(?:daha\s+)?(?:az|k[ıi]sa)/i
+  );
+  if (weekMatch?.[1]) {
+    const weeks = positiveInt(Number(weekMatch[1]));
+    if (weeks != null) return weeks * 7;
+  }
+  return null;
+}
+
+function parseCleaningFeeAmount(text: string): {
+  amount: number | null;
+  currency: VillaPeriodCurrency;
+} {
+  const patterns = [
+    /ekstra\s+(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,60}temizlik/i,
+    /(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,40}temizlik/i,
+    /temizlik\s*[üu]creti\s*[-–:]?\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match?.[1]) continue;
+    const amount = positiveInt(parseTurkishMoneyAmount(match[1]));
+    if (amount == null) continue;
+    return {
+      amount,
+      currency: mapCurrencyCode(match[2] ?? "TL"),
+    };
+  }
+  return { amount: null, currency: "TL" };
+}
+
 function parseCleaningRuleText(raw: string | null | undefined): {
   cleaningDayCount: number | null;
   cleaningFee: number | null;
@@ -484,21 +528,11 @@ function parseCleaningRuleText(raw: string | null | undefined): {
     };
   }
 
-  const dayMatch = text.match(/(\d+)\s*gece\s*alt/i);
-  const feeMatch = text.match(
-    /(\d[\d.,\s]*)\s*(?:₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,40}temizlik/i
-  );
-  const currency = mapCurrencyCode(
-    feeMatch?.[0]?.match(/(TL|EUR|USD|GBP|₺|€|\$|£)/i)?.[1] ?? "TL"
-  );
-  const cleaningFee = feeMatch?.[1]
-    ? positiveInt(parseTurkishMoneyAmount(feeMatch[1]))
-    : null;
-
+  const fee = parseCleaningFeeAmount(text);
   return {
-    cleaningDayCount: dayMatch ? positiveInt(Number(dayMatch[1])) : null,
-    cleaningFee,
-    cleaningFeeCurrency: currency,
+    cleaningDayCount: parseCleaningDayThreshold(text),
+    cleaningFee: fee.amount,
+    cleaningFeeCurrency: fee.currency,
   };
 }
 
@@ -534,6 +568,27 @@ function extractDamageDeposit(html: string): {
     return {
       amount: positiveInt(parseTurkishMoneyAmount(titled[1])),
       currency: mapCurrencyCode(titled[2]),
+    };
+  }
+
+  // Hepsivilla: "Hasar Depozitosu : Hasar, zayi... için girişte 5000 TL depozito"
+  const giriste = text.match(
+    /hasar\s*depozito(?:su)?[\s\S]{0,220}?giri[sş]te\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i
+  );
+  if (giriste?.[1]) {
+    return {
+      amount: positiveInt(parseTurkishMoneyAmount(giriste[1])),
+      currency: mapCurrencyCode(giriste[2]),
+    };
+  }
+
+  const nearby = text.match(
+    /hasar\s*depozito(?:su)?[\s\S]{0,220}?(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i
+  );
+  if (nearby?.[1]) {
+    return {
+      amount: positiveInt(parseTurkishMoneyAmount(nearby[1])),
+      currency: mapCurrencyCode(nearby[2]),
     };
   }
 
@@ -617,33 +672,9 @@ function extractCleaningDefaults(html: string): {
   }
 
   const text = stripTags(html);
-  const titledFee = text.match(
-    /temizlik\s*[üu]creti\s*[-–:]?\s*(\d[\d.,\s]*)\s*(?:₺|TL)/i
-  );
-  const inline = text.match(
-    /(\d+)\s*gece\s*alt[ıi][^.]{0,80}?(\d[\d.,\s]*)\s*(?:₺|TL)[^.]{0,40}temizlik/i
-  );
-  if (inline) {
-    return {
-      cleaningDayCount: positiveInt(Number(inline[1])),
-      cleaningFee: positiveInt(parseTurkishMoneyAmount(inline[2] ?? "")),
-      cleaningFeeCurrency: "TL",
-    };
-  }
-
-  const dayMatch =
-    text.match(/(\d+)\s*gece\s+ve\s+alt/i) ??
-    text.match(/(\d+)\s*gece\s*alt[ıi]ndaki/i) ??
-    text.match(/(\d+)\s*gece\s*alt[ıi](?:\s|[^a-z])/i);
-
-  if (titledFee?.[1] || dayMatch) {
-    return {
-      cleaningDayCount: dayMatch ? positiveInt(Number(dayMatch[1])) : null,
-      cleaningFee: titledFee?.[1]
-        ? positiveInt(parseTurkishMoneyAmount(titledFee[1]))
-        : null,
-      cleaningFeeCurrency: "TL",
-    };
+  const fromBody = parseCleaningRuleText(text);
+  if (fromBody.cleaningFee != null || fromBody.cleaningDayCount != null) {
+    return fromBody;
   }
 
   return {
@@ -656,9 +687,12 @@ function extractCleaningDefaults(html: string): {
 function extractDefaultMinStayNights(html: string): number | null {
   const text = stripTags(html);
   const patterns = [
+    /minimum\s*konaklama\s*s[üu]resi[^0-9]{0,40}(\d+)\s*gece/i,
+    /min(?:imum|umum)?\s*konaklama\s*s[üu]resi[^0-9]{0,40}(\d+)\s*gece/i,
     /minimum\s*kiralama\s*s[üu]resi[^0-9]{0,40}(\d+)\s*gece/i,
     /minimum\s*kiralama[^0-9]{0,30}(\d+)\s*gece/i,
-    /min\.?\s*(\d+)\s*gece\s*konaklama/i,
+    /min(?:imum|umum)?\.?\s*(\d+)\s*gece\s*konaklama/i,
+    /en\s+az\s+(\d+)\s*gece\s*konaklama/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
