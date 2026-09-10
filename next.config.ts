@@ -88,7 +88,7 @@ const nextConfig: NextConfig = {
     return LEGACY_PUBLIC_REDIRECTS.map((item) => ({
       source: item.source,
       destination: item.destination,
-      permanent: item.permanent ?? true,
+      statusCode: (item.permanent ?? true) ? 301 : 302,
     }));
   },
   async rewrites() {
