@@ -47,7 +47,10 @@ function patchFetch() {
     window.fetch = async (input, init) => {
       const isAction = isNextServerAction(input, init);
       const response = await originalFetch!(input, init);
-      if (isAction) onServerActionSettled?.();
+      if (isAction) {
+        const settled = onServerActionSettled;
+        queueMicrotask(() => settled?.());
+      }
       return response;
     };
   }

@@ -1,9 +1,18 @@
+"use client";
+
+import { useActionState, useEffect } from "react";
 import Link from "next/link";
-import type { CallbackRequest } from "@prisma/client";
+import { useRouter } from "next/navigation";
+import type {
+  CallbackPreferredDay,
+  CallbackPreferredTime,
+  CallbackRequestStatus,
+} from "@prisma/client";
 import {
   createCallbackRequestAdmin,
   deleteCallbackRequestAndReturn,
   updateCallbackRequest,
+  type CallbackRequestActionState,
 } from "@/app/actions/admin/callback-requests";
 import {
   CALLBACK_DAY_LABELS,
@@ -14,15 +23,39 @@ import {
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100";
 
+const LIST_HREF = "/admin/acente/sizi-arayalim";
+
+export type CallbackRequestFormItem = {
+  id: string;
+  name: string;
+  phone: string;
+  note: string;
+  preferredDay: CallbackPreferredDay;
+  preferredTime: CallbackPreferredTime;
+  status: CallbackRequestStatus;
+  adminNote: string;
+  sourceSite: string;
+  sourceDomain: string;
+};
+
 interface Props {
-  item?: CallbackRequest | null;
+  item?: CallbackRequestFormItem | null;
 }
 
 export default function CallbackRequestForm({ item }: Props) {
+  const router = useRouter();
   const isEdit = Boolean(item);
-  const action = isEdit
-    ? updateCallbackRequest.bind(null, item!.id)
-    : createCallbackRequestAdmin;
+  const action = isEdit ? updateCallbackRequest : createCallbackRequestAdmin;
+  const [state, formAction, pending] = useActionState<
+    CallbackRequestActionState,
+    FormData
+  >(action, {});
+
+  useEffect(() => {
+    if (!isEdit || !state.success) return;
+    router.push(LIST_HREF);
+    router.refresh();
+  }, [isEdit, state.success, router]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -36,7 +69,7 @@ export default function CallbackRequestForm({ item }: Props) {
           </p>
         </div>
         <Link
-          href="/admin/acente/sizi-arayalim"
+          href={LIST_HREF}
           className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           Listeye dön
@@ -44,9 +77,12 @@ export default function CallbackRequestForm({ item }: Props) {
       </div>
 
       <form
-        action={action}
+        action={formAction}
+        data-no-page-refresh
         className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
       >
+        {isEdit ? <input type="hidden" name="id" value={item!.id} /> : null}
+
         {isEdit && (item?.sourceSite || item?.sourceDomain) ? (
           <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
             <p className="font-semibold">Kaynak site</p>
@@ -56,6 +92,18 @@ export default function CallbackRequestForm({ item }: Props) {
                 <span className="text-sky-700"> · {item.sourceDomain}</span>
               ) : null}
             </p>
+          </div>
+        ) : null}
+
+        {state.error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {state.error}
+          </div>
+        ) : null}
+
+        {state.success ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Kaydedildi, listeye yönlendiriliyorsunuz…
           </div>
         ) : null}
 
@@ -145,15 +193,23 @@ export default function CallbackRequestForm({ item }: Props) {
         <div className="flex flex-wrap gap-3">
           <button
             type="submit"
-            className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
+            disabled={pending}
+            className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
-            {isEdit ? "Kaydet" : "Oluştur"}
+            {pending
+              ? isEdit
+                ? "Kaydediliyor…"
+                : "Oluşturuluyor…"
+              : isEdit
+                ? "Kaydet"
+                : "Oluştur"}
           </button>
           {isEdit ? (
             <button
               type="submit"
+              disabled={pending}
               formAction={deleteCallbackRequestAndReturn.bind(null, item!.id)}
-              className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50"
+              className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
             >
               Sil
             </button>

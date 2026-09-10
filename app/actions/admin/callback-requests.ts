@@ -59,30 +59,51 @@ function parseStatus(value: FormDataEntryValue | null): CallbackRequestStatus {
     : "VERIFIED";
 }
 
+export type CallbackRequestActionState = {
+  success?: boolean;
+  error?: string;
+};
+
+async function requireAdminOrError(): Promise<CallbackRequestActionState | null> {
+  try {
+    await requireAdmin();
+    return null;
+  } catch {
+    return { error: "Oturum geçersiz. Sayfayı yenileyip tekrar deneyin." };
+  }
+}
+
 export async function createCallbackRequestAdmin(
+  _prev: CallbackRequestActionState,
   formData: FormData
-): Promise<void> {
-  await requireAdmin();
+): Promise<CallbackRequestActionState> {
+  const authError = await requireAdminOrError();
+  if (authError) return authError;
 
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
-  if (!name || !phone) throw new Error("Ad ve telefon zorunlu");
+  if (!name || !phone) return { error: "Ad ve telefon zorunlu" };
 
   const status = parseStatus(formData.get("status"));
-  const item = await prisma.callbackRequest.create({
-    data: {
-      name,
-      phone,
-      note: String(formData.get("note") ?? "").trim(),
-      preferredDay: parseDay(formData.get("preferredDay")),
-      preferredTime: parseTime(formData.get("preferredTime")),
-      status,
-      adminNote: String(formData.get("adminNote") ?? "").trim(),
-      sourceSite: "Manuel Kayıt",
-      sourceDomain: "",
-      verifiedAt: status === "PENDING" ? null : new Date(),
-    },
-  });
+  let item;
+  try {
+    item = await prisma.callbackRequest.create({
+      data: {
+        name,
+        phone,
+        note: String(formData.get("note") ?? "").trim(),
+        preferredDay: parseDay(formData.get("preferredDay")),
+        preferredTime: parseTime(formData.get("preferredTime")),
+        status,
+        adminNote: String(formData.get("adminNote") ?? "").trim(),
+        sourceSite: "Manuel Kayıt",
+        sourceDomain: "",
+        verifiedAt: status === "PENDING" ? null : new Date(),
+      },
+    });
+  } catch {
+    return { error: "Kayıt oluşturulamadı" };
+  }
 
   if (status !== "PENDING") {
     await syncCustomerFromCallback({
@@ -106,29 +127,38 @@ export async function createCallbackRequestAdmin(
 }
 
 export async function updateCallbackRequest(
-  id: string,
+  _prev: CallbackRequestActionState,
   formData: FormData
-): Promise<void> {
-  await requireAdmin();
+): Promise<CallbackRequestActionState> {
+  const authError = await requireAdminOrError();
+  if (authError) return authError;
+
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Kayıt bulunamadı" };
 
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
-  if (!name || !phone) throw new Error("Ad ve telefon zorunlu");
+  if (!name || !phone) return { error: "Ad ve telefon zorunlu" };
 
-  await prisma.callbackRequest.update({
-    where: { id },
-    data: {
-      name,
-      phone,
-      note: String(formData.get("note") ?? "").trim(),
-      preferredDay: parseDay(formData.get("preferredDay")),
-      preferredTime: parseTime(formData.get("preferredTime")),
-      status: parseStatus(formData.get("status")),
-      adminNote: String(formData.get("adminNote") ?? "").trim(),
-    },
-  });
+  try {
+    await prisma.callbackRequest.update({
+      where: { id },
+      data: {
+        name,
+        phone,
+        note: String(formData.get("note") ?? "").trim(),
+        preferredDay: parseDay(formData.get("preferredDay")),
+        preferredTime: parseTime(formData.get("preferredTime")),
+        status: parseStatus(formData.get("status")),
+        adminNote: String(formData.get("adminNote") ?? "").trim(),
+      },
+    });
+  } catch {
+    return { error: "Kayıt güncellenemedi" };
+  }
 
   revalidateCallbackPaths(id);
+  return { success: true };
 }
 
 export async function deleteCallbackRequest(id: string) {
