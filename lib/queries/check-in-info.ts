@@ -153,6 +153,19 @@ export type CheckInInfoInvoice = {
   country: string;
 };
 
+/** Acente şirket bilgileri — villa sahibi komisyon faturası keserken kullanır. */
+export type CheckInInfoCommissionInvoice = {
+  companyTitle: string;
+  taxOffice: string;
+  taxNumber: string;
+  address: string;
+  mersisNo: string;
+  tradeRegistryNo: string;
+  kepAddress: string;
+  commissionAmountLabel: string | null;
+  commissionRateLabel: string | null;
+};
+
 export type CheckInInfoPaymentLine = {
   label: string;
   amountLabel: string;
@@ -193,6 +206,8 @@ export type PublicCheckInInfoPage = {
   guestContact: CheckInInfoContact;
   stayGuests: CheckInInfoStayGuest[];
   invoice: CheckInInfoInvoice | null;
+  /** Yalnızca ev sahibi sayfasında: kesilecek komisyon faturası için acente bilgileri */
+  commissionInvoice: CheckInInfoCommissionInvoice | null;
   /** Rezervasyon Hesabı satırları (yalnızca tutar > 0) */
   accountLines: CheckInInfoPaymentLine[];
   /** Toplam */
@@ -244,6 +259,36 @@ function resolveGreeterRaw(villa: CheckInInfoBookingRow["villa"]): {
       "Ev sahibi / Görevli",
     phone: villa.owner?.phone?.trim() || "",
     email: villa.owner?.email?.trim() || "",
+  };
+}
+
+function buildCommissionInvoice(
+  company: Awaited<ReturnType<typeof getCompanySettings>>,
+  details: BookingDetails
+): CheckInInfoCommissionInvoice | null {
+  const companyTitle = company.companyTitle?.trim() || "";
+  const taxOffice = company.taxOffice?.trim() || "";
+  const taxNumber = company.taxNumber?.trim() || "";
+  const address = company.address?.trim() || "";
+  if (!companyTitle && !taxNumber && !taxOffice && !address) return null;
+
+  const commissionAmount = details.commissionAmount ?? 0;
+  const commissionRate = details.commissionRate ?? null;
+
+  return {
+    companyTitle: companyTitle || "—",
+    taxOffice,
+    taxNumber,
+    address,
+    mersisNo: company.mersisNo?.trim() || "",
+    tradeRegistryNo: company.tradeRegistryNo?.trim() || "",
+    kepAddress: company.kepAddress?.trim() || "",
+    commissionAmountLabel:
+      commissionAmount > 0 ? formatMoneyPlain(commissionAmount) : null,
+    commissionRateLabel:
+      commissionRate != null && commissionRate > 0
+        ? `%${commissionRate}`
+        : null,
   };
 }
 
@@ -688,6 +733,10 @@ export async function getPublicCheckInInfo(input: {
   );
 
   const invoice = buildInvoice(details, booking.guestName, revealed);
+  const commissionInvoice =
+    input.audience === "owner"
+      ? buildCommissionInvoice(company, details)
+      : null;
   const villaLocation = booking.villa.region
     ? formatVillaRegionLabelMahalleIlceIl(booking.villa.region)
     : booking.villa.location;
@@ -734,6 +783,7 @@ export async function getPublicCheckInInfo(input: {
     ),
     stayGuests: buildStayGuests(booking, details, revealed),
     invoice,
+    commissionInvoice,
     accountLines,
     accountSummaryLines,
     paymentLines,

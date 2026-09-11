@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Footer from "@/components/Footer";
 import TatilAssistantWidgetLoader from "@/components/tatil-assistant/TatilAssistantWidgetLoader";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
@@ -27,7 +28,15 @@ const defaultQuickLinks = [
 
 const loyaltyQuickLink = { href: "/sadakat", label: "Sadakat Programı" };
 
+function isOwnerCheckInPath(pathname: string): boolean {
+  return /\/giris-bilgilendirme\/[^/]+\/evsahibi\/?$/.test(pathname);
+}
+
 export default async function SiteChromeBelowFold() {
+  const headerList = await headers();
+  const pathname = headerList.get("x-public-pathname") || "/";
+  const hidePreFooter = isOwnerCheckInPath(pathname);
+
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
   const brandName = site.brandName?.trim() || siteConfig.name;
@@ -46,10 +55,26 @@ export default async function SiteChromeBelowFold() {
     getSiteMenuItemsForPublic("footer-quick"),
     getFooterCorporatePages(),
     getFooterRegionLinks(site.key),
-    getActiveFaqsForPublic({ limit: 8 }),
-    getApprovedReviewsForPublic(6, site.key),
-    getPublishedBlogPosts({ limit: 8 }),
-    getBlogCategoriesForPublic(),
+    hidePreFooter
+      ? Promise.resolve(
+          [] as Awaited<ReturnType<typeof getActiveFaqsForPublic>>
+        )
+      : getActiveFaqsForPublic({ limit: 8 }),
+    hidePreFooter
+      ? Promise.resolve(
+          [] as Awaited<ReturnType<typeof getApprovedReviewsForPublic>>
+        )
+      : getApprovedReviewsForPublic(6, site.key),
+    hidePreFooter
+      ? Promise.resolve(
+          [] as Awaited<ReturnType<typeof getPublishedBlogPosts>>
+        )
+      : getPublishedBlogPosts({ limit: 8 }),
+    hidePreFooter
+      ? Promise.resolve(
+          [] as Awaited<ReturnType<typeof getBlogCategoriesForPublic>>
+        )
+      : getBlogCategoriesForPublic(),
     getPublicSiteTracking(site.key),
   ]);
 
@@ -81,13 +106,15 @@ export default async function SiteChromeBelowFold() {
   return (
     <>
       <SiteTrackingScripts tracking={tracking} />
-      <SitePreFooterAccordions
-        faqs={faqs}
-        reviews={reviews}
-        posts={posts}
-        blogCategories={blogCategories}
-        brandName={brandName}
-      />
+      {!hidePreFooter ? (
+        <SitePreFooterAccordions
+          faqs={faqs}
+          reviews={reviews}
+          posts={posts}
+          blogCategories={blogCategories}
+          brandName={brandName}
+        />
+      ) : null}
       <Footer
         quickLinks={quickLinks}
         corporateLinks={corporateLinks}

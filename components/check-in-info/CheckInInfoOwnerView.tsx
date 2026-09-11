@@ -298,6 +298,91 @@ export default function CheckInInfoOwnerView({
         </SectionCard>
       ) : null}
 
+      {page.commissionInvoice ? (
+        <SectionCard title="Kesilecek Komisyon Faturası Bilgileri">
+          <p className="mb-4 text-sm leading-relaxed text-slate-600">
+            Komisyon faturanızı aşağıdaki acente bilgilerine kesiniz.
+          </p>
+          {(page.commissionInvoice.commissionAmountLabel ||
+            page.commissionInvoice.commissionRateLabel) && (
+            <ul className="mb-4 divide-y divide-slate-100 rounded-xl bg-slate-50 px-3">
+              {page.commissionInvoice.commissionRateLabel ? (
+                <li className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <span className="text-slate-600">Komisyon Oranı</span>
+                  <span className="font-semibold text-slate-900">
+                    {page.commissionInvoice.commissionRateLabel}
+                  </span>
+                </li>
+              ) : null}
+              {page.commissionInvoice.commissionAmountLabel ? (
+                <li className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <span className="text-slate-600">Komisyon Tutarı</span>
+                  <span className="font-semibold text-slate-900">
+                    {page.commissionInvoice.commissionAmountLabel}
+                  </span>
+                </li>
+              ) : null}
+            </ul>
+          )}
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-slate-500">Ünvan</dt>
+              <dd className="text-right font-medium text-slate-900">
+                {page.commissionInvoice.companyTitle}
+              </dd>
+            </div>
+            {page.commissionInvoice.taxOffice ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Vergi Dairesi</dt>
+                <dd className="text-right font-medium text-slate-900">
+                  {page.commissionInvoice.taxOffice}
+                </dd>
+              </div>
+            ) : null}
+            {page.commissionInvoice.taxNumber ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Vergi No</dt>
+                <dd className="text-right font-medium text-slate-900">
+                  {page.commissionInvoice.taxNumber}
+                </dd>
+              </div>
+            ) : null}
+            {page.commissionInvoice.address ? (
+              <div className="flex justify-between gap-3">
+                <dt className="shrink-0 text-slate-500">Adres</dt>
+                <dd className="text-right font-medium text-slate-900">
+                  {page.commissionInvoice.address}
+                </dd>
+              </div>
+            ) : null}
+            {page.commissionInvoice.mersisNo ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">MERSİS No</dt>
+                <dd className="text-right font-medium text-slate-900">
+                  {page.commissionInvoice.mersisNo}
+                </dd>
+              </div>
+            ) : null}
+            {page.commissionInvoice.tradeRegistryNo ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Ticaret Sicil No</dt>
+                <dd className="text-right font-medium text-slate-900">
+                  {page.commissionInvoice.tradeRegistryNo}
+                </dd>
+              </div>
+            ) : null}
+            {page.commissionInvoice.kepAddress ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">KEP</dt>
+                <dd className="text-right font-medium text-slate-900">
+                  {page.commissionInvoice.kepAddress}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </SectionCard>
+      ) : null}
+
       <p className="pb-6 text-center text-sm text-slate-500">
         Rezervasyon no: {page.code} · {page.siteDomain}
       </p>
