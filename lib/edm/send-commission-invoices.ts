@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db";
 import { parseBookingDetails } from "@/lib/booking-form-details";
-import { getEdmConfig } from "@/lib/edm/config";
+import {
+  getEdmConfig,
+  resolveEdmSupplierIdentity,
+} from "@/lib/edm/config";
 import { withEdmSession, type EdmSoapClient } from "@/lib/edm/client";
 import { buildCommissionUblInvoice } from "@/lib/edm/ubl-commission";
 import { getInvoiceBookingInputsByIds } from "@/lib/queries/invoice-report";
@@ -106,11 +109,7 @@ export async function testEdmConnection() {
 
     let senderAliases: string[] = [];
     try {
-      const { getCompanySettings } = await import(
-        "@/lib/queries/company-settings"
-      );
-      const company = await getCompanySettings();
-      const vkn = company.taxNumber.replace(/\D/g, "");
+      const vkn = config.senderVkn;
       if (vkn) {
         const users = await client.checkUser(vkn);
         senderAliases = users
@@ -131,6 +130,7 @@ export async function testEdmConnection() {
       counterLeft,
       dryRun: config.dryRun,
       username: config.username,
+      senderVkn: config.senderVkn,
       senderAlias: config.senderAlias,
       senderAliases,
       senderAliasConfigured: Boolean(config.senderAlias),
@@ -149,14 +149,24 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
   }
 
   const companyTax = loaded.company.taxNumber.replace(/\D/g, "");
-  if (!companyTax) {
-    throw new Error("Şirket VKN (CompanySettings.taxNumber) boş.");
+  if (!companyTax && !config.senderVkn) {
+    throw new Error("Şirket VKN veya EDM_SENDER_VKN tanımlı değil.");
+  }
+
+  const supplier = resolveEdmSupplierIdentity(config, {
+    taxNumber: companyTax,
+    companyTitle: loaded.company.companyTitle,
+    agencyName: loaded.company.agencyName,
+  });
+
+  if (!supplier.senderVkn) {
+    throw new Error("Gönderici VKN çözülemedi.");
   }
 
   await withEdmSession(async (client) => {
     let resolvedSenderAlias = config.senderAlias;
     try {
-      const senderUsers = await client.checkUser(companyTax);
+      const senderUsers = await client.checkUser(supplier.senderVkn);
       resolvedSenderAlias = pickSenderGbAlias(
         senderUsers,
         config.senderAlias
@@ -169,6 +179,15 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
         "EDM_SENDER_ALIAS tanımlı değil (GİB gönderici birim / GB etiketi)."
       );
     }
+
+    const companyForUbl = {
+      taxNumber: supplier.senderVkn,
+      title: supplier.title,
+      taxOffice: loaded.company!.taxOffice || "KAĞITHANE",
+      address: loaded.company!.address,
+      mersisNo: loaded.company!.mersisNo,
+      tradeRegistryNo: loaded.company!.tradeRegistryNo,
+    };
 
     for (const item of loaded.bookings) {
       const base: EdmSendInvoiceItemResult = {
@@ -204,14 +223,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
       try {
         const ublProbe = buildCommissionUblInvoice({
           booking: item.input,
-          company: {
-            taxNumber: companyTax,
-            title: loaded.company!.companyTitle || loaded.company!.agencyName,
-            taxOffice: loaded.company!.taxOffice,
-            address: loaded.company!.address,
-            mersisNo: loaded.company!.mersisNo,
-            tradeRegistryNo: loaded.company!.tradeRegistryNo,
-          },
+          company: companyForUbl,
           config,
           eArchive: true,
         });
@@ -230,14 +242,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
 
         const ubl = buildCommissionUblInvoice({
           booking: item.input,
-          company: {
-            taxNumber: companyTax,
-            title: loaded.company!.companyTitle || loaded.company!.agencyName,
-            taxOffice: loaded.company!.taxOffice,
-            address: loaded.company!.address,
-            mersisNo: loaded.company!.mersisNo,
-            tradeRegistryNo: loaded.company!.tradeRegistryNo,
-          },
+          company: companyForUbl,
           config,
           eArchive,
           uuid: ublProbe.uuid,
@@ -249,6 +254,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
             uuid: ubl.uuid,
             eArchive,
             profileId: ubl.profileId,
+            senderVkn: supplier.senderVkn,
             senderAlias: resolvedSenderAlias,
             receiverVkn: ubl.receiverVkn,
             receiverAlias,
@@ -269,7 +275,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
         }
 
         const sent = await client.sendInvoice({
-          senderVkn: companyTax,
+          senderVkn: supplier.senderVkn,
           senderAlias: resolvedSenderAlias,
           receiverVkn: ubl.receiverVkn,
           receiverAlias,
@@ -285,6 +291,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           invoiceId: sent.id,
           eArchive,
           profileId: ubl.profileId,
+          senderVkn: supplier.senderVkn,
           senderAlias: resolvedSenderAlias,
           receiverVkn: ubl.receiverVkn,
           receiverAlias,

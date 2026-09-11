@@ -185,16 +185,24 @@ export default function InvoiceReportPage({
       const data = (await response.json()) as {
         error?: string;
         summary?: { ok: number; failed: number; skipped: number };
+        results?: Array<{ ok: boolean; skipped?: boolean; error?: string }>;
       };
       if (!response.ok) {
         setEdmHint(data.error || "EDM gönderim başarısız.");
         return;
       }
       const s = data.summary;
+      const firstError = data.results?.find((r) => !r.ok && r.error)?.error;
       setEdmHint(
-        s
-          ? `EDM: ${s.ok} başarılı, ${s.failed} hata, ${s.skipped} atlandı. Sayfayı yenileyin.`
-          : "EDM gönderim tamamlandı."
+        [
+          s
+            ? `EDM: ${s.ok} başarılı, ${s.failed} hata, ${s.skipped} atlandı.`
+            : "EDM gönderim tamamlandı.",
+          firstError ? `Hata: ${firstError}` : null,
+          "Sayfayı yenileyin.",
+        ]
+          .filter(Boolean)
+          .join(" ")
       );
     } catch {
       setEdmHint("EDM gönderim isteği başarısız.");
@@ -365,12 +373,19 @@ export default function InvoiceReportPage({
                       </td>
                       <td className="px-3 py-2 text-gray-700">
                         {item.edmStatus ? (
-                          <span className="text-xs font-medium">
-                            {item.edmStatus}
-                            {item.edmInvoiceId
-                              ? ` · ${item.edmInvoiceId.slice(0, 8)}…`
-                              : ""}
-                          </span>
+                          <div className="space-y-1">
+                            <span className="text-xs font-medium">
+                              {item.edmStatus}
+                              {item.edmInvoiceId
+                                ? ` · ${item.edmInvoiceId.slice(0, 8)}…`
+                                : ""}
+                            </span>
+                            {item.edmError ? (
+                              <p className="max-w-xs text-xs text-red-600">
+                                {item.edmError}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : (
                           <span className="text-xs text-gray-400">—</span>
                         )}

@@ -36,6 +36,7 @@ export type InvoiceReportListItem = AdminBookingListItem & {
   exportable: boolean;
   edmStatus: string | null;
   edmInvoiceId: string | null;
+  edmError: string | null;
 };
 
 const invoiceBookingSelect = {
@@ -291,6 +292,7 @@ function mapBookingToListItem(
     exportable: missing.length === 0,
     edmStatus: details.edmInvoice?.status ?? null,
     edmInvoiceId: details.edmInvoice?.invoiceId ?? details.edmInvoice?.uuid ?? null,
+    edmError: details.edmInvoice?.error ?? null,
   };
 }
 
