@@ -34,6 +34,7 @@ export type EdmSendInvoiceInput = {
   receiverAlias: string;
   eArchive: boolean;
   invoiceSerial?: string;
+  invoiceId?: string;
   uuid: string;
   ublXml: string;
 };
@@ -200,7 +201,7 @@ export class EdmSoapClient {
       : `<INVOICESERIAL_REQUESTED/>`;
 
     const invoiceXml =
-      `<INVOICE xmlns="" TRXID="0" UUID="${escapeXml(input.uuid)}">` +
+      `<INVOICE xmlns="" TRXID="0" UUID="${escapeXml(input.uuid)}" ID="${escapeXml(input.invoiceId || "")}">` +
       `<HEADER>` +
       `<INTERNETSALES>false</INTERNETSALES>` +
       `<EARCHIVE>${input.eArchive ? "true" : "false"}</EARCHIVE>` +
@@ -229,6 +230,71 @@ export class EdmSoapClient {
     const id = firstXmlAttr(xml, "INVOICE", "ID") || firstXmlTagValue(xml, "ID") || "";
 
     return { uuid, id, rawXml: xml };
+  }
+
+  async getInvoiceSerials(): Promise<
+    Array<{
+      code: string;
+      year: number;
+      lastSerialUsed: number;
+      sendType: string;
+    }>
+  > {
+    const body =
+      `<GetInvoiceSerialRequest xmlns="http://tempuri.org/">` +
+      buildRequestHeaderXml(this.config, {
+        sessionId: this.requireSession(),
+      }) +
+      `</GetInvoiceSerialRequest>`;
+    const xml = await this.call("GetInvoiceSerialRequest", body);
+    const items =
+      xml.match(/<Items\b[^>]*>[\s\S]*?<\/Items>/gi)?.filter((block) =>
+        /INVOICESERIALCODE/i.test(block)
+      ) || [];
+    return items.map((block) => ({
+      code: firstXmlTagValue(block, "INVOICESERIALCODE") || "",
+      year: Number(firstXmlTagValue(block, "YEAR") || "0"),
+      lastSerialUsed: Number(firstXmlTagValue(block, "LASTSERIALUSED") || "0"),
+      sendType:
+        firstXmlTagValue(block, "INVOİCESENDTYPE") ||
+        firstXmlTagValue(block, "INVOICESENDTYPE") ||
+        "",
+    }));
+  }
+
+  /** GİB formatı: AAAYYYY######### (3 harf + yıl + 9 hane) */
+  async allocateInvoiceId(preferredSerial?: string, eArchive = true): Promise<{
+    invoiceId: string;
+    serial: string;
+  }> {
+    const serials = await this.getInvoiceSerials();
+    const year = new Date().getFullYear();
+    const preferred = (preferredSerial || "").trim().toUpperCase();
+    const typeHint = eArchive ? /e-?\s*ar[sş]iv|internet/i : /e-?\s*fatura/i;
+
+    let chosen =
+      (preferred
+        ? serials.find((s) => s.code.toUpperCase() === preferred && s.year === year)
+        : undefined) ||
+      serials.find(
+        (s) => s.year === year && typeHint.test(s.sendType) && s.code
+      ) ||
+      serials.find((s) => s.year === year && s.code) ||
+      serials.find((s) => s.code);
+
+    if (!chosen?.code) {
+      const fallbackSerial = preferred || "SYA";
+      return {
+        serial: fallbackSerial,
+        invoiceId: `${fallbackSerial}${year}${"1".padStart(9, "0")}`,
+      };
+    }
+
+    const next = Math.max(1, (chosen.lastSerialUsed || 0) + 1);
+    return {
+      serial: chosen.code,
+      invoiceId: `${chosen.code}${chosen.year || year}${String(next).padStart(9, "0")}`,
+    };
   }
 
   async getInvoiceStatus(uuid: string): Promise<{

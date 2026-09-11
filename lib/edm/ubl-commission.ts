@@ -16,6 +16,7 @@ const LINE_NAME = "ACENTE HİZMET BEDELİ";
 
 export type EdmUblBuildResult = {
   uuid: string;
+  invoiceId: string;
   xml: string;
   profileId: "EARSIVFATURA" | "TEMELFATURA";
   eArchive: boolean;
@@ -204,6 +205,7 @@ export function buildCommissionUblInvoice(input: {
   config: Pick<EdmConfig, "supplierCity" | "supplierDistrict">;
   eArchive: boolean;
   uuid?: string;
+  invoiceId: string;
 }): EdmUblBuildResult {
   const uuid = input.uuid || randomUUID();
   const invoiceDate = input.booking.invoiceDate ?? input.booking.checkIn;
@@ -243,7 +245,7 @@ export function buildCommissionUblInvoice(input: {
   <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
   <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
   <cbc:ProfileID>${profileId}</cbc:ProfileID>
-  <cbc:ID></cbc:ID>
+  <cbc:ID>${escapeXml(input.invoiceId)}</cbc:ID>
   <cbc:CopyIndicator>false</cbc:CopyIndicator>
   <cbc:UUID>${escapeXml(uuid)}</cbc:UUID>
   <cbc:IssueDate>${isoDate(invoiceDate)}</cbc:IssueDate>
@@ -308,6 +310,7 @@ export function buildCommissionUblInvoice(input: {
 
   return {
     uuid,
+    invoiceId: input.invoiceId,
     xml,
     profileId,
     eArchive: input.eArchive,

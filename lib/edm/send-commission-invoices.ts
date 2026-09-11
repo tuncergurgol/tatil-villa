@@ -5,7 +5,10 @@ import {
   resolveEdmSupplierIdentity,
 } from "@/lib/edm/config";
 import { withEdmSession, type EdmSoapClient } from "@/lib/edm/client";
-import { buildCommissionUblInvoice } from "@/lib/edm/ubl-commission";
+import {
+  buildCommissionUblInvoice,
+  resolveEdmCustomerFromBooking,
+} from "@/lib/edm/ubl-commission";
 import { getInvoiceBookingInputsByIds } from "@/lib/queries/invoice-report";
 
 export type EdmSendInvoiceItemResult = {
@@ -242,17 +245,12 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
       }
 
       try {
-        const ublProbe = buildCommissionUblInvoice({
-          booking: item.input,
-          company: companyForUbl,
-          config,
-          eArchive: true,
-        });
-
+        // Önce alıcı tipini belirle (e-arşiv / e-fatura), sonra seri no üret
         let eArchive = true;
         let receiverAlias = "";
+        const receiverProbe = resolveEdmCustomerFromBooking(item.input);
         try {
-          const users = await client.checkUser(ublProbe.receiverVkn);
+          const users = await client.checkUser(receiverProbe.taxNumber);
           const decision = pickReceiverAlias(users, false);
           eArchive = decision.eArchive;
           receiverAlias = decision.alias;
@@ -261,18 +259,24 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           receiverAlias = "";
         }
 
+        const allocated = await client.allocateInvoiceId(
+          config.invoiceSerial || undefined,
+          eArchive
+        );
+
         const ubl = buildCommissionUblInvoice({
           booking: item.input,
           company: companyForUbl,
           config,
           eArchive,
-          uuid: ublProbe.uuid,
+          invoiceId: allocated.invoiceId,
         });
 
         if (config.dryRun) {
           await persistEdmResult(item.record.id, details, {
             status: "DRY_RUN",
             uuid: ubl.uuid,
+            invoiceId: allocated.invoiceId,
             eArchive,
             profileId: ubl.profileId,
             senderVkn: supplier.senderVkn,
@@ -288,6 +292,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
             eArchive,
             profileId: ubl.profileId,
             uuid: ubl.uuid,
+            invoiceId: allocated.invoiceId,
             receiverVkn: ubl.receiverVkn,
             receiverAlias,
             amount: ubl.gross,
@@ -301,7 +306,8 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           receiverVkn: ubl.receiverVkn,
           receiverAlias,
           eArchive,
-          invoiceSerial: config.invoiceSerial || undefined,
+          invoiceSerial: allocated.serial,
+          invoiceId: allocated.invoiceId,
           uuid: ubl.uuid,
           ublXml: ubl.xml,
         });
