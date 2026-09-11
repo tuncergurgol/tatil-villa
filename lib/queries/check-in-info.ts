@@ -29,6 +29,7 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
 import { VILLA_OWNER_TYPE_LABELS } from "@/lib/villa-owner-utils";
+import { getMernisIlceByCode } from "@/lib/mernis-ilce";
 
 const checkInInfoInclude = {
   villa: {
@@ -77,6 +78,7 @@ const checkInInfoInclude = {
           taxNumber: true,
           address: true,
           country: true,
+          mernisIlceCode: true,
         },
       },
     },
@@ -292,7 +294,11 @@ function buildCommissionInvoice(
       ? owner.taxNumber?.trim()
       : owner.tcKimlikNo?.trim() || owner.taxNumber?.trim()) || "";
   const taxOffice = owner.taxOffice?.trim() || "";
-  const address = owner.address?.trim() || "";
+  const streetAddress = owner.address?.trim() || "";
+  const mernis = getMernisIlceByCode(owner.mernisIlceCode);
+  const address = [streetAddress, mernis?.ilceAdi, mernis?.ilAdi]
+    .filter((part) => Boolean(part?.trim()))
+    .join(" / ");
   const authorizedPersonName = owner.authorizedPersonName?.trim() || "";
 
   if (!title && !taxNumber && !taxOffice && !address) return null;
