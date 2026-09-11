@@ -27,6 +27,7 @@ import { resolveStayPeriodFees } from "@/lib/queries/booking-prepayment";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { resolveBookingSiteBrand } from "@/lib/booking-site-brand";
+import { VILLA_OWNER_TYPE_LABELS } from "@/lib/villa-owner-utils";
 
 const checkInInfoInclude = {
   villa: {
@@ -62,10 +63,19 @@ const checkInInfoInclude = {
       },
       owner: {
         select: {
+          type: true,
           name: true,
+          firstName: true,
+          lastName: true,
+          companyTitle: true,
+          authorizedPersonName: true,
           phone: true,
           email: true,
-          authorizedPersonName: true,
+          tcKimlikNo: true,
+          taxOffice: true,
+          taxNumber: true,
+          address: true,
+          country: true,
         },
       },
     },
@@ -153,15 +163,14 @@ export type CheckInInfoInvoice = {
   country: string;
 };
 
-/** Acente şirket bilgileri — villa sahibi komisyon faturası keserken kullanır. */
+/** Villa sahibi fatura bilgileri — acente komisyon faturasını bu bilgilere keser. */
 export type CheckInInfoCommissionInvoice = {
-  companyTitle: string;
+  taxpayerType: string;
+  title: string;
+  authorizedPersonName: string;
   taxOffice: string;
   taxNumber: string;
   address: string;
-  mersisNo: string;
-  tradeRegistryNo: string;
-  kepAddress: string;
   commissionAmountLabel: string | null;
   commissionRateLabel: string | null;
 };
@@ -206,7 +215,7 @@ export type PublicCheckInInfoPage = {
   guestContact: CheckInInfoContact;
   stayGuests: CheckInInfoStayGuest[];
   invoice: CheckInInfoInvoice | null;
-  /** Yalnızca ev sahibi sayfasında: kesilecek komisyon faturası için acente bilgileri */
+  /** Yalnızca ev sahibi sayfasında: firmanıza kesilecek komisyon faturası (villa sahibi bilgileri) */
   commissionInvoice: CheckInInfoCommissionInvoice | null;
   /** Rezervasyon Hesabı satırları (yalnızca tutar > 0) */
   accountLines: CheckInInfoPaymentLine[];
@@ -263,26 +272,40 @@ function resolveGreeterRaw(villa: CheckInInfoBookingRow["villa"]): {
 }
 
 function buildCommissionInvoice(
-  company: Awaited<ReturnType<typeof getCompanySettings>>,
+  owner: CheckInInfoBookingRow["villa"]["owner"],
   details: BookingDetails
 ): CheckInInfoCommissionInvoice | null {
-  const companyTitle = company.companyTitle?.trim() || "";
-  const taxOffice = company.taxOffice?.trim() || "";
-  const taxNumber = company.taxNumber?.trim() || "";
-  const address = company.address?.trim() || "";
-  if (!companyTitle && !taxNumber && !taxOffice && !address) return null;
+  if (!owner) return null;
+
+  const isCorporate = owner.type === "TUZEL_KISI";
+  const personName = [owner.firstName, owner.lastName]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+  const title =
+    (isCorporate
+      ? owner.companyTitle?.trim() || owner.name?.trim()
+      : personName || owner.name?.trim()) || "";
+  const taxNumber =
+    (isCorporate
+      ? owner.taxNumber?.trim()
+      : owner.tcKimlikNo?.trim() || owner.taxNumber?.trim()) || "";
+  const taxOffice = owner.taxOffice?.trim() || "";
+  const address = owner.address?.trim() || "";
+  const authorizedPersonName = owner.authorizedPersonName?.trim() || "";
+
+  if (!title && !taxNumber && !taxOffice && !address) return null;
 
   const commissionAmount = details.commissionAmount ?? 0;
   const commissionRate = details.commissionRate ?? null;
 
   return {
-    companyTitle: companyTitle || "—",
+    taxpayerType: VILLA_OWNER_TYPE_LABELS[owner.type] ?? "Villa Sahibi",
+    title: title || "—",
+    authorizedPersonName,
     taxOffice,
     taxNumber,
     address,
-    mersisNo: company.mersisNo?.trim() || "",
-    tradeRegistryNo: company.tradeRegistryNo?.trim() || "",
-    kepAddress: company.kepAddress?.trim() || "",
     commissionAmountLabel:
       commissionAmount > 0 ? formatMoneyPlain(commissionAmount) : null,
     commissionRateLabel:
@@ -735,7 +758,7 @@ export async function getPublicCheckInInfo(input: {
   const invoice = buildInvoice(details, booking.guestName, revealed);
   const commissionInvoice =
     input.audience === "owner"
-      ? buildCommissionInvoice(company, details)
+      ? buildCommissionInvoice(booking.villa.owner, details)
       : null;
   const villaLocation = booking.villa.region
     ? formatVillaRegionLabelMahalleIlceIl(booking.villa.region)

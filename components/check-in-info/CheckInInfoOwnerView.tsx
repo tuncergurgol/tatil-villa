@@ -299,9 +299,10 @@ export default function CheckInInfoOwnerView({
       ) : null}
 
       {page.commissionInvoice ? (
-        <SectionCard title="Kesilecek Komisyon Faturası Bilgileri">
+        <SectionCard title="Firmanıza Kesilecek Komisyon Faturası Bilgileri">
           <p className="mb-4 text-sm leading-relaxed text-slate-600">
-            Komisyon faturanızı aşağıdaki acente bilgilerine kesiniz.
+            Komisyon faturası aşağıdaki villa sahibi bilgilerine
+            kesilecektir.
           </p>
           {(page.commissionInvoice.commissionAmountLabel ||
             page.commissionInvoice.commissionRateLabel) && (
@@ -326,11 +327,25 @@ export default function CheckInInfoOwnerView({
           )}
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Ünvan</dt>
+              <dt className="text-slate-500">Fatura Tipi</dt>
               <dd className="text-right font-medium text-slate-900">
-                {page.commissionInvoice.companyTitle}
+                {page.commissionInvoice.taxpayerType}
               </dd>
             </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-slate-500">Ad Soyad / Ünvan</dt>
+              <dd className="text-right font-medium text-slate-900">
+                {page.commissionInvoice.title}
+              </dd>
+            </div>
+            {page.commissionInvoice.authorizedPersonName ? (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Yetkili Kişi</dt>
+                <dd className="text-right font-medium text-slate-900">
+                  {page.commissionInvoice.authorizedPersonName}
+                </dd>
+              </div>
+            ) : null}
             {page.commissionInvoice.taxOffice ? (
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-500">Vergi Dairesi</dt>
@@ -341,7 +356,7 @@ export default function CheckInInfoOwnerView({
             ) : null}
             {page.commissionInvoice.taxNumber ? (
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Vergi No</dt>
+                <dt className="text-slate-500">Vergi / TC No</dt>
                 <dd className="text-right font-medium text-slate-900">
                   {page.commissionInvoice.taxNumber}
                 </dd>
@@ -352,30 +367,6 @@ export default function CheckInInfoOwnerView({
                 <dt className="shrink-0 text-slate-500">Adres</dt>
                 <dd className="text-right font-medium text-slate-900">
                   {page.commissionInvoice.address}
-                </dd>
-              </div>
-            ) : null}
-            {page.commissionInvoice.mersisNo ? (
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">MERSİS No</dt>
-                <dd className="text-right font-medium text-slate-900">
-                  {page.commissionInvoice.mersisNo}
-                </dd>
-              </div>
-            ) : null}
-            {page.commissionInvoice.tradeRegistryNo ? (
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Ticaret Sicil No</dt>
-                <dd className="text-right font-medium text-slate-900">
-                  {page.commissionInvoice.tradeRegistryNo}
-                </dd>
-              </div>
-            ) : null}
-            {page.commissionInvoice.kepAddress ? (
-              <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">KEP</dt>
-                <dd className="text-right font-medium text-slate-900">
-                  {page.commissionInvoice.kepAddress}
                 </dd>
               </div>
             ) : null}
