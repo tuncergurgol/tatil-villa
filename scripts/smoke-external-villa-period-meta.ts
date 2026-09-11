@@ -51,6 +51,15 @@ const hepsivillaShort = extractScrapedPeriodDefaults(hepsivillaShortHtml);
 assert.equal(hepsivillaShort.cleaningDayCount, 6);
 assert.equal(hepsivillaShort.cleaningFee, 5000);
 
+const heryervillamDepositHtml = `
+<p><span>Depozito:</span><span>&nbsp;</span><span>7</span><span>000 TL</span></p>
+<p>5 gece altı konaklamalarda 7.000 TL temizlik ücreti alınmaktadır.</p>
+`;
+const heryerDefaults = extractScrapedPeriodDefaults(heryervillamDepositHtml);
+assert.equal(heryerDefaults.damageDeposit, 7000);
+assert.equal(heryerDefaults.cleaningDayCount, 5);
+assert.equal(heryerDefaults.cleaningFee, 7000);
+
 const noisyHtml = `
 <script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"data":{"gece":"3","subTitle":"Minimum 2 gece","sozlesme":"komisyon alma suretiyle"}}}}</script>
 <ul>

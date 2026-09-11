@@ -603,9 +603,39 @@ function extractDamageDeposit(html: string): {
   const after = text.match(
     /(\d[\d.\s]*)\s*(TL|EUR|USD|GBP|€|\$|£)\s+hasar\s*depozito(?:su)?/i
   );
-  if (!after) return { amount: null, currency: "TL" };
-  const amount = positiveInt(Number((after[1] ?? "").replace(/[.\s]/g, "")));
-  return { amount, currency: mapCurrencyCode(after[2]) };
+  if (after) {
+    const amount = positiveInt(Number((after[1] ?? "").replace(/[.\s]/g, "")));
+    return { amount, currency: mapCurrencyCode(after[2]) };
+  }
+
+  // Heryervillam vb.: "Depozito: 7000 TL" (Hasar öneki yok; span'ler strip sonrası "7 000 TL")
+  const plainLabeled = text.match(
+    /\bdepozito(?:su)?\s*[-–:]\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i
+  );
+  if (plainLabeled?.[1]) {
+    const amount = positiveInt(parseTurkishMoneyAmount(plainLabeled[1]));
+    if (amount != null && amount >= 500) {
+      return {
+        amount,
+        currency: mapCurrencyCode(plainLabeled[2]),
+      };
+    }
+  }
+
+  const guvence = text.match(
+    /g[üu]vence\s*(?:bedeli|depozito(?:su)?)?\s*[-–:]\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i
+  );
+  if (guvence?.[1]) {
+    const amount = positiveInt(parseTurkishMoneyAmount(guvence[1]));
+    if (amount != null && amount >= 500) {
+      return {
+        amount,
+        currency: mapCurrencyCode(guvence[2]),
+      };
+    }
+  }
+
+  return { amount: null, currency: "TL" };
 }
 
 function extractPrepaymentRate(html: string): number | null {
