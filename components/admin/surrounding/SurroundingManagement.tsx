@@ -23,6 +23,8 @@ import type {
   SurroundingCategoryItem,
   SurroundingLocationItem,
 } from "@/lib/queries/surrounding";
+import { compareSurroundingNames } from "@/lib/surrounding-utils";
+import { includesSearchText } from "@/lib/search-text";
 
 interface SurroundingManagementProps {
   categories: SurroundingCategoryItem[];
@@ -48,22 +50,21 @@ export default function SurroundingManagement({
   const [isPending, startTransition] = useTransition();
 
   const filteredCategories = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-
     return categories
       .map((category) => {
-        const locations = category.locations.filter((location) => {
-          if (!query) return true;
-          return location.name.toLocaleLowerCase("tr-TR").includes(query);
-        });
+        const locations = category.locations
+          .filter((location) => includesSearchText(location.name, search))
+          .sort((left, right) =>
+            compareSurroundingNames(left.name, right.name)
+          );
 
         return { ...category, locations };
       })
       .filter((category) => {
         if (activeTab !== "all" && category.id !== activeTab) return false;
-        if (!query) return true;
+        if (!search.trim()) return true;
         return (
-          category.name.toLocaleLowerCase("tr-TR").includes(query) ||
+          includesSearchText(category.name, search) ||
           category.locations.length > 0
         );
       });

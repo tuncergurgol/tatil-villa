@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { VillaOwnerType } from "@prisma/client";
 import { X } from "lucide-react";
 import {
@@ -9,15 +10,18 @@ import {
   type VillaOwnerActionState,
 } from "@/app/actions/admin/villa-owners";
 import IlIlceSelect from "@/components/admin/villa-owners/IlIlceSelect";
+import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
+import TcKimlikInput from "@/components/shared/TcKimlikInput";
 import type { VillaOwnerListItem } from "@/lib/queries/villa-owners";
 import type { TurkeyProvince } from "@/lib/mernis-ilce";
 import { VILLA_OWNER_TYPE_LABELS } from "@/lib/villa-owner-utils";
+import { isTcKimlikAcceptable } from "@/lib/tc-kimlik";
 
 interface VillaOwnerFormModalProps {
   owner?: VillaOwnerListItem;
   provinces: TurkeyProvince[];
   onClose: () => void;
-  onCreated?: (ownerId: string) => void;
+  onCreated?: (ownerId: string) => void | Promise<void>;
 }
 
 function Field({
@@ -80,29 +84,6 @@ function TextareaField({
   );
 }
 
-function PhoneField({ defaultValue = "" }: { defaultValue?: string }) {
-  const displayValue = defaultValue.replace(/^\+90\s?/, "");
-
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-gray-500">Telefon No</span>
-      <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 transition focus-within:border-indigo-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100">
-        <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-700">
-          <span aria-hidden>🇹🇷</span>
-          <span>+90</span>
-        </span>
-        <input
-          name="phone"
-          defaultValue={displayValue}
-          required
-          placeholder="5xx xxx xx xx"
-          className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
-        />
-      </div>
-    </label>
-  );
-}
-
 export default function VillaOwnerFormModal({
   owner,
   provinces,
@@ -116,24 +97,76 @@ export default function VillaOwnerFormModal({
   );
   const [country, setCountry] = useState(owner?.country || "Türkiye");
   const [active, setActive] = useState(owner?.active ?? true);
+  const [tcKimlikNo, setTcKimlikNo] = useState(owner?.tcKimlikNo ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, pending] = useActionState<
     VillaOwnerActionState,
     FormData
   >(action, {});
 
   const isTurkey = country.trim() === "Türkiye";
+  const tcRequired = ownerType === VillaOwnerType.GERCEK_KISI;
+  const tcAcceptable = isTcKimlikAcceptable(tcKimlikNo, tcRequired);
 
   useEffect(() => {
-    if (state.success) {
-      if (!isEdit && state.id) onCreated?.(state.id);
-      onClose();
-    }
-  }, [isEdit, onClose, onCreated, state.id, state.success]);
+    setMounted(true);
+  }, []);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+  useEffect(() => {
+    if (!state.success || isCompleting) return;
+
+    let cancelled = false;
+    setIsCompleting(true);
+
+    void (async () => {
+      try {
+        if (!isEdit && state.id) {
+          await onCreated?.(state.id);
+        }
+        if (!cancelled) onClose();
+      } catch {
+        if (!cancelled) setIsCompleting(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCompleting, isEdit, onClose, onCreated, state.id, state.success]);
+
+  if (!mounted) return null;
+
+  function handleSaveClick() {
+    if (!formRef.current) return;
+
+    if (!tcAcceptable) {
+      if (tcRequired && !tcKimlikNo.trim()) {
+        setClientError("TC Kimlik No gerekli");
+        return;
+      }
+      setClientError("Geçerli bir TC Kimlik No girin");
+      return;
+    }
+
+    setClientError(null);
+    formAction(new FormData(formRef.current));
+  }
+
+  function handleFormKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== "Enter" || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    event.preventDefault();
+    handleSaveClick();
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
           <h2 className="text-lg font-bold text-gray-900">
             {isEdit ? "Villa Sahibini Düzenle" : "Yeni Villa Sahibi"}
           </h2>
@@ -146,13 +179,19 @@ export default function VillaOwnerFormModal({
           </button>
         </div>
 
-        <form action={formAction} className="space-y-5 p-6">
+        <form
+          ref={formRef}
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(event) => event.preventDefault()}
+          onKeyDown={handleFormKeyDown}
+        >
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
           {owner && <input type="hidden" name="id" value={owner.id} />}
           <input type="hidden" name="type" value={ownerType} />
 
-          {state.error && (
+          {(clientError || state.error) && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {state.error}
+              {clientError ?? state.error}
             </div>
           )}
 
@@ -187,14 +226,12 @@ export default function VillaOwnerFormModal({
                 label="Adı"
                 name="firstName"
                 defaultValue={owner?.firstName}
-                required
                 placeholder="Ad"
               />
               <Field
                 label="Soyadı"
                 name="lastName"
                 defaultValue={owner?.lastName}
-                required
                 placeholder="Soyad"
               />
             </div>
@@ -204,21 +241,24 @@ export default function VillaOwnerFormModal({
                 label="Ünvanı"
                 name="companyTitle"
                 defaultValue={owner?.companyTitle}
-                required
                 placeholder="Şirket ünvanı"
               />
               <Field
                 label="Yetkili Adı Soyadı"
                 name="authorizedPersonName"
                 defaultValue={owner?.authorizedPersonName}
-                required
                 placeholder="Yetkili kişi"
               />
             </>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <PhoneField defaultValue={owner?.phone} />
+            <TurkishPhoneField
+              name="phone"
+              label="Telefon No"
+              defaultValue={owner?.phone}
+              focusPalette="indigo"
+            />
             <Field
               label="E-posta Adresi"
               name="email"
@@ -229,13 +269,16 @@ export default function VillaOwnerFormModal({
           </div>
 
           {ownerType === VillaOwnerType.GERCEK_KISI ? (
-            <Field
-              label="TC Kimlik No"
+            <TcKimlikInput
+              label="TC Kimlik No *"
               name="tcKimlikNo"
-              defaultValue={owner?.tcKimlikNo}
+              value={tcKimlikNo}
+              onChange={(value) => {
+                setTcKimlikNo(value);
+                if (clientError) setClientError(null);
+              }}
               required
               placeholder="11 haneli TC kimlik no"
-              maxLength={11}
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -243,14 +286,12 @@ export default function VillaOwnerFormModal({
                 label="Vergi Dairesi"
                 name="taxOffice"
                 defaultValue={owner?.taxOffice}
-                required
                 placeholder="Vergi dairesi"
               />
               <Field
                 label="Vergi No"
                 name="taxNumber"
                 defaultValue={owner?.taxNumber}
-                required
                 placeholder="Vergi numarası"
               />
             </div>
@@ -260,14 +301,12 @@ export default function VillaOwnerFormModal({
             label="Banka Hesap Sahibi Adı Soyadı"
             name="bankAccountHolder"
             defaultValue={owner?.bankAccountHolder}
-            required
             placeholder="Hesap sahibi"
           />
           <Field
             label="Banka IBAN"
             name="bankIban"
             defaultValue={owner?.bankIban}
-            required
             placeholder="TR00 0000 0000 0000 0000 0000 00"
           />
           <Field
@@ -283,7 +322,6 @@ export default function VillaOwnerFormModal({
               name="country"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              required
               placeholder="Ülke"
               className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
             />
@@ -302,7 +340,6 @@ export default function VillaOwnerFormModal({
             label="Adres"
             name="address"
             defaultValue={owner?.address}
-            required
             rows={3}
           />
 
@@ -325,8 +362,9 @@ export default function VillaOwnerFormModal({
               </span>
             </p>
           )}
+          </div>
 
-          <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
             <button
               type="button"
               onClick={onClose}
@@ -335,15 +373,17 @@ export default function VillaOwnerFormModal({
               İptal
             </button>
             <button
-              type="submit"
-              disabled={pending}
+              type="button"
+              disabled={pending || isCompleting}
+              onClick={handleSaveClick}
               className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {pending ? "Kaydediliyor..." : "Kaydet"}
+              {pending || isCompleting ? "Kaydediliyor..." : "Kaydet"}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,0 +1,17 @@
+ALTER TABLE "AgencySite" ADD COLUMN IF NOT EXISTS "name" TEXT;
+ALTER TABLE "AgencySite" ADD COLUMN IF NOT EXISTS "domain" TEXT;
+ALTER TABLE "AgencySite" ADD COLUMN IF NOT EXISTS "sortOrder" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "AgencySite" ADD COLUMN IF NOT EXISTS "active" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "AgencySite" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "AgencySite" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+UPDATE "AgencySite"
+SET "name" = 'TATİL VİLLACISI'
+WHERE "name" IS NULL OR "name" = '';
+
+UPDATE "AgencySite"
+SET "domain" = 'tatilvillacisi.com'
+WHERE "domain" IS NULL OR "domain" = '';
+
+CREATE INDEX IF NOT EXISTS "AgencySite_active_idx" ON "AgencySite"("active");
+CREATE INDEX IF NOT EXISTS "AgencySite_sortOrder_idx" ON "AgencySite"("sortOrder");

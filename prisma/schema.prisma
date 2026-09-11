@@ -30,6 +30,13 @@ enum VillaPeriodCurrency {
   GBP
 }
 
+enum VillaDayOccupancy {
+  EMPTY
+  BOOKED
+  RESERVED
+  OPTION
+}
+
 enum TourismDocumentType {
   KONUT_BELGESI
   TURIZM_ISLETME_BELGESI
@@ -45,9 +52,18 @@ enum PoolMeasureUnit {
 }
 
 enum BookingStatus {
-  PENDING
+  NEW
+  PREPAYMENT
+  CONFIRMATION_SENT
   CONFIRMED
+  COMPENSATION
   CANCELLED
+}
+
+enum StayStatus {
+  BEKLENIYOR
+  YAPILDI
+  YAPILMADI
 }
 
 enum UserRole {
@@ -59,6 +75,24 @@ enum RegionLevel {
   IL
   ILCE
   MAHALLE
+}
+
+enum PeriodImportStatus {
+  SUCCESS
+  ERROR
+}
+
+enum WhatsappCalendarMessageStatus {
+  APPLIED
+  IGNORED
+  FAILED
+  DUPLICATE
+}
+
+enum WhatsappCalendarPhraseIntent {
+  CLOSE
+  OPEN
+  OPTION
 }
 
 model Region {
@@ -140,8 +174,420 @@ model PrepaymentPaymentTypeOption {
   @@index([sortOrder])
 }
 
+model CustomerContactChannel {
+  id        String     @id @default(cuid())
+  name      String
+  sortOrder Int        @default(0)
+  active    Boolean    @default(true)
+  customers Customer[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model CustomerTag {
+  id        String                  @id @default(cuid())
+  name      String                  @unique
+  sortOrder Int                     @default(0)
+  active    Boolean                 @default(true)
+  customers CustomerTagOnCustomer[]
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model CustomerTagOnCustomer {
+  customerId String
+  tagId      String
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag        CustomerTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assignedAt DateTime    @default(now())
+
+  @@id([customerId, tagId])
+  @@index([tagId])
+}
+
+model AgencySite {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+/// Site başına GA / GTM / GSC ve özel scriptler (host → siteKey).
+model PublicSiteTracking {
+  id                      String   @id @default(cuid())
+  siteKey                 String   @unique
+  domain                  String   @default("")
+  label                   String   @default("")
+  googleAnalyticsId       String   @default("")
+  googleAdsId             String   @default("")
+  microsoftClarityId      String   @default("")
+  googleTagManagerId      String   @default("")
+  facebookPixelId         String   @default("")
+  googleSearchConsoleCode String   @default("")
+  headScripts             String   @default("") @db.Text
+  bodyScripts             String   @default("") @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model CompanyBankAccount {
+  id            String              @id @default(cuid())
+  paymentType   String              @default("")
+  bankName      String              @default("")
+  accountHolder String              @default("")
+  iban          String              @default("")
+  sortOrder     Int                 @default(0)
+  active        Boolean             @default(true)
+  prepayments   BookingPrepayment[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model PaymentProvider {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  active      Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  mode        String   @default("test")
+  fields      Json     @default("[]")
+  credentials Json     @default("{}")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model AgencyMessageTemplate {
+  id                 String   @id @default(cuid())
+  rowNo              Int
+  name               String
+  recipient          String
+  smsBody            String   @default("") @db.Text
+  whatsappBody       String   @default("") @db.Text
+  mailBody           String   @default("") @db.Text
+  scheduleTiming     String   @default("")
+  scheduleEnabled    Boolean  @default(false)
+  scheduleAnchor     String   @default("")
+  scheduleOffsetDays Int      @default(0)
+  scheduleHour       Int      @default(10)
+  scheduleMinute     Int      @default(0)
+  sortOrder          Int      @default(0)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([active])
+  @@index([sortOrder])
+  @@index([rowNo])
+  @@index([scheduleEnabled, scheduleHour])
+}
+
+enum BulkWhatsappSalutation {
+  NONE
+  SAYIN
+}
+
+enum BulkWhatsappCampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  STOPPED
+  COMPLETED
+}
+
+enum BulkWhatsappMessageStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+model BulkWhatsappTemplate {
+  id        String                @id @default(cuid())
+  title     String
+  body      String                @db.Text
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  campaigns BulkWhatsappCampaign[]
+
+  @@index([createdAt])
+}
+
+model BulkWhatsappCampaign {
+  id                String                     @id @default(cuid())
+  templateId        String?
+  template          BulkWhatsappTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  title             String                     @default("")
+  messageBody       String                     @db.Text
+  salutation        BulkWhatsappSalutation     @default(NONE)
+  appendTimestamp   Boolean                    @default(false)
+  intervalSeconds   Int                        @default(5)
+  status            BulkWhatsappCampaignStatus @default(DRAFT)
+  tagFilterIds      String[]                   @default([])
+  scheduleEnabled   Boolean                    @default(false)
+  scheduleFirstDate DateTime?                  @db.Date
+  scheduleFirstTime String                     @default("10:00")
+  scheduleDays      String[]                   @default([])
+  scheduleStartTime String                     @default("09:00")
+  scheduleEndTime   String                     @default("18:00")
+  totalCount        Int                        @default(0)
+  sentCount         Int                        @default(0)
+  failedCount       Int                        @default(0)
+  startedAt         DateTime?
+  pausedAt          DateTime?
+  stoppedAt         DateTime?
+  completedAt       DateTime?
+  lastProcessedAt   DateTime?
+  createdBy         String                     @default("")
+  messages          BulkWhatsappOutboundMessage[]
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([status])
+  @@index([scheduleEnabled, status])
+  @@index([createdAt])
+}
+
+model BulkWhatsappOutboundMessage {
+  id           String                    @id @default(cuid())
+  campaignId   String
+  campaign     BulkWhatsappCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customerId   String?
+  customer     Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName String
+  phone        String
+  tagLabels    String[]                  @default([])
+  renderedBody String                    @db.Text
+  status       BulkWhatsappMessageStatus @default(PENDING)
+  errorMessage String                    @default("")
+  sentAt       DateTime?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  @@index([campaignId, status])
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model Customer {
+  id               String                  @id @default(cuid())
+  fullName         String
+  phone            String                  @default("")
+  email            String                  @default("")
+  contactChannelId String?
+  contactChannel   CustomerContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
+  firstContactAt   DateTime?
+  active           Boolean                 @default(true)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  memberAccount    MemberAccount?
+  bookings         Booking[]
+  tags             CustomerTagOnCustomer[]
+  bulkWhatsappMessages BulkWhatsappOutboundMessage[]
+
+  @@index([active])
+  @@index([phone])
+  @@index([fullName])
+  @@index([email])
+  @@index([firstContactAt])
+}
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum CouponDiscountType {
+  FIXED
+  PERCENT
+}
+
+enum LoyaltyVoucherType {
+  TIER_STAY
+  REFERRAL_REWARD
+  WELCOME
+  MANUAL
+}
+
+enum MemberReferralStatus {
+  PENDING
+  COMPLETED
+  REWARDED
+}
+
+enum MemberFavoriteItemType {
+  VILLA
+}
+
+model MemberAccount {
+  id                    String           @id @default(cuid())
+  customerId            String?          @unique
+  customer              Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  fullName              String
+  phone                 String           @unique
+  email                 String           @default("")
+  passwordHash          String           @default("")
+  inviteCode            String           @unique
+  referredByMemberId    String?
+  referredBy            MemberAccount?   @relation("MemberReferrals", fields: [referredByMemberId], references: [id], onDelete: SetNull)
+  referrals             MemberAccount[]  @relation("MemberReferrals")
+  loyaltyTier           LoyaltyTier      @default(BRONZE)
+  completedStays        Int              @default(0)
+  couponBalance         Int              @default(0)
+  lastStayCompletedAt   DateTime?
+  marketingConsent      Boolean          @default(false)
+  kvkkAcceptedAt        DateTime?
+  membershipAcceptedAt  DateTime?
+  phoneVerifiedAt       DateTime?
+  emailVerifiedAt       DateTime?
+  registeredSiteKey     String           @default("tatildeyiz")
+  active                Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  sessions              MemberSession[]
+  inviterReferrals      MemberReferral[] @relation("InviterReferrals")
+  invitedReferral       MemberReferral?  @relation("InvitedReferral")
+  loyaltyVouchers       LoyaltyVoucher[]
+  couponRedemptions     CouponRedemption[]
+  bookings              Booking[]
+  favorites             MemberFavorite[]
+
+  @@index([email])
+  @@index([inviteCode])
+  @@index([loyaltyTier])
+  @@index([active])
+}
+
+model MemberSession {
+  id         String        @id @default(cuid())
+  memberId   String
+  member     MemberAccount @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tokenHash  String        @unique
+  expiresAt  DateTime
+  createdAt  DateTime      @default(now())
+  lastUsedAt DateTime      @default(now())
+
+  @@index([memberId])
+  @@index([expiresAt])
+}
+
+model LoyaltyVoucher {
+  id              String             @id @default(cuid())
+  memberId        String
+  member          MemberAccount      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  amount          Int
+  remainingAmount Int
+  discountPercent Int?
+  type            LoyaltyVoucherType
+  expiresAt       DateTime
+  usedAt          DateTime?
+  bookingId       String?
+  booking         Booking?           @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt       DateTime           @default(now())
+
+  @@index([memberId])
+  @@index([expiresAt])
+  @@index([bookingId])
+}
+
+model MemberFavorite {
+  id        String                 @id @default(cuid())
+  memberId  String
+  member    MemberAccount          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  itemType  MemberFavoriteItemType
+  itemId    String
+  createdAt DateTime               @default(now())
+
+  @@unique([memberId, itemType, itemId])
+  @@index([memberId])
+  @@index([itemType, itemId])
+}
+
+model MemberReferral {
+  id              String               @id @default(cuid())
+  inviterMemberId String
+  inviter         MemberAccount        @relation("InviterReferrals", fields: [inviterMemberId], references: [id], onDelete: Cascade)
+  invitedMemberId String               @unique
+  invited         MemberAccount        @relation("InvitedReferral", fields: [invitedMemberId], references: [id], onDelete: Cascade)
+  status          MemberReferralStatus @default(PENDING)
+  rewardAmount    Int                  @default(0)
+  firstBookingId  String?
+  firstBooking    Booking?             @relation(fields: [firstBookingId], references: [id], onDelete: SetNull)
+  completedAt     DateTime?
+  rewardedAt      DateTime?
+  createdAt       DateTime             @default(now())
+
+  @@index([inviterMemberId])
+  @@index([status])
+}
+
+model Coupon {
+  id                   String             @id @default(cuid())
+  code                 String             @unique
+  discountType         CouponDiscountType
+  discountValue        Int
+  minBookingMultiplier Int                @default(10)
+  maxDiscountAmount    Int?
+  accommodationOnly    Boolean            @default(true)
+  validFrom            DateTime?
+  validTo              DateTime?
+  usageLimit           Int?
+  usedCount            Int                @default(0)
+  memberOnly           Boolean            @default(false)
+  welcomeCoupon        Boolean            @default(false)
+  referralCoupon       Boolean            @default(false)
+  siteKey              String?
+  active               Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  redemptions          CouponRedemption[]
+
+  @@index([active])
+  @@index([siteKey])
+}
+
+model CouponRedemption {
+  id             String         @id @default(cuid())
+  couponId       String
+  coupon         Coupon         @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  memberId       String?
+  member         MemberAccount? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  bookingId      String?
+  booking        Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  discountAmount Int
+  createdAt      DateTime       @default(now())
+
+  @@index([couponId])
+  @@index([memberId])
+  @@index([bookingId])
+}
+
 model Villa {
   id             String        @id @default(cuid())
+  villaId        Int?          @unique
   slug           String        @unique
   name           String
   category       VillaCategory @default(villa)
@@ -202,6 +648,7 @@ model Villa {
   allowEvents           Boolean @default(false)
   allowSmoking          Boolean @default(false)
   allowPets             Boolean @default(false)
+  showNaturePestNotice  Boolean @default(true)
   customRules           String[] @default([])
   latitude              Float    @default(0)
   longitude             Float    @default(0)
@@ -209,6 +656,22 @@ model Villa {
   icalExportToken       String   @default(uuid())
   whatsappGroupId       String   @default("")
   whatsappGroupDifferentName Boolean @default(false)
+  externalSyncUrl1           String    @default("")
+  externalSyncUrl2           String    @default("")
+  externalSyncUrl3           String    @default("")
+  externalSyncUrl4           String    @default("")
+  externalSyncLastSyncedAt1  DateTime?
+  externalSyncLastSyncedAt2  DateTime?
+  externalSyncLastSyncedAt3  DateTime?
+  externalSyncLastSyncedAt4  DateTime?
+  externalSyncLastMessage1   String    @default("")
+  externalSyncLastMessage2   String    @default("")
+  externalSyncLastMessage3   String    @default("")
+  externalSyncLastMessage4   String    @default("")
+  descriptionAiUpdatedAt     DateTime?
+  descriptionAiReport        String    @default("") @db.Text
+  seoAiUpdatedAt             DateTime?
+  seoAiReport                String    @default("") @db.Text
   surroundingDistances  VillaSurroundingDistance[]
   icalSources           VillaIcalSource[]
   icalSyncEvents        VillaIcalSyncEvent[]
@@ -217,6 +680,9 @@ model Villa {
   pricePeriods   VillaPricePeriod[]
   pricePeriodDays VillaPricePeriodDay[]
   bookings       Booking[]
+  periodImportLog VillaPeriodImportLog?
+  whatsappCalendarMessages WhatsappCalendarMessage[]
+  guestReviews           GuestReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -231,6 +697,90 @@ model Villa {
   @@index([dealSortOrder])
   @@index([popularSortOrder])
   @@index([recommendedSortOrder])
+  @@index([whatsappGroupId])
+}
+
+model VillaPeriodImportLog {
+  id             String             @id @default(cuid())
+  villaId        String             @unique
+  villa          Villa              @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  sourceSlug     String
+  status         PeriodImportStatus
+  message        String             @default("")
+  periodCount    Int                @default(0)
+  dayCount       Int                @default(0)
+  bookedDays     Int                @default(0)
+  optionDays     Int                @default(0)
+  retryCount     Int                @default(0)
+  attemptedAt    DateTime?
+  succeededAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([status])
+  @@index([attemptedAt])
+}
+
+model WhatsappCalendarGroup {
+  id         String   @id @default(cuid())
+  externalId String   @unique
+  name       String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([active])
+}
+
+model WhatsappCalendarMessage {
+  id              String                        @id @default(cuid())
+  externalId      String?                       @unique
+  groupExternalId String
+  villaId         String?
+  villa           Villa?                        @relation(fields: [villaId], references: [id], onDelete: SetNull)
+  senderName      String                        @default("")
+  senderPhone     String                        @default("")
+  body            String                        @db.Text
+  intent          String                        @default("")
+  startDate       DateTime?                     @db.Date
+  endDate         DateTime?                     @db.Date
+  status          WhatsappCalendarMessageStatus
+  resultMessage   String                        @default("") @db.Text
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+
+  @@index([groupExternalId])
+  @@index([villaId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Kullanıcının girdiği mesaj örnekleri / anahtar ifadeler → takvim işlemi.
+model WhatsappCalendarPhraseRule {
+  id        String                       @id @default(cuid())
+  phrase    String
+  intent    WhatsappCalendarPhraseIntent
+  active    Boolean                      @default(true)
+  sortOrder Int                          @default(0)
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+
+  @@unique([phrase, intent])
+  @@index([active, sortOrder])
+}
+
+model WhatsappCalendarDateTraining {
+  id            String   @id @default(cuid())
+  samplePattern String
+  startDateKey  String
+  endDateKey    String
+  active        Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([samplePattern, startDateKey, endDateKey])
+  @@index([active, sortOrder])
 }
 
 model VillaPricePeriod {
@@ -261,9 +811,22 @@ model VillaPricePeriod {
   underfloorHeatingFeeCurrency  VillaPeriodCurrency     @default(TL)
   extraBedFee                   Int?
   extraBedFeeCurrency           VillaPeriodCurrency     @default(TL)
+  poolHeatingPrivateFee         Int?
+  poolHeatingPrivateFeeCurrency VillaPeriodCurrency     @default(TL)
+  poolHeatingIndoorFee          Int?
+  poolHeatingIndoorFeeCurrency  VillaPeriodCurrency     @default(TL)
+  poolHeatingKidsFee            Int?
+  poolHeatingKidsFeeCurrency    VillaPeriodCurrency     @default(TL)
   discount1Rate                 Int?
   discount2Rate                 Int?
   extraDiscountAmount           Int?
+  weekendPrice                  Int?
+  weekendDays                   Int[]                   @default([])
+  weekendMinStayNights          Int?
+  childFee02                    Int?
+  childFee02Currency            VillaPeriodCurrency     @default(TL)
+  childFee03_09                 Int?
+  childFee03_09Currency         VillaPeriodCurrency     @default(TL)
   days                          VillaPricePeriodDay[]
   createdAt                     DateTime                @default(now())
   updatedAt                     DateTime                @updatedAt
@@ -302,49 +865,85 @@ model VillaPricePeriodDay {
   underfloorHeatingFeeCurrency  VillaPeriodCurrency     @default(TL)
   extraBedFee                   Int?
   extraBedFeeCurrency           VillaPeriodCurrency     @default(TL)
+  poolHeatingPrivateFee         Int?
+  poolHeatingPrivateFeeCurrency VillaPeriodCurrency     @default(TL)
+  poolHeatingIndoorFee          Int?
+  poolHeatingIndoorFeeCurrency  VillaPeriodCurrency     @default(TL)
+  poolHeatingKidsFee            Int?
+  poolHeatingKidsFeeCurrency    VillaPeriodCurrency     @default(TL)
   discount1Rate                 Int?
   discount2Rate                 Int?
   extraDiscountAmount           Int?
+  weekendPrice                  Int?
+  weekendDays                   Int[]                   @default([])
+  weekendMinStayNights          Int?
+  childFee02                    Int?
+  childFee02Currency            VillaPeriodCurrency     @default(TL)
+  childFee03_09                 Int?
+  childFee03_09Currency         VillaPeriodCurrency     @default(TL)
+  occupancyStatus               VillaDayOccupancy       @default(EMPTY)
   createdAt                     DateTime                @default(now())
   updatedAt                     DateTime                @updatedAt
 
   @@unique([villaId, date])
   @@index([periodId])
   @@index([villaId, date])
+  @@index([villaId, occupancyStatus])
 }
 
 model VillaPool {
-  id                 String          @id @default(cuid())
+  id                 String           @id @default(cuid())
   villaId            String
-  villa              Villa           @relation(fields: [villaId], references: [id], onDelete: Cascade)
-  measureUnit        PoolMeasureUnit @default(M)
+  villa              Villa            @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  measureUnit        PoolMeasureUnit  @default(M)
   width              Float?
   length             Float?
   depth              Float?
-  poolType           String          @default("")
-  purificationMethod String          @default("")
-  heated             Boolean         @default(false)
-  conservative       Boolean         @default(false)
-  sortOrder          Int             @default(0)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  poolType           String           @default("")
+  purificationMethod String           @default("")
+  heated             Boolean          @default(false)
+  conservative       Boolean          @default(false)
+  sortOrder          Int              @default(0)
+  periods            VillaPoolPeriod[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@index([villaId])
   @@index([sortOrder])
 }
 
+model VillaPoolPeriod {
+  id                 String              @id @default(cuid())
+  poolId             String
+  pool               VillaPool           @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  name               String              @default("")
+  startDate          DateTime            @db.Date
+  endDate            DateTime            @db.Date
+  heatingFee         Int?
+  heatingFeeCurrency VillaPeriodCurrency @default(TL)
+  poolOpen           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([poolId])
+  @@index([poolId, startDate, endDate])
+}
+
 model Campaign {
-  id        String  @id @default(cuid())
-  title     String
-  subtitle  String
-  image     String
-  cta       String
-  href      String
-  sortOrder Int     @default(0)
-  active    Boolean @default(true)
+  id          String              @id @default(cuid())
+  title       String
+  subtitle    String
+  image       String
+  cta         String              @default("İncele")
+  href        String
+  displayType CampaignDisplayType @default(SLIDER)
+  sortOrder   Int                 @default(0)
+  active      Boolean             @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([active, displayType, sortOrder])
 }
 
 model SurroundingCategory {
@@ -397,12 +996,31 @@ model VillaIcalSource {
   name       String
   url        String
   lastSyncAt DateTime?
+  lastSyncStatus String @default("")
+  lastSyncMessage String @default("") @db.Text
   sortOrder  Int       @default(0)
+  importedBlocks VillaIcalImportedBlock[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
   @@index([villaId])
   @@index([sortOrder])
+}
+
+model VillaIcalImportedBlock {
+  id          String          @id @default(cuid())
+  sourceId    String
+  source      VillaIcalSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  villaId     String
+  externalUid String
+  startDate   DateTime        @db.Date
+  endDate     DateTime        @db.Date
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([sourceId, externalUid])
+  @@index([villaId])
+  @@index([sourceId])
 }
 
 model VillaIcalSyncEvent {
@@ -457,6 +1075,7 @@ model Amenity {
   facilityCategoryId String?
   facilityCategory   FacilityCategory? @relation(fields: [facilityCategoryId], references: [id], onDelete: SetNull)
   isDefault          Boolean           @default(false)
+  showInSearch       Boolean           @default(false)
   sortOrder          Int               @default(0)
   active             Boolean           @default(true)
   createdAt          DateTime          @default(now())
@@ -465,6 +1084,7 @@ model Amenity {
   @@index([categoryId])
   @@index([facilityCategoryId])
   @@index([isDefault])
+  @@index([showInSearch])
   @@index([sortOrder])
   @@index([active])
 }
@@ -516,37 +1136,99 @@ model FacilityCategory {
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  villaId     String
-  villa       Villa         @relation(fields: [villaId], references: [id], onDelete: Cascade)
-  checkIn     DateTime      @db.Date
-  checkOut    DateTime      @db.Date
-  adults      Int           @default(1)
-  children    Int           @default(0)
-  babies      Int           @default(0)
-  pets        Int           @default(0)
-  guestName   String
-  guestEmail  String
-  guestPhone  String
-  totalPrice  Int?
-  status      BookingStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id                 String              @id @default(cuid())
+  externalCode       Int?                @unique
+  villaId            String
+  villa              Villa               @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  customerId         String?
+  customer           Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  memberId           String?
+  member             MemberAccount?      @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  checkIn            DateTime            @db.Date
+  checkOut           DateTime            @db.Date
+  adults             Int                 @default(1)
+  children           Int                 @default(0)
+  babies             Int                 @default(0)
+  pets               Int                 @default(0)
+  guestName          String
+  guestEmail         String
+  guestPhone         String
+  totalPrice         Int?
+  status             BookingStatus       @default(NEW)
+  stayStatus         StayStatus          @default(BEKLENIYOR)
+  optionExpiresAt    DateTime?
+  confirmationSentAt DateTime?
+  details            Json                @default("{}")
+  prepayments        BookingPrepayment[]
+  paymentSessions    BookingPaymentSession[]
+  guestReviewInvitation GuestReviewInvitation?
+  guestReview           GuestReview?
+  scheduledMessageLogs  BookingScheduledMessageLog[]
+  loyaltyVouchers       LoyaltyVoucher[]
+  couponRedemptions     CouponRedemption[]
+  memberReferrals       MemberReferral[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([villaId])
   @@index([status])
+  @@index([stayStatus])
   @@index([checkIn, checkOut])
+  @@index([externalCode])
+  @@index([optionExpiresAt])
+  @@index([customerId])
+  @@index([memberId])
+}
+
+model BookingPrepayment {
+  id             String              @id @default(cuid())
+  bookingId      String
+  booking        Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  paymentChannel String
+  bankAccountId  String?
+  bankAccount    CompanyBankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  amount         Int
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([bookingId])
+}
+
+model BookingPaymentSession {
+  id             String   @id @default(cuid())
+  bookingId      String
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  providerSlug   String   @default("iyzico")
+  conversationId String
+  token          String?
+  amount         Int
+  currency       String   @default("TRY")
+  description    String   @default("")
+  status         String   @default("pending")
+  paymentId      String?
+  paidPrice      Int?
+  callbackDomain String   @default("")
+  rawResult      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([conversationId])
+  @@index([token])
+  @@index([status])
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  phone        String   @default("")
-  role         UserRole @default(ADMIN)
-  active       Boolean  @default(true)
-  villaOwner   VillaOwner?
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  passwordHash         String
+  name                 String
+  phone                String   @default("")
+  role                 UserRole @default(ADMIN)
+  active               Boolean  @default(true)
+  /** Satış temsilcisi prim oranı (0–100) */
+  salesCommissionRate  Float    @default(0)
+  villaOwner           VillaOwner?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -569,8 +1251,11 @@ model CompanySettings {
   bankName       String  @default("")
   iban           String  @default("")
   accountHolder  String  @default("")
+  paymentType    String  @default("")
   primaryColor   String  @default("#0d9488")
   secondaryColor String  @default("#115e59")
+  accentColor    String  @default("#14b8a6")
+  surfaceColor   String  @default("#f0fdfa")
   logoUrl        String  @default("")
   faviconUrl     String  @default("")
   ogImageUrl     String  @default("")
@@ -603,6 +1288,817 @@ model CompanySettings {
   customScripts    String  @default("") @db.Text
   loadingEnabled Boolean @default(false)
   loadingText    String  @default("")
+  smtpProvider   String  @default("google")
+  smtpHost       String  @default("smtp.gmail.com")
+  smtpPort       Int     @default(587)
+  smtpSecure     String  @default("starttls")
+  smtpUser       String  @default("")
+  smtpPassword   String  @default("")
+  smtpFromEmail  String  @default("")
+  smtpFromName   String  @default("")
+  smtpEnabled    Boolean @default(true)
+  whatsappApiEnabled          Boolean @default(false)
+  whatsappPhoneNumberId       String  @default("")
+  whatsappAccessToken         String  @default("")
+  whatsappBusinessAccountId   String  @default("")
+  whatsappApiVersion          String  @default("v22.0")
+  whatsappWebhookVerifyToken  String  @default("")
+  whatsappTestPhone           String  @default("")
+  whatsappCalendarEnabled     Boolean @default(false)
+  whatsappCalendarWebhookSecret String @default("")
+  wahaBaseUrl                 String  @default("http://localhost:3001")
+  wahaApiKey                  String  @default("")
+  wahaSessionName             String  @default("default")
+  evolutionBaseUrl            String  @default("http://localhost:8080")
+  evolutionApiKey             String  @default("")
+  evolutionInstanceName       String  @default("tatil-villa")
+  biletallEnabled             Boolean @default(true)
+  biletallPortalSlug          String  @default("tatildeyizcomtr")
+  biletallUsername            String  @default("")
+  biletallPassword            String  @default("")
+  biletallRoutesJson          String  @default("")
+  otelzEnabled                Boolean @default(true)
+  otelzAffiliateTo            String  @default("1857")
+  otelzAffiliateCid           String  @default("274")
+  smsOtpEnabled               Boolean @default(false)
+  homePopularTitle            String  @default("Popüler Villalar")
+  homePopularActive           Boolean @default(true)
+  homePopularSortMode         String  @default("showcase")
+  homeDealTitle               String  @default("Fırsat Villalar")
+  homeDealActive              Boolean @default(true)
+  homeDealSortMode            String  @default("showcase")
+  homeRecommendedTitle        String  @default("Önerilen Villalar")
+  homeRecommendedActive       Boolean @default(true)
+  homeRecommendedSortMode     String  @default("showcase")
+  tatilAssistantEnabled       Boolean @default(true)
+  assistantWahaBaseUrl        String  @default("http://localhost:3001")
+  assistantWahaApiKey         String  @default("")
+  assistantWahaSessionName    String  @default("tatil-asistani")
+  assistantWebhookSecret      String  @default("")
+  assistantWelcomeMessage     String  @default("") @db.Text
+  calendarPriceAutoUpdateEnabled      Boolean  @default(false)
+  calendarPriceAutoUpdatePeriod       String   @default("hour")
+  calendarPriceAutoUpdateInterval     Int      @default(6)
+  calendarPriceAutoUpdateCriteriaJson String   @default("[\"ical\",\"link1\",\"link2\",\"link3\"]") @db.Text
+  calendarPriceAutoUpdateLastRunAt    DateTime?
+  googleReviewUrl                   String   @default("")
+  guestReviewInvitesEnabled         Boolean  @default(true)
+  scheduledBookingMessagesEnabled   Boolean  @default(true)
+  facebookLeadEnabled               Boolean  @default(false)
+  facebookLeadAppId                 String   @default("")
+  facebookLeadAppSecret             String   @default("")
+  facebookLeadVerifyToken           String   @default("")
+  facebookLeadPageId                String   @default("")
+  facebookLeadPageAccessToken       String   @default("") @db.Text
 
   updatedAt DateTime @updatedAt
+}
+
+enum CmsPageType {
+  CORPORATE
+  LEGAL
+  LANDING
+}
+
+model CmsContentTab {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  moduleKey String   @default("custom")
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([active])
+}
+
+model CmsPage {
+  id             String      @id @default(cuid())
+  slug           String      @unique
+  title          String
+  content        String      @default("") @db.Text
+  excerpt        String      @default("") @db.Text
+  pageType       CmsPageType @default(CORPORATE)
+  seoTitle       String      @default("")
+  seoDescription String      @default("") @db.Text
+  seoKeywords    String      @default("")
+  published      Boolean     @default(false)
+  showInFooter   Boolean     @default(true)
+  showInMenu     Boolean     @default(false)
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([published])
+  @@index([pageType])
+  @@index([sortOrder])
+  @@index([showInMenu])
+}
+
+model FaqItem {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String   @db.Text
+  category  String   @default("genel")
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, category])
+  @@index([sortOrder])
+}
+
+model BlogCategory {
+  id             String     @id @default(cuid())
+  name           String
+  slug           String     @unique
+  description    String     @default("") @db.Text
+  seoTitle       String     @default("")
+  seoDescription String     @default("") @db.Text
+  sortOrder      Int        @default(0)
+  active         Boolean    @default(true)
+  posts          BlogPost[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+model BlogPost {
+  id             String        @id @default(cuid())
+  categoryId     String?
+  category       BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  slug           String        @unique
+  title          String
+  excerpt        String        @default("") @db.Text
+  content        String        @default("") @db.Text
+  coverImage     String        @default("")
+  authorName     String        @default("Tatildeyiz")
+  seoTitle       String        @default("")
+  seoDescription String        @default("") @db.Text
+  seoKeywords    String        @default("")
+  published      Boolean       @default(false)
+  publishedAt    DateTime?
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([published, publishedAt])
+  @@index([categoryId])
+}
+
+enum BlogAiPublishFrequency {
+  EVERY_1_DAY
+  EVERY_2_DAYS
+  EVERY_3_DAYS
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum BlogAiTopicStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+model BlogAiSettings {
+  id                String                 @id @default("default")
+  enabled           Boolean                @default(false)
+  frequency         BlogAiPublishFrequency @default(WEEKLY)
+  defaultCategoryId String?
+  autoPublish       Boolean                @default(true)
+  lastGeneratedAt   DateTime?
+  nextRunAt         DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+}
+
+model BlogAiTopic {
+  id           String            @id @default(cuid())
+  topic        String
+  categoryId   String?
+  status       BlogAiTopicStatus @default(PENDING)
+  sortOrder    Int               @default(0)
+  blogPostId   String?
+  errorMessage String            @default("") @db.Text
+  generatedAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([status, sortOrder])
+  @@index([sortOrder])
+}
+
+model TatilAssistantTopic {
+  id        Int      @id @default(autoincrement())
+  title     String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  examples  TatilAssistantExample[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+model TatilAssistantExample {
+  id        Int                 @id @default(autoincrement())
+  topicId   Int
+  topic     TatilAssistantTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  question  String              @db.Text
+  answer    String              @db.Text
+  sortOrder Int                 @default(0)
+  active    Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([topicId, sortOrder])
+}
+
+model TatilAssistantRule {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+model TatilAssistantConversation {
+  id             String   @id @default(cuid())
+  channel        String   @default("web")
+  guestName      String?
+  guestPhone     String?
+  guestEmail     String?
+  whatsappChatId String?
+  searchState    Json?
+  status         String   @default("active")
+  messages       TatilAssistantMessage[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([channel, status])
+  @@index([whatsappChatId])
+}
+
+model TatilAssistantMessage {
+  id             String                     @id @default(cuid())
+  conversationId String
+  conversation   TatilAssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String                     @db.Text
+  metadata       Json?
+  createdAt      DateTime                   @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model GuestReview {
+  id             String   @id @default(cuid())
+  guestName      String
+  guestCity      String   @default("")
+  rating         Int
+  title          String   @default("")
+  comment        String   @db.Text
+  villaId        String?
+  villa          Villa?   @relation(fields: [villaId], references: [id], onDelete: SetNull)
+  bookingId      String?  @unique
+  booking        Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  invitationId   String?  @unique
+  invitation     GuestReviewInvitation? @relation(fields: [invitationId], references: [id], onDelete: SetNull)
+  stayMonth      String   @default("")
+  source         String   @default("manual")
+  approved       Boolean  @default(false)
+  featured       Boolean  @default(false)
+  rejectedReason String   @default("") @db.Text
+  submittedAt    DateTime?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([approved, featured])
+  @@index([villaId])
+  @@index([rating])
+  @@index([approved, createdAt])
+}
+
+model GuestReviewInvitation {
+  id             String    @id @default(cuid())
+  bookingId      String    @unique
+  booking        Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  token          String    @unique
+  emailSentAt    DateTime?
+  whatsappSentAt DateTime?
+  expiresAt      DateTime
+  usedAt         DateTime?
+  review         GuestReview?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([token])
+  @@index([expiresAt])
+  @@index([usedAt])
+}
+
+model BookingScheduledMessageLog {
+  id            String   @id @default(cuid())
+  bookingId     String
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  templateRowNo Int
+  channels      String   @default("")
+  sentAt        DateTime @default(now())
+
+  @@unique([bookingId, templateRowNo])
+  @@index([templateRowNo, sentAt])
+}
+
+model SiteMenu {
+  id        String         @id @default(cuid())
+  key       String         @unique
+  label     String
+  items     SiteMenuItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model SiteMenuItem {
+  id         String         @id @default(cuid())
+  menuId     String
+  menu       SiteMenu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  label      String
+  href       String
+  sortOrder  Int            @default(0)
+  active     Boolean        @default(true)
+  openInNewTab Boolean      @default(false)
+  parentId   String?
+  parent     SiteMenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children   SiteMenuItem[] @relation("MenuTree")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([menuId, sortOrder])
+  @@index([parentId])
+}
+
+enum CampaignDisplayType {
+  SLIDER
+  BOX
+}
+
+enum FacebookLeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+  SPAM
+}
+
+model FacebookLead {
+  id               String             @id @default(cuid())
+  externalLeadId   String             @unique
+  formId           String             @default("")
+  formName         String             @default("")
+  pageId           String             @default("")
+  pageName         String             @default("")
+  adId             String             @default("")
+  adName           String             @default("")
+  campaignId       String             @default("")
+  campaignName     String             @default("")
+  fullName         String             @default("")
+  email            String             @default("")
+  phone            String             @default("")
+  customFieldsJson Json?
+  status           FacebookLeadStatus @default(NEW)
+  adminNote        String             @default("") @db.Text
+  contactAttempts  Int                @default(0)
+  lastContactAt    DateTime?
+  nextFollowUpAt   DateTime?
+  contactedBy      String             @default("")
+  adminSeenAt      DateTime?
+  isTest           Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  contactLogs      FacebookLeadContactLog[]
+
+  @@index([status, createdAt])
+  @@index([adminSeenAt])
+  @@index([nextFollowUpAt])
+  @@index([createdAt])
+  @@index([phone])
+}
+
+model FacebookLeadContactLog {
+  id        String       @id @default(cuid())
+  leadId    String
+  lead      FacebookLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  channel   String
+  message   String       @db.Text
+  createdBy String       @default("")
+  createdAt DateTime     @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+enum CallbackPreferredDay {
+  TODAY
+  TOMORROW
+  THIS_WEEK
+  ANY
+}
+
+enum CallbackPreferredTime {
+  ASAP
+  MORNING
+  AFTERNOON
+  EVENING
+}
+
+enum CallbackRequestStatus {
+  PENDING
+  VERIFIED
+  NEW
+  CONTACTED
+  CLOSED
+  CANCELLED
+}
+
+model CallbackRequest {
+  id            String                 @id @default(cuid())
+  name          String
+  phone         String
+  note          String                 @default("")
+  preferredDay  CallbackPreferredDay   @default(ANY)
+  preferredTime CallbackPreferredTime  @default(ASAP)
+  status        CallbackRequestStatus  @default(PENDING)
+  adminNote     String                 @default("")
+  sourceSite    String                 @default("")
+  sourceDomain  String                 @default("")
+  verifiedAt    DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([status, createdAt])
+  @@index([phone])
+  @@index([createdAt])
+}
+
+model VerificationCode {
+  id        String    @id @default(cuid())
+  phone     String
+  code      String
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  payload   Json?
+  channel   String    @default("whatsapp")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([code, purpose, phone])
+  @@index([phone, purpose])
+  @@index([expiresAt])
+  @@index([purpose, usedAt])
+}
+
+enum TransferTripDirection {
+  ONE_WAY
+  ROUND_TRIP
+}
+
+enum TransferTripStatus {
+  NEW
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model TransferVehicleType {
+  id                String               @id @default(cuid())
+  code              String               @unique
+  name              String
+  nameEn            String               @default("")
+  description       String               @default("")
+  passengerCapacity Int                  @default(4)
+  luggageCapacity   Int                  @default(2)
+  basePricePerKm    Float                @default(1.5)
+  priceMultiplier   Float                @default(1)
+  minimumFare       Float                @default(15)
+  includedKm        Float                @default(10)
+  currency          VillaPeriodCurrency  @default(EUR)
+  image             String               @default("")
+  sortOrder         Int                  @default(0)
+  isActive          Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  routePrices TransferRouteVehiclePrice[]
+  trips       TransferTrip[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model TransferRoute {
+  id                       String   @id @default(cuid())
+  title                    String
+  slug                     String   @unique
+  startPoint               String
+  endPoint                 String
+  distanceKm               Float?
+  durationMinutes          Int?
+  priority                 Int      @default(0)
+  tag                      String   @default("")
+  sefUrl                   String   @default("")
+  seoTitle                 String   @default("")
+  seoDesc                  String   @default("")
+  seoKeywords              String   @default("")
+  creditCardPaymentEnabled Boolean  @default(false)
+  bankTransferDiscountRate Float    @default(0)
+  creditCardDiscountRate   Float    @default(0)
+  isActive                 Boolean  @default(true)
+  onList                   Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  vehiclePrices TransferRouteVehiclePrice[]
+  trips         TransferTrip[]
+
+  @@index([isActive])
+  @@index([onList])
+  @@index([priority])
+  @@index([startPoint])
+  @@index([endPoint])
+}
+
+model TransferRouteVehiclePrice {
+  id            String               @id @default(cuid())
+  routeId       String
+  route         TransferRoute        @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  vehicleTypeId String
+  vehicleType   TransferVehicleType  @relation(fields: [vehicleTypeId], references: [id], onDelete: Cascade)
+  price         Float
+  isActive      Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([routeId, vehicleTypeId])
+  @@index([routeId])
+  @@index([vehicleTypeId])
+  @@index([isActive])
+}
+
+model TransferTrip {
+  id              String                 @id @default(cuid())
+  routeId         String?
+  route           TransferRoute?         @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  vehicleTypeId   String
+  vehicleType     TransferVehicleType    @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+  startPoint      String
+  endPoint        String
+  distanceKm      Float?
+  durationMinutes Int?
+  direction       TransferTripDirection  @default(ONE_WAY)
+  serviceType     String                 @default("")
+  tripDate        DateTime               @db.Date
+  tripTime        String                 @default("")
+  returnDate      DateTime?              @db.Date
+  returnTime      String                 @default("")
+  adults          Int                    @default(1)
+  children        Int                    @default(0)
+  babies          Int                    @default(0)
+  contactName     String                 @default("")
+  contactSurname  String                 @default("")
+  contactPhone    String                 @default("")
+  contactEmail    String                 @default("")
+  contactIdNumber String                 @default("")
+  flightNumber    String                 @default("")
+  driverSign      String                 @default("")
+  totalPrice      Float?
+  currency        VillaPeriodCurrency    @default(EUR)
+  status          TransferTripStatus     @default(NEW)
+  note            String                 @default("")
+  adminNote       String                 @default("")
+  specialRequests String                 @default("")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([routeId])
+  @@index([vehicleTypeId])
+  @@index([tripDate])
+  @@index([status])
+  @@index([direction])
+}
+
+model CarRentalPageSettings {
+  id                     String   @id @default("default")
+  heroBadge              String   @default("Türkiye'nin #1 Araç Kiralama Platformu")
+  heroTitle              String   @default("Hayalinizdeki Araca Birkaç Tıkla Ulaşın")
+  heroSubtitle           String   @default("50+ lokasyon, 2000+ araç seçeneği ile Türkiye'nin her yerinde güvenilir ve uygun fiyatlı araç kiralama")
+  sameLocationDefault    Boolean  @default(true)
+  showSameLocationToggle Boolean  @default(true)
+  sameLocationLabel      String   @default("Aynı noktadan teslim")
+  pickupLabel            String   @default("Alış Noktası")
+  returnLabel            String   @default("Teslim Noktası")
+  pickupDateLabel        String   @default("Alış Tarihi")
+  returnDateLabel        String   @default("Teslim Tarihi")
+  driverAgeLabel         String   @default("Sürücü Yaşı")
+  driverAgeOptionsJson   String   @default("[\"21-24 yaş\",\"25-69 yaş\",\"70+ yaş\"]")
+  defaultDriverAge       String   @default("25-69 yaş")
+  ctaText                String   @default("Araç Ara")
+  rentalDaysHint         String   @default("7 gün kiralama")
+  categoriesTitle        String   @default("Araç Kategorileri")
+  categoriesSubtitle     String   @default("İhtiyacınıza en uygun aracı seçin")
+  locationsTitle         String   @default("Popüler Lokasyonlar")
+  locationsSubtitle      String   @default("En çok tercih edilen araç kiralama noktaları")
+  criteriaTitle          String   @default("Sürücü Kriterleri")
+  criteriaSubtitle       String   @default("Kiralama için gereken temel şartlar")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model CarRentalCategory {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  name        String
+  description String              @default("")
+  priceFrom   Float               @default(0)
+  currency    VillaPeriodCurrency @default(TL)
+  image       String              @default("")
+  sortOrder   Int                 @default(0)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model CarRentalLocation {
+  id               String   @id @default(cuid())
+  name             String
+  city             String   @default("")
+  iataCode         String   @default("")
+  vehicleCountHint String   @default("")
+  isAirport        Boolean  @default(true)
+  isPopular        Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([isPopular])
+  @@index([sortOrder])
+  @@index([city])
+  @@index([iataCode])
+}
+
+model CarRentalDriverCriterion {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  icon        String   @default("")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model Tour {
+  id                    String   @id @default(cuid())
+  sourceId              Int?
+  slug                  String   @unique
+  title                 String
+  shortDesc             String   @default("")
+  overview              String   @default("")
+  descriptionHtml       String   @default("")
+  location              String   @default("")
+  durationHours         String   @default("")
+  groupSize             String   @default("")
+  tag                   String   @default("")
+  priceFrom             Float?
+  currency              VillaPeriodCurrency @default(TL)
+  hasTransfer           Boolean  @default(false)
+  freeCancelationHours  String   @default("")
+  includesJson          String   @default("[]")
+  highlightsJson        String   @default("[]")
+  excludesJson          String   @default("[]")
+  coverImage            String   @default("")
+  seoTitle              String   @default("")
+  seoDescription        String   @default("")
+  seoKeywords           String   @default("")
+  canonicalPath         String   @default("")
+  sortOrder             Int      @default(0)
+  isActive              Boolean  @default(true)
+  onList                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  images TourImage[]
+
+  @@index([isActive])
+  @@index([onList])
+  @@index([sortOrder])
+  @@index([sourceId])
+  @@index([tag])
+}
+
+model TourImage {
+  id        String   @id @default(cuid())
+  tourId    String
+  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String   @default("")
+  isMain    Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tourId])
+  @@index([sortOrder])
+  @@index([isMain])
+}
+
+model PublicVillaShareLink {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  villaIds  String[]
+  checkIn   String
+  checkOut  String
+  adults    Int      @default(2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+model Yolcu360Settings {
+  id                   String   @id @default("default")
+  enabled              Boolean  @default(false)
+  publicEnabled        Boolean  @default(true)
+  environment          String   @default("staging")
+  apiKey               String   @default("")
+  apiSecret            String   @default("")
+  commissionType       String   @default("percentage")
+  commissionPercentage Float    @default(0)
+  defaultPaymentType   String   @default("creditCard")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Yolcu360Order {
+  id              String    @id @default(cuid())
+  yolcu360OrderId String    @unique
+  trackingId      String    @default("")
+  status          String    @default("pending")
+  passengerName   String    @default("")
+  passengerEmail  String    @default("")
+  passengerPhone  String    @default("")
+  carBrand        String    @default("")
+  carModel        String    @default("")
+  vendorName      String    @default("")
+  totalAmount     Int       @default(0)
+  currency        String    @default("TRY")
+  checkInAt       DateTime?
+  checkOutAt      DateTime?
+  searchSnapshot  Json?
+  rawOrder        Json?
+  adminSeenAt     DateTime?
+  staffNotifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model BiletallInquiry {
+  id              String    @id @default(cuid())
+  sourceSite      String    @default("")
+  sourceDomain    String    @default("")
+  pnr             String    @default("")
+  summary         String    @default("") @db.Text
+  rawQuery        String    @default("") @db.Text
+  status          String    @default("NEW")
+  staffNotifiedAt DateTime?
+  adminSeenAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([pnr])
 }

@@ -1,14 +1,34 @@
+import AdminDashboardPanels from "@/components/admin/AdminDashboardPanels";
 import { getBookingCount, getPendingBookingCount } from "@/lib/queries/bookings";
+import {
+  getDashboardBookingQuickStats,
+  getDashboardBookingStatusStats,
+  getDashboardIntegrationLeadStats,
+  getDashboardUnansweredCallbackCount,
+} from "@/lib/queries/dashboard-stats";
 import { getVillaCount } from "@/lib/queries/villas";
 import { prisma } from "@/lib/db";
 import { Calendar, Clock, Home } from "lucide-react";
 
 export default async function AdminDashboardPage() {
-  const [villaCount, bookingCount, pendingCount, regionCount] = await Promise.all([
+  const [
+    villaCount,
+    bookingCount,
+    pendingCount,
+    regionCount,
+    statusStats,
+    quickStats,
+    unansweredCallbacks,
+    integrationLeads,
+  ] = await Promise.all([
     getVillaCount(),
     getBookingCount(),
     getPendingBookingCount(),
     prisma.region.count(),
+    getDashboardBookingStatusStats(),
+    getDashboardBookingQuickStats(),
+    getDashboardUnansweredCallbackCount(),
+    getDashboardIntegrationLeadStats(),
   ]);
 
   const stats = [
@@ -41,6 +61,13 @@ export default async function AdminDashboardPage() {
           </div>
         ))}
       </div>
+
+      <AdminDashboardPanels
+        statusStats={statusStats}
+        quickStats={quickStats}
+        unansweredCallbacks={unansweredCallbacks}
+        integrationLeads={integrationLeads}
+      />
     </div>
   );
 }

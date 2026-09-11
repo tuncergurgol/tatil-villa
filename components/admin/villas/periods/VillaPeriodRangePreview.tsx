@@ -8,8 +8,8 @@ import {
   getMonthsBetweenDates,
   parseDateKey,
   startOfDay,
+  enumerateDateKeys,
 } from "@/lib/villa-period-calendar";
-import { buildPreviewDateKeys } from "@/lib/villa-period-day-sync";
 import { parseAmountInput } from "@/lib/villa-period-pricing";
 import type { VillaPeriodAvailability } from "@/lib/villa-period-pricing";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
@@ -29,10 +29,17 @@ export default function VillaPeriodRangePreview({
   nightlyPriceCurrency,
   availability,
 }: VillaPeriodRangePreviewProps) {
-  const activeDateKeys = useMemo(
-    () => new Set(buildPreviewDateKeys(startDate, endDate)),
-    [startDate, endDate]
-  );
+  const activeDateKeys = useMemo(() => {
+    if (!startDate || !endDate) return new Set<string>();
+    try {
+      const start = startOfDay(parseDateKey(startDate));
+      const end = startOfDay(parseDateKey(endDate));
+      if (start.getTime() > end.getTime()) return new Set<string>();
+      return new Set(enumerateDateKeys(startDate, endDate));
+    } catch {
+      return new Set<string>();
+    }
+  }, [startDate, endDate]);
 
   const parsedPrice = parseAmountInput(nightlyPrice);
 
@@ -88,7 +95,6 @@ export default function VillaPeriodRangePreview({
           month={month}
           activeDateKeys={activeDateKeys}
           dayDisplayByDate={dayDisplayByDate}
-          periodColorIndex={new Map([["preview", 0]])}
           compact
           showMonthHeader
         />

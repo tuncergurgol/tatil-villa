@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlignCenter,
   AlignJustify,
@@ -41,7 +41,10 @@ function ToolbarButton({
     <button
       type="button"
       title={label}
-      onClick={onClick}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick();
+      }}
       className="rounded p-1.5 text-gray-600 transition hover:bg-gray-200 hover:text-gray-900"
     >
       {children}
@@ -56,18 +59,25 @@ export default function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState(defaultValue);
 
-  function exec(command: string, commandValue?: string) {
-    editorRef.current?.focus();
-    document.execCommand(command, false, commandValue);
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    // İçeriği yalnızca mount / defaultValue değişiminde yaz;
+    // her tuşta dangerouslySetInnerHTML kullanmak düzenlemeyi sıfırlar.
+    editor.innerHTML = defaultValue;
+    setValue(defaultValue);
+  }, [defaultValue]);
+
+  function syncValue() {
     if (editorRef.current) {
       setValue(editorRef.current.innerHTML);
     }
   }
 
-  function handleInput() {
-    if (editorRef.current) {
-      setValue(editorRef.current.innerHTML);
-    }
+  function exec(command: string, commandValue?: string) {
+    editorRef.current?.focus();
+    document.execCommand(command, false, commandValue);
+    syncValue();
   }
 
   return (
@@ -165,11 +175,13 @@ export default function RichTextEditor({
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
-        onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: defaultValue }}
-        className="min-h-[220px] px-4 py-3 text-sm leading-relaxed text-gray-800 outline-none [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-lg [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
+        onInput={syncValue}
+        onBlur={syncValue}
+        role="textbox"
+        aria-multiline="true"
+        className="min-h-[220px] cursor-text px-4 py-3 text-sm leading-relaxed text-gray-800 outline-none empty:before:pointer-events-none empty:before:text-gray-400 empty:before:content-['İçeriği_buraya_yazın…'] [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-lg [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6"
       />
-      <input type="hidden" name={name} value={value} />
+      <input type="hidden" name={name} value={value} readOnly />
     </div>
   );
 }

@@ -560,6 +560,8 @@ async function main() {
         "Türkiye'nin en güzel bölgelerinde villa ve bungalov kiralama. En iyi fiyat garantisi ile hızlı rezervasyon.",
       primaryColor: "#0d9488",
       secondaryColor: "#115e59",
+      accentColor: "#14b8a6",
+      surfaceColor: "#f0fdfa",
       loadingText: "Yükleniyor...",
     },
     update: {},

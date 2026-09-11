@@ -5,7 +5,7 @@ import { getFacilityCategoriesForPicker } from "@/lib/queries/facility-categorie
 export const dynamic = "force-dynamic";
 
 export default async function VillaOlanaklariPage() {
-  const [{ categories, totalAmenities, defaultCount }, facilityCategories] =
+  const [{ categories, totalAmenities, defaultCount, searchCount }, facilityCategories] =
     await Promise.all([
       getAmenityAdminData(),
       getFacilityCategoriesForPicker(),
@@ -17,6 +17,7 @@ export default async function VillaOlanaklariPage() {
       facilityCategories={facilityCategories}
       totalAmenities={totalAmenities}
       defaultCount={defaultCount}
+      searchCount={searchCount}
     />
   );
 }

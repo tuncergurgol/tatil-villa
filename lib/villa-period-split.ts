@@ -1,0 +1,403 @@
+import { prisma } from "@/lib/db";
+import type { VillaPricePeriod } from "@prisma/client";
+import {
+  compareDates,
+  parseDateKey,
+  startOfDay,
+  toDateKey,
+} from "@/lib/villa-period-calendar";
+import { offsetDateKey } from "@/lib/villa-period-selection";
+import {
+  reassignPeriodDaysDiscountInRange,
+  reassignPeriodDaysInRange,
+  updateVillaPricePeriodDaysInRange,
+} from "@/lib/villa-period-day-sync";
+import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
+
+export function periodRecordToSnapshot(
+  period: VillaPricePeriod
+): VillaPeriodDayPricingSnapshot {
+  return {
+    availability: period.availability,
+    nightlyPrice: period.nightlyPrice,
+    nightlyPriceCurrency: period.nightlyPriceCurrency,
+    nightlyPriceWithoutCommission: period.nightlyPriceWithoutCommission,
+    discountedNightlyPrice: period.discountedNightlyPrice,
+    weeklyPrice: period.weeklyPrice,
+    prepaymentRate: period.prepaymentRate,
+    commissionRate: period.commissionRate,
+    minStayNights: period.minStayNights,
+    cleaningDayCount: period.cleaningDayCount,
+    cleaningFee: period.cleaningFee,
+    cleaningFeeCurrency: period.cleaningFeeCurrency,
+    damageDeposit: period.damageDeposit,
+    damageDepositCurrency: period.damageDepositCurrency,
+    petCleaningFee: period.petCleaningFee,
+    petCleaningFeeCurrency: period.petCleaningFeeCurrency,
+    petDamageDeposit: period.petDamageDeposit,
+    petDamageDepositCurrency: period.petDamageDepositCurrency,
+    underfloorHeatingFee: period.underfloorHeatingFee,
+    underfloorHeatingFeeCurrency: period.underfloorHeatingFeeCurrency,
+    extraBedFee: period.extraBedFee,
+    extraBedFeeCurrency: period.extraBedFeeCurrency,
+    poolHeatingPrivateFee: period.poolHeatingPrivateFee,
+    poolHeatingPrivateFeeCurrency: period.poolHeatingPrivateFeeCurrency,
+    poolHeatingIndoorFee: period.poolHeatingIndoorFee,
+    poolHeatingIndoorFeeCurrency: period.poolHeatingIndoorFeeCurrency,
+    poolHeatingKidsFee: period.poolHeatingKidsFee,
+    poolHeatingKidsFeeCurrency: period.poolHeatingKidsFeeCurrency,
+    discount1Rate: period.discount1Rate,
+    discount2Rate: period.discount2Rate,
+    extraDiscountAmount: period.extraDiscountAmount,
+    weekendPrice: period.weekendPrice,
+    weekendDays: period.weekendDays,
+    weekendMinStayNights: period.weekendMinStayNights,
+    childFee02: period.childFee02,
+    childFee02Currency: period.childFee02Currency,
+    childFee03_09: period.childFee03_09,
+    childFee03_09Currency: period.childFee03_09Currency,
+    occupancyStatus: "EMPTY",
+  };
+}
+
+export function periodDataFromSnapshot(
+  snapshot: VillaPeriodDayPricingSnapshot
+): Omit<VillaPeriodDayPricingSnapshot, "occupancyStatus"> {
+  const { occupancyStatus: _occupancy, ...periodData } = snapshot;
+  return periodData;
+}
+
+function offsetDate(date: Date, offsetDays: number): Date {
+  return parseDateKey(offsetDateKey(toDateKey(date), offsetDays));
+}
+
+type TailSegment = {
+  startDate: Date;
+  endDate: Date;
+  snapshot: VillaPeriodDayPricingSnapshot;
+};
+
+function collectTailSegments(
+  overlappingPeriods: VillaPricePeriod[],
+  rangeStart: Date,
+  rangeEnd: Date
+): { tails: TailSegment[]; periodIdsToRemove: string[] } {
+  const tails: TailSegment[] = [];
+  const periodIdsToRemove: string[] = [];
+
+  for (const period of overlappingPeriods) {
+    const oldSnapshot = periodRecordToSnapshot(period);
+    const periodStart = startOfDay(period.startDate);
+    const periodEnd = startOfDay(period.endDate);
+    periodIdsToRemove.push(period.id);
+
+    if (compareDates(periodStart, rangeStart) < 0) {
+      tails.push({
+        startDate: periodStart,
+        endDate: offsetDate(rangeStart, -1),
+        snapshot: oldSnapshot,
+      });
+    }
+
+    if (compareDates(periodEnd, rangeEnd) > 0) {
+      tails.push({
+        startDate: offsetDate(rangeEnd, 1),
+        endDate: periodEnd,
+        snapshot: oldSnapshot,
+      });
+    }
+  }
+
+  return { tails, periodIdsToRemove };
+}
+
+async function findOverlappingPeriods(
+  villaId: string,
+  rangeStart: Date,
+  rangeEnd: Date
+) {
+  const periods = await prisma.villaPricePeriod.findMany({
+    where: {
+      villaId,
+      startDate: { lte: rangeEnd },
+      endDate: { gte: rangeStart },
+    },
+    orderBy: { startDate: "asc" },
+  });
+
+  if (periods.length === 0) {
+    throw new Error("Seçilen aralıkta periyot bulunamadı");
+  }
+
+  return periods;
+}
+
+export async function applyVillaPriceRangeEdit(
+  villaId: string,
+  editStart: Date,
+  editEnd: Date,
+  buildSnapshot: (period: VillaPricePeriod) => VillaPeriodDayPricingSnapshot
+) {
+  const rangeStart = startOfDay(editStart);
+  const rangeEnd = startOfDay(editEnd);
+  const overlappingPeriods = await findOverlappingPeriods(
+    villaId,
+    rangeStart,
+    rangeEnd
+  );
+  const middleSnapshot = buildSnapshot(overlappingPeriods[0]!);
+
+  await applyVillaPriceRangeMergedEdit(
+    villaId,
+    rangeStart,
+    rangeEnd,
+    middleSnapshot,
+    overlappingPeriods
+  );
+}
+
+export async function applyVillaPriceRangeMergedEdit(
+  villaId: string,
+  rangeStart: Date,
+  rangeEnd: Date,
+  middleSnapshot: VillaPeriodDayPricingSnapshot,
+  overlappingPeriods?: VillaPricePeriod[]
+) {
+  const periods =
+    overlappingPeriods ??
+    (await findOverlappingPeriods(villaId, rangeStart, rangeEnd));
+  const { tails, periodIdsToRemove } = collectTailSegments(
+    periods,
+    rangeStart,
+    rangeEnd
+  );
+
+  await prisma.$transaction(async (tx) => {
+    const middlePeriod = await tx.villaPricePeriod.create({
+      data: {
+        villaId,
+        startDate: rangeStart,
+        endDate: rangeEnd,
+        ...periodDataFromSnapshot(middleSnapshot),
+      },
+    });
+
+    for (const tail of tails) {
+      const tailPeriod = await tx.villaPricePeriod.create({
+        data: {
+          villaId,
+          startDate: tail.startDate,
+          endDate: tail.endDate,
+          ...periodDataFromSnapshot(tail.snapshot),
+        },
+      });
+
+      await reassignPeriodDaysInRange(
+        tx,
+        tailPeriod.id,
+        villaId,
+        tail.startDate,
+        tail.endDate,
+        tail.snapshot
+      );
+    }
+
+    await reassignPeriodDaysInRange(
+      tx,
+      middlePeriod.id,
+      villaId,
+      rangeStart,
+      rangeEnd,
+      middleSnapshot
+    );
+
+    await tx.villaPricePeriod.deleteMany({
+      where: { id: { in: periodIdsToRemove } },
+    });
+  });
+}
+
+export async function applyVillaPriceRangeDiscountEdit(
+  villaId: string,
+  editStart: Date,
+  editEnd: Date,
+  discountUpdate: {
+    discount1Rate: number | null;
+    discount2Rate: number | null;
+    extraDiscountAmount: number | null;
+  },
+  buildHeaderSnapshot: (period: VillaPricePeriod) => VillaPeriodDayPricingSnapshot
+) {
+  const rangeStart = startOfDay(editStart);
+  const rangeEnd = startOfDay(editEnd);
+  const overlappingPeriods = await findOverlappingPeriods(
+    villaId,
+    rangeStart,
+    rangeEnd
+  );
+  const middleSnapshot = buildHeaderSnapshot(overlappingPeriods[0]!);
+  const { tails, periodIdsToRemove } = collectTailSegments(
+    overlappingPeriods,
+    rangeStart,
+    rangeEnd
+  );
+
+  await prisma.$transaction(async (tx) => {
+    const middlePeriod = await tx.villaPricePeriod.create({
+      data: {
+        villaId,
+        startDate: rangeStart,
+        endDate: rangeEnd,
+        ...periodDataFromSnapshot(middleSnapshot),
+      },
+    });
+
+    for (const tail of tails) {
+      const tailPeriod = await tx.villaPricePeriod.create({
+        data: {
+          villaId,
+          startDate: tail.startDate,
+          endDate: tail.endDate,
+          ...periodDataFromSnapshot(tail.snapshot),
+        },
+      });
+
+      await reassignPeriodDaysInRange(
+        tx,
+        tailPeriod.id,
+        villaId,
+        tail.startDate,
+        tail.endDate,
+        tail.snapshot
+      );
+    }
+
+    await reassignPeriodDaysDiscountInRange(
+      tx,
+      middlePeriod.id,
+      villaId,
+      rangeStart,
+      rangeEnd,
+      discountUpdate
+    );
+
+    await tx.villaPricePeriod.deleteMany({
+      where: { id: { in: periodIdsToRemove } },
+    });
+  });
+}
+
+export async function applyPartialVillaPricePeriodEdit(
+  villaId: string,
+  periodId: string,
+  editStart: Date,
+  editEnd: Date,
+  newSnapshot: VillaPeriodDayPricingSnapshot
+) {
+  const period = await prisma.villaPricePeriod.findFirst({
+    where: { id: periodId, villaId },
+  });
+
+  if (!period) {
+    throw new Error("Periyot bulunamadı");
+  }
+
+  const periodStart = startOfDay(period.startDate);
+  const periodEnd = startOfDay(period.endDate);
+  const rangeStart = startOfDay(editStart);
+  const rangeEnd = startOfDay(editEnd);
+
+  if (
+    compareDates(rangeStart, periodStart) < 0 ||
+    compareDates(rangeEnd, periodEnd) > 0
+  ) {
+    throw new Error("Düzenleme aralığı periyot sınırları içinde olmalı");
+  }
+
+  const oldSnapshot = periodRecordToSnapshot(period);
+  const hasBefore = compareDates(rangeStart, periodStart) > 0;
+  const hasAfter = compareDates(rangeEnd, periodEnd) < 0;
+
+  if (!hasBefore && !hasAfter) {
+    await prisma.villaPricePeriod.update({
+      where: { id: periodId },
+      data: periodDataFromSnapshot(newSnapshot),
+    });
+    await updateVillaPricePeriodDaysInRange(
+      periodId,
+      villaId,
+      rangeStart,
+      rangeEnd,
+      newSnapshot
+    );
+    return;
+  }
+
+  const beforeEnd = hasBefore ? offsetDate(rangeStart, -1) : null;
+  const afterStart = hasAfter ? offsetDate(rangeEnd, 1) : null;
+
+  await prisma.$transaction(async (tx) => {
+    let middlePeriodId = periodId;
+    let afterPeriodId: string | null = null;
+
+    if (hasBefore) {
+      await tx.villaPricePeriod.update({
+        where: { id: periodId },
+        data: { endDate: beforeEnd! },
+      });
+    }
+
+    if (!hasBefore) {
+      await tx.villaPricePeriod.update({
+        where: { id: periodId },
+        data: {
+          startDate: rangeStart,
+          endDate: rangeEnd,
+          ...periodDataFromSnapshot(newSnapshot),
+        },
+      });
+    } else {
+      const middle = await tx.villaPricePeriod.create({
+        data: {
+          villaId,
+          startDate: rangeStart,
+          endDate: rangeEnd,
+          ...periodDataFromSnapshot(newSnapshot),
+        },
+      });
+      middlePeriodId = middle.id;
+    }
+
+    if (hasAfter) {
+      const after = await tx.villaPricePeriod.create({
+        data: {
+          villaId,
+          startDate: afterStart!,
+          endDate: periodEnd,
+          ...periodDataFromSnapshot(oldSnapshot),
+        },
+      });
+      afterPeriodId = after.id;
+    }
+
+    await reassignPeriodDaysInRange(
+      tx,
+      middlePeriodId,
+      villaId,
+      rangeStart,
+      rangeEnd,
+      newSnapshot
+    );
+
+    if (hasAfter && afterPeriodId && afterStart) {
+      await reassignPeriodDaysInRange(
+        tx,
+        afterPeriodId,
+        villaId,
+        afterStart,
+        periodEnd,
+        oldSnapshot
+      );
+    }
+  });
+}

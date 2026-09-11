@@ -1,5 +1,5 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import { redirect } from "next/navigation";
 
 export default function TurAktivitelerPage() {
-  return <ComingSoon title="Tur & Aktiviteler" />;
+  redirect("/admin/tur");
 }

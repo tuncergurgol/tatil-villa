@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useTransition } from "react";
 import {
   CalendarDays,
   Save,
@@ -9,11 +9,19 @@ import {
 } from "lucide-react";
 import {
   createVillaPricePeriod,
-  updateVillaPricePeriod,
+  updateVillaPricePeriodDaysDiscounts,
+  updateVillaPricePeriodDaysPricing,
+  updateVillaPeriodDaysOccupancy,
 } from "@/app/actions/admin/villa-periods";
 import VillaPeriodRangePreview from "@/components/admin/villas/periods/VillaPeriodRangePreview";
 import type { VillaPricePeriodItem } from "@/lib/villa-period-calendar";
-import { toDateKey } from "@/lib/villa-period-calendar";
+import {
+  formatPeriodDate,
+  parseDateKey,
+  toDateKey,
+} from "@/lib/villa-period-calendar";
+import { countNightsBetween } from "@/lib/villa-period-selection";
+import { CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE } from "@/lib/villa-confirmed-booking-guard.constants";
 import {
   VILLA_PERIOD_CURRENCIES,
   calculateCommissionAmount,
@@ -27,10 +35,17 @@ import {
   type VillaPeriodCurrency,
 } from "@/lib/villa-period-pricing";
 
+export type VillaPeriodFormDateRange = {
+  startDate: string;
+  endDate: string;
+};
+
 interface VillaPeriodFormModalProps {
   open: boolean;
   villaId: string;
   period?: VillaPricePeriodItem | null;
+  templatePeriod?: VillaPricePeriodItem | null;
+  prefillDateRange?: VillaPeriodFormDateRange | null;
   continueAfterSave: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -55,13 +70,54 @@ const AMOUNT_FIELDS = new Set([
   "petDamageDeposit",
   "underfloorHeatingFee",
   "extraBedFee",
+  "poolHeatingPrivateFee",
+  "poolHeatingIndoorFee",
+  "poolHeatingKidsFee",
+  "extraDiscountAmount",
+  "weekendPrice",
+  "childFee02",
+  "childFee03_09",
+]);
+
+const DISCOUNT_FIELDS = new Set([
+  "discount1Rate",
+  "discount2Rate",
   "extraDiscountAmount",
 ]);
 
+const FORM_META_FIELDS = new Set([
+  "occupancySelection",
+  "actionStartDate",
+  "actionEndDate",
+]);
+
+const CURRENCY_FIELDS = new Set<keyof PeriodFormState>([
+  "nightlyPriceCurrency",
+  "cleaningFeeCurrency",
+  "damageDepositCurrency",
+  "petCleaningFeeCurrency",
+  "petDamageDepositCurrency",
+  "underfloorHeatingFeeCurrency",
+  "extraBedFeeCurrency",
+  "poolHeatingPrivateFeeCurrency",
+  "poolHeatingIndoorFeeCurrency",
+  "poolHeatingKidsFeeCurrency",
+  "childFee02Currency",
+  "childFee03_09Currency",
+]);
+
+const RATE_FIELDS = new Set([
+  "prepaymentRate",
+  "commissionRate",
+  "discount1Rate",
+  "discount2Rate",
+]);
+
 type PeriodFormState = {
-  startDate: string;
-  endDate: string;
+  actionStartDate: string;
+  actionEndDate: string;
   availability: VillaPeriodAvailability;
+  occupancySelection: "" | "EMPTY" | "BOOKED";
   nightlyPrice: string;
   nightlyPriceCurrency: VillaPeriodCurrency;
   weeklyPrice: string;
@@ -82,15 +138,29 @@ type PeriodFormState = {
   underfloorHeatingFeeCurrency: VillaPeriodCurrency;
   extraBedFee: string;
   extraBedFeeCurrency: VillaPeriodCurrency;
+  poolHeatingPrivateFee: string;
+  poolHeatingPrivateFeeCurrency: VillaPeriodCurrency;
+  poolHeatingIndoorFee: string;
+  poolHeatingIndoorFeeCurrency: VillaPeriodCurrency;
+  poolHeatingKidsFee: string;
+  poolHeatingKidsFeeCurrency: VillaPeriodCurrency;
   discount1Rate: string;
   discount2Rate: string;
   extraDiscountAmount: string;
+  weekendPrice: string;
+  weekendDays: string;
+  weekendMinStayNights: string;
+  childFee02: string;
+  childFee02Currency: VillaPeriodCurrency;
+  childFee03_09: string;
+  childFee03_09Currency: VillaPeriodCurrency;
 };
 
 const emptyFormState = (): PeriodFormState => ({
-  startDate: "",
-  endDate: "",
+  actionStartDate: "",
+  actionEndDate: "",
   availability: "available",
+  occupancySelection: "",
   nightlyPrice: "",
   nightlyPriceCurrency: "TL",
   weeklyPrice: "",
@@ -111,20 +181,89 @@ const emptyFormState = (): PeriodFormState => ({
   underfloorHeatingFeeCurrency: "TL",
   extraBedFee: "",
   extraBedFeeCurrency: "TL",
+  poolHeatingPrivateFee: "",
+  poolHeatingPrivateFeeCurrency: "TL",
+  poolHeatingIndoorFee: "",
+  poolHeatingIndoorFeeCurrency: "TL",
+  poolHeatingKidsFee: "",
+  poolHeatingKidsFeeCurrency: "TL",
   discount1Rate: "",
   discount2Rate: "",
   extraDiscountAmount: "",
+  weekendPrice: "",
+  weekendDays: "",
+  weekendMinStayNights: "",
+  childFee02: "",
+  childFee02Currency: "TL",
+  childFee03_09: "",
+  childFee03_09Currency: "TL",
 });
 
 function toInputValue(value: number | null | undefined) {
   return formatAmountInput(value);
 }
 
+function buildPeriodFormState(
+  period: VillaPricePeriodItem | null | undefined,
+  options?: {
+    prefillDateRange?: VillaPeriodFormDateRange | null;
+    templatePeriod?: VillaPricePeriodItem | null;
+  }
+): PeriodFormState {
+  const source = period ?? options?.templatePeriod ?? null;
+  const base = source ? periodToFormState(source) : emptyFormState();
+
+  if (period) {
+    const range = options?.prefillDateRange;
+    if (range?.startDate && range?.endDate) {
+      return {
+        ...base,
+        actionStartDate: range.startDate,
+        actionEndDate: range.endDate,
+        occupancySelection: "",
+      };
+    }
+    return { ...base, occupancySelection: "" };
+  }
+
+  const range = options?.prefillDateRange;
+  if (range?.startDate && range?.endDate) {
+    return {
+      ...base,
+      actionStartDate: range.startDate,
+      actionEndDate: range.endDate,
+      occupancySelection: "",
+    };
+  }
+
+  return { ...base, occupancySelection: "" };
+}
+
+function validatePeriodForm(form: PeriodFormState): string | null {
+  if (!form.actionStartDate || !form.actionEndDate) {
+    return "Başlangıç ve bitiş tarihi gerekli";
+  }
+  if (form.actionStartDate > form.actionEndDate) {
+    return "Bitiş tarihi başlangıçtan önce olamaz";
+  }
+
+  const nightlyPrice = parseAmountInput(form.nightlyPrice);
+  if (nightlyPrice == null || nightlyPrice <= 0) {
+    return "Gecelik konaklama bedeli gerekli";
+  }
+
+  return null;
+}
+
 function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
+  const startDate = toDateKey(period.startDate);
+  const endDate = toDateKey(period.endDate);
+
   return {
-    startDate: toDateKey(period.startDate),
-    endDate: toDateKey(period.endDate),
-    availability: period.availability,
+    actionStartDate: startDate,
+    actionEndDate: endDate,
+    availability: "available",
+    occupancySelection: "",
     nightlyPrice: formatAmountInput(period.nightlyPrice),
     nightlyPriceCurrency: period.nightlyPriceCurrency,
     weeklyPrice: toInputValue(period.weeklyPrice),
@@ -147,9 +286,22 @@ function periodToFormState(period: VillaPricePeriodItem): PeriodFormState {
     underfloorHeatingFeeCurrency: period.underfloorHeatingFeeCurrency,
     extraBedFee: toInputValue(period.extraBedFee),
     extraBedFeeCurrency: period.extraBedFeeCurrency,
+    poolHeatingPrivateFee: toInputValue(period.poolHeatingPrivateFee),
+    poolHeatingPrivateFeeCurrency: period.poolHeatingPrivateFeeCurrency,
+    poolHeatingIndoorFee: toInputValue(period.poolHeatingIndoorFee),
+    poolHeatingIndoorFeeCurrency: period.poolHeatingIndoorFeeCurrency,
+    poolHeatingKidsFee: toInputValue(period.poolHeatingKidsFee),
+    poolHeatingKidsFeeCurrency: period.poolHeatingKidsFeeCurrency,
     discount1Rate: toInputValue(period.discount1Rate),
     discount2Rate: toInputValue(period.discount2Rate),
     extraDiscountAmount: toInputValue(period.extraDiscountAmount),
+    weekendPrice: toInputValue(period.weekendPrice),
+    weekendDays: period.weekendDays.join(","),
+    weekendMinStayNights: toInputValue(period.weekendMinStayNights),
+    childFee02: toInputValue(period.childFee02),
+    childFee02Currency: period.childFee02Currency,
+    childFee03_09: toInputValue(period.childFee03_09),
+    childFee03_09Currency: period.childFee03_09Currency,
   };
 }
 
@@ -277,19 +429,49 @@ export default function VillaPeriodFormModal({
   open,
   villaId,
   period,
+  templatePeriod = null,
+  prefillDateRange = null,
   continueAfterSave,
   onClose,
   onSaved,
 }: VillaPeriodFormModalProps) {
   const [form, setForm] = useState<PeriodFormState>(emptyFormState);
   const [error, setError] = useState<string | null>(null);
+  const [confirmedLockMessage, setConfirmedLockMessage] = useState<string | null>(
+    null
+  );
   const [isPending, startTransition] = useTransition();
+  const [availabilityPending, setAvailabilityPending] = useState(false);
+  const [discountPending, setDiscountPending] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
-    setForm(period ? periodToFormState(period) : emptyFormState());
+    setForm(
+      buildPeriodFormState(period, {
+        prefillDateRange,
+        templatePeriod,
+      })
+    );
     setError(null);
-  }, [open, period]);
+    setConfirmedLockMessage(null);
+  }, [open, period, prefillDateRange, templatePeriod]);
+
+  const occupancyStayPreview = useMemo(() => {
+    if (!form.actionStartDate || !form.actionEndDate) return null;
+    if (form.actionStartDate > form.actionEndDate) return null;
+
+    const nights = countNightsBetween(
+      form.actionStartDate,
+      form.actionEndDate
+    );
+    if (nights <= 0) return null;
+
+    return {
+      nights,
+      checkInLabel: formatPeriodDate(parseDateKey(form.actionStartDate)),
+      checkOutLabel: formatPeriodDate(parseDateKey(form.actionEndDate)),
+    };
+  }, [form.actionStartDate, form.actionEndDate]);
 
   const nightlyPrice = parseNumber(form.nightlyPrice) ?? 0;
   const nightlyWithoutCommission = parseNumber(form.nightlyPriceWithoutCommission);
@@ -316,6 +498,18 @@ export default function VillaPeriodFormModal({
       form.extraDiscountAmount,
     ]
   );
+
+  const totalDiscountAmount = useMemo(() => {
+    const extra = parseNumber(form.extraDiscountAmount) ?? 0;
+    const first = discountPreview.discount1Amount ?? 0;
+    const second = discountPreview.discount2Amount ?? 0;
+    const total = first + second + extra;
+    return total > 0 ? total : null;
+  }, [
+    discountPreview.discount1Amount,
+    discountPreview.discount2Amount,
+    form.extraDiscountAmount,
+  ]);
 
   function updateForm(patch: Partial<PeriodFormState>) {
     setForm((prev) => ({ ...prev, ...patch }));
@@ -393,13 +587,45 @@ export default function VillaPeriodFormModal({
 
   if (!open) return null;
 
-  function appendFormData(target: FormData) {
+  function appendFormFields(
+    target: FormData,
+    options: {
+      includePricing: boolean;
+      includeDiscounts: boolean;
+      startDate: string;
+      endDate: string;
+    }
+  ) {
+    target.set("startDate", options.startDate);
+    target.set("endDate", options.endDate);
+    target.set("availability", "available");
+
+    const nightlyPrice = parseAmountInput(form.nightlyPrice);
+    if (nightlyPrice != null && nightlyPrice > 0) {
+      target.set("nightlyPrice", String(Math.round(nightlyPrice)));
+    }
+
+    for (const key of CURRENCY_FIELDS) {
+      const value = form[key];
+      target.set(key, value || "TL");
+    }
+
     Object.entries(form).forEach(([key, value]) => {
+      if (FORM_META_FIELDS.has(key)) return;
+      if (CURRENCY_FIELDS.has(key as keyof PeriodFormState)) return;
+      if (key === "nightlyPrice") return;
+      if (!options.includePricing && !DISCOUNT_FIELDS.has(key)) return;
+      if (!options.includeDiscounts && DISCOUNT_FIELDS.has(key)) return;
       if (value === "") return;
 
       if (AMOUNT_FIELDS.has(key)) {
         const parsed = parseAmountInput(value);
-        if (parsed != null) target.set(key, String(parsed));
+        if (parsed != null) target.set(key, String(Math.round(parsed)));
+        return;
+      }
+
+      if (RATE_FIELDS.has(key)) {
+        target.set(key, String(parseRate(value)));
         return;
       }
 
@@ -407,17 +633,62 @@ export default function VillaPeriodFormModal({
     });
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleOccupancyAction(mode: "EMPTY" | "BOOKED") {
+    if (!form.actionStartDate || !form.actionEndDate) {
+      setError("Başlangıç ve bitiş tarihi gerekli");
+      return;
+    }
+
+    setError(null);
+    setAvailabilityPending(true);
+
+    try {
+      const result = await updateVillaPeriodDaysOccupancy(
+        villaId,
+        form.actionStartDate,
+        form.actionEndDate,
+        mode
+      );
+
+      if (result?.error) {
+        if (result.code === CONFIRMED_BOOKING_OCCUPANCY_LOCKED_CODE) {
+          setConfirmedLockMessage(result.error);
+          return;
+        }
+        setError(result.error);
+        return;
+      }
+
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Uygunluk durumu güncellenemedi"
+      );
+    } finally {
+      setAvailabilityPending(false);
+    }
+  }
+
+  function handlePricingSave() {
+    const validationError = validatePeriodForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setError(null);
 
     const formData = new FormData();
-    appendFormData(formData);
+    appendFormFields(formData, {
+      includePricing: true,
+      includeDiscounts: false,
+      startDate: form.actionStartDate,
+      endDate: form.actionEndDate,
+    });
 
     startTransition(async () => {
-      const result = period
-        ? await updateVillaPricePeriod(villaId, period.id, formData)
-        : await createVillaPricePeriod(villaId, formData);
+      const result = await updateVillaPricePeriodDaysPricing(villaId, formData);
 
       if (result.error) {
         setError(result.error);
@@ -425,19 +696,86 @@ export default function VillaPeriodFormModal({
       }
 
       onSaved();
+      onClose();
+    });
+  }
 
-      if (period || !continueAfterSave) {
-        onClose();
+  function handleDiscountSave() {
+    const validationError = validatePeriodForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    setDiscountPending(true);
+
+    const formData = new FormData();
+    appendFormFields(formData, {
+      includePricing: false,
+      includeDiscounts: true,
+      startDate: form.actionStartDate,
+      endDate: form.actionEndDate,
+    });
+
+    startTransition(async () => {
+      const result = await updateVillaPricePeriodDaysDiscounts(villaId, formData);
+
+      setDiscountPending(false);
+
+      if (result.error) {
+        setError(result.error);
         return;
       }
 
-      setForm(emptyFormState());
+      onSaved();
+      onClose();
+    });
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (period) return;
+
+    const validationError = validatePeriodForm(form);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+
+    const formData = new FormData();
+    appendFormFields(formData, {
+      includePricing: true,
+      includeDiscounts: true,
+      startDate: form.actionStartDate,
+      endDate: form.actionEndDate,
+    });
+
+    startTransition(async () => {
+      const result = await createVillaPricePeriod(villaId, formData);
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      onSaved();
+      onClose();
     });
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
-      <div className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
+    <>
+      <div
+        className="fixed inset-0 z-50 flex justify-end bg-black/40"
+        onClick={onClose}
+      >
+      <div
+        className="flex h-full w-full max-w-xl flex-col bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <h2 className="text-lg font-bold text-gray-900">
             {period ? "PERİYOD DÜZENLE" : "PERİYOD EKLE"}
@@ -468,56 +806,116 @@ export default function VillaPeriodFormModal({
               <div className="space-y-4 p-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
-                    <span className={labelClass}>Başlangıç Tarihi</span>
+                    <span className={labelClass}>
+                      {period ? "Giriş Tarihi" : "Başlangıç Tarihi"}
+                    </span>
                     <input
                       type="date"
                       required
-                      value={form.startDate}
+                      value={form.actionStartDate}
                       onChange={(event) =>
-                        updateForm({ startDate: event.target.value })
+                        updateForm({ actionStartDate: event.target.value })
                       }
                       className={`mt-1.5 ${inputClass}`}
                     />
                   </label>
                   <label className="block">
-                    <span className={labelClass}>Bitiş Tarihi</span>
+                    <span className={labelClass}>
+                      {period ? "Çıkış Tarihi" : "Bitiş Tarihi"}
+                    </span>
                     <input
                       type="date"
                       required
-                      value={form.endDate}
+                      value={form.actionEndDate}
                       onChange={(event) =>
-                        updateForm({ endDate: event.target.value })
+                        updateForm({ actionEndDate: event.target.value })
                       }
                       className={`mt-1.5 ${inputClass}`}
                     />
                   </label>
                 </div>
 
-                <div>
-                  <span className={labelClass}>Uygunluk Durumu</span>
-                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-800">
-                    <label className="inline-flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="availability"
-                        value="available"
-                        checked={form.availability === "available"}
-                        onChange={() => updateForm({ availability: "available" })}
-                      />
-                      Uygun
-                    </label>
-                    <label className="inline-flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="availability"
-                        value="closed"
-                        checked={form.availability === "closed"}
-                        onChange={() => updateForm({ availability: "closed" })}
-                      />
-                      Uygun Değil (Kapat)
-                    </label>
+                {period ? (
+                  <p className={helpClass}>
+                    Bitiş tarihi çıkış günüdür (sabah boşalır). Örn. 10–13
+                    Ağustos = 3 gece (10, 11, 12 konaklama; 13 çıkış).
+                  </p>
+                ) : null}
+
+                {period && occupancyStayPreview ? (
+                  <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                    <span className="font-semibold">
+                      {occupancyStayPreview.nights} gece
+                    </span>
+                    <span className="text-blue-800">
+                      {" "}
+                      — giriş {occupancyStayPreview.checkInLabel}, çıkış{" "}
+                      {occupancyStayPreview.checkOutLabel}
+                    </span>
                   </div>
-                </div>
+                ) : null}
+
+                {period ? (
+                  <div>
+                    <span className={labelClass}>Uygunluk Durumu</span>
+                    <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-800">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="occupancySelection"
+                          value="EMPTY"
+                          checked={form.occupancySelection === "EMPTY"}
+                          onChange={() =>
+                            updateForm({ occupancySelection: "EMPTY" })
+                          }
+                        />
+                        Uygun
+                      </label>
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="occupancySelection"
+                          value="BOOKED"
+                          checked={form.occupancySelection === "BOOKED"}
+                          onChange={() =>
+                            updateForm({ occupancySelection: "BOOKED" })
+                          }
+                        />
+                        Dolu
+                      </label>
+                    </div>
+
+                    {form.occupancySelection === "EMPTY" ? (
+                      <button
+                        type="button"
+                        disabled={
+                          availabilityPending ||
+                          !form.actionStartDate ||
+                          !form.actionEndDate
+                        }
+                        onClick={() => handleOccupancyAction("EMPTY")}
+                        className="mt-3 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        {availabilityPending ? "Açılıyor..." : "Aç"}
+                      </button>
+                    ) : null}
+
+                    {form.occupancySelection === "BOOKED" ? (
+                      <button
+                        type="button"
+                        disabled={
+                          availabilityPending ||
+                          !form.actionStartDate ||
+                          !form.actionEndDate
+                        }
+                        onClick={() => handleOccupancyAction("BOOKED")}
+                        className="mt-3 rounded-lg bg-red-600 px-5 py-2 text-sm font-bold uppercase tracking-wide text-white hover:bg-red-700 disabled:opacity-60"
+                      >
+                        {availabilityPending ? "Kapatılıyor..." : "Kapat"}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </section>
 
@@ -736,16 +1134,120 @@ export default function VillaPeriodFormModal({
                     updateForm({ extraBedFeeCurrency: value })
                   }
                 />
+                <FeeRow
+                  label="Havuz Isıtma (Özel Havuz)"
+                  amount={form.poolHeatingPrivateFee}
+                  currency={form.poolHeatingPrivateFeeCurrency}
+                  onAmountChange={(value) =>
+                    updateForm({ poolHeatingPrivateFee: value })
+                  }
+                  onCurrencyChange={(value) =>
+                    updateForm({ poolHeatingPrivateFeeCurrency: value })
+                  }
+                />
+                <FeeRow
+                  label="Havuz Isıtma (Kapalı (İç) Havuz)"
+                  amount={form.poolHeatingIndoorFee}
+                  currency={form.poolHeatingIndoorFeeCurrency}
+                  onAmountChange={(value) =>
+                    updateForm({ poolHeatingIndoorFee: value })
+                  }
+                  onCurrencyChange={(value) =>
+                    updateForm({ poolHeatingIndoorFeeCurrency: value })
+                  }
+                />
+                <FeeRow
+                  label="Havuz Isıtma (Çocuk Havuzu)"
+                  amount={form.poolHeatingKidsFee}
+                  currency={form.poolHeatingKidsFeeCurrency}
+                  onAmountChange={(value) =>
+                    updateForm({ poolHeatingKidsFee: value })
+                  }
+                  onCurrencyChange={(value) =>
+                    updateForm({ poolHeatingKidsFeeCurrency: value })
+                  }
+                />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className={labelClass}>Hafta Sonu Gecelik Fiyat</span>
+                    <AmountInput
+                      value={form.weekendPrice}
+                      onChange={(value) => updateForm({ weekendPrice: value })}
+                      className="mt-1.5"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={labelClass}>Hafta Sonu Günleri</span>
+                    <input
+                      type="text"
+                      value={form.weekendDays}
+                      onChange={(event) =>
+                        updateForm({ weekendDays: event.target.value })
+                      }
+                      placeholder="5,6 (Cum,Cts)"
+                      className={`mt-1.5 ${inputClass}`}
+                    />
+                    <p className={helpClass}>
+                      0=Pazar, 1=Pazartesi … 6=Cumartesi. Virgülle ayırın.
+                    </p>
+                  </label>
+                </div>
+
+                <label className="block">
+                  <span className={labelClass}>Hafta Sonu Min Konaklama (Gece)</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.weekendMinStayNights}
+                    onChange={(event) =>
+                      updateForm({ weekendMinStayNights: event.target.value })
+                    }
+                    className={`mt-1.5 ${inputClass} ${noSpinClass}`}
+                  />
+                </label>
+
+                <FeeRow
+                  label="0-2 Yaş Çocuk Ücreti"
+                  amount={form.childFee02}
+                  currency={form.childFee02Currency}
+                  onAmountChange={(value) => updateForm({ childFee02: value })}
+                  onCurrencyChange={(value) =>
+                    updateForm({ childFee02Currency: value })
+                  }
+                />
+                <FeeRow
+                  label="3-9 Yaş Çocuk Ücreti"
+                  amount={form.childFee03_09}
+                  currency={form.childFee03_09Currency}
+                  onAmountChange={(value) => updateForm({ childFee03_09: value })}
+                  onCurrencyChange={(value) =>
+                    updateForm({ childFee03_09Currency: value })
+                  }
+                />
+                {period ? (
+                  <button
+                    type="button"
+                    disabled={isPending || !form.actionStartDate || !form.actionEndDate}
+                    onClick={handlePricingSave}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <Save className="h-4 w-4" />
+                    {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
+                  </button>
+                ) : null}
               </div>
             </section>
 
-            <VillaPeriodRangePreview
-              startDate={form.startDate}
-              endDate={form.endDate}
-              nightlyPrice={form.nightlyPrice}
-              nightlyPriceCurrency={form.nightlyPriceCurrency}
-              availability={form.availability}
-            />
+            {!period ? (
+              <VillaPeriodRangePreview
+                startDate={form.actionStartDate}
+                endDate={form.actionEndDate}
+                nightlyPrice={form.nightlyPrice}
+                nightlyPriceCurrency={form.nightlyPriceCurrency}
+                availability="available"
+              />
+            ) : null}
 
             <section className="overflow-hidden rounded-xl border border-teal-200">
               <SectionHeader
@@ -813,29 +1315,94 @@ export default function VillaPeriodFormModal({
                   />
                 </label>
 
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className={labelClass}>Toplam İndirim Tutarı</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formatMoneyAmount(totalDiscountAmount)}
+                      className="mt-1.5 w-full rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className={labelClass}>İndirimli Fiyat</span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formatMoneyAmount(
+                        discountPreview.discountedNightlyPrice
+                      )}
+                      className="mt-1.5 w-full rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900"
+                    />
+                  </label>
+                </div>
+                <p className={helpClass}>
+                  1. ve 2. indirim tutarları ile extra tutar toplanır; indirimli
+                  fiyat = komisyonlu gecelik fiyat − toplam indirim tutarıdır.
+                  Hafta sonu günlerinde takvimde hafta sonu fiyatı üzerinden
+                  hesaplanır.
+                </p>
+
                 <button
                   type="button"
-                  onClick={() => updateForm({})}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700"
+                  disabled={
+                    discountPending || !form.actionStartDate || !form.actionEndDate
+                  }
+                  onClick={handleDiscountSave}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
-                  İndirim Bilgilerini Güncelle
+                  {discountPending
+                    ? "Güncelleniyor..."
+                    : "İndirim Bilgilerini Güncelle"}
                 </button>
               </div>
             </section>
           </div>
 
-          <div className="border-t border-gray-100 p-5">
-            <button
-              type="submit"
-              disabled={isPending}
-              className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
-            </button>
-          </div>
+          {!period ? (
+            <div className="border-t border-gray-100 p-5">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isPending ? "Kaydediliyor..." : "Periyot Kaydet"}
+              </button>
+            </div>
+          ) : null}
         </form>
       </div>
     </div>
+
+      {confirmedLockMessage ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirmed-booking-lock-title"
+          >
+            <h3
+              id="confirmed-booking-lock-title"
+              className="text-lg font-semibold text-gray-900"
+            >
+              Onaylı rezervasyon koruması
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              {confirmedLockMessage}
+            </p>
+            <button
+              type="button"
+              onClick={() => setConfirmedLockMessage(null)}
+              className="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

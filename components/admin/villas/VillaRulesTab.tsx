@@ -9,6 +9,7 @@ import {
   resolveAllowChildrenDefault,
   resolvePrepaymentPaymentTypeId,
 } from "@/lib/villa-rules-defaults";
+import { VILLA_NATURE_PEST_NOTICE } from "@/lib/villa-nature-pest-notice";
 
 interface PrepaymentPaymentTypeOption {
   id: string;
@@ -62,6 +63,9 @@ export default function VillaRulesTab({
   const [allowEvents, setAllowEvents] = useState(villa.allowEvents);
   const [allowSmoking, setAllowSmoking] = useState(villa.allowSmoking);
   const [allowPets, setAllowPets] = useState(villa.allowPets);
+  const [showNaturePestNotice, setShowNaturePestNotice] = useState(
+    villa.showNaturePestNotice
+  );
   const [customRules, setCustomRules] = useState(villa.customRules);
   const [customRuleInput, setCustomRuleInput] = useState("");
 
@@ -84,7 +88,7 @@ export default function VillaRulesTab({
     <div className="space-y-6">
       <SectionCard title="Ön Ödeme Farkı Ödeme Tipi">
         <p className="mb-3 text-xs text-gray-500">
-          Rezervasyonda &apos;Tesis Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
+          Rezervasyonda &apos;Ev Sahibi Ödeme&apos; sekmesinde &apos;Ödeme
           Yapılacak Tarih&apos;i otomatik önerir. Tanımlamalar menüsünden yeni
           tipler ekleyebilirsiniz.
         </p>
@@ -101,7 +105,7 @@ export default function VillaRulesTab({
         </select>
       </SectionCard>
 
-      <SectionCard title="Tesis Kuralları">
+      <SectionCard title="Ev Kuralları">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Check-in Saati</span>
@@ -154,6 +158,31 @@ export default function VillaRulesTab({
             checked={allowPets}
             onChange={setAllowPets}
           />
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Böcek / İlaçlama Bilgilendirmesi">
+        <p className="mb-4 text-xs text-gray-500">
+          Villa detay sayfasında &quot;Bilmeniz Gerekenler&quot; bölümünün en
+          altında gösterilir. Yeni villalarda varsayılan olarak açıktır.
+        </p>
+        <StatusPillToggle
+          label="Villa detayında göster"
+          name="showNaturePestNotice"
+          checked={showNaturePestNotice}
+          onChange={setShowNaturePestNotice}
+        />
+        <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-gray-50/80 p-4 text-sm text-gray-700">
+          <p className="font-semibold text-gray-900">
+            {VILLA_NATURE_PEST_NOTICE.title}
+          </p>
+          <p>{VILLA_NATURE_PEST_NOTICE.intro}</p>
+          {VILLA_NATURE_PEST_NOTICE.items.map((item) => (
+            <p key={item.label}>
+              <span className="font-semibold text-gray-900">{item.label}:</span>{" "}
+              {item.text}
+            </p>
+          ))}
         </div>
       </SectionCard>
 

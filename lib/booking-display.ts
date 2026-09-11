@@ -1,16 +1,12 @@
-import { BookingStatus } from "@prisma/client";
-import { calculateNights } from "@/lib/queries/bookings";
+import { calculateNights } from "@/lib/stay-nights";
+import { BOOKING_STATUS_META } from "@/lib/booking-status";
+import type { BookingStatus } from "@prisma/client";
 
 const WEEKDAY_SHORT = ["Paz", "Pts", "Sal", "Çar", "Per", "Cum", "Cts"] as const;
 
-export type BookingDisplayStatus =
-  | "cancelled"
-  | "prepayment"
-  | "new"
-  | "confirmed";
-
 export type AdminBookingListItem = {
   id: string;
+  externalCode: number | null;
   checkIn: Date;
   checkOut: Date;
   adults: number;
@@ -23,8 +19,25 @@ export type AdminBookingListItem = {
   totalPrice: number | null;
   status: BookingStatus;
   createdAt: Date;
+  /** CONFIRMED'a geçiş zamanı (activity log); eski aktarımlarda null olabilir */
+  confirmedAt: Date | null;
+  optionExpiresAt: Date | null;
+  /** details.prepaymentAmount — talep/formdan gelen gerçek ön ödeme */
+  prepaymentAmount: number | null;
+  /** details.importPaymentMethod / paymentMethod */
+  paymentMethod: string | null;
+  /** details.siteInfo — talebin geldiği site adı */
+  siteInfo: string;
+  /** Site domain (AgencySite / originDomain / şirket fallback) */
+  siteDomain: string;
+  /**
+   * Ev sahibi ödemeleri raporu: villa sahibine ödeme yapılacak vade tarihi.
+   * Diğer listelerde tanımsızdır; ödeme tarihi filtresi yalnızca bu alan varken uygulanır.
+   */
+  ownerPaymentDueAt?: Date | null;
   villa: {
     id: string;
+    villaId: number | null;
     slug: string;
     name: string;
     originalName: string;
@@ -32,51 +45,31 @@ export type AdminBookingListItem = {
   };
 };
 
-export function formatBookingDisplayNumber(id: string): string {
-  const digits = id.replace(/\D/g, "");
-  const value = Number(digits.slice(-5) || "0") % 90000;
-  return `#${String(30000 + value).padStart(5, "0")}`;
+export { BOOKING_STATUS_META };
+
+/** Rezervasyon No — yalnızca externalCode (eski sahte #/KOD üretimi yok). */
+export function formatBookingReservationNo(
+  booking: Pick<AdminBookingListItem, "externalCode"> | number | null | undefined
+): string {
+  const code =
+    typeof booking === "number" || booking == null || typeof booking === "undefined"
+      ? booking
+      : booking.externalCode;
+  return code != null ? String(code) : "—";
 }
 
-export function formatBookingShortCode(id: string): string {
-  return id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
+/** @deprecated Rezervasyon KOD kaldırıldı; formatBookingReservationNo kullanın. */
+export function formatBookingDisplayNumber(
+  booking: Pick<AdminBookingListItem, "externalCode" | "id"> | string
+): string {
+  if (typeof booking === "string") return "—";
+  return formatBookingReservationNo(booking);
 }
 
-export function resolveBookingDisplayStatus(
-  booking: Pick<AdminBookingListItem, "status" | "createdAt" | "totalPrice">
-): BookingDisplayStatus {
-  if (booking.status === BookingStatus.CANCELLED) return "cancelled";
-  if (booking.status === BookingStatus.CONFIRMED) return "confirmed";
-  if (
-    booking.totalPrice != null &&
-    Date.now() - booking.createdAt.getTime() > 24 * 60 * 60 * 1000
-  ) {
-    return "prepayment";
-  }
-  return "new";
+/** @deprecated Rezervasyon KOD pasif. */
+export function formatBookingShortCode(_id: string): string {
+  return "";
 }
-
-export const BOOKING_STATUS_META: Record<
-  BookingDisplayStatus,
-  { label: string; className: string }
-> = {
-  cancelled: {
-    label: "İptal",
-    className: "bg-red-100 text-red-700",
-  },
-  prepayment: {
-    label: "Ön Ödeme",
-    className: "bg-amber-100 text-amber-800",
-  },
-  new: {
-    label: "Yeni Rezervasyon",
-    className: "bg-violet-100 text-violet-700",
-  },
-  confirmed: {
-    label: "Onaylandı",
-    className: "bg-emerald-100 text-emerald-700",
-  },
-};
 
 export function formatStaySummary(checkIn: Date, checkOut: Date) {
   const nights = calculateNights(checkIn, checkOut);
@@ -105,18 +98,70 @@ export function formatGuestCounts(booking: Pick<
   };
 }
 
+/** @deprecated Gerçek tutar için booking.prepaymentAmount kullanın */
 export function estimatePrepaymentAmount(totalPrice: number | null): number | null {
   if (totalPrice == null || totalPrice <= 0) return null;
   return Math.round(totalPrice * 0.184);
 }
 
+export function resolveBookingPrepaymentAmount(
+  booking: Pick<AdminBookingListItem, "prepaymentAmount" | "totalPrice">
+): number | null {
+  if (booking.prepaymentAmount != null && booking.prepaymentAmount > 0) {
+    return booking.prepaymentAmount;
+  }
+  return null;
+}
+
+export function resolvePaymentMethodLabel(
+  paymentMethod: string | null | undefined
+): string {
+  if (!paymentMethod?.trim()) return "—";
+  const value = paymentMethod.trim();
+  if (value === "bank_transfer" || value === "transfer") return "Havale / EFT";
+  if (value === "credit_card" || value === "card") return "Kredi Kartı";
+  return value;
+}
+
+/** @deprecated resolvePaymentMethodLabel kullanın */
 export function resolvePaymentMethod(id: string): string {
   const hash = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return hash % 2 === 0 ? "Havale / EFT" : "Kredi Kartı";
 }
 
 export function formatMoneyPlain(amount: number): string {
-  return `${amount.toLocaleString("tr-TR")} TL`;
+  const value = Math.round(Number(amount));
+  if (!Number.isFinite(value)) return "—";
+  return `${value.toLocaleString("tr-TR", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  })} TL`;
+}
+
+/** Input alanları için kuruşsuz, binlik ayraçlı tutar (döviz cinsi yok). */
+export function formatMoneyInputValue(amount: number): string {
+  const value = Math.round(Number(amount));
+  if (!Number.isFinite(value)) return "";
+  return value.toLocaleString("tr-TR", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  });
+}
+
+/** Liste / durum sütunu için tarih-saat (boşsa null) */
+export function formatBookingDateTime(
+  value: Date | string | null | undefined
+): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function formatFacilityCode(villa: AdminBookingListItem["villa"]): string {

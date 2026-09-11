@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { compareSurroundingNames } from "@/lib/surrounding-utils";
 
 export async function getSurroundingAdminData() {
   const categories = await prisma.surroundingCategory.findMany({
@@ -16,18 +17,24 @@ export async function getSurroundingAdminData() {
           sortOrder: true,
           active: true,
         },
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
     },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
 
-  const totalLocations = categories.reduce(
+  const sortedCategories = categories.map((category) => ({
+    ...category,
+    locations: [...category.locations].sort((left, right) =>
+      compareSurroundingNames(left.name, right.name)
+    ),
+  }));
+
+  const totalLocations = sortedCategories.reduce(
     (sum, category) => sum + category.locations.length,
     0
   );
 
-  return { categories, totalLocations };
+  return { categories: sortedCategories, totalLocations };
 }
 
 export type SurroundingCategoryItem = Awaited<
