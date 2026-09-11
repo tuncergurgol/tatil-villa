@@ -12,6 +12,7 @@ import {
   computeNetPrice,
   defaultDetailsFromBooking,
   formatGuestFullName,
+  normalizeOwnerPayments,
   resolveExternalCode,
   type BookingDetails,
   type BookingGuestEntry,
@@ -646,6 +647,22 @@ function buildOwnerPaymentLines(
     lines.push({
       label: "Villa Sahibine Ödeme Yapılacak Tarih",
       amountLabel: formatOwnerPaymentDueDateLabel(dueDateRaw) || "—",
+    });
+  }
+
+  const ownerPayments = normalizeOwnerPayments(details.ownerPayments);
+  if (ownerPayments.length > 0) {
+    ownerPayments.forEach((payment, index) => {
+      const suffix =
+        ownerPayments.length > 1 ? ` (${index + 1})` : "";
+      lines.push({
+        label: `Villa Sahibine Yapılan Ödeme Tarihi${suffix}`,
+        amountLabel: formatOwnerPaymentDueDateLabel(payment.paidAt) || "—",
+      });
+      lines.push({
+        label: `Villa Sahibine Yapılan Ödeme Tutarı${suffix}`,
+        amountLabel: formatMoneyPlain(payment.amount),
+      });
     });
   }
 

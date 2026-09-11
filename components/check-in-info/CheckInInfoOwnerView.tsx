@@ -55,9 +55,9 @@ function PaymentList({
 }) {
   return (
     <ul className="divide-y divide-slate-100">
-      {lines.map((line) => (
+      {lines.map((line, index) => (
         <li
-          key={line.label}
+          key={`${line.label}-${index}`}
           className="flex items-center justify-between gap-3 py-2.5 text-sm"
         >
           <span className="text-slate-600">{line.label}</span>
