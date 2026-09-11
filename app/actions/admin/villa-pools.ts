@@ -4,6 +4,14 @@ import { revalidatePath } from "next/cache";
 import type { PoolMeasureUnit } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import {
+  mergeFacilityCategoryNames,
+  resolveFacilityCategoryNamesForAmenities,
+} from "@/lib/amenity-facility-links";
+import {
+  amenitiesChanged,
+  mergeAmenitiesWithPools,
+} from "@/lib/villa-pool-amenities";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 
 export type VillaPoolActionState = {
@@ -20,6 +28,38 @@ function parseFloatField(value: FormDataEntryValue | null) {
 async function revalidateVillaEdit(villaId: string) {
   await revalidateVillaEditPage(villaId);
   revalidatePath("/admin/villalar");
+}
+
+/** Havuz kaydı sonrası Özellikler kutularını havuz tipine / ısıtmaya göre işaretle. */
+async function syncVillaAmenitiesFromPools(villaId: string) {
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: {
+      amenities: true,
+      facilityCategories: true,
+    },
+  });
+  if (!villa) return;
+
+  const pools = await prisma.villaPool.findMany({
+    where: { villaId },
+    select: { poolType: true, heated: true },
+  });
+
+  const amenities = mergeAmenitiesWithPools(villa.amenities, pools);
+  if (!amenitiesChanged(villa.amenities, amenities)) return;
+
+  const linkedFacilityCategories =
+    await resolveFacilityCategoryNamesForAmenities(amenities);
+  const facilityCategories = mergeFacilityCategoryNames(
+    villa.facilityCategories,
+    linkedFacilityCategories
+  );
+
+  await prisma.villa.update({
+    where: { id: villaId },
+    data: { amenities, facilityCategories },
+  });
 }
 
 export async function createVillaPool(
@@ -57,6 +97,7 @@ export async function createVillaPool(
     },
   });
 
+  await syncVillaAmenitiesFromPools(villaId);
   await revalidateVillaEdit(villaId);
   return { success: true };
 }
@@ -96,6 +137,7 @@ export async function updateVillaPool(
     },
   });
 
+  await syncVillaAmenitiesFromPools(villaId);
   await revalidateVillaEdit(villaId);
   return { success: true };
 }
