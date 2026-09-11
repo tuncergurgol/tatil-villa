@@ -72,6 +72,20 @@ export type BookingDetails = {
   invoiceNo?: string;
   invoiceAmount?: number | null;
   issuedInvoiceAmount?: number | null;
+  /** EDM e-fatura / e-arşiv gönderim sonucu */
+  edmInvoice?: {
+    status?: string;
+    uuid?: string;
+    invoiceId?: string;
+    eArchive?: boolean;
+    profileId?: string;
+    receiverVkn?: string;
+    receiverAlias?: string;
+    amount?: number;
+    error?: string;
+    sentAt?: string;
+    updatedAt?: string;
+  } | null;
   agencyName?: string;
   agencyCommissionRate?: number | null;
   agencyCommissionEarned?: number | null;

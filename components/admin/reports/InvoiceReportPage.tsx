@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { FileSpreadsheet, Filter, Info } from "lucide-react";
+import { FileSpreadsheet, Filter, Info, Send, Wifi } from "lucide-react";
 import BookingFilterModal, {
   countActiveBookingFilters,
   emptyBookingFilters,
@@ -51,6 +51,8 @@ export default function InvoiceReportPage({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<AdminPageSize>(10);
   const [isPending, startTransition] = useTransition();
+  const [edmBusy, setEdmBusy] = useState(false);
+  const [edmHint, setEdmHint] = useState<string | null>(null);
 
   const activeFilterCount = countActiveBookingFilters(filters);
 
@@ -132,6 +134,75 @@ export default function InvoiceReportPage({
     });
   }
 
+  async function handleEdmStatus() {
+    setEdmBusy(true);
+    setEdmHint(null);
+    try {
+      const response = await fetch("/api/admin/edm/status");
+      const data = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        environment?: string;
+        counterLeft?: number | null;
+        dryRun?: boolean;
+        error?: string;
+      };
+      if (!response.ok || !data.ok) {
+        setEdmHint(data.message || data.error || "EDM bağlantısı başarısız.");
+        return;
+      }
+      const counter =
+        data.counterLeft == null ? "" : ` · Kontör: ${data.counterLeft}`;
+      const dry = data.dryRun ? " · DRY_RUN" : "";
+      setEdmHint(`EDM ${data.environment || ""} oturumu OK${counter}${dry}`);
+    } catch {
+      setEdmHint("EDM durum isteği başarısız.");
+    } finally {
+      setEdmBusy(false);
+    }
+  }
+
+  async function handleEdmSend() {
+    if (exportableItems.length === 0) {
+      window.alert("Gönderilecek faturaya hazır kayıt yok.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `${exportableItems.length} fatura EDM web servisine gönderilecek. Devam edilsin mi?`
+    );
+    if (!confirmed) return;
+
+    setEdmBusy(true);
+    setEdmHint(null);
+    try {
+      const response = await fetch("/api/admin/edm/send-invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingIds: exportableItems.map((item) => item.id),
+        }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        summary?: { ok: number; failed: number; skipped: number };
+      };
+      if (!response.ok) {
+        setEdmHint(data.error || "EDM gönderim başarısız.");
+        return;
+      }
+      const s = data.summary;
+      setEdmHint(
+        s
+          ? `EDM: ${s.ok} başarılı, ${s.failed} hata, ${s.skipped} atlandı. Sayfayı yenileyin.`
+          : "EDM gönderim tamamlandı."
+      );
+    } catch {
+      setEdmHint("EDM gönderim isteği başarısız.");
+    } finally {
+      setEdmBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -142,7 +213,7 @@ export default function InvoiceReportPage({
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Fatura Raporları</h1>
             <p className="text-sm text-gray-500">
-              EDM Portal Excel fatura yükleme formatı
+              EDM Portal Excel + EDM Web Servis (e-Fatura / e-Arşiv)
             </p>
             <p className="mt-1 text-xs text-gray-400">
               Her gün 08:55&apos;te Onaylandı + Giriş gününden 1 gün sonra
@@ -169,6 +240,24 @@ export default function InvoiceReportPage({
           </button>
           <button
             type="button"
+            onClick={handleEdmStatus}
+            disabled={edmBusy}
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-800 hover:bg-teal-50 disabled:opacity-60"
+          >
+            <Wifi className="h-4 w-4" />
+            EDM BAĞLANTI
+          </button>
+          <button
+            type="button"
+            onClick={handleEdmSend}
+            disabled={edmBusy || isPending}
+            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-800 hover:bg-indigo-100 disabled:opacity-60"
+          >
+            <Send className="h-4 w-4" />
+            {edmBusy ? "EDM…" : "EDM'YE GÖNDER"}
+          </button>
+          <button
+            type="button"
             onClick={handleExport}
             disabled={isPending}
             className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
@@ -178,6 +267,12 @@ export default function InvoiceReportPage({
           </button>
         </div>
       </div>
+
+      {edmHint ? (
+        <div className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+          {edmHint}
+        </div>
+      ) : null}
 
       {warnings.length > 0 ? (
         <div className="space-y-2">
@@ -228,6 +323,7 @@ export default function InvoiceReportPage({
                 <th className="px-3 py-2">Konaklama</th>
                 <th className="px-3 py-2">Komisyon (KDV dahil)</th>
                 <th className="px-3 py-2">Fatura Durumu</th>
+                <th className="px-3 py-2">EDM</th>
                 <th className="px-3 py-2">Eksik Alanlar</th>
               </tr>
             </thead>
@@ -267,6 +363,18 @@ export default function InvoiceReportPage({
                           </span>
                         )}
                       </td>
+                      <td className="px-3 py-2 text-gray-700">
+                        {item.edmStatus ? (
+                          <span className="text-xs font-medium">
+                            {item.edmStatus}
+                            {item.edmInvoiceId
+                              ? ` · ${item.edmInvoiceId.slice(0, 8)}…`
+                              : ""}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-amber-800">
                         {item.missing.length > 0 ? item.missing.join(" / ") : "—"}
                       </td>
@@ -276,7 +384,7 @@ export default function InvoiceReportPage({
               ) : (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Filtrelere uygun kayıt bulunamadı.
@@ -286,7 +394,6 @@ export default function InvoiceReportPage({
             </tbody>
           </table>
         </div>
-
         <AdminTablePaginationBar
           page={page}
           totalItems={filteredItems.length}

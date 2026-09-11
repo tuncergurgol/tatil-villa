@@ -34,6 +34,8 @@ export type InvoiceReportListItem = AdminBookingListItem & {
   commissionAmount: number;
   missing: string[];
   exportable: boolean;
+  edmStatus: string | null;
+  edmInvoiceId: string | null;
 };
 
 const invoiceBookingSelect = {
@@ -180,7 +182,7 @@ function resolveGuestInvoiceRecipient(
   };
 }
 
-function toBookingInput(booking: InvoiceBookingRecord): InvoiceReportBookingInput {
+export function toBookingInput(booking: InvoiceBookingRecord): InvoiceReportBookingInput {
   const details = parseBookingDetails(booking.details);
   const isCompensation = booking.status === BookingStatus.COMPENSATION;
   const commissionAmount = isCompensation
@@ -287,6 +289,8 @@ function mapBookingToListItem(
     commissionAmount: invoiceInput.commissionAmount,
     missing,
     exportable: missing.length === 0,
+    edmStatus: details.edmInvoice?.status ?? null,
+    edmInvoiceId: details.edmInvoice?.invoiceId ?? details.edmInvoice?.uuid ?? null,
   };
 }
 
@@ -325,6 +329,42 @@ export async function getInvoiceReportListData() {
     items,
     villas,
     warnings: buildCompanyWarnings(companySettings.taxNumber),
+  };
+}
+
+export async function getInvoiceBookingInputsByIds(bookingIds: string[]) {
+  const uniqueIds = [...new Set(bookingIds.filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return {
+      company: null as Awaited<ReturnType<typeof getCompanySettings>> | null,
+      bookings: [] as Array<{
+        record: InvoiceBookingRecord;
+        input: InvoiceReportBookingInput;
+        missing: string[];
+      }>,
+    };
+  }
+
+  const [companySettings, bookings] = await Promise.all([
+    getCompanySettings(),
+    prisma.booking.findMany({
+      where: { id: { in: uniqueIds } },
+      select: invoiceBookingSelect,
+      orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
+
+  const company = { taxNumber: companySettings.taxNumber };
+  return {
+    company: companySettings,
+    bookings: bookings.map((record) => {
+      const input = toBookingInput(record);
+      return {
+        record,
+        input,
+        missing: checkInvoiceReportMissingFields(input, company),
+      };
+    }),
   };
 }
 
