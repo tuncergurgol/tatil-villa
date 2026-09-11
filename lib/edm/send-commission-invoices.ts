@@ -32,12 +32,24 @@ function pickReceiverAlias(
   const pk = users.find(
     (u) =>
       u.alias &&
-      (!u.unit || /PK|POSTA|GB/i.test(u.unit) || /mail/i.test(u.alias))
+      (/^PK$/i.test(u.unit) || (!u.unit && /pk@/i.test(u.alias)))
   );
   if (pk?.alias) {
     return { eArchive: false as const, alias: pk.alias };
   }
   return { eArchive: true as const, alias: "" };
+}
+
+function pickSenderGbAlias(
+  users: Awaited<ReturnType<EdmSoapClient["checkUser"]>>,
+  fallback: string
+) {
+  const gb = users.find(
+    (u) =>
+      u.alias &&
+      (/^GB$/i.test(u.unit) || /gb@/i.test(u.alias) || /defaultgb@/i.test(u.alias))
+  );
+  return gb?.alias || fallback;
 }
 
 async function persistEdmResult(
@@ -101,7 +113,9 @@ export async function testEdmConnection() {
       const vkn = company.taxNumber.replace(/\D/g, "");
       if (vkn) {
         const users = await client.checkUser(vkn);
-        senderAliases = users.map((u) => u.alias).filter(Boolean);
+        senderAliases = users
+          .filter((u) => u.alias && /^GB$/i.test(u.unit))
+          .map((u) => u.alias);
       }
     } catch {
       senderAliases = [];
@@ -117,8 +131,10 @@ export async function testEdmConnection() {
       counterLeft,
       dryRun: config.dryRun,
       username: config.username,
+      senderAlias: config.senderAlias,
       senderAliases,
       senderAliasConfigured: Boolean(config.senderAlias),
+      invoiceSerial: config.invoiceSerial || null,
     };
   });
 }
@@ -138,6 +154,22 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
   }
 
   await withEdmSession(async (client) => {
+    let resolvedSenderAlias = config.senderAlias;
+    try {
+      const senderUsers = await client.checkUser(companyTax);
+      resolvedSenderAlias = pickSenderGbAlias(
+        senderUsers,
+        config.senderAlias
+      );
+    } catch {
+      // config.senderAlias / test default ile devam
+    }
+    if (!resolvedSenderAlias) {
+      throw new Error(
+        "EDM_SENDER_ALIAS tanımlı değil (GİB gönderici birim / GB etiketi)."
+      );
+    }
+
     for (const item of loaded.bookings) {
       const base: EdmSendInvoiceItemResult = {
         bookingId: item.record.id,
@@ -217,6 +249,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
             uuid: ubl.uuid,
             eArchive,
             profileId: ubl.profileId,
+            senderAlias: resolvedSenderAlias,
             receiverVkn: ubl.receiverVkn,
             receiverAlias,
             amount: ubl.gross,
@@ -237,7 +270,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
 
         const sent = await client.sendInvoice({
           senderVkn: companyTax,
-          senderAlias: config.senderAlias,
+          senderAlias: resolvedSenderAlias,
           receiverVkn: ubl.receiverVkn,
           receiverAlias,
           eArchive,
@@ -252,6 +285,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           invoiceId: sent.id,
           eArchive,
           profileId: ubl.profileId,
+          senderAlias: resolvedSenderAlias,
           receiverVkn: ubl.receiverVkn,
           receiverAlias,
           amount: ubl.gross,

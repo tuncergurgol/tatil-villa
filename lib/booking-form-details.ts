@@ -79,6 +79,7 @@ export type BookingDetails = {
     invoiceId?: string;
     eArchive?: boolean;
     profileId?: string;
+    senderAlias?: string;
     receiverVkn?: string;
     receiverAlias?: string;
     amount?: number;

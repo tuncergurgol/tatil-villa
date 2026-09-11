@@ -26,6 +26,10 @@ function envBool(value: string | undefined, fallback = false) {
   return /^(1|true|yes|on)$/i.test(value.trim());
 }
 
+/** EDM test ortamı varsayılan GİB gönderici birim (GB) etiketi */
+export const EDM_TEST_DEFAULT_SENDER_ALIAS =
+  "urn:mail:defaultgb@edmbilisim.com.tr";
+
 export function getEdmConfig(): EdmConfig {
   const environment: EdmEnvironment =
     process.env.EDM_ENV?.trim().toLowerCase() === "production"
@@ -37,13 +41,18 @@ export function getEdmConfig(): EdmConfig {
     endpointOverride ||
     (environment === "production" ? PRODUCTION_ENDPOINT : TEST_ENDPOINT);
 
+  const configuredAlias = process.env.EDM_SENDER_ALIAS?.trim() || "";
+  const senderAlias =
+    configuredAlias ||
+    (environment === "test" ? EDM_TEST_DEFAULT_SENDER_ALIAS : "");
+
   return {
     enabled: envBool(process.env.EDM_ENABLED, false),
     environment,
     endpoint,
     username: process.env.EDM_USERNAME?.trim() || "",
     password: process.env.EDM_PASSWORD?.trim() || "",
-    senderAlias: process.env.EDM_SENDER_ALIAS?.trim() || "",
+    senderAlias,
     applicationName:
       process.env.EDM_APPLICATION_NAME?.trim() || "Tatildeyiz Admin v1.0",
     channelName: process.env.EDM_CHANNEL_NAME?.trim() || "TATILDEYIZ",
