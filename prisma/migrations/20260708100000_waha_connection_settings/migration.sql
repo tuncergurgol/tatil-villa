@@ -1,0 +1,3 @@
+ALTER TABLE "CompanySettings" ADD COLUMN IF NOT EXISTS "wahaBaseUrl" TEXT NOT NULL DEFAULT 'http://localhost:3001';
+ALTER TABLE "CompanySettings" ADD COLUMN IF NOT EXISTS "wahaApiKey" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "CompanySettings" ADD COLUMN IF NOT EXISTS "wahaSessionName" TEXT NOT NULL DEFAULT 'default';

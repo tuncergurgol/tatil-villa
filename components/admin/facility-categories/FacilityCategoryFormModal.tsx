@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/admin/facility-categories";
 import type { FacilityCategoryItem } from "@/lib/queries/facility-categories";
 import { toSurroundingSlug } from "@/lib/surrounding-utils";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface FacilityCategoryFormModalProps {
   category?: FacilityCategoryItem;
@@ -119,6 +120,8 @@ export default function FacilityCategoryFormModal({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, startUpload] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

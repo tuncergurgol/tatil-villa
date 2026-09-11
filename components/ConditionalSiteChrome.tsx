@@ -1,28 +1,28 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 export default function ConditionalSiteChrome({
-  header,
-  footer,
-  children,
+  adminContent,
+  publicContent,
 }: {
-  header: React.ReactNode;
-  footer: React.ReactNode;
-  children: React.ReactNode;
+  adminContent: React.ReactNode;
+  publicContent: React.ReactNode;
 }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
 
+  useEffect(() => {
+    document.body.classList.toggle("admin-shell", isAdmin);
+    return () => {
+      document.body.classList.remove("admin-shell");
+    };
+  }, [isAdmin]);
+
   if (isAdmin) {
-    return <>{children}</>;
+    return <>{adminContent}</>;
   }
 
-  return (
-    <>
-      {header}
-      <main className="flex-1">{children}</main>
-      {footer}
-    </>
-  );
+  return <>{publicContent}</>;
 }

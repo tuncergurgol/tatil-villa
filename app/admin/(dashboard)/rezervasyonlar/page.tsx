@@ -1,16 +1,27 @@
 import BookingManagement from "@/components/admin/bookings/BookingManagement";
+import { parseBookingFiltersFromUrl } from "@/lib/booking-filter-url";
 import { getAdminBookingListData } from "@/lib/queries/admin-bookings";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminBookingsPage() {
-  const data = await getAdminBookingListData();
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AdminBookingsPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const initialFilters = parseBookingFiltersFromUrl(params);
+  const filtersKey = JSON.stringify(params);
+
+  const [data] = await Promise.all([getAdminBookingListData()]);
 
   return (
     <BookingManagement
       bookings={data.bookings}
       villas={data.villas}
       siteDomain={data.siteDomain}
+      initialFilters={initialFilters}
+      filtersKey={filtersKey}
     />
   );
 }

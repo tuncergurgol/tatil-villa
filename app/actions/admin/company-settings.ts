@@ -3,7 +3,30 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { updateCompanySettings } from "@/lib/queries/company-settings";
+import { updateCompanySettings, getCompanySettings } from "@/lib/queries/company-settings";
+import {
+  PUBLIC_SITE_KEYS,
+  isPublicSiteKey,
+  type PublicSiteKey,
+} from "@/lib/public-site-keys";
+import { invalidatePublishUndocumentedVillaSiteKeysCache } from "@/lib/public-villa-site-filter";
+import {
+  upsertAllPublicSiteTracking,
+  type PublicSiteTrackingFields,
+} from "@/lib/queries/public-site-tracking";
+
+const trackingFieldsSchema = z.object({
+  googleAnalyticsId: z.string(),
+  googleAdsId: z.string(),
+  microsoftClarityId: z.string(),
+  googleTagManagerId: z.string(),
+  facebookPixelId: z.string(),
+  googleSearchConsoleCode: z.string(),
+  bingWebmasterCode: z.string(),
+  yandexWebmasterCode: z.string(),
+  headScripts: z.string(),
+  bodyScripts: z.string(),
+});
 
 const companySettingsSchema = z.object({
   agencyName: z.string(),
@@ -18,11 +41,10 @@ const companySettingsSchema = z.object({
   whatsapp: z.string(),
   workingHours: z.string(),
   googleMapsEmbed: z.string(),
-  bankName: z.string(),
-  iban: z.string(),
-  accountHolder: z.string(),
   primaryColor: z.string(),
   secondaryColor: z.string(),
+  accentColor: z.string(),
+  surfaceColor: z.string(),
   logoUrl: z.string(),
   faviconUrl: z.string(),
   ogImageUrl: z.string(),
@@ -44,18 +66,59 @@ const companySettingsSchema = z.object({
   youtube: z.string(),
   seoTitle: z.string(),
   seoDescription: z.string(),
-  googleAnalyticsId: z.string(),
-  googleAdsId: z.string(),
-  microsoftClarityId: z.string(),
-  googleTagManagerId: z.string(),
-  facebookPixelId: z.string(),
-  googleSearchConsoleCode: z.string(),
-  headScripts: z.string(),
-  bodyScripts: z.string(),
   customScripts: z.string(),
   loadingEnabled: z.coerce.boolean(),
   loadingText: z.string(),
+  smtpProvider: z.string(),
+  smtpHost: z.string(),
+  smtpPort: z.coerce.number().int().min(1).max(65535),
+  smtpSecure: z.string(),
+  smtpUser: z.string(),
+  smtpPassword: z.string(),
+  smtpFromEmail: z.string(),
+  smtpFromName: z.string(),
+  smtpEnabled: z.coerce.boolean(),
+  homePopularTitle: z.string(),
+  homePopularActive: z.coerce.boolean(),
+  homePopularSortMode: z.enum(["showcase", "random"]),
+  homeDealTitle: z.string(),
+  homeDealActive: z.coerce.boolean(),
+  homeDealSortMode: z.enum(["showcase", "random"]),
+  homeRecommendedTitle: z.string(),
+  homeRecommendedActive: z.coerce.boolean(),
+  homeRecommendedSortMode: z.enum(["showcase", "random"]),
+  googleReviewUrl: z.string(),
+  guestReviewInvitesEnabled: z.coerce.boolean(),
+  scheduledBookingMessagesEnabled: z.coerce.boolean(),
 });
+
+function readTrackingFields(
+  formData: FormData,
+  siteKey: PublicSiteKey
+): PublicSiteTrackingFields {
+  const prefix = `tracking__${siteKey}__`;
+  const raw = {
+    googleAnalyticsId: String(formData.get(`${prefix}googleAnalyticsId`) ?? ""),
+    googleAdsId: String(formData.get(`${prefix}googleAdsId`) ?? ""),
+    microsoftClarityId: String(
+      formData.get(`${prefix}microsoftClarityId`) ?? ""
+    ),
+    googleTagManagerId: String(
+      formData.get(`${prefix}googleTagManagerId`) ?? ""
+    ),
+    facebookPixelId: String(formData.get(`${prefix}facebookPixelId`) ?? ""),
+    googleSearchConsoleCode: String(
+      formData.get(`${prefix}googleSearchConsoleCode`) ?? ""
+    ),
+    bingWebmasterCode: String(formData.get(`${prefix}bingWebmasterCode`) ?? ""),
+    yandexWebmasterCode: String(
+      formData.get(`${prefix}yandexWebmasterCode`) ?? ""
+    ),
+    headScripts: String(formData.get(`${prefix}headScripts`) ?? ""),
+    bodyScripts: String(formData.get(`${prefix}bodyScripts`) ?? ""),
+  };
+  return trackingFieldsSchema.parse(raw);
+}
 
 export type CompanySettingsActionState = {
   success?: boolean;
@@ -81,11 +144,10 @@ export async function saveCompanySettings(
     whatsapp: formData.get("whatsapp"),
     workingHours: formData.get("workingHours"),
     googleMapsEmbed: formData.get("googleMapsEmbed"),
-    bankName: formData.get("bankName"),
-    iban: formData.get("iban"),
-    accountHolder: formData.get("accountHolder"),
     primaryColor: formData.get("primaryColor"),
     secondaryColor: formData.get("secondaryColor"),
+    accentColor: formData.get("accentColor"),
+    surfaceColor: formData.get("surfaceColor"),
     logoUrl: formData.get("logoUrl"),
     faviconUrl: formData.get("faviconUrl"),
     ogImageUrl: formData.get("ogImageUrl"),
@@ -107,29 +169,109 @@ export async function saveCompanySettings(
     youtube: formData.get("youtube"),
     seoTitle: formData.get("seoTitle"),
     seoDescription: formData.get("seoDescription"),
-    googleAnalyticsId: formData.get("googleAnalyticsId"),
-    googleAdsId: formData.get("googleAdsId"),
-    microsoftClarityId: formData.get("microsoftClarityId"),
-    googleTagManagerId: formData.get("googleTagManagerId"),
-    facebookPixelId: formData.get("facebookPixelId"),
-    googleSearchConsoleCode: formData.get("googleSearchConsoleCode"),
-    headScripts: formData.get("headScripts"),
-    bodyScripts: formData.get("bodyScripts"),
-    customScripts: formData.get("customScripts"),
+    customScripts: formData.get("customScripts") ?? "",
     loadingEnabled: formData.get("loadingEnabled") === "on",
     loadingText: formData.get("loadingText"),
+    smtpProvider: formData.get("smtpProvider"),
+    smtpHost: formData.get("smtpHost"),
+    smtpPort: formData.get("smtpPort"),
+    smtpSecure: formData.get("smtpSecure"),
+    smtpUser: formData.get("smtpUser"),
+    smtpPassword: formData.get("smtpPassword"),
+    smtpFromEmail: formData.get("smtpFromEmail"),
+    smtpFromName: formData.get("smtpFromName"),
+    smtpEnabled: formData.get("smtpEnabled") === "on",
+    homePopularTitle: formData.get("homePopularTitle"),
+    homePopularActive: formData.get("homePopularActive") === "on",
+    homePopularSortMode: formData.get("homePopularSortMode"),
+    homeDealTitle: formData.get("homeDealTitle"),
+    homeDealActive: formData.get("homeDealActive") === "on",
+    homeDealSortMode: formData.get("homeDealSortMode"),
+    homeRecommendedTitle: formData.get("homeRecommendedTitle"),
+    homeRecommendedActive: formData.get("homeRecommendedActive") === "on",
+    homeRecommendedSortMode: formData.get("homeRecommendedSortMode"),
+    googleReviewUrl: formData.get("googleReviewUrl") ?? "",
+    guestReviewInvitesEnabled: formData.get("guestReviewInvitesEnabled") === "on",
+    scheduledBookingMessagesEnabled:
+      formData.get("scheduledBookingMessagesEnabled") === "on",
   });
 
   if (!parsed.success) {
     return { error: "Geçersiz form verisi" };
   }
 
+  let siteTrackings: Array<{
+    siteKey: PublicSiteKey;
+    data: PublicSiteTrackingFields;
+  }>;
   try {
-    await updateCompanySettings(parsed.data);
+    siteTrackings = PUBLIC_SITE_KEYS.map((siteKey) => ({
+      siteKey,
+      data: readTrackingFields(formData, siteKey),
+    }));
+  } catch {
+    return { error: "Analytics form verisi geçersiz" };
+  }
+
+  const tatildeyiz = siteTrackings.find((row) => row.siteKey === "tatildeyiz")
+    ?.data;
+
+  try {
+    await Promise.all([
+      updateCompanySettings({
+        ...parsed.data,
+        ...(tatildeyiz
+          ? {
+              googleAnalyticsId: tatildeyiz.googleAnalyticsId,
+              googleAdsId: tatildeyiz.googleAdsId,
+              microsoftClarityId: tatildeyiz.microsoftClarityId,
+              googleTagManagerId: tatildeyiz.googleTagManagerId,
+              facebookPixelId: tatildeyiz.facebookPixelId,
+              googleSearchConsoleCode: tatildeyiz.googleSearchConsoleCode,
+              headScripts: tatildeyiz.headScripts,
+              bodyScripts: tatildeyiz.bodyScripts,
+            }
+          : {}),
+      }),
+      upsertAllPublicSiteTracking(siteTrackings),
+    ]);
     revalidatePath("/admin/acente/sirket");
+    revalidatePath("/", "layout");
     revalidatePath("/");
     return { success: true };
   } catch {
     return { error: "Kayıt sırasında bir hata oluştu" };
+  }
+}
+
+export async function setUndocumentedVillaPublishForSite(
+  siteKey: string,
+  publish: boolean
+): Promise<CompanySettingsActionState> {
+  await requireAdmin();
+
+  if (!isPublicSiteKey(siteKey)) {
+    return { error: "Geçersiz site" };
+  }
+
+  try {
+    const settings = await getCompanySettings();
+    const current = (
+      settings.publishUndocumentedVillaSiteKeys ?? []
+    ).filter(isPublicSiteKey);
+    const next = publish
+      ? Array.from(new Set([...current, siteKey]))
+      : current.filter((key) => key !== siteKey);
+
+    await updateCompanySettings({
+      publishUndocumentedVillaSiteKeys: next,
+    });
+    invalidatePublishUndocumentedVillaSiteKeysCache();
+    revalidatePath("/admin/acente/sirket");
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    return { success: true };
+  } catch {
+    return { error: "Durum güncellenemedi" };
   }
 }

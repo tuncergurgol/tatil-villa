@@ -68,7 +68,7 @@ export default function VillaForm({
           </select>
         </label>
         <label className="block">
-          <span className="text-sm font-medium">Tesis Tipi</span>
+          <span className="text-sm font-medium">Ev Tipi</span>
           <select
             name="category"
             defaultValue={villa?.category ?? VillaCategory.villa}
@@ -168,7 +168,7 @@ export default function VillaForm({
       </label>
 
       <div className="block">
-        <span className="text-sm font-medium">Olanaklar ve Tesis Kategorileri</span>
+        <span className="text-sm font-medium">Olanaklar ve Ev Kategorileri</span>
         <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
           <VillaFeaturesPicker
             amenityCategories={amenityCategories}

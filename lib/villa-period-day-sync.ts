@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/db";
+import type { Prisma, VillaDayOccupancy } from "@prisma/client";
 import {
   compareDates,
   parseDateKey,
   startOfDay,
   toDateKey,
+  toDbDate,
 } from "@/lib/villa-period-calendar";
 import type { VillaPeriodDayPricingSnapshot } from "@/lib/villa-period-days";
+import { resolveDayDiscountedPrice } from "@/lib/villa-period-pricing";
 
 function enumerateDates(startDate: Date, endDate: Date): Date[] {
   const dates: Date[] = [];
@@ -28,29 +31,245 @@ export async function syncVillaPricePeriodDays(
   snapshot: VillaPeriodDayPricingSnapshot
 ) {
   const dates = enumerateDates(startDate, endDate);
+  const dbDates = dates.map((date) => toDbDate(date));
   const dateKeys = dates.map((date) => toDateKey(date));
 
   await prisma.$transaction(async (tx) => {
+    const existingDays = await tx.villaPricePeriodDay.findMany({
+      where: {
+        villaId,
+        date: { in: dbDates },
+      },
+      select: {
+        date: true,
+        occupancyStatus: true,
+      },
+    });
+    const occupancyByDate = new Map(
+      existingDays.map((day) => [toDateKey(day.date), day.occupancyStatus])
+    );
+
     await tx.villaPricePeriodDay.deleteMany({
       where: {
         villaId,
-        date: { in: dates },
+        date: {
+          gte: toDbDate(startDate),
+          lte: toDbDate(endDate),
+        },
       },
     });
 
-    if (dates.length === 0) return;
+    if (dbDates.length === 0) return;
 
-    await tx.villaPricePeriodDay.createMany({
-      data: dates.map((date) => ({
-        periodId,
-        villaId,
+    for (const date of dates) {
+      const dbDate = toDbDate(date);
+      const daySnapshot = buildDaySnapshotForDate(
+        snapshot,
         date,
-        ...snapshot,
-      })),
-    });
+        occupancyByDate.get(toDateKey(date)) ??
+          snapshot.occupancyStatus ??
+          "EMPTY"
+      );
+      const {
+        occupancyStatus: snapshotOccupancy,
+        ...pricingData
+      } = daySnapshot;
+      const occupancyStatus =
+        occupancyByDate.get(toDateKey(date)) ??
+        snapshotOccupancy ??
+        "EMPTY";
+
+      await tx.villaPricePeriodDay.upsert({
+        where: {
+          villaId_date: {
+            villaId,
+            date: dbDate,
+          },
+        },
+        create: {
+          periodId,
+          villaId,
+          date: dbDate,
+          ...pricingData,
+          occupancyStatus,
+        },
+        update: {
+          periodId,
+          ...pricingData,
+          occupancyStatus,
+        },
+      });
+    }
   });
 
   return dateKeys;
+}
+
+function isWeekendDate(
+  snapshot: VillaPeriodDayPricingSnapshot,
+  date: Date
+): boolean {
+  const day = date.getDay();
+  return (
+    snapshot.weekendPrice != null &&
+    snapshot.weekendDays.length > 0 &&
+    snapshot.weekendDays.includes(day)
+  );
+}
+
+export function buildDaySnapshotForDate(
+  snapshot: VillaPeriodDayPricingSnapshot,
+  date: Date,
+  occupancyStatus?: VillaDayOccupancy
+): VillaPeriodDayPricingSnapshot {
+  const weekend = isWeekendDate(snapshot, date);
+
+  const nightlyPrice = weekend ? snapshot.weekendPrice! : snapshot.nightlyPrice;
+
+  return {
+    ...snapshot,
+    nightlyPrice,
+    discountedNightlyPrice: resolveDayDiscountedPrice(
+      nightlyPrice,
+      snapshot.discount1Rate,
+      snapshot.discount2Rate,
+      snapshot.extraDiscountAmount
+    ),
+    occupancyStatus: occupancyStatus ?? snapshot.occupancyStatus ?? "EMPTY",
+  };
+}
+
+export async function updateVillaPricePeriodDaysInRange(
+  periodId: string,
+  villaId: string,
+  startDate: Date,
+  endDate: Date,
+  snapshot: VillaPeriodDayPricingSnapshot
+) {
+  await prisma.$transaction(async (tx) => {
+    await reassignPeriodDaysInRange(
+      tx,
+      periodId,
+      villaId,
+      startDate,
+      endDate,
+      snapshot
+    );
+  });
+}
+
+export async function reassignPeriodDaysInRange(
+  tx: Prisma.TransactionClient,
+  periodId: string,
+  villaId: string,
+  startDate: Date,
+  endDate: Date,
+  snapshot: VillaPeriodDayPricingSnapshot
+) {
+  const dates = enumerateDates(startDate, endDate);
+
+  for (const date of dates) {
+    const dbDate = toDbDate(date);
+    const existing = await tx.villaPricePeriodDay.findUnique({
+      where: {
+        villaId_date: {
+          villaId,
+          date: dbDate,
+        },
+      },
+      select: {
+        id: true,
+        occupancyStatus: true,
+        availability: true,
+      },
+    });
+
+    const daySnapshot = buildDaySnapshotForDate(
+      snapshot,
+      date,
+      existing?.occupancyStatus
+    );
+
+    const {
+      occupancyStatus: _occupancy,
+      availability: dayAvailability,
+      ...pricingData
+    } = daySnapshot;
+    void _occupancy;
+
+    await tx.villaPricePeriodDay.upsert({
+      where: {
+        villaId_date: {
+          villaId,
+          date: dbDate,
+        },
+      },
+      create: {
+        periodId,
+        villaId,
+        date: dbDate,
+        ...pricingData,
+        availability: dayAvailability,
+        occupancyStatus: daySnapshot.occupancyStatus ?? "EMPTY",
+      },
+      update: {
+        periodId,
+        ...pricingData,
+        availability: existing?.availability ?? dayAvailability,
+        occupancyStatus:
+          existing?.occupancyStatus ??
+          daySnapshot.occupancyStatus ??
+          "EMPTY",
+      },
+    });
+  }
+}
+
+export async function reassignPeriodDaysDiscountInRange(
+  tx: Prisma.TransactionClient,
+  periodId: string,
+  villaId: string,
+  startDate: Date,
+  endDate: Date,
+  discountUpdate: {
+    discount1Rate: number | null;
+    discount2Rate: number | null;
+    extraDiscountAmount: number | null;
+  }
+) {
+  const dates = enumerateDates(startDate, endDate);
+
+  for (const date of dates) {
+    const dbDate = toDbDate(date);
+    const existing = await tx.villaPricePeriodDay.findUnique({
+      where: {
+        villaId_date: {
+          villaId,
+          date: dbDate,
+        },
+      },
+    });
+
+    if (!existing) continue;
+
+    const discountedNightlyPrice = resolveDayDiscountedPrice(
+      existing.nightlyPrice,
+      discountUpdate.discount1Rate,
+      discountUpdate.discount2Rate,
+      discountUpdate.extraDiscountAmount
+    );
+
+    await tx.villaPricePeriodDay.update({
+      where: { id: existing.id },
+      data: {
+        periodId,
+        discount1Rate: discountUpdate.discount1Rate,
+        discount2Rate: discountUpdate.discount2Rate,
+        extraDiscountAmount: discountUpdate.extraDiscountAmount,
+        discountedNightlyPrice,
+      },
+    });
+  }
 }
 
 export async function deleteVillaPricePeriodDays(periodId: string) {
@@ -94,9 +313,23 @@ export async function backfillVillaPricePeriodDays(villaId: string) {
         underfloorHeatingFeeCurrency: period.underfloorHeatingFeeCurrency,
         extraBedFee: period.extraBedFee,
         extraBedFeeCurrency: period.extraBedFeeCurrency,
+        poolHeatingPrivateFee: period.poolHeatingPrivateFee,
+        poolHeatingPrivateFeeCurrency: period.poolHeatingPrivateFeeCurrency,
+        poolHeatingIndoorFee: period.poolHeatingIndoorFee,
+        poolHeatingIndoorFeeCurrency: period.poolHeatingIndoorFeeCurrency,
+        poolHeatingKidsFee: period.poolHeatingKidsFee,
+        poolHeatingKidsFeeCurrency: period.poolHeatingKidsFeeCurrency,
         discount1Rate: period.discount1Rate,
         discount2Rate: period.discount2Rate,
         extraDiscountAmount: period.extraDiscountAmount,
+        weekendPrice: period.weekendPrice,
+        weekendDays: period.weekendDays,
+        weekendMinStayNights: period.weekendMinStayNights,
+        childFee02: period.childFee02,
+        childFee02Currency: period.childFee02Currency,
+        childFee03_09: period.childFee03_09,
+        childFee03_09Currency: period.childFee03_09Currency,
+        occupancyStatus: "EMPTY",
       }
     );
   }

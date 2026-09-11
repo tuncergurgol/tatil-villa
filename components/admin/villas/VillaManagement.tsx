@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Building2,
   Calendar,
@@ -16,26 +16,32 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
-import { deleteVilla } from "@/app/actions/admin/villas";
+import { copyVilla, deleteVilla } from "@/app/actions/admin/villas";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
+import { villaAdminEditPath, villaAdminHizliFiyatPath } from "@/lib/villa-admin-path";
 import VillaDocumentModal from "@/components/admin/villas/VillaDocumentModal";
 import type { AdminVillaListItem } from "@/lib/queries/admin-villas";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 import { facilityTypeOptions } from "@/lib/facility-type";
-import { categoryLabel } from "@/lib/utils";
+import type { RegionTreeNode } from "@/lib/regions-tree";
+import {
+  appendVillaListQuery,
+  buildVillaListPath,
+  buildVillaListSearchParams,
+  matchesVillaListSearch,
+  parseVillaListFilters,
+  type VillaListStatusFilter,
+  type VillaListTypeFilter,
+} from "@/lib/villa-list-filters";
+import { downloadVillaPriceReportExcel } from "@/lib/villa-price-report";
+import VillaRegionTreeFilter from "@/components/admin/villas/VillaRegionTreeFilter";
 
-type StatusFilter = "all" | "active" | "passive";
-type TypeFilter = "all" | "villa" | "apart" | "suit_daire";
-
-interface RegionOption {
-  id: string;
-  slug: string;
-  name: string;
-}
+type StatusFilter = VillaListStatusFilter;
+type TypeFilter = VillaListTypeFilter;
 
 interface VillaManagementProps {
   villas: AdminVillaListItem[];
-  regionOptions: RegionOption[];
+  regionTree: RegionTreeNode[];
 }
 
 function ActionButton({
@@ -54,9 +60,9 @@ function ActionButton({
 
   if (href) {
     return (
-      <Link href={href} className={`${base} ${className}`}>
+      <a href={href} className={`${base} ${className}`}>
         {children}
-      </Link>
+      </a>
     );
   }
 
@@ -68,17 +74,40 @@ function ActionButton({
 }
 
 function VillaRowMenu({
-  villaId,
-  villaName,
+  villa,
   onDelete,
+  onCopy,
   isPending,
+  listQuery,
+  open,
+  onOpenChange,
 }: {
-  villaId: string;
-  villaName: string;
+  villa: AdminVillaListItem;
   onDelete: (id: string, name: string) => void;
+  onCopy: (id: string, name: string) => void;
   isPending: boolean;
+  listQuery: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const hizliFiyatPath = appendVillaListQuery(
+    villaAdminHizliFiyatPath(villa),
+    listQuery
+  );
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        onOpenChange(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open, onOpenChange]);
 
   const items = [
     {
@@ -88,125 +117,183 @@ function VillaRowMenu({
     },
     {
       label: "Hızlı Fiyat",
-      href: villaTakvimPath(villaId),
+      href: hizliFiyatPath,
       icon: FileText,
     },
     {
       label: "Kopyala",
-      onClick: () => window.alert("Villa kopyalama yakında eklenecek."),
+      onClick: () => onCopy(villa.id, villa.name),
       icon: Copy,
     },
     {
       label: "Sil",
-      onClick: () => onDelete(villaId, villaName),
+      onClick: () => onDelete(villa.id, villa.name),
       icon: Trash2,
       danger: true,
     },
   ];
 
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenChange(!open);
+        }}
         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
       >
         <MoreVertical className="h-4 w-4" />
       </button>
-      {open && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-10"
-            onClick={() => setOpen(false)}
-            aria-label="Menüyü kapat"
-          />
-          <div className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
-            {items.map((item) => {
-              const Icon = item.icon;
-              const content = (
-                <>
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
-                </>
-              );
+      {open ? (
+        <div className="absolute right-0 z-50 mt-1 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const content = (
+              <>
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{item.label}</span>
+              </>
+            );
 
-              if (item.href) {
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    {content}
-                  </Link>
-                );
-              }
-
+            if (item.href) {
               return (
-                <button
+                <a
                   key={item.label}
-                  type="button"
-                  disabled={isPending && item.danger}
-                  onClick={() => {
-                    setOpen(false);
-                    item.onClick?.();
-                  }}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
-                    item.danger ? "text-red-600" : "text-gray-700"
-                  }`}
+                  href={item.href}
+                  onClick={() => onOpenChange(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   {content}
-                </button>
+                </a>
               );
-            })}
-          </div>
-        </>
-      )}
+            }
+
+            return (
+              <button
+                key={item.label}
+                type="button"
+                disabled={isPending && (item.danger || item.label === "Kopyala")}
+                onClick={() => {
+                  onOpenChange(false);
+                  item.onClick?.();
+                }}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  item.danger ? "text-red-600" : "text-gray-700"
+                }`}
+              >
+                {content}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 export default function VillaManagement({
   villas,
-  regionOptions,
+  regionTree,
 }: VillaManagementProps) {
   const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [regionFilter, setRegionFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const searchParams = useSearchParams();
+  const filters = useMemo(
+    () => parseVillaListFilters(searchParams),
+    [searchParams]
+  );
+  const [search, setSearch] = useState(filters.q);
+  const listQuery = useMemo(
+    () =>
+      buildVillaListSearchParams({
+        ...filters,
+        q: search,
+      }).toString(),
+    [filters, search]
+  );
   const [documentModal, setDocumentModal] = useState<AdminVillaListItem | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isReportPending, startReportTransition] = useTransition();
+  const [openMenuVillaId, setOpenMenuVillaId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchInputRef.current === document.activeElement) return;
+    setSearch(filters.q);
+  }, [filters.q]);
+
+  function commitSearchToUrl(nextSearch = search) {
+    if (nextSearch.trim() === filters.q.trim()) return;
+    router.replace(
+      buildVillaListPath({
+        ...filters,
+        q: nextSearch,
+      }),
+      { scroll: false }
+    );
+  }
+
+  function updateFilters(
+    patch: Partial<{
+      q: string;
+      regions: string[];
+      type: TypeFilter;
+      status: StatusFilter;
+    }>
+  ) {
+    router.replace(
+      buildVillaListPath({
+        ...filters,
+        q: search,
+        ...patch,
+      }),
+      { scroll: false }
+    );
+  }
 
   const filteredVillas = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-
     return villas.filter((villa) => {
-      const matchesQuery =
-        !query ||
-        villa.name.toLocaleLowerCase("tr-TR").includes(query) ||
-        villa.regionBreadcrumb.toLocaleLowerCase("tr-TR").includes(query) ||
-        villa.location.toLocaleLowerCase("tr-TR").includes(query);
+      const matchesQuery = matchesVillaListSearch(villa, search);
 
       const matchesRegion =
-        regionFilter === "all" || villa.regionIlSlug === regionFilter;
+        filters.regions.length === 0 ||
+        villa.regionPathSlugs.some((slug) => filters.regions.includes(slug));
 
       const matchesType =
-        typeFilter === "all" || villa.category === typeFilter;
+        filters.type === "all" || villa.category === filters.type;
 
       const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && villa.active) ||
-        (statusFilter === "passive" && !villa.active);
+        filters.status === "all" ||
+        (filters.status === "active" && villa.active) ||
+        (filters.status === "passive" && !villa.active);
 
       return matchesQuery && matchesRegion && matchesType && matchesStatus;
     });
-  }, [villas, search, regionFilter, typeFilter, statusFilter]);
+  }, [villas, search, filters]);
+
+  function handleCopy(id: string, name: string) {
+    if (
+      !window.confirm(
+        `"${name}" villasının bir kopyası oluşturulsun mu?\n\nFotoğraflar, belge bilgileri, fiyatlar ve özellikler kopyalanır; takvimdeki dolu günler aktarılmaz.`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await copyVilla(id);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      router.push(result.editPath);
+      router.refresh();
+    });
+  }
 
   function handleDelete(id: string, name: string) {
     if (!window.confirm(`"${name}" silinsin mi?`)) return;
@@ -220,52 +307,91 @@ export default function VillaManagement({
     });
   }
 
+  function handleExportReport() {
+    if (filteredVillas.length === 0) {
+      window.alert("Filtreye uygun villa bulunamadı.");
+      return;
+    }
+
+    startReportTransition(async () => {
+      const params = buildVillaListSearchParams({
+        ...filters,
+        q: search,
+      });
+      const response = await fetch(
+        `/api/admin/villa-price-report?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        window.alert("Excel raporu oluşturulamadı.");
+        return;
+      }
+
+      const data = (await response.json()) as {
+        rows: (string | number)[][];
+        filename: string;
+        rowCount: number;
+      };
+
+      if (data.rowCount === 0) {
+        window.alert("Dışa aktarılacak kayıt bulunamadı.");
+        return;
+      }
+
+      await downloadVillaPriceReportExcel(data.rows, data.filename);
+    });
+  }
+
   return (
-    <div className="mx-auto max-w-[1400px]">
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="flex min-h-screen w-full flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 px-5 py-4">
           <div className="flex min-w-[140px] items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
               <Building2 className="h-5 w-5" />
             </div>
-            <h1 className="text-lg font-bold text-gray-900">Tesisler</h1>
+            <h1 className="text-lg font-bold text-gray-900">Evler</h1>
           </div>
 
           <button
             type="button"
-            onClick={() => window.alert("Rapor indirme yakında eklenecek.")}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            onClick={handleExportReport}
+            disabled={isReportPending}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download className="h-4 w-4" />
-            Rapor
+            {isReportPending ? "Hazırlanıyor…" : "Rapor"}
           </button>
 
           <div className="relative min-w-[180px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
+              ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ara..."
+              onBlur={() => commitSearchToUrl()}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                commitSearchToUrl();
+              }}
+              placeholder="Villa adı, orijinal adı veya belge no ile ara..."
+              autoComplete="off"
               className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
             />
           </div>
 
-          <select
-            value={regionFilter}
-            onChange={(e) => setRegionFilter(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-          >
-            <option value="all">Bölge</option>
-            {regionOptions.map((region) => (
-              <option key={region.id} value={region.slug}>
-                {region.name}
-              </option>
-            ))}
-          </select>
+          <VillaRegionTreeFilter
+            tree={regionTree}
+            selectedSlugs={filters.regions}
+            onChange={(regions) => updateFilters({ regions })}
+          />
 
           <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+            value={filters.type}
+            onChange={(e) =>
+              updateFilters({ type: e.target.value as TypeFilter })
+            }
             className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
           >
             <option value="all">Tip</option>
@@ -287,9 +413,9 @@ export default function VillaManagement({
               <button
                 key={value}
                 type="button"
-                onClick={() => setStatusFilter(value)}
+                onClick={() => updateFilters({ status: value })}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                  statusFilter === value
+                  filters.status === value
                     ? "bg-teal-600 text-white"
                     : "text-gray-600 hover:bg-gray-50"
                 }`}
@@ -314,7 +440,7 @@ export default function VillaManagement({
           </div>
         )}
 
-        <div className="divide-y divide-gray-100">
+        <div className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto">
           {filteredVillas.length > 0 ? (
             filteredVillas.map((villa) => {
               const hasDocument = hasVillaTourismDocument(villa);
@@ -322,7 +448,9 @@ export default function VillaManagement({
               return (
                 <div
                   key={villa.id}
-                  className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
+                  className={`flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between ${
+                    openMenuVillaId === villa.id ? "relative z-30" : ""
+                  }`}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
@@ -352,18 +480,23 @@ export default function VillaManagement({
                       <p className="truncate font-semibold text-gray-900">
                         {villa.name}
                       </p>
+                      {villa.originalName.trim() ? (
+                        <p className="truncate text-sm text-gray-500">
+                          ({villa.originalName})
+                        </p>
+                      ) : null}
                       <p className="truncate text-sm text-gray-500">
                         {villa.regionBreadcrumb || villa.location}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-400">
-                        {categoryLabel(villa.category)}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     <ActionButton
-                      href={`/admin/villalar/${villa.id}/duzenle`}
+                      href={appendVillaListQuery(
+                        villaAdminEditPath(villa),
+                        listQuery
+                      )}
                       className="border-sky-500 bg-sky-500 text-white hover:bg-sky-600"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -371,7 +504,13 @@ export default function VillaManagement({
                     </ActionButton>
 
                     <ActionButton
-                      href={villaTakvimPath(villa.id)}
+                      href={appendVillaListQuery(
+                        villaTakvimPath({
+                          id: villa.id,
+                          villaId: villa.villaId,
+                        }),
+                        listQuery
+                      )}
                       className="border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                     >
                       <Calendar className="h-3.5 w-3.5" />
@@ -394,10 +533,15 @@ export default function VillaManagement({
                     </button>
 
                     <VillaRowMenu
-                      villaId={villa.id}
-                      villaName={villa.name}
+                      villa={villa}
                       onDelete={handleDelete}
+                      onCopy={handleCopy}
                       isPending={isPending}
+                      listQuery={listQuery}
+                      open={openMenuVillaId === villa.id}
+                      onOpenChange={(nextOpen) =>
+                        setOpenMenuVillaId(nextOpen ? villa.id : null)
+                      }
                     />
                   </div>
                 </div>
@@ -411,7 +555,7 @@ export default function VillaManagement({
         </div>
 
         <div className="border-t border-gray-100 px-5 py-3 text-sm text-gray-600">
-          Toplam {filteredVillas.length} / {villas.length} tesis
+          Toplam {filteredVillas.length} / {villas.length} ev
         </div>
       </div>
 

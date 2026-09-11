@@ -8,6 +8,7 @@ import {
   type SurroundingActionState,
 } from "@/app/actions/admin/surrounding";
 import type { SurroundingCategoryItem } from "@/lib/queries/surrounding";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface CategoryFormModalProps {
   category?: SurroundingCategoryItem;
@@ -24,6 +25,8 @@ export default function CategoryFormModal({
     SurroundingActionState,
     FormData
   >(action, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

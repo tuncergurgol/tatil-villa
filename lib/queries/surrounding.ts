@@ -1,33 +1,75 @@
 import { prisma } from "@/lib/db";
+import { compareSurroundingNames } from "@/lib/surrounding-utils";
 
 export async function getSurroundingAdminData() {
-  const categories = await prisma.surroundingCategory.findMany({
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      sortOrder: true,
-      active: true,
-      locations: {
-        select: {
-          id: true,
-          name: true,
-          categoryId: true,
-          sortOrder: true,
-          active: true,
+  const [categories, regions] = await Promise.all([
+    prisma.surroundingCategory.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        sortOrder: true,
+        active: true,
+        locations: {
+          select: {
+            id: true,
+            name: true,
+            categoryId: true,
+            latitude: true,
+            longitude: true,
+            isDefault: true,
+            sortOrder: true,
+            active: true,
+            regionScopes: {
+              select: {
+                regionId: true,
+                region: {
+                  select: {
+                    id: true,
+                    name: true,
+                    level: true,
+                  },
+                },
+              },
+            },
+          },
         },
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
-    },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-  });
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+    prisma.region.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        level: true,
+        parentId: true,
+      },
+      orderBy: [{ name: "asc" }],
+    }),
+  ]);
 
-  const totalLocations = categories.reduce(
+  const sortedCategories = categories.map((category) => ({
+    ...category,
+    locations: [...category.locations]
+      .sort((left, right) => compareSurroundingNames(left.name, right.name))
+      .map((location) => ({
+        ...location,
+        regionIds: location.regionScopes.map((scope) => scope.regionId),
+        regions: location.regionScopes.map((scope) => scope.region),
+      })),
+  }));
+
+  const totalLocations = sortedCategories.reduce(
     (sum, category) => sum + category.locations.length,
     0
   );
 
-  return { categories, totalLocations };
+  return {
+    categories: sortedCategories,
+    totalLocations,
+    regions,
+  };
 }
 
 export type SurroundingCategoryItem = Awaited<
@@ -36,3 +78,7 @@ export type SurroundingCategoryItem = Awaited<
 
 export type SurroundingLocationItem =
   SurroundingCategoryItem["locations"][number];
+
+export type SurroundingRegionOption = Awaited<
+  ReturnType<typeof getSurroundingAdminData>
+>["regions"][number];

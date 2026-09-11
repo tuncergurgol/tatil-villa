@@ -1,10 +1,12 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import AvailabilitySearchPage from "@/components/admin/availability/AvailabilitySearchPage";
+import { requireAdmin } from "@/lib/auth-helpers";
+import { getAvailabilitySearchPageData } from "@/lib/queries/availability-search";
 
-export default function UygunlukPage() {
-  return (
-    <ComingSoon
-      title="Uygunluk Ara"
-      description="Tesis müsaitlik arama modülü yakında eklenecek."
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function UygunlukPage() {
+  await requireAdmin();
+  const pageData = await getAvailabilitySearchPageData();
+
+  return <AvailabilitySearchPage pageData={pageData} />;
 }
