@@ -1123,6 +1123,132 @@ export function parseBoceksoftPriceRangeRows(
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
 }
 
+/**
+ * Boceksoft / birebirvilla `#priceTable` (veya tblbrs satırları):
+ * başlangıç | bitiş | gecelik (opsiyonel &lt;del&gt; liste + &lt;span&gt; indirimli).
+ * Min. kiralama bir sonraki colspan satırında gelir.
+ */
+export function parseBoceksoftPriceTable(
+  html: string,
+  damageDeposit?: { amount: number | null; currency: VillaPeriodCurrency }
+): MappedVillaPricePeriod[] {
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+
+  // colspan'lu "Minimum Kiralama" satırlarını alma; hücreler </tr> aşmasın.
+  const rowRe =
+    /<tr\b[^>]*>\s*<td\b(?![^>]*\bcolspan=)[^>]*class=["'][^"']*\btblbrs\b[^"']*["'][^>]*>((?:(?!<\/td>|<\/tr>)[\s\S])*)<\/td>\s*<td\b(?![^>]*\bcolspan=)[^>]*>((?:(?!<\/td>|<\/tr>)[\s\S])*)<\/td>\s*<td\b(?![^>]*\bcolspan=)[^>]*class=["'][^"']*\btblbr\b[^"']*["'][^>]*>((?:(?!<\/td>|<\/tr>)[\s\S])*)<\/td>/gi;
+
+  let match: RegExpExecArray | null;
+  while ((match = rowRe.exec(html)) !== null) {
+    const startText = stripTags(decodeHtmlEntities(match[1] ?? ""))
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const endText = stripTags(decodeHtmlEntities(match[2] ?? ""))
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!/\d{4}/.test(startText) || /Minimum\s+Kiralama/i.test(startText)) {
+      continue;
+    }
+
+    const range = parseTurkishDateRange(`${startText} - ${endText}`);
+    if (!range) continue;
+
+    const priceCell = match[3] ?? "";
+    const delRaw = priceCell.match(
+      /<del\b[^>]*data-price=["']([^"']+)["']/i
+    )?.[1];
+    const saleTag =
+      priceCell.match(
+        /<(?:span|strong|b)\b[^>]*data-(?:t-show-price|label)=["'][^"']*(?:g[uü]nl[uü]k|Gecelik)[^"']*["'][^>]*data-price=["']([^"']+)["'][^>]*>/i
+      ) ??
+      priceCell.match(
+        /<(?:span|strong|b)\b[^>]*data-price=["']([^"']+)["'][^>]*>/i
+      );
+    const plainPriceRaw = priceCell.match(/data-price=["']([^"']+)["']/i)?.[1];
+
+    const listPrice = delRaw
+      ? Math.round(parseLocalizedMoney(delRaw))
+      : null;
+    const salePrice = saleTag?.[1]
+      ? Math.round(parseLocalizedMoney(saleTag[1]))
+      : plainPriceRaw
+        ? Math.round(parseLocalizedMoney(plainPriceRaw))
+        : null;
+
+    if (salePrice == null || !Number.isFinite(salePrice) || salePrice <= 0) {
+      continue;
+    }
+
+    let nightlyPrice = salePrice;
+    let discount1Rate: number | null = null;
+    if (
+      listPrice != null &&
+      Number.isFinite(listPrice) &&
+      listPrice > salePrice
+    ) {
+      nightlyPrice = listPrice;
+      const computed = Math.round((1 - salePrice / listPrice) * 100);
+      const preview = calculateDiscountAmounts(listPrice, computed, 0, 0);
+      discount1Rate =
+        preview.discountedNightlyPrice === salePrice
+          ? computed
+          : Math.max(1, Math.min(99, computed));
+      // Yuvarlama kayması: oran tutmazsa ekstra tutarı buildMappedPeriod taşımaz;
+      // en yakın yüzdeyi kullan (çoğu Boceksoft satırı tam %10/%15).
+      if (preview.discountedNightlyPrice !== salePrice) {
+        let bestRate = computed;
+        let bestDiff = Math.abs(preview.discountedNightlyPrice - salePrice);
+        for (const rate of [computed - 1, computed + 1, computed]) {
+          if (rate < 1 || rate > 99) continue;
+          const p = calculateDiscountAmounts(listPrice, rate, 0, 0);
+          const diff = Math.abs(p.discountedNightlyPrice - salePrice);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestRate = rate;
+          }
+        }
+        discount1Rate = bestRate;
+      }
+    }
+
+    const currencyTag =
+      priceCell.match(/data-doviz=["']([^"']+)["']/i)?.[1] ?? "tl";
+    const currency = mapCurrencyCode(currencyTag);
+
+    const after = html.slice(
+      match.index + match[0].length,
+      match.index + match[0].length + 500
+    );
+    const minStayMatch = after.match(
+      /Minimum\s+Kiralama\s*:\s*(\d+)\s*Gece/i
+    );
+
+    const key = `${toDateKey(range.start)}_${toDateKey(range.end)}_${nightlyPrice}_${discount1Rate ?? 0}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate: range.start,
+        endDate: range.end,
+        nightlyPrice,
+        currency,
+        minStayNights: minStayMatch ? Number(minStayMatch[1]) : null,
+        damageDeposit: damageDeposit?.amount ?? null,
+        damageDepositCurrency: damageDeposit?.currency ?? currency,
+        discount1Rate,
+      })
+    );
+  }
+
+  return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
+}
+
 function extractBoceksoftCalendarMeta(html: string): {
   villaId: string | null;
   doviz: string;
@@ -1620,6 +1746,8 @@ export function parseGenericHtmlPeriods(html: string): MappedVillaPricePeriod[] 
   const deposit = extractDamageDeposit(html);
   const bocek = parseBoceksoftPeriodList(html, deposit);
   if (bocek.length > 0) return bocek;
+  const priceTable = parseBoceksoftPriceTable(html, deposit);
+  if (priceTable.length > 0) return priceTable;
 
   const periods: MappedVillaPricePeriod[] = [];
   const blockRe =
@@ -3289,6 +3417,9 @@ async function scrapeBoceksoft(
   const deposit = extractDamageDeposit(html);
   let periods = parseBoceksoftPeriodList(html, deposit);
   if (periods.length === 0) {
+    periods = parseBoceksoftPriceTable(html, deposit);
+  }
+  if (periods.length === 0) {
     periods = parseBoceksoftPriceRangeRows(html, deposit);
   }
   const meta = extractBoceksoftCalendarMeta(html);
@@ -3299,11 +3430,14 @@ async function scrapeBoceksoft(
     host.includes("dalvillalari") ||
     host.includes("kiralikvilladatatil") ||
     host.includes("yazvillalari") ||
+    host.includes("birebirvilla") ||
     isYazlikcim ||
     Boolean(meta.villaId) ||
     html.includes("/ajax/villatarih") ||
     html.includes("boceksoft") ||
-    html.includes("price-range-hover");
+    html.includes("price-range-hover") ||
+    html.includes('id="priceTable"') ||
+    html.includes("id='priceTable'");
 
   if (!looksBocek && periods.length === 0) return null;
 

@@ -16,7 +16,10 @@ export type PeriodPriceItem = {
   id: string;
   startDate: string;
   endDate: string;
+  /** Liste / dönem gecelik fiyatı (indirim öncesi). */
   nightlyPrice: number;
+  /** İndirimli gecelik; yoksa veya listeyle aynıysa tek fiyat gösterilir. */
+  discountedNightlyPrice?: number | null;
   currency: VillaPeriodCurrency | string;
   minStayNights: number | null;
   cleaningFee: number | null;
@@ -250,12 +253,27 @@ export default function PeriodPricesModal({
               period.endDate
             );
             const tip = cleaningTooltip(period);
-            const displayPrice = convertCurrencyAmount(
+            const listPrice = convertCurrencyAmount(
               period.nightlyPrice,
               period.currency,
               currency,
               exchangeRates
             );
+            const saleRaw =
+              period.discountedNightlyPrice != null &&
+              period.discountedNightlyPrice > 0 &&
+              period.discountedNightlyPrice < period.nightlyPrice
+                ? period.discountedNightlyPrice
+                : null;
+            const salePrice =
+              saleRaw != null
+                ? convertCurrencyAmount(
+                    saleRaw,
+                    period.currency,
+                    currency,
+                    exchangeRates
+                  )
+                : null;
             const showTip = tooltipId === period.id;
 
             return (
@@ -300,13 +318,30 @@ export default function PeriodPricesModal({
                         ) : null}
                       </div>
                     </div>
-                    <p
-                      className={`shrink-0 text-base font-bold tabular-nums sm:text-lg ${
-                        active ? "text-teal-600" : "text-slate-800"
-                      }`}
-                    >
-                      {formatMoney(displayPrice, currency)}
-                    </p>
+                    <div className="shrink-0 text-right">
+                      {salePrice != null ? (
+                        <>
+                          <p className="text-sm font-semibold tabular-nums text-rose-500 line-through">
+                            {formatMoney(listPrice, currency)}
+                          </p>
+                          <p
+                            className={`text-base font-bold tabular-nums sm:text-lg ${
+                              active ? "text-teal-600" : "text-slate-800"
+                            }`}
+                          >
+                            {formatMoney(salePrice, currency)}
+                          </p>
+                        </>
+                      ) : (
+                        <p
+                          className={`text-base font-bold tabular-nums sm:text-lg ${
+                            active ? "text-teal-600" : "text-slate-800"
+                          }`}
+                        >
+                          {formatMoney(listPrice, currency)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   {showTip && tip ? (
                     <p className="mt-2 rounded-lg bg-slate-700 px-2.5 py-2 text-[11px] leading-snug text-white">

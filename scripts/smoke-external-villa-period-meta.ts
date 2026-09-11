@@ -3,10 +3,12 @@ import {
   extractScrapedPeriodDefaults,
   finalizeScrapedPeriods,
   parseAkdenizvillamPriceRows,
+  parseBoceksoftPriceTable,
   parseVillavillamPriceList,
   scrapeExternalVillaPage,
 } from "../lib/external-villa-page-scrape";
 import type { MappedVillaPricePeriod } from "../lib/tatildeyiz-period-import";
+import { toDateKey } from "../lib/villa-period-calendar";
 
 async function main() {
 const sampleHtml = `
@@ -214,6 +216,27 @@ assert.equal(villavillamDiscounted[0]?.discountedNightlyPrice, 7249);
 assert.equal(villavillamDiscounted[1]?.nightlyPrice, 7250);
 assert.equal(villavillamDiscounted[1]?.discount1Rate, 10);
 assert.equal(villavillamDiscounted[1]?.discountedNightlyPrice, 6525);
+
+const birebirPriceTableHtml = `
+<table id="priceTable">
+<tr><td class="tblbrs">1&nbsp;Eylül&nbsp;2026</td><td>10&nbsp;Eylül&nbsp;2026</td><td class="tblbr"><span data-label="Gecelik" data-doviz="tl" data-price="19900">19.900₺</span></td></tr>
+<tr><td colspan="4" class="tblbr tblbrs">Minimum Kiralama : 5 Gece</td></tr>
+<tr><td class="tblbrs">11&nbsp;Eylül&nbsp;2026</td><td>14&nbsp;Eylül&nbsp;2026</td><td class="tblbr"><del data-label="Gecelik" data-doviz="tl" data-price="19900">19.900₺</del><span data-label="Gecelik" data-doviz="tl" data-price="17910">17.910₺</span></td></tr>
+<tr><td colspan="4" class="tblbr tblbrs">Minimum Kiralama : 5 Gece</td></tr>
+</table>
+`;
+const birebirPeriods = parseBoceksoftPriceTable(birebirPriceTableHtml);
+assert.equal(birebirPeriods.length, 2);
+assert.equal(toDateKey(birebirPeriods[0]!.startDate), "2026-09-01");
+assert.equal(toDateKey(birebirPeriods[0]!.endDate), "2026-09-10");
+assert.equal(birebirPeriods[0]!.nightlyPrice, 19900);
+assert.equal(birebirPeriods[0]!.discount1Rate, null);
+assert.equal(toDateKey(birebirPeriods[1]!.startDate), "2026-09-11");
+assert.equal(toDateKey(birebirPeriods[1]!.endDate), "2026-09-14");
+assert.equal(birebirPeriods[1]!.nightlyPrice, 19900);
+assert.equal(birebirPeriods[1]!.discount1Rate, 10);
+assert.equal(birebirPeriods[1]!.discountedNightlyPrice, 17910);
+assert.equal(birebirPeriods[1]!.minStayNights, 5);
 
 const villacim = await scrapeExternalVillaPage(
   "https://www.villacim.com.tr/villa-tuana-kayakoy"
