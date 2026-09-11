@@ -71,18 +71,27 @@ async function persistEdmResult(
   details: ReturnType<typeof parseBookingDetails>,
   payload: Record<string, unknown>
 ) {
+  const previous =
+    typeof details.edmInvoice === "object" && details.edmInvoice
+      ? details.edmInvoice
+      : {};
+  const next = {
+    ...previous,
+    ...payload,
+    updatedAt: new Date().toISOString(),
+  } as Record<string, unknown>;
+
+  // Başarılı/dry-run kayıtta eski hata metnini temizle
+  if (payload.status === "SENT" || payload.status === "DRY_RUN") {
+    delete next.error;
+  }
+
   await prisma.booking.update({
     where: { id: bookingId },
     data: {
       details: {
         ...details,
-        edmInvoice: {
-          ...(typeof details.edmInvoice === "object" && details.edmInvoice
-            ? details.edmInvoice
-            : {}),
-          ...payload,
-          updatedAt: new Date().toISOString(),
-        },
+        edmInvoice: next,
       },
     },
   });

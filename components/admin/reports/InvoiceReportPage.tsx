@@ -380,7 +380,7 @@ export default function InvoiceReportPage({
                                 ? ` · ${item.edmInvoiceId.slice(0, 8)}…`
                                 : ""}
                             </span>
-                            {item.edmError ? (
+                            {item.edmError && item.edmStatus !== "SENT" ? (
                               <p className="max-w-xs text-xs text-red-600">
                                 {item.edmError}
                               </p>
