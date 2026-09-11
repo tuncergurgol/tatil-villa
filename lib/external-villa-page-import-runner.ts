@@ -184,6 +184,10 @@ export async function importVillaPeriodsFromExternalPage(
       cleaningFeeCurrency: true,
       damageDeposit: true,
       damageDepositCurrency: true,
+      extraBedFee: true,
+      extraBedFeeCurrency: true,
+      petCleaningFee: true,
+      petCleaningFeeCurrency: true,
     },
   });
 

@@ -440,6 +440,10 @@ export type ScrapedVillaPeriodDefaults = {
   cleaningFeeCurrency: VillaPeriodCurrency;
   damageDeposit: number | null;
   damageDepositCurrency: VillaPeriodCurrency;
+  extraBedFee: number | null;
+  extraBedFeeCurrency: VillaPeriodCurrency;
+  petCleaningFee: number | null;
+  petCleaningFeeCurrency: VillaPeriodCurrency;
 };
 
 export type ScrapedVillaPeriodMeta = Partial<ScrapedVillaPeriodDefaults>;
@@ -493,10 +497,24 @@ function parseCleaningFeeAmount(text: string): {
   amount: number | null;
   currency: VillaPeriodCurrency;
 } {
+  // "5 gece altı konaklamaya 3500 TL temizlik" — depozito tutarını (uzaktan TL) yutma
+  const thresholdFee = text.match(
+    /(?:gece\s*alt[ıi]|geceden\s+(?:daha\s+)?(?:az|k[ıi]sa)|haftadan\s+(?:daha\s+)?(?:az|k[ıi]sa))[^.]{0,80}?(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,24}temizlik\s*[üu]creti/i
+  );
+  if (thresholdFee?.[1]) {
+    const amount = positiveInt(parseTurkishMoneyAmount(thresholdFee[1]));
+    if (amount != null) {
+      return {
+        amount,
+        currency: mapCurrencyCode(thresholdFee[2] ?? "TL"),
+      };
+    }
+  }
+
   const patterns = [
-    /ekstra\s+(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,60}temizlik/i,
-    /(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,40}temizlik/i,
-    /temizlik\s*[üu]creti\s*[-–:]?\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i,
+    /(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)\s+temizlik\s*[üu]creti\s*al/i,
+    /ekstra\s+(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,40}temizlik\s*[üu]creti/i,
+    /(?:^|[^a-zı])temizlik\s*[üu]creti\s*[-–:]?\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
@@ -509,6 +527,43 @@ function parseCleaningFeeAmount(text: string): {
     };
   }
   return { amount: null, currency: "TL" };
+}
+
+function extractLabeledMoneyFee(
+  text: string,
+  patterns: RegExp[]
+): { amount: number | null; currency: VillaPeriodCurrency } {
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match?.[1]) continue;
+    const amount = positiveInt(parseTurkishMoneyAmount(match[1]));
+    if (amount == null || amount < 100) continue;
+    return {
+      amount,
+      currency: mapCurrencyCode(match[2] ?? "TL"),
+    };
+  }
+  return { amount: null, currency: "TL" };
+}
+
+function extractExtraBedFee(html: string): {
+  amount: number | null;
+  currency: VillaPeriodCurrency;
+} {
+  return extractLabeledMoneyFee(stripTags(html), [
+    /ek\s*yatak[^0-9]{0,80}(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i,
+    /(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,40}ek\s*yatak/i,
+  ]);
+}
+
+function extractPetCleaningFee(html: string): {
+  amount: number | null;
+  currency: VillaPeriodCurrency;
+} {
+  return extractLabeledMoneyFee(stripTags(html), [
+    /evcil\s*hayvan[^0-9]{0,100}(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i,
+    /(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,50}evcil\s*hayvan/i,
+  ]);
 }
 
 function parseCleaningRuleText(raw: string | null | undefined): {
@@ -735,6 +790,8 @@ function extractDefaultMinStayNights(html: string): number | null {
 export function extractScrapedPeriodDefaults(html: string): ScrapedVillaPeriodDefaults {
   const deposit = extractDamageDeposit(html);
   const cleaning = extractCleaningDefaults(html);
+  const extraBed = extractExtraBedFee(html);
+  const petCleaning = extractPetCleaningFee(html);
   return {
     prepaymentRate: extractPrepaymentRate(html),
     commissionRate: extractCommissionRate(html),
@@ -744,6 +801,10 @@ export function extractScrapedPeriodDefaults(html: string): ScrapedVillaPeriodDe
     cleaningFeeCurrency: cleaning.cleaningFeeCurrency,
     damageDeposit: deposit.amount,
     damageDepositCurrency: deposit.currency,
+    extraBedFee: extraBed.amount,
+    extraBedFeeCurrency: extraBed.currency,
+    petCleaningFee: petCleaning.amount,
+    petCleaningFeeCurrency: petCleaning.currency,
   };
 }
 
@@ -792,6 +853,21 @@ function applyMetaToPeriod(
     if (period.damageDeposit != null) {
       period.damageDepositCurrency =
         meta.damageDepositCurrency ?? defaults.damageDepositCurrency;
+    }
+  }
+  if (period.extraBedFee == null) {
+    period.extraBedFee = meta.extraBedFee ?? defaults.extraBedFee ?? null;
+    if (period.extraBedFee != null) {
+      period.extraBedFeeCurrency =
+        meta.extraBedFeeCurrency ?? defaults.extraBedFeeCurrency;
+    }
+  }
+  if (period.petCleaningFee == null) {
+    period.petCleaningFee =
+      meta.petCleaningFee ?? defaults.petCleaningFee ?? null;
+    if (period.petCleaningFee != null) {
+      period.petCleaningFeeCurrency =
+        meta.petCleaningFeeCurrency ?? defaults.petCleaningFeeCurrency;
     }
   }
   recomputeWithoutCommission(period);
@@ -850,6 +926,10 @@ export function applyPeriodMetaFallback(
     cleaningFeeCurrency: fallback.cleaningFeeCurrency ?? "TL",
     damageDeposit: fallback.damageDeposit ?? null,
     damageDepositCurrency: fallback.damageDepositCurrency ?? "TL",
+    extraBedFee: fallback.extraBedFee ?? null,
+    extraBedFeeCurrency: fallback.extraBedFeeCurrency ?? "TL",
+    petCleaningFee: fallback.petCleaningFee ?? null,
+    petCleaningFeeCurrency: fallback.petCleaningFeeCurrency ?? "TL",
   };
   for (const period of periods) {
     applyMetaToPeriod(period, {}, defaults);
@@ -866,6 +946,10 @@ export function buildPeriodMetaFallbackFromPeriods(
     cleaningFeeCurrency: VillaPeriodCurrency;
     damageDeposit: number | null;
     damageDepositCurrency: VillaPeriodCurrency;
+    extraBedFee?: number | null;
+    extraBedFeeCurrency?: VillaPeriodCurrency;
+    petCleaningFee?: number | null;
+    petCleaningFeeCurrency?: VillaPeriodCurrency;
   }>
 ): ScrapedVillaPeriodMeta {
   if (periods.length === 0) return {};
@@ -882,6 +966,17 @@ export function buildPeriodMetaFallbackFromPeriods(
     damageDeposit: modeValue(periods.map((period) => period.damageDeposit)),
     damageDepositCurrency:
       modeValue(periods.map((period) => period.damageDepositCurrency)) ?? "TL",
+    extraBedFee: modeValue(periods.map((period) => period.extraBedFee ?? null)),
+    extraBedFeeCurrency:
+      modeValue(periods.map((period) => period.extraBedFeeCurrency ?? null)) ??
+      "TL",
+    petCleaningFee: modeValue(
+      periods.map((period) => period.petCleaningFee ?? null)
+    ),
+    petCleaningFeeCurrency:
+      modeValue(
+        periods.map((period) => period.petCleaningFeeCurrency ?? null)
+      ) ?? "TL",
   };
 }
 
