@@ -47,10 +47,18 @@ function pickSenderGbAlias(
   users: Awaited<ReturnType<EdmSoapClient["checkUser"]>>,
   fallback: string
 ) {
+  if (fallback) {
+    const exact = users.find((u) => u.alias === fallback);
+    if (exact?.alias) return exact.alias;
+  }
+  const preferred = users.find((u) =>
+    /defaultgb@edmbilisim\.com\.tr$/i.test(u.alias)
+  );
+  if (preferred?.alias) return preferred.alias;
   const gb = users.find(
     (u) =>
       u.alias &&
-      (/^GB$/i.test(u.unit) || /gb@/i.test(u.alias) || /defaultgb@/i.test(u.alias))
+      (/^GB$/i.test(u.unit) || /gb@/i.test(u.alias))
   );
   return gb?.alias || fallback;
 }
@@ -165,14 +173,27 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
 
   await withEdmSession(async (client) => {
     let resolvedSenderAlias = config.senderAlias;
-    try {
-      const senderUsers = await client.checkUser(supplier.senderVkn);
-      resolvedSenderAlias = pickSenderGbAlias(
-        senderUsers,
-        config.senderAlias
-      );
-    } catch {
-      // config.senderAlias / test default ile devam
+    if (!resolvedSenderAlias) {
+      try {
+        const senderUsers = await client.checkUser(supplier.senderVkn);
+        resolvedSenderAlias = pickSenderGbAlias(senderUsers, "");
+      } catch {
+        resolvedSenderAlias = "";
+      }
+    } else {
+      // Yapılandırılmış alias varsa koru; CheckUser alternatif GB etiketlerini ezmesin
+      try {
+        const senderUsers = await client.checkUser(supplier.senderVkn);
+        const exact = senderUsers.find((u) => u.alias === config.senderAlias);
+        if (!exact) {
+          const preferred = senderUsers.find((u) =>
+            /defaultgb@edmbilisim\.com\.tr$/i.test(u.alias)
+          );
+          if (preferred?.alias) resolvedSenderAlias = preferred.alias;
+        }
+      } catch {
+        // config alias ile devam
+      }
     }
     if (!resolvedSenderAlias) {
       throw new Error(
