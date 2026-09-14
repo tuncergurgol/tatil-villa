@@ -117,15 +117,18 @@ export default function Header({
   const waHref = whatsappHref(rawPhone);
   const logoSrc = logoUrl?.trim() || (useDefaultLogo ? DEFAULT_LOGO : "");
   const agencyLine = `${agencyName?.trim() || siteConfig.agency} — TÜRSAB No: ${tursabNo?.trim() || siteConfig.tursabNo}`;
+  const isGlampingTurkey = siteKey === "glamping-turkey";
   const mobileLogoClass =
     (
       {
         tatildeyiz: "h-11 max-w-[148px]",
         "balayi-villacisi": "h-10 max-w-[76px]",
         "tatil-villacisi": "h-10 max-w-[170px]",
-        "glamping-turkey": "h-10 max-w-[168px]",
       } as Record<string, string>
     )[siteKey] ?? "h-10 max-w-[160px]";
+  const logoClassName = isGlampingTurkey
+    ? "h-11 w-auto max-w-[240px] object-contain object-left md:h-[4.5rem] md:max-w-[400px] lg:h-20 lg:max-w-[480px]"
+    : `w-auto object-contain object-left md:h-[4.25rem] md:max-w-[360px] lg:h-[4.75rem] lg:max-w-[420px] ${mobileLogoClass}`;
 
   useEffect(() => {
     function handleOpenSearch() {
@@ -169,9 +172,9 @@ export default function Header({
             <Image
               src={logoSrc}
               alt={brandName}
-              width={560}
-              height={144}
-              className={`w-auto object-contain object-left md:h-[4.25rem] md:max-w-[360px] lg:h-[4.75rem] lg:max-w-[420px] ${mobileLogoClass}`}
+              width={isGlampingTurkey ? 480 : 560}
+              height={isGlampingTurkey ? 102 : 144}
+              className={logoClassName}
               unoptimized={logoSrc.endsWith(".svg")}
               loading="eager"
               fetchPriority="low"
