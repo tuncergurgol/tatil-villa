@@ -133,12 +133,9 @@ export async function getHomeDreamCategories(
 }
 
 const THEME_2_TYPE_FALLBACK_IMAGES: Record<string, string> = {
-  bungalov:
-    "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80",
-  bungalows:
-    "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80",
-  domes:
-    "https://images.unsplash.com/photo-1521401830884-6c03c1c87ebb?w=800&q=80",
+  bungalov: "/brands/glamping-turkey/chip-bungalov.jpg",
+  bungalows: "/brands/glamping-turkey/chip-bungalov.jpg",
+  domes: "/brands/glamping-turkey/chip-domes.jpg",
 };
 
 export type Theme2FacilityChip = {
@@ -174,7 +171,7 @@ export async function getTheme2FacilityChips(
     return {
       name: category?.name || name,
       href: buildDreamFacilitySearchHref(category?.name || name),
-      image: category?.image || fallback,
+      image: fallback,
     };
   });
 }
