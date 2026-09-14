@@ -23,10 +23,7 @@ export default function Theme2VillaCard({ villa }: { villa: Villa }) {
 
   return (
     <article className="group relative flex h-full min-w-0 flex-col">
-      <div
-        className="absolute right-3 top-3 z-10"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="absolute right-3 top-3 z-10">
         <MemberFavoriteButton villaId={villa.id} />
       </div>
       <Link href={villaPublicPath(villa.slug)} className="flex h-full flex-col">
