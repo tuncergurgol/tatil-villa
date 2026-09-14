@@ -24,7 +24,8 @@ export type AdminNavIcon =
   | "megaphone"
   | "phone"
   | "bot"
-  | "film";
+  | "film"
+  | "layers";
 
 export interface NavLink {
   label: string;
@@ -118,65 +119,71 @@ export const adminNavSections: NavSection[] = [
       },
     ],
   },
-  { label: "Tur & Aktiviteler", href: "/admin/tur", icon: "compass" },
   {
-    label: "Transfer",
-    icon: "bus",
+    label: "Diğer Hizmetler",
+    icon: "layers",
     items: [
+      { label: "Tur ve Aktivite", href: "/admin/tur", icon: "compass" },
       {
-        label: "Araç Tipleri",
-        href: "/admin/transfer/arac-tipleri",
-        icon: "car",
-      },
-      {
-        label: "Rotalar",
-        href: "/admin/transfer/rotalar",
-        icon: "compass",
-      },
-      {
-        label: "Seferler",
-        href: "/admin/transfer/seferler",
+        label: "Transfer",
         icon: "bus",
+        items: [
+          {
+            label: "Araç Tipleri",
+            href: "/admin/transfer/arac-tipleri",
+            icon: "car",
+          },
+          {
+            label: "Rotalar",
+            href: "/admin/transfer/rotalar",
+            icon: "compass",
+          },
+          {
+            label: "Seferler",
+            href: "/admin/transfer/seferler",
+            icon: "bus",
+          },
+        ],
       },
-    ],
-  },
-  {
-    label: "Araç Kiralama",
-    icon: "car",
-    items: [
       {
-        label: "Arama Çubuğu",
-        href: "/admin/arac-kiralama/arama-cubugu",
-        icon: "search",
-      },
-      {
-        label: "Araç Türleri",
-        href: "/admin/arac-kiralama/kategoriler",
+        label: "Araç Kiralama",
         icon: "car",
+        items: [
+          {
+            label: "Arama Çubuğu",
+            href: "/admin/arac-kiralama/arama-cubugu",
+            icon: "search",
+          },
+          {
+            label: "Araç Türleri",
+            href: "/admin/arac-kiralama/kategoriler",
+            icon: "car",
+          },
+          {
+            label: "Teslim / İade Noktaları",
+            href: "/admin/arac-kiralama/noktalar",
+            icon: "compass",
+          },
+          {
+            label: "Sürücü Kriterleri",
+            href: "/admin/arac-kiralama/surucu-kriterleri",
+            icon: "file-check",
+          },
+        ],
       },
+      { label: "Obilet", href: "/admin/obilet", icon: "ticket" },
+      { label: "Otelz", href: "/admin/otelz", icon: "building" },
       {
-        label: "Teslim / İade Noktaları",
-        href: "/admin/arac-kiralama/noktalar",
-        icon: "compass",
-      },
-      {
-        label: "Sürücü Kriterleri",
-        href: "/admin/arac-kiralama/surucu-kriterleri",
-        icon: "file-check",
-      },
-    ],
-  },
-  { label: "Obilet", href: "/admin/obilet", icon: "ticket" },
-  { label: "Otelz", href: "/admin/otelz", icon: "building" },
-  {
-    label: "Yolcu360",
-    icon: "car",
-    items: [
-      { label: "Ayarlar", href: "/admin/yolcu360", icon: "settings" },
-      {
-        label: "Siparişler",
-        href: "/admin/yolcu360/siparisler",
-        icon: "list-tree",
+        label: "Yolcu 360",
+        icon: "car",
+        items: [
+          { label: "Ayarlar", href: "/admin/yolcu360", icon: "settings" },
+          {
+            label: "Siparişler",
+            href: "/admin/yolcu360/siparisler",
+            icon: "list-tree",
+          },
+        ],
       },
     ],
   },

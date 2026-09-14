@@ -13,6 +13,7 @@ import {
   FileCheck2,
   Film,
   Home,
+  Layers,
   Import,
   ListTree,
   Megaphone,
@@ -57,6 +58,7 @@ const iconMap: Record<AdminNavIcon, LucideIcon> = {
   phone: Phone,
   bot: Bot,
   film: Film,
+  layers: Layers,
 };
 
 export default function AdminNavIcon({

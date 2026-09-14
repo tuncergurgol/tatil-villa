@@ -388,7 +388,7 @@ function NavGroupSection({
 }) {
   const pathname = usePathname();
   const hasActiveChild = sectionHasActiveChild(pathname, items);
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(defaultOpen || hasActiveChild);
 
   if (collapsed) {
     return (
