@@ -9,14 +9,44 @@ import RichTextEditor from "@/components/admin/villas/RichTextEditor";
 import StatusPillToggle from "@/components/admin/villas/StatusPillToggle";
 import { facilityTypeOptions } from "@/lib/facility-type";
 import { salesTypeOptions } from "@/lib/sales-type";
+import {
+  hasVillaTourismDocument,
+  UNDOCUMENTED_VILLA_VISIBILITY,
+} from "@/lib/villa-document-types";
 
 interface VillaGeneralTabProps {
-  villa: Villa;
+  villa: VillaGeneralFormValue;
   regionBreadcrumb: string;
   roomCount: number;
   bedroomDraft: number;
   onBedroomsChange: (value: number) => void;
+  aiEnabled?: boolean;
 }
+
+export type VillaGeneralFormValue = Pick<
+  Villa,
+  | "id"
+  | "villaId"
+  | "name"
+  | "originalName"
+  | "category"
+  | "salesType"
+  | "guests"
+  | "extraCapacity"
+  | "livingRooms"
+  | "bedrooms"
+  | "bathrooms"
+  | "active"
+  | "showInSearch"
+  | "showInOffer"
+  | "ribbonText1"
+  | "ribbonText2"
+  | "description"
+  | "amenities"
+  | "allowChildren"
+  | "documentNo"
+  | "documentType"
+>;
 
 function Field({
   label,
@@ -49,9 +79,18 @@ export default function VillaGeneralTab({
   roomCount,
   bedroomDraft,
   onBedroomsChange,
+  aiEnabled = true,
 }: VillaGeneralTabProps) {
+  const undocumented = !hasVillaTourismDocument({
+    documentNo: villa.documentNo,
+    documentType: villa.documentType,
+  });
   const [active, setActive] = useState(villa.active);
-  const [showInSearch, setShowInSearch] = useState(villa.showInSearch);
+  const [showInSearch, setShowInSearch] = useState(
+    undocumented
+      ? UNDOCUMENTED_VILLA_VISIBILITY.showInSearch
+      : villa.showInSearch
+  );
   const [showInOffer, setShowInOffer] = useState(villa.showInOffer);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [description, setDescription] = useState(villa.description);
@@ -84,7 +123,18 @@ export default function VillaGeneralTab({
               className={inputClass}
             />
           </Field>
-          <Field label="Tesis Tipi">
+          <Field label="Villa ID">
+            <input
+              readOnly
+              value={
+                villa.villaId != null
+                  ? String(villa.villaId)
+                  : "Kayıtta otomatik verilir"
+              }
+              className={`${inputClass} cursor-default bg-gray-100 text-gray-600`}
+            />
+          </Field>
+          <Field label="Ev Tipi">
             <select
               name="category"
               defaultValue={villa.category ?? "villa"}
@@ -182,6 +232,7 @@ export default function VillaGeneralTab({
             name="showInSearch"
             checked={showInSearch}
             onChange={setShowInSearch}
+            disabled={undocumented}
           />
           <StatusPillToggle
             label="Teklif Alanında Görünür"
@@ -190,6 +241,12 @@ export default function VillaGeneralTab({
             onChange={setShowInOffer}
           />
         </div>
+        {undocumented ? (
+          <p className="mt-2 text-xs text-amber-700">
+            Belgesi olmayan villada arama alanı kapalı kalır. Yayın durumu ve
+            teklif görünürlüğü seçilebilir.
+          </p>
+        ) : null}
       </section>
 
       <section>
@@ -222,14 +279,21 @@ export default function VillaGeneralTab({
           <button
             type="button"
             onClick={() => setAiModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700"
+            disabled={!aiEnabled}
+            title={
+              aiEnabled
+                ? undefined
+                : "AI açıklaması villa ilk kez kaydedildikten sonra kullanılabilir"
+            }
+            className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
             AI ile Oluştur
           </button>
         </div>
         <p className="mb-3 text-xs text-gray-500">
-          * En iyi sonuç için önce tüm villa bilgilerini doldurun.
+          AI açıklama; konum, öne çıkan özellikler, kapasite ve mesafeleri kullanır.
+          En iyi sonuç için önce tüm sekmeleri kaydedin.
         </p>
         <RichTextEditor
           key={descriptionKey}
@@ -246,6 +310,7 @@ export default function VillaGeneralTab({
         initialRegion={regionBreadcrumb}
         formSnapshot={{
           guests: villa.guests,
+          extraCapacity: villa.extraCapacity,
           livingRooms: villa.livingRooms,
           bedrooms: villa.bedrooms,
           bathrooms: villa.bathrooms,

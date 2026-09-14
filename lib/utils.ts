@@ -28,6 +28,15 @@ export function guestSummary(counts: {
   return parts.length > 0 ? parts.join(", ") : "1 Yetişkin";
 }
 
+export function totalGuests(counts: {
+  adults: number;
+  children: number;
+  babies: number;
+  pets: number;
+}): number {
+  return counts.adults + counts.children + counts.babies;
+}
+
 import type { VillaCategory } from "@prisma/client";
 import { facilityTypeLabel } from "@/lib/facility-type";
 

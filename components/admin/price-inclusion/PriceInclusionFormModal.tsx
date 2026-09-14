@@ -8,6 +8,7 @@ import {
   type PriceInclusionActionState,
 } from "@/app/actions/admin/price-inclusion";
 import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface PriceInclusionFormModalProps {
   item?: PriceInclusionItem;
@@ -27,6 +28,8 @@ export default function PriceInclusionFormModal({
     PriceInclusionActionState,
     FormData
   >(action, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

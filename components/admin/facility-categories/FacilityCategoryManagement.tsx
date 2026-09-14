@@ -6,6 +6,7 @@ import { LayoutGrid, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { deleteFacilityCategory } from "@/app/actions/admin/facility-categories";
 import FacilityCategoryFormModal from "@/components/admin/facility-categories/FacilityCategoryFormModal";
 import type { FacilityCategoryItem } from "@/lib/queries/facility-categories";
+import { includesSearchText } from "@/lib/search-text";
 
 type StatusFilter = "all" | "active" | "passive";
 
@@ -39,13 +40,10 @@ export default function FacilityCategoryManagement({
   const [isPending, startTransition] = useTransition();
 
   const filteredCategories = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-
     return categories.filter((category) => {
       const matchesQuery =
-        !query ||
-        category.name.toLocaleLowerCase("tr-TR").includes(query) ||
-        category.tag.toLocaleLowerCase("tr-TR").includes(query);
+        includesSearchText(category.name, search) ||
+        includesSearchText(category.tag, search);
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -75,7 +73,7 @@ export default function FacilityCategoryManagement({
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
               <LayoutGrid className="h-5 w-5" />
             </div>
-            <h1 className="text-lg font-bold text-gray-900">Tesis Kategorileri</h1>
+            <h1 className="text-lg font-bold text-gray-900">Ev Kategorileri</h1>
           </div>
 
           <div className="relative min-w-[200px] flex-1">

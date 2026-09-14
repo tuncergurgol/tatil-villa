@@ -1,4 +1,5 @@
 import mernisIlceCodes from "@/lib/data/mernis-ilce-codes.json";
+import { normalizeSearchText } from "@/lib/search-text";
 
 export type MernisIlceCode = {
   code: string;
@@ -28,11 +29,7 @@ export function getMernisIlceLabel(code: string | null | undefined) {
 }
 
 export function normalizeMernisSearch(value: string) {
-  return value
-    .replace(/\u00a0/g, " ")
-    .toLocaleLowerCase("tr-TR")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeSearchText(value.replace(/\u00a0/g, " ").replace(/\s+/g, " "));
 }
 
 export function filterMernisIlceCodes(

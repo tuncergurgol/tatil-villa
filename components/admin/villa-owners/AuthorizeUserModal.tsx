@@ -6,6 +6,8 @@ import {
   authorizeUserAsVillaOwner,
   type VillaOwnerActionState,
 } from "@/app/actions/admin/villa-owners";
+import { includesSearchText } from "@/lib/search-text";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 type UnlinkedUser = {
   id: string;
@@ -31,14 +33,14 @@ export default function AuthorizeUserModal({
   >(authorizeUserAsVillaOwner, {});
 
   const filteredUsers = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return users;
     return users.filter(
       (user) =>
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query)
+        includesSearchText(user.name, search) ||
+        includesSearchText(user.email, search)
     );
   }, [users, search]);
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

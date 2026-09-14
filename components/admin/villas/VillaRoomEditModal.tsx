@@ -3,28 +3,38 @@
 import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
 import {
-  BedDouble,
   Camera,
   Check,
   ImageIcon,
   Info,
   Plus,
+  Trash2,
   X,
 } from "lucide-react";
 import type { VillaRoom } from "@prisma/client";
-import { updateVillaRoom } from "@/app/actions/admin/villa-rooms";
+import {
+  addVillaRoomCustomFeature,
+  deleteVillaRoom,
+  updateVillaRoom,
+} from "@/app/actions/admin/villa-rooms";
 import {
   getRoomFeatureOptions,
+  getRoomTypeLabel,
+  roomHasFeature,
   ROOM_TYPE_OPTIONS,
+  toggleRoomFeature,
+  uniqueRoomFeatures,
 } from "@/lib/villa-room-features";
 
 interface VillaRoomEditModalProps {
   villaId: string;
   villaName: string;
   room: VillaRoom;
+  villaCustomFeatures: string[];
   galleryImages: string[];
   onClose: () => void;
   onSaved: () => void;
+  onDeleted: () => void;
 }
 
 const inputClass =
@@ -56,17 +66,23 @@ export default function VillaRoomEditModal({
   villaId,
   villaName,
   room,
+  villaCustomFeatures,
   galleryImages,
   onClose,
   onSaved,
+  onDeleted,
 }: VillaRoomEditModalProps) {
   const [roomType, setRoomType] = useState(room.roomType);
   const [name, setName] = useState(room.name);
   const [singleBeds, setSingleBeds] = useState(String(room.singleBeds));
   const [doubleBeds, setDoubleBeds] = useState(String(room.doubleBeds));
   const [imageUrl, setImageUrl] = useState(room.imageUrl);
-  const [selectedFeatures, setSelectedFeatures] = useState(room.features);
-  const [customFeatures, setCustomFeatures] = useState(room.customFeatures);
+  const [selectedFeatures, setSelectedFeatures] = useState(() =>
+    uniqueRoomFeatures(room.features)
+  );
+  const [customFeatures, setCustomFeatures] = useState(() =>
+    uniqueRoomFeatures([...villaCustomFeatures, ...room.customFeatures])
+  );
   const [newFeature, setNewFeature] = useState("");
   const [showGalleryPicker, setShowGalleryPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,30 +94,37 @@ export default function VillaRoomEditModal({
     setSingleBeds(String(room.singleBeds));
     setDoubleBeds(String(room.doubleBeds));
     setImageUrl(room.imageUrl);
-    setSelectedFeatures(room.features);
-    setCustomFeatures(room.customFeatures);
+    setSelectedFeatures(uniqueRoomFeatures(room.features));
+    setCustomFeatures(
+      uniqueRoomFeatures([...villaCustomFeatures, ...room.customFeatures])
+    );
   }, [room]);
 
-  const featureOptions = getRoomFeatureOptions(customFeatures);
+  const featureOptions = getRoomFeatureOptions(customFeatures, selectedFeatures);
 
   function toggleFeature(feature: string) {
-    setSelectedFeatures((prev) =>
-      prev.includes(feature)
-        ? prev.filter((item) => item !== feature)
-        : [...prev, feature]
-    );
+    setSelectedFeatures((prev) => toggleRoomFeature(prev, feature));
   }
 
   function addCustomFeature() {
-    const value = newFeature.trim();
+    const value = newFeature.trim().replace(/\s+/g, " ");
     if (!value) return;
-    if (!customFeatures.includes(value)) {
-      setCustomFeatures((prev) => [...prev, value]);
-    }
-    if (!selectedFeatures.includes(value)) {
-      setSelectedFeatures((prev) => [...prev, value]);
-    }
-    setNewFeature("");
+    setError(null);
+    startTransition(async () => {
+      const result = await addVillaRoomCustomFeature(villaId, value);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setCustomFeatures(
+        uniqueRoomFeatures([
+          ...(result.customFeatures ?? customFeatures),
+          value,
+        ])
+      );
+      setSelectedFeatures((prev) => uniqueRoomFeatures([...prev, value]));
+      setNewFeature("");
+    });
   }
 
   function handleSave() {
@@ -124,6 +147,28 @@ export default function VillaRoomEditModal({
         return;
       }
       onSaved();
+      onClose();
+    });
+  }
+
+  function handleDelete() {
+    const label = `${getRoomTypeLabel(room.roomType)} — ${room.name}`;
+    if (
+      !window.confirm(
+        `"${label}" oda kaydı silinsin mi? Bu işlem geri alınamaz.`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteVillaRoom(villaId, room.id);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onDeleted();
       onClose();
     });
   }
@@ -245,7 +290,7 @@ export default function VillaRoomEditModal({
           >
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {featureOptions.map((feature) => {
-                const selected = selectedFeatures.includes(feature);
+                const selected = roomHasFeature(selectedFeatures, feature);
                 return (
                   <button
                     key={feature}
@@ -288,6 +333,7 @@ export default function VillaRoomEditModal({
               <button
                 type="button"
                 onClick={addCustomFeature}
+                disabled={isPending}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4" />
@@ -297,22 +343,33 @@ export default function VillaRoomEditModal({
           </SectionCard>
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
+        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-gray-200 bg-white px-6 py-4">
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-lg px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            İptal
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
+            onClick={handleDelete}
             disabled={isPending}
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-100 disabled:opacity-50"
           >
-            {isPending ? "Kaydediliyor..." : "Güncelle"}
+            <Trash2 className="h-4 w-4" />
+            Sil
           </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              İptal
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isPending}
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isPending ? "Kaydediliyor..." : "Güncelle"}
+            </button>
+          </div>
         </div>
       </div>
 

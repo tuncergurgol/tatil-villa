@@ -8,6 +8,7 @@ import {
   type AmenityActionState,
 } from "@/app/actions/admin/amenities";
 import type { AmenityCategoryItem } from "@/lib/queries/amenities";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface AmenityCategoryFormModalProps {
   category?: AmenityCategoryItem;
@@ -24,6 +25,8 @@ export default function AmenityCategoryFormModal({
     AmenityActionState,
     FormData
   >(action, {});
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();

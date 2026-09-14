@@ -1,0 +1,16 @@
+cd /var/www/tatil-villa && sed -i 's/\["PENDING", "CONFIRMED"\]/["NEW", "CONFIRMED"]/g; s/\['\''PENDING'\'', '\''CONFIRMED'\''\]/['\''NEW'\'', '\''CONFIRMED'\'']/g; s/BookingStatus\.PENDING/BookingStatus.NEW/g' lib/queries/villas.ts && grep -RIn --include='*.ts' --include='*.tsx' -E 'BookingStatus\.PENDING|"PENDING".*CONFIRMED|in: \["PENDING"' lib app components 2>/dev/null | grep -viE 'callback|konut-belge|otp|DocumentCheck' || true; python3 - <<'PY'
+from pathlib import Path
+import re
+skip=("callback","konut-belge","otp","DocumentCheck","node_modules",".next")
+for f in list(Path("lib").rglob("*.ts"))+list(Path("app").rglob("*.ts"))+list(Path("components").rglob("*.ts")):
+  s=str(f).replace("\\","/")
+  if any(x in s.lower() for x in skip): continue
+  if "booking" not in s.lower() and f.name!="villas.ts": continue
+  t=f.read_text(encoding="utf-8",errors="ignore")
+  n=t.replace("BookingStatus.PENDING","BookingStatus.NEW")
+  n=re.sub(r'\["PENDING",\s*"CONFIRMED"\]','["NEW", "CONFIRMED"]',n)
+  if n!=t:
+    f.write_text(n,encoding="utf-8"); print("fixed",s)
+print("villas check:", 'PENDING' in Path("lib/queries/villas.ts").read_text())
+PY
+npx prisma generate && npm run build && test -f .next/BUILD_ID && pm2 restart tatil-villa --update-env && echo DONE

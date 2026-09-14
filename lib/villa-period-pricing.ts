@@ -47,6 +47,18 @@ export function parseAmountInput(value: string): number | null {
   return Math.round(parsed);
 }
 
+/** Form/API girdilerinde TR binlik ayraçlı tutarları güvenli okur (`Number("7.000")` → 7 hatasını önler). */
+export function parseOptionalPositiveInt(
+  value: string | number | null | undefined
+): number | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return Math.round(value);
+  }
+  return parseAmountInput(String(value));
+}
+
 export function formatAmountInput(value: number | null | undefined): string {
   if (value == null || value <= 0) return "";
   return value.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
@@ -150,6 +162,47 @@ export function calculateCommissionAmount(
   return Math.max(0, nightlyPrice - nightlyPriceWithoutCommission);
 }
 
+export function hasActiveDiscount(input: {
+  discount1Rate?: number | null;
+  discount2Rate?: number | null;
+  extraDiscountAmount?: number | null;
+}): boolean {
+  return (
+    toRate(input.discount1Rate) > 0 ||
+    toRate(input.discount2Rate) > 0 ||
+    (toPositiveInt(input.extraDiscountAmount) ?? 0) > 0
+  );
+}
+
+export function resolveDayDiscountedPrice(
+  nightlyPrice: number,
+  discount1Rate?: number | null,
+  discount2Rate?: number | null,
+  extraDiscountAmount?: number | null
+): number {
+  if (nightlyPrice <= 0) return 0;
+  if (
+    !hasActiveDiscount({
+      discount1Rate,
+      discount2Rate,
+      extraDiscountAmount,
+    })
+  ) {
+    return nightlyPrice;
+  }
+
+  const discount = calculateDiscountAmounts(
+    nightlyPrice,
+    toRate(discount1Rate),
+    toRate(discount2Rate),
+    toPositiveInt(extraDiscountAmount) ?? 0
+  );
+
+  return discount.discountedNightlyPrice > 0
+    ? discount.discountedNightlyPrice
+    : nightlyPrice;
+}
+
 export function calculateDiscountAmounts(
   nightlyPrice: number,
   discount1Rate: number,
@@ -225,7 +278,7 @@ export function resolveVillaPeriodPricing(
 
 export function formatMoneyAmount(value: number | null | undefined): string {
   if (value == null || value <= 0) return "—";
-  return value.toLocaleString("tr-TR");
+  return value.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
 
 export function parseOptionalInt(raw: FormDataEntryValue | null): number | null {
@@ -257,7 +310,7 @@ export function parseCurrency(
 }
 
 export function parseAvailability(
-  raw: FormDataEntryValue | null
+  _raw: FormDataEntryValue | null
 ): VillaPeriodAvailability {
-  return String(raw) === "closed" ? "closed" : "available";
+  return "available";
 }

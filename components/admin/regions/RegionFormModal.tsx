@@ -12,6 +12,7 @@ import {
 import { RegionLevel, REGION_LEVEL_LABELS, parentLevelFor } from "@/lib/region-levels";
 import type { RegionFlat } from "@/lib/regions-tree";
 import MernisIlcePicker from "@/components/admin/regions/MernisIlcePicker";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface RegionFormModalProps {
   regions: RegionFlat[];
@@ -142,6 +143,8 @@ export default function RegionFormModal({
       setMernisCode("");
     }
   }, [level]);
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) {

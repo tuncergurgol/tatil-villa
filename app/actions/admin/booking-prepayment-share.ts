@@ -1,0 +1,415 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { BookingStatus } from "@prisma/client";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth-helpers";
+import { assertBookingDatesOpenForActions } from "@/lib/booking-action-date-guard";
+import {
+  buildBookingPrepaymentTemplateValues,
+  renderAgencyMessageTemplate,
+  resolvePrepaymentTemplateRowNos,
+} from "@/lib/agency-message-render";
+import { formatAgencyMessageRowNo } from "@/lib/agency-message-row-no";
+import {
+  appendBookingActivityLog,
+  resolveActivityActor,
+  type BookingActivityLogEntry,
+} from "@/lib/booking-activity-log";
+import { formatMoneyPlain } from "@/lib/booking-display";
+import {
+  BOOKING_PREPAYMENT_OPTION_HOURS,
+  getPrepaymentShareChannelLabel,
+  type PrepaymentShareChannel,
+} from "@/lib/booking-prepayment-share";
+import { parseBookingDetails, resolveExternalCode } from "@/lib/booking-form-details";
+import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
+import { normalizeCompanyPaymentType } from "@/lib/company-payment-types";
+import { prisma } from "@/lib/db";
+import { sendCompanyMail } from "@/lib/email";
+import { toHtmlFromText, collapseBankTransferIbanBlankLine } from "@/lib/email-html";
+import { prepareCompanyLogoForEmail } from "@/lib/email-logo";
+import {
+  isValidWhatsAppPhoneE164,
+  normalizePhoneToE164,
+} from "@/lib/phone";
+import {
+  appendBookingSiteFooter,
+  resolveBookingSiteBrand,
+} from "@/lib/booking-site-brand";
+import { buildBankTransferWhatsAppParts } from "@/lib/bank-transfer-whatsapp-parts";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
+import { getAgencyMessageTemplateByRowNos } from "@/lib/queries/agency-message-templates";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import {
+  sendCustomerNotificationWhatsApp,
+  sendCustomerNotificationWhatsAppSequence,
+} from "@/lib/whatsapp-delivery";
+import { isSmsProviderConfigured, sendSmsMessage } from "@/lib/sms-delivery";
+
+const sendPrepaymentInfoSchema = z.object({
+  bookingId: z.string().min(1),
+  prepaymentAmount: z.number().positive("Ön ödeme tutarı zorunludur"),
+  paymentMethod: z.string().min(1, "Ödeme türü zorunludur"),
+  optionHours: z.coerce
+    .number()
+    .refine(
+      (value) =>
+        BOOKING_PREPAYMENT_OPTION_HOURS.includes(
+          value as (typeof BOOKING_PREPAYMENT_OPTION_HOURS)[number]
+        ),
+      "Geçersiz opsiyon süresi"
+    ),
+  sendWhatsApp: z.boolean(),
+  sendEmail: z.boolean(),
+  sendSms: z.boolean(),
+});
+
+export type SendBookingPrepaymentInfoResult =
+  | {
+      success: true;
+      channels: PrepaymentShareChannel[];
+      activityLogs: BookingActivityLogEntry[];
+    }
+  | { success: false; error: string };
+
+function pickChannelBody(
+  template: {
+    smsBody: string;
+    whatsappBody: string;
+    mailBody: string;
+  },
+  channel: PrepaymentShareChannel
+): string {
+  switch (channel) {
+    case "sms":
+      return template.smsBody || template.whatsappBody || template.mailBody;
+    case "whatsapp":
+      return template.whatsappBody || template.mailBody || template.smsBody;
+    case "email":
+      return template.mailBody || template.whatsappBody || template.smsBody;
+  }
+}
+
+async function resolveBankAccount(paymentMethod: string) {
+  const normalized = normalizeCompanyPaymentType(paymentMethod);
+  if (normalized !== "bank_transfer") return null;
+
+  return prisma.companyBankAccount.findFirst({
+    where: {
+      active: true,
+      OR: [
+        { paymentType: normalized },
+        { paymentType: "" },
+      ],
+    },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: {
+      bankName: true,
+      accountHolder: true,
+      iban: true,
+    },
+  });
+}
+
+export async function sendBookingPrepaymentInfoAction(
+  payload: z.infer<typeof sendPrepaymentInfoSchema>
+): Promise<SendBookingPrepaymentInfoResult> {
+  const session = await requireAdmin();
+  const actor = await resolveActivityActor(session.user);
+
+  const parsed = sendPrepaymentInfoSchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi",
+    };
+  }
+
+  const data = parsed.data;
+
+  if (!data.sendWhatsApp && !data.sendEmail && !data.sendSms) {
+    return {
+      success: false,
+      error: "En az bir bildirim kanalı seçilmelidir",
+    };
+  }
+
+  let templateRowCandidates: number[];
+  try {
+    templateRowCandidates = resolvePrepaymentTemplateRowNos(data.paymentMethod);
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Geçersiz ödeme türü",
+    };
+  }
+
+  const primaryTemplateRowNo = templateRowCandidates[0];
+
+  const [booking, template, companySettings, bankAccount, agencySites] =
+    await Promise.all([
+    prisma.booking.findUnique({
+      where: { id: data.bookingId },
+      include: {
+        villa: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    }),
+    getAgencyMessageTemplateByRowNos(templateRowCandidates),
+    getCompanySettings(),
+    resolveBankAccount(data.paymentMethod),
+    getAgencySitesForPicker(),
+  ]);
+
+  if (!booking) {
+    return { success: false, error: "Rezervasyon bulunamadı" };
+  }
+
+  const datesGuard = await assertBookingDatesOpenForActions(data.bookingId);
+  if (!datesGuard.ok) {
+    return { success: false, error: datesGuard.error };
+  }
+
+  if (!template) {
+    return {
+      success: false,
+      error: `Mesaj şablonu bulunamadı (${formatAgencyMessageRowNo(primaryTemplateRowNo)})`,
+    };
+  }
+
+  const phone = booking.guestPhone.trim();
+  const email = booking.guestEmail.trim();
+  const reservationCode =
+    resolveExternalCode(booking.externalCode, booking.guestEmail) || "—";
+
+  if (data.sendWhatsApp) {
+    if (!phone) {
+      return {
+        success: false,
+        error: "WhatsApp gönderimi için müşteri telefonu gerekli",
+      };
+    }
+    const e164 = normalizePhoneToE164(phone);
+    if (!e164 || !isValidWhatsAppPhoneE164(e164)) {
+      return {
+        success: false,
+        error: "Geçersiz telefon numarası",
+      };
+    }
+  }
+
+  if (data.sendSms) {
+    if (!isSmsProviderConfigured()) {
+      return {
+        success: false,
+        error:
+          "SMS sağlayıcısı yapılandırılmadı. .env içine NETGSM_USERCODE, NETGSM_PASSWORD, NETGSM_MSGHEADER ekleyin.",
+      };
+    }
+    if (!phone.trim()) {
+      return {
+        success: false,
+        error: "SMS gönderimi için müşteri telefonu gerekli",
+      };
+    }
+    const e164Sms = normalizePhoneToE164(phone);
+    if (!e164Sms || !isValidWhatsAppPhoneE164(e164Sms)) {
+      return {
+        success: false,
+        error: "Geçersiz telefon numarası",
+      };
+    }
+  }
+
+  if (data.sendEmail && (!email || isImportedPlaceholderEmail(email))) {
+    return {
+      success: false,
+      error: "E-posta gönderimi için geçerli müşteri e-postası gerekli",
+    };
+  }
+
+  const details = parseBookingDetails(booking.details);
+  const siteBrand = resolveBookingSiteBrand({
+    siteInfo: details.siteInfo,
+    originDomain: details.originDomain,
+    company: {
+      brandName: companySettings.brandName,
+      domain: companySettings.domain,
+      logoUrl: companySettings.logoUrl,
+    },
+    agencySites,
+  });
+  const templateValues = buildBookingPrepaymentTemplateValues({
+    reservationCode,
+    guestName: booking.guestName,
+    guestPhone: booking.guestPhone,
+    villaName: booking.villa.name,
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    adults: booking.adults,
+    children: booking.children,
+    details,
+    prepaymentAmount: data.prepaymentAmount,
+    paymentMethod: data.paymentMethod,
+    optionHours: data.optionHours,
+    company: {
+      agencyName: companySettings.agencyName,
+      brandName: siteBrand.siteInfo || companySettings.brandName,
+      companyTitle: companySettings.companyTitle,
+      domain: siteBrand.domain || companySettings.domain,
+      logoUrl: siteBrand.logoUrl || companySettings.logoUrl,
+    },
+    bankAccount,
+  });
+
+  const sentChannels: PrepaymentShareChannel[] = [];
+  const mailSubject = `${reservationCode} nolu rezervasyon ön ödeme bilgisi`;
+  const isBankTransfer =
+    normalizeCompanyPaymentType(data.paymentMethod) === "bank_transfer";
+  const emailLogo = data.sendEmail
+    ? await prepareCompanyLogoForEmail(
+        siteBrand.logoUrl || companySettings.logoUrl,
+        siteBrand.domain || companySettings.domain
+      )
+    : null;
+
+  const channelRequests: Array<{
+    channel: PrepaymentShareChannel;
+    enabled: boolean;
+  }> = [
+    { channel: "whatsapp", enabled: data.sendWhatsApp },
+    { channel: "email", enabled: data.sendEmail },
+    { channel: "sms", enabled: data.sendSms },
+  ];
+
+  for (const { channel, enabled } of channelRequests) {
+    if (!enabled) continue;
+
+    const bodyTemplate = pickChannelBody(template, channel);
+    if (!bodyTemplate.trim()) {
+      return {
+        success: false,
+        error: `${channel.toUpperCase()} kanalı için mesaj şablonu boş`,
+      };
+    }
+
+    const message = (() => {
+      const rendered = renderAgencyMessageTemplate(
+        bodyTemplate,
+        templateValues
+      );
+      return isBankTransfer
+        ? collapseBankTransferIbanBlankLine(rendered)
+        : rendered;
+    })();
+
+    if (channel === "email") {
+      try {
+        await sendCompanyMail(companySettings, {
+          to: email,
+          subject: mailSubject,
+          text: message,
+          html: toHtmlFromText(message, {
+            logoUrl: emailLogo?.src,
+            emphasizeBankTransferFields: isBankTransfer,
+          }),
+          attachments: emailLogo?.attachments,
+        });
+      } catch (error) {
+        return {
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "E-posta gönderilemedi",
+        };
+      }
+    } else if (channel === "whatsapp") {
+      const whatsappMessage = appendBookingSiteFooter(
+        message,
+        siteBrand.siteInfo
+      );
+
+      const wa = isBankTransfer
+        ? await sendCustomerNotificationWhatsAppSequence(
+            phone,
+            buildBankTransferWhatsAppParts({
+              summaryMessage: whatsappMessage,
+              companyTitle:
+                templateValues.SIRKETUNVAN || companySettings.companyTitle,
+              iban: templateValues.IBAN || bankAccount?.iban || "",
+              amountText: templateValues.ODENECEKTUTAR || "",
+              guestName: booking.guestName,
+              reservationCode,
+            })
+          )
+        : await sendCustomerNotificationWhatsApp(phone, whatsappMessage);
+
+      if (!wa.ok) {
+        return {
+          success: false,
+          error: wa.error ?? "WhatsApp mesajı gönderilemedi",
+        };
+      }
+    } else {
+      const sms = await sendSmsMessage({
+        phone,
+        message,
+        purpose: `booking-prepayment:${booking.id}`,
+      });
+      if (!sms.ok) {
+        return {
+          success: false,
+          error: sms.detail ?? "SMS gönderilemedi",
+        };
+      }
+    }
+
+    sentChannels.push(channel);
+  }
+
+  const optionExpiresAt = new Date(
+    Date.now() + data.optionHours * 60 * 60 * 1000
+  );
+
+  const existingDetails = parseBookingDetails(booking.details);
+
+  await prisma.booking.update({
+    where: { id: data.bookingId },
+    data: {
+      status: BookingStatus.PREPAYMENT,
+      optionExpiresAt,
+      details: {
+        ...existingDetails,
+        prepaymentAmount: Math.round(data.prepaymentAmount),
+        importPaymentMethod: normalizeCompanyPaymentType(data.paymentMethod),
+      },
+    },
+  });
+
+  const channelLabels = sentChannels
+    .map((channel) => getPrepaymentShareChannelLabel(channel))
+    .join(", ");
+  const activityLogs = await appendBookingActivityLog(data.bookingId, {
+    action: "prepayment_shared",
+    message: `Ön ödeme bilgisi gönderildi (${channelLabels}) — ${formatMoneyPlain(data.prepaymentAmount)}`,
+    actorUserId: actor.actorUserId,
+    actorName: actor.actorName,
+    meta: {
+      amount: Math.round(data.prepaymentAmount),
+      channels: channelLabels,
+      optionHours: data.optionHours,
+    },
+  });
+
+  revalidatePath("/admin/rezervasyonlar");
+
+  return { success: true, channels: sentChannels, activityLogs };
+}

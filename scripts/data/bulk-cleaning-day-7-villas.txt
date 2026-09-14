@@ -1,0 +1,309 @@
+Bungalov Bir İnci
+Bungalov Habitat 1
+Bungalov Habitat 2
+Bungalov Kumsal
+Bungalov Masal
+Bungalov Nil
+Faralya Villa 1
+Faralya Villa 2
+Faralya Villa 3
+Faralya Villa 4
+Faralya Villa 5
+Ilgım Apart 2
+Kalkan Domes 1
+Kalkan Domes 2
+Kalkan Domes 4
+Kalkan Domes 5
+Suit La Mer Deluxe
+Suit Mulberry
+Villa Abıhayat
+Villa Adel
+Villa Aden
+Villa Ahududu Duo
+Villa Ahududu Uno
+Villa Akça
+Villa Alara İslamlar
+Villa Alfa Delta
+Villa Alis
+Villa Alvin
+Villa Alya
+Villa Alyans
+Villa Angel House
+Villa Anka
+Villa Antik
+Villa Ardıç
+Villa Ari
+Villa Arna Demre 1
+Villa Arokarya
+Villa Ata Kalkan
+Villa Atlas
+Villa Atlas Ölüdeniz
+Villa Avenir
+Villa Ayla
+Villa Ayışığı
+Villa Bahamas
+Villa Bella Döğer
+Villa Berke Kayaköy
+Villa Berlin
+Villa Best
+Villa Beyaz
+Villa Beyaz İslamlar
+Villa Big Boss
+Villa Bitez
+Villa Bloom
+Villa Blue Heaven 1
+Villa Blue Heaven 2
+Villa Blue Heaven 3
+Villa Blue Heaven 4
+Villa Bozo 1
+Villa Bozo 2
+Villa Budva House
+Villa Burgu 2
+Villa Buyaz
+Villa Casaba Uğrar 2
+Villa Casablanca House
+Villa Cenk
+Villa Chill
+Villa Cihan
+Villa Colombia
+Villa DK
+Villa Daisy 1
+Villa Daisy 2
+Villa Daisy 3
+Villa Dalyan Palas
+Villa Deep Sea
+Villa Deep Sea Vip
+Villa Defne Ovacık 1
+Villa Defne Ovacık 2
+Villa Deneme
+Villa Dicle
+Villa Dikili Ölüdeniz
+Villa Disney
+Villa Divan
+Villa Dolaşma
+Villa Dolunay
+Villa Doğa Kalkan
+Villa Dream House
+Villa EA
+Villa Ece Duo
+Villa Edoy
+Villa Efecan
+Villa Ela Duo
+Villa Ela Ece
+Villa Elif 2
+Villa Emek
+Villa Emirhan
+Villa Erdem 1
+Villa Erdem 2
+Villa Eren
+Villa Erisa
+Villa Esil
+Villa Esma
+Villa Esra
+Villa Etiler
+Villa Excellence
+Villa Felix
+Villa Firuze
+Villa Fiyona
+Villa Fontana 1
+Villa Funda
+Villa Gala 2
+Villa Gala Mini
+Villa Gelincik Duo
+Villa Gelincik Hill
+Villa Golden 2
+Villa Grace
+Villa Grando 1
+Villa Grando 2
+Villa Gökkuşağı
+Villa Göl 1
+Villa Göreme
+Villa Görgeç
+Villa Göçmez Pine
+Villa Gülfidan
+Villa Güllü
+Villa Gün Işığı
+Villa Güney Duo
+Villa Güzelada
+Villa Hanedan
+Villa Hatice Sultan 1
+Villa Hatice Sultan 2
+Villa Hatice Sultan 3
+Villa Hatice Sultan 4
+Villa Hatice Sultan 6
+Villa Hayat 1
+Villa Heart
+Villa Holiday
+Villa Holiday Haven
+Villa Huzur
+Villa Ihlamur
+Villa Ilgın Ölüdeniz
+Villa Işıl
+Villa Jungle Duo
+Villa Karmen
+Villa Kaya Duo
+Villa Kayadibi
+Villa Kayra
+Villa Koln
+Villa Kuka
+Villa La Mer Azur
+Villa Lantana
+Villa Lara
+Villa Last Summer
+Villa Lazuli
+Villa Lemon 1
+Villa Lemon 2
+Villa Lemon 3
+Villa Letonya
+Villa Leyla
+Villa Likya
+Villa Lisa
+Villa Liz
+Villa Londra
+Villa Lumiere 1
+Villa Lumiere 2
+Villa Lumiere 3
+Villa Luu
+Villa Macera
+Villa Mamon Life
+Villa Mandalina
+Villa Manzara
+Villa Manzara İslamlar
+Villa Mare Perla
+Villa Marrakesh House
+Villa Masal
+Villa Massi Evi
+Villa Massi Söğüt 2
+Villa Mavi Ada
+Villa Medelin
+Villa Melek
+Villa Melisa
+Villa Memo
+Villa Mermaid
+Villa Mevsim
+Villa Meşe Kayaköy
+Villa Mia House
+Villa Mia Premium
+Villa Mira
+Villa Moren
+Villa Moren 2
+Villa Morris
+Villa Moti House
+Villa Myra
+Villa Münih
+Villa Nar Tanem
+Villa Nar Çiçeği 2
+Villa Narin 10
+Villa Narin 7
+Villa Nature
+Villa Nazeren
+Villa Nest
+Villa Norveç
+Villa Nova
+Villa Nur
+Villa Oba 2
+Villa Ocean
+Villa Ola
+Villa Olive
+Villa Onur
+Villa Opulent
+Villa Oran
+Villa Ortaköy
+Villa Pablo
+Villa Paix
+Villa Pal
+Villa Palya
+Villa Pandora Duo
+Villa Panorama 2
+Villa Paris
+Villa Peri Masalı
+Villa Petek 1
+Villa Petek 2
+Villa Pierre 1
+Villa Pine Garden
+Villa Plus
+Villa Polo 1
+Villa Posthane
+Villa Premium
+Villa Puzzle
+Villa Pınara Uğur
+Villa Reis 1
+Villa Reis 2
+Villa Rimel
+Villa Royal Çeşme 1
+Villa Royal Çeşme 2
+Villa Royal Çeşme 3
+Villa Royal Çeşme 4
+Villa Safran County
+Villa Safran Maidan
+Villa Santorini
+Villa Sarnıç
+Villa Sarı Yaz
+Villa Savoye
+Villa Sehlen Martı
+Villa Sena Döğer
+Villa Senir
+Villa Sento
+Villa Serenity
+Villa Serçe
+Villa Seyirtepe 2
+Villa Seçkin
+Villa Shamayaa House
+Villa Sierra
+Villa Silver
+Villa Simay 1
+Villa Simi
+Villa Sinemis
+Villa Solly
+Villa Son Yaz 1
+Villa Spring
+Villa Star Light 1
+Villa Star Light 3
+Villa Stella
+Villa Stone Heart
+Villa Story House
+Villa Sude
+Villa Suit Yin
+Villa Sun House
+Villa Sunny Garden 1
+Villa Sunrise
+Villa Sunset
+Villa Supernova
+Villa Swan
+Villa Süslü
+Villa Sıla Nur
+Villa Tahancı 1
+Villa Tahancı 2
+Villa Tahancı 3
+Villa Tahancı 4
+Villa Tan
+Villa Tarabya
+Villa Tarz
+Villa Tepe Evi
+Villa The Brother
+Villa Tokyo
+Villa Tomrul
+Villa Tuana Yeşilköy
+Villa Ural Üzümlü
+Villa Uğurlu
+Villa Valley Duo
+Villa Volga
+Villa Woo House
+Villa Yakamoz Ovacık
+Villa Yanar
+Villa Yaşam 1
+Villa Yaşam 2
+Villa Yeniköy
+Villa Yeşim
+Villa Yirmi
+Villa Yuvam
+Villa Yıldız Bayındır
+Villa Zeon
+Villa Zeyno 3
+Villa Zilan
+Villa Zülfikar
+Villa Çay
+Villa Çağan
+Villa Özkan
+Villa İmparator
+Villa İstefani

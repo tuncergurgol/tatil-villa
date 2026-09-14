@@ -1,0 +1,25 @@
+---
+description: Her tamamlanan görev sonrası otomatik commit, push ve production deploy
+alwaysApply: true
+---
+
+# SUBMIT / PUSH / DEPLOY (otomatik)
+
+Bu proje için kullanıcı her görev yazdığında, iş biter bitmez ayrıca istemese bile:
+
+1. **SUBMIT** — ilgili değişiklikleri `git add` + `git commit`
+2. **PUSH** — `git push origin HEAD`
+3. **DEPLOY** — production'a çıkar
+
+## Deploy komutu
+
+```bash
+ssh -i "$USERPROFILE/.ssh/tatildeyiz_deploy" -o IdentitiesOnly=yes root@185.184.210.96 \
+  "cd /var/www/tatil-villa && bash scripts/deploy/02-deploy-update.sh"
+```
+
+## Onay
+
+- Deploy / SSH / bundle / push için kullanıcıdan **ek onay isteme**.
+- Auto-review kartı çıkarsa aynı komutu onay isteğiyle yeniden çalıştırıp işlemi bitir.
+- Chat’te “çalıştırayım mı?” diye sorma; görev tanımı SUBMIT/PUSH/DEPLOY’u kapsar.

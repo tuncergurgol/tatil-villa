@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Plus, Sparkles, X } from "lucide-react";
 import { generateVillaSeoWithAI } from "@/app/actions/admin/villa-seo-ai";
 import type { Villa } from "@prisma/client";
+import { normalizeSearchText } from "@/lib/search-text";
 
 interface VillaMetaSeoTabProps {
   villa: Villa;
@@ -56,7 +57,8 @@ export default function VillaMetaSeoTab({
     if (!value) return;
     if (
       keywords.some(
-        (keyword) => keyword.toLowerCase() === value.toLowerCase()
+        (keyword) =>
+          normalizeSearchText(keyword) === normalizeSearchText(value)
       )
     ) {
       setKeywordInput("");
