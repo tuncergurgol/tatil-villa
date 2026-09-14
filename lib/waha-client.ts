@@ -679,3 +679,151 @@ export async function sendWahaTextMessageWithRecovery(
 
   await send();
 }
+
+export type WahaChatId =
+  | string
+  | {
+      _serialized?: string;
+      user?: string;
+      server?: string;
+    };
+
+export type WahaChatSummary = {
+  id: WahaChatId;
+  name?: string | null;
+  isGroup?: boolean;
+  timestamp?: number;
+  lastMessage?: {
+    body?: string;
+    fromMe?: boolean;
+    timestamp?: number;
+  } | null;
+};
+
+export type WahaChatMessage = {
+  id?: unknown;
+  timestamp?: number;
+  from?: string;
+  fromMe?: boolean;
+  body?: string;
+  text?: string;
+  hasMedia?: boolean;
+  _data?: {
+    type?: string;
+    caption?: string;
+    body?: string;
+  };
+};
+
+export function serializeWahaChatId(id: WahaChatId | null | undefined): string {
+  if (!id) return "";
+  if (typeof id === "string") return id.trim();
+  if (id._serialized?.trim()) return id._serialized.trim();
+  if (id.user && id.server) return `${id.user}@${id.server}`;
+  return "";
+}
+
+export function isIndividualWahaChat(chat: WahaChatSummary) {
+  if (chat.isGroup) return false;
+  const chatId = serializeWahaChatId(chat.id);
+  if (!chatId) return false;
+  if (chatId.includes("@g.us")) return false;
+  if (chatId.includes("status@")) return false;
+  if (chatId.includes("@broadcast")) return false;
+  return true;
+}
+
+export async function listWahaChats(
+  baseUrl: string,
+  apiKey: string,
+  sessionName: string
+) {
+  const data = await wahaRequest<WahaChatSummary[] | { chats?: WahaChatSummary[] }>(
+    baseUrl,
+    apiKey,
+    `/api/${encodeURIComponent(sessionName)}/chats`
+  );
+  return Array.isArray(data) ? data : data?.chats ?? [];
+}
+
+function wahaMessageKey(message: WahaChatMessage) {
+  const id = message.id;
+  if (typeof id === "string" && id.trim()) return id.trim();
+  if (id && typeof id === "object" && "_serialized" in id) {
+    const serialized = (id as { _serialized?: string })._serialized;
+    if (serialized?.trim()) return serialized.trim();
+  }
+  return `${message.timestamp ?? ""}:${message.from ?? ""}:${(message.body ?? "").slice(0, 40)}`;
+}
+
+export async function listWahaChatMessages(
+  baseUrl: string,
+  apiKey: string,
+  sessionName: string,
+  chatId: string,
+  options?: { pageSize?: number; maxMessages?: number }
+) {
+  const pageSize = options?.pageSize ?? 100;
+  const maxMessages = options?.maxMessages ?? 800;
+  const encodedChatId = encodeURIComponent(chatId);
+  const collected: WahaChatMessage[] = [];
+  const seen = new Set<string>();
+  let offset = 0;
+  let oldestTimestamp: number | null = null;
+  let useTimestampCursor = false;
+
+  while (collected.length < maxMessages) {
+    const limit = Math.min(pageSize, maxMessages - collected.length);
+    const params = new URLSearchParams({
+      limit: String(limit),
+      downloadMedia: "false",
+    });
+    if (useTimestampCursor && oldestTimestamp != null) {
+      params.set("filter.timestamp.lte", String(oldestTimestamp));
+    } else if (offset > 0) {
+      params.set("offset", String(offset));
+    }
+
+    let page: WahaChatMessage[] = [];
+    try {
+      const data = await wahaRequest<WahaChatMessage[] | { messages?: WahaChatMessage[] }>(
+        baseUrl,
+        apiKey,
+        `/api/${encodeURIComponent(sessionName)}/chats/${encodedChatId}/messages?${params.toString()}`
+      );
+      page = Array.isArray(data) ? data : data?.messages ?? [];
+    } catch {
+      break;
+    }
+
+    if (!page.length) break;
+
+    let added = 0;
+    let pageOldest: number | null = null;
+    for (const message of page) {
+      const key = wahaMessageKey(message);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      collected.push(message);
+      added += 1;
+      const timestamp = Number(message.timestamp ?? 0);
+      if (timestamp && (pageOldest == null || timestamp < pageOldest)) {
+        pageOldest = timestamp;
+      }
+    }
+
+    if (added === 0) {
+      if (!useTimestampCursor && oldestTimestamp != null) {
+        useTimestampCursor = true;
+        continue;
+      }
+      break;
+    }
+    if (page.length < limit) break;
+
+    offset += page.length;
+    if (pageOldest != null) oldestTimestamp = pageOldest - 1;
+  }
+
+  return collected;
+}

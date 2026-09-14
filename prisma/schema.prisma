@@ -1584,6 +1584,7 @@ model TatilAssistantExample {
   active    Boolean             @default(true)
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
+  wahaQa    TatilAssistantWahaQa?
 
   @@index([topicId, sortOrder])
 }
@@ -1598,6 +1599,23 @@ model TatilAssistantRule {
   updatedAt DateTime @updatedAt
 
   @@index([active, sortOrder])
+}
+
+model TatilAssistantWahaQa {
+  id                String                 @id @default(cuid())
+  fingerprint       String                 @unique
+  question          String                 @db.Text
+  answer            String                 @db.Text
+  occurrenceCount   Int                    @default(1)
+  sampleChatName    String                 @default("")
+  lastSeenAt        DateTime
+  importedExampleId Int?                   @unique
+  importedExample   TatilAssistantExample? @relation(fields: [importedExampleId], references: [id], onDelete: SetNull)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([occurrenceCount])
+  @@index([lastSeenAt])
 }
 
 model TatilAssistantConversation {

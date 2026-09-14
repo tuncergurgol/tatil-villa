@@ -3,6 +3,7 @@ import TatilAssistantAdminPanel from "@/components/admin/tatil-assistant/TatilAs
 import { getTatilAssistantAdminData } from "@/lib/queries/tatil-assistant";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export default async function TatilAsistaniAdminPage() {
   const data = await getTatilAssistantAdminData();
@@ -23,6 +24,15 @@ export default async function TatilAsistaniAdminPage() {
       webhookUrl={webhookUrl}
       topics={data.topics}
       rules={data.rules}
+      wahaQaItems={data.wahaQaItems.map((item) => ({
+        id: item.id,
+        question: item.question,
+        answer: item.answer,
+        occurrenceCount: item.occurrenceCount,
+        sampleChatName: item.sampleChatName,
+        lastSeenAt: item.lastSeenAt.toISOString(),
+        importedExampleId: item.importedExampleId,
+      }))}
     />
   );
 }

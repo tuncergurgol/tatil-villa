@@ -105,7 +105,7 @@ export async function getTatilAssistantAdminData() {
   await ensureTatilAssistantDefaults();
   const settings = await getCompanySettings();
 
-  const [topics, rules] = await Promise.all([
+  const [topics, rules, wahaQaItems] = await Promise.all([
     prisma.tatilAssistantTopic.findMany({
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       include: {
@@ -116,6 +116,9 @@ export async function getTatilAssistantAdminData() {
     }),
     prisma.tatilAssistantRule.findMany({
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    }),
+    prisma.tatilAssistantWahaQa.findMany({
+      orderBy: [{ occurrenceCount: "desc" }, { lastSeenAt: "desc" }],
     }),
   ]);
 
@@ -135,6 +138,24 @@ export async function getTatilAssistantAdminData() {
     defaultPairingPhone: "905496180108",
     topics,
     rules,
+    wahaQaItems,
+  };
+}
+
+export function getNotificationWahaConfig(
+  settings: Awaited<ReturnType<typeof getCompanySettings>>
+) {
+  return {
+    baseUrl:
+      settings.wahaBaseUrl?.trim() ||
+      process.env.WAHA_BASE_URL?.trim() ||
+      "http://localhost:3001",
+    apiKey:
+      settings.wahaApiKey?.trim() || process.env.WAHA_API_KEY?.trim() || "",
+    sessionName:
+      settings.wahaSessionName?.trim() ||
+      process.env.WAHA_SESSION_NAME?.trim() ||
+      "default",
   };
 }
 

@@ -13,6 +13,9 @@ import {
   saveTatilAssistantTopicAction,
 } from "@/app/actions/admin/tatil-assistant";
 import AssistantWhatsappConnection from "@/components/admin/tatil-assistant/AssistantWhatsappConnection";
+import TatilAssistantWahaQaTab, {
+  type WahaQaItem,
+} from "@/components/admin/tatil-assistant/TatilAssistantWahaQaTab";
 
 type Example = {
   id: number;
@@ -49,6 +52,7 @@ type TatilAssistantAdminPanelProps = {
   webhookUrl: string;
   topics: Topic[];
   rules: Rule[];
+  wahaQaItems: WahaQaItem[];
 };
 
 const inputClass =
@@ -56,6 +60,10 @@ const inputClass =
 
 const tabs = [
   { id: "whatsapp", label: "WhatsApp Bağlantısı" },
+  {
+    id: "waha-qa",
+    label: "YumYum Tatil Asistanına mesaj soru ve cevapları",
+  },
   { id: "examples", label: "Mesaj Örnekleri" },
   { id: "rules", label: "Kurallar" },
   { id: "settings", label: "Genel Ayarlar" },
@@ -136,6 +144,10 @@ export default function TatilAssistantAdminPanel(props: TatilAssistantAdminPanel
           webhookUrl={props.webhookUrl}
           defaultPairingPhone={props.defaultPairingPhone}
         />
+      ) : null}
+
+      {activeTab === "waha-qa" ? (
+        <TatilAssistantWahaQaTab items={props.wahaQaItems} />
       ) : null}
 
       {activeTab === "examples" ? (
