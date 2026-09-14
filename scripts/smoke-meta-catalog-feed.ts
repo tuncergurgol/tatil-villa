@@ -26,6 +26,7 @@ async function main() {
     heroTitle: "",
     heroImageUrl: "",
     useDefaultLogo: true,
+    homeTheme: "theme-1",
   });
 
   assert(xml.startsWith("<?xml"), "XML başlığı var");

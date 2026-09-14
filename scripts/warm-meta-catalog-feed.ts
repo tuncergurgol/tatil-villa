@@ -9,6 +9,7 @@ import {
   type PublicSiteKey,
 } from "../lib/public-site-keys";
 import type { PublicSiteProfile } from "../lib/public-site-profile";
+import { getPublicHomeTheme } from "../lib/public-home-theme";
 
 function minimalSiteProfile(siteKey: PublicSiteKey): PublicSiteProfile {
   const meta = getPublicSiteMeta(siteKey);
@@ -24,6 +25,7 @@ function minimalSiteProfile(siteKey: PublicSiteKey): PublicSiteProfile {
     heroTitle: "",
     heroImageUrl: "",
     useDefaultLogo: siteKey === "tatildeyiz",
+    homeTheme: getPublicHomeTheme(siteKey),
   };
 }
 

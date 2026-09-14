@@ -5,7 +5,10 @@ import {
   buildDreamFacilitySearchHref,
   type HomeDreamCategoryCard,
 } from "@/lib/home-dream-categories";
-import type { PublicSiteKey } from "@/lib/public-site-keys";
+import {
+  getPublicSiteFacilityCategories,
+  type PublicSiteKey,
+} from "@/lib/public-site-keys";
 import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
 export async function getFacilityCategoryAdminData() {
@@ -126,5 +129,52 @@ export async function getHomeDreamCategories(
     }
 
     return [];
+  });
+}
+
+const THEME_2_TYPE_FALLBACK_IMAGES: Record<string, string> = {
+  bungalov:
+    "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80",
+  bungalows:
+    "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80",
+  domes:
+    "https://images.unsplash.com/photo-1521401830884-6c03c1c87ebb?w=800&q=80",
+};
+
+export type Theme2FacilityChip = {
+  name: string;
+  href: string;
+  image: string;
+};
+
+export async function getTheme2FacilityChips(
+  siteKey?: PublicSiteKey
+): Promise<Theme2FacilityChip[]> {
+  const names = getPublicSiteFacilityCategories(siteKey);
+  if (names.length === 0) return [];
+
+  const categories = await prisma.facilityCategory.findMany({
+    where: {
+      OR: [{ name: { in: names } }, { slug: { in: names.map((n) => n.toLowerCase()) } }],
+    },
+    select: { name: true, slug: true, image: true },
+  });
+
+  const byName = new Map(
+    categories.map((category) => [category.name.toLocaleLowerCase("tr-TR"), category])
+  );
+  const bySlug = new Map(categories.map((category) => [category.slug, category]));
+
+  return names.map((name) => {
+    const key = name.toLocaleLowerCase("tr-TR");
+    const category = byName.get(key) ?? bySlug.get(key);
+    const fallback =
+      THEME_2_TYPE_FALLBACK_IMAGES[category?.slug ?? key] ??
+      THEME_2_TYPE_FALLBACK_IMAGES.bungalov;
+    return {
+      name: category?.name || name,
+      href: buildDreamFacilitySearchHref(category?.name || name),
+      image: category?.image || fallback,
+    };
   });
 }

@@ -3,6 +3,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { getOptionalSite4Config } from "@/lib/public-site-4";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { getPublicHomeTheme, type PublicHomeTheme } from "@/lib/public-home-theme";
 
 type CompanyBrandSource = {
   brandName: string;
@@ -26,12 +27,13 @@ export type PublicSiteProfile = {
   heroTitle: string;
   heroImageUrl: string;
   useDefaultLogo: boolean;
+  homeTheme: PublicHomeTheme;
 };
 
 const DEFAULT_HERO_IMAGE_URL =
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=60";
 
-type BrandedSiteProfile = Omit<PublicSiteProfile, "useDefaultLogo">;
+type BrandedSiteProfile = Omit<PublicSiteProfile, "useDefaultLogo" | "homeTheme">;
 
 function buildBrandedSites(): Array<{
   hosts: string[];
@@ -121,7 +123,11 @@ export function resolvePublicSiteProfile(
 ): PublicSiteProfile {
   const branded = BRANDED_SITE_BY_HOST.get(normalizeRequestHostname(hostname));
   if (branded) {
-    return { ...branded, useDefaultLogo: false };
+    return {
+      ...branded,
+      useDefaultLogo: false,
+      homeTheme: getPublicHomeTheme(branded.key),
+    };
   }
 
   return {
@@ -136,6 +142,7 @@ export function resolvePublicSiteProfile(
     heroTitle: "Yeni Maceranı Keşfet",
     heroImageUrl: DEFAULT_HERO_IMAGE_URL,
     useDefaultLogo: true,
+    homeTheme: "theme-1",
   };
 }
 
@@ -162,7 +169,11 @@ export function getPublicSiteProfileByKey(
 ): PublicSiteProfile {
   const branded = BRANDED_SITES.find((entry) => entry.profile.key === siteKey);
   if (branded) {
-    return { ...branded.profile, useDefaultLogo: false };
+    return {
+      ...branded.profile,
+      useDefaultLogo: false,
+      homeTheme: getPublicHomeTheme(branded.profile.key),
+    };
   }
 
   return {
@@ -177,5 +188,6 @@ export function getPublicSiteProfileByKey(
     heroTitle: "Yeni Maceranı Keşfet",
     heroImageUrl: DEFAULT_HERO_IMAGE_URL,
     useDefaultLogo: true,
+    homeTheme: "theme-1",
   };
 }

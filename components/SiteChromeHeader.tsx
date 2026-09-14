@@ -1,4 +1,5 @@
 import Header from "@/components/Header";
+import Theme2Header from "@/components/theme-2/Theme2Header";
 import { getSiteMenuItemsForPublic } from "@/lib/queries/site-menus";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { siteConfig } from "@/lib/data";
@@ -18,15 +19,24 @@ const defaultHeaderLinks = [
   { href: "/sadakat", label: "Sadakat Programı" },
 ];
 
+const theme2DefaultHeaderLinks = [
+  { href: "/villalar", label: "Konaklamalar" },
+  { href: "/villalar?facilities=Bungalov", label: "Bungalov" },
+  { href: "/villalar?facilities=Domes", label: "Domes" },
+  { href: "/#bolgeler", label: "Bölgeler" },
+];
+
 export default async function SiteChromeHeader() {
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
   const headerMenu = await getSiteMenuItemsForPublic("header");
 
   const headerLinks =
-    headerMenu.length > 0
-      ? headerMenu.map((item) => ({ href: item.href, label: item.label }))
-      : defaultHeaderLinks;
+    site.homeTheme === "theme-2"
+      ? theme2DefaultHeaderLinks
+      : headerMenu.length > 0
+        ? headerMenu.map((item) => ({ href: item.href, label: item.label }))
+        : defaultHeaderLinks;
 
   const brandName = site.brandName?.trim() || siteConfig.name;
   const phone = company.phone?.trim() || siteConfig.phone;
@@ -58,16 +68,27 @@ export default async function SiteChromeHeader() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
-      <Header
-        navLinks={headerLinks}
-        brandName={brandName}
-        logoUrl={site.logoUrl}
-        useDefaultLogo={site.useDefaultLogo}
-        siteKey={site.key}
-        agencyName={company.agencyName}
-        tursabNo={company.tursabNo}
-        phone={phone}
-      />
+      {site.homeTheme === "theme-2" ? (
+        <Theme2Header
+          navLinks={headerLinks}
+          brandName={brandName}
+          logoUrl={site.logoUrl}
+          agencyName={company.agencyName}
+          tursabNo={company.tursabNo}
+          phone={phone}
+        />
+      ) : (
+        <Header
+          navLinks={headerLinks}
+          brandName={brandName}
+          logoUrl={site.logoUrl}
+          useDefaultLogo={site.useDefaultLogo}
+          siteKey={site.key}
+          agencyName={company.agencyName}
+          tursabNo={company.tursabNo}
+          phone={phone}
+        />
+      )}
     </>
   );
 }
