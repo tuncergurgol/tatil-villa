@@ -73,8 +73,8 @@ export const PUBLIC_BRAND_ASSET_GROUPS: PublicBrandAssetGroup[] = [
       },
       {
         label: "Logo (yatay)",
-        path: "/brands/glamping-turkey/logo-horizontal.png",
-        fileName: "glamping-turkey-logo-horizontal.png",
+        path: "/brands/glamping-turkey/logo-wide.png",
+        fileName: "glamping-turkey-logo-wide.png",
       },
       {
         label: "Favicon",

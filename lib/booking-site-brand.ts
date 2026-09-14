@@ -59,7 +59,7 @@ const KNOWN_SITE_BRANDS: Array<{
   {
     names: ["Glamping Turkey", "GLAMPING TURKEY"],
     domain: "www.glampingturkey.com",
-    logoUrl: "/brands/glamping-turkey/logo-horizontal.png",
+    logoUrl: "/brands/glamping-turkey/logo-wide.png",
   },
 ];
 

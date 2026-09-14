@@ -81,7 +81,7 @@ function buildBrandedSites(): Array<{
         domain: site4.domain,
         brandName: site4.brandName,
         // Header için yatay logo; kare `logo.png` favicon/OG ve indirme için kalır.
-        logoUrl: `/brands/${site4.key}/logo-horizontal.png`,
+        logoUrl: `/brands/${site4.key}/logo-wide.png`,
         faviconUrl: `/brands/${site4.key}/favicon.png`,
         ogImageUrl: `/brands/${site4.key}/og-image.png`,
         seoTitle: site4.seoTitle,
