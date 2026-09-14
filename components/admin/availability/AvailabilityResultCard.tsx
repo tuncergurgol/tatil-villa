@@ -360,21 +360,42 @@ export default function AvailabilityResultCard({
             </div>
           </div>
 
-          {highlightTags.length > 0 ? (
+          {highlightTags.length > 0 || result.customRules.length > 0 ? (
             <div className="mt-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                Öne Çıkanlar
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {highlightTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              {highlightTags.length > 0 ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Öne Çıkanlar
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {highlightTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+              {result.customRules.length > 0 ? (
+                <div className={highlightTags.length > 0 ? "mt-3" : ""}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Özel Kurallar
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {result.customRules.map((rule) => (
+                      <li
+                        key={rule}
+                        className="text-[11px] leading-snug text-amber-800"
+                      >
+                        {rule}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

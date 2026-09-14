@@ -80,6 +80,7 @@ export type AvailabilitySearchResultItem = {
   facilityCategories: string[];
   amenities: string[];
   featuredAmenities: string[];
+  customRules: string[];
   popular: boolean;
   recommended: boolean;
   startingPrice: number | null;
@@ -416,6 +417,7 @@ export async function searchAvailability(
         pricePerNight: true,
         facilityCategories: true,
         amenities: true,
+        customRules: true,
         popular: true,
         recommended: true,
         region: {
@@ -654,6 +656,9 @@ export async function searchAvailability(
       featuredAmenities: sortAmenityNamesTr(
         villa.amenities.filter((amenity) => featuredAmenityNames.has(amenity))
       ),
+      customRules: villa.customRules
+        .map((rule) => rule.trim())
+        .filter(Boolean),
       popular: villa.popular,
       recommended: villa.recommended,
       startingPrice: minNightly ?? villa.pricePerNight,
