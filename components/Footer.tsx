@@ -187,10 +187,10 @@ export default function Footer({
           <div className="mt-6 bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/uploads/company/guvenli-odeme-rozetleri.png"
-              alt="SSL güvenli bağlantı, %100 güvenli alışveriş, iyzico, Mastercard, Visa, American Express, Troy, Param"
-              width={320}
-              height={160}
+              src="/images/guvenli-odeme-rozetleri.png"
+              alt="SSL güvenli bağlantı, %100 güvenli alışveriş, iyzico, Mastercard, Visa, American Express, Troy"
+              width={282}
+              height={78}
               loading="lazy"
               decoding="async"
               className="h-auto w-full max-w-[260px] bg-white"
