@@ -133,9 +133,9 @@ export async function getHomeDreamCategories(
 }
 
 const THEME_2_TYPE_FALLBACK_IMAGES: Record<string, string> = {
-  bungalov: "/brands/glamping-turkey/chip-bungalov.jpg",
-  bungalows: "/brands/glamping-turkey/chip-bungalov.jpg",
-  domes: "/brands/glamping-turkey/chip-domes.jpg",
+  bungalov: "/brands/glamping-turkey/chip-bungalov-v2.jpg",
+  bungalows: "/brands/glamping-turkey/chip-bungalov-v2.jpg",
+  domes: "/brands/glamping-turkey/chip-domes-v2.jpg",
 };
 
 export type Theme2FacilityChip = {
