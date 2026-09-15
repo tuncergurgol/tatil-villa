@@ -3,14 +3,26 @@ import {
   getActiveFaqsForPublic,
   getFaqCategoriesForPublic,
 } from "@/lib/queries/cms-content";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import {
+  maybeRewriteVillaWording,
+  usesTesisListingCopy,
+} from "@/lib/public-listing-copy";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Sık Sorulan Sorular",
-  description:
-    "Villa kiralama, rezervasyon, ödeme, iptal ve konaklama hakkında sık sorulan sorular ve cevapları.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  return {
+    title: "Sık Sorulan Sorular",
+    description: maybeRewriteVillaWording(
+      "Villa kiralama, rezervasyon, ödeme, iptal ve konaklama hakkında sık sorulan sorular ve cevapları.",
+      site.key
+    ),
+  };
+}
 
 const categoryLabels: Record<string, string> = {
   genel: "Genel",
@@ -23,15 +35,24 @@ const categoryLabels: Record<string, string> = {
 };
 
 export default async function FaqPage() {
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
   const [faqs, categories] = await Promise.all([
     getActiveFaqsForPublic(),
     getFaqCategoriesForPublic(),
   ]);
+  const tesis = usesTesisListingCopy(site.key);
+
+  const rewrittenFaqs = faqs.map((faq) => ({
+    ...faq,
+    question: maybeRewriteVillaWording(faq.question, site.key),
+    answer: maybeRewriteVillaWording(faq.answer, site.key),
+  }));
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
+    mainEntity: rewrittenFaqs.map((faq) => ({
       "@type": "Question",
       name: faq.question,
       acceptedAnswer: {
@@ -49,18 +70,21 @@ export default async function FaqPage() {
       />
       <h1 className="text-3xl font-bold text-gray-900">Sık Sorulan Sorular</h1>
       <p className="mt-3 text-gray-600">
-        Villa kiralama süreci, ödeme, iptal koşulları ve konaklama hakkında merak
-        edilenler.
+        {maybeRewriteVillaWording(
+          "Villa kiralama süreci, ödeme, iptal koşulları ve konaklama hakkında merak edilenler.",
+          site.key
+        )}
       </p>
 
       <div className="mt-10 space-y-10">
         {categories.map((category) => {
-          const items = faqs.filter((faq) => faq.category === category);
+          const items = rewrittenFaqs.filter((faq) => faq.category === category);
           if (items.length === 0) return null;
+          const label = categoryLabels[category] ?? category;
           return (
             <section key={category}>
               <h2 className="text-xl font-semibold text-teal-800">
-                {categoryLabels[category] ?? category}
+                {tesis ? maybeRewriteVillaWording(label, site.key) : label}
               </h2>
               <div className="mt-4 space-y-3">
                 {items.map((faq) => (

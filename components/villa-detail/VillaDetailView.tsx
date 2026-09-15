@@ -38,6 +38,7 @@ import {
   type PublicExchangeRates,
 } from "@/lib/currency-conversion";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
+import { getPublicListingCopy } from "@/lib/public-listing-copy";
 import type {
   SimilarVillaCard,
   VillaDetail,
@@ -131,6 +132,7 @@ export default function VillaDetailView({
   bookingAccessToken = "",
   allowBookingAccess = false,
 }: VillaDetailViewProps) {
+  const listingCopy = getPublicListingCopy(siteKey);
   const featuredAmenityItems = sortAmenityNamesTr(
     villa.amenityGroups.find((group) =>
       isFeaturedAmenityCategory(group.category)
@@ -194,7 +196,7 @@ export default function VillaDetailView({
           </Link>
           <span aria-hidden>›</span>
           <Link href="/villalar" className="hover:text-teal-700">
-            Villa
+            {listingCopy.breadcrumb}
           </Link>
           <span aria-hidden>›</span>
           <span className="font-medium text-slate-800">{villa.name}</span>
@@ -272,7 +274,7 @@ export default function VillaDetailView({
               </div>
 
               <div className="mt-10">
-                <SectionTitle>Villa Detayı</SectionTitle>
+                <SectionTitle>{listingCopy.detail}</SectionTitle>
                 <div className="mt-5">
                   <VillaHtmlContent html={villa.description} />
                 </div>

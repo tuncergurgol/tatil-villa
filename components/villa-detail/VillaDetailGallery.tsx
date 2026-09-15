@@ -2,6 +2,7 @@
 
 import GalleryImage from "@/components/GalleryImage";
 import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
@@ -29,6 +30,7 @@ export default function VillaDetailGallery({
   name,
   images,
 }: VillaDetailGalleryProps) {
+  const listingCopy = usePublicListingCopy();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [mobileSlide, setMobileSlide] = useState(0);
@@ -295,7 +297,7 @@ export default function VillaDetailGallery({
           className="fixed inset-0 z-[80] bg-black/90"
           role="dialog"
           aria-modal="true"
-          aria-label="Villa galerisi"
+          aria-label={`${listingCopy.singular} galerisi`}
         >
           <button
             type="button"

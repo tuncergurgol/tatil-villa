@@ -8,6 +8,7 @@ import {
   Sunrise,
 } from "lucide-react";
 import CampaignLandingHero from "@/components/campaigns/CampaignLandingHero";
+import { ListingWording } from "@/components/PublicListingCopyProvider";
 
 const SUPPORT_POINTS = [
   {
@@ -51,7 +52,12 @@ export default function ConsultantCampaignPageView({
         imageAlt="Tatil danışmanı desteği"
         eyebrow="Sürekli destek"
         title="Tatilinizin sonuna kadar yanınızdayız"
-        subtitle="Rezervasyondan villadan çıkışa kadar kişisel tatil danışmanı ile sürekli iletişim. Sorun çözülür, planınız rahat akar."
+        subtitle={
+          <ListingWording>
+            Rezervasyondan villadan çıkışa kadar kişisel tatil danışmanı ile
+            sürekli iletişim. Sorun çözülür, planınız rahat akar.
+          </ListingWording>
+        }
         actions={
           <>
             <Link
@@ -80,9 +86,11 @@ export default function ConsultantCampaignPageView({
           Sürekli tatil danışmanı desteği
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
-          Tatil yalnızca villayı seçmekle bitmez. Giriş bilgileri, yol tarifi,
-          villa içi ihtiyaçlar ve dönüş günü teslimi dahil tüm süreçte size özel
-          bir danışmanla ilerlersiniz.
+          <ListingWording>
+            Tatil yalnızca villayı seçmekle bitmez. Giriş bilgileri, yol tarifi,
+            villa içi ihtiyaçlar ve dönüş günü teslimi dahil tüm süreçte size özel
+            bir danışmanla ilerlersiniz.
+          </ListingWording>
         </p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -98,7 +106,7 @@ export default function ConsultantCampaignPageView({
                   {item.title}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  {item.text}
+                  <ListingWording>{item.text}</ListingWording>
                 </p>
               </article>
             );

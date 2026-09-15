@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { PublicSiteProfile } from "@/lib/public-site-profile";
+import { usesTesisListingCopy } from "@/lib/public-listing-copy";
 import {
   absoluteAssetUrl,
   resolveMetadataBase,
@@ -43,12 +44,16 @@ function resolveVillaPageTitle(villa: VillaMetadataSource, domain: string): stri
   return `${villa.name} | ${cleanDomain}`;
 }
 
-function resolveVillaPageDescription(villa: VillaMetadataSource): string {
+function resolveVillaPageDescription(
+  villa: VillaMetadataSource,
+  siteKey?: string
+): string {
   const seo = villa.seoDescription?.trim();
   if (seo) return seo;
   const fromBody = stripHtml(villa.description ?? "");
   if (fromBody) return fromBody.slice(0, 320);
-  return `${villa.name} kiralık villa ve tatil seçenekleri.`;
+  const noun = usesTesisListingCopy(siteKey) ? "tesis" : "villa";
+  return `${villa.name} kiralık ${noun} ve tatil seçenekleri.`;
 }
 
 export function buildVillaDetailMetadata(
@@ -59,7 +64,7 @@ export function buildVillaDetailMetadata(
   const metadataBase = resolveMetadataBase(site.domain);
   const domain = metadataBase.host;
   const title = resolveVillaPageTitle(villa, domain);
-  const description = resolveVillaPageDescription(villa);
+  const description = resolveVillaPageDescription(villa, site.key);
   const showcase = getVillaShowcaseImage({
     image: villa.image ?? "",
     images: villa.images ?? [],

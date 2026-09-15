@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import CampaignLandingHero from "@/components/campaigns/CampaignLandingHero";
+import { ListingWording } from "@/components/PublicListingCopyProvider";
 import VillaCard from "@/components/VillaCard";
 import type { Villa } from "@/lib/types";
 import { EARLY_BOOKING_PRICE_YEAR } from "@/lib/home-campaigns";
@@ -25,7 +26,11 @@ export default function EarlyBookingCampaignPageView({
         imageAlt={`${year} erken rezervasyon fırsatları`}
         eyebrow="Erken rezervasyon"
         title={`${year} yılı erken rezervasyon fırsatları`}
-        subtitle={`${year} sezonu fiyatı girilmiş villaları şimdiden inceleyin. İstediğiniz tarihi dolmadan ayırtın.`}
+        subtitle={
+          <ListingWording>
+            {`${year} sezonu fiyatı girilmiş villaları şimdiden inceleyin. İstediğiniz tarihi dolmadan ayırtın.`}
+          </ListingWording>
+        }
         actions={
           <Link
             href={`/villalar?year=${year}`}
@@ -40,12 +45,14 @@ export default function EarlyBookingCampaignPageView({
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-6">
           <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-            {year} fiyatı olan villalar
+            <ListingWording>{`${year} fiyatı olan villalar`}</ListingWording>
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            {totalCount > 0
-              ? `${totalCount} villada ${year} yılı fiyat bilgisi bulunuyor.`
-              : `${year} yılı için henüz fiyat girilmiş villa yok.`}
+            <ListingWording>
+              {totalCount > 0
+                ? `${totalCount} villada ${year} yılı fiyat bilgisi bulunuyor.`
+                : `${year} yılı için henüz fiyat girilmiş villa yok.`}
+            </ListingWording>
           </p>
         </div>
 
@@ -57,7 +64,9 @@ export default function EarlyBookingCampaignPageView({
           </div>
         ) : (
           <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
-            {year} sezonu fiyatları eklendikçe villalar burada listelenir.
+            <ListingWording>
+              {`${year} sezonu fiyatları eklendikçe villalar burada listelenir.`}
+            </ListingWording>
           </p>
         )}
 

@@ -9,6 +9,7 @@ import {
   collectDescendantIds,
   getAllRegionNodes,
 } from "@/lib/queries/region-tree";
+import { listingRegionRentalLabel } from "@/lib/public-listing-copy";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
@@ -267,7 +268,7 @@ export async function getRegionFilterOptions() {
   }));
 }
 
-export async function getHeroSearchRegions() {
+export async function getHeroSearchRegions(siteKey?: PublicSiteKey) {
   const regions = await prisma.region.findMany({
     where: {
       active: true,
@@ -285,7 +286,7 @@ export async function getHeroSearchRegions() {
     slug: region.slug,
     name: region.name,
     level: region.level,
-    label: `${region.name} Kiralık Villa`,
+    label: listingRegionRentalLabel(region.name, siteKey),
   }));
 }
 
@@ -349,7 +350,7 @@ export async function getFooterRegionLinks(siteKey?: PublicSiteKey) {
     .map((region) => ({
       slug: region.slug,
       name: region.name,
-      label: `${region.name} Kiralık Villalar`,
+      label: listingRegionRentalLabel(region.name, siteKey, true),
       level: region.level,
     }));
 

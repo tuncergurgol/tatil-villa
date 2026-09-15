@@ -23,6 +23,12 @@ import {
   VILLA_SEARCH_PAGE_SIZE,
 } from "@/lib/villa-search-params";
 import {
+  getPublicListingCopy,
+  listingEarlyBookingTitle,
+  listingRegionRentalLabel,
+  maybeRewriteVillaWording,
+} from "@/lib/public-listing-copy";
+import {
   isIndexableVillaSearch,
   publicIndexingRobots,
   villaSearchCanonicalPath,
@@ -60,14 +66,23 @@ export async function generateMetadata({
   const canonical = villaSearchCanonicalPath(query);
   const region = regionSlug ? await getRegionBySlug(regionSlug) : null;
   const regionName = region?.name?.trim() || "";
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  const copy = getPublicListingCopy(site.key);
 
   return {
     title: regionName
-      ? `${regionName} Kiralık Villalar`
-      : "Kiralık Villa ve Bungalovlar",
+      ? listingRegionRentalLabel(regionName, site.key, true)
+      : copy.rentalAndBungalows,
     description: regionName
-      ? `${regionName} bölgesinde kiralık villa ve bungalovlar. Müsaitliği görün ve rezervasyon yapın.`
-      : "Türkiye'nin öne çıkan bölgelerinde kiralık villa ve bungalovlar. Filtreleyin, müsaitliği görün ve rezervasyon yapın.",
+      ? maybeRewriteVillaWording(
+          `${regionName} bölgesinde kiralık villa ve bungalovlar. Müsaitliği görün ve rezervasyon yapın.`,
+          site.key
+        )
+      : maybeRewriteVillaWording(
+          "Türkiye'nin öne çıkan bölgelerinde kiralık villa ve bungalovlar. Filtreleyin, müsaitliği görün ve rezervasyon yapın.",
+          site.key
+        ),
     alternates: { canonical },
     robots: publicIndexingRobots(indexable),
   };
@@ -147,7 +162,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     amenityOptions,
     villaSearch,
   ] = await Promise.all([
-    getHeroSearchRegions(),
+    getHeroSearchRegions(site.key),
     getRegionsWithCount(site.key, { mode: "search" }),
     params.region ? getRegionBySlug(params.region, site.key) : null,
     getSearchCategoryOptions(site.key),
@@ -181,24 +196,25 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       ? countNightsBetween(params.checkIn, params.checkOut)
       : 0;
 
+  const copy = getPublicListingCopy(site.key);
   const titleLabel = params.q?.trim()
     ? `"${params.q.trim()}" araması`
     : selectedRegion
-      ? `${selectedRegion.name} Kiralık Villa`
+      ? listingRegionRentalLabel(selectedRegion.name, site.key)
       : params.filter === "deal"
-        ? "Fırsat Villalar"
+        ? copy.deals
         : params.filter === "popular"
-          ? "Popüler Villalar"
+          ? copy.popular
           : priceYear
-            ? `${priceYear} Erken Rezervasyon Villaları`
-            : "Kiralık Villa";
+            ? listingEarlyBookingTitle(priceYear, site.key)
+            : copy.listingTitle;
 
   const initialRegion =
     selectedRegion
       ? {
           slug: selectedRegion.slug,
           name: selectedRegion.name,
-          label: `${selectedRegion.name} Kiralık Villa`,
+          label: listingRegionRentalLabel(selectedRegion.name, site.key),
         }
       : searchRegions.find((r) => r.slug === params.region) ?? null;
 

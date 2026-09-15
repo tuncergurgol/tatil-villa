@@ -209,18 +209,22 @@ export function buildLlmsTxt(input: {
   brandName: string;
   description: string;
   villaCount: number;
+  listingNoun?: string;
+  listingPlural?: string;
 }): string {
   const origin = input.origin.replace(/\/+$/, "");
+  const noun = input.listingNoun ?? "villa";
+  const plural = input.listingPlural ?? "Villalar";
   return `# ${input.brandName}
 
 > ${input.description}
 
-Türkiye'de kiralık villa, bungalov ve tatil evi rezervasyonu. ${input.villaCount} villa ilanı.
+Türkiye'de kiralık ${noun}, bungalov ve tatil evi rezervasyonu. ${input.villaCount} ${noun} ilanı.
 
 ## Kaynaklar
 
 - [Ana sayfa](${origin}/)
-- [Villalar](${origin}/villalar)
+- [${plural}](${origin}/villalar)
 - [Blog](${origin}/blog)
 - [Yorumlar](${origin}/yorumlar)
 - [SSS](${origin}/sik-sorulan-sorular)
@@ -235,7 +239,7 @@ Türkiye'de kiralık villa, bungalov ve tatil evi rezervasyonu. ${input.villaCou
 
 - Kanonik dil Türkçe'dir. /en /de /fr gibi dil önekleri kopyadır; dizine eklenmez.
 - Filtreli /villalar? URL'leri kopya arama sonuçlarıdır.
-- Rezervasyon ve fiyat için villa detay sayfalarını kullanın.
+- Rezervasyon ve fiyat için ${noun} detay sayfalarını kullanın.
 `;
 }
 

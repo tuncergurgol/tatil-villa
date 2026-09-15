@@ -40,7 +40,12 @@ export function totalGuests(counts: {
 import type { VillaCategory } from "@prisma/client";
 import { facilityTypeLabel } from "@/lib/facility-type";
 
-export function categoryLabel(category: VillaCategory): string {
-  const label = facilityTypeLabel(category);
-  return category === "villa" ? `Kiralık ${label}` : label;
+export function categoryLabel(
+  category: VillaCategory,
+  listingCopy?: { usesTesis?: boolean }
+): string {
+  if (category === "villa") {
+    return listingCopy?.usesTesis ? "Kiralık Tesis" : "Kiralık Villa";
+  }
+  return facilityTypeLabel(category);
 }

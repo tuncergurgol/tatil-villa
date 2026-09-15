@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import DeferredContentProtection from "@/components/DeferredContentProtection";
+import { PublicListingCopyProvider } from "@/components/PublicListingCopyProvider";
 import SiteChromeBelowFold from "@/components/SiteChromeBelowFold";
 import SiteChromeHeader from "@/components/SiteChromeHeader";
 import SiteChromeMobileNav from "@/components/SiteChromeMobileNav";
+import { getPublicListingCopy } from "@/lib/public-listing-copy";
 
 function HeaderFallback() {
   return (
@@ -10,9 +12,15 @@ function HeaderFallback() {
   );
 }
 
-export default function SiteChrome({ children }: { children: React.ReactNode }) {
+export default function SiteChrome({
+  children,
+  siteKey,
+}: {
+  children: React.ReactNode;
+  siteKey?: string | null;
+}) {
   return (
-    <>
+    <PublicListingCopyProvider value={getPublicListingCopy(siteKey)}>
       <DeferredContentProtection />
       <Suspense fallback={<HeaderFallback />}>
         <SiteChromeHeader />
@@ -24,6 +32,6 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <Suspense fallback={null}>
         <SiteChromeMobileNav />
       </Suspense>
-    </>
+    </PublicListingCopyProvider>
   );
 }

@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import ConfettiBurst from "@/components/celebration/ConfettiBurst";
+import { ListingPhrase } from "@/components/PublicListingCopyProvider";
 
 type BookingSuccessCelebrationProps = {
   reservationCode: string;
@@ -68,7 +69,7 @@ export default function BookingSuccessCelebration({
         href="/villalar"
         className="mt-8 inline-block rounded-xl bg-teal-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-teal-700"
       >
-        Villalara Dön
+        <ListingPhrase villa="Villalara Dön" tesis="Tesislere Dön" />
       </Link>
     </div>
   );

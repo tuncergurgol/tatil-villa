@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import VillaCard from "@/components/VillaCard";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import type { SimilarVillaCard } from "@/lib/queries/villa-detail";
 
 const PAGE_SIZE = 3;
@@ -14,6 +15,7 @@ type SimilarVillasCarouselProps = {
 export default function SimilarVillasCarousel({
   villas,
 }: SimilarVillasCarouselProps) {
+  const listingCopy = usePublicListingCopy();
   const [page, setPage] = useState(0);
   const totalPages = Math.max(1, Math.ceil(villas.length / PAGE_SIZE));
 
@@ -31,7 +33,7 @@ export default function SimilarVillasCarousel({
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h2 className="border-l-4 border-teal-700 pl-3 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-          Benzer Villalar
+          {listingCopy.similar}
         </h2>
         {totalPages > 1 ? (
           <div className="flex items-center gap-2">

@@ -13,7 +13,7 @@ export default function CampaignLandingHero({
   imageAlt: string;
   eyebrow: string;
   title: string;
-  subtitle: string;
+  subtitle: ReactNode;
   actions?: ReactNode;
 }) {
   return (

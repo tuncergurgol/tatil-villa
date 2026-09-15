@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ListingPhrase, ListingWording } from "@/components/PublicListingCopyProvider";
 
 type PublicServicePageProps = {
   title: string;
@@ -21,14 +22,16 @@ export default function PublicServicePage({
         {description}
       </p>
       <p className="mt-3 text-sm text-slate-500">
-        Bu hizmet yakında aktif olacak. Şimdilik villa konaklama seçeneklerimizi
-        inceleyebilirsiniz.
+        <ListingWording>
+          Bu hizmet yakında aktif olacak. Şimdilik villa konaklama seçeneklerimizi
+          inceleyebilirsiniz.
+        </ListingWording>
       </p>
       <Link
         href="/villalar"
         className="mt-8 inline-flex cursor-pointer rounded-full bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800"
       >
-        Villaları İncele
+        <ListingPhrase villa="Villaları İncele" tesis="Tesisleri İncele" />
       </Link>
     </div>
   );

@@ -2,16 +2,24 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getApprovedReviewsForPublic } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { maybeRewriteVillaWording } from "@/lib/public-listing-copy";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { buildReviewItemListJsonLd } from "@/lib/review-json-ld";
 import { siteConfig } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Misafir Yorumları",
-  description: "Villalarımızda konaklayan misafirlerimizin değerlendirmeleri.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  return {
+    title: "Misafir Yorumları",
+    description: maybeRewriteVillaWording(
+      "Villalarımızda konaklayan misafirlerimizin değerlendirmeleri.",
+      site.key
+    ),
+  };
+}
 
 function Stars({ rating }: { rating: number }) {
   return (

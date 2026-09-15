@@ -1,6 +1,10 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { looksLikeMissingPageText } from "@/lib/public-seo";
+import {
+  getPublicListingCopy,
+  listingRegionRentalLabel,
+} from "@/lib/public-listing-copy";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
 
@@ -118,10 +122,12 @@ export async function getPublicIndexablePages(
     }),
   ]);
 
+  const copy = getPublicListingCopy(siteKey);
   return [
     ...STATIC_PATHS.map((item) => ({
       url: absolutePublicUrl(origin, item.path),
-      title: item.title,
+      title:
+        item.path === "/villalar" ? copy.plural : item.title,
       lastModified: now,
     })),
     ...villas.map((villa) => ({
@@ -160,7 +166,7 @@ export async function getPublicIndexablePages(
         origin,
         `/villalar?region=${encodeURIComponent(region.slug)}`
       ),
-      title: `${region.name} Kiralık Villalar`,
+      title: listingRegionRentalLabel(region.name, siteKey, true),
       lastModified: region.updatedAt,
     })),
   ];

@@ -6,6 +6,7 @@ import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 import { getRegionIdsForFilter } from "@/lib/queries/region-tree";
 import { formatVillaRegionLabel } from "@/lib/queries/villa-location";
 import { facilityTypeOptions } from "@/lib/facility-type";
+import { usesTesisListingCopy } from "@/lib/public-listing-copy";
 import {
   computeStayQuote,
   getStayNightKeys,
@@ -631,9 +632,11 @@ export async function getSearchCategoryOptions(siteKey?: PublicSiteKey) {
     groups.map((row) => [row.category, row._count._all])
   );
 
+  const tesis = usesTesisListingCopy(siteKey);
   return facilityTypeOptions.map((option) => ({
     value: option.value,
-    label: option.label,
+    label:
+      option.value === "villa" && tesis ? "Tesis" : option.label,
     count: countByCategory.get(option.value) ?? 0,
   }));
 }

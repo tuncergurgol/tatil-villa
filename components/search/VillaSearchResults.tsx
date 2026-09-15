@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import VillaResultCard from "@/components/search/VillaResultCard";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import {
   buildVillaSearchHref,
 } from "@/lib/villa-search-params";
@@ -34,6 +35,7 @@ export default function VillaSearchResults({
   sort,
   className = "",
 }: VillaSearchResultsProps) {
+  const listingCopy = usePublicListingCopy();
   const router = useRouter();
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, totalCount);
@@ -128,7 +130,7 @@ export default function VillaSearchResults({
             href="/villalar"
             className="mt-4 inline-block text-sm font-semibold text-sky-700 hover:text-sky-900"
           >
-            Tüm villaları göster
+            {listingCopy.allShow}
           </a>
         </div>
       ) : (

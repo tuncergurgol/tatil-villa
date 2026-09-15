@@ -8,6 +8,7 @@ import {
   type PublicTransferRequestState,
 } from "@/app/actions/public-transfer-request";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
+import { ListingPhrase } from "@/components/PublicListingCopyProvider";
 import type { PublicTransferPageData } from "@/lib/queries/public-transfer";
 
 const initialState: PublicTransferRequestState = {};
@@ -68,7 +69,7 @@ export default function VipTransferPublicPage({
           href="/villalar"
           className="mt-8 inline-flex rounded-full bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
         >
-          Villaları incele
+          <ListingPhrase villa="Villaları incele" tesis="Tesisleri incele" />
         </Link>
       </div>
     );

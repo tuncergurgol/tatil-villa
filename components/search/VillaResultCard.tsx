@@ -1,3 +1,5 @@
+"use client";
+
 import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import {
@@ -8,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import type { Villa } from "@/lib/types";
 import { categoryLabel, formatPrice } from "@/lib/utils";
 import { villaPublicPath } from "@/lib/villa-public-path";
@@ -21,6 +24,7 @@ export default function VillaResultCard({
   villa,
   nights = 0,
 }: VillaResultCardProps) {
+  const listingCopy = usePublicListingCopy();
   const reservationTotal =
     nights > 0 && villa.stayTotal != null && villa.stayTotal > 0
       ? villa.stayTotal
@@ -56,7 +60,7 @@ export default function VillaResultCard({
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap gap-2">
               <span className="rounded-md bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700">
-                {categoryLabel(villa.category)}
+                {categoryLabel(villa.category, listingCopy)}
               </span>
               {villa.deal ? (
                 <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">

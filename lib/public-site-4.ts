@@ -46,10 +46,10 @@ export function getOptionalSite4Config(): OptionalSite4Config | null {
       `${brandName} ile Hayalinizdeki Tatil`,
     seoTitle:
       clean(process.env.PUBLIC_SITE_4_SEO_TITLE) ||
-      `${brandName} - Kiralık Villa Tatili`,
+      `${brandName} - Kiralık Tesis Tatili`,
     seoDescription:
       clean(process.env.PUBLIC_SITE_4_SEO_DESCRIPTION) ||
-      `${brandName} ile özel havuzlu kiralık villaları keşfedin.`,
+      `${brandName} ile bungalov ve kubbe konaklamalarını keşfedin.`,
     hosts: [www, apex],
   };
 }

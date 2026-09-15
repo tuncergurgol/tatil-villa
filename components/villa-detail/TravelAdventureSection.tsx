@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Building2, Bus, Car, Map, Plane, Ship } from "lucide-react";
 import { getPublishedServicesForHost } from "@/lib/queries/agency-sites";
-import { getRequestHostname } from "@/lib/public-site-profile";
+import { getPublicListingCopy } from "@/lib/public-listing-copy";
+import {
+  getRequestHostname,
+  getRequestPublicSiteKey,
+} from "@/lib/public-site-profile";
 
 const SERVICES = [
   {
@@ -50,8 +54,10 @@ const SERVICES = [
 
 export function TravelAdventureSectionView({
   publishedServices,
+  travelAddon,
 }: {
   publishedServices?: string[] | null;
+  travelAddon?: string;
 }) {
   const visible = publishedServices
     ? SERVICES.filter((service) => publishedServices.includes(service.key))
@@ -77,7 +83,8 @@ export function TravelAdventureSectionView({
           Seyahat Maceranız burada başlıyor
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
-          Villa konaklamanıza ek olarak otel, transfer, araç kiralama ve ulaşım
+          {travelAddon ??
+            "Villa konaklamanıza ek olarak otel, transfer, araç kiralama ve ulaşım"}{" "}
           hizmetlerimizle tatilinizi uçtan uca planlayın.
         </p>
       </div>
@@ -114,8 +121,16 @@ export function TravelAdventureSectionView({
 
 /** Host’a göre Acente Siteleri yayın ayarını okuyarak kartları filtreler. */
 export default async function TravelAdventureSection() {
-  const publishedServices = await getPublishedServicesForHost(
-    await getRequestHostname()
+  const [hostname, siteKey] = await Promise.all([
+    getRequestHostname(),
+    getRequestPublicSiteKey(),
+  ]);
+  const publishedServices = await getPublishedServicesForHost(hostname);
+  const copy = getPublicListingCopy(siteKey);
+  return (
+    <TravelAdventureSectionView
+      publishedServices={publishedServices}
+      travelAddon={copy.travelAddon}
+    />
   );
-  return <TravelAdventureSectionView publishedServices={publishedServices} />;
 }

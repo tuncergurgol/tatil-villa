@@ -5,6 +5,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import SiteChrome from "@/components/SiteChrome";
 import { routing, type AppLocale } from "@/i18n/routing";
+import { overlayTesisClientMessages } from "@/lib/public-listing-copy";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
   publicIndexingRobots,
   isIndexableLocale,
@@ -49,16 +52,23 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
-  const messages = await getMessages();
-  const clientMessages = {
-    nav: (messages as { nav?: unknown }).nav,
-    header: (messages as { header?: unknown }).header,
-    mobileNav: (messages as { mobileNav?: unknown }).mobileNav,
-  };
+  const [messages, company] = await Promise.all([
+    getMessages(),
+    getCompanySettings(),
+  ]);
+  const site = await getPublicSiteProfile(company);
+  const clientMessages = overlayTesisClientMessages(
+    {
+      nav: (messages as { nav?: Record<string, unknown> }).nav,
+      header: (messages as { header?: Record<string, unknown> }).header,
+      mobileNav: (messages as { mobileNav?: Record<string, unknown> }).mobileNav,
+    },
+    site.key
+  );
 
   return (
     <NextIntlClientProvider messages={clientMessages}>
-      <SiteChrome>{children}</SiteChrome>
+      <SiteChrome siteKey={site.key}>{children}</SiteChrome>
     </NextIntlClientProvider>
   );
 }

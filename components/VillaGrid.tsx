@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import GalleryImage from "@/components/GalleryImage";
 import { Bath, BedDouble, MapPin, Users } from "lucide-react";
 import VillaPriceRange from "@/components/VillaPriceRange";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import type { Villa } from "@/lib/types";
 import { categoryLabel } from "@/lib/utils";
 import { villaPublicPath } from "@/lib/villa-public-path";
@@ -11,6 +14,7 @@ interface VillaGridProps {
 }
 
 export default function VillaGrid({ villas }: VillaGridProps) {
+  const listingCopy = usePublicListingCopy();
   if (villas.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-16 text-center">
@@ -22,7 +26,7 @@ export default function VillaGrid({ villas }: VillaGridProps) {
           href="/villalar"
           className="mt-4 inline-block text-sm font-semibold text-teal-700 hover:text-teal-900"
         >
-          Tüm villaları göster
+          {listingCopy.allShow}
         </Link>
       </div>
     );
@@ -46,7 +50,7 @@ export default function VillaGrid({ villas }: VillaGridProps) {
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             />
             <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-teal-800">
-              {categoryLabel(villa.category)}
+              {categoryLabel(villa.category, listingCopy)}
             </div>
           </div>
 

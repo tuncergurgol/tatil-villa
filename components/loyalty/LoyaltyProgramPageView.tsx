@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ListingPhrase } from "@/components/PublicListingCopyProvider";
 import {
   ArrowRight,
   BadgePercent,
@@ -142,7 +143,7 @@ export default function LoyaltyProgramPageView({
               href="/villalar"
               className="inline-flex items-center gap-2 rounded-full border border-white/35 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
             >
-              Villaları Keşfet
+              <ListingPhrase villa="Villaları Keşfet" tesis="Tesisleri Keşfet" />
             </Link>
           </div>
         </div>
@@ -403,8 +404,9 @@ export default function LoyaltyProgramPageView({
             Sadakat avantajınızı bir sonraki tatilde kullanın
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-teal-50 sm:text-base">
-            Ücretsiz üye olun, villanızı seçin ve indirimli rezervasyon talebinizi
-            birkaç dakikada oluşturun.
+            Ücretsiz üye olun,{" "}
+            <ListingPhrase villa="villanızı" tesis="tesisinizi" /> seçin ve
+            indirimli rezervasyon talebinizi birkaç dakikada oluşturun.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
@@ -417,7 +419,7 @@ export default function LoyaltyProgramPageView({
               href="/villalar"
               className="rounded-full border border-white/35 px-6 py-3 text-sm font-bold text-white hover:bg-white/10"
             >
-              Villalara Git
+              <ListingPhrase villa="Villalara Git" tesis="Tesislere Git" />
             </Link>
           </div>
         </div>

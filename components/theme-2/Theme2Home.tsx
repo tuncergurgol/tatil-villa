@@ -28,7 +28,7 @@ export default async function Theme2Home({
   siteKey: PublicSiteKey;
 }) {
   const [searchRegions, regions, popular, listed, typeChips] = await Promise.all([
-    getHeroSearchRegions(),
+    getHeroSearchRegions(siteKey),
     getRegionsWithCount(siteKey, { mode: "home" }),
     getVillas({ siteKey, filter: "popular", limit: 16 }),
     getVillas({ siteKey, limit: 16 }),

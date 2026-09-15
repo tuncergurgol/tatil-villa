@@ -1,6 +1,9 @@
+"use client";
+
 import GalleryImage from "@/components/GalleryImage";
 import Link from "next/link";
 import VillaPriceRange from "@/components/VillaPriceRange";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import type { Villa } from "@/lib/types";
 import { categoryLabel } from "@/lib/utils";
 import { villaPublicPath } from "@/lib/villa-public-path";
@@ -15,6 +18,7 @@ export default function VillaCard({
   villa,
   layout = "fixed",
 }: VillaCardProps) {
+  const listingCopy = usePublicListingCopy();
   const isFluid = layout === "fluid";
 
   return (
@@ -37,7 +41,7 @@ export default function VillaCard({
           quality={60}
         />
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-teal-800">
-          {categoryLabel(villa.category)}
+          {categoryLabel(villa.category, listingCopy)}
         </div>
       </div>
 

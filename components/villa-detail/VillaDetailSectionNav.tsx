@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { getPublicListingCopy } from "@/lib/public-listing-copy";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import { getVillaDetailNavTheme } from "@/lib/villa-detail-nav-theme";
 
@@ -46,6 +47,7 @@ export default function VillaDetailSectionNav({
   siteKey,
   className = "",
 }: VillaDetailSectionNavProps) {
+  const listingCopy = getPublicListingCopy(siteKey);
   const [activeId, setActiveId] = useState(items[0]?.id ?? "");
   const [stuck, setStuck] = useState(false);
   const [headerOffset, setHeaderOffset] = useState(FALLBACK_HEADER_PX);
@@ -151,7 +153,7 @@ export default function VillaDetailSectionNav({
       <div id="villa-detail-nav-sentinel" className="h-px w-full" aria-hidden />
       <nav
         ref={navRef}
-        aria-label="Villa bölümleri"
+        aria-label={`${listingCopy.singular} bölümleri`}
         style={{ top: headerOffset }}
         className={`sticky z-40 -mx-4 sm:mx-0 sm:border-b sm:border-slate-200 sm:bg-white ${
           stuck ? "shadow-md max-sm:border-0 max-sm:bg-transparent" : "max-sm:border-0 max-sm:bg-transparent"

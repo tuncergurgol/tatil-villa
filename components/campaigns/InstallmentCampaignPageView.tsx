@@ -7,6 +7,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import CampaignLandingHero from "@/components/campaigns/CampaignLandingHero";
+import { ListingPhrase, ListingWording } from "@/components/PublicListingCopyProvider";
 
 const CARD_PROGRAMS = [
   { name: "Bonus", bank: "Garanti BBVA" },
@@ -51,14 +52,20 @@ export default function InstallmentCampaignPageView() {
         imageAlt="Tüm kredi kartlarına 12 taksit imkanı"
         eyebrow="Ödeme kolaylığı"
         title="Tüm kredi kartlarına 12 taksit imkanı"
-        subtitle="Hayalinizdeki villa tatilini ertelemeyin. Tüm kredi kartlarına 12 aya varan taksit seçenekleriyle rezervasyonunuzu bütçenize uygun şekilde tamamlayın."
+        subtitle={
+          <ListingWording>
+            Hayalinizdeki villa tatilini ertelemeyin. Tüm kredi kartlarına 12 aya
+            varan taksit seçenekleriyle rezervasyonunuzu bütçenize uygun şekilde
+            tamamlayın.
+          </ListingWording>
+        }
         actions={
           <>
             <Link
               href="/villalar"
               className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-teal-800 transition hover:bg-teal-50"
             >
-              Villaları İncele
+              <ListingPhrase villa="Villaları İncele" tesis="Tesisleri İncele" />
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
@@ -85,7 +92,7 @@ export default function InstallmentCampaignPageView() {
                   {item.title}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  {item.text}
+                  <ListingWording>{item.text}</ListingWording>
                 </p>
               </article>
             );
@@ -117,7 +124,11 @@ export default function InstallmentCampaignPageView() {
         <div className="mt-12 rounded-2xl border border-teal-100 bg-teal-50/70 p-6">
           <h2 className="text-lg font-bold text-teal-950">Nasıl çalışır?</h2>
           <ol className="mt-4 space-y-2 text-sm leading-relaxed text-teal-950/80">
-            <li>1. Size uygun villayı seçin ve tarihlerinizi belirleyin.</li>
+            <li>
+              <ListingWording>
+                1. Size uygun villayı seçin ve tarihlerinizi belirleyin.
+              </ListingWording>
+            </li>
             <li>2. Rezervasyon talebinde kredi kartı ile ödemeyi tercih edin.</li>
             <li>
               3. Ödeme ekranında bankanıza uygun taksit seçeneklerini görün ve

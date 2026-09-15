@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 
 export type AmenityGroup = {
   category: string;
@@ -120,6 +121,7 @@ export default function VillaAmenitiesSection({
   groups,
 }: VillaAmenitiesSectionProps) {
   const [open, setOpen] = useState(false);
+  const listingCopy = usePublicListingCopy();
 
   const generalGroup = groups.find((group) =>
     isGeneralCategory(group.category)
@@ -132,7 +134,7 @@ export default function VillaAmenitiesSection({
   return (
     <div>
       <h2 className="border-l-4 border-teal-700 pl-3 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-        Villa Olanakları
+        {listingCopy.amenities}
       </h2>
 
       <div className="mt-5">

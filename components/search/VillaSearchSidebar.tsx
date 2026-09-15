@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { Region } from "@/lib/types";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
+import { rewriteVillaWordingToTesis } from "@/lib/public-listing-copy";
 import { buildVillaSearchHref } from "@/lib/villa-search-params";
 
 interface FilterAmenity {
@@ -111,6 +113,7 @@ export default function VillaSearchSidebar({
   currentParams,
   className = "",
 }: VillaSearchSidebarProps) {
+  const copy = usePublicListingCopy();
   const router = useRouter();
   const [minPrice, setMinPrice] = useState(currentParams.minPrice ?? "");
   const [maxPrice, setMaxPrice] = useState(currentParams.maxPrice ?? "");
@@ -258,7 +261,7 @@ export default function VillaSearchSidebar({
           </ul>
         </FilterSection>
 
-        <FilterSection title="Ev Tipi">
+        <FilterSection title={copy.typeFilter}>
           <ul className="space-y-1.5">
             {visibleCategories.map((category) => {
               const active = currentParams.category === category.value;
@@ -286,7 +289,7 @@ export default function VillaSearchSidebar({
           </ul>
         </FilterSection>
 
-        <FilterSection title="Villa Kategorileri">
+        <FilterSection title={copy.categories}>
           <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
             {visibleFacilities.map((facility) => {
               const active = selectedFacilities.has(facility.name);
@@ -303,7 +306,11 @@ export default function VillaSearchSidebar({
                   >
                     <CheckboxRow
                       active={active}
-                      label={facility.name}
+                      label={
+                        copy.usesTesis
+                          ? rewriteVillaWordingToTesis(facility.name)
+                          : facility.name
+                      }
                       count={facility.count}
                     />
                   </button>

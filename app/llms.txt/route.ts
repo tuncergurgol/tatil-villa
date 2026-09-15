@@ -7,6 +7,7 @@ import {
   buildLlmsTxt,
   canonicalOriginFromDomain,
 } from "@/lib/search-discovery";
+import { getPublicListingCopy } from "@/lib/public-listing-copy";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,14 @@ export async function GET() {
     site.key
   );
   const villaCount = await prisma.villa.count({ where: villaWhere });
+  const copy = getPublicListingCopy(site.key);
   const body = buildLlmsTxt({
     origin,
     brandName: site.brandName,
     description: site.seoDescription,
     villaCount,
+    listingNoun: copy.singular.toLowerCase(),
+    listingPlural: copy.plural,
   });
 
   return new NextResponse(body, {
