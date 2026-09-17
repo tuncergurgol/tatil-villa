@@ -36,6 +36,17 @@ export const BTRANS_DATE_BASIS_OPTIONS: {
   { value: "checkIn", label: "Giriş Tarihi" },
 ];
 
+export type BtransDocumentNoFilter = "all" | "with" | "without";
+
+export const BTRANS_DOCUMENT_NO_FILTER_OPTIONS: {
+  value: BtransDocumentNoFilter;
+  label: string;
+}[] = [
+  { value: "all", label: "Tümü" },
+  { value: "with", label: "Belge No olan" },
+  { value: "without", label: "Belge No olmayan" },
+];
+
 export type BtransOwnerInput = {
   type: "GERCEK_KISI" | "TUZEL_KISI";
   name: string;

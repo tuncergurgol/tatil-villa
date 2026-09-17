@@ -7,6 +7,7 @@ const postSchema = z.object({
   year: z.number().int().min(2000).max(2100),
   month: z.number().int().min(1).max(12),
   dateBasis: z.enum(["approvedAt", "createdAt", "checkIn"]),
+  documentNoFilter: z.enum(["all", "with", "without"]).optional(),
 });
 
 export async function POST(request: Request) {

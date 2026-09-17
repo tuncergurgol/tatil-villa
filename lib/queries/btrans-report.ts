@@ -12,10 +12,12 @@ import {
   isWithinMonth,
   type BtransBookingInput,
   type BtransDateBasis,
+  type BtransDocumentNoFilter,
   type BtransIncompleteRow,
   type BtransOwnerInput,
   type BtransRegionCodes,
 } from "@/lib/btrans-report";
+import { hasMeaningfulVillaDocumentNo } from "@/lib/villa-document-types";
 import {
   computeGuestReservationTotal,
   parseBookingDetails,
@@ -105,6 +107,7 @@ async function fetchConfirmedBookings(dateFilter: { gte: Date; lt: Date } | null
           name: true,
           villaId: true,
           slug: true,
+          documentNo: true,
           latitude: true,
           longitude: true,
           owner: {
@@ -155,8 +158,10 @@ export async function generateBtransReport(input: {
   year: number;
   month: number;
   dateBasis: BtransDateBasis;
+  documentNoFilter?: BtransDocumentNoFilter;
 }) {
   const { year, month, dateBasis } = input;
+  const documentNoFilter = input.documentNoFilter ?? "all";
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 1);
 
@@ -193,6 +198,10 @@ export async function generateBtransReport(input: {
     if (dateBasis === "approvedAt" && !isWithinMonth(approvedAt, year, month)) {
       continue;
     }
+
+    const hasDocumentNo = hasMeaningfulVillaDocumentNo(booking.villa.documentNo);
+    if (documentNoFilter === "with" && !hasDocumentNo) continue;
+    if (documentNoFilter === "without" && hasDocumentNo) continue;
 
     const details = parseBookingDetails(booking.details);
     const regionCodes = resolveRegionCodes(booking.villa.region);

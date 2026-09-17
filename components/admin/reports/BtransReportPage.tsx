@@ -4,7 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { AlertTriangle, Download, FileWarning, Info } from "lucide-react";
 import {
   BTRANS_DATE_BASIS_OPTIONS,
+  BTRANS_DOCUMENT_NO_FILTER_OPTIONS,
   type BtransDateBasis,
+  type BtransDocumentNoFilter,
   type BtransIncompleteRow,
 } from "@/lib/btrans-report";
 
@@ -23,6 +25,13 @@ const DATE_BASIS_HELP: Record<BtransDateBasis, string> = {
     "Onay tarihi: rezervasyon onaylandığında (Onaylandı) o tarih; henüz ayrıca onaylanmadıysa oluşturma tarihi (varsayılan).",
   createdAt: "Rezervasyonun sistemde oluşturulduğu tarih baz alınır.",
   checkIn: "Rezervasyonun giriş (check-in) tarihi baz alınır.",
+};
+
+const DOCUMENT_NO_FILTER_HELP: Record<BtransDocumentNoFilter, string> = {
+  all: "Belge No: tüm villalar (belgeli ve belgesiz) rapora dahil edilir.",
+  with: "Belge No olan: yalnızca turizm belge numarası dolu villaların rezervasyonları alınır.",
+  without:
+    "Belge No olmayan: belge numarası boş veya geçersiz (ör. 000000000) villaların rezervasyonları alınır.",
 };
 
 const EXCEL_HEADERS = [
@@ -84,6 +93,8 @@ export default function BtransReportPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [dateBasis, setDateBasis] = useState<BtransDateBasis>("approvedAt");
+  const [documentNoFilter, setDocumentNoFilter] =
+    useState<BtransDocumentNoFilter>("all");
   const [result, setResult] = useState<ReportResult | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -102,7 +113,7 @@ export default function BtransReportPage() {
       const response = await fetch("/api/admin/btrans-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ year, month, dateBasis }),
+        body: JSON.stringify({ year, month, dateBasis, documentNoFilter }),
       });
 
       if (!response.ok) {
@@ -176,6 +187,27 @@ export default function BtransReportPage() {
             </select>
           </label>
 
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-gray-500">
+              Belge No
+            </span>
+            <select
+              value={documentNoFilter}
+              onChange={(event) =>
+                setDocumentNoFilter(
+                  event.target.value as BtransDocumentNoFilter
+                )
+              }
+              className="min-w-56 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            >
+              {BTRANS_DOCUMENT_NO_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <button
             type="button"
             onClick={handleGenerate}
@@ -188,18 +220,18 @@ export default function BtransReportPage() {
         </div>
 
         <p className="border-b border-gray-100 bg-sky-50 px-5 py-3 text-sm text-sky-900">
-          {DATE_BASIS_HELP[dateBasis]}
+          {DATE_BASIS_HELP[dateBasis]} {DOCUMENT_NO_FILTER_HELP[documentNoFilter]}
         </p>
 
         <p className="px-5 py-4 text-sm text-gray-600">
-          Seçilen tarih bazına göre o aydaki yalnızca ONAYLI (Onaylandı)
-          rezervasyonlar tek dosyada toplanır. Zorunlu alanı (IBAN 26 hane,
-          ev sahibi TC/VKN, cep, il/ilçe kodu) eksik veya GİB formatına
-          uymayan kayıtlar dosyaya alınmaz; aşağıda eksikleriyle listelenir.
-          IBAN tam 26 karakter olmalı (TR + 24 rakam). İnen XML&apos;i GİB
-          BTRANS test ekranında doğrulayıp, geçtikten sonra ziplenip
-          Başkanlığa yüklenir. Bir aya ait bilgi, takip eden ayın son günü
-          23:59&apos;a kadar bildirilir.
+          Seçilen tarih bazına ve Belge No filtresine göre o aydaki yalnızca
+          ONAYLI (Onaylandı) rezervasyonlar tek dosyada toplanır. Zorunlu
+          alanı (IBAN 26 hane, ev sahibi TC/VKN, cep, il/ilçe kodu) eksik
+          veya GİB formatına uymayan kayıtlar dosyaya alınmaz; aşağıda
+          eksikleriyle listelenir. IBAN tam 26 karakter olmalı (TR + 24
+          rakam). İnen XML&apos;i GİB BTRANS test ekranında doğrulayıp,
+          geçtikten sonra ziplenip Başkanlığa yüklenir. Bir aya ait bilgi,
+          takip eden ayın son günü 23:59&apos;a kadar bildirilir.
         </p>
 
         {result ? (
@@ -214,7 +246,11 @@ export default function BtransReportPage() {
                 <Download className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   {result.filename} indirildi — {result.count} işlem dosyaya
-                  alındı (GİB gunubirlikson.xsd şemasına uygun).
+                  alındı (
+                  {BTRANS_DOCUMENT_NO_FILTER_OPTIONS.find(
+                    (option) => option.value === documentNoFilter
+                  )?.label ?? "Tümü"}
+                  , GİB gunubirlikson.xsd şemasına uygun).
                 </span>
               </div>
             )}
@@ -305,7 +341,7 @@ export default function BtransReportPage() {
 
       {result && result.incomplete.length === 0 && result.count === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white px-5 py-16 text-center text-sm text-gray-500 shadow-sm">
-          Seçilen ay için onaylı rezervasyon bulunamadı.
+          Seçilen ay ve Belge No filtresi için onaylı rezervasyon bulunamadı.
         </div>
       ) : null}
     </div>
