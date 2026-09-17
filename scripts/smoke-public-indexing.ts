@@ -78,9 +78,4 @@ assert.equal(
 );
 assert.equal(wwwHostnameForPublicHost("www.tatildeyiz.com.tr"), null);
 
-const tesisDetayRedirect = LEGACY_PUBLIC_REDIRECTS.find(
-  (item) => item.source === "/tesis/detay/:slug"
-);
-assert.equal(tesisDetayRedirect?.destination, "/:slug");
-
 console.log("smoke-public-indexing: OK");

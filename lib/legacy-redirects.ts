@@ -9,24 +9,6 @@ export type LegacyRedirect = {
 };
 
 export const LEGACY_PUBLIC_REDIRECTS: LegacyRedirect[] = [
-  // Eski CRM /tesis yolları (GSC 404)
-  { source: "/tesis", destination: "/villalar", permanent: true },
-  { source: "/tesis/liste", destination: "/villalar", permanent: true },
-  { source: "/tesis/list", destination: "/villalar", permanent: true },
-  { source: "/tesis/haritali-arama", destination: "/villalar", permanent: true },
-  { source: "/tesis/detay/:slug", destination: "/:slug", permanent: true },
-  { source: "/tesis/:path*", destination: "/villalar", permanent: true },
-  {
-    source: "/:locale(en|de|fr|es|bg|el|zh)/tesis/detay/:slug",
-    destination: "/:slug",
-    permanent: true,
-  },
-  {
-    source: "/:locale(en|de|fr|es|bg|el|zh)/tesis/:path*",
-    destination: "/villalar",
-    permanent: true,
-  },
-
   // Eski villa listesi yolu
   { source: "/villalar/:slug", destination: "/:slug", permanent: true },
   {
