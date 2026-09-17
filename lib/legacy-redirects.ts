@@ -75,3 +75,29 @@ export function legacyTesisRedirectDestination(
   if (detay?.[1]) return `/${detay[1]}`;
   return "/villalar";
 }
+
+/**
+ * Eski CRM / silinmiş villa dışı kırık yollar (GSC 404).
+ * Dil öneki temizlenmiş pathname bekler.
+ */
+export function legacyBrokenPublicPathDestination(
+  pathname: string
+): string | null {
+  const tesis = legacyTesisRedirectDestination(pathname);
+  if (tesis) return tesis;
+
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (path === "/iletisim") return "/kurumsal/iletisim";
+  if (
+    path === "/merak-ettikleriniz" ||
+    path === "/sss" ||
+    path === "/faq"
+  ) {
+    return "/sik-sorulan-sorular";
+  }
+  if (path === "/home" || path.startsWith("/home/")) return "/";
+  if (path === "/kiralik-villa" || path === "/kiralik-villalar") {
+    return "/villalar";
+  }
+  return null;
+}

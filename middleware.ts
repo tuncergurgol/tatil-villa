@@ -17,7 +17,7 @@ import {
 } from "@/lib/public-indexing";
 import {
   LEGACY_PUBLIC_REDIRECTS,
-  legacyTesisRedirectDestination,
+  legacyBrokenPublicPathDestination,
 } from "@/lib/legacy-redirects";
 
 const handleI18nRouting = createIntlMiddleware(routing);
@@ -106,7 +106,7 @@ function publicPathWithoutLocale(pathname: string): string {
 }
 
 function redirectLegacyTesisPath(req: NextRequest): NextResponse | null {
-  const destination = legacyTesisRedirectDestination(
+  const destination = legacyBrokenPublicPathDestination(
     publicPathWithoutLocale(req.nextUrl.pathname)
   );
   if (!destination) return null;

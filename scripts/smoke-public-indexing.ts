@@ -7,7 +7,7 @@ import {
   villaSearchCanonicalPath,
 } from "../lib/public-indexing";
 import { wwwHostnameForPublicHost } from "../lib/i18n/middleware-host";
-import { LEGACY_PUBLIC_REDIRECTS, legacyTesisRedirectDestination } from "../lib/legacy-redirects";
+import { LEGACY_PUBLIC_REDIRECTS, legacyBrokenPublicPathDestination, legacyTesisRedirectDestination } from "../lib/legacy-redirects";
 
 assert.equal(isIndexableLocale("tr"), true);
 assert.equal(isIndexableLocale("en"), false);
@@ -71,6 +71,17 @@ assert.equal(
   "/bungalov-kumsal"
 );
 assert.equal(legacyTesisRedirectDestination("/villalar"), null);
+
+assert.equal(
+  legacyBrokenPublicPathDestination("/iletisim"),
+  "/kurumsal/iletisim"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/merak-ettikleriniz"),
+  "/sik-sorulan-sorular"
+);
+assert.equal(legacyBrokenPublicPathDestination("/home/home_14"), "/");
+assert.equal(legacyBrokenPublicPathDestination("/tesis/izmir"), "/villalar");
 
 assert.equal(
   wwwHostnameForPublicHost("tatildeyiz.com.tr"),

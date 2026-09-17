@@ -67,15 +67,6 @@ function formatDistanceKm(km: number) {
   return `${rounded} Km`;
 }
 
-/** Pasif/gizli villa slug'ları 404 yerine listeye 301 için. */
-export async function villaSlugRecordExists(slug: string) {
-  const row = await prisma.villa.findUnique({
-    where: { slug },
-    select: { id: true },
-  });
-  return Boolean(row);
-}
-
 export async function getVillaDetailBySlug(
   slug: string,
   siteKey?: PublicSiteKey

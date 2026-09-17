@@ -1,4 +1,4 @@
-import { notFound, permanentRedirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { preconnect } from "react-dom";
 import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
@@ -6,7 +6,6 @@ import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import {
   getSimilarVillas,
   getVillaDetailBySlug,
-  villaSlugRecordExists,
 } from "@/lib/queries/villa-detail";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
@@ -56,10 +55,7 @@ export async function generateMetadata({
   const site = await getPublicSiteProfile(company);
   const villa = await getVillaDetailBySlug(slug, site.key);
   if (!villa) {
-    if (await villaSlugRecordExists(slug)) {
-      permanentRedirect("/villalar");
-    }
-    return { title: "Villa Bulunamadı", robots: { index: false, follow: true } };
+    permanentRedirect("/villalar");
   }
   return buildVillaDetailMetadata(villa, site, { locale });
 }
@@ -86,10 +82,7 @@ export default async function VillaDetailPage({
   ]);
 
   if (!villa) {
-    if (await villaSlugRecordExists(slug)) {
-      permanentRedirect("/villalar");
-    }
-    notFound();
+    permanentRedirect("/villalar");
   }
 
   const rawAccessToken = query.rez;
