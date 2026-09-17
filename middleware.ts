@@ -7,14 +7,18 @@ import {
   normalizeRequestHostHeader,
   resolveMiddlewarePublicHostname,
   sanitizePublicBookingDomain,
+  wwwHostnameForPublicHost,
 } from "@/lib/i18n/middleware-host";
 import { getAuthSecret, useSecureAuthCookies } from "@/lib/auth-secret";
-import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
+import { stripDefaultLocalePrefix, stripLocalePrefix } from "@/lib/i18n/path";
 import {
   isForeignLocalePath,
   shouldNoindexPublicUrl,
 } from "@/lib/public-indexing";
-import { LEGACY_PUBLIC_REDIRECTS } from "@/lib/legacy-redirects";
+import {
+  LEGACY_PUBLIC_REDIRECTS,
+  legacyTesisRedirectDestination,
+} from "@/lib/legacy-redirects";
 
 const handleI18nRouting = createIntlMiddleware(routing);
 
@@ -95,6 +99,32 @@ function exactLegacyRedirectDestination(pathname: string): string | null {
   return match?.destination ?? null;
 }
 
+function publicPathWithoutLocale(pathname: string): string {
+  return (
+    stripLocalePrefix(stripDefaultLocalePrefix(pathname) || "/") || "/"
+  );
+}
+
+function redirectLegacyTesisPath(req: NextRequest): NextResponse | null {
+  const destination = legacyTesisRedirectDestination(
+    publicPathWithoutLocale(req.nextUrl.pathname)
+  );
+  if (!destination) return null;
+  const url = req.nextUrl.clone();
+  url.pathname = destination;
+  url.search = "";
+  applyPublicRedirectHost(req, url);
+  return NextResponse.redirect(url, 301);
+}
+
+function redirectApexHostToWww(req: NextRequest): NextResponse | null {
+  const wwwHost = wwwHostnameForPublicHost(getRequestHostname(req));
+  if (!wwwHost) return null;
+  const url = req.nextUrl.clone();
+  applyPublicRedirectHost(req, url);
+  return NextResponse.redirect(url, 301);
+}
+
 function redirectLegacyPublicPath(req: NextRequest): NextResponse | null {
   const destination = exactLegacyRedirectDestination(req.nextUrl.pathname);
   if (!destination || destination === stripDefaultLocalePrefix(req.nextUrl.pathname)) {
@@ -132,8 +162,13 @@ function resolvePublicHostForRequest(req: NextRequest): string {
   );
 }
 
+function resolveCanonicalPublicHostname(req: NextRequest): string {
+  const hostname = resolvePublicHostForRequest(req);
+  return wwwHostnameForPublicHost(hostname) ?? hostname;
+}
+
 function applyPublicRedirectHost(req: NextRequest, url: URL) {
-  url.hostname = resolvePublicHostForRequest(req);
+  url.hostname = resolveCanonicalPublicHostname(req);
   url.protocol = "https:";
   url.port = "";
 }
@@ -150,7 +185,7 @@ function normalizePublicRedirectLocation(
   location: string
 ): string {
   const target = new URL(location, req.nextUrl);
-  const publicHost = resolvePublicHostForRequest(req);
+  const publicHost = resolveCanonicalPublicHostname(req);
   if (target.hostname !== publicHost) {
     target.hostname = publicHost;
   }
@@ -181,8 +216,14 @@ export default async function middleware(req: NextRequest) {
       return redirectStripTurkishPrefix(req, pathname);
     }
 
+    const tesisRedirect = redirectLegacyTesisPath(req);
+    if (tesisRedirect) return tesisRedirect;
+
     const legacyRedirect = redirectLegacyPublicPath(req);
     if (legacyRedirect) return legacyRedirect;
+
+    const apexRedirect = redirectApexHostToWww(req);
+    if (apexRedirect) return apexRedirect;
 
     if (!isForeignLocalePath(pathname)) {
       return rewriteDefaultLocalePath(req, pathname);

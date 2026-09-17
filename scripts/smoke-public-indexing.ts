@@ -6,7 +6,8 @@ import {
   shouldNoindexPublicUrl,
   villaSearchCanonicalPath,
 } from "../lib/public-indexing";
-import { LEGACY_PUBLIC_REDIRECTS } from "../lib/legacy-redirects";
+import { wwwHostnameForPublicHost } from "../lib/i18n/middleware-host";
+import { LEGACY_PUBLIC_REDIRECTS, legacyTesisRedirectDestination } from "../lib/legacy-redirects";
 
 assert.equal(isIndexableLocale("tr"), true);
 assert.equal(isIndexableLocale("en"), false);
@@ -54,5 +55,32 @@ const rizaRedirect = LEGACY_PUBLIC_REDIRECTS.find(
   (item) => item.source === "/kurumsal/elektronik-ilet-ve-acik-riza-metni"
 );
 assert.equal(rizaRedirect?.destination, "/kurumsal/gizlilik-politikasi");
+
+assert.equal(legacyTesisRedirectDestination("/tesis"), "/villalar");
+assert.equal(legacyTesisRedirectDestination("/tesis/liste"), "/villalar");
+assert.equal(
+  legacyTesisRedirectDestination("/tesis/haritali-arama"),
+  "/villalar"
+);
+assert.equal(
+  legacyTesisRedirectDestination("/tesis/detay/villa-ersu"),
+  "/villa-ersu"
+);
+assert.equal(
+  legacyTesisRedirectDestination("/tesis/detay/bungalov-kumsal"),
+  "/bungalov-kumsal"
+);
+assert.equal(legacyTesisRedirectDestination("/villalar"), null);
+
+assert.equal(
+  wwwHostnameForPublicHost("tatildeyiz.com.tr"),
+  "www.tatildeyiz.com.tr"
+);
+assert.equal(wwwHostnameForPublicHost("www.tatildeyiz.com.tr"), null);
+
+const tesisDetayRedirect = LEGACY_PUBLIC_REDIRECTS.find(
+  (item) => item.source === "/tesis/detay/:slug"
+);
+assert.equal(tesisDetayRedirect?.destination, "/:slug");
 
 console.log("smoke-public-indexing: OK");

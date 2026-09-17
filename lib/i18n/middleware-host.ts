@@ -12,7 +12,24 @@ const KNOWN_PUBLIC_HOSTS = new Set([
   "balayivillacisi.com",
   "www.tatilvillacisi.com",
   "tatilvillacisi.com",
+  "www.glampingturkey.com",
+  "glampingturkey.com",
 ]);
+
+const APEX_TO_WWW: Record<string, string> = {
+  "tatildeyiz.com.tr": "www.tatildeyiz.com.tr",
+  "balayivillacisi.com": "www.balayivillacisi.com",
+  "tatilvillacisi.com": "www.tatilvillacisi.com",
+  "glampingturkey.com": "www.glampingturkey.com",
+};
+
+/** Apex public host → www (çift indekslemeyi keser). */
+export function wwwHostnameForPublicHost(
+  hostname: string | null | undefined
+): string | null {
+  const host = normalizeHost(hostname ?? "");
+  return APEX_TO_WWW[host] ?? null;
+}
 
 function normalizeHost(value: string): string {
   return value

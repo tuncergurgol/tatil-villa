@@ -9,6 +9,24 @@ export type LegacyRedirect = {
 };
 
 export const LEGACY_PUBLIC_REDIRECTS: LegacyRedirect[] = [
+  // Eski CRM /tesis yolları (GSC 404)
+  { source: "/tesis", destination: "/villalar", permanent: true },
+  { source: "/tesis/liste", destination: "/villalar", permanent: true },
+  { source: "/tesis/list", destination: "/villalar", permanent: true },
+  { source: "/tesis/haritali-arama", destination: "/villalar", permanent: true },
+  { source: "/tesis/detay/:slug", destination: "/:slug", permanent: true },
+  { source: "/tesis/:path*", destination: "/villalar", permanent: true },
+  {
+    source: "/:locale(en|de|fr|es|bg|el|zh)/tesis/detay/:slug",
+    destination: "/:slug",
+    permanent: true,
+  },
+  {
+    source: "/:locale(en|de|fr|es|bg|el|zh)/tesis/:path*",
+    destination: "/villalar",
+    permanent: true,
+  },
+
   // Eski villa listesi yolu
   { source: "/villalar/:slug", destination: "/:slug", permanent: true },
   {
@@ -60,3 +78,18 @@ export const LEGACY_PUBLIC_REDIRECTS: LegacyRedirect[] = [
   { source: "/bloglar", destination: "/blog", permanent: true },
   { source: "/yazilar", destination: "/blog", permanent: true },
 ];
+
+/**
+ * Eski /tesis/... CRM yolları → güncel public path.
+ * Dil öneki temizlenmiş pathname bekler.
+ */
+export function legacyTesisRedirectDestination(
+  pathname: string
+): string | null {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (path === "/tesis") return "/villalar";
+  if (!path.startsWith("/tesis/")) return null;
+  const detay = path.match(/^\/tesis\/detay\/([^/]+)$/);
+  if (detay?.[1]) return `/${detay[1]}`;
+  return "/villalar";
+}
