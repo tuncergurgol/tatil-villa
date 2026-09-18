@@ -532,13 +532,55 @@ const AMENITY_ALIASES: Record<string, string> = {
   "bahçe alanı": "Bahçe",
   "özel bahçeli": "Bahçe",
   "full eşyalı ve mobilyalı": "Mutfak Gereçleri",
+  pool: "Özel Havuzlu",
+  nearbeach: "Denize Yakın",
+  playground: "Çocuk Oyun Alanı",
+  garden: "Bahçe",
+  balcony: "Balkon",
+  bbqgrill: "Barbekü",
+  seaview: "Deniz Manzarası",
+  parking: "Otopark",
+  sauna: "Saunalı",
+  jacuzzi: "Jakuzi",
+  tabletennis: "Masa Tenisi",
+  umbrella: "Şemsiye",
+  sunlounger: "Şezlong",
+  kitchen: "Mutfak",
+  stove: "Ocak",
+  oven: "Fırın",
+  dishwasher: "Bulaşık makinesi",
+  refrigerator: "Buzdolabı",
+  diningtable: "Yemek Masası",
+  airconditioning: "Klima",
+  television: "Düz ekran TV",
+  satellite: "Uydu Yayını",
+  wifi: "Wi-Fi",
+  highchair: "Mama Sandalyesi",
+  "ısıtmalı havuz": "Isıtmalı Havuz",
+  "kapalı havuz": "Kapalı Havuz",
+  "çocuk havuzu": "Çocuk Havuzu",
+  "çocuk oyun alanı": "Çocuk Oyun Alanı",
+  "deniz manzarası": "Deniz Manzarası",
+  "denize yakın": "Denize Yakın",
+  jakuzili: "Jakuzi",
+  "balayı villası": "Balayı Villası",
+  "masa tenisi": "Masa Tenisi",
 };
 
 const FACILITY_ALIASES: Record<string, string> = {
   "sinema odası": "Sinema Odası Olanlar",
   "jakuzi": "Jakuzili Villalar",
+  jacuzzi: "Jakuzili Villalar",
+  jakuzili: "Jakuzili Villalar",
   sauna: "Sauna ve Hamamlı Villalar",
   "saunalı": "Sauna ve Hamamlı Villalar",
+  "kapalı havuz": "Kapalı Havuzlu Villalar",
+  "kapalı havuzlu": "Kapalı Havuzlu Villalar",
+  "balayı villası": "Balayı Villaları",
+  "deniz manzarası": "Deniz Manzaralı Villalar",
+  seaview: "Deniz Manzaralı Villalar",
+  "çocuk havuzu": "Çocuk Havuzlu Villalar",
+  "ısıtmalı havuz": "Isıtmalı Havuzlu Villalar",
 };
 
 function mapAmenityLabels(labels: string[]) {
@@ -660,6 +702,8 @@ export function parseExternalVillaListing(
     }
     const plato = parsePlatoMacrovillaListing(pageUrl, html);
     if (plato) return plato;
+    const ege = parseEgetatilevleriListing(pageUrl, html);
+    if (ege) return ege;
     // Aynı Next.js / routingData ailesi — hafif kurulum (başlık + görsel + entity)
     if (
       host.includes("villaekstra") ||
@@ -1420,6 +1464,341 @@ function extractBravoPrepaymentRate(html: string): number | null {
     return Number.isFinite(value) && value > 0 && value <= 100 ? value : null;
   }
   return null;
+}
+
+function extractJsonScriptById(html: string, id: string): unknown | null {
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = html.match(
+    new RegExp(
+      `<script[^>]*\\bid=["']${escaped}["'][^>]*>\\s*([\\s\\S]*?)\\s*</script>`,
+      "i"
+    )
+  );
+  if (!match?.[1]?.trim()) return null;
+  try {
+    return JSON.parse(match[1]!.trim());
+  } catch {
+    return null;
+  }
+}
+
+function extractVacationRentalJsonLd(
+  html: string
+): Record<string, unknown> | null {
+  for (const match of html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>\s*([\s\S]*?)\s*<\/script>/gi
+  )) {
+    try {
+      const parsed = JSON.parse(match[1] ?? "") as Record<string, unknown>;
+      if (parsed?.["@type"] === "VacationRental") return parsed;
+    } catch {
+      // sonraki blok
+    }
+  }
+  return null;
+}
+
+function looksLikeEgetatilevleriListing(pageUrl: string, html: string): boolean {
+  try {
+    if (normalizeHost(new URL(pageUrl).hostname).includes("egetatilevleri")) {
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return (
+    html.includes('id="property-gallery-data"') &&
+    html.includes('id="booking-seasonal-pricings"')
+  );
+}
+
+function extractEgetatilevleriDocumentNo(html: string): string {
+  const match =
+    html.match(
+      /Turizm\s+[İI]şletmesi\s+Belgesi\s*:\s*(07[-\s]?\d{3,})/i
+    ) || html.match(/\b(07[-\s]?\d{3,})\b/);
+  return (match?.[1] ?? "").replace(/\s+/g, "-").toUpperCase();
+}
+
+function extractEgetatilevleriImages(html: string): string[] {
+  const gallery = extractJsonScriptById(html, "property-gallery-data");
+  const urls: string[] = [];
+  if (Array.isArray(gallery)) {
+    for (const item of gallery) {
+      const src =
+        item && typeof item === "object"
+          ? String((item as { src?: string }).src ?? "")
+          : "";
+      if (/^https?:\/\//i.test(src)) urls.push(src);
+    }
+  }
+  return [...new Set(urls)];
+}
+
+function extractEgetatilevleriDistances(
+  html: string
+): ExternalVillaListingDistance[] {
+  const panel = html.match(
+    /data-tab-panel=["']distances["'][\s\S]*?(?=data-tab-panel=|$)/i
+  )?.[0];
+  if (!panel) return [];
+
+  const rows: ExternalVillaListingDistance[] = [];
+  const cards = [
+    ...panel.matchAll(
+      /<p class="text-sm font-semibold[^"]*">([^<]+)<\/p>(?:\s*<p class="text-xs[^"]*">([^<]*)<\/p>)?[\s\S]{0,400}?>([\d.,]+)\s*km/gi
+    ),
+  ];
+  const categoryByLabel: Record<string, string> = {
+    havalimanı: "Ulaşım",
+    plaj: "Popüler Yerler",
+    market: "Yakın Yerler",
+    restaurant: "Yakın Yerler",
+    "şehir merkezi": "Yakın Yerler",
+  };
+
+  for (const card of cards) {
+    const label = decodeHtmlListing(card[1] ?? "").trim();
+    const subtitle = decodeHtmlListing(card[2] ?? "").trim();
+    const distanceKm = parseDistanceToKm(`${card[3]} km`);
+    if (!label || distanceKm == null) continue;
+    const name = subtitle
+      ? /havaliman/i.test(label)
+        ? `${subtitle} Havalimanı`
+        : subtitle
+      : label;
+    const categoryName =
+      categoryByLabel[label.toLocaleLowerCase("tr-TR")] ?? "Yakın Yerler";
+    rows.push({ name, distanceKm, categoryName });
+  }
+
+  const unique = new Map<string, ExternalVillaListingDistance>();
+  for (const row of rows) {
+    unique.set(row.name.toLocaleLowerCase("tr-TR"), row);
+  }
+  return [...unique.values()];
+}
+
+function decodeHtmlListing(value: string) {
+  return value
+    .replace(/&#x9;/gi, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractEgetatilevleriPool(html: string): ExternalVillaListingPool | null {
+  const dimRe =
+    /<h4[^>]*>\s*(Çocuk Havuzu|Korunakl[ıi] Havuz|Kapal[ıi] Havuz|Özel Havuz)\s*<\/h4>[\s\S]{0,900}?En<\/span>\s*<span[^>]*>\s*([\d.,]+)\s*m[\s\S]{0,400}?Boy<\/span>\s*<span[^>]*>\s*([\d.,]+)\s*m[\s\S]{0,400}?Derinlik<\/span>\s*<span[^>]*>\s*([\d.,]+)\s*m/gi;
+  const pools = [...html.matchAll(dimRe)].map((match) => ({
+    name: (match[1] ?? "").trim(),
+    width: parseMeter(match[2] ?? null),
+    length: parseMeter(match[3] ?? null),
+    depth: parseMeter(match[4] ?? null),
+  }));
+  const preferred =
+    pools.find((pool) => /korunakl/i.test(pool.name)) ??
+    pools.find((pool) => /özel/i.test(pool.name)) ??
+    pools[0];
+  const hasPool =
+    Boolean(preferred) ||
+    /özel\s+(?:yüzme\s+)?havuz|kapal[ıi]\s+havuz|korunakl[ıi]\s+havuz/i.test(
+      html
+    );
+  if (!hasPool) return null;
+
+  return {
+    poolType: "Özel Havuz",
+    width: preferred?.width ?? null,
+    length: preferred?.length ?? null,
+    depth: preferred?.depth ?? null,
+    conservative: /korunakl[ıi]\s+havuz/i.test(html),
+    heated: false,
+  };
+}
+
+function extractEgetatilevleriDescription(
+  html: string,
+  fallback: string
+): string {
+  const panel = html.match(
+    /data-tab-panel=["']general["'][\s\S]*?(?=data-tab-panel=|$)/i
+  )?.[0];
+  if (panel) {
+    const about = panel.match(
+      /Villa Hakkında([\s\S]{0,14000}?)(?:check_circle\s*Genel Özellikler|Öne Çıkan Özellikler|Genel Özellikler|$)/i
+    )?.[1];
+    if (about) {
+      const paragraphs = [...about.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+        .map((match) => stripTags(match[1] ?? "").trim())
+        .filter((text) => text.length > 30);
+      if (paragraphs.length > 0) {
+        return toHtmlParagraphs(paragraphs.join("\n\n"));
+      }
+    }
+  }
+  return fallback ? toHtmlParagraphs(fallback) : "";
+}
+
+function extractEgetatilevleriAmenityLabels(html: string): string[] {
+  const labels: string[] = [];
+  const jsonLd = extractVacationRentalJsonLd(html);
+  const place = jsonLd?.containsPlace as
+    | { amenityFeature?: Array<{ name?: string }> }
+    | undefined;
+  for (const feature of place?.amenityFeature ?? []) {
+    const name = String(feature?.name ?? "").trim();
+    if (name && name !== "LivingRoom" && name !== "Furnished") {
+      labels.push(name);
+    }
+  }
+  const extras = [
+    ...html.matchAll(
+      /text-sm font-semibold[^>]*>\s*(Isıtmalı havuz|Kapalı Havuz|Çocuk Havuzu|Çocuk Oyun Alanı|Denize Yakın|Balayı Villası|Bahçe Alanı|Merkeze Yakın|Jakuzili|Korunaklı Havuz|Masa Tenisi)\s*</gi
+    ),
+  ].map((match) => match[1]!.trim());
+  labels.push(...extras);
+  return [...new Set(labels)];
+}
+
+export function parseEgetatilevleriListing(
+  pageUrl: string,
+  html: string
+): ExternalVillaListing | null {
+  if (!looksLikeEgetatilevleriListing(pageUrl, html)) return null;
+
+  const jsonLd = extractVacationRentalJsonLd(html);
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  const name =
+    String(jsonLd?.name ?? "").trim() ||
+    extractPageTitleTag(html).split("|")[0]?.trim() ||
+    titleCaseTr(
+      new URL(pageUrl).pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ||
+        ""
+    );
+  if (!name || name.length < 2) return null;
+
+  const address = (jsonLd?.address ?? {}) as {
+    addressLocality?: string;
+    addressRegion?: string;
+    streetAddress?: string;
+  };
+  const cityName = address.addressRegion?.trim() || "Antalya";
+  const locationLabel =
+    address.streetAddress?.trim() ||
+    [cityName, address.addressLocality].filter(Boolean).join(", ");
+  const locationParts = locationLabel
+    .split(/[/,]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const districtName =
+    locationParts[locationParts.length - 1] ||
+    address.addressLocality?.trim() ||
+    null;
+
+  const place = jsonLd?.containsPlace as
+    | {
+        occupancy?: { value?: number };
+        numberOfRooms?: number;
+      }
+    | undefined;
+  const guests =
+    Number(place?.occupancy?.value) ||
+    parseIntSafe(html.match(/(\d+)\s*kişiye kadar/i)?.[1] ?? null, 4);
+  const bedrooms =
+    Number(place?.numberOfRooms) ||
+    parseIntSafe(
+      html.match(/>Yatak Odası<\/span>\s*<span[^>]*>\s*(\d+)/i)?.[1] ?? null,
+      2
+    );
+  const bathrooms = parseIntSafe(
+    html.match(/>Banyo<\/span>\s*<span[^>]*>\s*(\d+)/i)?.[1] ?? null,
+    2
+  );
+
+  const latitude =
+    parseFloatSafe(String(jsonLd?.latitude ?? "")) ??
+    parseFloatSafe(
+      html.match(/data-lat=["']([\d.-]+)["']/i)?.[1] ?? null
+    ) ??
+    0;
+  const longitude =
+    parseFloatSafe(String(jsonLd?.longitude ?? "")) ??
+    parseFloatSafe(
+      html.match(/data-lng=["']([\d.-]+)["']/i)?.[1] ?? null
+    ) ??
+    0;
+
+  const checkInTime = parseClock(
+    String(jsonLd?.checkinTime ?? "").slice(0, 5),
+    "16:00"
+  );
+  const checkOutTime = parseClock(
+    String(jsonLd?.checkoutTime ?? "").slice(0, 5),
+    "10:00"
+  );
+
+  const imageUrls = extractEgetatilevleriImages(html);
+  if (imageUrls.length === 0 && Array.isArray(jsonLd?.image)) {
+    imageUrls.push(
+      ...((jsonLd.image as unknown[])
+        .map((item) => String(item ?? ""))
+        .filter((url) => /^https?:\/\//i.test(url)))
+    );
+  }
+
+  const mapped = mapAmenityLabels(extractEgetatilevleriAmenityLabels(html));
+  const basePrice = extractJsonScriptById(html, "booking-base-price") as {
+    EffectivePrice?: number;
+  } | null;
+  const minNightlyPrice = Number(basePrice?.EffectivePrice);
+  const rules = html.match(
+    /data-tab-panel=["']rules["'][\s\S]*?(?=data-tab-panel=|$)/i
+  )?.[0] ?? html;
+
+  return {
+    sourceHost: host,
+    pageUrl,
+    name,
+    originalName: name,
+    locationLabel,
+    districtName,
+    cityName,
+    guests,
+    bedrooms,
+    bathrooms,
+    livingRooms: 1,
+    latitude,
+    longitude,
+    documentNo: extractEgetatilevleriDocumentNo(html),
+    checkInTime,
+    checkOutTime,
+    ribbonText1: "",
+    minNightlyPrice:
+      Number.isFinite(minNightlyPrice) && minNightlyPrice > 0
+        ? Math.round(minNightlyPrice)
+        : null,
+    damageDeposit: null,
+    prepaymentRate: null,
+    descriptionHtml: extractEgetatilevleriDescription(
+      html,
+      String(jsonLd?.description ?? "")
+    ),
+    amenityLabels: mapped.amenityLabels,
+    facilityLabels: mapped.facilityLabels,
+    imageUrls: [...new Set(imageUrls)],
+    distances: extractEgetatilevleriDistances(html),
+    pool: extractEgetatilevleriPool(html),
+    rooms: [],
+    entityId: String(jsonLd?.identifier ?? "").trim() || null,
+    allowPets: !/Evcil Hayvan Kabul Edilmiyor/i.test(rules),
+    allowEvents: !/Parti Düzenlenemez/i.test(rules),
+    allowSmoking: !/Sigara İçilmez/i.test(rules),
+    allowChildren: /Çocuklara Uygun/i.test(rules),
+    allowBaby: /Bebeklere Uygun/i.test(rules),
+  };
 }
 
 function parseGenericHtmlListing(
