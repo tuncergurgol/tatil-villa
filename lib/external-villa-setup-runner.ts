@@ -143,6 +143,16 @@ async function resolveMahalleRegionId(listing: ExternalVillaListing) {
       return district.id;
     }
 
+    const merkezMahalle = await prisma.region.findFirst({
+      where: {
+        active: true,
+        level: RegionLevel.MAHALLE,
+        name: { equals: `${candidate} Merkez`, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (merkezMahalle) return merkezMahalle.id;
+
     if (district?.level === RegionLevel.ILCE && !ilceFallbackId) {
       if (district.children[0]?.id) {
         ilceFallbackId = district.children[0].id;
