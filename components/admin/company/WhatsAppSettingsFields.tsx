@@ -9,8 +9,9 @@ export default function WhatsAppSettingsFields() {
           <strong>Bildirim WhatsApp (WAHA)</strong> üzerinden gönderilir.
         </p>
         <p className="mt-2">
-          Bağlantı ve API ayarları{" "}
-          <strong>Acente → Bildirim WhatsApp</strong> sayfasından yönetilir.
+          WhatsApp doğrulama kodunu açıp kapatmak için{" "}
+          <strong>Acente → Bildirim WhatsApp</strong> sayfasındaki butonu
+          kullanın. Bağlantı ve API ayarları da aynı sayfadadır.
         </p>
       </div>
 

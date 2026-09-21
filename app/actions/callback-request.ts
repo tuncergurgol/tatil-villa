@@ -8,7 +8,7 @@ import type {
   Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { deliverOtpCode } from "@/lib/otp-delivery";
+import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
 import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
 import { syncCustomerFromCallback } from "@/lib/customer-crm";
 import { getCompanySettings } from "@/lib/queries/company-settings";
@@ -55,9 +55,54 @@ function maskPhone(e164: string): string {
   return `****${digits.slice(-4)}`;
 }
 
+async function createVerifiedCallbackFromPayload(
+  payload: CallbackRequestOtpPayload
+): Promise<CallbackRequestActionState> {
+  const now = new Date();
+  let createdRecord: {
+    name: string;
+    phone: string;
+    note: string;
+    preferredDay: CallbackPreferredDay;
+    preferredTime: CallbackPreferredTime;
+    sourceSite: string;
+    sourceDomain: string;
+  } | null = null;
+
+  const item = await prisma.callbackRequest.create({
+    data: {
+      name: payload.name,
+      phone: payload.phone,
+      note: payload.note ?? "",
+      preferredDay: payload.preferredDay as CallbackPreferredDay,
+      preferredTime: payload.preferredTime as CallbackPreferredTime,
+      sourceSite: payload.sourceSite ?? "",
+      sourceDomain: payload.sourceDomain ?? "",
+      status: "VERIFIED",
+      verifiedAt: now,
+    },
+  });
+  createdRecord = item;
+
+  await syncCustomerFromCallback({
+    name: payload.name,
+    phone: payload.phone,
+    firstContactAt: now,
+  });
+  await notifyNewCallbackRequest(createdRecord);
+
+  revalidatePath("/admin/acente/sizi-arayalim");
+  revalidatePath("/sizi-arayalim");
+
+  return {
+    success: true,
+    message: "Talebiniz alındı — en kısa sürede sizi arayacağız.",
+  };
+}
+
 /**
- * Form gönderimi: 5 haneli OTP üretir, WhatsApp (veya SMS) ile gönderir.
- * CallbackRequest henüz oluşmaz; doğrulamadan sonra oluşur.
+ * Form gönderimi: OTP açıksa 5 haneli kod gönderir.
+ * Kapalıysa talebi doğrudan doğrulanmış olarak oluşturur.
  */
 export async function submitCallbackRequestAction(
   _prev: CallbackRequestActionState,
@@ -99,6 +144,10 @@ export async function submitCallbackRequestAction(
     sourceSite: site.brandName,
     sourceDomain: site.domain,
   };
+
+  if (!(await isPhoneOtpRequired())) {
+    return createVerifiedCallbackFromPayload(payload);
+  }
 
   await invalidateActiveOtps(e164, CALLBACK_OTP_PURPOSE);
 
@@ -209,55 +258,12 @@ export async function verifyCallbackRequestOtpAction(
   }
 
   const now = new Date();
-  let createdRecord: {
-    name: string;
-    phone: string;
-    note: string;
-    preferredDay: CallbackPreferredDay;
-    preferredTime: CallbackPreferredTime;
-    sourceSite: string;
-    sourceDomain: string;
-  } | null = null;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.verificationCode.update({
-      where: { id: record.id },
-      data: { usedAt: now },
-    });
-
-    const item = await tx.callbackRequest.create({
-      data: {
-        name: payload.name,
-        phone: payload.phone,
-        note: payload.note ?? "",
-        preferredDay: payload.preferredDay as CallbackPreferredDay,
-        preferredTime: payload.preferredTime as CallbackPreferredTime,
-        sourceSite: payload.sourceSite ?? "",
-        sourceDomain: payload.sourceDomain ?? "",
-        status: "VERIFIED",
-        verifiedAt: now,
-      },
-    });
-    createdRecord = item;
+  await prisma.verificationCode.update({
+    where: { id: record.id },
+    data: { usedAt: now },
   });
 
-  if (createdRecord) {
-    await syncCustomerFromCallback({
-      name: payload.name,
-      phone: payload.phone,
-      firstContactAt: now,
-    });
-    await notifyNewCallbackRequest(createdRecord);
-  }
-
-  revalidatePath("/admin/acente/sizi-arayalim");
-  revalidatePath("/sizi-arayalim");
-
-  return {
-    success: true,
-    message:
-      "Telefonunuz doğrulandı. Talebiniz alındı — en kısa sürede sizi arayacağız.",
-  };
+  return createVerifiedCallbackFromPayload(payload);
 }
 
 /** Aynı doğrulama kaydı için kodu yeniden gönder */

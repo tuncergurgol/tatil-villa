@@ -118,7 +118,13 @@ export default function CallbackRequestFormPublic({
     }
   }, [verifyState.success, onSuccess]);
 
-  if (verifyState.success) {
+  useEffect(() => {
+    if (formState.success) {
+      onSuccess?.();
+    }
+  }, [formState.success, onSuccess]);
+
+  if (verifyState.success || formState.success) {
     return (
       <div className="relative overflow-hidden rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-sky-50 px-5 py-8 text-center">
         <div
@@ -129,7 +135,7 @@ export default function CallbackRequestFormPublic({
           ✓
         </div>
         <p className="mt-4 text-lg font-bold text-emerald-900">
-          {verifyState.message}
+          {verifyState.message || formState.message}
         </p>
         <p className="mt-2 text-sm text-emerald-800/80">
           Uzman ekibimiz çalışma saatlerinde sizi arayacak.

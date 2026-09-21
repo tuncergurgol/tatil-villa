@@ -1,3 +1,4 @@
+import WhatsappOtpToggle from "@/components/admin/agency/WhatsappOtpToggle";
 import WhatsappWahaConnection from "@/components/admin/agency/WhatsappWahaConnection";
 import { getWahaWhatsappAdminData } from "@/lib/queries/waha-whatsapp";
 import { headers } from "next/headers";
@@ -39,6 +40,8 @@ export default async function BildirimWhatsappPage() {
           </span>
         </div>
       </header>
+
+      <WhatsappOtpToggle enabled={wahaData.whatsappOtpEnabled} />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
         <p className="font-semibold text-slate-800">Kurulum özeti</p>

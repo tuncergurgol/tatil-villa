@@ -2,6 +2,7 @@ import {
   isValidWhatsAppPhoneE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
+import { getCompanySettings } from "@/lib/queries/company-settings";
 import { isSmsOtpEnabled, sendSmsOtpStub } from "@/lib/sms-otp";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 
@@ -16,6 +17,21 @@ export type OtpDeliveryResult = {
 function buildOtpMessage(code: string, brandName?: string): string {
   const brand = brandName?.trim() || "Tatildeyiz";
   return `${brand} doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir. Kimseyle paylaşmayın.`;
+}
+
+export async function isWhatsappOtpEnabled(): Promise<boolean> {
+  try {
+    const settings = await getCompanySettings();
+    return Boolean(settings.whatsappOtpEnabled);
+  } catch {
+    return false;
+  }
+}
+
+/** SMS veya WhatsApp OTP açık mı — kapalıysa telefon doğrulama atlanır. */
+export async function isPhoneOtpRequired(): Promise<boolean> {
+  if (await isSmsOtpEnabled()) return true;
+  return isWhatsappOtpEnabled();
 }
 
 async function sendOtpViaWhatsApp(
@@ -37,7 +53,8 @@ async function sendOtpViaWhatsApp(
 /**
  * OTP gönderimi:
  * - smsOtpEnabled / SMS_OTP_ENABLED + Netgsm → SMS
- * - kapalıyken veya sağlayıcı yoksa → Bildirim WhatsApp (WAHA)
+ * - whatsappOtpEnabled → Bildirim WhatsApp (WAHA)
+ * - ikisi de kapalıysa gönderilmez
  */
 export async function deliverOtpCode(
   phoneRaw: string,
@@ -69,6 +86,14 @@ export async function deliverOtpCode(
       error: sms.ok
         ? undefined
         : sms.detail ?? "Doğrulama kodu SMS ile gönderilemedi",
+    };
+  }
+
+  if (!(await isWhatsappOtpEnabled())) {
+    return {
+      ok: false,
+      channel: "whatsapp",
+      error: "WhatsApp doğrulama kodu şu an kapalı",
     };
   }
 

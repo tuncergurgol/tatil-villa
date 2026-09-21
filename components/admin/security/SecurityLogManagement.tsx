@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Shield } from "lucide-react";
+import WhatsappOtpToggle from "@/components/admin/agency/WhatsappOtpToggle";
 import type { SecurityPageData } from "@/lib/queries/security";
 
 function formatDate(value: Date) {
@@ -61,7 +62,7 @@ export default function SecurityLogManagement({
         </Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         <StatCard label="Aktif yönetici" value={summary.activeAdmins} tone="emerald" />
         <StatCard label="Pasif kullanıcı" value={summary.passiveUsers} />
         <StatCard
@@ -84,7 +85,14 @@ export default function SecurityLogManagement({
           value={summary.smsOtpEnabled ? "Açık" : "Kapalı"}
           tone={summary.smsOtpEnabled ? "emerald" : "slate"}
         />
+        <StatCard
+          label="WhatsApp OTP"
+          value={summary.whatsappOtpEnabled ? "Açık" : "Kapalı"}
+          tone={summary.whatsappOtpEnabled ? "emerald" : "amber"}
+        />
       </div>
+
+      <WhatsappOtpToggle enabled={summary.whatsappOtpEnabled} />
 
       <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-4 py-3">

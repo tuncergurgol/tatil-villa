@@ -95,10 +95,16 @@ export default function BookingGuestLoginForm() {
     }
   }, [verifyState.success, verifyState.redirectTo, router]);
 
-  if (verifyState.success) {
+  useEffect(() => {
+    if (startState.success && startState.redirectTo) {
+      router.push(startState.redirectTo);
+    }
+  }, [startState.success, startState.redirectTo, router]);
+
+  if (verifyState.success || startState.success) {
     return (
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-8 text-center">
-        <p className="text-lg font-bold text-emerald-900">Doğrulama başarılı</p>
+        <p className="text-lg font-bold text-emerald-900">Giriş başarılı</p>
         <p className="mt-2 text-sm text-emerald-800/80">
           Giriş bilgilendirme sayfasına yönlendiriliyorsunuz…
         </p>

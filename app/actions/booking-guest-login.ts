@@ -4,7 +4,7 @@ import { BookingStatus, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { prisma } from "@/lib/db";
-import { deliverOtpCode } from "@/lib/otp-delivery";
+import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
 import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
@@ -116,6 +116,14 @@ export async function startBookingGuestLoginAction(
   const booking = await findEligibleBooking(email, reservationCode);
   if (!booking) {
     return { error: CREDENTIALS_ERROR };
+  }
+
+  if (!(await isPhoneOtpRequired())) {
+    return {
+      success: true,
+      message: "Giriş başarılı",
+      redirectTo: `/giris-bilgilendirme/${booking.id}`,
+    };
   }
 
   const company = await getCompanySettings();

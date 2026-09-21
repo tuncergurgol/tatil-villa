@@ -82,6 +82,7 @@ export const DEFAULT_COMPANY_SETTINGS = {
   evolutionApiKey: "",
   evolutionInstanceName: "tatil-villa",
   smsOtpEnabled: false,
+  whatsappOtpEnabled: false,
   biletallEnabled: true,
   biletallPortalSlug: "tatildeyizcomtr",
   biletallUsername: "",

@@ -25,6 +25,7 @@ export type SecurityPageData = {
     loginFailure24h: number;
     passwordReset24h: number;
     smsOtpEnabled: boolean;
+    whatsappOtpEnabled: boolean;
   };
   users: Array<{
     id: string;
@@ -81,7 +82,7 @@ export async function getSecurityPageData(): Promise<SecurityPageData> {
     }),
     prisma.companySettings.findUnique({
       where: { id: "default" },
-      select: { smsOtpEnabled: true },
+      select: { smsOtpEnabled: true, whatsappOtpEnabled: true },
     }),
     prisma.user.findMany({
       orderBy: [{ active: "desc" }, { name: "asc" }],
@@ -122,6 +123,7 @@ export async function getSecurityPageData(): Promise<SecurityPageData> {
       loginFailure24h,
       passwordReset24h,
       smsOtpEnabled: Boolean(company?.smsOtpEnabled),
+      whatsappOtpEnabled: Boolean(company?.whatsappOtpEnabled),
     },
     users,
     events: events.map((event) => ({

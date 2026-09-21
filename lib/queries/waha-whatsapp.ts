@@ -15,5 +15,6 @@ export async function getWahaWhatsappAdminData() {
       process.env.WAHA_SESSION_NAME?.trim() ||
       "default",
     webhookSecret: settings.whatsappCalendarWebhookSecret,
+    whatsappOtpEnabled: Boolean(settings.whatsappOtpEnabled),
   };
 }

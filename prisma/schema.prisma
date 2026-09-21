@@ -1386,6 +1386,7 @@ model CompanySettings {
   otelzAffiliateTo            String  @default("1857")
   otelzAffiliateCid           String  @default("274")
   smsOtpEnabled               Boolean @default(false)
+  whatsappOtpEnabled          Boolean @default(false)
   homePopularTitle            String  @default("Popüler Villalar")
   homePopularActive           Boolean @default(true)
   homePopularSortMode         String  @default("showcase")
