@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import {
   getAllCallbackRequests,
   getCallbackRequestCounts,
+  getRecentBlockedPublicRequests,
 } from "@/lib/queries/callback-requests";
 
 export const dynamic = "force-dynamic";
@@ -23,15 +24,17 @@ export default async function SiziArayalimPage({ searchParams }: Props) {
         ? (params.durum[0] ?? "")
         : "";
 
-  const [items, counts] = await Promise.all([
+  const [items, counts, blockedEvents] = await Promise.all([
     getAllCallbackRequests(),
     getCallbackRequestCounts(),
+    getRecentBlockedPublicRequests(),
   ]);
 
   return (
     <CallbackRequestManagement
       items={items}
       counts={counts}
+      blockedEvents={blockedEvents}
       initialListFilter={initialListFilter}
       listFilterKey={listFilterKey}
     />

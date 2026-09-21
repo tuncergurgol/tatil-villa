@@ -16,6 +16,7 @@ import type {
   CallbackPreferredTime,
 } from "@prisma/client";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
+import DeviceTokenField from "@/components/public/DeviceTokenField";
 
 const initialState: CallbackRequestActionState = {};
 
@@ -159,6 +160,7 @@ export default function CallbackRequestFormPublic({
         </div>
 
         <form action={verifyAction} className="space-y-4">
+          <DeviceTokenField />
           <input
             type="hidden"
             name="verificationId"
@@ -200,6 +202,7 @@ export default function CallbackRequestFormPublic({
           action={resendAction}
           className="flex flex-wrap items-center justify-between gap-2"
         >
+          <DeviceTokenField />
           <input
             type="hidden"
             name="verificationId"
@@ -227,6 +230,7 @@ export default function CallbackRequestFormPublic({
 
   return (
     <form action={formAction} className="space-y-5">
+      <DeviceTokenField />
       <input type="hidden" name="preferredDay" value={preferredDay} />
       <input type="hidden" name="preferredTime" value={preferredTime} />
 

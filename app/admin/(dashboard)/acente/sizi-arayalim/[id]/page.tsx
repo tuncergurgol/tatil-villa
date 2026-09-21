@@ -26,6 +26,9 @@ export default async function SiziArayalimDetailPage({ params }: Props) {
         adminNote: item.adminNote,
         sourceSite: item.sourceSite,
         sourceDomain: item.sourceDomain,
+        clientIp: item.clientIp,
+        deviceToken: item.deviceToken,
+        userAgent: item.userAgent,
       }}
     />
   );

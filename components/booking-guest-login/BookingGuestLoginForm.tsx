@@ -8,6 +8,7 @@ import {
   verifyBookingGuestLoginAction,
   type BookingGuestLoginState,
 } from "@/app/actions/booking-guest-login";
+import DeviceTokenField from "@/components/public/DeviceTokenField";
 
 const initialState: BookingGuestLoginState = {};
 
@@ -127,6 +128,7 @@ export default function BookingGuestLoginForm() {
         </div>
 
         <form action={verifyAction} className="space-y-4">
+          <DeviceTokenField />
           <input
             type="hidden"
             name="verificationId"
@@ -168,6 +170,7 @@ export default function BookingGuestLoginForm() {
           action={resendAction}
           className="flex flex-wrap items-center justify-between gap-2"
         >
+          <DeviceTokenField />
           <input
             type="hidden"
             name="verificationId"
@@ -195,6 +198,7 @@ export default function BookingGuestLoginForm() {
 
   return (
     <form action={startAction} className="space-y-4">
+      <DeviceTokenField />
       <label className="block">
         <span className="text-sm font-semibold text-slate-800">
           E-Posta Adresiniz

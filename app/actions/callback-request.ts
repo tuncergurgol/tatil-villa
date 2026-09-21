@@ -11,6 +11,12 @@ import { prisma } from "@/lib/db";
 import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
 import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
 import { syncCustomerFromCallback } from "@/lib/customer-crm";
+import {
+  assertPublicRequestAllowed,
+  PUBLIC_OTP_SEND_PURPOSE,
+  PUBLIC_OTP_VERIFY_PURPOSE,
+  type PublicRequestIdentity,
+} from "@/lib/public-request-guard";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
@@ -56,7 +62,8 @@ function maskPhone(e164: string): string {
 }
 
 async function createVerifiedCallbackFromPayload(
-  payload: CallbackRequestOtpPayload
+  payload: CallbackRequestOtpPayload,
+  identity?: PublicRequestIdentity | null
 ): Promise<CallbackRequestActionState> {
   const now = new Date();
   let createdRecord: {
@@ -78,6 +85,9 @@ async function createVerifiedCallbackFromPayload(
       preferredTime: payload.preferredTime as CallbackPreferredTime,
       sourceSite: payload.sourceSite ?? "",
       sourceDomain: payload.sourceDomain ?? "",
+      clientIp: identity?.clientIp || payload.clientIp || "",
+      deviceToken: identity?.deviceToken || payload.deviceToken || "",
+      userAgent: identity?.userAgent || payload.userAgent || "",
       status: "VERIFIED",
       verifiedAt: now,
     },
@@ -132,6 +142,15 @@ export async function submitCallbackRequestAction(
     return { error: "Geçerli bir cep telefonu girin (05xx…)" };
   }
 
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone: e164,
+    formDeviceToken: String(formData.get("deviceToken") ?? ""),
+  });
+  if (!guard.ok) {
+    return { error: guard.error };
+  }
+
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
 
@@ -143,10 +162,13 @@ export async function submitCallbackRequestAction(
     preferredTime: parsed.data.preferredTime,
     sourceSite: site.brandName,
     sourceDomain: site.domain,
+    clientIp: guard.clientIp,
+    deviceToken: guard.deviceToken,
+    userAgent: guard.userAgent,
   };
 
   if (!(await isPhoneOtpRequired())) {
-    return createVerifiedCallbackFromPayload(payload);
+    return createVerifiedCallbackFromPayload(payload, guard);
   }
 
   await invalidateActiveOtps(e164, CALLBACK_OTP_PURPOSE);
@@ -213,6 +235,20 @@ export async function verifyCallbackRequestOtpAction(
   }
 
   const e164 = normalizePhoneToE164(parsed.data.phone);
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone: e164,
+    formDeviceToken: String(formData.get("deviceToken") ?? ""),
+  });
+  if (!guard.ok) {
+    return {
+      error: guard.error,
+      needsVerification: true,
+      phone: String(formData.get("phone") ?? ""),
+      verificationId: String(formData.get("verificationId") ?? ""),
+    };
+  }
+
   const record = await prisma.verificationCode.findFirst({
     where: {
       id: parsed.data.verificationId,
@@ -263,7 +299,7 @@ export async function verifyCallbackRequestOtpAction(
     data: { usedAt: now },
   });
 
-  return createVerifiedCallbackFromPayload(payload);
+  return createVerifiedCallbackFromPayload(payload, guard);
 }
 
 /** Aynı doğrulama kaydı için kodu yeniden gönder */
@@ -294,6 +330,20 @@ export async function resendCallbackRequestOtpAction(
   const payload = existing.payload as CallbackRequestOtpPayload | null;
   if (!payload) {
     return { error: "Form verisi bulunamadı" };
+  }
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone: e164,
+    formDeviceToken: String(formData.get("deviceToken") ?? ""),
+  });
+  if (!guard.ok) {
+    return {
+      error: guard.error,
+      needsVerification: true,
+      phone: e164,
+      verificationId,
+    };
   }
 
   await invalidateActiveOtps(e164, CALLBACK_OTP_PURPOSE);

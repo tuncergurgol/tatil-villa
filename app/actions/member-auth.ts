@@ -5,6 +5,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
 import {
+  assertPublicRequestAllowed,
+  PUBLIC_OTP_SEND_PURPOSE,
+} from "@/lib/public-request-guard";
+import {
   createMemberAccountWithLoyalty,
   ensureWelcomeCouponForMember,
   generateUniqueInviteCode,
@@ -114,6 +118,14 @@ async function sendMemberOtp(
   purpose: string,
   payload: MemberOtpPayload
 ) {
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) {
+    return { error: guard.error };
+  }
+
   const rate = checkRateLimit({
     key: `member-otp:${phone}:${purpose}`,
     limit: 5,
@@ -317,6 +329,11 @@ export async function startMemberPhoneLoginAction(
   }
 
   if (!(await isPhoneOtpRequired())) {
+    const guard = await assertPublicRequestAllowed({
+      purpose: PUBLIC_OTP_SEND_PURPOSE,
+      phone,
+    });
+    if (!guard.ok) return { error: guard.error };
     return completeMemberPhoneLogin(phone);
   }
 
@@ -396,6 +413,11 @@ export async function startMemberRegisterAction(
     }
     const otpPhone = existingMember.phone;
     if (!(await isPhoneOtpRequired())) {
+      const guard = await assertPublicRequestAllowed({
+        purpose: PUBLIC_OTP_SEND_PURPOSE,
+        phone: otpPhone,
+      });
+      if (!guard.ok) return { error: guard.error };
       return completeMemberPhoneLogin(otpPhone);
     }
     const otp = await sendMemberOtp(otpPhone, MEMBER_LOGIN_OTP_PURPOSE, {
@@ -420,6 +442,11 @@ export async function startMemberRegisterAction(
   }
 
   if (!(await isPhoneOtpRequired())) {
+    const guard = await assertPublicRequestAllowed({
+      purpose: PUBLIC_OTP_SEND_PURPOSE,
+      phone,
+    });
+    if (!guard.ok) return { error: guard.error };
     return completeMemberRegister({
       phone,
       fullName: parsed.data.fullName,
@@ -499,6 +526,14 @@ async function sendMemberReservationOtp(
   phone: string,
   payload: MemberReservationOtpPayload
 ) {
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) {
+    return { error: guard.error };
+  }
+
   const rate = checkRateLimit({
     key: `member-otp:${phone}:${MEMBER_RESERVATION_OTP_PURPOSE}`,
     limit: 5,
@@ -561,6 +596,11 @@ export async function startMemberReservationLoginAction(
   }
 
   if (!(await isPhoneOtpRequired())) {
+    const guard = await assertPublicRequestAllowed({
+      purpose: PUBLIC_OTP_SEND_PURPOSE,
+      phone: booking.phone,
+    });
+    if (!guard.ok) return { error: guard.error };
     return completeMemberReservationLogin(booking.phone, booking.id);
   }
 

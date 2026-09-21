@@ -10,7 +10,7 @@ import {
   CALLBACK_STATUS_LABELS,
   CALLBACK_TIME_LABELS,
 } from "@/lib/callback-request-labels";
-import type { CallbackRequestItem } from "@/lib/queries/callback-requests";
+import type { CallbackRequestItem, PublicRequestGuardEventItem } from "@/lib/queries/callback-requests";
 import type { CallbackListFilter } from "@/lib/booking-filter-url";
 import { includesSearchText } from "@/lib/search-text";
 
@@ -31,6 +31,7 @@ interface Props {
     contacted: number;
     closed: number;
   };
+  blockedEvents?: PublicRequestGuardEventItem[];
   initialListFilter?: CallbackListFilter;
   listFilterKey?: string;
 }
@@ -57,6 +58,7 @@ function formatSiteHint(item: CallbackRequestItem): string | null {
 export default function CallbackRequestManagement({
   items,
   counts,
+  blockedEvents = [],
   initialListFilter = "all",
   listFilterKey = "",
 }: Props) {
@@ -85,7 +87,8 @@ export default function CallbackRequestManagement({
         includesSearchText(item.phone, search) ||
         includesSearchText(item.note, search) ||
         includesSearchText(item.sourceSite, search) ||
-        includesSearchText(item.sourceDomain, search);
+        includesSearchText(item.sourceDomain, search) ||
+        includesSearchText(item.clientIp, search);
       const matchesStatus = onlyUnanswered
         ? item.status === "VERIFIED" || item.status === "NEW"
         : statusFilter === "all" || item.status === statusFilter;
@@ -138,7 +141,7 @@ export default function CallbackRequestManagement({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Ad, telefon veya not ara…"
+                placeholder="Ad, telefon, IP veya not ara…"
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100"
               />
             </div>
@@ -171,6 +174,27 @@ export default function CallbackRequestManagement({
               {error}
             </p>
           ) : null}
+
+          {blockedEvents.length > 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              <p className="font-semibold">
+                Son engellenen denemeler ({blockedEvents.length})
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                Aynı IP, cihaz veya telefondan 1 dakikada 3 talep/kod gönderimi
+                engellenir. MAC adresi tarayıcıdan okunamaz; cihaz kimliği
+                kullanılır.
+              </p>
+              <ul className="mt-2 max-h-32 space-y-1 overflow-auto font-mono text-xs">
+                {blockedEvents.slice(0, 8).map((event) => (
+                  <li key={event.id}>
+                    {formatDateTime(event.createdAt)} · {event.clientIp || "IP yok"}{" "}
+                    · {event.phone || "telefon yok"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">
@@ -181,6 +205,7 @@ export default function CallbackRequestManagement({
                 <th className="min-w-[120px] px-4 py-3">Site</th>
                 <th className="min-w-[140px] px-4 py-3">Ad</th>
                 <th className="w-40 px-4 py-3">Telefon</th>
+                <th className="w-40 px-4 py-3">IP</th>
                 <th className="w-32 px-4 py-3">Gün</th>
                 <th className="w-36 px-4 py-3">Saat</th>
                 <th className="min-w-[180px] px-4 py-3">Plan</th>
@@ -209,6 +234,9 @@ export default function CallbackRequestManagement({
                       {item.name}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{item.phone}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                      {item.clientIp || "—"}
+                    </td>
                     <td className="px-4 py-3 text-gray-700">
                       {CALLBACK_DAY_LABELS[item.preferredDay]}
                     </td>
@@ -260,7 +288,7 @@ export default function CallbackRequestManagement({
               ) : (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Henüz geri arama talebi yok.

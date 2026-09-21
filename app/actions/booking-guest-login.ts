@@ -6,6 +6,10 @@ import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { prisma } from "@/lib/db";
 import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
 import {
+  assertPublicRequestAllowed,
+  PUBLIC_OTP_SEND_PURPOSE,
+} from "@/lib/public-request-guard";
+import {
   isValidTurkishMobileE164,
   normalizePhoneToE164,
 } from "@/lib/phone";
@@ -116,6 +120,15 @@ export async function startBookingGuestLoginAction(
   const booking = await findEligibleBooking(email, reservationCode);
   if (!booking) {
     return { error: CREDENTIALS_ERROR };
+  }
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone: booking.phone,
+    formDeviceToken: String(formData.get("deviceToken") ?? ""),
+  });
+  if (!guard.ok) {
+    return { error: guard.error };
   }
 
   if (!(await isPhoneOtpRequired())) {
@@ -300,6 +313,20 @@ export async function resendBookingGuestLoginOtpAction(
   const payload = existing.payload as BookingGuestLoginOtpPayload | null;
   if (!payload?.bookingId) {
     return { error: "Doğrulama oturumu geçersiz. Bilgilerinizi yeniden girin." };
+  }
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone: e164,
+    formDeviceToken: String(formData.get("deviceToken") ?? ""),
+  });
+  if (!guard.ok) {
+    return {
+      error: guard.error,
+      needsVerification: true,
+      phone: e164,
+      verificationId,
+    };
   }
 
   const company = await getCompanySettings();

@@ -36,6 +36,9 @@ export type CallbackRequestFormItem = {
   adminNote: string;
   sourceSite: string;
   sourceDomain: string;
+  clientIp?: string;
+  deviceToken?: string;
+  userAgent?: string;
 };
 
 interface Props {
@@ -83,15 +86,26 @@ export default function CallbackRequestForm({ item }: Props) {
       >
         {isEdit ? <input type="hidden" name="id" value={item!.id} /> : null}
 
-        {isEdit && (item?.sourceSite || item?.sourceDomain) ? (
+        {isEdit && (item?.sourceSite || item?.sourceDomain || item?.clientIp) ? (
           <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-            <p className="font-semibold">Kaynak site</p>
+            <p className="font-semibold">Kaynak</p>
             <p className="mt-1">
               {item?.sourceSite || "—"}
               {item?.sourceDomain ? (
                 <span className="text-sky-700"> · {item.sourceDomain}</span>
               ) : null}
             </p>
+            <p className="mt-2 font-mono text-xs text-sky-800">
+              IP: {item?.clientIp || "—"}
+              {item?.deviceToken ? (
+                <> · Cihaz: {item.deviceToken.slice(0, 8)}…</>
+              ) : null}
+            </p>
+            {item?.userAgent ? (
+              <p className="mt-1 line-clamp-2 text-xs text-sky-700">
+                {item.userAgent}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

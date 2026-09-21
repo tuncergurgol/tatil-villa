@@ -20,6 +20,9 @@ export type CallbackRequestOtpPayload = {
   preferredTime: "ASAP" | "MORNING" | "AFTERNOON" | "EVENING";
   sourceSite: string;
   sourceDomain: string;
+  clientIp?: string;
+  deviceToken?: string;
+  userAgent?: string;
 };
 
 export type BookingGuestLoginOtpPayload = {
