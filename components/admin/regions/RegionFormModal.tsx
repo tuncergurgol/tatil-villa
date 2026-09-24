@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/admin/regions";
 import { RegionLevel, REGION_LEVEL_LABELS, parentLevelFor } from "@/lib/region-levels";
 import type { RegionFlat } from "@/lib/regions-tree";
+import { toSurroundingSlug } from "@/lib/surrounding-utils";
 import MernisIlcePicker from "@/components/admin/regions/MernisIlcePicker";
 import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
@@ -22,6 +23,11 @@ interface RegionFormModalProps {
 }
 
 const initialState: RegionActionState = {};
+
+function normalizeSlugDraft(value: string) {
+  const slug = toSurroundingSlug(value);
+  return /[-\s]$/.test(value) && slug ? `${slug}-` : slug;
+}
 
 function Field({
   label,
@@ -125,6 +131,9 @@ export default function RegionFormModal({
     : createRegion;
 
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [name, setName] = useState(region?.name ?? "");
+  const [slug, setSlug] = useState(region?.slug ?? "");
+  const slugTouched = useRef(Boolean(region?.slug));
   const [imageUrl, setImageUrl] = useState(region?.image ?? "");
   const [published, setPublished] = useState(region?.published ?? true);
   const [showInSearch, setShowInSearch] = useState(region?.showInSearch ?? false);
@@ -163,6 +172,32 @@ export default function RegionFormModal({
       !excludeIds.has(r.id) &&
       (requiredParentLevel ? r.level === requiredParentLevel : false)
   );
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugTouched.current) {
+      setSlug(toSurroundingSlug(value));
+    }
+  }
+
+  function handleSlugChange(value: string) {
+    const next = normalizeSlugDraft(value);
+    if (!next) {
+      slugTouched.current = false;
+      setSlug("");
+      return;
+    }
+    slugTouched.current = true;
+    setSlug(next);
+  }
+
+  function handleSlugBlur() {
+    if (!slug.trim()) {
+      setSlug(toSurroundingSlug(name));
+      return;
+    }
+    setSlug(toSurroundingSlug(slug));
+  }
 
   function handleImageUpload(file: File | undefined) {
     if (!file) return;
@@ -208,7 +243,15 @@ export default function RegionFormModal({
             <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Adı" name="name" defaultValue={region?.name} />
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-500">Adı</span>
+                    <input
+                      name="name"
+                      value={name}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </label>
                   <label className="block">
                     <span className="text-xs font-medium text-gray-500">
                       Seviye
@@ -293,11 +336,22 @@ export default function RegionFormModal({
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
-                    label="Sef Url"
-                    name="slug"
-                    defaultValue={region?.slug}
-                  />
+                  <label className="block">
+                    <span className="text-xs font-medium text-gray-500">
+                      Sef Url
+                    </span>
+                    <input
+                      name="slug"
+                      value={slug}
+                      onChange={(e) => handleSlugChange(e.target.value)}
+                      onBlur={handleSlugBlur}
+                      placeholder="Bölge adından otomatik üretilir"
+                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                    />
+                    <span className="mt-1 block text-xs text-gray-400">
+                      Adından otomatik üretilir. İsterseniz değiştirebilirsiniz.
+                    </span>
+                  </label>
                   {level === RegionLevel.IL && (
                     <Field
                       label="Öncelik"
