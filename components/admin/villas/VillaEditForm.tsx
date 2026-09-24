@@ -35,6 +35,7 @@ import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
 import type { PriceInclusionItem } from "@/lib/queries/price-inclusion";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
+import { villaOwnerHizliFiyatPath } from "@/lib/villa-admin-path";
 import type { ActiveVillaOwnerOption } from "@/lib/queries/villa-owners";
 import type {
   RegionPickerOption,
@@ -64,6 +65,8 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]["id"];
 
+const OWNER_HIDDEN_TABS = new Set<TabId>(["personel", "ical", "meta"]);
+
 interface VillaEditFormProps {
   villa: Villa & { owner: VillaOwner | null };
   pools: VillaPoolWithPeriods[];
@@ -81,6 +84,7 @@ interface VillaEditFormProps {
   rooms: VillaRoom[];
   prepaymentPaymentTypes: { id: string; name: string }[];
   regionBreadcrumb: string;
+  mode?: "admin" | "owner";
 }
 
 function formatSubmitError(error: unknown): string {
@@ -108,13 +112,16 @@ export default function VillaEditForm({
   rooms,
   prepaymentPaymentTypes,
   regionBreadcrumb,
+  mode = "admin",
 }: VillaEditFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnPath = useMemo(
-    () => buildVillaListPath(parseVillaListFilters(searchParams)),
-    [searchParams]
-  );
+  const returnPath = useMemo(() => {
+    if (mode === "owner") return "/sahip";
+    return buildVillaListPath(parseVillaListFilters(searchParams));
+  }, [mode, searchParams]);
+  const visibleTabs =
+    mode === "owner" ? tabs.filter((tab) => !OWNER_HIDDEN_TABS.has(tab.id)) : tabs;
   const contentRef = useRef<HTMLDivElement>(null);
   const personelTabRef = useRef<VillaPersonelTabHandle>(null);
   const [activeTab, setActiveTab] = useState<TabId>("genel");
@@ -232,7 +239,7 @@ export default function VillaEditForm({
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0">
           <Link
-            href="/admin/villalar"
+            href={mode === "owner" ? "/sahip" : "/admin/villalar"}
             className="mb-2 hidden items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 md:inline-flex"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -267,13 +274,23 @@ export default function VillaEditForm({
             </div>
           ) : null}
           <div className="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:flex sm:flex-col">
-            <Link
-              href={villaTakvimPath(villa)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-indigo-700 md:px-4 md:text-sm"
-            >
-              <CalendarDays className="h-4 w-4" />
-              Takvim
-            </Link>
+            {mode === "owner" ? (
+              <Link
+                href={villaOwnerHizliFiyatPath(villa)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-indigo-700 md:px-4 md:text-sm"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Hızlı Fiyat
+              </Link>
+            ) : (
+              <Link
+                href={villaTakvimPath(villa)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-indigo-700 md:px-4 md:text-sm"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Takvim
+              </Link>
+            )}
             <Link
               href={villaPublicPath(villa.slug)}
               target="_blank"
@@ -300,7 +317,7 @@ export default function VillaEditForm({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="shrink-0 border-b border-gray-200 bg-white">
           <div className="flex gap-0 overflow-x-auto px-2 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:gap-1 md:overflow-visible md:px-6 [&::-webkit-scrollbar]:hidden">
-            {tabs.map((tab) => {
+            {visibleTabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
@@ -395,7 +412,7 @@ export default function VillaEditForm({
                 prepaymentPaymentTypes={prepaymentPaymentTypes}
               />
             ) : null}
-            {activeTab === "personel" ? (
+            {mode !== "owner" && activeTab === "personel" ? (
               <VillaPersonelTab
                 ref={personelTabRef}
                 villa={villa}
@@ -404,17 +421,17 @@ export default function VillaEditForm({
                 onOpenOwnerModal={() => setOwnerModalOpen(true)}
               />
             ) : null}
-            {activeTab === "ical" ? (
+            {mode !== "owner" && activeTab === "ical" ? (
               <VillaIcalTab villaId={villa.id} data={icalData} />
             ) : null}
-            {activeTab === "meta" ? (
+            {mode !== "owner" && activeTab === "meta" ? (
               <VillaMetaSeoTab villa={villa} previewDomain={previewDomain} />
             ) : null}
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-white px-3 py-3 md:gap-3 md:px-6 md:py-4">
             <Link
-              href="/admin/villalar"
+              href={mode === "owner" ? "/sahip" : "/admin/villalar"}
               className="hidden cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:inline-flex"
             >
               <ArrowLeft className="h-4 w-4" />

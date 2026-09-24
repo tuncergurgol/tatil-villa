@@ -14,8 +14,10 @@ export default async function AdminLoginPage({ searchParams }: Props) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
-        <h1 className="text-2xl font-bold text-gray-900">Admin Girişi</h1>
-        <p className="mt-1 text-sm text-gray-500">Tatildeyiz yönetim paneli</p>
+        <h1 className="text-2xl font-bold text-gray-900">Panel Girişi</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Yönetici ve villa sahibi girişi
+        </p>
         <div className="mt-6">
           <AdminLoginForm idleMessage={idleMessage} />
         </div>

@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
-import { VillaOwnerType } from "@prisma/client";
+import { UserRole, VillaOwnerType } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { syncVillaOwnerLogin } from "@/lib/villa-owner-credentials";
 import { getMernisIlceByCode } from "@/lib/mernis-ilce";
 import {
   buildOwnerDisplayName,
@@ -232,6 +233,8 @@ export async function createVillaOwner(
     const created = await prisma.villaOwner.create({
       data: toOwnerData(parsed.data),
     });
+    const loginError = await syncVillaOwnerLogin(created.id, formData);
+    if (loginError) return loginError;
     revalidateOwnerPaths();
     return { success: true, id: created.id };
   } catch {
@@ -264,6 +267,8 @@ export async function updateVillaOwner(
       where: { id },
       data: toOwnerData(parsed.data),
     });
+    const loginError = await syncVillaOwnerLogin(id, formData);
+    if (loginError) return loginError;
     revalidateOwnerPaths();
     return { success: true };
   } catch {
@@ -346,7 +351,10 @@ export async function deleteVillaOwner(id: string): Promise<VillaOwnerActionStat
 
   const owner = await prisma.villaOwner.findUnique({
     where: { id },
-    include: { _count: { select: { villas: true } } },
+    include: {
+      _count: { select: { villas: true } },
+      user: { select: { id: true, role: true } },
+    },
   });
 
   if (!owner) return { error: "Kayıt bulunamadı" };
@@ -357,6 +365,9 @@ export async function deleteVillaOwner(id: string): Promise<VillaOwnerActionStat
   }
 
   try {
+    if (owner.user?.role === UserRole.VILLA_OWNER) {
+      await prisma.user.delete({ where: { id: owner.user.id } });
+    }
     await prisma.villaOwner.delete({ where: { id } });
     revalidateOwnerPaths();
     return { success: true };

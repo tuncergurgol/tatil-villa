@@ -11,7 +11,7 @@ import { syncVillaRooms } from "@/lib/queries/villa-rooms";
 import { RegionLevel } from "@/lib/region-levels";
 import { DEFAULT_PREPAYMENT_PAYMENT_TYPE_ID } from "@/lib/villa-rules-defaults";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireAdmin, requireVillaEditor } from "@/lib/auth-helpers";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 import { villaPublicPath } from "@/lib/villa-public-path";
@@ -268,7 +268,7 @@ export async function updateVillaGeneral(
   formData: FormData
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    await requireAdmin();
+    await requireVillaEditor(id);
 
     const name = String(formData.get("name") ?? "").trim();
     if (!name) {
@@ -349,7 +349,7 @@ export async function updateVillaGeneral(
 }
 
 export async function updateVillaFeatures(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireVillaEditor(id);
 
   const amenities = formData
     .getAll("amenities")
@@ -477,7 +477,7 @@ export async function updateVillaPersonel(id: string, formData: FormData) {
 }
 
 export async function updateVillaLocation(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireVillaEditor(id);
 
   const regionId = String(formData.get("regionId") ?? "").trim();
   await assertMahalleRegion(regionId);
@@ -535,7 +535,7 @@ export async function updateVillaLocation(id: string, formData: FormData) {
 }
 
 export async function updateVillaRules(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireVillaEditor(id);
 
   const customRules = formData
     .getAll("customRules")
@@ -627,7 +627,7 @@ export async function getUndocumentedVillaPreviewUrl(
   villaId: string,
   previewDomain: string
 ): Promise<{ url?: string; error?: string }> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const villa = await prisma.villa.findUnique({
     where: { id: villaId },

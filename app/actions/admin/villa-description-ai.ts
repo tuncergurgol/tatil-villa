@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireVillaEditor } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
 import {
   buildVillaDescriptionPreview,
@@ -217,7 +217,7 @@ async function loadVillaDescriptionContext(
 export async function getVillaDescriptionAiPreview(
   input: VillaDescriptionAiInput
 ): Promise<{ preview?: VillaDescriptionPreview; error?: string }> {
-  await requireAdmin();
+  await requireVillaEditor(input.villaId);
 
   const context = await loadVillaDescriptionContext(input);
   if ("error" in context) return { error: context.error };
@@ -229,7 +229,7 @@ export async function generateVillaDescriptionForVillaId(
   villaId: string,
   extraInfo = ""
 ): Promise<VillaDescriptionAiActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const villa = await prisma.villa.findUnique({
     where: { id: villaId },
@@ -278,7 +278,7 @@ export async function generateVillaDescriptionForVillaId(
 export async function generateVillaDescriptionWithAI(
   input: VillaDescriptionAiInput
 ): Promise<VillaDescriptionAiActionState> {
-  await requireAdmin();
+  await requireVillaEditor(input.villaId);
 
   const context = await loadVillaDescriptionContext(input);
   if ("error" in context) return { error: context.error };

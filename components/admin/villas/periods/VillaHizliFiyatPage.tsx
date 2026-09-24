@@ -51,6 +51,11 @@ interface VillaHizliFiyatPageProps {
   periods: VillaPricePeriodItem[];
   priceDiscounts: VillaPriceDiscountItem[];
   routeVilla: VillaAdminRoute;
+  links?: {
+    listHref: string;
+    editHref: string;
+    calendarHref?: string | null;
+  };
 }
 
 type PeriodRowState = {
@@ -649,6 +654,7 @@ export default function VillaHizliFiyatPage({
   periods,
   priceDiscounts,
   routeVilla,
+  links,
 }: VillaHizliFiyatPageProps) {
   const router = useRouter();
   const [rows, setRows] = useState<PeriodRowState[]>(() =>
@@ -885,7 +891,7 @@ export default function VillaHizliFiyatPage({
         <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:justify-between">
           <div className="flex items-start gap-2 md:gap-3">
             <Link
-              href="/admin/villalar"
+              href={links?.listHref ?? "/admin/villalar"}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 md:mt-0.5 md:px-3 md:text-sm"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -918,14 +924,16 @@ export default function VillaHizliFiyatPage({
               <FileSpreadsheet className="h-4 w-4" />
               Excel&apos;den İçeri Al
             </button>
+            {links?.calendarHref !== null ? (
+              <Link
+                href={links?.calendarHref ?? villaTakvimPath(routeVilla)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              >
+                Takvim
+              </Link>
+            ) : null}
             <Link
-              href={villaTakvimPath(routeVilla)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-            >
-              Takvim
-            </Link>
-            <Link
-              href={villaAdminEditPath(routeVilla)}
+              href={links?.editHref ?? villaAdminEditPath(routeVilla)}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
             >
               Villa Düzenleme

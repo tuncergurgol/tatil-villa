@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { PoolMeasureUnit } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireVillaEditor } from "@/lib/auth-helpers";
 import {
   mergeFacilityCategoryNames,
   resolveFacilityCategoryNamesForAmenities,
@@ -65,10 +65,9 @@ async function syncVillaAmenitiesFromPools(villaId: string) {
 export async function createVillaPool(
   formData: FormData
 ): Promise<VillaPoolActionState> {
-  await requireAdmin();
-
   const villaId = String(formData.get("villaId") ?? "");
   if (!villaId) return { error: "Villa bulunamadı" };
+  await requireVillaEditor(villaId);
 
   const villa = await prisma.villa.findUnique({
     where: { id: villaId },
@@ -105,11 +104,10 @@ export async function createVillaPool(
 export async function updateVillaPool(
   formData: FormData
 ): Promise<VillaPoolActionState> {
-  await requireAdmin();
-
   const poolId = String(formData.get("poolId") ?? "");
   const villaId = String(formData.get("villaId") ?? "");
   if (!poolId || !villaId) return { error: "Havuz bulunamadı" };
+  await requireVillaEditor(villaId);
 
   const pool = await prisma.villaPool.findFirst({
     where: { id: poolId, villaId },
@@ -146,7 +144,7 @@ export async function deleteVillaPool(
   poolId: string,
   villaId: string
 ): Promise<VillaPoolActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const pool = await prisma.villaPool.findFirst({
     where: { id: poolId, villaId },

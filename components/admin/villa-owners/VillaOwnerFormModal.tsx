@@ -354,13 +354,44 @@ export default function VillaOwnerFormModal({
           </label>
           <input type="hidden" name="active" value={active ? "true" : "false"} />
 
-          {owner?.user && (
+          {owner?.user && owner.user.role !== "VILLA_OWNER" ? (
             <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
               Bağlı kullanıcı:{" "}
               <span className="font-medium text-slate-900">
                 {owner.user.name} ({owner.user.email})
               </span>
             </p>
+          ) : (
+            <div className="space-y-3 rounded-xl border border-teal-100 bg-teal-50/40 p-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Panel girişi
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Villa sahibi bu kullanıcı adı ve şifre ile panele girer.
+                  Şifreyi değiştirmeyecekseniz boş bırakın. Kullanıcı adını
+                  silerseniz giriş kapanır.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Kullanıcı adı"
+                  name="loginUsername"
+                  defaultValue={
+                    owner?.user?.role === "VILLA_OWNER"
+                      ? (owner.user.username ?? "")
+                      : ""
+                  }
+                  placeholder="ornek-sahip"
+                />
+                <Field
+                  label="Şifre"
+                  name="loginPassword"
+                  type="password"
+                  placeholder={owner?.user?.username ? "Değiştirmek için yazın" : "En az 6 karakter"}
+                />
+              </div>
+            </div>
           )}
           </div>
 

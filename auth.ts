@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { authConfig } from "@/auth.config";
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { recordAdminAuditEvent } from "@/lib/admin-audit";
+import { normalizeOwnerUsername } from "@/lib/villa-owner-credentials";
 
 async function requestAuditContext() {
   try {
@@ -46,17 +47,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const email = String(credentials.email).trim().toLowerCase();
+        const login = normalizeOwnerUsername(String(credentials.email));
 
         const rate = checkRateLimit({
-          key: `login:${email}`,
+          key: `login:${login}`,
           limit: 8,
           windowMs: 15 * 60 * 1000,
         });
         if (!rate.ok) {
           await recordAdminAuditEvent({
             action: "login_failure",
-            email,
+            email: login,
             ip,
             userAgent,
             meta: { reason: "rate_limited" },
@@ -64,17 +65,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email },
+        const user = await prisma.user.findFirst({
+          where: {
+            active: true,
+            OR: [{ email: login }, { username: login }],
+          },
         });
 
-        if (!user || !user.active) {
+        if (!user) {
           await recordAdminAuditEvent({
             action: "login_failure",
-            email,
+            email: login,
             ip,
             userAgent,
-            meta: { reason: !user ? "unknown_user" : "inactive" },
+            meta: { reason: "unknown_user" },
           });
           return null;
         }
@@ -87,7 +91,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           await recordAdminAuditEvent({
             action: "login_failure",
             userId: user.id,
-            email,
+            email: login,
             ip,
             userAgent,
             meta: { reason: "bad_password" },
@@ -95,12 +99,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        resetRateLimit(`login:${email}`);
+        resetRateLimit(`login:${login}`);
 
         await recordAdminAuditEvent({
           action: "login_success",
           userId: user.id,
-          email: user.email,
+          email: user.username || user.email,
           ip,
           userAgent,
         });

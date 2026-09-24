@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 
 type Props = {
@@ -43,13 +43,15 @@ export default function AdminLoginForm({ idleMessage }: Props) {
       if (!result || result.error || result.ok === false) {
         setError(
           result?.error === "CredentialsSignin"
-            ? "E-posta veya şifre hatalı"
+            ? "Kullanıcı adı veya şifre hatalı"
             : result?.error || "Giriş yapılamadı. Lütfen tekrar deneyin."
         );
         return;
       }
 
-      window.location.assign("/admin");
+      const session = await getSession();
+      const role = (session?.user as { role?: string } | undefined)?.role;
+      window.location.assign(role === "VILLA_OWNER" ? "/sahip" : "/admin");
     } catch {
       setError("Bağlantı hatası. Lütfen sayfayı yenileyip tekrar deneyin.");
     } finally {
@@ -72,13 +74,15 @@ export default function AdminLoginForm({ idleMessage }: Props) {
       ) : null}
 
       <label className="block">
-        <span className="text-sm font-medium text-gray-700">E-posta</span>
+        <span className="text-sm font-medium text-gray-700">
+          E-posta veya kullanıcı adı
+        </span>
         <input
-          type="email"
+          type="text"
           name="email"
           required
           autoComplete="username"
-          placeholder="ornek@firma.com"
+          placeholder="E-posta veya kullanıcı adı"
           className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
         />
       </label>

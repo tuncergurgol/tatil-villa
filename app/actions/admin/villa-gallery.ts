@@ -3,7 +3,7 @@
 import { unlink } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireAdmin, requireVillaEditor } from "@/lib/auth-helpers";
 import { importVillaGalleryFromTatildeyiz } from "@/lib/tatildeyiz-gallery-import-runner";
 import {
   appendVillaGalleryUrls,
@@ -66,7 +66,7 @@ export async function uploadVillaGalleryImages(
   villaId: string,
   formData: FormData
 ): Promise<VillaGalleryActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const files = formData
     .getAll("files")
@@ -79,7 +79,7 @@ export async function appendVillaGalleryImages(
   villaId: string,
   imageUrls: string[]
 ): Promise<VillaGalleryActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
   return appendVillaGalleryUrls(villaId, imageUrls);
 }
 
@@ -87,7 +87,7 @@ export async function updateVillaGalleryOrder(
   villaId: string,
   orderedUrls: string[]
 ): Promise<VillaGalleryActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   try {
     const { villa } = await getVillaGalleryContext(villaId);
@@ -110,7 +110,7 @@ export async function setVillaGalleryVitrin(
   villaId: string,
   imageUrl: string
 ): Promise<VillaGalleryActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   try {
     const { villa } = await getVillaGalleryContext(villaId);
@@ -138,7 +138,7 @@ export async function deleteVillaGalleryImages(
   villaId: string,
   imageUrls: string[]
 ): Promise<VillaGalleryActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   if (imageUrls.length === 0) {
     return { error: "Silinecek görsel seçilmedi" };
@@ -162,7 +162,7 @@ export async function deleteVillaGalleryImages(
 export async function deleteAllVillaGalleryImages(
   villaId: string
 ): Promise<VillaGalleryActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   try {
     const { villa } = await getVillaGalleryContext(villaId);

@@ -65,7 +65,8 @@ export default function VillaOwnerManagement({
       const matchesQuery =
         includesSearchText(owner.name, search) ||
         includesSearchText(owner.phone, search) ||
-        includesSearchText(owner.email, search);
+        includesSearchText(owner.email, search) ||
+        includesSearchText(owner.user?.username ?? "", search);
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -216,6 +217,11 @@ export default function VillaOwnerManagement({
                           Pasif
                         </span>
                       )}
+                      {owner.user?.role === "VILLA_OWNER" && owner.user.username ? (
+                        <span className="text-xs font-medium text-teal-700">
+                          Giriş: {owner.user.username}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

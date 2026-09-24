@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { VillaPeriodCurrency } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireVillaEditor } from "@/lib/auth-helpers";
 import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
 import {
   dateKeyToDbDate,
@@ -48,11 +48,10 @@ async function resolvePoolContext(poolId: string, villaId: string) {
 export async function createVillaPoolPeriod(
   formData: FormData
 ): Promise<VillaPoolPeriodActionState> {
-  await requireAdmin();
-
   const poolId = String(formData.get("poolId") ?? "");
   const villaId = String(formData.get("villaId") ?? "");
   if (!poolId || !villaId) return { error: "Havuz bulunamadı" };
+  await requireVillaEditor(villaId);
 
   const pool = await resolvePoolContext(poolId, villaId);
   if (!pool) return { error: "Havuz bulunamadı" };
@@ -96,12 +95,11 @@ export async function createVillaPoolPeriod(
 export async function updateVillaPoolPeriod(
   formData: FormData
 ): Promise<VillaPoolPeriodActionState> {
-  await requireAdmin();
-
   const periodId = String(formData.get("periodId") ?? "");
   const poolId = String(formData.get("poolId") ?? "");
   const villaId = String(formData.get("villaId") ?? "");
   if (!periodId || !poolId || !villaId) return { error: "Periyot bulunamadı" };
+  await requireVillaEditor(villaId);
 
   const pool = await resolvePoolContext(poolId, villaId);
   if (!pool) return { error: "Havuz bulunamadı" };
@@ -153,7 +151,7 @@ export async function deleteVillaPoolPeriod(
   poolId: string,
   villaId: string
 ): Promise<VillaPoolPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const pool = await resolvePoolContext(poolId, villaId);
   if (!pool) return { error: "Havuz bulunamadı" };

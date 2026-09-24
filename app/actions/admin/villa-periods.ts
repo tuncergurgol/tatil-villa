@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireVillaEditor } from "@/lib/auth-helpers";
 import { villaTakvimPath } from "@/lib/villa-takvim-path";
 import { revalidateVillaHizliFiyatPage } from "@/lib/villa-admin-path.server";
 import {
@@ -559,7 +559,7 @@ export async function createVillaPricePeriod(
   villaId: string,
   formData: FormData
 ): Promise<VillaPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const parsed = parsePeriodFormData(formData);
 
@@ -615,7 +615,7 @@ export async function importVillaPricePeriodsFromExcel(
   villaId: string,
   rows: VillaPeriodExcelImportRow[]
 ): Promise<VillaPeriodExcelImportResult> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   if (!Array.isArray(rows) || rows.length === 0) {
     return { error: "Excel dosyasında aktarılacak periyot bulunamadı" };
@@ -739,7 +739,7 @@ export async function updateVillaPricePeriod(
   periodId: string,
   formData: FormData
 ): Promise<VillaPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const parsed = parsePeriodFormData(formData);
 
@@ -833,7 +833,7 @@ export async function updateVillaPricePeriodDaysPricing(
   villaId: string,
   formData: FormData
 ): Promise<VillaPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const parsed = parsePeriodPricingFormData(formData);
 
@@ -875,7 +875,7 @@ export async function updateVillaPricePeriodDaysDiscounts(
   villaId: string,
   formData: FormData
 ): Promise<VillaPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const parsed = parsePeriodDiscountFormData(formData);
 
@@ -918,7 +918,7 @@ export async function createVillaPriceDiscount(
   villaId: string,
   formData: FormData
 ): Promise<VillaPriceDiscountActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const parsed = parsePeriodDiscountFormData(formData);
 
@@ -972,7 +972,7 @@ export async function deleteVillaPriceDiscount(
   villaId: string,
   discountId: string
 ): Promise<VillaPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   try {
     const existing = await prisma.villaPriceDiscount.findFirst({
@@ -1007,7 +1007,7 @@ export async function updateVillaPeriodDaysOccupancy(
   endDateKey: string,
   mode: "EMPTY" | "BOOKED"
 ): Promise<VillaPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   try {
     await applyVillaPeriodDaysOccupancy(villaId, startDateKey, endDateKey, mode);
@@ -1034,7 +1034,7 @@ export async function deleteVillaPricePeriod(
   villaId: string,
   periodId: string
 ): Promise<VillaPeriodActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   try {
     await prisma.villaPricePeriod.delete({

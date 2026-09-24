@@ -65,6 +65,8 @@ function isDedicatedAdminHost(host: string): boolean {
 function isAdminOnlyPath(pathname: string): boolean {
   return (
     pathname.startsWith("/admin") ||
+    pathname === "/sahip" ||
+    pathname.startsWith("/sahip/") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/feeds") ||
     pathname.startsWith("/_next") ||
@@ -250,6 +252,7 @@ export default async function middleware(req: NextRequest) {
     return withPublicIndexingHeaders(req, intlResponse);
   }
 
+  const isOwnerRoute = pathname === "/sahip" || pathname.startsWith("/sahip/");
   const isAdminRoute = pathname.startsWith("/admin");
   const isLoginArea = pathname.startsWith("/admin/login");
   const token = await getToken({
@@ -258,17 +261,36 @@ export default async function middleware(req: NextRequest) {
     secureCookie: useSecureAuthCookies(),
   });
   const isLoggedIn = !!token;
+  const role = typeof token?.role === "string" ? token.role : "";
 
-  if (isAdminRoute && !isAdminHostAllowed(host)) {
+  if (
+    pathname.startsWith("/api/admin") &&
+    role === "VILLA_OWNER" &&
+    pathname !== "/api/admin/villa-gallery/upload"
+  ) {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 });
+  }
+
+  if ((isAdminRoute || isOwnerRoute) && !isAdminHostAllowed(host)) {
     return NextResponse.redirect(new URL("/", req.nextUrl));
   }
 
-  if (isAdminRoute && !isLoginArea && !isLoggedIn) {
+  if (((isAdminRoute && !isLoginArea) || isOwnerRoute) && !isLoggedIn) {
     return NextResponse.redirect(new URL("/admin/login", req.nextUrl));
   }
 
-  if (isLoginArea && isLoggedIn) {
+  if (isOwnerRoute && role !== "VILLA_OWNER") {
     return NextResponse.redirect(new URL("/admin", req.nextUrl));
+  }
+
+  if (isAdminRoute && !isLoginArea && role === "VILLA_OWNER") {
+    return NextResponse.redirect(new URL("/sahip", req.nextUrl));
+  }
+
+  if (isLoginArea && isLoggedIn) {
+    return NextResponse.redirect(
+      new URL(role === "VILLA_OWNER" ? "/sahip" : "/admin", req.nextUrl)
+    );
   }
 
   return NextResponse.next();
@@ -280,5 +302,7 @@ export const config = {
     "/(en|de|fr|es|bg|el|zh)/:path*",
     "/((?!api|admin|feeds|_next|_vercel|.*\\..*).*)",
     "/admin/:path*",
+    "/sahip",
+    "/sahip/:path*",
   ],
 };

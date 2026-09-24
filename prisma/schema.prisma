@@ -69,6 +69,7 @@ enum StayStatus {
 enum UserRole {
   ADMIN
   SALES_REP
+  VILLA_OWNER
 }
 
 enum RegionLevel {
@@ -1269,6 +1270,8 @@ model BookingPaymentSession {
 model User {
   id                   String   @id @default(cuid())
   email                String   @unique
+  /** Villa sahibi panel girişi. Yöneticiler e-posta ile girer. */
+  username             String?  @unique
   passwordHash         String
   name                 String
   phone                String   @default("")

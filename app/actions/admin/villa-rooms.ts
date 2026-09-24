@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireAdmin, requireVillaEditor } from "@/lib/auth-helpers";
 import {
   syncVillaRoomFeatureCatalog,
   syncVillaRooms,
@@ -29,7 +29,7 @@ export async function updateVillaRoom(
   roomId: string,
   formData: FormData
 ): Promise<VillaRoomActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const roomType = String(formData.get("roomType") ?? "yatak_odasi").trim();
   const name = String(formData.get("name") ?? "").trim();
@@ -86,7 +86,7 @@ export async function deleteVillaRoom(
   villaId: string,
   roomId: string
 ): Promise<VillaRoomActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const room = await prisma.villaRoom.findFirst({
     where: { id: roomId, villaId },
@@ -127,7 +127,7 @@ export async function addVillaRoomCustomFeature(
   villaId: string,
   featureName: string
 ): Promise<VillaRoomActionState & { customFeatures?: string[] }> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const name = featureName.trim().replace(/\s+/g, " ");
   if (!name) {
@@ -147,7 +147,7 @@ export async function addVillaRoomCustomFeature(
 export async function ensureVillaRoomsSynced(
   villaId: string
 ): Promise<VillaRoomActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
   await syncVillaRooms(villaId);
   await revalidateVillaRooms(villaId);
   return { success: true };

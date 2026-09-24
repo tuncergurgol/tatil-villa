@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requirePanelUser, requireVillaEditor } from "@/lib/auth-helpers";
 import { resolveVillaDocumentType, UNDOCUMENTED_VILLA_VISIBILITY } from "@/lib/villa-document-types";
 import { verifyKonutBelgeOnline } from "@/lib/konut-belge-check";
 
@@ -59,7 +59,7 @@ function revalidateVillaDocumentPaths() {
 }
 
 export async function getVillaDocumentData(villaId: string) {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   const villa = await prisma.villa.findUnique({
     where: { id: villaId },
@@ -103,10 +103,9 @@ export async function saveVillaDocument(
   _prev: VillaDocumentActionState,
   formData: FormData
 ): Promise<VillaDocumentActionState> {
-  await requireAdmin();
-
   const villaId = formData.get("villaId") as string;
   if (!villaId) return { error: "Villa bulunamadı" };
+  await requireVillaEditor(villaId);
 
   const raw = parseDocumentFormData(formData);
 
@@ -198,14 +197,14 @@ export async function saveVillaDocument(
 }
 
 export async function verifyVillaKonutBelge(documentNo: string) {
-  await requireAdmin();
+  await requirePanelUser();
   return verifyKonutBelgeOnline(documentNo);
 }
 
 export async function clearVillaDocument(
   villaId: string
 ): Promise<VillaDocumentActionState> {
-  await requireAdmin();
+  await requireVillaEditor(villaId);
 
   try {
     await prisma.villa.update({

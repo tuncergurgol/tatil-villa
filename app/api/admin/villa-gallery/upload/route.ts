@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireVillaEditor } from "@/lib/auth-helpers";
 import { uploadVillaGalleryFiles } from "@/lib/villa-gallery-upload.server";
 
 export const maxDuration = 300;
@@ -12,11 +12,6 @@ function parsePositiveInt(value: FormDataEntryValue | null) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
-  }
-
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -30,6 +25,12 @@ export async function POST(request: Request) {
   const villaId = String(formData.get("villaId") ?? "").trim();
   if (!villaId) {
     return NextResponse.json({ error: "Villa kimliği gerekli" }, { status: 400 });
+  }
+
+  try {
+    await requireVillaEditor(villaId);
+  } catch {
+    return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 403 });
   }
 
   const files = formData

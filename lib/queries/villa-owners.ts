@@ -27,6 +27,8 @@ const ownerSelect = {
       id: true,
       name: true,
       email: true,
+      username: true,
+      role: true,
     },
   },
   _count: {
@@ -85,6 +87,7 @@ export async function getUnlinkedUsers() {
     where: {
       villaOwner: null,
       active: true,
+      role: { in: ["ADMIN", "SALES_REP"] },
     },
     select: {
       id: true,

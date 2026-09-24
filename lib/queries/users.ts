@@ -27,6 +27,7 @@ export async function getAdminUsers(): Promise<AdminUserListItem[]> {
       salesCommissionRate: true,
       createdAt: true,
     },
+    where: { role: { not: "VILLA_OWNER" } },
     orderBy: { createdAt: "asc" },
   });
 
