@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Images,
+  Play,
   Share2,
   X,
 } from "lucide-react";
@@ -17,7 +18,18 @@ type VillaDetailGalleryProps = {
   villaId: string;
   name: string;
   images: string[];
+  videoUrl?: string;
 };
+
+function youtubeEmbedSrc(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  const id = value.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{6,})/
+  )?.[1];
+  if (!id) return null;
+  return `https://www.youtube-nocookie.com/embed/${id}`;
+}
 
 function slideIndexFromScroll(track: HTMLDivElement, total: number) {
   const width = track.clientWidth;
@@ -29,10 +41,12 @@ export default function VillaDetailGallery({
   villaId,
   name,
   images,
+  videoUrl = "",
 }: VillaDetailGalleryProps) {
   const listingCopy = usePublicListingCopy();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
   const [mobileSlide, setMobileSlide] = useState(0);
   const mobileTrackRef = useRef<HTMLDivElement | null>(null);
   const lightboxTrackRef = useRef<HTMLDivElement | null>(null);
@@ -151,8 +165,20 @@ export default function VillaDetailGallery({
 
   if (!main) return null;
 
+  const embedSrc = youtubeEmbedSrc(videoUrl);
+
   const actionButtons = (
     <div className="absolute right-3 top-3 z-10 flex gap-2">
+      {embedSrc ? (
+        <button
+          type="button"
+          onClick={() => setVideoOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-white/95 px-3 py-2 text-sm font-semibold text-slate-800 shadow-md backdrop-blur hover:bg-white"
+        >
+          <Play className="h-4 w-4 text-slate-700" />
+          Video
+        </button>
+      ) : null}
       <MemberFavoriteButton villaId={villaId} variant="pill" />
       <button
         type="button"
@@ -291,6 +317,33 @@ export default function VillaDetailGallery({
           </button>
         )}
       </div>
+
+      {videoOpen && embedSrc ? (
+        <div
+          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${name} videosu`}
+        >
+          <button
+            type="button"
+            onClick={() => setVideoOpen(false)}
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            aria-label="Kapat"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div className="aspect-video w-full max-w-4xl overflow-hidden rounded-xl bg-black">
+            <iframe
+              src={embedSrc}
+              title={`${name} videosu`}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      ) : null}
 
       {lightboxIndex !== null && (
         <div

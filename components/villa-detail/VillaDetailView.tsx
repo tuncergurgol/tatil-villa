@@ -208,6 +208,7 @@ export default function VillaDetailView({
           villaId={villa.id}
           name={villa.name}
           images={villa.images}
+          videoUrl={villa.videoUrl}
         />
 
         <VillaDetailSectionNav

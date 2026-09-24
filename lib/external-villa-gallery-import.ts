@@ -21,6 +21,7 @@ async function downloadImage(url: string) {
   const isVilladenizi =
     /villadenizi\.com|plato-static\.s3|macrovilla\.com/i.test(url);
   const isKastavillam = /kastavillam\.com/i.test(url);
+  const isTatilox = /tatilox\.com/i.test(url);
   const response = await fetch(url, {
     headers: {
       "User-Agent":
@@ -34,7 +35,9 @@ async function downloadImage(url: string) {
             ? "https://www.villadenizi.com.tr/"
             : isKastavillam
               ? "https://www.kastavillam.com/"
-              : "https://www.villareyonu.com/",
+              : isTatilox
+                ? "https://www.tatilox.com/"
+                : "https://www.villareyonu.com/",
     },
     redirect: "follow",
   });
