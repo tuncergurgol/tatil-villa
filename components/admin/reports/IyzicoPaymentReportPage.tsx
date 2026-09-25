@@ -33,6 +33,13 @@ const emptyFilters = (): Filters => ({
   status: "",
 });
 
+type SummaryKey =
+  | "collection"
+  | "commission"
+  | "payable"
+  | "deposited"
+  | "pending";
+
 function countActiveFilters(filters: Filters) {
   return Object.values(filters).filter((value) => value.trim() !== "").length;
 }
@@ -58,6 +65,7 @@ export default function IyzicoPaymentReportPage({
 }) {
   const [filters, setFilters] = useState<Filters>(emptyFilters());
   const [draft, setDraft] = useState<Filters>(emptyFilters());
+  const [summary, setSummary] = useState<SummaryKey | "">("");
   const [filterOpen, setFilterOpen] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<AdminPageSize>(25);
@@ -65,7 +73,7 @@ export default function IyzicoPaymentReportPage({
 
   const activeFilterCount = countActiveFilters(filters);
 
-  const filteredItems = useMemo(() => {
+  const scopedItems = useMemo(() => {
     const reservation = filters.reservationNo.trim();
     return items.filter((item) => {
       if (
@@ -86,14 +94,13 @@ export default function IyzicoPaymentReportPage({
       if (!inDateRange(item.payoutDateKey, filters.payoutFrom, filters.payoutTo)) {
         return false;
       }
-      if (filters.status && item.status !== filters.status) return false;
       return true;
     });
   }, [filters, items]);
 
   const totals = useMemo(
     () =>
-      filteredItems.reduce(
+      scopedItems.reduce(
         (acc, item) => {
           if (item.status === "cancelled") {
             acc.cancelledCount += 1;
@@ -102,21 +109,44 @@ export default function IyzicoPaymentReportPage({
           acc.paid += item.paidAmount;
           acc.commission += item.commissionTotal;
           acc.bank += item.bankAmount;
-          if (item.status === "paid") acc.paidCount += 1;
-          else acc.pendingCount += 1;
+          if (item.status === "paid") {
+            acc.deposited += item.bankAmount;
+            acc.paidCount += 1;
+          } else {
+            acc.pending += item.bankAmount;
+            acc.pendingCount += 1;
+          }
           return acc;
         },
         {
           paid: 0,
           commission: 0,
           bank: 0,
+          deposited: 0,
+          pending: 0,
           paidCount: 0,
           pendingCount: 0,
           cancelledCount: 0,
         }
       ),
-    [filteredItems]
+    [scopedItems]
   );
+
+  const filteredItems = useMemo(() => {
+    return scopedItems.filter((item) => {
+      if (summary === "deposited") return item.status === "paid";
+      if (summary === "pending") return item.status === "pending";
+      if (
+        summary === "collection" ||
+        summary === "commission" ||
+        summary === "payable"
+      ) {
+        return item.status !== "cancelled";
+      }
+      if (filters.status && item.status !== filters.status) return false;
+      return true;
+    });
+  }, [filters.status, scopedItems, summary]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const visibleItems = useMemo(() => {
@@ -133,6 +163,7 @@ export default function IyzicoPaymentReportPage({
   }, [page, totalPages]);
 
   function applyFilters() {
+    setSummary("");
     setFilters(draft);
   }
 
@@ -140,6 +171,11 @@ export default function IyzicoPaymentReportPage({
     const next = emptyFilters();
     setDraft(next);
     setFilters(next);
+    setSummary("");
+  }
+
+  function toggleSummary(key: SummaryKey) {
+    setSummary((current) => (current === key ? "" : key));
   }
 
   function handleExport() {
@@ -361,37 +397,64 @@ export default function IyzicoPaymentReportPage({
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Tahsilat
-          </p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">
-            {formatIyzicoMoney(totals.paid)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Komisyon + kesinti
-          </p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">
-            {formatIyzicoMoney(totals.commission)}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Bankaya yatacak
-          </p>
-          <p className="mt-1 text-lg font-semibold text-gray-900">
-            {formatIyzicoMoney(totals.bank)}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">
-            {totals.pendingCount} beklemede · {totals.paidCount} ödendi
-            {totals.cancelledCount > 0
-              ? ` · ${totals.cancelledCount} iptal`
-              : null}
-          </p>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {(
+          [
+            {
+              key: "collection" as const,
+              label: "Tahsilat",
+              amount: totals.paid,
+              hint: "İptaller hariç",
+            },
+            {
+              key: "commission" as const,
+              label: "Komisyon + kesinti",
+              amount: totals.commission,
+              hint: "İptaller hariç",
+            },
+            {
+              key: "payable" as const,
+              label: "Bankaya yatacak",
+              amount: totals.bank,
+              hint: "Tahsilat − komisyon",
+            },
+            {
+              key: "deposited" as const,
+              label: "Bankaya yatan",
+              amount: totals.deposited,
+              hint: `${totals.paidCount} ödeme`,
+            },
+            {
+              key: "pending" as const,
+              label: "Beklemede",
+              amount: totals.pending,
+              hint: `${totals.pendingCount} ödeme`,
+            },
+          ] as const
+        ).map((card) => {
+          const selected = summary === card.key;
+          return (
+            <button
+              key={card.key}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => toggleSummary(card.key)}
+              className={`rounded-2xl border px-4 py-3 text-left transition ${
+                selected
+                  ? "border-indigo-400 bg-indigo-50 ring-2 ring-indigo-200"
+                  : "border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/40"
+              }`}
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                {card.label}
+              </p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">
+                {formatIyzicoMoney(card.amount)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">{card.hint}</p>
+            </button>
+          );
+        })}
       </div>
 
       <p className="text-sm text-gray-500">

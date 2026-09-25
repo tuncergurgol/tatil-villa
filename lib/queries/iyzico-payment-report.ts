@@ -48,6 +48,7 @@ type SessionRecord = {
   createdAt: Date;
   updatedAt: Date;
   rawResult: unknown;
+  manualPayoutDateKey: string;
   booking: {
     id: string;
     externalCode: number | null;
@@ -142,7 +143,11 @@ function toReportRow(session: SessionRecord): IyzicoPaymentReportRow {
     session.updatedAt ?? session.createdAt,
     parsed.systemTimeMs
   );
-  const payoutDateKey = resolveIyzicoPayoutDateKey(transactionDateKey);
+  const manualPayoutDateKey = session.manualPayoutDateKey.trim();
+  const payoutDateKey =
+    /^\d{4}-\d{2}-\d{2}$/.test(manualPayoutDateKey)
+      ? manualPayoutDateKey
+      : resolveIyzicoPayoutDateKey(transactionDateKey);
   const cancelled = session.booking.status === BookingStatus.CANCELLED;
 
   return {
@@ -180,6 +185,7 @@ export async function getIyzicoPaymentReportRows(): Promise<
       createdAt: true,
       updatedAt: true,
       rawResult: true,
+      manualPayoutDateKey: true,
       booking: {
         select: {
           id: true,
