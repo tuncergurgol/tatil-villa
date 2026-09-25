@@ -51,7 +51,7 @@ export default function AdminLoginForm({ idleMessage }: Props) {
 
       const session = await getSession();
       const role = (session?.user as { role?: string } | undefined)?.role;
-      window.location.assign(role === "VILLA_OWNER" ? "/sahip" : "/admin");
+      window.location.assign(role === "VILLA_OWNER" ? "/admin/sahip" : "/admin");
     } catch {
       setError("Bağlantı hatası. Lütfen sayfayı yenileyip tekrar deneyin.");
     } finally {

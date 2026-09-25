@@ -17,7 +17,7 @@ export default async function OwnerHizliFiyatPage({ params }: PageProps) {
   const { id: routeId } = await params;
   const { routeVilla } = await requireOwnedVilla(routeId);
   const canonicalPath = villaOwnerHizliFiyatPath(routeVilla);
-  if (`/sahip/villalar/${routeId}/hizlifiyat` !== canonicalPath) {
+  if (`/admin/sahip/villalar/${routeId}/hizlifiyat` !== canonicalPath) {
     redirect(canonicalPath);
   }
 
@@ -31,7 +31,7 @@ export default async function OwnerHizliFiyatPage({ params }: PageProps) {
       priceDiscounts={data.priceDiscounts}
       routeVilla={routeVilla}
       links={{
-        listHref: "/sahip",
+        listHref: "/admin/sahip",
         editHref: villaOwnerEditPath(routeVilla),
         calendarHref: null,
       }}

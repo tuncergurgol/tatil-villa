@@ -117,7 +117,7 @@ export default function VillaEditForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnPath = useMemo(() => {
-    if (mode === "owner") return "/sahip";
+    if (mode === "owner") return "/admin/sahip";
     return buildVillaListPath(parseVillaListFilters(searchParams));
   }, [mode, searchParams]);
   const visibleTabs =
@@ -239,7 +239,7 @@ export default function VillaEditForm({
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0">
           <Link
-            href={mode === "owner" ? "/sahip" : "/admin/villalar"}
+            href={mode === "owner" ? "/admin/sahip" : "/admin/villalar"}
             className="mb-2 hidden items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 md:inline-flex"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -431,7 +431,7 @@ export default function VillaEditForm({
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-gray-200 bg-white px-3 py-3 md:gap-3 md:px-6 md:py-4">
             <Link
-              href={mode === "owner" ? "/sahip" : "/admin/villalar"}
+              href={mode === "owner" ? "/admin/sahip" : "/admin/villalar"}
               className="hidden cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 md:inline-flex"
             >
               <ArrowLeft className="h-4 w-4" />

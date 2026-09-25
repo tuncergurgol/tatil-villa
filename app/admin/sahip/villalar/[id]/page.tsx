@@ -16,7 +16,7 @@ export default async function OwnerVillaEditPage({ params }: PageProps) {
   const { id: routeId } = await params;
   const { routeVilla } = await requireOwnedVilla(routeId);
   const canonicalPath = villaOwnerEditPath(routeVilla);
-  if (`/sahip/villalar/${routeId}` !== canonicalPath) {
+  if (`/admin/sahip/villalar/${routeId}` !== canonicalPath) {
     redirect(canonicalPath);
   }
 

@@ -252,7 +252,8 @@ export default async function middleware(req: NextRequest) {
     return withPublicIndexingHeaders(req, intlResponse);
   }
 
-  const isOwnerRoute = pathname === "/sahip" || pathname.startsWith("/sahip/");
+  const isOwnerRoute =
+    pathname === "/admin/sahip" || pathname.startsWith("/admin/sahip/");
   const isAdminRoute = pathname.startsWith("/admin");
   const isLoginArea = pathname.startsWith("/admin/login");
   const token = await getToken({
@@ -283,13 +284,13 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/admin", req.nextUrl));
   }
 
-  if (isAdminRoute && !isLoginArea && role === "VILLA_OWNER") {
-    return NextResponse.redirect(new URL("/sahip", req.nextUrl));
+  if (isAdminRoute && !isLoginArea && !isOwnerRoute && role === "VILLA_OWNER") {
+    return NextResponse.redirect(new URL("/admin/sahip", req.nextUrl));
   }
 
   if (isLoginArea && isLoggedIn) {
     return NextResponse.redirect(
-      new URL(role === "VILLA_OWNER" ? "/sahip" : "/admin", req.nextUrl)
+      new URL(role === "VILLA_OWNER" ? "/admin/sahip" : "/admin", req.nextUrl)
     );
   }
 

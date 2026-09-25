@@ -22,11 +22,11 @@ function villaRouteKey(villa: VillaAdminRoute) {
 }
 
 export function villaOwnerEditPath(villa: VillaAdminRoute): string {
-  return `/sahip/villalar/${villaRouteKey(villa)}`;
+  return `/admin/sahip/villalar/${villaRouteKey(villa)}`;
 }
 
 export function villaOwnerHizliFiyatPath(villa: VillaAdminRoute): string {
-  return `/sahip/villalar/${villaRouteKey(villa)}/hizlifiyat`;
+  return `/admin/sahip/villalar/${villaRouteKey(villa)}/hizlifiyat`;
 }
 
 export function parseVillaRouteParam(routeParam: string) {
