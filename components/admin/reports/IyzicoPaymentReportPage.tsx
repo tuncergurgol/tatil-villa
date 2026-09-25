@@ -66,7 +66,7 @@ export default function IyzicoPaymentReportPage({
   const [filters, setFilters] = useState<Filters>(emptyFilters());
   const [draft, setDraft] = useState<Filters>(emptyFilters());
   const [summary, setSummary] = useState<SummaryKey | "">("");
-  const [filterOpen, setFilterOpen] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<AdminPageSize>(25);
   const [isPending, startTransition] = useTransition();
@@ -162,9 +162,29 @@ export default function IyzicoPaymentReportPage({
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  useEffect(() => {
+    if (!filterOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeFilters();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [filterOpen, filters]);
+
+  function openFilters() {
+    setDraft(filters);
+    setFilterOpen(true);
+  }
+
+  function closeFilters() {
+    setDraft(filters);
+    setFilterOpen(false);
+  }
+
   function applyFilters() {
     setSummary("");
     setFilters(draft);
+    setFilterOpen(false);
   }
 
   function clearFilters() {
@@ -172,6 +192,7 @@ export default function IyzicoPaymentReportPage({
     setDraft(next);
     setFilters(next);
     setSummary("");
+    setFilterOpen(false);
   }
 
   function toggleSummary(key: SummaryKey) {
@@ -232,7 +253,7 @@ export default function IyzicoPaymentReportPage({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setFilterOpen((open) => !open)}
+            onClick={openFilters}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             <Filter className="h-4 w-4" />
@@ -266,133 +287,168 @@ export default function IyzicoPaymentReportPage({
       </div>
 
       {filterOpen ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-800">Filtreler</h2>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800"
-            >
-              <X className="h-3.5 w-3.5" />
-              Temizle
-            </button>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-500">
-                Rezervasyon no
-              </span>
-              <input
-                value={draft.reservationNo}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    reservationNo: event.target.value,
-                  }))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") applyFilters();
-                }}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-                placeholder="Örn. 116031"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-500">
-                Ödeme durumu
-              </span>
-              <select
-                value={draft.status}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    status: event.target.value as Filters["status"],
-                  }))
-                }
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeFilters}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="iyzico-filter-title"
+            className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-indigo-600" />
+                <h2
+                  id="iyzico-filter-title"
+                  className="text-base font-bold text-gray-900"
+                >
+                  Filtreler
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeFilters}
+                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100"
+                aria-label="Kapat"
               >
-                <option value="">Tümü</option>
-                <option value="pending">Beklemede</option>
-                <option value="paid">Ödendi</option>
-                <option value="cancelled">İptal</option>
-              </select>
-            </label>
-            <div className="hidden lg:block" />
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-500">
-                İşlem tarihi (ilk gün)
-              </span>
-              <input
-                type="date"
-                value={draft.transactionFrom}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    transactionFrom: event.target.value,
-                  }))
-                }
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-500">
-                İşlem tarihi (son gün)
-              </span>
-              <input
-                type="date"
-                value={draft.transactionTo}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    transactionTo: event.target.value,
-                  }))
-                }
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-              />
-            </label>
-            <div className="hidden lg:block" />
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-500">
-                Ödeme tarihi (ilk gün)
-              </span>
-              <input
-                type="date"
-                value={draft.payoutFrom}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    payoutFrom: event.target.value,
-                  }))
-                }
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-500">
-                Ödeme tarihi (son gün)
-              </span>
-              <input
-                type="date"
-                value={draft.payoutTo}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    payoutTo: event.target.value,
-                  }))
-                }
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-              />
-            </label>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={applyFilters}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              Uygula
-            </button>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">
+                    Rezervasyon no
+                  </span>
+                  <input
+                    value={draft.reservationNo}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        reservationNo: event.target.value,
+                      }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") applyFilters();
+                    }}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Örn. 116031"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">
+                    Ödeme durumu
+                  </span>
+                  <select
+                    value={draft.status}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        status: event.target.value as Filters["status"],
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option value="">Tümü</option>
+                    <option value="pending">Beklemede</option>
+                    <option value="paid">Ödendi</option>
+                    <option value="cancelled">İptal</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">
+                    İşlem tarihi (ilk gün)
+                  </span>
+                  <input
+                    type="date"
+                    value={draft.transactionFrom}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        transactionFrom: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">
+                    İşlem tarihi (son gün)
+                  </span>
+                  <input
+                    type="date"
+                    value={draft.transactionTo}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        transactionTo: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">
+                    Ödeme tarihi (ilk gün)
+                  </span>
+                  <input
+                    type="date"
+                    value={draft.payoutFrom}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        payoutFrom: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-gray-500">
+                    Ödeme tarihi (son gün)
+                  </span>
+                  <input
+                    type="date"
+                    value={draft.payoutTo}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        payoutTo: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 px-5 py-3">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Temizle
+              </button>
+              <button
+                type="button"
+                onClick={closeFilters}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                İptal
+              </button>
+              <button
+                type="button"
+                onClick={applyFilters}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                Uygula
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
