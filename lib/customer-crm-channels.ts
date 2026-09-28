@@ -8,4 +8,5 @@ export const CRM_CONTACT_CHANNEL_IDS = {
 
 export const CRM_TAG_NAMES = {
   KONAKLAMA: "KONAKLAMA",
+  KARA_LISTE: "KARA LİSTE",
 } as const;

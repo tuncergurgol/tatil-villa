@@ -12,6 +12,7 @@ const customerSelect = {
   phone: true,
   email: true,
   active: true,
+  blacklisted: true,
   createdAt: true,
   updatedAt: true,
   firstContactAt: true,

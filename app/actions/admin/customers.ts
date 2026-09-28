@@ -6,6 +6,7 @@ import { BookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { normalizeStoredTurkishPhone } from "@/lib/phone-utils";
+import { setCustomerBlacklist } from "@/lib/customer-blacklist";
 
 export type CustomerActionState = {
   success?: boolean;
@@ -28,6 +29,11 @@ const customerSchema = z.object({
   email: optionalEmail,
   contactChannelId: z.string().optional().default(""),
   active: z.enum(["true", "false"]).transform((value) => value === "true"),
+  blacklisted: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 function parseCustomerForm(formData: FormData) {
@@ -40,6 +46,7 @@ function parseCustomerForm(formData: FormData) {
     email: (formData.get("email") as string | null)?.trim() ?? "",
     contactChannelId,
     active: formData.get("active") ?? "true",
+    blacklisted: formData.get("blacklisted") ?? "false",
   });
 }
 
@@ -73,6 +80,7 @@ export async function createCustomer(
     const created = await prisma.customer.create({
       data: toCustomerData(parsed.data),
     });
+    await setCustomerBlacklist(created.id, parsed.data.blacklisted);
     revalidateCustomerPaths();
     return { success: true, id: created.id };
   } catch {
@@ -99,6 +107,7 @@ export async function updateCustomer(
       where: { id },
       data: toCustomerData(parsed.data),
     });
+    await setCustomerBlacklist(id, parsed.data.blacklisted);
     revalidateCustomerPaths();
     return { success: true };
   } catch {

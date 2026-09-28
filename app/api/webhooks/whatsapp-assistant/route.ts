@@ -6,6 +6,7 @@ import {
   normalizeWahaAssistantPayload,
   sendAssistantWhatsAppMessage,
 } from "@/lib/tatil-assistant-whatsapp";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ export async function POST(request: Request) {
   const normalized = normalizeWahaAssistantPayload(payload);
   if (!normalized) {
     return NextResponse.json({ ok: true, skipped: "ignored" });
+  }
+
+  if (await isBlacklistedContact({ phone: normalized.phone })) {
+    return NextResponse.json({ ok: true, skipped: "blacklist" });
   }
 
   try {

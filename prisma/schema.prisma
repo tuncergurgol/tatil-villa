@@ -405,6 +405,8 @@ model Customer {
   contactChannel   CustomerContactChannel? @relation(fields: [contactChannelId], references: [id], onDelete: SetNull)
   firstContactAt   DateTime?
   active           Boolean                 @default(true)
+  /** Pazarlama ve gelen talep engeli. İşlemsel rezervasyon mesajlarını kesmez. */
+  blacklisted      Boolean                 @default(false)
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
   memberAccount    MemberAccount?
@@ -413,6 +415,7 @@ model Customer {
   bulkWhatsappMessages BulkWhatsappOutboundMessage[]
 
   @@index([active])
+  @@index([blacklisted])
   @@index([phone])
   @@index([fullName])
   @@index([email])

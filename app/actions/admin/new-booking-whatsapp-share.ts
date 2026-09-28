@@ -12,6 +12,7 @@ import {
   type NewBookingWhatsAppSharePayload,
 } from "@/lib/new-booking-whatsapp-share";
 import { isValidWhatsAppPhoneE164, normalizePhoneToE164 } from "@/lib/phone";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
 import { getPublicSiteMeta, isPublicSiteKey } from "@/lib/public-site-keys";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import {
@@ -110,6 +111,12 @@ export async function shareNewBookingQuoteWhatsAppAction(
   const e164 = normalizePhoneToE164(data.phone);
   if (!e164 || !isValidWhatsAppPhoneE164(e164)) {
     return { error: "Geçerli bir WhatsApp numarası girin" };
+  }
+
+  if (await isBlacklistedContact({ phone: e164 })) {
+    return {
+      error: "Bu müşteri kara listede. Pazarlama mesajı gönderilmedi.",
+    };
   }
 
   if (!data.reservationTotal || data.reservationTotal <= 0) {

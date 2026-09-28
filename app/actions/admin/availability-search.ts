@@ -25,6 +25,7 @@ import {
 } from "@/lib/public-site-keys";
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import { syncCustomerFromAvailabilitySearch } from "@/lib/customer-crm";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
 import {
   appendUndocumentedBookingAccessParam,
@@ -283,6 +284,17 @@ export async function sendAvailabilityOfferAction(input: {
   }
 
   const data = parsed.data;
+  if (
+    await isBlacklistedContact({
+      phone: data.guestPhone,
+      email: data.guestEmail,
+    })
+  ) {
+    return {
+      error: "Bu müşteri kara listede. Pazarlama mesajı gönderilmedi.",
+    };
+  }
+
   if (data.guestPhone) {
     await syncCustomerFromAvailabilitySearch({
       guestName: data.guestName || "Misafir",

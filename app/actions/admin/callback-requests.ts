@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
 import { syncCustomerFromCallback } from "@/lib/customer-crm";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
 
 const DAYS: CallbackPreferredDay[] = [
   "TODAY",
@@ -83,6 +84,10 @@ export async function createCallbackRequestAdmin(
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   if (!name || !phone) return { error: "Ad ve telefon zorunlu" };
+
+  if (await isBlacklistedContact({ phone })) {
+    return { error: "Bu numara kara listede. Talep oluşturulmadı." };
+  }
 
   const status = parseStatus(formData.get("status"));
   let item;

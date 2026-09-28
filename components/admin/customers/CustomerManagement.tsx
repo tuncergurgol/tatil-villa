@@ -102,6 +102,7 @@ async function downloadCustomerExcel(
     "İlk Kayıt",
     "Güncelleme",
     "Durum",
+    "Kara Liste",
   ];
   const sheetRows = [
     headers,
@@ -117,6 +118,7 @@ async function downloadCustomerExcel(
       formatAdminDateTime(customer.firstContactAt ?? customer.createdAt),
       formatAdminDate(customer.updatedAt),
       customer.active ? "Aktif" : "Pasif",
+      customer.blacklisted ? "Evet" : "",
     ]),
   ];
   const worksheet = XLSX.utils.aoa_to_sheet(sheetRows);
@@ -421,7 +423,11 @@ export default function CustomerManagement({
                       {customer.tags.map((entry) => (
                         <span
                           key={entry.tag.id}
-                          className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800"
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            entry.tag.name === "KARA LİSTE"
+                              ? "bg-rose-100 text-rose-800"
+                              : "bg-sky-100 text-sky-800"
+                          }`}
                         >
                           {entry.tag.name}
                         </span>
@@ -448,7 +454,14 @@ export default function CustomerManagement({
                   <span className="text-xs font-medium text-gray-400 xl:hidden">
                     Durum
                   </span>
-                  <StatusBadge active={customer.active} />
+                  <div className="flex flex-wrap items-center gap-1">
+                    <StatusBadge active={customer.active} />
+                    {customer.blacklisted ? (
+                      <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800">
+                        Kara liste
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-1">

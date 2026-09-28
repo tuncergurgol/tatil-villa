@@ -32,6 +32,7 @@ import {
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
 import {
   MEMBER_LOGIN_OTP_PURPOSE,
   MEMBER_REGISTER_OTP_PURPOSE,
@@ -218,6 +219,10 @@ async function completeMemberRegister(params: {
   const passwordHash = params.password?.trim()
     ? await bcrypt.hash(params.password.trim(), 12)
     : "";
+  const blocked = await isBlacklistedContact({
+    phone: params.phone,
+    email: params.email,
+  });
 
   const existingMember = await findMemberByPhoneOrEmail({
     phone: params.phone,
@@ -240,7 +245,7 @@ async function completeMemberRegister(params: {
     passwordHash,
     inviteCode: await generateUniqueInviteCode(),
     referredByMemberId,
-    marketingConsent: Boolean(params.marketingConsent),
+    marketingConsent: blocked ? false : Boolean(params.marketingConsent),
     kvkkAcceptedAt: new Date(),
     membershipAcceptedAt: new Date(),
     phoneVerifiedAt: new Date(),

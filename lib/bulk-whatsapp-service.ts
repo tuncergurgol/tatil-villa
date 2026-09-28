@@ -11,6 +11,7 @@ import {
 } from "@/lib/bulk-whatsapp";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
 import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
 
 type CampaignConfig = {
   title: string;
@@ -32,6 +33,7 @@ export async function getBulkWhatsappRecipients(tagFilterIds: string[]) {
   const customers = await prisma.customer.findMany({
     where: {
       active: true,
+      blacklisted: false,
       phone: { not: "" },
       ...(tagFilterIds.length > 0
         ? {
@@ -216,6 +218,26 @@ export async function processBulkWhatsappCampaignNext(campaignId: string) {
     where: { id: nextMessage.id },
     data: { status: BulkWhatsappMessageStatus.SENDING },
   });
+
+  if (await isBlacklistedContact({ phone: nextMessage.phone })) {
+    await prisma.bulkWhatsappOutboundMessage.update({
+      where: { id: nextMessage.id },
+      data: {
+        status: BulkWhatsappMessageStatus.CANCELLED,
+        errorMessage: "Kara liste — pazarlama mesajı gönderilmedi",
+      },
+    });
+    const done = await finalizeCampaignIfDone(campaignId);
+    return {
+      ok: true as const,
+      skipped: "blacklist" as const,
+      done,
+      status: done ? BulkWhatsappCampaignStatus.COMPLETED : campaign.status,
+      sentCount: campaign.sentCount,
+      failedCount: campaign.failedCount,
+      totalCount: campaign.totalCount,
+    };
+  }
 
   const renderedBody = renderBulkWhatsappMessage({
     body: campaign.messageBody,

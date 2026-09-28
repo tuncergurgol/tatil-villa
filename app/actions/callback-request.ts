@@ -12,6 +12,10 @@ import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
 import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
 import { syncCustomerFromCallback } from "@/lib/customer-crm";
 import {
+  CUSTOMER_BLACKLIST_PUBLIC_MESSAGE,
+  isBlacklistedContact,
+} from "@/lib/customer-blacklist";
+import {
   assertPublicRequestAllowed,
   PUBLIC_OTP_SEND_PURPOSE,
   PUBLIC_OTP_VERIFY_PURPOSE,
@@ -75,6 +79,10 @@ async function createVerifiedCallbackFromPayload(
     sourceSite: string;
     sourceDomain: string;
   } | null = null;
+
+  if (await isBlacklistedContact({ phone: payload.phone })) {
+    return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
+  }
 
   const item = await prisma.callbackRequest.create({
     data: {
@@ -140,6 +148,10 @@ export async function submitCallbackRequestAction(
   const e164 = normalizePhoneToE164(parsed.data.phone);
   if (!e164 || !isValidTurkishMobileE164(e164)) {
     return { error: "Geçerli bir cep telefonu girin (05xx…)" };
+  }
+
+  if (await isBlacklistedContact({ phone: e164 })) {
+    return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
   }
 
   const guard = await assertPublicRequestAllowed({
@@ -235,6 +247,10 @@ export async function verifyCallbackRequestOtpAction(
   }
 
   const e164 = normalizePhoneToE164(parsed.data.phone);
+  if (e164 && (await isBlacklistedContact({ phone: e164 }))) {
+    return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
+  }
+
   const guard = await assertPublicRequestAllowed({
     purpose: PUBLIC_OTP_VERIFY_PURPOSE,
     phone: e164,
@@ -313,6 +329,10 @@ export async function resendCallbackRequestOtpAction(
 
   if (!verificationId || !e164) {
     return { error: "Yeniden gönderim için oturum bulunamadı" };
+  }
+
+  if (await isBlacklistedContact({ phone: e164 })) {
+    return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
   }
 
   const existing = await prisma.verificationCode.findFirst({

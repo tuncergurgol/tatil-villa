@@ -3,6 +3,10 @@
 import { z } from "zod";
 import { sendCompanyMail } from "@/lib/email";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import {
+  CUSTOMER_BLACKLIST_PUBLIC_MESSAGE,
+  isBlacklistedContact,
+} from "@/lib/customer-blacklist";
 
 export type ContactActionState = {
   success?: boolean;
@@ -52,6 +56,11 @@ export async function sendContactMessageAction(
 
   const { firstName, lastName, email, phone, message, marketingOptIn } =
     parsed.data;
+
+  if (await isBlacklistedContact({ phone, email })) {
+    return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
+  }
+
   const fullName = `${firstName} ${lastName}`;
 
   const text = [

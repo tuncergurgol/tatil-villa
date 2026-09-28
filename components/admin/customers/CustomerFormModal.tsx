@@ -33,6 +33,7 @@ export default function CustomerFormModal({
   const isEdit = Boolean(customer);
   const action = isEdit ? updateCustomer : createCustomer;
   const [active, setActive] = useState(customer?.active ?? true);
+  const [blacklisted, setBlacklisted] = useState(customer?.blacklisted ?? false);
   const [state, formAction, pending] = useActionState<
     CustomerActionState,
     FormData
@@ -63,6 +64,11 @@ export default function CustomerFormModal({
         <form action={formAction} className="space-y-4 p-6">
           {customer ? <input type="hidden" name="id" value={customer.id} /> : null}
           <input type="hidden" name="active" value={active ? "true" : "false"} />
+          <input
+            type="hidden"
+            name="blacklisted"
+            value={blacklisted ? "true" : "false"}
+          />
 
           {state.error ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -112,6 +118,21 @@ export default function CustomerFormModal({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/70 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-rose-900">Kara liste</p>
+              <p className="text-xs text-rose-700">
+                Bize ulaşamaz. Reklam, toplu mesaj ve pazarlama e-postası gitmez.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={blacklisted}
+              onChange={(event) => setBlacklisted(event.target.checked)}
+              className="h-5 w-5 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+            />
           </label>
 
           <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3">

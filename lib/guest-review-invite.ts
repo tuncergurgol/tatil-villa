@@ -16,6 +16,7 @@ import {
   normalizePhoneToE164,
 } from "@/lib/phone";
 import { sendCustomerNotificationWhatsApp } from "@/lib/whatsapp-delivery";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
 
 export const GUEST_REVIEW_INVITE_TTL_DAYS = 30;
 
@@ -108,6 +109,21 @@ export async function sendGuestReviewInviteForBooking(
   const booking = await loadBookingForGuestReviewInvite(bookingId);
   if (!booking) {
     return { ok: false, link: "", emailSent: false, whatsappSent: false, errors: ["Rezervasyon bulunamadı"] };
+  }
+
+  if (
+    await isBlacklistedContact({
+      phone: booking.guestPhone,
+      email: booking.guestEmail,
+    })
+  ) {
+    return {
+      ok: false,
+      link: "",
+      emailSent: false,
+      whatsappSent: false,
+      errors: ["Kara listedeki misafire yorum daveti gönderilmez"],
+    };
   }
 
   if (!ELIGIBLE_BOOKING_STATUSES.includes(booking.status)) {
