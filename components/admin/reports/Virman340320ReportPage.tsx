@@ -14,7 +14,8 @@ import {
 import {
   CHART_ACCOUNT_KIND,
   VIRMAN_SHEET_HEADERS,
-  virmanSheetRow,
+  VIRMAN_SHEET_NAME,
+  virmanSheetRows,
   type Virman340320Row,
 } from "@/lib/chart-account-export";
 
@@ -90,22 +91,21 @@ export default function Virman340320ReportPage({
       }
 
       const XLSX = await import("xlsx");
-      const header = [...VIRMAN_SHEET_HEADERS, "", ...VIRMAN_SHEET_HEADERS];
+      const dataRows = ready.flatMap((row) => virmanSheetRows(row));
       const sheet = XLSX.utils.aoa_to_sheet([
-        header,
-        ...ready.map((row) => virmanSheetRow(row)),
+        [...VIRMAN_SHEET_HEADERS],
+        ...dataRows,
       ]);
-      const dateColumns = [1, 5, 16, 20];
-      for (let rowIndex = 1; rowIndex <= ready.length; rowIndex += 1) {
-        for (const column of dateColumns) {
+      for (let rowIndex = 1; rowIndex <= dataRows.length; rowIndex += 1) {
+        for (const column of [1, 5]) {
           const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex, c: column })];
           if (cell) cell.z = "dd.mm.yyyy";
         }
       }
       const book = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(book, sheet, "340 - 320");
+      XLSX.utils.book_append_sheet(book, sheet, VIRMAN_SHEET_NAME);
       const stamp = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(book, `340-320-virman-${stamp}.xlsx`);
+      XLSX.writeFile(book, `fis-aktarim-${stamp}.xlsx`);
       if (skipped > 0) {
         window.alert(
           `${ready.length} fiş aktarıldı. ${skipped} kayıt kod eksik olduğu için dosyaya alınmadı.`
@@ -121,8 +121,8 @@ export default function Virman340320ReportPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">340 - 320 Virman</h1>
           <p className="text-sm text-gray-500">
-            Onaylandı ve tazminat rezervasyonları. 340 borç, 320 alacak. Tutar
-            ön ödeme, fiş tarihi giriş tarihidir.
+            Onaylandı ve tazminat rezervasyonları. Excel her fiş için iki satır
+            yazar: 340 borç, 320 alacak. Tutar ön ödeme, fiş tarihi giriş tarihidir.
           </p>
         </div>
         <button

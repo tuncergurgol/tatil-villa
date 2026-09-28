@@ -34,21 +34,23 @@ export type ChartAccountCsvRow = {
 };
 
 export const VIRMAN_SHEET_HEADERS = [
-  "FİŞ NO",
-  "FİŞ TARİHİ",
-  "FİŞ AÇIKLAMA",
-  "HESAP KODU",
-  "EVRAK NO",
-  "EVRAK TARİHİ",
-  "DETAY AÇIKLAMA",
-  "BORÇ",
-  "ALACAK",
-  "MİKTAR",
-  "BELGE TÜRÜ",
-  "PARA BİRİMİ",
-  "KUR",
-  "DÖVİZ TUTAR",
+  "Fiş No",
+  "Fiş Tarihi",
+  "Fiş Açıklama",
+  "Hesap Kodu",
+  "Evrak No",
+  "Evrak Tarihi",
+  "Detay Açıklama",
+  "Borç",
+  "Alacak",
+  "Miktar",
+  "Belge Türü",
+  "Para Birimi",
+  "Kur",
+  "Döviz Tutar",
 ] as const;
+
+export const VIRMAN_SHEET_NAME = "Fiş Aktarım Şablon";
 
 export const VIRMAN_DESCRIPTION = "VS CARİ HESAP VİRMANI";
 export const VIRMAN_DOCUMENT_TYPE = "MF";
@@ -70,45 +72,41 @@ export type Virman340320Row = {
   exportedAt: string | null;
 };
 
-export function virmanSheetRow(row: Virman340320Row) {
+function virmanLine(
+  row: Virman340320Row,
+  accountCode: string,
+  debit: number | "",
+  credit: number | ""
+) {
   const detail = `${row.reservationNo} CARİ HESAP VİRMANI`;
   const fişNo = /^\d+$/.test(row.reservationNo)
     ? Number(row.reservationNo)
     : row.reservationNo;
   const checkIn = row.checkIn ? new Date(`${row.checkIn}T12:00:00`) : "";
-  const left = [
+  return [
     fişNo,
     checkIn,
     VIRMAN_DESCRIPTION,
-    row.customerAccountCode,
+    accountCode,
     fişNo,
     checkIn,
     detail,
-    row.amount,
-    "",
+    debit,
+    credit,
     "",
     VIRMAN_DOCUMENT_TYPE,
     "",
     "",
     "",
   ];
-  const right = [
-    fişNo,
-    checkIn,
-    VIRMAN_DESCRIPTION,
-    row.ownerAccountCode,
-    fişNo,
-    checkIn,
-    detail,
-    "",
-    row.amount,
-    "",
-    VIRMAN_DOCUMENT_TYPE,
-    "",
-    "",
-    "",
+}
+
+/** Şablondaki gibi önce 340 borç, ardından 320 alacak satırı. */
+export function virmanSheetRows(row: Virman340320Row) {
+  return [
+    virmanLine(row, row.customerAccountCode, row.amount, ""),
+    virmanLine(row, row.ownerAccountCode, "", row.amount),
   ];
-  return [...left, "", ...right];
 }
 
 export function customerChartAccountCode(reservationNo: string) {
