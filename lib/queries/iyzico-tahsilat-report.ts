@@ -1,3 +1,4 @@
+import { BookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { formatBookingReservationNo } from "@/lib/booking-display";
 import { getBookingStatusLabel } from "@/lib/booking-status";
@@ -55,7 +56,11 @@ function pickSuccessSessions(sessions: SessionRecord[]) {
 export async function getIyzicoTahsilatReport(): Promise<IyzicoTahsilatRow[]> {
   const [sessions, exports] = await Promise.all([
     prisma.bookingPaymentSession.findMany({
-      where: { providerSlug: "iyzico", status: "success" },
+      where: {
+        providerSlug: "iyzico",
+        status: "success",
+        booking: { status: { not: BookingStatus.CANCELLED } },
+      },
       select: {
         id: true,
         paymentId: true,

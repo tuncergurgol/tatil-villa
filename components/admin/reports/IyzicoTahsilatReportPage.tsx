@@ -122,7 +122,8 @@ export default function IyzicoTahsilatReportPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">İyzico Tahsilat Fişi</h1>
           <p className="text-sm text-gray-500">
-            Müşteriden tahsilat alındığı gün. Excel her fiş için{" "}
+            İptal rezervasyonlar listelenmez. Müşteriden tahsilat alındığı gün.
+            Excel her fiş için{" "}
             {IYZICO_BANK_ACCOUNT_CODE} borç, {IYZICO_COMMISSION_ACCOUNT_CODE}{" "}
             borç ve 340.01.{"{rezervasyon}"} alacak satırı yazar.
           </p>
