@@ -11,6 +11,13 @@ import {
 
 const CHART_PATH = "/admin/raporlar/hesap-plani";
 const VIRMAN_PATH = "/admin/raporlar/virman-340-320";
+const IYZICO_TAHSILAT_PATH = "/admin/raporlar/iyzico-tahsilat";
+
+function chartExportPath(kind: ChartAccountKind) {
+  if (kind === CHART_ACCOUNT_KIND.VIRMAN) return VIRMAN_PATH;
+  if (kind === CHART_ACCOUNT_KIND.IYZICO_TAHSILAT) return IYZICO_TAHSILAT_PATH;
+  return CHART_PATH;
+}
 
 export async function saveOwnerAccountingCodeAction(input: {
   ownerId: string;
@@ -77,6 +84,6 @@ export async function markChartAccountsExportedAction(input: {
     );
   }
 
-  revalidatePath(kind === CHART_ACCOUNT_KIND.VIRMAN ? VIRMAN_PATH : CHART_PATH);
+  revalidatePath(chartExportPath(kind));
   return { success: true as const, count: rows.length };
 }

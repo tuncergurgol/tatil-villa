@@ -2,6 +2,7 @@ export const CHART_ACCOUNT_KIND = {
   CUSTOMER: "CUSTOMER",
   OWNER: "OWNER",
   VIRMAN: "VIRMAN",
+  IYZICO_TAHSILAT: "IYZICO_TAHSILAT",
 } as const;
 
 export type ChartAccountKind =
@@ -107,6 +108,89 @@ export function virmanSheetRows(row: Virman340320Row) {
     virmanLine(row, row.customerAccountCode, row.amount, ""),
     virmanLine(row, row.ownerAccountCode, "", row.amount),
   ];
+}
+
+export const IYZICO_BANK_ACCOUNT_CODE = "108.01.002";
+export const IYZICO_COMMISSION_ACCOUNT_CODE = "780.01.002";
+export const IYZICO_TAHSILAT_DESCRIPTION = "İYZİCO TAHSİLAT";
+
+export type IyzicoTahsilatRow = {
+  subjectId: string;
+  reservationNo: string;
+  guestName: string;
+  collectedOn: string;
+  paidAmount: number;
+  commissionAmount: number;
+  bankAmount: number;
+  customerAccountCode: string;
+  statusLabel: string;
+  exportedAt: string | null;
+};
+
+function roundMoney2(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+/** 108 borç + 780 borç = 340 alacak. */
+export function splitIyzicoTahsilat(paid: number, commission: number) {
+  const credit = roundMoney2(Math.max(0, paid));
+  const commissionDebit = roundMoney2(
+    Math.min(Math.max(0, commission), credit)
+  );
+  const bankDebit = roundMoney2(credit - commissionDebit);
+  return { credit, commissionDebit, bankDebit };
+}
+
+function iyzicoTahsilatLine(
+  row: IyzicoTahsilatRow,
+  accountCode: string,
+  debit: number | "",
+  credit: number | ""
+) {
+  const detail = `${row.reservationNo} ${IYZICO_TAHSILAT_DESCRIPTION}`;
+  const fişNo = /^\d+$/.test(row.reservationNo)
+    ? Number(row.reservationNo)
+    : row.reservationNo;
+  const collectedOn = row.collectedOn
+    ? new Date(`${row.collectedOn}T12:00:00`)
+    : "";
+  return [
+    fişNo,
+    collectedOn,
+    IYZICO_TAHSILAT_DESCRIPTION,
+    accountCode,
+    fişNo,
+    collectedOn,
+    detail,
+    debit,
+    credit,
+    "",
+    VIRMAN_DOCUMENT_TYPE,
+    "",
+    "",
+    "",
+  ];
+}
+
+/** Tahsilat fişi: 108 borç, 780 borç, 340 alacak. */
+export function iyzicoTahsilatSheetRows(row: IyzicoTahsilatRow) {
+  const { credit, commissionDebit, bankDebit } = splitIyzicoTahsilat(
+    row.paidAmount,
+    row.commissionAmount
+  );
+  const lines: Array<Array<string | number | Date>> = [];
+  if (bankDebit > 0) {
+    lines.push(iyzicoTahsilatLine(row, IYZICO_BANK_ACCOUNT_CODE, bankDebit, ""));
+  }
+  if (commissionDebit > 0) {
+    lines.push(
+      iyzicoTahsilatLine(row, IYZICO_COMMISSION_ACCOUNT_CODE, commissionDebit, "")
+    );
+  }
+  if (credit > 0 && row.customerAccountCode) {
+    lines.push(iyzicoTahsilatLine(row, row.customerAccountCode, "", credit));
+  }
+  return lines;
 }
 
 export function customerChartAccountCode(reservationNo: string) {

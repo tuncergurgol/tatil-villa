@@ -283,6 +283,11 @@ export const adminNavSections: NavSection[] = [
         href: "/admin/raporlar/iyzico-odemeler",
         icon: "file-check",
       },
+      {
+        label: "İyzico Tahsilat Fişi",
+        href: "/admin/raporlar/iyzico-tahsilat",
+        icon: "file-check",
+      },
     ],
   },
 ];
