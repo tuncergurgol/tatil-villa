@@ -259,6 +259,11 @@ export const adminNavSections: NavSection[] = [
         icon: "file-check",
       },
       {
+        label: "Hesap Planı Aktarım",
+        href: "/admin/raporlar/hesap-plani",
+        icon: "file-check",
+      },
+      {
         label: "Fatura Raporları",
         href: "/admin/raporlar/fatura-raporlari",
         icon: "file-check",

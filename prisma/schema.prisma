@@ -163,6 +163,19 @@ model VillaOwner {
   @@index([type])
 }
 
+/// Hesap planı CSV aktarımının yapılıp yapılmadığı.
+model ChartAccountExport {
+  id          String   @id @default(cuid())
+  kind        String
+  subjectId   String
+  accountCode String
+  exportedAt  DateTime @default(now())
+  exportedBy  String   @default("")
+
+  @@unique([kind, subjectId])
+  @@index([kind, exportedAt])
+}
+
 model PrepaymentPaymentTypeOption {
   id        String   @id @default(cuid())
   name      String
