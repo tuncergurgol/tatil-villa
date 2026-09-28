@@ -264,6 +264,11 @@ export const adminNavSections: NavSection[] = [
         icon: "file-check",
       },
       {
+        label: "340 - 320 Virman",
+        href: "/admin/raporlar/virman-340-320",
+        icon: "file-check",
+      },
+      {
         label: "Fatura Raporları",
         href: "/admin/raporlar/fatura-raporlari",
         icon: "file-check",

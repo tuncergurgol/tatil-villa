@@ -9,7 +9,8 @@ import {
   type ChartAccountKind,
 } from "@/lib/chart-account-export";
 
-const REPORT_PATH = "/admin/raporlar/hesap-plani";
+const CHART_PATH = "/admin/raporlar/hesap-plani";
+const VIRMAN_PATH = "/admin/raporlar/virman-340-320";
 
 export async function saveOwnerAccountingCodeAction(input: {
   ownerId: string;
@@ -30,7 +31,8 @@ export async function saveOwnerAccountingCodeAction(input: {
     where: { id: ownerId },
     data: { accountingCode },
   });
-  revalidatePath(REPORT_PATH);
+  revalidatePath(CHART_PATH);
+  revalidatePath(VIRMAN_PATH);
   revalidatePath("/admin/tanimlamalar/villa-sahipleri");
   return { success: true as const };
 }
@@ -40,37 +42,41 @@ export async function markChartAccountsExportedAction(input: {
   rows: Array<{ subjectId: string; accountCode: string }>;
 }) {
   const session = await requireAdmin();
-  const kind =
-    input.kind === CHART_ACCOUNT_KIND.OWNER
-      ? CHART_ACCOUNT_KIND.OWNER
-      : CHART_ACCOUNT_KIND.CUSTOMER;
+  const kind = Object.values(CHART_ACCOUNT_KIND).find(
+    (value) => value === input.kind
+  );
+  if (!kind) return { error: "Geçersiz rapor" };
   const exportedBy = session.user?.email || session.user?.name || "";
   const rows = input.rows.filter(
     (row) => row.subjectId.trim() && row.accountCode.trim()
   );
   if (rows.length === 0) return { error: "Aktarılacak hesap yok" };
 
-  await prisma.$transaction(
-    rows.map((row) =>
-      prisma.chartAccountExport.upsert({
-        where: {
-          kind_subjectId: { kind, subjectId: row.subjectId },
-        },
-        create: {
-          kind,
-          subjectId: row.subjectId,
-          accountCode: row.accountCode,
-          exportedBy,
-        },
-        update: {
-          accountCode: row.accountCode,
-          exportedAt: new Date(),
-          exportedBy,
-        },
-      })
-    )
-  );
+  const size = 100;
+  for (let index = 0; index < rows.length; index += size) {
+    const slice = rows.slice(index, index + size);
+    await prisma.$transaction(
+      slice.map((row) =>
+        prisma.chartAccountExport.upsert({
+          where: {
+            kind_subjectId: { kind, subjectId: row.subjectId },
+          },
+          create: {
+            kind,
+            subjectId: row.subjectId,
+            accountCode: row.accountCode,
+            exportedBy,
+          },
+          update: {
+            accountCode: row.accountCode,
+            exportedAt: new Date(),
+            exportedBy,
+          },
+        })
+      )
+    );
+  }
 
-  revalidatePath(REPORT_PATH);
+  revalidatePath(kind === CHART_ACCOUNT_KIND.VIRMAN ? VIRMAN_PATH : CHART_PATH);
   return { success: true as const, count: rows.length };
 }

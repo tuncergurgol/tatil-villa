@@ -1,6 +1,7 @@
 export const CHART_ACCOUNT_KIND = {
   CUSTOMER: "CUSTOMER",
   OWNER: "OWNER",
+  VIRMAN: "VIRMAN",
 } as const;
 
 export type ChartAccountKind =
@@ -31,6 +32,84 @@ export type ChartAccountCsvRow = {
   vatRate: string;
   vatAccountCode: string;
 };
+
+export const VIRMAN_SHEET_HEADERS = [
+  "FİŞ NO",
+  "FİŞ TARİHİ",
+  "FİŞ AÇIKLAMA",
+  "HESAP KODU",
+  "EVRAK NO",
+  "EVRAK TARİHİ",
+  "DETAY AÇIKLAMA",
+  "BORÇ",
+  "ALACAK",
+  "MİKTAR",
+  "BELGE TÜRÜ",
+  "PARA BİRİMİ",
+  "KUR",
+  "DÖVİZ TUTAR",
+] as const;
+
+export const VIRMAN_DESCRIPTION = "VS CARİ HESAP VİRMANI";
+export const VIRMAN_DOCUMENT_TYPE = "MF";
+
+export type Virman340320Row = {
+  subjectId: string;
+  reservationNo: string;
+  guestName: string;
+  villaName: string;
+  ownerId: string;
+  ownerName: string;
+  storedAccountingCode: string;
+  needsAccountingCode: boolean;
+  checkIn: string;
+  amount: number;
+  customerAccountCode: string;
+  ownerAccountCode: string;
+  statusLabel: string;
+  exportedAt: string | null;
+};
+
+export function virmanSheetRow(row: Virman340320Row) {
+  const detail = `${row.reservationNo} CARİ HESAP VİRMANI`;
+  const fişNo = /^\d+$/.test(row.reservationNo)
+    ? Number(row.reservationNo)
+    : row.reservationNo;
+  const checkIn = row.checkIn ? new Date(`${row.checkIn}T12:00:00`) : "";
+  const left = [
+    fişNo,
+    checkIn,
+    VIRMAN_DESCRIPTION,
+    row.customerAccountCode,
+    fişNo,
+    checkIn,
+    detail,
+    row.amount,
+    "",
+    "",
+    VIRMAN_DOCUMENT_TYPE,
+    "",
+    "",
+    "",
+  ];
+  const right = [
+    fişNo,
+    checkIn,
+    VIRMAN_DESCRIPTION,
+    row.ownerAccountCode,
+    fişNo,
+    checkIn,
+    detail,
+    "",
+    row.amount,
+    "",
+    VIRMAN_DOCUMENT_TYPE,
+    "",
+    "",
+    "",
+  ];
+  return [...left, "", ...right];
+}
 
 export function customerChartAccountCode(reservationNo: string) {
   const no = reservationNo.trim();
