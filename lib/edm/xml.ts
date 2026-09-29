@@ -56,10 +56,13 @@ export function firstXmlAttr(
 }
 
 export function soapFaultMessage(xml: string): string | null {
-  const faultString =
+  const short =
     firstXmlTagValue(xml, "faultstring") ||
-    firstXmlTagValue(xml, "ERROR_SHORT_DES") ||
-    firstXmlTagValue(xml, "ERROR_LONG_DES") ||
-    firstXmlTagValue(xml, "ERROR_CODE");
-  return faultString;
+    firstXmlTagValue(xml, "ERROR_SHORT_DES");
+  const long = firstXmlTagValue(xml, "ERROR_LONG_DES");
+  const code = firstXmlTagValue(xml, "ERROR_CODE");
+  if (short && long && long !== short) {
+    return code ? `${short} (${code}: ${long})` : `${short} (${long})`;
+  }
+  return short || long || code;
 }

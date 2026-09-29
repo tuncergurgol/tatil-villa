@@ -12,11 +12,19 @@ export async function GET() {
     const result = await testEdmConnection();
     return NextResponse.json(result);
   } catch (error) {
+    const raw =
+      error instanceof Error ? error.message : "EDM bağlantı hatası";
+    const isUserMissing = /kullan[ıi]c[ıi]\s+bulunamad[ıi]/i.test(raw);
+    const message =
+      isUserMissing && process.env.EDM_ENV?.trim().toLowerCase() === "production"
+        ? `Canlı EDM login reddedildi: ${raw}. Test kullanıcı/şifre canlı SOAP’ta geçersiz; EDM’den canlı entegrasyon (API) kullanıcı ve parolasını alıp EDM_USERNAME / EDM_PASSWORD olarak güncelleyin.`
+        : raw;
     return NextResponse.json(
       {
         ok: false,
         configured: true,
-        message: error instanceof Error ? error.message : "EDM bağlantı hatası",
+        message,
+        environment: process.env.EDM_ENV?.trim() || "test",
       },
       { status: 502 }
     );

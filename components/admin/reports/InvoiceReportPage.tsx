@@ -138,15 +138,26 @@ export default function InvoiceReportPage({
     setEdmBusy(true);
     setEdmHint(null);
     try {
-      const response = await fetch("/api/admin/edm/status");
-      const data = (await response.json()) as {
+      const response = await fetch("/api/admin/edm/status", {
+        cache: "no-store",
+      });
+      const raw = await response.text();
+      let data: {
         ok?: boolean;
         message?: string;
         environment?: string;
         counterLeft?: number | null;
         dryRun?: boolean;
         error?: string;
-      };
+      } = {};
+      try {
+        data = raw ? (JSON.parse(raw) as typeof data) : {};
+      } catch {
+        setEdmHint(
+          `EDM durum isteği başarısız (HTTP ${response.status}). ${raw.slice(0, 160)}`
+        );
+        return;
+      }
       if (!response.ok || !data.ok) {
         setEdmHint(data.message || data.error || "EDM bağlantısı başarısız.");
         return;
@@ -155,8 +166,12 @@ export default function InvoiceReportPage({
         data.counterLeft == null ? "" : ` · Kontör: ${data.counterLeft}`;
       const dry = data.dryRun ? " · DRY_RUN" : "";
       setEdmHint(`EDM ${data.environment || ""} oturumu OK${counter}${dry}`);
-    } catch {
-      setEdmHint("EDM durum isteği başarısız.");
+    } catch (error) {
+      setEdmHint(
+        error instanceof Error
+          ? `EDM durum isteği başarısız: ${error.message}`
+          : "EDM durum isteği başarısız."
+      );
     } finally {
       setEdmBusy(false);
     }
