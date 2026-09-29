@@ -6,6 +6,7 @@ import {
   withEdmSession,
   type EdmSoapClient,
 } from "@/lib/edm/client";
+import { renderUblInvoicePdf } from "@/lib/edm/ubl-invoice-pdf";
 
 const EDM_INVOICE_DIR = path.join(process.cwd(), "storage", "edm-invoices");
 
@@ -21,7 +22,11 @@ export function edmInvoiceAbsolutePath(fileName: string) {
 export async function readStoredEdmInvoicePdf(fileName: string) {
   const absolute = edmInvoiceAbsolutePath(fileName);
   await access(absolute);
-  return readFile(absolute);
+  const buffer = await readFile(absolute);
+  if (buffer.subarray(0, 4).toString("utf8") !== "%PDF") {
+    throw new Error("Kayıtlı dosya geçerli PDF değil.");
+  }
+  return buffer;
 }
 
 async function writeEdmInvoicePdf(fileName: string, content: Buffer) {
@@ -57,21 +62,34 @@ async function fetchPdfBuffer(
     if (seen.has(direction)) continue;
     seen.add(direction);
     try {
+      // Canlı EDM hesabı CONTENT_TYPE=PDF verse de UBL XML döndürüyor.
+      // XML'i alıp sistemde okunabilir PDF üretiyoruz.
       const result = await client.getInvoice({
         uuid: uuid || undefined,
-        // UUID varken bozuk iç id gönderme
         invoiceId: uuid ? undefined : gibInvoiceId || undefined,
         direction,
-        contentType: "PDF",
+        contentType: "XML",
         headerOnly: false,
       });
       if (!result.content || result.content.length < 20) {
-        throw new Error("EDM PDF içeriği boş döndü.");
+        throw new Error("EDM fatura içeriği boş döndü.");
       }
-      if (result.content.subarray(0, 4).toString("utf8") !== "%PDF") {
-        throw new Error("EDM yanıtı PDF değil.");
+
+      const head = result.content.subarray(0, 5).toString("utf8");
+      if (result.content.subarray(0, 4).toString("utf8") === "%PDF") {
+        return result;
       }
-      return result;
+      if (!head.includes("<?xml") && !head.includes("<Invo")) {
+        throw new Error("EDM yanıtı beklenen UBL/PDF formatında değil.");
+      }
+
+      const xml = result.content.toString("utf8");
+      const pdf = await renderUblInvoicePdf(xml);
+      return {
+        ...result,
+        contentType: "PDF",
+        content: pdf,
+      };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
     }
