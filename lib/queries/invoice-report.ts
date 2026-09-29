@@ -37,6 +37,7 @@ export type InvoiceReportListItem = AdminBookingListItem & {
   edmStatus: string | null;
   edmInvoiceId: string | null;
   edmError: string | null;
+  edmPdfAvailable: boolean;
 };
 
 const invoiceBookingSelect = {
@@ -292,7 +293,13 @@ function mapBookingToListItem(
     exportable: missing.length === 0,
     edmStatus: details.edmInvoice?.status ?? null,
     edmInvoiceId: details.edmInvoice?.invoiceId ?? details.edmInvoice?.uuid ?? null,
-    edmError: details.edmInvoice?.error ?? null,
+    edmError: details.edmInvoice?.error ?? details.edmInvoice?.pdfError ?? null,
+    edmPdfAvailable: Boolean(
+      details.edmInvoice?.status === "SENT" &&
+        (details.edmInvoice?.pdfFileName ||
+          details.edmInvoice?.uuid ||
+          details.edmInvoice?.invoiceId)
+    ),
   };
 }
 

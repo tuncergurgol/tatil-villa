@@ -400,6 +400,16 @@ export default function InvoiceReportPage({
                                 {item.edmError}
                               </p>
                             ) : null}
+                            {item.edmStatus === "SENT" && item.edmPdfAvailable ? (
+                              <a
+                                href={`/api/admin/edm/invoice-pdf/${item.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex text-xs font-semibold text-teal-700 hover:underline"
+                              >
+                                PDF indir
+                              </a>
+                            ) : null}
                           </div>
                         ) : (
                           <span className="text-xs text-gray-400">—</span>

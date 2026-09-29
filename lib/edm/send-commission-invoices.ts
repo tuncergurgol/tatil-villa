@@ -5,6 +5,7 @@ import {
   resolveEdmSupplierIdentity,
 } from "@/lib/edm/config";
 import { withEdmSession, type EdmSoapClient } from "@/lib/edm/client";
+import { tryPersistEdmInvoicePdfAfterSend } from "@/lib/edm/invoice-file";
 import {
   buildCommissionUblInvoice,
   resolveEdmCustomerFromBooking,
@@ -335,6 +336,27 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           sentAt: new Date().toISOString(),
         });
 
+        const pdfResult = await tryPersistEdmInvoicePdfAfterSend({
+          bookingId: item.record.id,
+          reservationNo: item.input.externalCode,
+          uuid: sent.uuid,
+          invoiceId: sent.id,
+          eArchive,
+          client,
+          details: {
+            ...details,
+            edmInvoice: {
+              ...(typeof details.edmInvoice === "object" && details.edmInvoice
+                ? details.edmInvoice
+                : {}),
+              status: "SENT",
+              uuid: sent.uuid,
+              invoiceId: sent.id,
+              eArchive,
+            },
+          },
+        });
+
         results.push({
           ...base,
           ok: true,
@@ -345,6 +367,9 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           receiverVkn: ubl.receiverVkn,
           receiverAlias,
           amount: ubl.gross,
+          error: pdfResult.ok
+            ? undefined
+            : `Gönderildi; PDF kaydı: ${pdfResult.error}`,
         });
       } catch (error) {
         const message =

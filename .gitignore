@@ -45,6 +45,9 @@ next-env.d.ts
 !/public/uploads/**/
 !/public/uploads/**/.gitkeep
 
+# EDM fatura PDF (kimlik doğrulamalı API ile sunulur)
+/storage/
+
 # editor / local workspace state
 /.cursor/
 !/.cursor/rules/

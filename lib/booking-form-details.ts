@@ -86,6 +86,10 @@ export type BookingDetails = {
     error?: string;
     sentAt?: string;
     updatedAt?: string;
+    /** storage/edm-invoices altındaki dosya adı */
+    pdfFileName?: string;
+    pdfSavedAt?: string;
+    pdfError?: string;
   } | null;
   agencyName?: string;
   agencyCommissionRate?: number | null;

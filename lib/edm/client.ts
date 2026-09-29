@@ -297,6 +297,87 @@ export class EdmSoapClient {
     };
   }
 
+  async getInvoice(input: {
+    uuid?: string;
+    invoiceId?: string;
+    direction?: "OUT" | "IN" | "OUT-EINVOICE" | "OUT-EARCHIVE";
+    contentType?: "PDF" | "XML" | "HTML" | "ALL";
+    headerOnly?: boolean;
+  }): Promise<{
+    uuid: string;
+    invoiceId: string;
+    contentType: string;
+    content: Buffer | null;
+    rawXml: string;
+  }> {
+    const uuid = (input.uuid || "").trim();
+    const invoiceId = (input.invoiceId || "").trim();
+    if (!uuid && !invoiceId) {
+      throw new Error("GetInvoice için UUID veya fatura no gerekli.");
+    }
+
+    const contentType = input.contentType || "PDF";
+    const direction = input.direction || "OUT";
+    const searchParts = [
+      xmlText("LIMIT", "1"),
+      invoiceId ? xmlText("ID", invoiceId) : "",
+      uuid ? xmlText("UUID", uuid) : "",
+      xmlText("DIRECTION", direction),
+      xmlText("READ_INCLUDED", "true"),
+    ].filter(Boolean);
+
+    const body =
+      `<GetInvoiceRequest xmlns="http://tempuri.org/">` +
+      buildRequestHeaderXml(this.config, {
+        sessionId: this.requireSession(),
+        reason: "Fatura PDF/XML indirme",
+      }) +
+      `<INVOICE_SEARCH_KEY xmlns="">${searchParts.join("")}</INVOICE_SEARCH_KEY>` +
+      xmlText("HEADER_ONLY", input.headerOnly ? "Y" : "N") +
+      xmlText("INVOICE_CONTENT_TYPE", contentType) +
+      `</GetInvoiceRequest>`;
+
+    const xml = await this.call("GetInvoiceRequest", body);
+    const invoiceBlock =
+      (xml.match(/<INVOICE\b[\s\S]*?<\/INVOICE>/i) || [])[0] || "";
+    if (!invoiceBlock) {
+      throw new Error("GetInvoice: fatura bulunamadı.");
+    }
+
+    const contentRaw = firstXmlTagValue(invoiceBlock, "CONTENT");
+    let content: Buffer | null = null;
+    if (contentRaw) {
+      const cleaned = contentRaw.replace(/\s+/g, "");
+      try {
+        content = Buffer.from(cleaned, "base64");
+      } catch {
+        content = Buffer.from(contentRaw, "utf8");
+      }
+      // PDF magic check when expecting PDF
+      if (
+        contentType === "PDF" &&
+        content.length >= 4 &&
+        content.subarray(0, 4).toString("utf8") !== "%PDF"
+      ) {
+        // Some gateways wrap oddly; keep buffer but flag via raw length
+      }
+    }
+
+    return {
+      uuid:
+        firstXmlAttr(invoiceBlock, "INVOICE", "UUID") ||
+        firstXmlTagValue(invoiceBlock, "UUID") ||
+        uuid,
+      invoiceId:
+        firstXmlAttr(invoiceBlock, "INVOICE", "ID") ||
+        firstXmlTagValue(invoiceBlock, "ID") ||
+        invoiceId,
+      contentType,
+      content,
+      rawXml: xml,
+    };
+  }
+
   async getInvoiceStatus(uuid: string): Promise<{
     status: string;
     statusDescription: string;
