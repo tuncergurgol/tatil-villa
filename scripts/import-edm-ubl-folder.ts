@@ -49,8 +49,8 @@ function allNotes(xml: string): string[] {
 
 function parseReservationNo(notes: string[]): number | null {
   for (const note of notes) {
-    // "115432 - İsim - Villa - ..." veya "Not: 115482 - ..."
-    const m = note.match(/(?:^|\b)(\d{5,7})\s*[-–—]/);
+    // "115432 - İsim - Villa - ..." / eski kodlar "3948 - ..."
+    const m = note.match(/(?:^|\b)(\d{4,7})\s*[-–—]/);
     if (m) return Number(m[1]);
   }
   return null;
