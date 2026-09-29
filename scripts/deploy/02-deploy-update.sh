@@ -146,6 +146,12 @@ else
   echo "    package-lock ayni — npm ci atlandi"
 fi
 
+# EDM resmi fatura PDF (GİB XSLT) icin Playwright Chromium
+if [[ -d node_modules/playwright ]]; then
+  echo "    playwright chromium (EDM GİB fatura goruntusu)"
+  npx playwright install chromium >/dev/null 2>&1 || echo "    UYARI: playwright chromium kurulamadi"
+fi
+
 EXPECTED_NEXT="$(node -e "console.log(require('./package.json').dependencies.next)" 2>/dev/null || true)"
 INSTALLED_NEXT="$(node -e "console.log(require('next/package.json').version)" 2>/dev/null || echo 'YOK')"
 echo "    package.json next: ${EXPECTED_NEXT:-?} | kurulu: $INSTALLED_NEXT"

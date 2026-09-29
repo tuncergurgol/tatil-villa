@@ -7,6 +7,7 @@ import {
   type EdmSoapClient,
 } from "@/lib/edm/client";
 import { renderUblInvoicePdf } from "@/lib/edm/ubl-invoice-pdf";
+import { renderInvoicePdfPreferOfficial } from "@/lib/edm/official-invoice-pdf";
 
 const EDM_INVOICE_DIR = path.join(process.cwd(), "storage", "edm-invoices");
 
@@ -84,11 +85,14 @@ async function fetchPdfBuffer(
       }
 
       const xml = result.content.toString("utf8");
-      const pdf = await renderUblInvoicePdf(xml);
+      const rendered = await renderInvoicePdfPreferOfficial(
+        xml,
+        renderUblInvoicePdf
+      );
       return {
         ...result,
         contentType: "PDF",
-        content: pdf,
+        content: rendered.buffer,
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
