@@ -11,6 +11,9 @@ import { renderInvoicePdfPreferOfficial } from "@/lib/edm/official-invoice-pdf";
 
 const EDM_INVOICE_DIR = path.join(process.cwd(), "storage", "edm-invoices");
 
+/** Eski pdfkit özet PDF ~20–30 KB; GİB XSLT görüntüsü genelde 60 KB+. */
+const LEGACY_PLAIN_PDF_MAX_BYTES = 45_000;
+
 function safeFilePart(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
 }
@@ -252,12 +255,15 @@ export async function ensureEdmInvoicePdfForBooking(
   if (edm.pdfFileName && !options?.forceRefresh) {
     try {
       const buffer = await readStoredEdmInvoicePdf(edm.pdfFileName);
-      return {
-        buffer,
-        fileName: edm.pdfFileName,
-        invoiceId: edm.invoiceId || "",
-        downloadName: `edm-fatura-${edm.invoiceId || booking.externalCode || booking.id}.pdf`,
-      };
+      if (buffer.length >= LEGACY_PLAIN_PDF_MAX_BYTES) {
+        return {
+          buffer,
+          fileName: edm.pdfFileName,
+          invoiceId: edm.invoiceId || "",
+          downloadName: `edm-fatura-${edm.invoiceId || booking.externalCode || booking.id}.pdf`,
+        };
+      }
+      // Eski düz özet PDF — GİB XSLT ile yeniden üret
     } catch {
       // yeniden çek
     }
