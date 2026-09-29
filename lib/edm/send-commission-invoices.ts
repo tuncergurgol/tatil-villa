@@ -322,10 +322,14 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           ublXml: ubl.xml,
         });
 
+        const gibInvoiceId = /^[A-Z]{3}\d{13}$/i.test(sent.id || "")
+          ? sent.id
+          : allocated.invoiceId;
+
         await persistEdmResult(item.record.id, details, {
           status: "SENT",
           uuid: sent.uuid,
-          invoiceId: sent.id,
+          invoiceId: gibInvoiceId,
           eArchive,
           profileId: ubl.profileId,
           senderVkn: supplier.senderVkn,
@@ -340,7 +344,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           bookingId: item.record.id,
           reservationNo: item.input.externalCode,
           uuid: sent.uuid,
-          invoiceId: sent.id,
+          invoiceId: gibInvoiceId,
           eArchive,
           client,
           details: {
@@ -351,7 +355,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
                 : {}),
               status: "SENT",
               uuid: sent.uuid,
-              invoiceId: sent.id,
+              invoiceId: gibInvoiceId,
               eArchive,
             },
           },
@@ -363,7 +367,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           eArchive,
           profileId: ubl.profileId,
           uuid: sent.uuid,
-          invoiceId: sent.id,
+          invoiceId: gibInvoiceId,
           receiverVkn: ubl.receiverVkn,
           receiverAlias,
           amount: ubl.gross,

@@ -401,14 +401,49 @@ export default function InvoiceReportPage({
                               </p>
                             ) : null}
                             {item.edmStatus === "SENT" && item.edmPdfAvailable ? (
-                              <a
-                                href={`/api/admin/edm/invoice-pdf/${item.id}`}
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                type="button"
                                 className="inline-flex text-xs font-semibold text-teal-700 hover:underline"
+                                onClick={() => {
+                                  void (async () => {
+                                    try {
+                                      const response = await fetch(
+                                        `/api/admin/edm/invoice-pdf/${item.id}`
+                                      );
+                                      if (!response.ok) {
+                                        const data = (await response
+                                          .json()
+                                          .catch(() => null)) as {
+                                          error?: string;
+                                        } | null;
+                                        window.alert(
+                                          data?.error ||
+                                            `PDF indirilemedi (HTTP ${response.status}).`
+                                        );
+                                        return;
+                                      }
+                                      const blob = await response.blob();
+                                      const url = URL.createObjectURL(blob);
+                                      const anchor = document.createElement("a");
+                                      anchor.href = url;
+                                      anchor.download = `edm-fatura-${
+                                        item.edmInvoiceId ||
+                                        formatBookingReservationNo(item)
+                                      }.pdf`;
+                                      anchor.click();
+                                      URL.revokeObjectURL(url);
+                                    } catch (error) {
+                                      window.alert(
+                                        error instanceof Error
+                                          ? error.message
+                                          : "PDF indirilemedi."
+                                      );
+                                    }
+                                  })();
+                                }}
                               >
                                 PDF indir
-                              </a>
+                              </button>
                             ) : null}
                           </div>
                         ) : (

@@ -318,10 +318,13 @@ export class EdmSoapClient {
 
     const contentType = input.contentType || "PDF";
     const direction = input.direction || "OUT";
+    // GİB fatura no: TEA2026000000032 gibi 3 harf + yıl + 9 hane.
+    // EDM iç id (1188065758) ile arama boş döner; UUID varken onu kullan.
+    const gibInvoiceId = /^[A-Z]{3}\d{13}$/i.test(invoiceId) ? invoiceId : "";
     const searchParts = [
       xmlText("LIMIT", "1"),
-      invoiceId ? xmlText("ID", invoiceId) : "",
       uuid ? xmlText("UUID", uuid) : "",
+      !uuid && gibInvoiceId ? xmlText("ID", gibInvoiceId) : "",
       xmlText("DIRECTION", direction),
       xmlText("READ_INCLUDED", "true"),
     ].filter(Boolean);
@@ -344,23 +347,16 @@ export class EdmSoapClient {
       throw new Error("GetInvoice: fatura bulunamadı.");
     }
 
-    const contentRaw = firstXmlTagValue(invoiceBlock, "CONTENT");
+    const contentMatch = invoiceBlock.match(
+      /<CONTENT\b[^>]*>([\s\S]*?)<\/CONTENT>/i
+    );
+    const contentRaw = contentMatch?.[1]?.trim() || "";
     let content: Buffer | null = null;
     if (contentRaw) {
-      const cleaned = contentRaw.replace(/\s+/g, "");
-      try {
-        content = Buffer.from(cleaned, "base64");
-      } catch {
-        content = Buffer.from(contentRaw, "utf8");
-      }
-      // PDF magic check when expecting PDF
-      if (
-        contentType === "PDF" &&
-        content.length >= 4 &&
-        content.subarray(0, 4).toString("utf8") !== "%PDF"
-      ) {
-        // Some gateways wrap oddly; keep buffer but flag via raw length
-      }
+      const cleaned = contentRaw
+        .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+        .replace(/\s+/g, "");
+      content = Buffer.from(cleaned, "base64");
     }
 
     return {
@@ -371,6 +367,7 @@ export class EdmSoapClient {
       invoiceId:
         firstXmlAttr(invoiceBlock, "INVOICE", "ID") ||
         firstXmlTagValue(invoiceBlock, "ID") ||
+        gibInvoiceId ||
         invoiceId,
       contentType,
       content,

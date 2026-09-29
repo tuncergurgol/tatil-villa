@@ -41,6 +41,9 @@ async function fetchPdfBuffer(
   client: EdmSoapClient,
   input: { uuid?: string; invoiceId?: string; eArchive?: boolean }
 ) {
+  const uuid = (input.uuid || "").trim();
+  const invoiceId = (input.invoiceId || "").trim();
+  const gibInvoiceId = /^[A-Z]{3}\d{13}$/i.test(invoiceId) ? invoiceId : "";
   const attempts: Array<"OUT-EARCHIVE" | "OUT-EINVOICE" | "OUT"> = [
     resolveDirection(input.eArchive),
     "OUT",
@@ -55,8 +58,9 @@ async function fetchPdfBuffer(
     seen.add(direction);
     try {
       const result = await client.getInvoice({
-        uuid: input.uuid,
-        invoiceId: input.invoiceId,
+        uuid: uuid || undefined,
+        // UUID varken bozuk iç id gönderme
+        invoiceId: uuid ? undefined : gibInvoiceId || undefined,
         direction,
         contentType: "PDF",
         headerOnly: false,
@@ -145,9 +149,10 @@ export async function tryPersistEdmInvoicePdfAfterSend(input: {
         : {};
     const next = {
       ...previous,
+      uuid: stored.uuid || (previous as { uuid?: string }).uuid,
+      invoiceId: stored.invoiceId || (previous as { invoiceId?: string }).invoiceId,
       pdfFileName: stored.fileName,
       pdfSavedAt: new Date().toISOString(),
-      pdfError: undefined,
       updatedAt: new Date().toISOString(),
     };
     delete (next as { pdfError?: string }).pdfError;
@@ -233,6 +238,8 @@ export async function ensureEdmInvoicePdfForBooking(
 
   const next = {
     ...edm,
+    uuid: stored.uuid || edm.uuid,
+    invoiceId: stored.invoiceId || edm.invoiceId,
     pdfFileName: stored.fileName,
     pdfSavedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
