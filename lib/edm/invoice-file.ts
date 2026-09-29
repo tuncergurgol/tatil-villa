@@ -122,10 +122,16 @@ export async function downloadAndStoreEdmInvoicePdf(input: {
       invoiceId,
       eArchive: input.eArchive,
     });
+    const resolvedId =
+      /^[A-Z]{3}\d{13}$/i.test(fetched.invoiceId || "")
+        ? fetched.invoiceId!
+        : /^[A-Z]{3}\d{13}$/i.test(invoiceId)
+          ? invoiceId
+          : fetched.invoiceId || invoiceId || "invoice";
     const stamp = Date.now();
     const fileName = [
       safeFilePart(String(input.reservationNo || input.bookingId)),
-      safeFilePart(fetched.invoiceId || invoiceId || "invoice"),
+      safeFilePart(resolvedId),
       safeFilePart(fetched.uuid || uuid || "uuid"),
       `${stamp}.pdf`,
     ].join("-");
@@ -133,7 +139,7 @@ export async function downloadAndStoreEdmInvoicePdf(input: {
     await writeEdmInvoicePdf(fileName, fetched.content!);
     return {
       fileName,
-      invoiceId: fetched.invoiceId,
+      invoiceId: resolvedId,
       uuid: fetched.uuid,
       bytes: fetched.content!.length,
     };
@@ -169,10 +175,17 @@ export async function tryPersistEdmInvoicePdfAfterSend(input: {
       typeof input.details.edmInvoice === "object" && input.details.edmInvoice
         ? input.details.edmInvoice
         : {};
+    const prevId = (previous as { invoiceId?: string }).invoiceId || "";
+    const keepId =
+      /^[A-Z]{3}\d{13}$/i.test(stored.invoiceId || "")
+        ? stored.invoiceId
+        : /^[A-Z]{3}\d{13}$/i.test(prevId)
+          ? prevId
+          : stored.invoiceId || prevId;
     const next = {
       ...previous,
       uuid: stored.uuid || (previous as { uuid?: string }).uuid,
-      invoiceId: stored.invoiceId || (previous as { invoiceId?: string }).invoiceId,
+      invoiceId: keepId,
       pdfFileName: stored.fileName,
       pdfSavedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -258,10 +271,16 @@ export async function ensureEdmInvoicePdfForBooking(
     eArchive: edm.eArchive,
   });
 
+  const nextInvoiceId =
+    /^[A-Z]{3}\d{13}$/i.test(stored.invoiceId || "")
+      ? stored.invoiceId
+      : /^[A-Z]{3}\d{13}$/i.test(edm.invoiceId || "")
+        ? edm.invoiceId
+        : stored.invoiceId || edm.invoiceId;
   const next = {
     ...edm,
     uuid: stored.uuid || edm.uuid,
-    invoiceId: stored.invoiceId || edm.invoiceId,
+    invoiceId: nextInvoiceId,
     pdfFileName: stored.fileName,
     pdfSavedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

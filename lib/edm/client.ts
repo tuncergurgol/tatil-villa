@@ -45,6 +45,35 @@ export type EdmSendInvoiceResult = {
   rawXml: string;
 };
 
+/** GİB fatura no: TEA2026000000032 (3 harf + 4 yıl + 9 sıra). */
+function isGibInvoiceId(value: string) {
+  return /^[A-Z]{3}\d{13}$/i.test(value.trim());
+}
+
+function preferGibInvoiceId(
+  ...candidates: Array<string | null | undefined>
+): string {
+  for (const c of candidates) {
+    const v = (c || "").trim();
+    if (isGibInvoiceId(v)) return v;
+  }
+  for (const c of candidates) {
+    const v = (c || "").trim();
+    if (v && v !== "0") return v;
+  }
+  return "";
+}
+
+function extractGibInvoiceIdFromContent(content: Buffer | null): string {
+  if (!content || content.length < 20) return "";
+  if (content.subarray(0, 4).toString("utf8") === "%PDF") return "";
+  const text = content.toString("utf8");
+  const match = text.match(
+    /<(?:[\w]+:)?ID\b[^>]*>([A-Z]{3}\d{13})<\/(?:[\w]+:)?ID>/i
+  );
+  return match?.[1] || "";
+}
+
 function formatActionDate(date = new Date()) {
   const pad = (n: number, len = 2) => String(n).padStart(len, "0");
   const offsetMin = -date.getTimezoneOffset();
@@ -359,16 +388,19 @@ export class EdmSoapClient {
       content = Buffer.from(cleaned, "base64");
     }
 
+    // EDM SOAP INVOICE@ID çoğu zaman "0"/TRXID; gerçek GİB no UBL içindeki cbc:ID.
     return {
       uuid:
         firstXmlAttr(invoiceBlock, "INVOICE", "UUID") ||
         firstXmlTagValue(invoiceBlock, "UUID") ||
         uuid,
-      invoiceId:
-        firstXmlAttr(invoiceBlock, "INVOICE", "ID") ||
-        firstXmlTagValue(invoiceBlock, "ID") ||
-        gibInvoiceId ||
-        invoiceId,
+      invoiceId: preferGibInvoiceId(
+        extractGibInvoiceIdFromContent(content),
+        firstXmlAttr(invoiceBlock, "INVOICE", "ID"),
+        firstXmlTagValue(invoiceBlock, "ID"),
+        gibInvoiceId,
+        invoiceId
+      ),
       contentType,
       content,
       rawXml: xml,
