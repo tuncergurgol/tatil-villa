@@ -33,6 +33,7 @@
  * - birvillas.com / birvillas.com.tr (Next.js RSC listing + dynamicPricing + disabledDates)
  * - villadenizi.com.tr / Plato-Macrovilla (__NEXT_DATA__ villa.prices + villa.dates)
  * - egetatilevleri.com.tr (booking-seasonal-pricings + booking-availability-ranges JSON)
+ * - labirentfethiye.com (RSC prices + bookedRanges)
  * - Benzer Next.js villa siteleri (__NEXT_DATA__ period/booking anahtarları)
  * - Genel HTML: data-price + tarih aralığı
  */
@@ -97,7 +98,8 @@ export type ScrapedVillaPage = {
     | "villareyonu"
     | "birvillas"
     | "plato_macrovilla"
-    | "egetatilevleri";
+    | "egetatilevleri"
+    | "labirent";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -5222,6 +5224,101 @@ function buildMinMaxSeasonPeriods(
   return periods.sort((a, b) => compareDates(a.startDate, b.startDate));
 }
 
+function labirentPlain(html: string): string {
+  return decodeHtmlEntities(html.replace(/\\+"/g, '"').replace(/\\n/g, " "));
+}
+
+function parseLabirentDate(raw: string): Date | null {
+  const dmy = raw.trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (dmy) return parseDateKey(`${dmy[3]}-${dmy[2]}-${dmy[1]}`);
+  return parseIsoLikeDate(raw);
+}
+
+/** labirentfethiye.com — App Router RSC içindeki prices + bookedRanges. */
+export function scrapeLabirentFethiyeFromHtml(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): ScrapedVillaPage | null {
+  let host = "";
+  try {
+    host = normalizeHost(new URL(pageUrl).hostname);
+  } catch {
+    return null;
+  }
+  if (!host.includes("labirentfethiye")) return null;
+
+  const plain = labirentPlain(html);
+  const periods: MappedVillaPricePeriod[] = [];
+  const seen = new Set<string>();
+  let sourceId = 1;
+  const priceRe =
+    /"startDate"\s*:\s*"(\d{2}-\d{2}-\d{4})"\s*,\s*"endDate"\s*:\s*"(\d{2}-\d{2}-\d{4})"\s*,\s*"price"\s*:\s*(\d+)/g;
+  for (const match of plain.matchAll(priceRe)) {
+    const startDate = parseLabirentDate(match[1] ?? "");
+    const endDate = parseLabirentDate(match[2] ?? "");
+    const nightlyPrice = Number(match[3]);
+    if (!startDate || !endDate || !Number.isFinite(nightlyPrice) || nightlyPrice <= 0) {
+      continue;
+    }
+    if (compareDates(startDate, endDate) > 0) continue;
+    const key = `${toDateKey(startDate)}_${toDateKey(endDate)}_${nightlyPrice}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    periods.push(
+      buildMappedPeriod({
+        sourceId: sourceId++,
+        startDate,
+        endDate,
+        nightlyPrice,
+        currency: "TL",
+      })
+    );
+  }
+  if (periods.length === 0) return null;
+
+  const feeHit = plain.match(/temizlik\s*[üu]cret/i);
+  const feeWindow =
+    feeHit?.index != null
+      ? plain.slice(Math.max(0, feeHit.index - 180), feeHit.index + 60)
+      : "";
+  const cleaning = parseCleaningRuleText(feeWindow);
+  if (cleaning.cleaningFee != null || cleaning.cleaningDayCount != null) {
+    for (const period of periods) {
+      period.cleaningFee = cleaning.cleaningFee;
+      period.cleaningFeeCurrency = cleaning.cleaningFeeCurrency;
+      period.cleaningDayCount = cleaning.cleaningDayCount;
+    }
+  }
+
+  const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
+  const rangeRe =
+    /"checkIn"\s*:\s*"(\d{4}-\d{2}-\d{2})"\s*,\s*"checkOut"\s*:\s*"(\d{4}-\d{2}-\d{2})"\s*,\s*"reservationStatusType"\s*:\s*(\d+)/g;
+  for (const match of plain.matchAll(rangeRe)) {
+    const start = parseIsoLikeDate(match[1] ?? "");
+    const end = parseIsoLikeDate(match[2] ?? "");
+    if (!start || !end || compareDates(start, end) >= 0) continue;
+    const status = Number(match[3]) === 2 ? "OPTION" : "BOOKED";
+    const cursor = new Date(start);
+    while (compareDates(cursor, end) < 0) {
+      occupancyByDateKey.set(toDateKey(cursor), status);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+  if (occupancyByDateKey.size === 0) {
+    warnings.push("Labirent: fiyatlar alındı; dolu gün bulunamadı");
+  }
+
+  return {
+    sourceHost: host,
+    strategy: "labirent",
+    pageTitle: extractPageTitle(html),
+    periods,
+    occupancyByDateKey,
+    warnings,
+  };
+}
+
 function scrapeProductDetailRscFromHtml(
   pageUrl: string,
   html: string,
@@ -7457,6 +7554,13 @@ export async function scrapeExternalVillaPage(
     warnings
   );
   if (villavakti) return finalizeScrapedPage(villavakti, html);
+
+  const labirent = scrapeLabirentFethiyeFromHtml(
+    parsed.toString(),
+    html,
+    warnings
+  );
+  if (labirent) return finalizeScrapedPage(labirent, html);
 
   const productDetailRsc = scrapeProductDetailRscFromHtml(
     parsed.toString(),

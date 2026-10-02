@@ -6,6 +6,7 @@ import {
   parseBoceksoftPriceTable,
   parseVillavillamPriceList,
   scrapeExternalVillaPage,
+  scrapeLabirentFethiyeFromHtml,
 } from "../lib/external-villa-page-scrape";
 import type { MappedVillaPricePeriod } from "../lib/tatildeyiz-period-import";
 import { toDateKey } from "../lib/villa-period-calendar";
@@ -241,6 +242,24 @@ assert.equal(birebirPeriods[1]!.nightlyPrice, 19900);
 assert.equal(birebirPeriods[1]!.discount1Rate, 10);
 assert.equal(birebirPeriods[1]!.discountedNightlyPrice, 17910);
 assert.equal(birebirPeriods[1]!.minStayNights, 5);
+
+const labirentHtml = `
+<script>self.__next_f.push([1,"x \\"prices\\":[{\\"startDate\\":\\"01-10-2026\\",\\"endDate\\":\\"31-10-2026\\",\\"price\\":10000}] \\"bookedRanges\\":[{\\"checkIn\\":\\"2026-09-12\\",\\"checkOut\\":\\"2026-10-17\\",\\"reservationStatusType\\":1}] 5&nbsp;Gece ve altı konaklamalarda 5000 TL temizlik ücreti alınmaktadır."])</script>
+`;
+const labirent = scrapeLabirentFethiyeFromHtml(
+  "https://labirentfethiye.com/villalar/villa-romeo",
+  labirentHtml,
+  []
+);
+assert.equal(labirent?.strategy, "labirent");
+assert.equal(labirent?.periods.length, 1);
+assert.equal(toDateKey(labirent!.periods[0]!.startDate), "2026-10-01");
+assert.equal(toDateKey(labirent!.periods[0]!.endDate), "2026-10-31");
+assert.equal(labirent?.periods[0]?.nightlyPrice, 10000);
+assert.equal(labirent?.periods[0]?.cleaningFee, 5000);
+assert.equal(labirent?.periods[0]?.cleaningDayCount, 5);
+assert.equal(labirent?.occupancyByDateKey.get("2026-10-16"), "BOOKED");
+assert.equal(labirent?.occupancyByDateKey.has("2026-10-17"), false);
 
 const villacim = await scrapeExternalVillaPage(
   "https://www.villacim.com.tr/villa-tuana-kayakoy"
