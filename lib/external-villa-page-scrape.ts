@@ -515,9 +515,15 @@ function parseCleaningFeeAmount(text: string): {
   amount: number | null;
   currency: VillaPeriodCurrency;
 } {
-  // "5 gece altı konaklamaya 3500 TL temizlik" — depozito tutarını (uzaktan TL) yutma
+  // "5 gece altı konaklamaya 3500 TL temizlik" veya
+  // "7 gece altında ekstra 5000₺ kısa konaklama ücreti" — depozito tutarını yutma
+  const shortStayFeeLabel =
+    "(?:temizlik|k[ıi]sa\\s+konaklama)\\s*[üu]creti";
   const thresholdFee = text.match(
-    /(?:gece\s*alt[ıi]|geceden\s+(?:daha\s+)?(?:az|k[ıi]sa)|haftadan\s+(?:daha\s+)?(?:az|k[ıi]sa))[^.]{0,80}?(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,24}temizlik\s*[üu]creti/i
+    new RegExp(
+      `(?:gece\\s*alt[ıi]|geceden\\s+(?:daha\\s+)?(?:az|k[ıi]sa)|haftadan\\s+(?:daha\\s+)?(?:az|k[ıi]sa))[^.]{0,80}?(\\d[\\d.,\\s]*)\\s*(₺|TL|EUR|USD|GBP|€|\\$|£)[^.]{0,40}${shortStayFeeLabel}`,
+      "i"
+    )
   );
   if (thresholdFee?.[1]) {
     const amount = positiveInt(parseTurkishMoneyAmount(thresholdFee[1]));
@@ -530,8 +536,14 @@ function parseCleaningFeeAmount(text: string): {
   }
 
   const patterns = [
-    /(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)\s+temizlik\s*[üu]creti\s*al/i,
-    /ekstra\s+(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)[^.]{0,40}temizlik\s*[üu]creti/i,
+    new RegExp(
+      `(\\d[\\d.,\\s]*)\\s*(₺|TL|EUR|USD|GBP|€|\\$|£)\\s+${shortStayFeeLabel}\\s*al`,
+      "i"
+    ),
+    new RegExp(
+      `ekstra\\s+(\\d[\\d.,\\s]*)\\s*(₺|TL|EUR|USD|GBP|€|\\$|£)[^.]{0,40}${shortStayFeeLabel}`,
+      "i"
+    ),
     /(?:^|[^a-zı])temizlik\s*[üu]creti\s*[-–:]?\s*(\d[\d.,\s]*)\s*(₺|TL|EUR|USD|GBP|€|\$|£)/i,
   ];
   for (const pattern of patterns) {

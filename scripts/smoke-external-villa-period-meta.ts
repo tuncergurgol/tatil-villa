@@ -186,8 +186,12 @@ assert.equal(villaekstraPeriods[0]?.nightlyPrice, 20000);
 assert.equal(villaekstraPeriods[0]?.weeklyPrice, 140000);
 assert.equal(villaekstraPeriods[0]?.minStayNights, 3);
 assert.equal(villaekstraPeriods[0]?.damageDeposit, 2500);
+assert.equal(villaekstraPeriods[0]?.cleaningFee, 5000);
+assert.equal(villaekstraPeriods[0]?.cleaningFeeCurrency, "TL");
+assert.equal(villaekstraPeriods[0]?.cleaningDayCount, 7);
 assert.equal(villaekstraPeriods[1]?.nightlyPrice, 11250);
 assert.equal(villaekstraPeriods[1]?.minStayNights, 3);
+assert.equal(villaekstraPeriods[1]?.cleaningFee, null);
 
 // Villavillam: dailyPrice zaten indirimli; oran ile liste fiyatına çevrilmeli
 const villavillamDiscounted = parseVillavillamPriceList(
