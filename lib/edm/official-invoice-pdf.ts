@@ -1,18 +1,19 @@
-function extractEmbeddedXslt(ublXml: string): string | null {
-  const match = ublXml.match(
-    /<(?:[\w]+:)?EmbeddedDocumentBinaryObject\b([^>]*)>([\s\S]*?)<\/(?:[\w]+:)?EmbeddedDocumentBinaryObject>/i
-  );
-  if (!match) return null;
-  const b64 = match[2].replace(/\s+/g, "");
-  if (!b64) return null;
-  const decoded = Buffer.from(b64, "base64").toString("utf8");
-  if (
-    !/<xsl:stylesheet[\s>]/i.test(decoded) &&
-    !/<stylesheet[\s>]/i.test(decoded)
-  ) {
-    return null;
+export function extractEmbeddedXslt(ublXml: string): string | null {
+  const re =
+    /<(?:[\w]+:)?EmbeddedDocumentBinaryObject\b([^>]*)>([\s\S]*?)<\/(?:[\w]+:)?EmbeddedDocumentBinaryObject>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(ublXml))) {
+    const b64 = match[2].replace(/\s+/g, "");
+    if (!b64) continue;
+    const decoded = Buffer.from(b64, "base64").toString("utf8");
+    if (
+      /<xsl:stylesheet[\s>]/i.test(decoded) ||
+      /<stylesheet[\s>]/i.test(decoded)
+    ) {
+      return decoded;
+    }
   }
-  return decoded;
+  return null;
 }
 
 /**

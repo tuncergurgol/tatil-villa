@@ -7,12 +7,16 @@ import {
   type EdmSoapClient,
 } from "@/lib/edm/client";
 import { renderUblInvoicePdf } from "@/lib/edm/ubl-invoice-pdf";
-import { renderInvoicePdfPreferOfficial } from "@/lib/edm/official-invoice-pdf";
+import { renderInvoicePdfPreferOfficial, extractEmbeddedXslt } from "@/lib/edm/official-invoice-pdf";
 
 const EDM_INVOICE_DIR = path.join(process.cwd(), "storage", "edm-invoices");
 
 /** Eski pdfkit özet PDF ~20–30 KB; GİB XSLT görüntüsü genelde 60 KB+. */
 const LEGACY_PLAIN_PDF_MAX_BYTES = 45_000;
+
+/** EDM, GİB XSLT dosyasını faturaya gönderimden kısa süre sonra ekler. */
+const XSLT_WAIT_ATTEMPTS = 12;
+const XSLT_WAIT_MS = 3_000;
 
 function safeFilePart(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
@@ -88,12 +92,32 @@ async function fetchPdfBuffer(
       }
 
       const xml = result.content.toString("utf8");
+      let invoiceXml = xml;
+      let latest = result;
+      for (let attempt = 0; attempt < XSLT_WAIT_ATTEMPTS; attempt++) {
+        if (extractEmbeddedXslt(invoiceXml)) break;
+        if (attempt === XSLT_WAIT_ATTEMPTS - 1) break;
+        await new Promise((resolve) => setTimeout(resolve, XSLT_WAIT_MS));
+        const again = await client.getInvoice({
+          uuid: uuid || undefined,
+          invoiceId: uuid ? undefined : gibInvoiceId || undefined,
+          direction,
+          contentType: "XML",
+          headerOnly: false,
+        });
+        if (again.content?.subarray(0, 4).toString("utf8") === "%PDF") {
+          return again;
+        }
+        if (!again.content || again.content.length < 20) continue;
+        latest = again;
+        invoiceXml = again.content.toString("utf8");
+      }
       const rendered = await renderInvoicePdfPreferOfficial(
-        xml,
+        invoiceXml,
         renderUblInvoicePdf
       );
       return {
-        ...result,
+        ...latest,
         contentType: "PDF",
         content: rendered.buffer,
       };
