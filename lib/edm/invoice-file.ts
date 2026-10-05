@@ -218,6 +218,7 @@ export async function tryPersistEdmInvoicePdfAfterSend(input: {
       updatedAt: new Date().toISOString(),
     };
     delete (next as { pdfError?: string }).pdfError;
+    delete (next as { error?: string }).error;
 
     await prisma.booking.update({
       where: { id: input.bookingId },
@@ -237,16 +238,18 @@ export async function tryPersistEdmInvoicePdfAfterSend(input: {
         typeof input.details.edmInvoice === "object" && input.details.edmInvoice
           ? input.details.edmInvoice
           : {};
+      const next = {
+        ...previous,
+        pdfError: message,
+        updatedAt: new Date().toISOString(),
+      };
+      delete (next as { error?: string }).error;
       await prisma.booking.update({
         where: { id: input.bookingId },
         data: {
           details: {
             ...input.details,
-            edmInvoice: {
-              ...previous,
-              pdfError: message,
-              updatedAt: new Date().toISOString(),
-            },
+            edmInvoice: next,
           },
         },
       });
@@ -316,6 +319,7 @@ export async function ensureEdmInvoicePdfForBooking(
     updatedAt: new Date().toISOString(),
   };
   delete (next as { pdfError?: string }).pdfError;
+  delete (next as { error?: string }).error;
 
   await prisma.booking.update({
     where: { id: booking.id },
