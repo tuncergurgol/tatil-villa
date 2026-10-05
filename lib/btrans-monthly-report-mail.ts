@@ -90,6 +90,7 @@ export function buildBtransMonthlyReportText(summary: BtransMonthlyMailSummary) 
     summary.test ? "Bu bir TEST mailidir." : null,
     `BTRANS Bildirimi (538) — ${period}`,
     `Tarih bazı: ${summary.dateBasisLabel}`,
+    "Belge numarası olmayan villaların rezervasyonları bu bildirime alınmaz.",
     `XML'e alınan işlem: ${summary.count}`,
     `Eksik / hatalı kayıt: ${summary.incompleteCount}`,
   ].filter((line): line is string => Boolean(line));
@@ -184,7 +185,8 @@ export function buildBtransMonthlyReportHtml(summary: BtransMonthlyMailSummary) 
       <p><strong>Bilgilendirme</strong></p>
       ${testBanner}
       <p>BTRANS Bildirimi (538) — <strong>${escapeBtransMailHtml(period)}</strong><br>
-      Tarih bazı: <strong>${escapeBtransMailHtml(summary.dateBasisLabel)}</strong></p>
+      Tarih bazı: <strong>${escapeBtransMailHtml(summary.dateBasisLabel)}</strong><br>
+      Belge numarası olmayan villaların rezervasyonları bu bildirime alınmaz.</p>
       <p>XML'e alınan işlem: <strong>${summary.count}</strong><br>
       Eksik / hatalı kayıt: <strong>${summary.incompleteCount}</strong></p>
       ${errorBlock}

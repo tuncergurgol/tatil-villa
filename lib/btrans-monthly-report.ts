@@ -71,7 +71,13 @@ export async function runBtransMonthlyReport(options?: {
   const dateBasis = options?.dateBasis ?? DEFAULT_DATE_BASIS;
   const test = Boolean(options?.test);
 
-  const report = await generateBtransReport({ year, month, dateBasis });
+  // Aylık mail yalnızca turizm belge numarası olan villaları kapsar.
+  const report = await generateBtransReport({
+    year,
+    month,
+    dateBasis,
+    documentNoFilter: "with",
+  });
   const summary: BtransMonthlyMailSummary = {
     year,
     month,
