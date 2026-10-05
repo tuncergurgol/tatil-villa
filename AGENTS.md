@@ -15,8 +15,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - Cursor her zaman bu Windows bilgisayarda çalışır.
 - Cloud Agent / cloud VM yasaktır; Task `environment: "cloud"` kullanılmaz.
+- Kullanıcı bir komut yazdığında tüm aşamalar biter. Arada Run / Always Run / Skip veya “çalıştırayım mı?” sorulmaz.
 - Commit / push / deploy / SSH / bundle için kullanıcıdan ek onay isteme; işi sonuna kadar tamamla.
-- Auto-review engeli çıkarsa aynı komutu onay isteğiyle yeniden dene; chat’te “çalıştırayım mı?” sorma.
+- Auto-review engeli çıkarsa aynı komutu `request_smart_mode_approval` ile yeniden dene; chat’te izin isteme.
 
 ## Güvenlik
 
