@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { FileSpreadsheet, Filter, Info, Send, Wifi } from "lucide-react";
 import BookingFilterModal, {
   countActiveBookingFilters,
@@ -12,6 +13,7 @@ import {
   type AdminPageSize,
 } from "@/components/admin/AdminTablePagination";
 import { filterBookings } from "@/lib/booking-filters";
+import { BOOKING_STATUS_META } from "@/lib/booking-status";
 import {
   formatBookingReservationNo,
   formatMoneyPlain,
@@ -30,6 +32,13 @@ interface InvoiceReportPageProps {
   warnings: string[];
 }
 
+function isInvoiceSent(
+  item: InvoiceReportListItem,
+  sentIds: Record<string, string>
+) {
+  return item.edmStatus === "SENT" || Boolean(sentIds[item.id]);
+}
+
 async function downloadInvoiceExcel(
   rows: (string | number)[][],
   fileName: string
@@ -46,13 +55,18 @@ export default function InvoiceReportPage({
   villas,
   warnings,
 }: InvoiceReportPageProps) {
+  const router = useRouter();
   const [filters, setFilters] = useState<BookingFilters>(emptyBookingFilters());
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<AdminPageSize>(10);
   const [isPending, startTransition] = useTransition();
   const [edmBusy, setEdmBusy] = useState(false);
+  const [edmConnected, setEdmConnected] = useState<boolean | null>(null);
   const [edmHint, setEdmHint] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sentIds, setSentIds] = useState<Record<string, string>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
 
   const activeFilterCount = countActiveBookingFilters(filters);
 
@@ -66,6 +80,11 @@ export default function InvoiceReportPage({
   const exportableItems = useMemo(
     () => filteredItems.filter((item) => item.exportable),
     [filteredItems]
+  );
+
+  const pendingSendItems = useMemo(
+    () => exportableItems.filter((item) => !isInvoiceSent(item, sentIds)),
+    [exportableItems, sentIds]
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
@@ -134,9 +153,43 @@ export default function InvoiceReportPage({
     });
   }
 
-  async function handleEdmStatus() {
+  useEffect(() => {
+    void handleEdmStatus({ silent: true });
+    // Sayfa açılışında bağlantı rengi için bir kez kontrol.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function downloadEdmPdf(item: InvoiceReportListItem) {
+    try {
+      const response = await fetch(`/api/admin/edm/invoice-pdf/${item.id}`);
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        window.alert(
+          data?.error || `PDF indirilemedi (HTTP ${response.status}).`
+        );
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `edm-fatura-${
+        sentIds[item.id] || item.edmInvoiceId || formatBookingReservationNo(item)
+      }.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "PDF indirilemedi."
+      );
+    }
+  }
+
+  async function handleEdmStatus(options?: { silent?: boolean }) {
     setEdmBusy(true);
-    setEdmHint(null);
+    if (!options?.silent) setEdmHint(null);
     try {
       const response = await fetch("/api/admin/edm/status", {
         cache: "no-store",
@@ -153,76 +206,121 @@ export default function InvoiceReportPage({
       try {
         data = raw ? (JSON.parse(raw) as typeof data) : {};
       } catch {
-        setEdmHint(
-          `EDM durum isteği başarısız (HTTP ${response.status}). ${raw.slice(0, 160)}`
-        );
+        setEdmConnected(false);
+        if (!options?.silent) {
+          setEdmHint(
+            `EDM durum isteği başarısız (HTTP ${response.status}). ${raw.slice(0, 160)}`
+          );
+        }
         return;
       }
       if (!response.ok || !data.ok) {
-        setEdmHint(data.message || data.error || "EDM bağlantısı başarısız.");
+        setEdmConnected(false);
+        if (!options?.silent) {
+          setEdmHint(data.message || data.error || "EDM bağlantısı başarısız.");
+        }
         return;
       }
-      const counter =
-        data.counterLeft == null ? "" : ` · Kontör: ${data.counterLeft}`;
-      const dry = data.dryRun ? " · DRY_RUN" : "";
-      setEdmHint(`EDM ${data.environment || ""} oturumu OK${counter}${dry}`);
+      setEdmConnected(true);
+      if (!options?.silent) {
+        const counter =
+          data.counterLeft == null ? "" : ` · Kontör: ${data.counterLeft}`;
+        const dry = data.dryRun ? " · DRY_RUN" : "";
+        setEdmHint(`EDM ${data.environment || ""} oturumu OK${counter}${dry}`);
+      }
     } catch (error) {
-      setEdmHint(
-        error instanceof Error
-          ? `EDM durum isteği başarısız: ${error.message}`
-          : "EDM durum isteği başarısız."
-      );
+      setEdmConnected(false);
+      if (!options?.silent) {
+        setEdmHint(
+          error instanceof Error
+            ? `EDM durum isteği başarısız: ${error.message}`
+            : "EDM durum isteği başarısız."
+        );
+      }
     } finally {
       setEdmBusy(false);
     }
   }
 
-  async function handleEdmSend() {
-    if (exportableItems.length === 0) {
+  async function handleEdmSend(bookingIds: string[]) {
+    if (bookingIds.length === 0) {
       window.alert("Gönderilecek faturaya hazır kayıt yok.");
       return;
     }
-    const confirmed = window.confirm(
-      `${exportableItems.length} fatura EDM web servisine gönderilecek. Devam edilsin mi?`
-    );
-    if (!confirmed) return;
+    if (bookingIds.length > 1) {
+      const confirmed = window.confirm(
+        `${bookingIds.length} fatura EDM web servisine gönderilecek. Devam edilsin mi?`
+      );
+      if (!confirmed) return;
+    }
 
-    setEdmBusy(true);
+    const singleId = bookingIds.length === 1 ? bookingIds[0] : null;
+    if (singleId) setSendingId(singleId);
+    else setEdmBusy(true);
     setEdmHint(null);
     try {
       const response = await fetch("/api/admin/edm/send-invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookingIds: exportableItems.map((item) => item.id),
-        }),
+        body: JSON.stringify({ bookingIds }),
       });
       const data = (await response.json()) as {
         error?: string;
         summary?: { ok: number; failed: number; skipped: number };
-        results?: Array<{ ok: boolean; skipped?: boolean; error?: string }>;
+        results?: Array<{
+          bookingId?: string;
+          ok: boolean;
+          skipped?: boolean;
+          invoiceId?: string;
+          error?: string;
+        }>;
       };
       if (!response.ok) {
-        setEdmHint(data.error || "EDM gönderim başarısız.");
+        const message = data.error || "EDM gönderim başarısız.";
+        if (singleId) {
+          setRowErrors((prev) => ({ ...prev, [singleId]: message }));
+        }
+        setEdmHint(message);
         return;
+      }
+      const sentNow: Record<string, string> = {};
+      const errorsNow: Record<string, string> = {};
+      for (const result of data.results || []) {
+        if (!result.bookingId) continue;
+        if (result.ok) sentNow[result.bookingId] = result.invoiceId || "";
+        else if (result.error) errorsNow[result.bookingId] = result.error;
+      }
+      if (Object.keys(sentNow).length > 0) {
+        setSentIds((prev) => ({ ...prev, ...sentNow }));
+        setRowErrors((prev) => {
+          const next = { ...prev };
+          for (const id of Object.keys(sentNow)) delete next[id];
+          return next;
+        });
+      }
+      if (Object.keys(errorsNow).length > 0) {
+        setRowErrors((prev) => ({ ...prev, ...errorsNow }));
       }
       const s = data.summary;
       const firstError = data.results?.find((r) => !r.ok && r.error)?.error;
-      setEdmHint(
-        [
-          s
-            ? `EDM: ${s.ok} başarılı, ${s.failed} hata, ${s.skipped} atlandı.`
-            : "EDM gönderim tamamlandı.",
-          firstError ? `Hata: ${firstError}` : null,
-          "Sayfayı yenileyin.",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
+      if (!singleId || !data.results?.some((r) => r.ok)) {
+        setEdmHint(
+          [
+            s
+              ? `EDM: ${s.ok} başarılı, ${s.failed} hata, ${s.skipped} atlandı.`
+              : "EDM gönderim tamamlandı.",
+            firstError ? `Hata: ${firstError}` : null,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        );
+      }
+      if (Object.keys(sentNow).length > 0) router.refresh();
     } catch {
       setEdmHint("EDM gönderim isteği başarısız.");
     } finally {
       setEdmBusy(false);
+      setSendingId(null);
     }
   }
 
@@ -247,6 +345,9 @@ export default function InvoiceReportPage({
           </div>
         </div>
 
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -263,17 +364,19 @@ export default function InvoiceReportPage({
           </button>
           <button
             type="button"
-            onClick={handleEdmStatus}
-            disabled={edmBusy}
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-800 hover:bg-teal-50 disabled:opacity-60"
+            onClick={handleExport}
+            disabled={isPending}
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
           >
-            <Wifi className="h-4 w-4" />
-            EDM BAĞLANTI
+            <FileSpreadsheet className="h-4 w-4" />
+            {isPending ? "Aktarılıyor…" : "EXCEL'E AKTAR"}
           </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={handleEdmSend}
-            disabled={edmBusy || isPending}
+            onClick={() => void handleEdmSend(pendingSendItems.map((item) => item.id))}
+            disabled={edmBusy || isPending || sendingId != null}
             className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-800 hover:bg-indigo-100 disabled:opacity-60"
           >
             <Send className="h-4 w-4" />
@@ -281,12 +384,18 @@ export default function InvoiceReportPage({
           </button>
           <button
             type="button"
-            onClick={handleExport}
-            disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            onClick={() => void handleEdmStatus()}
+            disabled={edmBusy}
+            className={`inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-60 ${
+              edmConnected
+                ? "border-teal-200 text-teal-800 hover:bg-teal-50"
+                : edmConnected === false
+                  ? "border-red-200 text-red-600 hover:bg-red-50"
+                  : "border-gray-200 text-gray-500"
+            }`}
           >
-            <FileSpreadsheet className="h-4 w-4" />
-            {isPending ? "Aktarılıyor…" : "EXCEL'E AKTAR"}
+            <Wifi className="h-4 w-4" />
+            EDM BAĞLANTI
           </button>
         </div>
       </div>
@@ -315,13 +424,13 @@ export default function InvoiceReportPage({
         <p className="text-sm text-gray-500">
           {filteredItems.length} kayıt listeleniyor ({activeFilterCount} aktif
           filtre)
-          {exportableItems.length !== filteredItems.length
-            ? ` — ${exportableItems.length} faturaya hazır`
+          {pendingSendItems.length !== filteredItems.length
+            ? ` — ${pendingSendItems.length} faturaya hazır`
             : null}
         </p>
       ) : (
         <p className="text-sm text-gray-500">
-          {filteredItems.length} kayıt — {exportableItems.length} faturaya hazır
+          {filteredItems.length} kayıt — {pendingSendItems.length} faturaya hazır
         </p>
       )}
 
@@ -336,7 +445,7 @@ export default function InvoiceReportPage({
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-[1100px] w-full text-left text-sm">
+          <table className="min-w-[1280px] w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-3 py-2">Rezervasyon No</th>
@@ -345,6 +454,7 @@ export default function InvoiceReportPage({
                 <th className="px-3 py-2">Villa Sahibi</th>
                 <th className="px-3 py-2">Konaklama</th>
                 <th className="px-3 py-2">Komisyon (KDV dahil)</th>
+                <th className="px-3 py-2">Rezervasyon Durum</th>
                 <th className="px-3 py-2">Fatura Durumu</th>
                 <th className="px-3 py-2">EDM</th>
                 <th className="px-3 py-2">Eksik Alanlar</th>
@@ -376,7 +486,18 @@ export default function InvoiceReportPage({
                           : "—"}
                       </td>
                       <td className="px-3 py-2">
-                        {item.exportable ? (
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${BOOKING_STATUS_META[item.status].className}`}
+                        >
+                          {BOOKING_STATUS_META[item.status].label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {isInvoiceSent(item, sentIds) ? (
+                          <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">
+                            Gönderildi
+                          </span>
+                        ) : item.exportable ? (
                           <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                             Hazır
                           </span>
@@ -387,67 +508,37 @@ export default function InvoiceReportPage({
                         )}
                       </td>
                       <td className="px-3 py-2 text-gray-700">
-                        {item.edmStatus ? (
+                        {isInvoiceSent(item, sentIds) ? (
+                          <button
+                            type="button"
+                            className="inline-flex text-xs font-semibold text-teal-700 hover:underline"
+                            onClick={() => void downloadEdmPdf(item)}
+                          >
+                            PDF indir
+                          </button>
+                        ) : (
                           <div className="space-y-1">
-                            <span className="text-xs font-medium">
-                              {item.edmStatus}
-                              {item.edmInvoiceId
-                                ? ` · ${item.edmInvoiceId.slice(0, 8)}…`
-                                : ""}
-                            </span>
-                            {item.edmError && item.edmStatus !== "SENT" ? (
+                            <button
+                              type="button"
+                              disabled={
+                                !item.exportable ||
+                                edmBusy ||
+                                sendingId != null
+                              }
+                              onClick={() => void handleEdmSend([item.id])}
+                              className="inline-flex rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {sendingId === item.id
+                                ? "Gönderiliyor…"
+                                : "Manuel Gönder"}
+                            </button>
+                            {rowErrors[item.id] ||
+                            (item.edmError && item.edmStatus !== "SENT") ? (
                               <p className="max-w-xs text-xs text-red-600">
-                                {item.edmError}
+                                {rowErrors[item.id] || item.edmError}
                               </p>
                             ) : null}
-                            {item.edmStatus === "SENT" && item.edmPdfAvailable ? (
-                              <button
-                                type="button"
-                                className="inline-flex text-xs font-semibold text-teal-700 hover:underline"
-                                onClick={() => {
-                                  void (async () => {
-                                    try {
-                                      const response = await fetch(
-                                        `/api/admin/edm/invoice-pdf/${item.id}`
-                                      );
-                                      if (!response.ok) {
-                                        const data = (await response
-                                          .json()
-                                          .catch(() => null)) as {
-                                          error?: string;
-                                        } | null;
-                                        window.alert(
-                                          data?.error ||
-                                            `PDF indirilemedi (HTTP ${response.status}).`
-                                        );
-                                        return;
-                                      }
-                                      const blob = await response.blob();
-                                      const url = URL.createObjectURL(blob);
-                                      const anchor = document.createElement("a");
-                                      anchor.href = url;
-                                      anchor.download = `edm-fatura-${
-                                        item.edmInvoiceId ||
-                                        formatBookingReservationNo(item)
-                                      }.pdf`;
-                                      anchor.click();
-                                      URL.revokeObjectURL(url);
-                                    } catch (error) {
-                                      window.alert(
-                                        error instanceof Error
-                                          ? error.message
-                                          : "PDF indirilemedi."
-                                      );
-                                    }
-                                  })();
-                                }}
-                              >
-                                PDF indir
-                              </button>
-                            ) : null}
                           </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
                         )}
                       </td>
                       <td className="px-3 py-2 text-amber-800">
@@ -459,7 +550,7 @@ export default function InvoiceReportPage({
               ) : (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Filtrelere uygun kayıt bulunamadı.
