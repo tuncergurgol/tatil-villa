@@ -7,6 +7,7 @@ import {
   buildVillaNaturePestNoticeHtml,
   VILLA_NATURE_PEST_NOTICE,
 } from "@/lib/villa-nature-pest-notice";
+import { publishPoolHygieneBlogPost } from "@/lib/publish-pool-hygiene-blog";
 
 export const corporatePageSeeds = [
   { slug: "iletisim", title: "İletişim", pageType: "CORPORATE" as const, sortOrder: 1 },
@@ -246,6 +247,8 @@ export async function seedCmsContent() {
       update: blogData,
     });
   }
+
+  await publishPoolHygieneBlogPost();
 
   for (const menuSeed of Object.values(defaultMenuSeeds)) {
     const menu = await prisma.siteMenu.upsert({
