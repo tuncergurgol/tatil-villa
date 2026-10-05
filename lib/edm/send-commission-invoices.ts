@@ -47,6 +47,18 @@ function pickReceiverAlias(
   return { eArchive: true as const, alias: "" };
 }
 
+function isAlreadySentInvoiceError(message: string) {
+  return /tekrar gönder|daha önce gönder/i.test(message);
+}
+
+function bumpInvoiceId(invoiceId: string) {
+  const match = invoiceId.match(/^([A-Z]{3})(\d{4})(\d{9})$/i);
+  if (!match) return null;
+  const next = Number(match[3]) + 1;
+  if (!Number.isFinite(next) || next > 999_999_999) return null;
+  return `${match[1].toUpperCase()}${match[2]}${String(next).padStart(9, "0")}`;
+}
+
 function pickSenderGbAlias(
   users: Awaited<ReturnType<EdmSoapClient["checkUser"]>>,
   fallback: string
@@ -274,19 +286,20 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           eArchive
         );
 
-        const ubl = buildCommissionUblInvoice({
+        let invoiceId = allocated.invoiceId;
+        let ubl = buildCommissionUblInvoice({
           booking: item.input,
           company: companyForUbl,
           config,
           eArchive,
-          invoiceId: allocated.invoiceId,
+          invoiceId,
         });
 
         if (config.dryRun) {
           await persistEdmResult(item.record.id, details, {
             status: "DRY_RUN",
             uuid: ubl.uuid,
-            invoiceId: allocated.invoiceId,
+            invoiceId,
             eArchive,
             profileId: ubl.profileId,
             senderVkn: supplier.senderVkn,
@@ -302,7 +315,7 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
             eArchive,
             profileId: ubl.profileId,
             uuid: ubl.uuid,
-            invoiceId: allocated.invoiceId,
+            invoiceId,
             receiverVkn: ubl.receiverVkn,
             receiverAlias,
             amount: ubl.gross,
@@ -310,21 +323,47 @@ export async function sendCommissionInvoicesViaEdm(bookingIds: string[]) {
           continue;
         }
 
-        const sent = await client.sendInvoice({
-          senderVkn: supplier.senderVkn,
-          senderAlias: resolvedSenderAlias,
-          receiverVkn: ubl.receiverVkn,
-          receiverAlias,
-          eArchive,
-          invoiceSerial: allocated.serial,
-          invoiceId: allocated.invoiceId,
-          uuid: ubl.uuid,
-          ublXml: ubl.xml,
-        });
+        // EDM sayacı geride kalınca aynı numarayı tekrar üretir (ör. TEA...0032).
+        // Çakışmada yeni UUID ve bir sonraki sıra ile yeniden dene.
+        let sent: Awaited<ReturnType<typeof client.sendInvoice>> | null = null;
+        for (let attempt = 0; attempt < 15; attempt++) {
+          try {
+            sent = await client.sendInvoice({
+              senderVkn: supplier.senderVkn,
+              senderAlias: resolvedSenderAlias,
+              receiverVkn: ubl.receiverVkn,
+              receiverAlias,
+              eArchive,
+              invoiceSerial: allocated.serial,
+              invoiceId,
+              uuid: ubl.uuid,
+              ublXml: ubl.xml,
+            });
+            break;
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "EDM gönderim hatası";
+            const nextId = bumpInvoiceId(invoiceId);
+            if (!isAlreadySentInvoiceError(message) || !nextId || attempt === 14) {
+              throw error;
+            }
+            invoiceId = nextId;
+            ubl = buildCommissionUblInvoice({
+              booking: item.input,
+              company: companyForUbl,
+              config,
+              eArchive,
+              invoiceId,
+            });
+          }
+        }
+        if (!sent) {
+          throw new Error("EDM fatura gönderilemedi.");
+        }
 
         const gibInvoiceId = /^[A-Z]{3}\d{13}$/i.test(sent.id || "")
           ? sent.id
-          : allocated.invoiceId;
+          : invoiceId;
 
         await persistEdmResult(item.record.id, details, {
           status: "SENT",

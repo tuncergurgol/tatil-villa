@@ -299,14 +299,24 @@ export class EdmSoapClient {
     const serials = await this.getInvoiceSerials();
     const year = new Date().getFullYear();
     const preferred = (preferredSerial || "").trim().toUpperCase();
-    const typeHint = eArchive ? /e-?\s*ar[sş]iv|internet/i : /e-?\s*fatura/i;
+    // Internet satış ayrı seri; normal e-arşiv komisyon faturasına karışmasın.
+    const typeHint = eArchive ? /e-?\s*ar[sş]iv/i : /e-?\s*fatura/i;
+    const matchesType = (sendType: string) =>
+      typeHint.test(sendType) && !/internet/i.test(sendType);
 
+    // Tercih edilen seri yalnızca belge tipine uyuyorsa kullanılır.
+    // EDM_INVOICE_SERIAL=TEA iken e-fatura mükellefine TEA basılmasın.
     let chosen =
       (preferred
-        ? serials.find((s) => s.code.toUpperCase() === preferred && s.year === year)
+        ? serials.find(
+            (s) =>
+              s.code.toUpperCase() === preferred &&
+              s.year === year &&
+              matchesType(s.sendType)
+          )
         : undefined) ||
       serials.find(
-        (s) => s.year === year && typeHint.test(s.sendType) && s.code
+        (s) => s.year === year && matchesType(s.sendType) && s.code
       ) ||
       serials.find((s) => s.year === year && s.code) ||
       serials.find((s) => s.code);
