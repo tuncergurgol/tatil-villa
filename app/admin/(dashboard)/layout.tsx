@@ -1,6 +1,7 @@
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminIdleLogout from "@/components/admin/AdminIdleLogout";
 import AdminPageRefresh from "@/components/admin/AdminPageRefresh";
+import AdminScrollTopButton from "@/components/admin/AdminScrollTopButton";
 import AdminMobileLayout from "@/components/admin/mobile/AdminMobileLayout";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export default function AdminDashboardLayout({
     <div className="admin-dashboard flex min-h-screen bg-[#eef0f3]">
       <AdminIdleLogout />
       <AdminPageRefresh />
+      <AdminScrollTopButton />
       <AdminSidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         <AdminMobileLayout>
