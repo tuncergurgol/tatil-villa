@@ -154,18 +154,18 @@ export default function VillaDetailView({
     villa.rooms.length > 0
       ? { id: "oda-kapasite", label: "Oda & Kapasite" }
       : null,
-    villa.reviewCount > 0 ? { id: "yorumlar", label: "Yorumlar" } : null,
-    amenityGroups.length > 0
-      ? { id: "olanaklar", label: "Olanaklar" }
-      : null,
-    villa.distances.length > 0 || villa.hasCoords
-      ? { id: "lokasyon", label: "Lokasyon" }
-      : null,
     canBookPublicly &&
     (villa.calendarDays.length > 0 || villa.periods.length > 0)
       ? { id: "musaitlik", label: "Müsaitlik" }
       : null,
+    villa.distances.length > 0 || villa.hasCoords
+      ? { id: "lokasyon", label: "Lokasyon" }
+      : null,
+    amenityGroups.length > 0
+      ? { id: "olanaklar", label: "Olanaklar" }
+      : null,
     { id: "bilmeniz-gerekenler", label: "Bilmeniz Gerekenler" },
+    villa.reviewCount > 0 ? { id: "yorumlar", label: "Yorumlar" } : null,
     faqs.length > 0 ? { id: "sss", label: "SSS" } : null,
   ].filter(Boolean) as VillaDetailNavItem[];
 
@@ -439,9 +439,42 @@ export default function VillaDetailView({
               </DetailSection>
             ) : null}
 
-            {amenityGroups.length > 0 ? (
-              <DetailSection id="olanaklar">
-                <VillaAmenitiesSection groups={amenityGroups} />
+            {canBookPublicly &&
+            (villa.calendarDays.length > 0 || villa.periods.length > 0) ? (
+              <DetailSection id="musaitlik">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <SectionTitle>Müsaitlik Takvimi</SectionTitle>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                      Tarihlere tıklayarak giriş ve çıkış seçebilirsiniz.
+                      <br />
+                      Müsait günlerde gecelik fiyatlar görünür.
+                    </p>
+                    {foreignCurrencyDisclaimer ? (
+                      <p className="mt-2 text-[11px] font-medium leading-snug text-amber-800 sm:text-xs">
+                        {foreignCurrencyDisclaimer}
+                      </p>
+                    ) : null}
+                  </div>
+                  <PeriodPricesTrigger
+                    periods={villa.periods}
+                    exchangeRates={exchangeRates}
+                    className="shrink-0 self-start sm:mt-0.5 sm:self-center"
+                  />
+                </div>
+                {villa.calendarDays.length > 0 ? (
+                  <div className="mt-5">
+                    <VillaAvailabilityCalendar
+                      days={villa.calendarDays}
+                      exchangeRates={exchangeRates}
+                    />
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-slate-600">
+                    Takvim verisi henüz yüklenmemiş. Dönem fiyatlarına
+                    bakabilirsiniz.
+                  </p>
+                )}
               </DetailSection>
             ) : null}
 
@@ -486,42 +519,9 @@ export default function VillaDetailView({
               </DetailSection>
             ) : null}
 
-            {canBookPublicly &&
-            (villa.calendarDays.length > 0 || villa.periods.length > 0) ? (
-              <DetailSection id="musaitlik">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <SectionTitle>Müsaitlik Takvimi</SectionTitle>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Tarihlere tıklayarak giriş ve çıkış seçebilirsiniz.
-                      <br />
-                      Müsait günlerde gecelik fiyatlar görünür.
-                    </p>
-                    {foreignCurrencyDisclaimer ? (
-                      <p className="mt-2 text-[11px] font-medium leading-snug text-amber-800 sm:text-xs">
-                        {foreignCurrencyDisclaimer}
-                      </p>
-                    ) : null}
-                  </div>
-                  <PeriodPricesTrigger
-                    periods={villa.periods}
-                    exchangeRates={exchangeRates}
-                    className="shrink-0 self-start sm:mt-0.5 sm:self-center"
-                  />
-                </div>
-                {villa.calendarDays.length > 0 ? (
-                  <div className="mt-5">
-                    <VillaAvailabilityCalendar
-                      days={villa.calendarDays}
-                      exchangeRates={exchangeRates}
-                    />
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm text-slate-600">
-                    Takvim verisi henüz yüklenmemiş. Dönem fiyatlarına
-                    bakabilirsiniz.
-                  </p>
-                )}
+            {amenityGroups.length > 0 ? (
+              <DetailSection id="olanaklar">
+                <VillaAmenitiesSection groups={amenityGroups} />
               </DetailSection>
             ) : null}
 
