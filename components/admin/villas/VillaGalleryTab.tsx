@@ -26,6 +26,7 @@ import { getNextGallerySequence } from "@/lib/villa-gallery-filename";
 const UPLOAD_BATCH_SIZE = 30;
 const PARALLEL_UPLOADS = 6;
 const MAX_SINGLE_UPLOAD_BYTES = 42 * 1024 * 1024;
+const DRIVE_IMPORT_BATCH = 4;
 
 function chunkFiles<T>(items: T[], size: number) {
   const chunks: T[][] = [];
@@ -56,6 +57,7 @@ export default function VillaGalleryTab({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [driveUrl, setDriveUrl] = useState("");
 
   useEffect(() => {
     setImages(initialImages);
@@ -208,6 +210,111 @@ export default function VillaGalleryTab({
     });
   }
 
+  function handleDriveImport() {
+    const url = driveUrl.trim();
+    if (!url) {
+      setError("Google Drive klasör bağlantısını yapıştırın");
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
+
+    startTransition(async () => {
+      try {
+        setUploadProgress("Drive klasörü okunuyor...");
+        const listResponse = await fetch("/api/admin/villa-gallery/drive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ villaId, driveUrl: url }),
+        });
+        const listed = (await listResponse.json()) as {
+          error?: string;
+          files?: Array<{ id: string; name: string }>;
+        };
+        if (!listResponse.ok || listed.error) {
+          throw new Error(listed.error ?? "Drive klasörü okunamadı");
+        }
+        const files = listed.files ?? [];
+        if (files.length === 0) {
+          throw new Error("Klasörde eklenecek görsel yok");
+        }
+
+        const uploadedUrls: string[] = [];
+        const failedMessages: string[] = [];
+        let nextSequence = getNextGallerySequence(images);
+
+        for (let index = 0; index < files.length; index += DRIVE_IMPORT_BATCH) {
+          const batch = files.slice(index, index + DRIVE_IMPORT_BATCH);
+          setUploadProgress(
+            `${Math.min(index, files.length)}/${files.length} Drive görseli kaydediliyor...`
+          );
+          const importResponse = await fetch(
+            "/api/admin/villa-gallery/drive/import",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                villaId,
+                fileIds: batch.map((file) => file.id),
+                startSequence: nextSequence,
+                deferPersist: true,
+              }),
+            }
+          );
+          const imported = (await importResponse.json().catch(() => ({}))) as {
+            error?: string;
+            urls?: string[];
+            failed?: Array<{ error: string }>;
+          };
+          nextSequence += batch.length;
+          if (imported.urls?.length) {
+            uploadedUrls.push(...imported.urls);
+          }
+          if (imported.failed?.length) {
+            for (const failure of imported.failed) {
+              if (failure.error) failedMessages.push(failure.error);
+            }
+          } else if (!importResponse.ok && imported.error) {
+            failedMessages.push(imported.error);
+          }
+        }
+
+        if (uploadedUrls.length === 0) {
+          throw new Error(
+            failedMessages[0] ?? "Drive görselleri kaydedilemedi"
+          );
+        }
+
+        const appendResult = await appendVillaGalleryImages(
+          villaId,
+          uploadedUrls
+        );
+        if (appendResult.error) {
+          throw new Error(appendResult.error);
+        }
+
+        const skipped =
+          failedMessages.length > 0
+            ? ` ${failedMessages.length} görsel atlandı.`
+            : "";
+        setDriveUrl("");
+        setSuccessMessage(
+          `${uploadedUrls.length} görsel mevcut galerinin sonuna eklendi.${skipped}`
+        );
+        setUploadProgress(null);
+        refresh();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Drive görselleri eklenirken bir sorun oluştu";
+        setError(message);
+        setUploadProgress(null);
+      }
+    });
+  }
+
   function saveOrder(nextImages: string[]) {
     setImages(nextImages);
     startTransition(async () => {
@@ -330,6 +437,29 @@ export default function VillaGalleryTab({
           JPG, PNG, WEBP — tarayıcıda küçültülür, sunucuda 100 KB altı WebP olarak
           kaydedilir
         </span>
+        <div className="flex w-full flex-wrap items-center gap-3 border-t border-gray-100 pt-3">
+          <input
+            type="url"
+            value={driveUrl}
+            onChange={(event) => setDriveUrl(event.target.value)}
+            placeholder="https://drive.google.com/drive/folders/..."
+            disabled={busy}
+            className="min-w-[16rem] flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 outline-none ring-blue-500 placeholder:text-gray-400 focus:ring-2 disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={handleDriveImport}
+            disabled={busy || !driveUrl.trim()}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <CloudDownload className="h-4 w-4" />
+            Drive&apos;dan ekle
+          </button>
+          <span className="text-xs text-gray-500">
+            Mevcut fotoğraflar durur. Yeni görseller sıranın sonuna, aynı WebP
+            kayıt kuralıyla eklenir. Klasör «bağlantıya sahip herkes» açık olmalı.
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3">

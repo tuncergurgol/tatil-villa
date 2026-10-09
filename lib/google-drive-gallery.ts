@@ -21,8 +21,14 @@ export type GoogleDriveResource = {
   id: string;
 };
 
+export type GoogleDriveImageFile = {
+  id: string;
+  name: string;
+};
+
 export type GoogleDriveGalleryResult = {
   urls: string[];
+  files: GoogleDriveImageFile[];
   warnings: string[];
   source: "drive-api" | "embedded-folder" | "file";
 };
@@ -214,10 +220,10 @@ async function listViaEmbeddedFolder(
 }
 
 /**
- * Google Drive klasör veya dosya paylaşımından indirme URL listesi üretir.
+ * Google Drive klasör veya dosya paylaşımından görsel listesi üretir.
  * Klasör herkese açık (bağlantıya sahip olanlar) olmalıdır.
  */
-export async function listGoogleDriveImageUrls(
+export async function listGoogleDriveImageFiles(
   driveUrl: string
 ): Promise<GoogleDriveGalleryResult> {
   const resource = parseGoogleDriveResource(driveUrl);
@@ -231,6 +237,7 @@ export async function listGoogleDriveImageUrls(
 
   if (resource.type === "file") {
     return {
+      files: [{ id: resource.id, name: resource.id }],
       urls: [googleDriveImageDownloadUrl(resource.id)],
       warnings,
       source: "file",
@@ -270,8 +277,16 @@ export async function listGoogleDriveImageUrls(
   }
 
   return {
+    files,
     urls: files.map((file) => googleDriveImageDownloadUrl(file.id)),
     warnings,
     source,
   };
+}
+
+/** @deprecated listGoogleDriveImageFiles kullanın */
+export async function listGoogleDriveImageUrls(
+  driveUrl: string
+): Promise<GoogleDriveGalleryResult> {
+  return listGoogleDriveImageFiles(driveUrl);
 }
