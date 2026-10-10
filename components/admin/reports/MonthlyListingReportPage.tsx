@@ -8,6 +8,8 @@ import AgencySiteMultiSelect, {
 import {
   getMonthLabel,
   getReportYearOptions,
+  MONTHLY_LISTING_TABLE_HEADERS,
+  monthlyListingRowToCells,
   REPORT_MONTHS,
   type MonthlyListingReportRow,
 } from "@/lib/monthly-listing-report";
@@ -29,35 +31,11 @@ interface MonthlyListingReportPageProps {
   initialData: ReportData;
 }
 
-const TABLE_HEADERS = [
-  "Aracı / Acente",
-  "İlan Tarih Aralığı",
-  "İlan Numarası",
-  "İlan Linki",
-  "İlan Sahibi (Belge Sahibi)",
-  "İlan Adresi",
-  "Konut İzin Belge No",
-  "İlan Ücreti",
-] as const;
-
-function rowToCells(row: MonthlyListingReportRow) {
-  return [
-    row.agencyLabel,
-    row.listingDateRange,
-    row.listingNumber,
-    row.listingUrl,
-    row.listingOwner,
-    row.listingAddress,
-    row.housingPermitNo,
-    row.listingFee,
-  ];
-}
-
 async function downloadExcel(rows: MonthlyListingReportRow[], fileName: string) {
   const XLSX = await import("xlsx");
   const sheetRows = [
-    [...TABLE_HEADERS],
-    ...rows.map((row) => rowToCells(row)),
+    [...MONTHLY_LISTING_TABLE_HEADERS],
+    ...rows.map((row) => monthlyListingRowToCells(row)),
   ];
   const worksheet = XLSX.utils.aoa_to_sheet(sheetRows);
   const workbook = XLSX.utils.book_new();
@@ -216,7 +194,7 @@ export default function MonthlyListingReportPage({
             <thead className="bg-sky-100/80 text-xs font-semibold uppercase tracking-wide text-gray-700">
               <tr>
                 <th className="w-12 px-3 py-3">#</th>
-                {TABLE_HEADERS.map((header) => (
+                {MONTHLY_LISTING_TABLE_HEADERS.map((header) => (
                   <th key={header} className="px-3 py-3">
                     {header}
                   </th>
@@ -257,7 +235,7 @@ export default function MonthlyListingReportPage({
               ) : (
                 <tr>
                   <td
-                    colSpan={TABLE_HEADERS.length + 1}
+                    colSpan={MONTHLY_LISTING_TABLE_HEADERS.length + 1}
                     className="px-4 py-16 text-center text-sm text-gray-500"
                   >
                     Seçilen dönem için belge numarası olan ilan bulunamadı.

@@ -74,3 +74,27 @@ export function formatListingUrl(domain: string, slug: string) {
 export function getMonthLabel(month: number) {
   return REPORT_MONTHS.find((item) => item.value === month)?.label ?? "";
 }
+
+export const MONTHLY_LISTING_TABLE_HEADERS = [
+  "Aracı / Acente",
+  "İlan Tarih Aralığı",
+  "İlan Numarası",
+  "İlan Linki",
+  "İlan Sahibi (Belge Sahibi)",
+  "İlan Adresi",
+  "Konut İzin Belge No",
+  "İlan Ücreti",
+] as const;
+
+export function monthlyListingRowToCells(row: MonthlyListingReportRow) {
+  return [
+    row.agencyLabel,
+    row.listingDateRange,
+    row.listingNumber,
+    row.listingUrl,
+    row.listingOwner,
+    row.listingAddress,
+    row.housingPermitNo,
+    row.listingFee,
+  ];
+}

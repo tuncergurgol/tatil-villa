@@ -66,6 +66,8 @@ CRON_FILE="$(mktemp)"
 55 8 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/daily-check-in-reports" >>"${LOG_DIR}/daily-check-in-reports.log" 2>&1
 # tatil-villa cron — BTRANS 538 aylık bildirim XML maili (her ayın 1'i 09:10; önceki ay, onay tarihi)
 10 9 1 * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/btrans-monthly-report" >>"${LOG_DIR}/btrans-monthly-report.log" 2>&1
+# tatil-villa cron — Aylık İlan Raporu Excel maili (her ayın 1'i 09:15; önceki ay)
+15 9 1 * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/monthly-listing-report" >>"${LOG_DIR}/monthly-listing-report.log" 2>&1
 # tatil-villa cron — ONAYLANDI konaklama durumu YAPILDI (giriş günü 23:50 + geçmiş catch-up)
 50 23 * * * curl -fsS -m 300 -H "x-cron-secret: ${CRON_SECRET}" "${BASE_URL}/api/cron/stay-status-complete" >>"${LOG_DIR}/stay-status-complete.log" 2>&1
 # tatil-villa cron — IndexNow (Bing/Yandex/Edge/Opera) günlük URL bildirimi
