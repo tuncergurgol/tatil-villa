@@ -12,6 +12,7 @@ import {
   buildSeoGalleryFileName,
   getNextGallerySequence,
 } from "@/lib/villa-gallery-filename";
+import { archiveGalleryFilesToDrive } from "@/lib/google-drive-archive.server";
 import { appendVillaGalleryUrls } from "@/lib/villa-gallery-upload.server";
 
 const DOWNLOAD_CONCURRENCY = 3;
@@ -31,6 +32,7 @@ export type DriveGalleryImportResult = {
   success?: boolean;
   urls?: string[];
   failed?: DriveGalleryImportFailure[];
+  archiveWarning?: string;
 };
 
 function normalizeGalleryImages(images: string[], coverImage: string) {
@@ -222,6 +224,7 @@ export async function importDriveGalleryFileBatch(
         await writeFile(path.join(uploadDir, fileName), webpBuffer);
         return {
           url: `/uploads/villas/${villa.id}/${fileName}`,
+          archive: { fileName, buffer: webpBuffer },
         };
       } catch (error) {
         return {
@@ -251,12 +254,19 @@ export async function importDriveGalleryFileBatch(
     };
   }
 
+  const archived = await archiveGalleryFilesToDrive(
+    villa.name,
+    results.flatMap((item) =>
+      "archive" in item && item.archive ? [item.archive] : []
+    )
+  );
+
   if (options?.persist !== false) {
     const appended = await appendVillaGalleryUrls(villaId, urls);
     if (appended.error) {
-      return { error: appended.error, urls, failed };
+      return { error: appended.error, urls, failed, archiveWarning: archived.warning };
     }
   }
 
-  return { success: true, urls, failed };
+  return { success: true, urls, failed, archiveWarning: archived.warning };
 }

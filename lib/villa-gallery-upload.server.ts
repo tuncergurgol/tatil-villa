@@ -8,6 +8,7 @@ import {
   buildSeoGalleryFileName,
   getNextGallerySequence,
 } from "@/lib/villa-gallery-filename";
+import { archiveGalleryFilesToDrive } from "@/lib/google-drive-archive.server";
 import { revalidateVillaGallery } from "@/lib/villa-gallery-revalidate.server";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -23,6 +24,7 @@ export type VillaGalleryUploadResult = {
   error?: string;
   success?: boolean;
   urls?: string[];
+  archiveWarning?: string;
 };
 
 export type VillaGalleryUploadOptions = {
@@ -143,7 +145,7 @@ export async function uploadVillaGalleryFiles(
       })
     );
 
-    const uploadedUrls = await mapWithConcurrency(
+    const uploaded = await mapWithConcurrency(
       preparedWithBuffers,
       UPLOAD_CONCURRENCY,
       async ({ buffer, sequence: fileSequence }) => {
@@ -151,8 +153,16 @@ export async function uploadVillaGalleryFiles(
         const outputPath = path.join(uploadDir, fileName);
         const webpBuffer = await processGalleryImageToWebp(buffer);
         await writeFile(outputPath, webpBuffer);
-        return `/uploads/villas/${villaId}/${fileName}`;
+        return {
+          url: `/uploads/villas/${villaId}/${fileName}`,
+          archive: { fileName, buffer: webpBuffer },
+        };
       }
+    );
+    const uploadedUrls = uploaded.map((item) => item.url);
+    const archived = await archiveGalleryFilesToDrive(
+      villa.name,
+      uploaded.map((item) => item.archive)
     );
 
     if (options?.persist !== false) {
@@ -163,7 +173,11 @@ export async function uploadVillaGalleryFiles(
       }
     }
 
-    return { success: true, urls: uploadedUrls };
+    return {
+      success: true,
+      urls: uploadedUrls,
+      archiveWarning: archived.warning,
+    };
   } catch (error) {
     const message =
       error instanceof Error

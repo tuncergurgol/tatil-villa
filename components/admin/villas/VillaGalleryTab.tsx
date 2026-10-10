@@ -67,7 +67,11 @@ export default function VillaGalleryTab({
 
   async function uploadGalleryBatch(
     files: File[],
-    options?: { startSequence?: number; deferPersist?: boolean }
+    options?: {
+      startSequence?: number;
+      deferPersist?: boolean;
+      archiveWarnings?: string[];
+    }
   ): Promise<string[]> {
     const formData = new FormData();
     formData.append("villaId", villaId);
@@ -84,7 +88,12 @@ export default function VillaGalleryTab({
       body: formData,
     });
 
-    let payload: { error?: string; success?: boolean; urls?: string[] } = {};
+    let payload: {
+      error?: string;
+      success?: boolean;
+      urls?: string[];
+      archiveWarning?: string;
+    } = {};
     try {
       payload = await response.json();
     } catch {
@@ -97,6 +106,9 @@ export default function VillaGalleryTab({
       );
     }
 
+    if (payload.archiveWarning) {
+      options?.archiveWarnings?.push(payload.archiveWarning);
+    }
     return payload.urls ?? [];
   }
 
@@ -146,12 +158,16 @@ export default function VillaGalleryTab({
         );
 
         const uploadedUrls: string[] = [];
+        const archiveWarnings: string[] = [];
         const startSequence = getNextGallerySequence(images);
         const totalBytes = estimateUploadBytes(prepared);
 
         if (totalBytes <= MAX_SINGLE_UPLOAD_BYTES) {
           setUploadProgress(`${prepared.length} görsel yükleniyor...`);
-          const urls = await uploadGalleryBatch(prepared, { startSequence });
+          const urls = await uploadGalleryBatch(prepared, {
+            startSequence,
+            archiveWarnings,
+          });
           uploadedUrls.push(...urls);
         } else {
           const batches = chunkFiles(prepared, UPLOAD_BATCH_SIZE);
@@ -173,6 +189,7 @@ export default function VillaGalleryTab({
                 uploadGalleryBatch(batch, {
                   startSequence: batchStart,
                   deferPersist: true,
+                  archiveWarnings,
                 })
               )
             );
@@ -196,7 +213,10 @@ export default function VillaGalleryTab({
         }
 
         if (fileInputRef.current) fileInputRef.current.value = "";
-        setSuccessMessage(`${fileList.length} görsel yüklendi.`);
+        const archiveNote = archiveWarnings[0]
+          ? ` Drive klasörüne yazılamadı: ${archiveWarnings[0]}`
+          : ` Drive'da «${villaName}» klasörüne de eklendi.`;
+        setSuccessMessage(`${fileList.length} görsel yüklendi.${archiveNote}`);
         setUploadProgress(null);
         refresh();
       } catch (error) {
@@ -242,6 +262,7 @@ export default function VillaGalleryTab({
 
         const uploadedUrls: string[] = [];
         const failedMessages: string[] = [];
+        const archiveWarnings: string[] = [];
         let nextSequence = getNextGallerySequence(images);
 
         for (let index = 0; index < files.length; index += DRIVE_IMPORT_BATCH) {
@@ -266,10 +287,14 @@ export default function VillaGalleryTab({
             error?: string;
             urls?: string[];
             failed?: Array<{ error: string }>;
+            archiveWarning?: string;
           };
           nextSequence += batch.length;
           if (imported.urls?.length) {
             uploadedUrls.push(...imported.urls);
+          }
+          if (imported.archiveWarning) {
+            archiveWarnings.push(imported.archiveWarning);
           }
           if (imported.failed?.length) {
             for (const failure of imported.failed) {
@@ -298,9 +323,12 @@ export default function VillaGalleryTab({
           failedMessages.length > 0
             ? ` ${failedMessages.length} görsel atlandı.`
             : "";
+        const archiveNote = archiveWarnings[0]
+          ? ` Drive klasörüne yazılamadı: ${archiveWarnings[0]}`
+          : ` Drive'da «${villaName}» klasörüne de eklendi.`;
         setDriveUrl("");
         setSuccessMessage(
-          `${uploadedUrls.length} görsel mevcut galerinin sonuna eklendi.${skipped}`
+          `${uploadedUrls.length} görsel mevcut galerinin sonuna eklendi.${archiveNote}${skipped}`
         );
         setUploadProgress(null);
         refresh();
