@@ -19,8 +19,6 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { siteConfig } from "@/lib/data";
 
-const loyaltyQuickLink = { href: "/sadakat", label: "Sadakat Programı" };
-
 function isOwnerCheckInPath(pathname: string): boolean {
   return /\/giris-bilgilendirme\/[^/]+\/evsahibi\/?$/.test(pathname);
 }
@@ -53,7 +51,7 @@ export default async function SiteChromeBelowFold() {
     blogCategoryRows,
     tracking,
   ] = await Promise.all([
-    getSiteMenuItemsForPublic("footer-quick"),
+    getSiteMenuItemsForPublic("footer-quick", site.key),
     getFooterCorporatePages(),
     getFooterRegionLinks(site.key),
     hidePreFooter
@@ -94,10 +92,6 @@ export default async function SiteChromeBelowFold() {
           label: maybeRewriteVillaWording(item.label, site.key),
         }))
       : defaultQuickLinks),
-    loyaltyQuickLink,
-    ...(site.key === "tatildeyiz"
-      ? [{ href: "/yeni-otel", label: "YENİ OTEL" }]
-      : []),
   ];
 
   const corporateLinks = corporatePages.map((page) => ({

@@ -92,6 +92,13 @@ export function isPublicSiteKey(value: string): value is PublicSiteKey {
   return Boolean(site4Key && site4Key === value);
 }
 
+export function listPublicSiteOptions(): { key: PublicSiteKey; label: string }[] {
+  return listPublicSiteKeys().map((key) => ({
+    key,
+    label: getPublicSiteMeta(key).label,
+  }));
+}
+
 export function listPublicSiteKeys(): PublicSiteKey[] {
   const keys: PublicSiteKey[] = [...PUBLIC_SITE_KEYS];
   const site4Key = getSite4KeyFromEnv();

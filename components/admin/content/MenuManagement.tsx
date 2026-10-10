@@ -8,6 +8,11 @@ import {
 } from "@/app/actions/admin/cms-content";
 import { cmsInputClass } from "@/components/admin/content/CmsFormSections";
 
+type MenuSiteOption = {
+  key: string;
+  label: string;
+};
+
 type MenuItem = {
   id: string;
   label: string;
@@ -15,6 +20,7 @@ type MenuItem = {
   sortOrder: number;
   active: boolean;
   openInNewTab: boolean;
+  siteKeys: string[];
 };
 
 type Menu = {
@@ -25,7 +31,7 @@ type Menu = {
 };
 
 const menuGridClass =
-  "grid grid-cols-1 items-center gap-3 lg:grid-cols-[72px_minmax(0,1.15fr)_minmax(0,1.15fr)_88px_112px] lg:gap-4";
+  "grid grid-cols-1 items-center gap-3 lg:grid-cols-[64px_minmax(0,1fr)_minmax(0,1.1fr)_minmax(180px,220px)_88px_112px] lg:gap-4";
 
 const menuHeaderClass =
   "text-[11px] font-bold uppercase tracking-wide text-gray-700";
@@ -56,15 +62,48 @@ function ActiveToggle({
   );
 }
 
+function siteChecked(siteKeys: string[], siteKey: string) {
+  return siteKeys.length === 0 || siteKeys.includes(siteKey);
+}
+
+function SiteChecks({
+  siteOptions,
+  siteKeys,
+}: {
+  siteOptions: MenuSiteOption[];
+  siteKeys?: string[];
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      {siteOptions.map((site) => (
+        <label
+          key={site.key}
+          className="flex items-center gap-1.5 text-[11px] text-gray-700"
+        >
+          <input
+            type="checkbox"
+            name="siteKeys"
+            value={site.key}
+            defaultChecked={siteKeys ? siteChecked(siteKeys, site.key) : true}
+          />
+          {site.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function MenuItemRow({
   menuId,
   item,
+  siteOptions,
   pending,
   onSave,
   onDelete,
 }: {
   menuId: string;
   item: MenuItem;
+  siteOptions: MenuSiteOption[];
   pending: boolean;
   onSave: (id: string, formData: FormData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -108,6 +147,7 @@ function MenuItemRow({
             className={cmsInputClass}
           />
         </label>
+        <SiteChecks siteOptions={siteOptions} siteKeys={item.siteKeys} />
         <ActiveToggle
           active={active}
           onChange={setActive}
@@ -135,7 +175,13 @@ function MenuItemRow({
   );
 }
 
-export default function MenuManagement({ menus }: { menus: Menu[] }) {
+export default function MenuManagement({
+  menus,
+  siteOptions,
+}: {
+  menus: Menu[];
+  siteOptions: MenuSiteOption[];
+}) {
   const router = useRouter();
   const [openMenuIds, setOpenMenuIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | "new" | null>(null);
@@ -253,6 +299,7 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
             <span className={menuHeaderClass}>Sıra</span>
             <span className={menuHeaderClass}>Başlık</span>
             <span className={menuHeaderClass}>Link</span>
+            <span className={menuHeaderClass}>Siteler</span>
             <span className={menuHeaderClass}>Durum</span>
             <span className={menuHeaderClass}>İşlem</span>
           </div>
@@ -263,9 +310,10 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((item) => (
                 <MenuItemRow
-                  key={`${item.id}-${item.active}-${item.label}-${item.href}-${item.sortOrder}`}
+                  key={`${item.id}-${item.active}-${item.label}-${item.href}-${item.sortOrder}-${item.siteKeys.join(",")}`}
                   menuId={menu.id}
                   item={item}
+                  siteOptions={siteOptions}
                   pending={pendingId === item.id}
                   onSave={async (id, formData) => handleSave(id, formData)}
                   onDelete={handleDelete}
@@ -328,6 +376,12 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
                   className={`${cmsInputClass} mt-1.5`}
                 />
               </label>
+              <div>
+                <span className={menuHeaderClass}>Siteler</span>
+                <div className="mt-1.5">
+                  <SiteChecks siteOptions={siteOptions} />
+                </div>
+              </div>
               <div>
                 <span className={menuHeaderClass}>Durum</span>
                 <div className="mt-1.5 max-w-[120px]">

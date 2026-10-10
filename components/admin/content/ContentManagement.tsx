@@ -46,6 +46,7 @@ interface ContentManagementProps {
   blogAiConfigured: boolean;
   pages: CmsPage[];
   menus: SiteMenu[];
+  menuSiteOptions: { key: string; label: string }[];
   campaigns: Campaign[];
 }
 
@@ -60,6 +61,7 @@ export default function ContentManagement({
   blogAiConfigured,
   pages,
   menus,
+  menuSiteOptions,
   campaigns,
 }: ContentManagementProps) {
   const router = useRouter();
@@ -183,7 +185,7 @@ export default function ContentManagement({
             <CorporatePageManagement pages={pages} />
           </TabPanel>
           <TabPanel active={activeModule === "menuler"}>
-            <MenuManagement menus={menus} />
+            <MenuManagement menus={menus} siteOptions={menuSiteOptions} />
           </TabPanel>
           <TabPanel active={activeModule === "kampanyalar"}>
             <CampaignManagement campaigns={campaigns} />

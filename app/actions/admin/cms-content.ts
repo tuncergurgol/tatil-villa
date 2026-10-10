@@ -339,6 +339,7 @@ const menuItemSchema = z.object({
   active: z.boolean().optional(),
   openInNewTab: z.boolean().optional(),
   parentId: z.string().optional(),
+  siteKeys: z.array(z.string().min(1)).min(1, "En az bir site seçin"),
 });
 
 export async function saveSiteMenuItemAction(
@@ -359,9 +360,20 @@ export async function saveSiteMenuItemAction(
       active: parseFormBoolean(formData.get("active")),
       openInNewTab: parseFormBoolean(formData.get("openInNewTab")),
       parentId: String(formData.get("parentId") ?? "").trim() || undefined,
+      siteKeys: formData
+        .getAll("siteKeys")
+        .map((value) => String(value).trim())
+        .filter(Boolean),
     });
     if (!parsed.success) {
-      return { error: "Geçersiz menü öğesi. Başlık ve link zorunludur." };
+      const missingSite = parsed.error.issues.some((issue) =>
+        issue.path.includes("siteKeys")
+      );
+      return {
+        error: missingSite
+          ? "En az bir site seçin."
+          : "Geçersiz menü öğesi. Başlık ve link zorunludur.",
+      };
     }
 
     const data = {
@@ -372,6 +384,7 @@ export async function saveSiteMenuItemAction(
       active: id ? parsed.data.active : parsed.data.active ?? true,
       openInNewTab: parsed.data.openInNewTab ?? false,
       parentId: parsed.data.parentId || null,
+      siteKeys: [...new Set(parsed.data.siteKeys)],
     };
 
     if (id) {

@@ -29,7 +29,7 @@ const theme2DefaultHeaderLinks = [
 export default async function SiteChromeHeader() {
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
-  const headerMenu = await getSiteMenuItemsForPublic("header");
+  const headerMenu = await getSiteMenuItemsForPublic("header", site.key);
 
   const headerLinks =
     site.homeTheme === "theme-2"

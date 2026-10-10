@@ -1746,6 +1746,8 @@ model SiteMenuItem {
   sortOrder  Int            @default(0)
   active     Boolean        @default(true)
   openInNewTab Boolean      @default(false)
+  /** Boş liste tüm public sitelerde görünür. Dolu liste yalnızca seçilen siteler. */
+  siteKeys   String[]       @default([])
   parentId   String?
   parent     SiteMenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: Cascade)
   children   SiteMenuItem[] @relation("MenuTree")

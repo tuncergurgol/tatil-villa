@@ -12,6 +12,7 @@ import {
   getBlogAiTopicsForAdmin,
 } from "@/lib/queries/blog-ai";
 import { getAllSiteMenusForAdmin } from "@/lib/queries/site-menus";
+import { listPublicSiteOptions } from "@/lib/public-site-keys";
 import { getAllCampaigns } from "@/lib/queries/campaigns";
 import { isBlogAiConfigured } from "@/lib/blog-ai-runner";
 
@@ -86,6 +87,7 @@ export default async function ContentHubPage({
       blogAiConfigured={isBlogAiConfigured()}
       pages={pages}
       menus={menus}
+      menuSiteOptions={listPublicSiteOptions()}
       campaigns={campaigns}
     />
   );

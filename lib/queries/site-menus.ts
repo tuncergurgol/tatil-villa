@@ -26,23 +26,35 @@ export async function getSiteMenuByKey(key: string) {
   });
 }
 
-export async function getSiteMenuItemsForPublic(key: string) {
+function visibleOnSite(siteKeys: string[], siteKey?: string | null) {
+  if (!siteKey || siteKeys.length === 0) return true;
+  return siteKeys.includes(siteKey);
+}
+
+export async function getSiteMenuItemsForPublic(
+  key: string,
+  siteKey?: string | null
+) {
   const menu = await getSiteMenuByKey(key);
   if (!menu) return [];
 
-  return menu.items.map((item) => ({
-    id: item.id,
-    label: item.label,
-    href: item.href,
-    openInNewTab: item.openInNewTab,
-    children: item.children.map((child) => ({
-      id: child.id,
-      label: child.label,
-      href: child.href,
-      openInNewTab: child.openInNewTab,
-      children: [],
-    })),
-  }));
+  return menu.items
+    .filter((item) => visibleOnSite(item.siteKeys, siteKey))
+    .map((item) => ({
+      id: item.id,
+      label: item.label,
+      href: item.href,
+      openInNewTab: item.openInNewTab,
+      children: item.children
+        .filter((child) => visibleOnSite(child.siteKeys, siteKey))
+        .map((child) => ({
+          id: child.id,
+          label: child.label,
+          href: child.href,
+          openInNewTab: child.openInNewTab,
+          children: [],
+        })),
+    }));
 }
 
 export async function getAllSiteMenusForAdmin() {
