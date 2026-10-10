@@ -82,21 +82,21 @@ function MenuItemRow({
       <input type="hidden" name="active" value={active ? "true" : "false"} />
       <div className={menuGridClass}>
         <label className="block min-w-0">
-          <span className={menuHeaderClass}>Başlık</span>
           <input
             name="label"
             defaultValue={item.label}
             required
-            className={`${cmsInputClass} mt-1.5`}
+            aria-label="Başlık"
+            className={cmsInputClass}
           />
         </label>
         <label className="block min-w-0">
-          <span className={menuHeaderClass}>Link</span>
           <input
             name="href"
             defaultValue={item.href}
             required
-            className={`${cmsInputClass} mt-1.5`}
+            aria-label="Link"
+            className={cmsInputClass}
           />
         </label>
         <label className="block min-w-0">
@@ -142,6 +142,7 @@ function MenuItemRow({
 
 export default function MenuManagement({ menus }: { menus: Menu[] }) {
   const router = useRouter();
+  const [openMenuIds, setOpenMenuIds] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | "new" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -200,19 +201,44 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
         </div>
       ) : null}
 
-      {menus.map((menu) => (
+      {menus.map((menu) => {
+        const open = openMenuIds.has(menu.id);
+        return (
         <section
           key={menu.id}
           className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5"
         >
-          <div>
-            <h2 className="text-sm font-semibold text-gray-800">{menu.label}</h2>
-            <p className="mt-0.5 text-xs text-gray-500">{menu.key}</p>
-          </div>
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() =>
+              setOpenMenuIds((current) => {
+                const next = new Set(current);
+                if (next.has(menu.id)) next.delete(menu.id);
+                else next.add(menu.id);
+                return next;
+              })
+            }
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <span>
+              <span className="block text-sm font-semibold text-gray-800">
+                {menu.label}
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-500">
+                {menu.key} · {menu.items.length} öğe
+              </span>
+            </span>
+            <span className="text-xs font-semibold text-gray-500">
+              {open ? "Kapat" : "Aç"}
+            </span>
+          </button>
 
+          {open ? (
+          <>
           <div className={`${menuGridClass} px-1`}>
-            <span className={menuHeaderClass}>Başlık</span>
-            <span className={menuHeaderClass}>Link</span>
+            <span />
+            <span />
             <span className={menuHeaderClass}>Sıra</span>
             <span className={menuHeaderClass}>Durum</span>
             <span className={menuHeaderClass}>İşlem</span>
@@ -285,8 +311,11 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
                 />
               ))}
           </div>
+          </>
+          ) : null}
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 }
