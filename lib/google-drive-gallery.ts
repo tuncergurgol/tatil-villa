@@ -169,7 +169,8 @@ async function listViaEmbeddedFolder(
   const url = `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(folderId)}`;
   const response = await fetch(url, {
     headers: {
-      "User-Agent": BROWSER_UA,
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36",
       Accept: "text/html,application/xhtml+xml",
       "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
     },
@@ -182,41 +183,47 @@ async function listViaEmbeddedFolder(
   }
 
   const html = await response.text();
-  const found = new Map<string, string>();
+  const found = new Map<string, { id: string; name: string }>();
 
   for (const match of html.matchAll(
-    /\/file\/d\/([a-zA-Z0-9_-]+)\/(?:view|preview)[^"']*["'][^>]*>([^<]*)</gi
+    /id="entry-([a-zA-Z0-9_-]+)"([\s\S]*?)<div class="flip-entry-title">([^<]*)<\/div>/gi
   )) {
     const id = match[1]!;
-    const name = match[2]?.replace(/\s+/g, " ").trim() || id;
-    if (!found.has(id)) found.set(id, name);
+    const chunk = match[2] ?? "";
+    const name = decodeDriveText(match[3] ?? "").replace(/\s+/g, " ").trim();
+    if (!name || found.has(id)) continue;
+    if (chunk.includes("/drive/folders/") && !chunk.includes("/file/d/")) continue;
+    const mime = chunk.match(
+      /googleusercontent\.com\/16\/type\/([^"'\s]+)/i
+    )?.[1];
+    if (mime && !isImageFile(name, decodeURIComponent(mime))) continue;
+    if (!mime && !isImageFile(name)) continue;
+    found.set(id, { id, name });
   }
 
-  for (const match of html.matchAll(
-    /data-id=["']([a-zA-Z0-9_-]{10,})["'][^>]*>[\s\S]{0,200}?aria-label=["']([^"']+)["']/gi
-  )) {
-    const id = match[1]!;
-    const name = match[2]?.trim() || id;
-    if (!found.has(id)) found.set(id, name);
+  if (found.size === 0) {
+    for (const match of html.matchAll(
+      /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/(?:view|preview)[^"']*["'][^>]*>([^<]+)</gi
+    )) {
+      const id = match[1]!;
+      const name = decodeDriveText(match[2] ?? "").replace(/\s+/g, " ").trim();
+      if (!name || !isImageFile(name) || found.has(id)) continue;
+      found.set(id, { id, name });
+    }
   }
 
-  for (const match of html.matchAll(
-    /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/gi
-  )) {
-    const id = match[1]!;
-    if (!found.has(id)) found.set(id, id);
-  }
+  const files = [...found.values()];
+  files.sort((left, right) => naturalNameSort(left.name, right.name));
+  return files;
+}
 
-  const files = [...found.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .filter((file) => isImageFile(file.name) || file.name === file.id);
-
-  // İsim yoksa (yalnızca id) hepsini görsel kabul et; aksi halde uzantı filtresi uygula
-  const withExt = files.filter((file) => isImageFile(file.name));
-  const resolved = withExt.length > 0 ? withExt : files;
-
-  resolved.sort((left, right) => naturalNameSort(left.name, right.name));
-  return resolved;
+function decodeDriveText(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 /**

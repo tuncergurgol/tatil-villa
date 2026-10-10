@@ -45,32 +45,107 @@ function looksLikeHtml(buffer: Buffer, contentType: string) {
   return head.startsWith("<!doctype") || head.startsWith("<html");
 }
 
+function storeCookies(jar: Map<string, string>, response: Response) {
+  const lines =
+    typeof response.headers.getSetCookie === "function"
+      ? response.headers.getSetCookie()
+      : [];
+  for (const line of lines) {
+    const pair = line.split(";")[0] ?? "";
+    const eq = pair.indexOf("=");
+    if (eq <= 0) continue;
+    jar.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
+  }
+}
+
+function cookieHeader(jar: Map<string, string>) {
+  return [...jar.entries()].map(([key, value]) => `${key}=${value}`).join("; ");
+}
+
+function confirmDownloadUrl(html: string) {
+  const action = html.match(/<form[^>]+action="([^"]+)"/i)?.[1];
+  if (action) {
+    const url = new URL(action.replace(/&amp;/g, "&"), "https://drive.google.com");
+    for (const field of ["id", "export", "confirm", "uuid"]) {
+      const value = html.match(
+        new RegExp(`name="${field}"\\s+value="([^"]*)"`, "i")
+      )?.[1];
+      if (value) url.searchParams.set(field, value.replace(/&amp;/g, "&"));
+    }
+    if (!url.searchParams.get("export")) url.searchParams.set("export", "download");
+    return url.toString();
+  }
+
+  const href = html.match(
+    /href="((?:https:\/\/drive\.usercontent\.google\.com)?\/download\?[^"]+|\/uc\?[^"]*confirm=[^"]+)"/i
+  )?.[1];
+  if (!href) return null;
+  return new URL(href.replace(/&amp;/g, "&"), "https://drive.google.com").toString();
+}
+
+async function fetchDrive(
+  url: string,
+  jar: Map<string, string>,
+  redirects = 0
+): Promise<Response> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": BROWSER_UA,
+      Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      Referer: "https://drive.google.com/",
+      ...(jar.size > 0 ? { Cookie: cookieHeader(jar) } : {}),
+    },
+    redirect: "manual",
+    cache: "no-store",
+  });
+  storeCookies(jar, response);
+  if (
+    redirects < 5 &&
+    response.status >= 300 &&
+    response.status < 400
+  ) {
+    const location = response.headers.get("location");
+    if (location) {
+      return fetchDrive(new URL(location, url).toString(), jar, redirects + 1);
+    }
+  }
+  return response;
+}
+
 async function downloadDriveFile(fileId: string): Promise<Buffer> {
+  const jar = new Map<string, string>();
   const urls = [
+    `https://lh3.googleusercontent.com/d/${encodeURIComponent(fileId)}=w2400`,
     googleDriveImageDownloadUrl(fileId),
     `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`,
   ];
   let lastError = "Görsel indirilemedi";
 
-  for (const url of urls) {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": BROWSER_UA,
-        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-        Referer: "https://drive.google.com/",
-      },
-      redirect: "follow",
-      cache: "no-store",
-    });
-    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-    const buffer = Buffer.from(await response.arrayBuffer());
+  for (const startUrl of urls) {
+    let response = await fetchDrive(startUrl, jar);
+    let contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    let buffer = Buffer.from(await response.arrayBuffer());
+
+    if (response.ok && looksLikeHtml(buffer, contentType)) {
+      const nextUrl = confirmDownloadUrl(buffer.toString("utf8"));
+      if (nextUrl) {
+        response = await fetchDrive(nextUrl, jar);
+        contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+        buffer = Buffer.from(await response.arrayBuffer());
+      }
+    }
+
     if (!response.ok) {
       lastError = `Görsel indirilemedi (${response.status})`;
       continue;
     }
     if (looksLikeHtml(buffer, contentType) || buffer.length < 128) {
-      lastError =
-        "Görsel yerine sayfa döndü. Klasörü «bağlantıya sahip herkes» olarak paylaşın.";
+      const text = buffer.toString("utf8");
+      lastError = /permission to download|hasn&#39;t given you permission|indirme izni/i.test(
+        text
+      )
+        ? "Dosyanın indirilmesine izin verilmemiş. Klasörü «bağlantıya sahip herkes» olarak paylaşın."
+        : "Görsel yerine sayfa döndü. Klasörü «bağlantıya sahip herkes» olarak paylaşın.";
       continue;
     }
     return buffer;
