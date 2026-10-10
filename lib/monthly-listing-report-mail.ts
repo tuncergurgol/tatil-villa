@@ -1,19 +1,45 @@
 import * as XLSX from "xlsx";
 import {
-  getMonthLabel,
   MONTHLY_LISTING_TABLE_HEADERS,
   monthlyListingRowToCells,
   type MonthlyListingReportRow,
 } from "@/lib/monthly-listing-report";
 
 export const MONTHLY_LISTING_REPORT_EMAIL = "info@tatildeyiz.com.tr";
-export const MONTHLY_LISTING_EMAIL_SUBJECT = "AYLIK İLAN RAPORU";
+export const MONTHLY_LISTING_FROM_EMAIL = "tuncer@tatildeyiz.com.tr";
+export const MONTHLY_LISTING_EMAIL_SUBJECT =
+  "12970 Glamping Turizm - Satışını ve pazarlamasını yapmış olduğumuz Turizm amaçlı Konutların listesi";
 export const MONTHLY_LISTING_EXCEL_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-export function formatMonthlyListingPeriodLabel(year: number, month: number) {
-  const label = getMonthLabel(month) || String(month);
-  return `${label} ${year}`;
+const MONTH_FILE_SLUGS = [
+  "ocak",
+  "subat",
+  "mart",
+  "nisan",
+  "mayis",
+  "haziran",
+  "temmuz",
+  "agustos",
+  "eylul",
+  "ekim",
+  "kasim",
+  "aralik",
+] as const;
+
+const MAIL_BODY = [
+  "Merhabalar,",
+  "",
+  "KONUTLARIN TURİZM AMAÇLI KİRALANMASINI SAĞLAYAN ARACI HİZMET SAĞLAYICILARININ BAKANLIĞA YAPACAKLARI BİLDİRİMLERE İLİŞKİN TEBLİĞ kapsamında hazırlamış olduğumuz excel listesi ekte tarafınıza sunulmuştur.",
+  "",
+  "Saygılarımızla",
+  "12970 Glamping Turizm",
+  "Tunçer Gürgöl",
+].join("\n");
+
+export function monthlyListingAttachmentName(year: number, month: number) {
+  const slug = MONTH_FILE_SLUGS[month - 1] ?? String(month);
+  return `aylik ilan raporu ${year} ${slug}.xlsx`;
 }
 
 export function buildMonthlyListingExcelBuffer(rows: MonthlyListingReportRow[]) {
@@ -28,59 +54,17 @@ export function buildMonthlyListingExcelBuffer(rows: MonthlyListingReportRow[]) 
   return Buffer.isBuffer(output) ? output : Buffer.from(output as Uint8Array);
 }
 
-export type MonthlyListingMailSummary = {
-  year: number;
-  month: number;
-  listingDateRange: string;
-  count: number;
-  test?: boolean;
-};
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+export function buildMonthlyListingReportText() {
+  return MAIL_BODY;
 }
 
-export function buildMonthlyListingReportText(summary: MonthlyListingMailSummary) {
-  const period = formatMonthlyListingPeriodLabel(summary.year, summary.month);
-  const lines = [
-    "Bilgilendirme",
-    summary.test ? "Bu bir TEST mailidir." : null,
-    `Aylık İlan Raporu (7464 S.K.) — ${period}`,
-    `İlan tarih aralığı: ${summary.listingDateRange}`,
-    `Kayıt: ${summary.count}`,
-    summary.count > 0
-      ? "Excel ektedir. Panelde site seçilmeden alınan raporla aynıdır."
-      : "Bu dönem için ilan kaydı bulunamadı.",
-    "",
-    "Bilgilerinize",
-    "BONT",
-  ].filter((line): line is string => line != null);
-  return lines.join("\n");
-}
-
-export function buildMonthlyListingReportHtml(summary: MonthlyListingMailSummary) {
-  const period = formatMonthlyListingPeriodLabel(summary.year, summary.month);
-  const testBanner = summary.test
-    ? `<p style="color:#b45309;"><strong>Bu bir TEST mailidir.</strong></p>`
-    : "";
-  const result =
-    summary.count > 0
-      ? `<p>Excel ektedir. Panelde site seçilmeden alınan raporla aynıdır.</p>`
-      : `<p>Bu dönem için ilan kaydı bulunamadı.</p>`;
-
+export function buildMonthlyListingReportHtml() {
+  const [greeting, , paragraph, , closing, agency, name] = MAIL_BODY.split("\n");
   return `
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;">
-      <p><strong>Bilgilendirme</strong></p>
-      ${testBanner}
-      <p>Aylık İlan Raporu (7464 S.K.) — <strong>${escapeHtml(period)}</strong><br>
-      İlan tarih aralığı: <strong>${escapeHtml(summary.listingDateRange)}</strong><br>
-      Kayıt: <strong>${summary.count}</strong></p>
-      ${result}
-      <p>Bilgilerinize<br><strong>BONT</strong></p>
+    <div style="font-family:Calibri,Arial,sans-serif;font-size:14px;line-height:1.5;color:#111827;">
+      <p>${greeting}</p>
+      <p>${paragraph}</p>
+      <p>${closing}<br>${agency}<br>${name}</p>
     </div>
   `;
 }

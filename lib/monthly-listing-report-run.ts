@@ -4,14 +4,21 @@ import { sendCompanyMail } from "@/lib/email";
 import {
   MONTHLY_LISTING_EMAIL_SUBJECT,
   MONTHLY_LISTING_EXCEL_MIME,
+  MONTHLY_LISTING_FROM_EMAIL,
   MONTHLY_LISTING_REPORT_EMAIL,
   buildMonthlyListingExcelBuffer,
   buildMonthlyListingReportHtml,
   buildMonthlyListingReportText,
-  formatMonthlyListingPeriodLabel,
+  monthlyListingAttachmentName,
 } from "@/lib/monthly-listing-report-mail";
+import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getMonthlyListingReportData } from "@/lib/queries/monthly-listing-report";
+
+function isTatilVillacisiDomain(domain: string) {
+  const host = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "");
+  return host === "tatilvillacisi.com" || host.startsWith("tatilvillacisi.com/");
+}
 
 export type MonthlyListingReportRunResult = {
   ok: boolean;
@@ -33,41 +40,48 @@ export async function runMonthlyListingReport(options?: {
   const year = options?.year ?? previous.year;
   const month = options?.month ?? previous.month;
   const test = Boolean(options?.test);
-  const report = await getMonthlyListingReportData(year, month);
-  const period = formatMonthlyListingPeriodLabel(year, month);
-  const subject = test
-    ? `${MONTHLY_LISTING_EMAIL_SUBJECT} — ${period} — TEST`
-    : `${MONTHLY_LISTING_EMAIL_SUBJECT} — ${period}`;
-  const summary = {
-    year,
-    month,
-    listingDateRange: report.listingDateRange,
-    count: report.rows.length,
-    test,
-  };
+  const sites = await getAgencySitesForPicker();
+  const siteIds = sites
+    .filter((site) => isTatilVillacisiDomain(site.domain))
+    .map((site) => site.id);
+  if (siteIds.length === 0) {
+    return {
+      ok: false,
+      year,
+      month,
+      count: 0,
+      emailSent: false,
+      message: "tatilvillacisi.com sitesi bulunamadı",
+      test,
+    };
+  }
 
+  const report = await getMonthlyListingReportData(year, month, siteIds);
   const attachments: Attachment[] = [];
   if (report.rows.length > 0) {
     attachments.push({
-      filename: `aylik-ilan-raporu-${year}-${String(month).padStart(2, "0")}.xlsx`,
+      filename: monthlyListingAttachmentName(year, month),
       content: buildMonthlyListingExcelBuffer(report.rows),
       contentType: MONTHLY_LISTING_EXCEL_MIME,
     });
   }
 
   let emailSent = false;
+  let sendError = "";
   try {
     const company = await getCompanySettings();
     await sendCompanyMail(company, {
       to: MONTHLY_LISTING_REPORT_EMAIL,
-      subject,
-      text: buildMonthlyListingReportText(summary),
-      html: buildMonthlyListingReportHtml(summary),
+      fromEmail: MONTHLY_LISTING_FROM_EMAIL,
+      subject: MONTHLY_LISTING_EMAIL_SUBJECT,
+      text: buildMonthlyListingReportText(),
+      html: buildMonthlyListingReportHtml(),
       bcc: "",
       attachments: attachments.length > 0 ? attachments : undefined,
     });
     emailSent = true;
   } catch (error) {
+    sendError = error instanceof Error ? error.message : "E-posta gönderilemedi";
     console.error("[monthly-listing-report] e-posta", error);
   }
 
@@ -79,7 +93,7 @@ export async function runMonthlyListingReport(options?: {
     emailSent,
     message: emailSent
       ? undefined
-      : "Aylık ilan raporu e-postası gönderilemedi",
+      : sendError || "Aylık ilan raporu e-postası gönderilemedi",
     test,
   };
 }
