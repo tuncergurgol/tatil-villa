@@ -49,24 +49,44 @@ export function indexNowKeyLocation(origin: string, _key?: string): string {
   return `${origin.replace(/\/+$/, "")}/indexnow-key.txt`;
 }
 
+function verificationTokens(value: string | null | undefined): string[] {
+  const seen = new Set<string>();
+  for (const part of (value ?? "").split(/[\s,]+/)) {
+    const token = part
+      .trim()
+      .replace(/^google-site-verification=/i, "")
+      .replace(/^["']|["']$/g, "");
+    if (!token || seen.has(token)) continue;
+    seen.add(token);
+  }
+  return [...seen];
+}
+
 export function buildSearchEngineVerification(input: {
   googleSearchConsoleCode?: string | null;
   bingWebmasterCode?: string | null;
   yandexWebmasterCode?: string | null;
 }): {
-  google?: string;
+  google?: string | string[];
   yandex?: string;
   other?: Record<string, string>;
 } | undefined {
-  const google = input.googleSearchConsoleCode?.trim();
+  const googleTokens = verificationTokens(input.googleSearchConsoleCode);
   const bing = input.bingWebmasterCode?.trim();
   const yandex = input.yandexWebmasterCode?.trim();
   const other: Record<string, string> = {};
   if (bing) other["msvalidate.01"] = bing;
 
-  if (!google && !yandex && Object.keys(other).length === 0) {
+  if (googleTokens.length === 0 && !yandex && Object.keys(other).length === 0) {
     return undefined;
   }
+
+  const google =
+    googleTokens.length === 0
+      ? undefined
+      : googleTokens.length === 1
+        ? googleTokens[0]
+        : googleTokens;
 
   return {
     ...(google ? { google } : {}),

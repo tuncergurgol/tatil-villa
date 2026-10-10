@@ -24,6 +24,11 @@ const verification = buildSearchEngineVerification({
   yandexWebmasterCode: "yandex123",
 });
 assert.equal(verification?.google, "gsc");
+const multi = buildSearchEngineVerification({
+  googleSearchConsoleCode:
+    "google-site-verification=aaa, bbb",
+});
+assert.deepEqual(multi?.google, ["aaa", "bbb"]);
 assert.equal(verification?.yandex, "yandex123");
 assert.equal(verification?.other?.["msvalidate.01"], "bing123");
 
