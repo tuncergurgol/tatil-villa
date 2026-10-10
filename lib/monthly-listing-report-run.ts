@@ -9,6 +9,7 @@ import {
   buildMonthlyListingExcelBuffer,
   buildMonthlyListingReportHtml,
   buildMonthlyListingReportText,
+  findDuplicatePermitNumbers,
   monthlyListingAttachmentName,
 } from "@/lib/monthly-listing-report-mail";
 import { getAgencySitesForPicker } from "@/lib/queries/agency-sites";
@@ -25,6 +26,7 @@ export type MonthlyListingReportRunResult = {
   year: number;
   month: number;
   count: number;
+  duplicateCount: number;
   emailSent: boolean;
   message?: string;
   test?: boolean;
@@ -50,6 +52,7 @@ export async function runMonthlyListingReport(options?: {
       year,
       month,
       count: 0,
+      duplicateCount: 0,
       emailSent: false,
       message: "tatilvillacisi.com sitesi bulunamadı",
       test,
@@ -57,6 +60,7 @@ export async function runMonthlyListingReport(options?: {
   }
 
   const report = await getMonthlyListingReportData(year, month, siteIds);
+  const duplicates = findDuplicatePermitNumbers(report.rows);
   const attachments: Attachment[] = [];
   if (report.rows.length > 0) {
     attachments.push({
@@ -74,8 +78,8 @@ export async function runMonthlyListingReport(options?: {
       to: MONTHLY_LISTING_REPORT_EMAIL,
       fromEmail: MONTHLY_LISTING_FROM_EMAIL,
       subject: MONTHLY_LISTING_EMAIL_SUBJECT,
-      text: buildMonthlyListingReportText(),
-      html: buildMonthlyListingReportHtml(),
+      text: buildMonthlyListingReportText(duplicates),
+      html: buildMonthlyListingReportHtml(duplicates),
       bcc: "",
       attachments: attachments.length > 0 ? attachments : undefined,
     });
@@ -90,6 +94,7 @@ export async function runMonthlyListingReport(options?: {
     year,
     month,
     count: report.rows.length,
+    duplicateCount: duplicates.length,
     emailSent,
     message: emailSent
       ? undefined
