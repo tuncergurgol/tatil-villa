@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Globe, Pencil, Plus } from "lucide-react";
 import AgencySiteFormModal from "@/components/admin/company/AgencySiteFormModal";
 import type { AgencySiteItem } from "@/lib/queries/agency-sites";
+import type { SiteTrackingGapPrompt } from "@/lib/site-tracking-gaps";
 
 type StatusFilter = "active" | "passive" | "all";
 
@@ -14,6 +15,7 @@ interface AgencySiteManagementProps {
   passiveCount: number;
   undocumentedPublishSiteKeys?: string[];
   embedded?: boolean;
+  onAnalyticsPrompt?: (prompt: SiteTrackingGapPrompt) => void;
 }
 
 export default function AgencySiteManagement({
@@ -23,6 +25,7 @@ export default function AgencySiteManagement({
   passiveCount,
   undocumentedPublishSiteKeys = [],
   embedded = false,
+  onAnalyticsPrompt,
 }: AgencySiteManagementProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [modalOpen, setModalOpen] = useState(false);
@@ -216,6 +219,7 @@ export default function AgencySiteManagement({
           key={editingItem?.id ?? "new"}
           item={editingItem}
           undocumentedPublishSiteKeys={undocumentedPublishSiteKeys}
+          onAnalyticsPrompt={onAnalyticsPrompt}
           onClose={() => {
             setModalOpen(false);
             setEditingItem(null);

@@ -3,12 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/db";
 import { updateCompanySettings, getCompanySettings } from "@/lib/queries/company-settings";
 import {
-  PUBLIC_SITE_KEYS,
   isPublicSiteKey,
   type PublicSiteKey,
 } from "@/lib/public-site-keys";
+import {
+  SITE_TRACKING_GAP_FIELDS,
+  toSiteTrackingGapPrompt,
+  type SiteTrackingGapPrompt,
+} from "@/lib/site-tracking-gaps";
 import { invalidatePublishUndocumentedVillaSiteKeysCache } from "@/lib/public-villa-site-filter";
 import {
   upsertAllPublicSiteTracking,
@@ -205,7 +210,12 @@ export async function saveCompanySettings(
     data: PublicSiteTrackingFields;
   }>;
   try {
-    siteTrackings = PUBLIC_SITE_KEYS.map((siteKey) => ({
+    const siteKeys = new Set<string>();
+    for (const key of formData.keys()) {
+      const match = /^tracking__([a-z0-9-]+)__googleAnalyticsId$/i.exec(key);
+      if (match?.[1]) siteKeys.add(match[1]);
+    }
+    siteTrackings = [...siteKeys].map((siteKey) => ({
       siteKey,
       data: readTrackingFields(formData, siteKey),
     }));
@@ -241,6 +251,62 @@ export async function saveCompanySettings(
     return { success: true };
   } catch {
     return { error: "Kayıt sırasında bir hata oluştu" };
+  }
+}
+
+export async function saveSiteTrackingGapAction(
+  siteKey: string,
+  formData: FormData
+): Promise<CompanySettingsActionState & { prompt?: SiteTrackingGapPrompt | null }> {
+  await requireAdmin();
+  const key = siteKey.trim().toLowerCase();
+  if (!/^[a-z0-9-]+$/.test(key)) return { error: "Geçersiz site" };
+
+  const patch: Partial<PublicSiteTrackingFields> = {};
+  for (const field of SITE_TRACKING_GAP_FIELDS) {
+    if (!formData.has(field.key)) continue;
+    patch[field.key] = String(formData.get(field.key) ?? "").trim();
+  }
+
+  try {
+    const existing = await prisma.publicSiteTracking.findUnique({
+      where: { siteKey: key },
+    });
+    const saved = await prisma.publicSiteTracking.upsert({
+      where: { siteKey: key },
+      create: {
+        siteKey: key,
+        domain: existing?.domain ?? "",
+        label: existing?.label ?? key,
+        ...{
+          googleAnalyticsId: "",
+          googleAdsId: "",
+          microsoftClarityId: "",
+          googleTagManagerId: "",
+          facebookPixelId: "",
+          googleSearchConsoleCode: "",
+          bingWebmasterCode: "",
+          yandexWebmasterCode: "",
+          headScripts: "",
+          bodyScripts: "",
+        },
+        ...patch,
+      },
+      update: patch,
+    });
+    revalidatePath("/admin/acente/sirket");
+    revalidatePath("/", "layout");
+    return {
+      success: true,
+      prompt: toSiteTrackingGapPrompt({
+        siteKey: key,
+        siteLabel: saved.label || key,
+        domain: saved.domain,
+        row: saved,
+      }),
+    };
+  } catch {
+    return { error: "Analytics bilgileri kaydedilemedi" };
   }
 }
 

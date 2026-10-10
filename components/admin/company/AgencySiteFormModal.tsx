@@ -15,6 +15,7 @@ import {
   normalizeAgencySiteServices,
 } from "@/lib/agency-site-services";
 import type { AgencySiteItem } from "@/lib/queries/agency-sites";
+import type { SiteTrackingGapPrompt } from "@/lib/site-tracking-gaps";
 import { PUBLIC_BRAND_ASSET_GROUPS } from "@/lib/public-brand-assets";
 import {
   getPublicSiteMeta,
@@ -28,6 +29,7 @@ interface AgencySiteFormModalProps {
   item: AgencySiteItem | null;
   undocumentedPublishSiteKeys: string[];
   onClose: () => void;
+  onAnalyticsPrompt?: (prompt: SiteTrackingGapPrompt) => void;
 }
 
 const inputClass =
@@ -100,6 +102,7 @@ export default function AgencySiteFormModal({
   item,
   undocumentedPublishSiteKeys,
   onClose,
+  onAnalyticsPrompt,
 }: AgencySiteFormModalProps) {
   const router = useRouter();
   const allowedKeys = useMemo(
@@ -189,6 +192,7 @@ export default function AgencySiteFormModal({
 
       router.refresh();
       onClose();
+      if (saved.analyticsPrompt) onAnalyticsPrompt?.(saved.analyticsPrompt);
     });
   }
 

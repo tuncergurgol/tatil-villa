@@ -46,6 +46,14 @@ import type { CompanyBankAccountItem } from "@/lib/queries/company-bank-accounts
 import type { AgencySiteItem } from "@/lib/queries/agency-sites";
 import type { PaymentProviderItem } from "@/lib/queries/payment-providers";
 import type { MetaCatalogFeedUrlRow } from "@/lib/meta-catalog-feed-url";
+import SiteTrackingGapModal, {
+  trackingGapDismissKey,
+} from "@/components/admin/company/SiteTrackingGapModal";
+import {
+  isSiteTrackingUnconfigured,
+  toSiteTrackingGapPrompt,
+  type SiteTrackingGapPrompt,
+} from "@/lib/site-tracking-gaps";
 
 const tabs = [
   { id: "genel", label: "Genel Bilgiler", icon: Building2 },
@@ -245,6 +253,22 @@ export default function CompanySettingsForm({
     saveCompanySettings,
     initialState
   );
+  const [gapPrompt, setGapPrompt] = useState<SiteTrackingGapPrompt | null>(null);
+
+  useEffect(() => {
+    if (activeTab !== "analytics" && activeTab !== "acentenin-siteleri") return;
+    if (gapPrompt) return;
+    const row = siteTrackings.find((item) => isSiteTrackingUnconfigured(item));
+    if (!row) return;
+    if (window.sessionStorage.getItem(trackingGapDismissKey(row.siteKey))) return;
+    const prompt = toSiteTrackingGapPrompt({
+      siteKey: row.siteKey,
+      siteLabel: row.label,
+      domain: row.domain,
+      row,
+    });
+    if (prompt) setGapPrompt(prompt);
+  }, [activeTab, gapPrompt, siteTrackings]);
 
   useEffect(() => {
     if (isValidTabId(initialTab) && initialTab !== activeTab) {
@@ -536,6 +560,7 @@ export default function CompanySettingsForm({
               undocumentedPublishSiteKeys={
                 settings.publishUndocumentedVillaSiteKeys
               }
+              onAnalyticsPrompt={setGapPrompt}
               embedded
             />
           ) : activeTab === "odeme-yonetimi" ? (
@@ -551,6 +576,12 @@ export default function CompanySettingsForm({
           )}
         </div>
       </div>
+      {gapPrompt ? (
+        <SiteTrackingGapModal
+          prompt={gapPrompt}
+          onClose={() => setGapPrompt(null)}
+        />
+      ) : null}
     </div>
   );
 }

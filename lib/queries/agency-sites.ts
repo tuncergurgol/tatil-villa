@@ -80,7 +80,40 @@ export async function resolveAgencySiteDomainBySiteInfo(
   return brand.domain || null;
 }
 
+const DEFAULT_AGENCY_SITES = [
+  { name: "Glamping Turkey", domain: "www.glampingturkey.com" },
+] as const;
+
+export async function ensureDefaultAgencySites() {
+  const existing = await prisma.agencySite.findMany({
+    select: { domain: true },
+  });
+  const known = new Set(
+    existing.map((item) => normalizeSiteDomain(item.domain)).filter(Boolean)
+  );
+
+  for (const site of DEFAULT_AGENCY_SITES) {
+    if (known.has(normalizeSiteDomain(site.domain))) continue;
+    const maxSort = await prisma.agencySite.aggregate({
+      _max: { sortOrder: true },
+    });
+    await prisma.agencySite.create({
+      data: {
+        name: site.name,
+        domain: site.domain,
+        sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+        active: true,
+        publishedServices: normalizeAgencySiteServices(
+          AGENCY_SITE_SERVICE_KEYS
+        ),
+      },
+    });
+    known.add(normalizeSiteDomain(site.domain));
+  }
+}
+
 export async function getAgencySiteAdminData() {
+  await ensureDefaultAgencySites();
   const items = await prisma.agencySite.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     select: {

@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/db";
+import { ensureDefaultAgencySites } from "@/lib/queries/agency-sites";
 import {
+  canonicalPublicDomain,
   getPublicSiteMeta,
   listPublicSiteKeys,
+  siteKeyFromAgencyDomain,
   type PublicSiteKey,
   isPublicSiteKey,
 } from "@/lib/public-site-keys";
@@ -102,17 +105,50 @@ function fallbackRow(siteKey: PublicSiteKey): PublicSiteTrackingRow {
   });
 }
 
-export async function ensurePublicSiteTrackingRows(): Promise<void> {
+async function trackingTargets(): Promise<
+  Array<{ siteKey: string; domain: string; label: string }>
+> {
+  await ensureDefaultAgencySites();
+  const targets = new Map<string, { siteKey: string; domain: string; label: string }>();
+
   for (const siteKey of listPublicSiteKeys()) {
     const meta = getPublicSiteMeta(siteKey);
+    targets.set(siteKey, {
+      siteKey,
+      domain: meta.domain,
+      label: meta.label,
+    });
+  }
+
+  const agencySites = await prisma.agencySite.findMany({
+    where: { active: true },
+    select: { name: true, domain: true },
+  });
+  for (const site of agencySites) {
+    const siteKey = siteKeyFromAgencyDomain(site.domain);
+    const domain = canonicalPublicDomain(site.domain);
+    if (!domain) continue;
+    const current = targets.get(siteKey);
+    targets.set(siteKey, {
+      siteKey,
+      domain: current?.domain || domain,
+      label: site.name.trim() || current?.label || siteKey,
+    });
+  }
+
+  return [...targets.values()];
+}
+
+export async function ensurePublicSiteTrackingRows(): Promise<void> {
+  for (const target of await trackingTargets()) {
     await prisma.publicSiteTracking.upsert({
-      where: { siteKey },
+      where: { siteKey: target.siteKey },
       create: {
-        siteKey,
-        domain: meta.domain,
-        label: meta.label,
+        siteKey: target.siteKey,
+        domain: target.domain,
+        label: target.label,
         ...EMPTY_FIELDS,
-        ...(siteKey === "tatildeyiz"
+        ...(target.siteKey === "tatildeyiz"
           ? { googleAnalyticsId: "G-3QYZX0CQ1D" }
           : {}),
       },
@@ -124,13 +160,27 @@ export async function ensurePublicSiteTrackingRows(): Promise<void> {
 export async function getAllPublicSiteTracking(): Promise<PublicSiteTrackingRow[]> {
   try {
     await ensurePublicSiteTrackingRows();
+    const targets = await trackingTargets();
     const rows = await prisma.publicSiteTracking.findMany();
-    const byKey = new Map(
-      rows.filter((r) => isPublicSiteKey(r.siteKey)).map((r) => [r.siteKey, r])
-    );
-    return listPublicSiteKeys().map((siteKey) => {
-      const row = byKey.get(siteKey);
-      return row ? toRow(siteKey, row) : fallbackRow(siteKey);
+    const byKey = new Map(rows.map((row) => [row.siteKey, row]));
+    return targets.map((target) => {
+      const row = byKey.get(target.siteKey);
+      if (!row) {
+        return isPublicSiteKey(target.siteKey)
+          ? fallbackRow(target.siteKey)
+          : withIndexNow({
+              id: `fallback_${target.siteKey}`,
+              siteKey: target.siteKey,
+              domain: target.domain,
+              label: target.label,
+              ...EMPTY_FIELDS,
+            });
+      }
+      return toRow(target.siteKey, {
+        ...row,
+        domain: row.domain || target.domain,
+        label: row.label || target.label,
+      });
     });
   } catch (error) {
     console.error("[getAllPublicSiteTracking] fallback:", error);

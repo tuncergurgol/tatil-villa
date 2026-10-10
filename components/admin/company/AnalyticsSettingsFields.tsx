@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { PublicSiteTrackingRow } from "@/lib/queries/public-site-tracking";
-import { PUBLIC_SITE_KEYS } from "@/lib/public-site-keys";
 import type { MetaCatalogFeedUrlRow } from "@/lib/meta-catalog-feed-url";
 
 function AnalyticsField({
@@ -69,10 +68,9 @@ export default function AnalyticsSettingsFields({
   siteTrackings,
   metaCatalogFeedUrls,
 }: AnalyticsSettingsFieldsProps) {
+  const siteKeys = siteTrackings.map((row) => row.siteKey);
   const byKey = new Map(siteTrackings.map((row) => [row.siteKey, row]));
-  const [activeKey, setActiveKey] = useState<(typeof PUBLIC_SITE_KEYS)[number]>(
-    "tatildeyiz"
-  );
+  const [activeKey, setActiveKey] = useState(siteKeys[0] ?? "tatildeyiz");
   const active = byKey.get(activeKey) ?? siteTrackings[0];
 
   if (!active) return null;
@@ -88,7 +86,7 @@ export default function AnalyticsSettingsFields({
           dönük uyumluluk için şirket ayarlarıyla da senkron tutulur.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {PUBLIC_SITE_KEYS.map((siteKey) => {
+          {siteKeys.map((siteKey) => {
             const row = byKey.get(siteKey);
             const selected = siteKey === activeKey;
             return (
@@ -138,7 +136,7 @@ export default function AnalyticsSettingsFields({
         </div>
       </div>
 
-      {PUBLIC_SITE_KEYS.map((siteKey) => {
+      {siteKeys.map((siteKey) => {
         const row = byKey.get(siteKey);
         if (!row) return null;
         const visible = siteKey === activeKey;

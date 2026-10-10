@@ -12,12 +12,14 @@ const SITE_ACCENTS: Record<BuiltInPublicSiteKey, string> = {
   tatildeyiz: "#0d9488",
   "balayi-villacisi": "#be185d",
   "tatil-villacisi": "#0f766e",
+  "glamping-turkey": "#3f6212",
 };
 
 const SITE_LOGOS: Record<BuiltInPublicSiteKey, string | null> = {
   tatildeyiz: null, // şirket logosundan
   "balayi-villacisi": "/brands/balayi-villacisi/logo.png",
   "tatil-villacisi": "/brands/tatil-villacisi/logo.png",
+  "glamping-turkey": "/brands/glamping-turkey/logo-wide.png",
 };
 
 export async function listInstagramStorySites(): Promise<

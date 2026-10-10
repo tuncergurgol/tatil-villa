@@ -5,10 +5,19 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { normalizeAgencySiteServices } from "@/lib/agency-site-services";
+import {
+  canonicalPublicDomain,
+  siteKeyFromAgencyDomain,
+} from "@/lib/public-site-keys";
+import {
+  toSiteTrackingGapPrompt,
+  type SiteTrackingGapPrompt,
+} from "@/lib/site-tracking-gaps";
 
 export type AgencySiteActionState = {
   success?: boolean;
   error?: string;
+  analyticsPrompt?: SiteTrackingGapPrompt;
 };
 
 function normalizeDomain(value: string): string {
@@ -33,6 +42,44 @@ function revalidatePaths() {
   revalidatePath("/admin/konaklama/rezervasyonlar");
   // Ana sayfa arama sekmeleri site hizmetlerine göre render edilir.
   revalidatePath("/", "layout");
+}
+
+async function syncAgencySiteTracking(
+  name: string,
+  domain: string
+): Promise<SiteTrackingGapPrompt | undefined> {
+  const siteKey = siteKeyFromAgencyDomain(domain);
+  const canonical = canonicalPublicDomain(domain);
+  const saved = await prisma.publicSiteTracking.upsert({
+    where: { siteKey },
+    create: {
+      siteKey,
+      domain: canonical,
+      label: name,
+      googleAnalyticsId: "",
+      googleAdsId: "",
+      microsoftClarityId: "",
+      googleTagManagerId: "",
+      facebookPixelId: "",
+      googleSearchConsoleCode: "",
+      bingWebmasterCode: "",
+      yandexWebmasterCode: "",
+      headScripts: "",
+      bodyScripts: "",
+    },
+    update: {
+      domain: canonical,
+      label: name,
+    },
+  });
+  return (
+    toSiteTrackingGapPrompt({
+      siteKey,
+      siteLabel: saved.label || name,
+      domain: saved.domain || canonical,
+      row: saved,
+    }) ?? undefined
+  );
 }
 
 function readPublishedServices(formData: FormData): string[] {
@@ -60,16 +107,21 @@ export async function createAgencySite(
       _max: { sortOrder: true },
     });
 
+    const name = parsed.data.name.trim();
     await prisma.agencySite.create({
       data: {
-        name: parsed.data.name.trim(),
+        name,
         domain: parsed.data.domain,
         sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
         publishedServices: readPublishedServices(formData),
       },
     });
+    const analyticsPrompt = await syncAgencySiteTracking(
+      name,
+      parsed.data.domain
+    );
     revalidatePaths();
-    return { success: true };
+    return { success: true, analyticsPrompt };
   } catch {
     return { error: "Kayıt oluşturulamadı" };
   }
@@ -95,16 +147,21 @@ export async function updateAgencySite(
   }
 
   try {
+    const name = parsed.data.name.trim();
     await prisma.agencySite.update({
       where: { id },
       data: {
-        name: parsed.data.name.trim(),
+        name,
         domain: parsed.data.domain,
         publishedServices: readPublishedServices(formData),
       },
     });
+    const analyticsPrompt = await syncAgencySiteTracking(
+      name,
+      parsed.data.domain
+    );
     revalidatePaths();
-    return { success: true };
+    return { success: true, analyticsPrompt };
   } catch {
     return { error: "Kayıt güncellenemedi" };
   }

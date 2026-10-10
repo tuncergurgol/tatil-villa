@@ -74,8 +74,25 @@ function buildBrandedSites(): Array<{
     },
   ];
 
+  sites.push({
+    hosts: ["glampingturkey.com", "www.glampingturkey.com"],
+    profile: {
+      key: "glamping-turkey",
+      domain: "www.glampingturkey.com",
+      brandName: "Glamping Turkey",
+      logoUrl: "/brands/glamping-turkey/logo-wide.png",
+      faviconUrl: "/brands/glamping-turkey/favicon.png",
+      ogImageUrl: "/brands/glamping-turkey/og-image.png",
+      seoTitle: "Glamping Turkey - Bungalov ve Dome Tatili",
+      seoDescription:
+        "Doğanın içinde bungalov ve dome konaklama. Glamping Turkey ile sakin, korunaklı ve özel bir kaçamak planlayın.",
+      heroTitle: "Doğanın İçinde Bungalov ve Dome Tatili",
+      heroImageUrl: "/brands/glamping-turkey/hero.png",
+    },
+  });
+
   const site4 = getOptionalSite4Config();
-  if (site4) {
+  if (site4 && !sites.some((site) => site.profile.key === site4.key)) {
     sites.push({
       hosts: site4.hosts,
       profile: {

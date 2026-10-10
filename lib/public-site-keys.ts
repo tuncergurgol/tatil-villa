@@ -2,6 +2,7 @@ export const PUBLIC_SITE_KEYS = [
   "tatildeyiz",
   "balayi-villacisi",
   "tatil-villacisi",
+  "glamping-turkey",
 ] as const;
 
 export type BuiltInPublicSiteKey = (typeof PUBLIC_SITE_KEYS)[number];
@@ -24,6 +25,10 @@ export const PUBLIC_SITE_META: Record<
   "tatil-villacisi": {
     domain: "www.tatilvillacisi.com",
     label: "Tatil Villacısı",
+  },
+  "glamping-turkey": {
+    domain: "www.glampingturkey.com",
+    label: "Glamping Turkey",
   },
 };
 
@@ -97,6 +102,34 @@ export function listPublicSiteOptions(): { key: PublicSiteKey; label: string }[]
     key,
     label: getPublicSiteMeta(key).label,
   }));
+}
+
+export function canonicalPublicDomain(value: string): string {
+  const host =
+    value
+      .trim()
+      .replace(/^https?:\/\//i, "")
+      .replace(/\/+$/, "")
+      .split("/")[0]
+      ?.split(":")[0]
+      ?.toLowerCase() ?? "";
+  const apex = host.replace(/^www\./, "");
+  return apex ? `www.${apex}` : "";
+}
+
+export function apexPublicDomain(value: string): string {
+  return canonicalPublicDomain(value).replace(/^www\./, "");
+}
+
+/** Acente site kaydının analytics satır anahtarı. Bilinen domainler sabit anahtara bağlanır. */
+export function siteKeyFromAgencyDomain(domain: string): string {
+  const apex = apexPublicDomain(domain);
+  if (!apex) return "site";
+  const known = listPublicSiteKeys().find(
+    (key) => apexPublicDomain(getPublicSiteMeta(key).domain) === apex
+  );
+  if (known) return known;
+  return apex.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "site";
 }
 
 export function listPublicSiteKeys(): PublicSiteKey[] {
