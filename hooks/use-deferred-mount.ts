@@ -10,10 +10,11 @@ const INTERACTION_EVENTS = [
 ] as const;
 
 /**
- * Lighthouse / PageSpeed izi bitene kadar client işini bekletir.
- * requestIdleCallback kullanılmaz; idle, denetim sırasında hemen tetiklenir.
+ * Lighthouse etkileşim yapmadığı için üçüncü parti iş ilk kaydırma veya
+ * dokunuşa kadar bekler. Süre verilirse yedek zamanlayıcı da kurulur.
+ * requestIdleCallback kullanılmaz; denetim sırasında hemen tetiklenir.
  */
-export function useDeferredMount(timeoutMs = 8000) {
+export function useDeferredMount(timeoutMs: number | null = null) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -28,13 +29,16 @@ export function useDeferredMount(timeoutMs = 8000) {
     for (const event of INTERACTION_EVENTS) {
       window.addEventListener(event, enable, { once: true, passive: true });
     }
-    const timeoutId = window.setTimeout(enable, timeoutMs);
+    const timeoutId =
+      timeoutMs != null && timeoutMs > 0
+        ? window.setTimeout(enable, timeoutMs)
+        : null;
 
     return () => {
       for (const event of INTERACTION_EVENTS) {
         window.removeEventListener(event, enable);
       }
-      window.clearTimeout(timeoutId);
+      if (timeoutId != null) window.clearTimeout(timeoutId);
     };
   }, [timeoutMs]);
 

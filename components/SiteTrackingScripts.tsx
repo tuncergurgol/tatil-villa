@@ -103,7 +103,7 @@ type SiteTrackingScriptsProps = {
 export default function SiteTrackingScripts({
   tracking,
 }: SiteTrackingScriptsProps) {
-  const ready = useDeferredMount(8000);
+  const ready = useDeferredMount(null);
   const gtmId = tracking.googleTagManagerId.trim();
   const headScripts = tracking.headScripts.trim();
   const bodyScripts = tracking.bodyScripts.trim();

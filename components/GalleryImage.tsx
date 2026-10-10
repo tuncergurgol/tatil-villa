@@ -5,11 +5,29 @@ type GalleryImageProps = Omit<ImageProps, "src"> & {
   src: string;
 };
 
-function resolveGallerySrc(src: string, skipOptimizer: boolean) {
+function cardImageWidth(width: ImageProps["width"]): number | null {
+  const value = typeof width === "number" ? width : Number(width);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (value >= 500) return 560;
+  if (value >= 360) return 384;
+  return 280;
+}
+
+function resolveGallerySrc(
+  src: string,
+  skipOptimizer: boolean,
+  width: ImageProps["width"],
+  priority: boolean
+) {
   if (!src.startsWith("/uploads/")) return src;
+  const clean = src.split("?")[0] ?? src;
+  const cardWidth = cardImageWidth(width);
+  if (skipOptimizer && !priority && cardWidth && !clean.endsWith(".svg")) {
+    return `/api/media-card?src=${encodeURIComponent(clean)}&w=${cardWidth}`;
+  }
   if (skipOptimizer) return encodeGalleryImageUrl(src);
   try {
-    return decodeURI(src.split("?")[0] ?? src);
+    return decodeURI(clean);
   } catch {
     return src;
   }
@@ -37,7 +55,7 @@ export default function GalleryImage({
   return (
     <Image
       {...props}
-      src={resolveGallerySrc(src, skipOptimizer)}
+      src={resolveGallerySrc(src, skipOptimizer, props.width, isPriority)}
       unoptimized={skipOptimizer}
       quality={quality ?? 70}
       loading={loading ?? (isPriority ? "eager" : "lazy")}

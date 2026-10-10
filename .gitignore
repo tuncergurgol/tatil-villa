@@ -89,3 +89,4 @@ next-env.d.ts
 
 # generated Meta catalog feed cache (runtime)
 /data/meta-catalog-feed/
+/data/card-image-cache/

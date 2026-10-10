@@ -16,7 +16,7 @@ export default function DeferredBlogInspiration({
   posts: BlogInspirationPost[];
   categories: BlogInspirationCategory[];
 }) {
-  const ready = useDeferredMount(8000);
+  const ready = useDeferredMount(null);
 
   if (!ready) {
     return (

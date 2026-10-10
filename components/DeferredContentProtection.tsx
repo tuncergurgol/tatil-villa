@@ -9,7 +9,7 @@ const PublicContentProtection = dynamic(
 );
 
 export default function DeferredContentProtection() {
-  const ready = useDeferredMount(8000);
+  const ready = useDeferredMount(null);
   if (!ready) return null;
   return <PublicContentProtection />;
 }

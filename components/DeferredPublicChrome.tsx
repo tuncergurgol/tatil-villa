@@ -20,7 +20,7 @@ export default function DeferredPublicChrome({
 }: {
   assistantWelcome: string | null;
 }) {
-  const ready = useDeferredMount(8000);
+  const ready = useDeferredMount(null);
   if (!ready) return null;
 
   return (
