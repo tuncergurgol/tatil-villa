@@ -25,7 +25,7 @@ type Menu = {
 };
 
 const menuGridClass =
-  "grid grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_72px_88px_112px] lg:gap-4";
+  "grid grid-cols-1 items-center gap-3 lg:grid-cols-[72px_minmax(0,1.15fr)_minmax(0,1.15fr)_88px_112px] lg:gap-4";
 
 const menuHeaderClass =
   "text-[11px] font-bold uppercase tracking-wide text-gray-700";
@@ -83,6 +83,15 @@ function MenuItemRow({
       <div className={menuGridClass}>
         <label className="block min-w-0">
           <input
+            name="sortOrder"
+            type="number"
+            defaultValue={item.sortOrder}
+            aria-label="Sıra"
+            className={cmsInputClass}
+          />
+        </label>
+        <label className="block min-w-0">
+          <input
             name="label"
             defaultValue={item.label}
             required
@@ -99,25 +108,11 @@ function MenuItemRow({
             className={cmsInputClass}
           />
         </label>
-        <label className="block min-w-0">
-          <span className={menuHeaderClass}>Sıra</span>
-          <input
-            name="sortOrder"
-            type="number"
-            defaultValue={item.sortOrder}
-            className={`${cmsInputClass} mt-1.5`}
-          />
-        </label>
-        <div>
-          <span className={menuHeaderClass}>Durum</span>
-          <div className="mt-1.5">
-            <ActiveToggle
-              active={active}
-              onChange={setActive}
-              disabled={pending}
-            />
-          </div>
-        </div>
+        <ActiveToggle
+          active={active}
+          onChange={setActive}
+          disabled={pending}
+        />
         <div className="flex items-end gap-2">
           <button
             type="submit"
@@ -146,6 +141,7 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
   const [pendingId, setPendingId] = useState<string | "new" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [addMenuId, setAddMenuId] = useState<string | null>(null);
   const [newActive, setNewActive] = useState(true);
 
   async function handleSave(id: string | null, formData: FormData) {
@@ -159,7 +155,10 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
         return;
       }
       setNotice(id ? "Menü öğesi kaydedildi." : "Menü öğesi eklendi.");
-      if (!id) setNewActive(true);
+      if (!id) {
+        setNewActive(true);
+        setAddMenuId(null);
+      }
       router.refresh();
     } catch {
       setError("Menü öğesi kaydedilemedi.");
@@ -187,6 +186,8 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
       setPendingId(null);
     }
   }
+
+  const addMenu = menus.find((menu) => menu.id === addMenuId) ?? null;
 
   return (
     <div className="space-y-8">
@@ -236,65 +237,25 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
 
           {open ? (
           <>
-          <div className={`${menuGridClass} px-1`}>
-            <span />
-            <span />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setNewActive(true);
+                setAddMenuId(menu.id);
+              }}
+              className="h-10 rounded-xl bg-teal-600 px-4 text-xs font-bold text-white hover:bg-teal-700"
+            >
+              Menü Öğesi Ekle
+            </button>
+          </div>
+          <div className={`${menuGridClass} hidden px-1 lg:grid`}>
             <span className={menuHeaderClass}>Sıra</span>
+            <span className={menuHeaderClass}>Başlık</span>
+            <span className={menuHeaderClass}>Link</span>
             <span className={menuHeaderClass}>Durum</span>
             <span className={menuHeaderClass}>İşlem</span>
           </div>
-
-          <form
-            action={async (formData) => {
-              await handleSave(null, formData);
-            }}
-            className="rounded-xl border border-dashed border-teal-200 bg-teal-50/40 p-3"
-          >
-            <input type="hidden" name="menuId" value={menu.id} />
-            <input
-              type="hidden"
-              name="active"
-              value={newActive ? "true" : "false"}
-            />
-            <div className={menuGridClass}>
-              <label className="block min-w-0">
-                <input
-                  name="label"
-                  required
-                  placeholder="Menü başlığı"
-                  className={cmsInputClass}
-                />
-              </label>
-              <label className="block min-w-0">
-                <input
-                  name="href"
-                  placeholder="/link"
-                  required
-                  className={cmsInputClass}
-                />
-              </label>
-              <label className="block min-w-0">
-                <input
-                  name="sortOrder"
-                  type="number"
-                  defaultValue={menu.items.length + 1}
-                  className={cmsInputClass}
-                />
-              </label>
-              <ActiveToggle
-                active={newActive}
-                onChange={setNewActive}
-                disabled={pendingId !== null}
-              />
-              <button
-                type="submit"
-                disabled={pendingId !== null}
-                className="h-10 rounded-xl bg-teal-600 px-3 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-60"
-              >
-                {pendingId === "new" ? "Ekleniyor..." : "Menü Öğesi Ekle"}
-              </button>
-            </div>
-          </form>
 
           <div className="space-y-2">
             {menu.items
@@ -316,6 +277,87 @@ export default function MenuManagement({ menus }: { menus: Menu[] }) {
         </section>
         );
       })}
+      {addMenu ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            key={addMenu.id}
+            action={async (formData) => {
+              await handleSave(null, formData);
+            }}
+            role="dialog"
+            aria-labelledby="menu-item-add-title"
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+          >
+            <h3
+              id="menu-item-add-title"
+              className="text-base font-semibold text-gray-900"
+            >
+              Menü Öğesi Ekle
+            </h3>
+            <p className="mt-1 text-xs text-gray-500">{addMenu.label}</p>
+            <input type="hidden" name="menuId" value={addMenu.id} />
+            <input
+              type="hidden"
+              name="active"
+              value={newActive ? "true" : "false"}
+            />
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className={menuHeaderClass}>Sıra</span>
+                <input
+                  name="sortOrder"
+                  type="number"
+                  defaultValue={addMenu.items.length + 1}
+                  className={`${cmsInputClass} mt-1.5`}
+                />
+              </label>
+              <label className="block">
+                <span className={menuHeaderClass}>Başlık</span>
+                <input
+                  name="label"
+                  required
+                  className={`${cmsInputClass} mt-1.5`}
+                />
+              </label>
+              <label className="block">
+                <span className={menuHeaderClass}>Link</span>
+                <input
+                  name="href"
+                  required
+                  placeholder="/link"
+                  className={`${cmsInputClass} mt-1.5`}
+                />
+              </label>
+              <div>
+                <span className={menuHeaderClass}>Durum</span>
+                <div className="mt-1.5 max-w-[120px]">
+                  <ActiveToggle
+                    active={newActive}
+                    onChange={setNewActive}
+                    disabled={pendingId !== null}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setAddMenuId(null)}
+                className="h-10 rounded-xl border border-gray-200 px-4 text-xs font-bold text-gray-600 hover:bg-gray-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="submit"
+                disabled={pendingId !== null}
+                className="h-10 rounded-xl bg-teal-600 px-4 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-60"
+              >
+                {pendingId === "new" ? "Ekleniyor..." : "Ekle"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }
