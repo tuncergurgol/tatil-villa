@@ -27,10 +27,10 @@ else
   echo "    CRON_SECRET zaten tanımlı"
 fi
 
-# shellcheck disable=SC1090
-set -a
-source "$ENV_FILE"
-set +a
+# .env tamamını source etme: tırnaksız boşluklu değerler kurulumu düşürür.
+CRON_SECRET="$(
+  grep -E '^CRON_SECRET=' "$ENV_FILE" | head -n 1 | cut -d= -f2- | tr -d '\r"'"'"
+)"
 
 if [[ -z "${CRON_SECRET:-}" ]]; then
   echo "HATA: CRON_SECRET boş" >&2
