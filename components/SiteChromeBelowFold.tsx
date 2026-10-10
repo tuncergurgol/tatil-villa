@@ -95,6 +95,9 @@ export default async function SiteChromeBelowFold() {
         }))
       : defaultQuickLinks),
     loyaltyQuickLink,
+    ...(site.key === "tatildeyiz"
+      ? [{ href: "/yeni-otel", label: "YENİ OTEL" }]
+      : []),
   ];
 
   const corporateLinks = corporatePages.map((page) => ({

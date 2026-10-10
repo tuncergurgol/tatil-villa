@@ -123,8 +123,19 @@ export async function getPublicIndexablePages(
   ]);
 
   const copy = getPublicListingCopy(siteKey);
+  const sitePaths =
+    siteKey === "tatildeyiz"
+      ? [
+          {
+            path: "/yeni-otel",
+            title: "Yeni Otel",
+            changeFrequency: "weekly" as const,
+            priority: 0.7,
+          },
+        ]
+      : [];
   return [
-    ...STATIC_PATHS.map((item) => ({
+    ...[...STATIC_PATHS, ...sitePaths].map((item) => ({
       url: absolutePublicUrl(origin, item.path),
       title:
         item.path === "/villalar" ? copy.plural : item.title,
@@ -213,6 +224,14 @@ export async function buildPublicSitemap(
         lastModified: page.lastModified,
         changeFrequency: "weekly" as const,
         priority: 0.6,
+      };
+    }
+    if (page.url.endsWith("/yeni-otel")) {
+      return {
+        url: page.url,
+        lastModified: page.lastModified,
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
       };
     }
     if (page.url.includes("/kurumsal/")) {
