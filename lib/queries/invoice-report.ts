@@ -36,6 +36,8 @@ export type InvoiceReportListItem = AdminBookingListItem & {
   exportable: boolean;
   edmStatus: string | null;
   edmInvoiceId: string | null;
+  /** GİB fatura numarası (ör. TEA2026000000032); UUID değil */
+  edmInvoiceNo: string | null;
   edmError: string | null;
   edmPdfAvailable: boolean;
 };
@@ -293,6 +295,7 @@ function mapBookingToListItem(
     exportable: missing.length === 0,
     edmStatus: details.edmInvoice?.status ?? null,
     edmInvoiceId: details.edmInvoice?.invoiceId ?? details.edmInvoice?.uuid ?? null,
+    edmInvoiceNo: details.edmInvoice?.invoiceId?.trim() || null,
     edmError: details.edmInvoice?.error ?? details.edmInvoice?.pdfError ?? null,
     edmPdfAvailable: Boolean(
       details.edmInvoice?.status === "SENT" &&

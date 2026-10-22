@@ -509,13 +509,23 @@ export default function InvoiceReportPage({
                       </td>
                       <td className="px-3 py-2 text-gray-700">
                         {isInvoiceSent(item, sentIds) ? (
-                          <button
-                            type="button"
-                            className="inline-flex text-xs font-semibold text-teal-700 hover:underline"
-                            onClick={() => void downloadEdmPdf(item)}
-                          >
-                            PDF indir
-                          </button>
+                          <div className="space-y-0.5">
+                            {(sentIds[item.id] || item.edmInvoiceNo) ? (
+                              <div
+                                className="font-mono text-xs font-semibold text-gray-800"
+                                title="Fatura numarası"
+                              >
+                                {sentIds[item.id] || item.edmInvoiceNo}
+                              </div>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="inline-flex text-xs font-semibold text-teal-700 hover:underline"
+                              onClick={() => void downloadEdmPdf(item)}
+                            >
+                              PDF indir
+                            </button>
+                          </div>
                         ) : (
                           <div className="space-y-1">
                             <button
