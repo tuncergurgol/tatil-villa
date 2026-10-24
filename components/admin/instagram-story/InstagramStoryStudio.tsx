@@ -30,9 +30,13 @@ import {
   type InstagramStorySlideResult,
   type InstagramStorySourcePayload,
 } from "@/lib/instagram-story/types";
+import type { InstagramStoryRegionPickerOption } from "@/lib/queries/instagram-story";
+import { RegionLevel } from "@/lib/region-levels";
+import { buildRegionSelectionLabel } from "@/lib/villa-location-helpers";
 
 type Props = {
   sites: InstagramStorySiteOption[];
+  regions: InstagramStoryRegionPickerOption[];
 };
 
 const MODE_OPTIONS: Array<{
@@ -79,7 +83,6 @@ function downloadBlob(fileName: string, blob: Blob) {
 
 function searchPlaceholder(mode: InstagramStoryMode) {
   if (mode === "category") return "Kategori ara (Isıtmalı Havuzlu, Deniz Manzaralı…)";
-  if (mode === "region") return "Bölge ara (Kaş, Fethiye, Antalya…)";
   return "Villa / tesis adı veya slug ara...";
 }
 
@@ -92,7 +95,7 @@ function emptyStateCopy(mode: InstagramStoryMode) {
   }
   if (mode === "region") {
     return {
-      title: "Bir bölge arayarak başlayın",
+      title: "İl / ilçe / mahalle seçerek başlayın",
       body: "Bölgedeki tesis görsellerinden kolaj story üretilir (4’lü gruplar).",
     };
   }
@@ -102,7 +105,13 @@ function emptyStateCopy(mode: InstagramStoryMode) {
   };
 }
 
-export default function InstagramStoryStudio({ sites }: Props) {
+function regionOptionLabel(region: InstagramStoryRegionPickerOption) {
+  return region.villaCount > 0
+    ? `${region.name} (${region.villaCount})`
+    : region.name;
+}
+
+export default function InstagramStoryStudio({ sites, regions }: Props) {
   const defaultSite = sites[0]!;
   const [mode, setMode] = useState<InstagramStoryMode>("villa");
   const [siteKey, setSiteKey] = useState(defaultSite.key);
@@ -110,6 +119,9 @@ export default function InstagramStoryStudio({ sites }: Props) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [hits, setHits] = useState<InstagramStorySearchHit[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [ilId, setIlId] = useState("");
+  const [ilceId, setIlceId] = useState("");
+  const [mahalleId, setMahalleId] = useState("");
   const [source, setSource] = useState<InstagramStorySourcePayload | null>(
     null
   );
@@ -134,13 +146,46 @@ export default function InstagramStoryStudio({ sites }: Props) {
   const isCollageMode = mode !== "villa";
   const emptyCopy = emptyStateCopy(mode);
 
+  const ilOptions = useMemo(
+    () => regions.filter((region) => region.level === RegionLevel.IL),
+    [regions]
+  );
+
+  const ilceOptions = useMemo(
+    () =>
+      regions.filter(
+        (region) =>
+          region.level === RegionLevel.ILCE && region.parentId === ilId
+      ),
+    [regions, ilId]
+  );
+
+  const mahalleOptions = useMemo(
+    () =>
+      regions.filter(
+        (region) =>
+          region.level === RegionLevel.MAHALLE && region.parentId === ilceId
+      ),
+    [regions, ilceId]
+  );
+
+  const selectedRegionId = mahalleId || ilceId || ilId;
+  const regionSelectionLabel = buildRegionSelectionLabel(
+    regions,
+    ilId,
+    ilceId,
+    mahalleId,
+    ""
+  );
+
   useEffect(() => {
-    const query = search.trim();
-    if (mode === "region" && !query) {
+    if (mode === "region") {
       setHits([]);
       setSearchLoading(false);
       return;
     }
+
+    const query = search.trim();
     if (mode === "villa" && !query) {
       setHits([]);
       setSearchLoading(false);
@@ -208,12 +253,19 @@ export default function InstagramStoryStudio({ sites }: Props) {
     setError(null);
   }
 
+  function resetRegionCascade() {
+    setIlId("");
+    setIlceId("");
+    setMahalleId("");
+  }
+
   function applyMode(next: InstagramStoryMode) {
     if (next === mode) return;
     setMode(next);
     setSearch("");
     setHits([]);
     setSearchFocused(false);
+    resetRegionCascade();
     resetSourceState();
     if (next === "category") {
       setTagline("KATEGORİ SEÇKİSİ");
@@ -222,6 +274,29 @@ export default function InstagramStoryStudio({ sites }: Props) {
     } else {
       setTagline(INSTAGRAM_STORY_TAGLINES[0]);
     }
+  }
+
+  function selectRegionById(regionId: string) {
+    if (!regionId) return;
+    setError(null);
+    setSlides([]);
+    clearVideo();
+    startTransition(async () => {
+      const result = await getInstagramStoryRegionAction(regionId);
+      if ("error" in result && result.error) {
+        setError(result.error);
+        return;
+      }
+      if (!result.source) {
+        setError("Bölge yüklenemedi");
+        return;
+      }
+      if (result.source.images.length === 0) {
+        setError("Bu bölgede görseli olan aktif tesis yok");
+        return;
+      }
+      applySource(result.source);
+    });
   }
 
   function applySite(nextKey: string) {
@@ -488,76 +563,185 @@ export default function InstagramStoryStudio({ sites }: Props) {
           </div>
         </div>
 
-        <div className="relative mt-5 max-w-xl">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => {
-              window.setTimeout(() => setSearchFocused(false), 150);
-            }}
-            placeholder={searchPlaceholder(mode)}
-            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-100"
-          />
-          {showSearchDropdown ? (
-            <div className="absolute z-30 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
-              {searchLoading ? (
-                <p className="px-4 py-6 text-center text-sm text-gray-500">
-                  Aranıyor…
+        {mode === "region" ? (
+          <div className="mt-5 space-y-3">
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">
+                  İl / Bölge
+                </span>
+                <select
+                  value={ilId}
+                  onChange={(event) => {
+                    setIlId(event.target.value);
+                    setIlceId("");
+                    setMahalleId("");
+                    resetSourceState();
+                  }}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-100"
+                >
+                  <option value="">Seçiniz</option>
+                  {ilOptions.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {regionOptionLabel(region)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">
+                  İlçe / Semt
+                </span>
+                <select
+                  value={ilceId}
+                  disabled={!ilId}
+                  onChange={(event) => {
+                    setIlceId(event.target.value);
+                    setMahalleId("");
+                    resetSourceState();
+                  }}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">Tümü / seçiniz</option>
+                  {ilceOptions.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {regionOptionLabel(region)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">
+                  Mahalle / Mevki
+                </span>
+                <select
+                  value={mahalleId}
+                  disabled={!ilceId}
+                  onChange={(event) => {
+                    setMahalleId(event.target.value);
+                    resetSourceState();
+                  }}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-teal-300 focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">Tümü / seçiniz</option>
+                  {mahalleOptions.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {regionOptionLabel(region)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={!selectedRegionId || isPending}
+                onClick={() => selectRegionById(selectedRegionId)}
+                className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MapPin className="h-4 w-4" />
+                )}
+                Bölgeyi yükle
+              </button>
+              {selectedRegionId ? (
+                <p className="text-sm text-gray-600">
+                  Seçim:{" "}
+                  <span className="font-medium text-teal-800">
+                    {regionSelectionLabel}
+                  </span>
                 </p>
-              ) : hits.length > 0 ? (
-                hits.map((hit) => (
-                  <button
-                    key={hit.id}
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectHit(hit)}
-                    className="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left text-sm transition last:border-b-0 hover:bg-teal-50"
-                  >
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
-                      {hit.image ? (
-                        <Image
-                          src={hit.image}
-                          alt={hit.name}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-gray-300">
-                          {mode === "region" ? (
-                            <MapPin className="h-5 w-5" />
-                          ) : mode === "category" ? (
-                            <LayoutGrid className="h-5 w-5" />
-                          ) : (
-                            <Home className="h-5 w-5" />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-gray-900">
-                        {hit.name}
-                      </p>
-                      <p className="truncate text-xs text-gray-500">
-                        {hit.location || hit.slug}
-                        {typeof hit.villaCount === "number"
-                          ? ` · ${hit.villaCount} tesis`
-                          : ""}
-                      </p>
-                    </div>
-                  </button>
-                ))
               ) : (
-                <p className="px-4 py-6 text-center text-sm text-gray-500">
-                  Sonuç bulunamadı
+                <p className="text-xs text-gray-500">
+                  İl seçimi yeterli; isterseniz ilçe ve mahalle ile daraltın.
                 </p>
               )}
+              {selectedRegionId ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetRegionCascade();
+                    resetSourceState();
+                  }}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-800"
+                >
+                  Temizle
+                </button>
+              ) : null}
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="relative mt-5 max-w-xl">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => {
+                window.setTimeout(() => setSearchFocused(false), 150);
+              }}
+              placeholder={searchPlaceholder(mode)}
+              className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-100"
+            />
+            {showSearchDropdown ? (
+              <div className="absolute z-30 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+                {searchLoading ? (
+                  <p className="px-4 py-6 text-center text-sm text-gray-500">
+                    Aranıyor…
+                  </p>
+                ) : hits.length > 0 ? (
+                  hits.map((hit) => (
+                    <button
+                      key={hit.id}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectHit(hit)}
+                      className="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left text-sm transition last:border-b-0 hover:bg-teal-50"
+                    >
+                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+                        {hit.image ? (
+                          <Image
+                            src={hit.image}
+                            alt={hit.name}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-gray-300">
+                            {mode === "category" ? (
+                              <LayoutGrid className="h-5 w-5" />
+                            ) : (
+                              <Home className="h-5 w-5" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-gray-900">
+                          {hit.name}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">
+                          {hit.location || hit.slug}
+                          {typeof hit.villaCount === "number"
+                            ? ` · ${hit.villaCount} tesis`
+                            : ""}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-4 py-6 text-center text-sm text-gray-500">
+                    Sonuç bulunamadı
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {error ? (

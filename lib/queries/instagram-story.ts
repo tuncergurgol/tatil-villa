@@ -285,6 +285,57 @@ export async function searchInstagramStoryCategories(
   }));
 }
 
+export type InstagramStoryRegionPickerOption = {
+  id: string;
+  name: string;
+  level: string;
+  parentId: string | null;
+  villaCount: number;
+};
+
+export async function listInstagramStoryRegionPickerOptions(): Promise<
+  InstagramStoryRegionPickerOption[]
+> {
+  const [regions, nodes, villaGroups] = await Promise.all([
+    prisma.region.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        level: true,
+        parentId: true,
+        sortOrder: true,
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    }),
+    getAllRegionNodes(),
+    prisma.villa.groupBy({
+      by: ["regionId"],
+      where: { active: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countByRegionId = new Map(
+    villaGroups.map((group) => [group.regionId, group._count._all])
+  );
+
+  return regions.map((region) => {
+    const regionIds = collectDescendantIds(region.id, nodes);
+    const villaCount = regionIds.reduce(
+      (sum, id) => sum + (countByRegionId.get(id) ?? 0),
+      0
+    );
+    return {
+      id: region.id,
+      name: region.name,
+      level: region.level,
+      parentId: region.parentId,
+      villaCount,
+    };
+  });
+}
+
 export async function searchInstagramStoryRegions(
   query: string,
   limit = 16
