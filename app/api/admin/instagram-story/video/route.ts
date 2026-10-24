@@ -3,6 +3,7 @@ import { z } from "zod";
 import path from "node:path";
 import { auth } from "@/auth";
 import { generateInstagramStoryVideoBuffer } from "@/lib/instagram-story/generate";
+import { INSTAGRAM_STORY_MODES } from "@/lib/instagram-story/types";
 import { PUBLIC_SITE_KEYS } from "@/lib/public-site-keys";
 
 export const dynamic = "force-dynamic";
@@ -10,17 +11,51 @@ export const maxDuration = 300;
 
 const MAX_MUSIC_BYTES = 15 * 1024 * 1024;
 
-const bodySchema = z.object({
-  villaId: z.string().min(1),
-  imageUrls: z.array(z.string().min(1)).min(1).max(8),
-  siteKey: z.enum(PUBLIC_SITE_KEYS).optional(),
-  tagline: z.string().max(80).optional(),
-  meta: z.string().max(120).optional(),
-  location: z.string().max(120).optional(),
-  ctaLabel: z.string().max(80).optional(),
-  secondsPerSlide: z.coerce.number().min(2).max(8).optional(),
-  musicVolume: z.coerce.number().min(0.05).max(1).optional(),
-});
+const bodySchema = z
+  .object({
+    mode: z.enum(INSTAGRAM_STORY_MODES).default("villa"),
+    villaId: z.string().min(1).optional(),
+    categoryId: z.string().min(1).optional(),
+    regionId: z.string().min(1).optional(),
+    imageUrls: z.array(z.string().min(1)).min(1).max(24),
+    siteKey: z.enum(PUBLIC_SITE_KEYS).optional(),
+    tagline: z.string().max(80).optional(),
+    meta: z.string().max(120).optional(),
+    location: z.string().max(120).optional(),
+    ctaLabel: z.string().max(80).optional(),
+    secondsPerSlide: z.coerce.number().min(2).max(8).optional(),
+    musicVolume: z.coerce.number().min(0.05).max(1).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode === "villa" && !value.villaId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Villa seçilmedi",
+        path: ["villaId"],
+      });
+    }
+    if (value.mode === "category" && !value.categoryId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Kategori seçilmedi",
+        path: ["categoryId"],
+      });
+    }
+    if (value.mode === "region" && !value.regionId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Bölge seçilmedi",
+        path: ["regionId"],
+      });
+    }
+    if (value.mode === "villa" && value.imageUrls.length > 8) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Villa modunda en fazla 8 görsel",
+        path: ["imageUrls"],
+      });
+    }
+  });
 
 function parseImageUrls(raw: FormDataEntryValue | null): string[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -46,8 +81,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Geçersiz form verisi" }, { status: 400 });
   }
 
+  const modeRaw = String(form.get("mode") || "villa");
   const parsed = bodySchema.safeParse({
-    villaId: form.get("villaId"),
+    mode: modeRaw,
+    villaId: form.get("villaId") || undefined,
+    categoryId: form.get("categoryId") || undefined,
+    regionId: form.get("regionId") || undefined,
     imageUrls: parseImageUrls(form.get("imageUrls")),
     siteKey: form.get("siteKey") || undefined,
     tagline: form.get("tagline") || undefined,

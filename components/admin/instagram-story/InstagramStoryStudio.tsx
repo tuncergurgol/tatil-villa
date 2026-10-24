@@ -7,36 +7,59 @@ import {
   Download,
   Film,
   ImageIcon,
+  LayoutGrid,
   Loader2,
+  MapPin,
   Music2,
   Search,
   Sparkles,
+  Home,
   X,
 } from "lucide-react";
 import {
   generateInstagramStoryStillsAction,
+  getInstagramStoryCategoryAction,
+  getInstagramStoryRegionAction,
   getInstagramStoryVillaAction,
 } from "@/app/actions/admin/instagram-story";
 import type { InstagramStorySiteOption } from "@/lib/instagram-story/types";
 import {
   INSTAGRAM_STORY_TAGLINES,
+  type InstagramStoryMode,
+  type InstagramStorySearchHit,
   type InstagramStorySlideResult,
-  type InstagramStoryVillaPayload,
+  type InstagramStorySourcePayload,
 } from "@/lib/instagram-story/types";
-
-type SearchHit = {
-  id: string;
-  name: string;
-  slug: string;
-  image: string;
-  location: string;
-  guests: number;
-  bedrooms: number;
-};
 
 type Props = {
   sites: InstagramStorySiteOption[];
 };
+
+const MODE_OPTIONS: Array<{
+  id: InstagramStoryMode;
+  label: string;
+  hint: string;
+  icon: typeof Home;
+}> = [
+  {
+    id: "villa",
+    label: "Tesis / Villa",
+    hint: "Tek tesise özel story",
+    icon: Home,
+  },
+  {
+    id: "category",
+    label: "Kategori",
+    hint: "Örn. Isıtmalı Havuzlu — kolaj",
+    icon: LayoutGrid,
+  },
+  {
+    id: "region",
+    label: "Bölge",
+    hint: "Bölgedeki tesislerden kolaj",
+    icon: MapPin,
+  },
+];
 
 function downloadBase64(fileName: string, mimeType: string, base64: string) {
   const anchor = document.createElement("a");
@@ -54,13 +77,42 @@ function downloadBlob(fileName: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
+function searchPlaceholder(mode: InstagramStoryMode) {
+  if (mode === "category") return "Kategori ara (Isıtmalı Havuzlu, Deniz Manzaralı…)";
+  if (mode === "region") return "Bölge ara (Kaş, Fethiye, Antalya…)";
+  return "Villa / tesis adı veya slug ara...";
+}
+
+function emptyStateCopy(mode: InstagramStoryMode) {
+  if (mode === "category") {
+    return {
+      title: "Bir kategori seçerek başlayın",
+      body: "Seçilen kategorideki tesis görsellerinden kolaj story üretilir (4’lü gruplar).",
+    };
+  }
+  if (mode === "region") {
+    return {
+      title: "Bir bölge arayarak başlayın",
+      body: "Bölgedeki tesis görsellerinden kolaj story üretilir (4’lü gruplar).",
+    };
+  }
+  return {
+    title: "Site seçip bir villa arayarak başlayın",
+    body: "En fazla 8 görsel; videoya kendi müziğinizi ekleyebilirsiniz.",
+  };
+}
+
 export default function InstagramStoryStudio({ sites }: Props) {
   const defaultSite = sites[0]!;
+  const [mode, setMode] = useState<InstagramStoryMode>("villa");
   const [siteKey, setSiteKey] = useState(defaultSite.key);
   const [search, setSearch] = useState("");
-  const [hits, setHits] = useState<SearchHit[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [hits, setHits] = useState<InstagramStorySearchHit[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [villa, setVilla] = useState<InstagramStoryVillaPayload | null>(null);
+  const [source, setSource] = useState<InstagramStorySourcePayload | null>(
+    null
+  );
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [tagline, setTagline] = useState<string>(INSTAGRAM_STORY_TAGLINES[0]);
   const [meta, setMeta] = useState("");
@@ -78,10 +130,18 @@ export default function InstagramStoryStudio({ sites }: Props) {
 
   const selectedSite =
     sites.find((site) => site.key === siteKey) ?? defaultSite;
+  const maxImages = mode === "villa" ? 8 : 24;
+  const isCollageMode = mode !== "villa";
+  const emptyCopy = emptyStateCopy(mode);
 
   useEffect(() => {
     const query = search.trim();
-    if (!query) {
+    if (mode === "region" && !query) {
+      setHits([]);
+      setSearchLoading(false);
+      return;
+    }
+    if (mode === "villa" && !query) {
       setHits([]);
       setSearchLoading(false);
       return;
@@ -92,27 +152,30 @@ export default function InstagramStoryStudio({ sites }: Props) {
     const timer = window.setTimeout(async () => {
       try {
         const response = await fetch(
-          `/api/admin/instagram-story/search?q=${encodeURIComponent(query)}`,
+          `/api/admin/instagram-story/search?mode=${encodeURIComponent(mode)}&q=${encodeURIComponent(query)}`,
           { signal: controller.signal }
         );
         if (!response.ok) {
           setHits([]);
           return;
         }
-        const data = (await response.json()) as { villas?: SearchHit[] };
-        setHits(data.villas ?? []);
+        const data = (await response.json()) as {
+          hits?: InstagramStorySearchHit[];
+          villas?: InstagramStorySearchHit[];
+        };
+        setHits(data.hits ?? data.villas ?? []);
       } catch (err) {
         if ((err as Error).name !== "AbortError") setHits([]);
       } finally {
         setSearchLoading(false);
       }
-    }, 250);
+    }, mode === "category" && !query ? 0 : 250);
 
     return () => {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [search]);
+  }, [search, mode]);
 
   useEffect(() => {
     return () => {
@@ -120,18 +183,45 @@ export default function InstagramStoryStudio({ sites }: Props) {
     };
   }, [videoUrl]);
 
-  const canGenerate = Boolean(villa && selectedImages.length > 0);
+  const canGenerate = Boolean(source && selectedImages.length > 0);
 
-  const selectedCountLabel = useMemo(
-    () =>
-      `${selectedImages.length} / ${Math.min(villa?.images.length ?? 0, 8)} seçili`,
-    [selectedImages.length, villa?.images.length]
-  );
+  const selectedCountLabel = useMemo(() => {
+    const available = Math.min(source?.images.length ?? 0, maxImages);
+    const collageHint =
+      isCollageMode && selectedImages.length > 0
+        ? ` · ${Math.ceil(selectedImages.length / 4)} kolaj slayt`
+        : "";
+    return `${selectedImages.length} / ${available} seçili${collageHint}`;
+  }, [selectedImages.length, source?.images.length, maxImages, isCollageMode]);
 
   function clearVideo() {
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     setVideoUrl(null);
     setVideoName("");
+  }
+
+  function resetSourceState() {
+    setSource(null);
+    setSelectedImages([]);
+    setSlides([]);
+    clearVideo();
+    setError(null);
+  }
+
+  function applyMode(next: InstagramStoryMode) {
+    if (next === mode) return;
+    setMode(next);
+    setSearch("");
+    setHits([]);
+    setSearchFocused(false);
+    resetSourceState();
+    if (next === "category") {
+      setTagline("KATEGORİ SEÇKİSİ");
+    } else if (next === "region") {
+      setTagline("BÖLGE SEÇKİSİ");
+    } else {
+      setTagline(INSTAGRAM_STORY_TAGLINES[0]);
+    }
   }
 
   function applySite(nextKey: string) {
@@ -142,29 +232,69 @@ export default function InstagramStoryStudio({ sites }: Props) {
     clearVideo();
   }
 
-  function selectVilla(hit: SearchHit) {
+  function applySource(next: InstagramStorySourcePayload) {
+    setSource(next);
+    const defaultCount = next.mode === "villa" ? 4 : Math.min(8, next.images.length);
+    setSelectedImages(next.images.slice(0, defaultCount));
+    setTagline(next.defaultTagline);
+    setMeta(next.defaultMeta);
+    setLocation(next.location);
+    setCtaLabel(selectedSite.ctaLabel);
+  }
+
+  function selectHit(hit: InstagramStorySearchHit) {
     setError(null);
     setSearch("");
     setHits([]);
     setSlides([]);
     clearVideo();
     startTransition(async () => {
-      const result = await getInstagramStoryVillaAction(hit.id);
+      if (mode === "villa") {
+        const result = await getInstagramStoryVillaAction(hit.id);
+        if ("error" in result && result.error) {
+          setError(result.error);
+          return;
+        }
+        if (!("source" in result) || !result.source) {
+          setError("Villa yüklenemedi");
+          return;
+        }
+        applySource(result.source);
+        return;
+      }
+
+      if (mode === "category") {
+        const result = await getInstagramStoryCategoryAction(hit.id);
+        if ("error" in result && result.error) {
+          setError(result.error);
+          return;
+        }
+        if (!result.source) {
+          setError("Kategori yüklenemedi");
+          return;
+        }
+        if (result.source.images.length === 0) {
+          setError("Bu kategoride görseli olan aktif tesis yok");
+          return;
+        }
+        applySource(result.source);
+        return;
+      }
+
+      const result = await getInstagramStoryRegionAction(hit.id);
       if ("error" in result && result.error) {
         setError(result.error);
         return;
       }
-      if (!("villa" in result) || !result.villa) {
-        setError("Villa yüklenemedi");
+      if (!result.source) {
+        setError("Bölge yüklenemedi");
         return;
       }
-      const next = result.villa;
-      setVilla(next);
-      setSelectedImages(next.images.slice(0, 4));
-      setTagline(next.defaultTagline);
-      setMeta(next.defaultMeta);
-      setLocation(next.location);
-      setCtaLabel(selectedSite.ctaLabel);
+      if (result.source.images.length === 0) {
+        setError("Bu bölgede görseli olan aktif tesis yok");
+        return;
+      }
+      applySource(result.source);
     });
   }
 
@@ -175,25 +305,38 @@ export default function InstagramStoryStudio({ sites }: Props) {
       if (current.includes(url)) {
         return current.filter((item) => item !== url);
       }
-      if (current.length >= 8) return current;
+      if (current.length >= maxImages) return current;
       return [...current, url];
     });
   }
 
+  function buildGeneratePayload() {
+    if (!source) return null;
+    return {
+      mode,
+      villaId: source.mode === "villa" ? source.id : undefined,
+      categoryId: source.mode === "category" ? source.id : undefined,
+      regionId: source.mode === "region" ? source.id : undefined,
+      imageUrls: selectedImages,
+      siteKey: selectedSite.key as
+        | "tatildeyiz"
+        | "balayi-villacisi"
+        | "tatil-villacisi"
+        | "glamping-turkey",
+      tagline,
+      meta,
+      location,
+      ctaLabel,
+    };
+  }
+
   function handleGenerateStills() {
-    if (!villa) return;
+    const payload = buildGeneratePayload();
+    if (!payload) return;
     setError(null);
     clearVideo();
     startTransition(async () => {
-      const result = await generateInstagramStoryStillsAction({
-        villaId: villa.id,
-        imageUrls: selectedImages,
-        siteKey: selectedSite.key,
-        tagline,
-        meta,
-        location,
-        ctaLabel,
-      });
+      const result = await generateInstagramStoryStillsAction(payload);
       if ("error" in result && result.error) {
         setError(result.error);
         setSlides([]);
@@ -204,15 +347,19 @@ export default function InstagramStoryStudio({ sites }: Props) {
   }
 
   async function handleGenerateVideo() {
-    if (!villa) return;
+    const payload = buildGeneratePayload();
+    if (!payload || !source) return;
     setError(null);
     setVideoPending(true);
     clearVideo();
     try {
       const form = new FormData();
-      form.set("villaId", villa.id);
-      form.set("imageUrls", JSON.stringify(selectedImages));
-      form.set("siteKey", selectedSite.key);
+      form.set("mode", payload.mode);
+      if (payload.villaId) form.set("villaId", payload.villaId);
+      if (payload.categoryId) form.set("categoryId", payload.categoryId);
+      if (payload.regionId) form.set("regionId", payload.regionId);
+      form.set("imageUrls", JSON.stringify(payload.imageUrls));
+      form.set("siteKey", payload.siteKey);
       form.set("tagline", tagline);
       form.set("meta", meta);
       form.set("location", location);
@@ -242,7 +389,11 @@ export default function InstagramStoryStudio({ sites }: Props) {
       const blob = await response.blob();
       const disposition = response.headers.get("Content-Disposition") ?? "";
       const match = disposition.match(/filename="([^"]+)"/);
-      const name = match?.[1] || `${villa.slug}-instagram-story.mp4`;
+      const fallback =
+        mode === "villa"
+          ? `${source.slug}-instagram-story.mp4`
+          : `${source.slug}-instagram-kolaj.mp4`;
+      const name = match?.[1] || fallback;
       const url = URL.createObjectURL(blob);
       setVideoUrl(url);
       setVideoName(name);
@@ -252,6 +403,10 @@ export default function InstagramStoryStudio({ sites }: Props) {
       setVideoPending(false);
     }
   }
+
+  const showSearchDropdown =
+    searchFocused &&
+    (mode === "category" || Boolean(search.trim()) || searchLoading);
 
   return (
     <div className="space-y-6">
@@ -263,10 +418,41 @@ export default function InstagramStoryStudio({ sites }: Props) {
               <h1 className="text-xl font-bold">Instagram Story Üretici</h1>
             </div>
             <p className="mt-1 max-w-2xl text-sm text-gray-600">
-              Site markası, villa görselleri ve isteğe bağlı müzikle 1080×1920
-              story görseli / MP4 videosu üretin.
+              Tesis, kategori veya bölgeye göre 1080×1920 story görseli / MP4
+              videosu üretin. Kategori ve bölgede içerik kolaj olarak hazırlanır.
             </p>
           </div>
+        </div>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          {MODE_OPTIONS.map((option) => {
+            const Icon = option.icon;
+            const active = mode === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => applyMode(option.id)}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  active
+                    ? "border-teal-500 bg-teal-50 ring-2 ring-teal-100"
+                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon
+                    className={`h-4 w-4 ${active ? "text-teal-700" : "text-gray-500"}`}
+                  />
+                  <span
+                    className={`text-sm font-semibold ${active ? "text-teal-900" : "text-gray-800"}`}
+                  >
+                    {option.label}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">{option.hint}</p>
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -308,10 +494,14 @@ export default function InstagramStoryStudio({ sites }: Props) {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Villa adı veya slug ara..."
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => {
+              window.setTimeout(() => setSearchFocused(false), 150);
+            }}
+            placeholder={searchPlaceholder(mode)}
             className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-100"
           />
-          {search.trim() ? (
+          {showSearchDropdown ? (
             <div className="absolute z-30 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
               {searchLoading ? (
                 <p className="px-4 py-6 text-center text-sm text-gray-500">
@@ -322,7 +512,8 @@ export default function InstagramStoryStudio({ sites }: Props) {
                   <button
                     key={hit.id}
                     type="button"
-                    onClick={() => selectVilla(hit)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectHit(hit)}
                     className="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left text-sm transition last:border-b-0 hover:bg-teal-50"
                   >
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
@@ -334,7 +525,17 @@ export default function InstagramStoryStudio({ sites }: Props) {
                           className="object-cover"
                           unoptimized
                         />
-                      ) : null}
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-gray-300">
+                          {mode === "region" ? (
+                            <MapPin className="h-5 w-5" />
+                          ) : mode === "category" ? (
+                            <LayoutGrid className="h-5 w-5" />
+                          ) : (
+                            <Home className="h-5 w-5" />
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium text-gray-900">
@@ -342,6 +543,9 @@ export default function InstagramStoryStudio({ sites }: Props) {
                       </p>
                       <p className="truncate text-xs text-gray-500">
                         {hit.location || hit.slug}
+                        {typeof hit.villaCount === "number"
+                          ? ` · ${hit.villaCount} tesis`
+                          : ""}
                       </p>
                     </div>
                   </button>
@@ -362,24 +566,29 @@ export default function InstagramStoryStudio({ sites }: Props) {
         </div>
       ) : null}
 
-      {villa ? (
+      {source ? (
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-teal-700">
+                  {source.mode === "villa"
+                    ? "Tesis"
+                    : source.mode === "category"
+                      ? "Kategori kolajı"
+                      : "Bölge kolajı"}
+                </p>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  {villa.name}
+                  {source.name}
                 </h2>
-                <p className="text-sm text-gray-500">{villa.location}</p>
+                <p className="text-sm text-gray-500">
+                  {source.location}
+                  {source.villaCount > 1 ? ` · ${source.villaCount} tesis` : ""}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setVilla(null);
-                  setSelectedImages([]);
-                  setSlides([]);
-                  clearVideo();
-                }}
+                onClick={resetSourceState}
                 className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
               >
                 <X className="h-3.5 w-3.5" />
@@ -390,42 +599,61 @@ export default function InstagramStoryStudio({ sites }: Props) {
             <div>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-gray-800">
-                  Galeri görselleri
+                  {isCollageMode
+                    ? "Kolaj için görseller (tesis kapakları)"
+                    : "Galeri görselleri"}
                 </p>
                 <span className="text-xs text-gray-500">{selectedCountLabel}</span>
               </div>
+              {isCollageMode ? (
+                <p className="mb-3 text-xs text-gray-500">
+                  Seçilen görseller 4’lü gruplar halinde kolaj slaytlara
+                  dönüştürülür. En fazla {maxImages} görsel.
+                </p>
+              ) : null}
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                {villa.images.slice(0, 24).map((url) => {
-                  const selected = selectedImages.includes(url);
-                  const order = selected
-                    ? selectedImages.indexOf(url) + 1
-                    : null;
-                  return (
-                    <button
-                      key={url}
-                      type="button"
-                      onClick={() => toggleImage(url)}
-                      className={`relative aspect-[3/4] overflow-hidden rounded-xl border-2 transition ${
-                        selected
-                          ? "border-teal-500 ring-2 ring-teal-100"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <Image
-                        src={url}
-                        alt=""
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      {order != null ? (
-                        <span className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-xs font-bold text-white">
-                          {order}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
+                {source.images.slice(0, maxImages === 8 ? 24 : maxImages).map(
+                  (url) => {
+                    const selected = selectedImages.includes(url);
+                    const order = selected
+                      ? selectedImages.indexOf(url) + 1
+                      : null;
+                    const item = source.imageItems.find(
+                      (entry) => entry.url === url
+                    );
+                    return (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => toggleImage(url)}
+                        title={item?.villaName}
+                        className={`relative aspect-[3/4] overflow-hidden rounded-xl border-2 transition ${
+                          selected
+                            ? "border-teal-500 ring-2 ring-teal-100"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <Image
+                          src={url}
+                          alt={item?.villaName || ""}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                        {order != null ? (
+                          <span className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-xs font-bold text-white">
+                            {order}
+                          </span>
+                        ) : null}
+                        {isCollageMode && item?.villaName ? (
+                          <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1.5 py-1 text-[10px] font-medium text-white">
+                            {item.villaName}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  }
+                )}
               </div>
             </div>
 
@@ -448,7 +676,7 @@ export default function InstagramStoryStudio({ sites }: Props) {
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block font-medium text-gray-700">
-                  Konum metni
+                  Konum / alt metin
                 </span>
                 <input
                   value={location}
@@ -564,7 +792,9 @@ export default function InstagramStoryStudio({ sites }: Props) {
                 ) : (
                   <ImageIcon className="h-4 w-4" />
                 )}
-                Story görselleri üret
+                {isCollageMode
+                  ? "Kolaj story görselleri üret"
+                  : "Story görselleri üret"}
               </button>
               <button
                 type="button"
@@ -645,7 +875,7 @@ export default function InstagramStoryStudio({ sites }: Props) {
               </div>
             ) : !videoUrl ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
-                Villa seçip görselleri ürettiğinizde önizleme burada görünür.
+                Görselleri ürettiğinizde önizleme burada görünür.
               </div>
             ) : null}
           </section>
@@ -654,11 +884,9 @@ export default function InstagramStoryStudio({ sites }: Props) {
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-16 text-center shadow-sm">
           <Clapperboard className="mx-auto h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm font-medium text-gray-700">
-            Site seçip bir villa arayarak başlayın
+            {emptyCopy.title}
           </p>
-          <p className="mt-1 text-xs text-gray-500">
-            En fazla 8 görsel; videoya kendi müziğinizi ekleyebilirsiniz.
-          </p>
+          <p className="mt-1 text-xs text-gray-500">{emptyCopy.body}</p>
         </div>
       )}
     </div>
