@@ -1,4 +1,7 @@
-import Link from "next/link";
+"use client";
+
+import { useTranslations } from "next-intl";
+import { Link } from "@/lib/i18n/navigation";
 import {
   FAQ_CATEGORY_ORDER,
   getFaqCategoryLabel,
@@ -12,9 +15,11 @@ export type HomeFaqItem = {
 };
 
 export default function FaqCategoryPanel({ faqs }: { faqs: HomeFaqItem[] }) {
+  const tChrome = useTranslations("chrome");
+
   if (faqs.length === 0) {
     return (
-      <p className="text-center text-sm text-gray-500">Henüz soru eklenmedi.</p>
+      <p className="text-center text-sm text-gray-500">{tChrome("noFaqsYet")}</p>
     );
   }
 
@@ -68,7 +73,7 @@ export default function FaqCategoryPanel({ faqs }: { faqs: HomeFaqItem[] }) {
           href="/sik-sorulan-sorular"
           className="inline-flex items-center rounded-full bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
         >
-          Tüm soruları gör
+          {tChrome("viewAllFaqs")}
         </Link>
       </div>
     </div>

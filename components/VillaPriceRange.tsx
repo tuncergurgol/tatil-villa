@@ -1,3 +1,8 @@
+"use client";
+
+import { useLocale, useTranslations } from "next-intl";
+import { localeToBcp47 } from "@/lib/i18n/locale-display";
+
 type VillaPriceRangeProps = {
   minNightlyPrice?: number | null;
   maxNightlyPrice?: number | null;
@@ -6,10 +11,6 @@ type VillaPriceRangeProps = {
   compact?: boolean;
 };
 
-function formatRangeAmount(price: number) {
-  return `${price.toLocaleString("tr-TR", { maximumFractionDigits: 0 })}TL`;
-}
-
 export default function VillaPriceRange({
   minNightlyPrice,
   maxNightlyPrice,
@@ -17,6 +18,14 @@ export default function VillaPriceRange({
   showArrow = true,
   compact = false,
 }: VillaPriceRangeProps) {
+  const locale = useLocale();
+  const tChrome = useTranslations("chrome");
+  const bcp47 = localeToBcp47(locale);
+
+  function formatRangeAmount(price: number) {
+    return `${price.toLocaleString(bcp47, { maximumFractionDigits: 0 })}TL`;
+  }
+
   const min = minNightlyPrice ?? pricePerNight ?? null;
   const max = maxNightlyPrice ?? pricePerNight ?? null;
 
@@ -28,7 +37,7 @@ export default function VillaPriceRange({
             compact ? "text-sm" : "text-base"
           }`}
         >
-          Teklif Alınız
+          {tChrome("requestQuote")}
         </p>
         {showArrow ? (
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-700 text-lg font-semibold text-white shadow-sm transition group-hover:bg-orange-800">
@@ -56,11 +65,11 @@ export default function VillaPriceRange({
             {rangeText}
           </span>
           <span className="ml-1 align-top text-[11px] font-semibold text-orange-700">
-            /Gecelik
+            {tChrome("perNight")}
           </span>
         </p>
         <p className="mt-0.5 text-xs text-gray-600">
-          {same ? "Gecelik fiyat" : "Fiyat Aralığında"}
+          {same ? tChrome("nightlyPrice") : tChrome("inPriceRange")}
         </p>
       </div>
       {showArrow ? (

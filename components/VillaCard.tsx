@@ -1,11 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import GalleryImage from "@/components/GalleryImage";
-import Link from "next/link";
+import { Link } from "@/lib/i18n/navigation";
 import VillaPriceRange from "@/components/VillaPriceRange";
 import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import type { Villa } from "@/lib/types";
-import { categoryLabel } from "@/lib/utils";
 import { villaPublicPath } from "@/lib/villa-public-path";
 
 interface VillaCardProps {
@@ -19,7 +19,11 @@ export default function VillaCard({
   layout = "fixed",
 }: VillaCardProps) {
   const listingCopy = usePublicListingCopy();
+  const tChrome = useTranslations("chrome");
   const isFluid = layout === "fluid";
+  const badge = listingCopy?.usesTesis
+    ? tChrome("rentalProperty")
+    : tChrome("rentalVilla");
 
   return (
     <Link
@@ -41,7 +45,7 @@ export default function VillaCard({
           quality={60}
         />
         <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-teal-800">
-          {categoryLabel(villa.category, listingCopy)}
+          {badge}
         </div>
       </div>
 
@@ -52,8 +56,8 @@ export default function VillaCard({
         <p className="mt-1 truncate text-sm text-gray-500">{villa.location}</p>
 
         <p className="mt-3 text-xs text-gray-600">
-          {villa.guests} kişi · {villa.bedrooms} yatak odası · {villa.bathrooms}{" "}
-          banyo
+          {villa.guests} {tChrome("guestsUnit")} · {villa.bedrooms}{" "}
+          {tChrome("bedroomsUnit")} · {villa.bathrooms} {tChrome("bathroomsUnit")}
         </p>
 
         <div className="mt-auto border-t border-gray-100 pt-3">

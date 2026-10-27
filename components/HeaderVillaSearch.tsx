@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import GalleryImage from "@/components/GalleryImage";
 import { FormEvent, useEffect, useRef, useState } from "react";
@@ -33,6 +34,7 @@ export default function HeaderVillaSearch({
   onAfterNavigate?: () => void;
 }) {
   const router = useRouter();
+  const tChrome = useTranslations("chrome");
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -170,8 +172,8 @@ export default function HeaderVillaSearch({
             onFocus={() => {
               if (query.trim().length > 0) setOpen(true);
             }}
-            placeholder="Villa adı ara..."
-            aria-label="Villa adı ile ara"
+            placeholder={tChrome("searchVillaPlaceholder")}
+            aria-label={tChrome("searchVillaAria")}
             className={`w-full rounded-full border border-gray-200 bg-gray-50 pl-9 pr-3 text-gray-800 outline-none transition placeholder:text-gray-600 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 ${
               compact
                 ? "py-1.5 text-sm"

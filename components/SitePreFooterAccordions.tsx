@@ -1,7 +1,9 @@
+import { getLocale, getTranslations } from "next-intl/server";
 import DeferredBlogInspiration from "@/components/blog/DeferredBlogInspiration";
 import FaqCategoryPanel from "@/components/home/FaqCategoryPanel";
 import HomeContentSection from "@/components/home/HomeContentSection";
 import ReviewsShowcase from "@/components/home/ReviewsShowcase";
+import { localizeBlogCategory } from "@/lib/i18n/localize-public-label";
 import { buildReviewItemListJsonLd } from "@/lib/review-json-ld";
 
 type FaqItem = {
@@ -37,7 +39,7 @@ type BlogCategoryItem = {
   slug: string;
 };
 
-export default function SitePreFooterAccordions({
+export default async function SitePreFooterAccordions({
   faqs,
   reviews,
   posts,
@@ -50,6 +52,32 @@ export default function SitePreFooterAccordions({
   blogCategories: BlogCategoryItem[];
   brandName: string;
 }) {
+  const [locale, tChrome] = await Promise.all([
+    getLocale(),
+    getTranslations("chrome"),
+  ]);
+
+  const localizedCategories = blogCategories.map((category) => ({
+    ...category,
+    name: localizeBlogCategory(category.slug, category.name, locale),
+  }));
+
+  const localizedPosts = posts.map((post) => ({
+    id: post.id,
+    slug: post.slug,
+    title: post.title,
+    excerpt: post.excerpt,
+    coverImage: post.coverImage,
+    categoryName: post.category
+      ? localizeBlogCategory(
+          post.category.slug,
+          post.category.name,
+          locale
+        )
+      : null,
+    categorySlug: post.category?.slug ?? null,
+  }));
+
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -71,7 +99,7 @@ export default function SitePreFooterAccordions({
   const blogJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "Blog",
+    name: tChrome("blogsTitle"),
     itemListElement: posts.map((post, index) => ({
       "@type": "ListItem",
       position: index + 1,
@@ -83,7 +111,7 @@ export default function SitePreFooterAccordions({
   return (
     <section
       className="cv-auto relative overflow-hidden border-t border-sky-50 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_55%)]"
-      aria-label="Site içerik alanları"
+      aria-label="Site content"
     >
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_top,_rgba(56,189,248,0.12),_transparent_70%)]"
@@ -110,11 +138,17 @@ export default function SitePreFooterAccordions({
       ) : null}
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-10 sm:gap-6 sm:px-6 sm:py-14 lg:px-8">
-        <HomeContentSection id="sik-sorulan-sorular" title="Sık Sorulan Sorular">
+        <HomeContentSection
+          id="sik-sorulan-sorular"
+          title={tChrome("faqTitle")}
+        >
           <FaqCategoryPanel faqs={faqs} />
         </HomeContentSection>
 
-        <HomeContentSection id="misafir-yorumlari" title="Misafir Yorumları">
+        <HomeContentSection
+          id="misafir-yorumlari"
+          title={tChrome("reviewsTitle")}
+        >
           <ReviewsShowcase
             brandName={brandName}
             reviews={reviews.map((review) => ({
@@ -129,18 +163,14 @@ export default function SitePreFooterAccordions({
           />
         </HomeContentSection>
 
-        <HomeContentSection id="blog" title="Bloglar" variant="gradient">
+        <HomeContentSection
+          id="blog"
+          title={tChrome("blogsTitle")}
+          variant="gradient"
+        >
           <DeferredBlogInspiration
-            categories={blogCategories}
-            posts={posts.map((post) => ({
-              id: post.id,
-              slug: post.slug,
-              title: post.title,
-              excerpt: post.excerpt,
-              coverImage: post.coverImage,
-              categoryName: post.category?.name ?? null,
-              categorySlug: post.category?.slug ?? null,
-            }))}
+            categories={localizedCategories}
+            posts={localizedPosts}
           />
         </HomeContentSection>
       </div>

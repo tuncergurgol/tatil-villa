@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Footer from "@/components/Footer";
 import TatilAssistantWidgetLoader from "@/components/tatil-assistant/TatilAssistantWidgetLoader";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
@@ -16,6 +16,12 @@ import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 import { getFooterRegionLinks } from "@/lib/queries/regions";
 import { buildCompanySocialLinks } from "@/lib/social-links";
 import { maybeRewriteVillaWording } from "@/lib/public-listing-copy";
+import { chromeMessages } from "@/lib/i18n/chrome-messages";
+import {
+  localizeCorporateSlug,
+  localizeNavLabel,
+} from "@/lib/i18n/localize-public-label";
+import type { AppLocale } from "@/i18n/routing";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { siteConfig } from "@/lib/data";
@@ -29,9 +35,27 @@ export default async function SiteChromeBelowFold() {
   const pathname = headerList.get("x-public-pathname") || "/";
   const hidePreFooter = isOwnerCheckInPath(pathname);
 
-  const company = await getCompanySettings();
+  const [company, locale, tNav, tMobile] = await Promise.all([
+    getCompanySettings(),
+    getLocale(),
+    getTranslations("nav"),
+    getTranslations("mobileNav"),
+  ]);
   const site = await getPublicSiteProfile(company);
-  const tNav = await getTranslations("nav");
+  const chrome =
+    chromeMessages[(locale as AppLocale) in chromeMessages ? (locale as AppLocale) : "en"];
+  const nav = {
+    villas: tNav("villas"),
+    deals: tNav("deals"),
+    regions: tNav("regions"),
+    campaigns: tNav("campaigns"),
+    loyalty: tNav("loyalty"),
+    allVillas: tNav("allVillas"),
+    dealVillas: tNav("dealVillas"),
+    reservationVerify: tNav("reservationVerify"),
+    services: tNav("services"),
+  };
+  const weWillCallYou = tMobile("weWillCallYou");
   const brandName = site.brandName?.trim() || siteConfig.name;
   const phone = company.phone?.trim() || siteConfig.phone;
   const defaultQuickLinks = [
@@ -41,6 +65,15 @@ export default async function SiteChromeBelowFold() {
     { href: "/#seyahat-macerasi", label: tNav("services") },
     { href: "/rezervasyon-dogrulama", label: tNav("reservationVerify") },
   ];
+
+  function localizeRegionLabel(label: string): string {
+    if (locale === "tr") return label;
+    return label
+      .replace(/Kiralık Villalar/g, "Villas for Rent")
+      .replace(/Kiralık Villa/g, "Villa for Rent")
+      .replace(/Kiralık Tesisler/g, "Properties for Rent")
+      .replace(/Kiralık Tesis/g, "Property for Rent");
+  }
 
   const [
     quickMenu,
@@ -88,20 +121,33 @@ export default async function SiteChromeBelowFold() {
 
   const quickLinks = [
     ...(quickMenu.length > 0
-      ? quickMenu.map((item) => ({
-          href: item.href,
-          label: maybeRewriteVillaWording(item.label, site.key),
-        }))
+      ? quickMenu.map((item) => {
+          const raw = maybeRewriteVillaWording(item.label, site.key);
+          return {
+            href: item.href,
+            label:
+              locale === "tr"
+                ? raw
+                : localizeNavLabel(item.href, raw, chrome, nav, weWillCallYou),
+          };
+        })
       : defaultQuickLinks),
   ];
 
-  const corporateLinks = corporatePages.map((page) => ({
-    href:
+  const corporateLinks = corporatePages.map((page) => {
+    const href =
       page.slug === "sizi-arayalim"
         ? "/sizi-arayalim"
-        : `/kurumsal/${page.slug}`,
-    label: maybeRewriteVillaWording(page.title, site.key),
-  }));
+        : `/kurumsal/${page.slug}`;
+    const raw = maybeRewriteVillaWording(page.title, site.key);
+    return {
+      href,
+      label:
+        locale === "tr"
+          ? raw
+          : localizeCorporateSlug(page.slug, raw, chrome, weWillCallYou),
+    };
+  });
 
   const socialLinks = buildCompanySocialLinks(company);
 
@@ -124,8 +170,14 @@ export default async function SiteChromeBelowFold() {
       <Footer
         quickLinks={quickLinks}
         corporateLinks={corporateLinks}
-        popularRegions={footerRegions.popular}
-        mahalleRegions={footerRegions.mahalles}
+        popularRegions={footerRegions.popular.map((region) => ({
+          ...region,
+          label: localizeRegionLabel(region.label),
+        }))}
+        mahalleRegions={footerRegions.mahalles.map((region) => ({
+          ...region,
+          label: localizeRegionLabel(region.label),
+        }))}
         socialLinks={socialLinks}
         contact={{
           phone,

@@ -1,4 +1,8 @@
-import Link from "next/link";
+"use client";
+
+import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/lib/i18n/navigation";
+import { localizeStayMonth } from "@/lib/i18n/localize-stay-month";
 
 export type HomeReviewItem = {
   id: string;
@@ -12,7 +16,7 @@ export type HomeReviewItem = {
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <span className="text-amber-700" aria-label={`${rating} / 5 puan`}>
+    <span className="text-amber-700" aria-label={`${rating} / 5`}>
       {"★".repeat(Math.max(0, Math.min(5, rating)))}
       <span className="text-gray-500">
         {"★".repeat(Math.max(0, 5 - Math.min(5, rating)))}
@@ -30,6 +34,7 @@ function ReviewCard({
   brandName: string;
   className?: string;
 }) {
+  const locale = useLocale();
   return (
     <article
       className={`flex h-full flex-col rounded-2xl border border-sky-100/80 bg-white p-4 shadow-sm sm:p-5 ${className}`}
@@ -78,7 +83,9 @@ function ReviewCard({
         “{review.comment}”
       </p>
       {review.stayMonth ? (
-        <p className="mt-3 text-xs text-gray-600">{review.stayMonth}</p>
+        <p className="mt-3 text-xs text-gray-600">
+          {localizeStayMonth(review.stayMonth, locale)}
+        </p>
       ) : null}
     </article>
   );
@@ -91,8 +98,15 @@ export default function ReviewsShowcase({
   reviews: HomeReviewItem[];
   brandName: string;
 }) {
+  const locale = useLocale();
+  const tHome = useTranslations("home");
+
   if (reviews.length === 0) {
-    return <p className="text-center text-sm text-gray-500">Henüz yorum yok.</p>;
+    return (
+      <p className="text-center text-sm text-gray-500">
+        {locale === "tr" ? "Henüz yorum yok." : "No reviews yet."}
+      </p>
+    );
   }
 
   return (
@@ -113,7 +127,7 @@ export default function ReviewsShowcase({
           href="/yorumlar"
           className="inline-flex items-center rounded-full bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
         >
-          Tüm yorumları gör
+          {locale === "tr" ? "Tüm yorumları gör" : tHome("viewAll")}
         </Link>
       </div>
     </div>

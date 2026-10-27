@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import CategoryFilterPills from "@/components/ui/CategoryFilterPills";
+import { Link } from "@/lib/i18n/navigation";
 
 export type BlogInspirationPost = {
   id: string;
@@ -26,10 +27,12 @@ function BlogCategoryFilters({
   categories,
   activeSlug,
   onChange,
+  allLabel,
 }: {
   categories: BlogInspirationCategory[];
   activeSlug: string | null;
   onChange: (slug: string | null) => void;
+  allLabel: string;
 }) {
   return (
     <CategoryFilterPills
@@ -39,6 +42,7 @@ function BlogCategoryFilters({
       }))}
       activeId={activeSlug}
       onChange={onChange}
+      allLabel={allLabel}
     />
   );
 }
@@ -64,8 +68,10 @@ export default function BlogInspirationSlider({
   ctaLabel?: string;
   headingLevel?: 1 | 2;
 }) {
+  const tChrome = useTranslations("chrome");
   const [activeCategorySlug, setActiveCategorySlug] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
+  const allLabel = tChrome("allCategories");
 
   const items = useMemo(() => {
     const base = posts.filter((post) => post.title.trim().length > 0);
@@ -131,6 +137,7 @@ export default function BlogInspirationSlider({
               categories={categories}
               activeSlug={activeCategorySlug}
               onChange={setActiveCategorySlug}
+              allLabel={allLabel}
             />
           </div>
         </div>
@@ -139,6 +146,7 @@ export default function BlogInspirationSlider({
           categories={categories}
           activeSlug={activeCategorySlug}
           onChange={setActiveCategorySlug}
+          allLabel={allLabel}
         />
       )}
 

@@ -1,9 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "@/lib/i18n/navigation";
+import { chromeMessages } from "@/lib/i18n/chrome-messages";
+import { localizeCampaignByHref } from "@/lib/i18n/localize-public-label";
+import type { AppLocale } from "@/i18n/routing";
 import type { Campaign } from "@/lib/types";
 
 interface CampaignBannerProps {
@@ -17,7 +21,20 @@ const ARROW_CLASS =
   "absolute top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/40 text-slate-800/75 ring-1 ring-inset ring-white/50 backdrop-blur-[3px] transition hover:bg-white/70 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:pointer-events-none disabled:opacity-0 sm:h-9 sm:w-9";
 
 export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
-  const items = campaigns.slice(0, MAX_HOME_CAMPAIGNS);
+  const locale = useLocale();
+  const tChrome = useTranslations("chrome");
+  const chrome =
+    chromeMessages[(locale as AppLocale) in chromeMessages ? (locale as AppLocale) : "en"];
+  const items = useMemo(
+    () =>
+      campaigns.slice(0, MAX_HOME_CAMPAIGNS).map((campaign) => {
+        if (locale === "tr") return campaign;
+        const localized = localizeCampaignByHref(campaign.href, chrome);
+        if (!localized) return campaign;
+        return { ...campaign, ...localized };
+      }),
+    [campaigns, chrome, locale]
+  );
   const scrollerRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
@@ -119,10 +136,10 @@ export default function CampaignBanner({ campaigns }: CampaignBannerProps) {
       <div className="mx-auto min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Kampanyalar
+            {tChrome("campaignsTitle")}
           </h2>
           <p className="mt-1 text-gray-600">
-            Size özel fırsat ve kampanyaları kaçırmayın.
+            {tChrome("campaignsSubtitle")}
           </p>
         </div>
 

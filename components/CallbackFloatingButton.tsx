@@ -1,10 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Phone, X } from "lucide-react";
+import { Link, usePathname } from "@/lib/i18n/navigation";
 
 const CallbackRequestFormPublic = dynamic(
   () => import("@/components/corporate/CallbackRequestFormPublic"),
@@ -13,6 +13,9 @@ const CallbackRequestFormPublic = dynamic(
 
 export default function CallbackFloatingButton() {
   const pathname = usePathname();
+  const tChrome = useTranslations("chrome");
+  const tMobile = useTranslations("mobileNav");
+  const tCommon = useTranslations("common");
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const [wiggle, setWiggle] = useState(false);
@@ -87,9 +90,9 @@ export default function CallbackFloatingButton() {
             />
           </span>
           <span className="pr-0.5 text-left leading-tight">
-            Sizi Arayalım
+            {tMobile("weWillCallYou")}
             <span className="block text-[11px] font-semibold text-white/90">
-              Ücretsiz geri arama
+              {tChrome("freeCallback")}
             </span>
           </span>
         </button>
@@ -100,7 +103,7 @@ export default function CallbackFloatingButton() {
           <button
             type="button"
             className="absolute inset-0 bg-[#0a3d4a]/55 backdrop-blur-[2px]"
-            aria-label="Kapat"
+            aria-label={tCommon("close")}
             onClick={close}
           />
           <div
@@ -113,17 +116,17 @@ export default function CallbackFloatingButton() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 id={titleId} className="text-lg font-bold">
-                    Sizi Arayalım
+                    {tMobile("weWillCallYou")}
                   </h2>
                   <p className="mt-0.5 text-sm text-white/80">
-                    Kod gelir → doğrula → biz ararız.
+                    {tChrome("callbackHint")}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={close}
                   className="rounded-full bg-white/15 p-2 hover:bg-white/25"
-                  aria-label="Kapat"
+                  aria-label={tCommon("close")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -137,13 +140,12 @@ export default function CallbackFloatingButton() {
                 }}
               />
               <p className="mt-4 text-center text-xs text-[#1a4a5c]/60">
-                Detaylı sayfa:{" "}
                 <Link
                   href="/sizi-arayalim"
                   className="font-semibold text-[#e85d04] underline-offset-2 hover:underline"
                   onClick={close}
                 >
-                  Sizi Arayalım
+                  {tMobile("weWillCallYou")}
                 </Link>
               </p>
             </div>

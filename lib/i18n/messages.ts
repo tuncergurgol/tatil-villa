@@ -1,5 +1,9 @@
 import type { AppLocale } from "@/i18n/routing";
 import {
+  chromeMessages,
+  type ChromeMessages,
+} from "@/lib/i18n/chrome-messages";
+import {
   footerExtraMessages,
   homeExtraMessages,
   searchMessages,
@@ -98,6 +102,7 @@ export type AppMessages = {
   };
   search: SearchMessages;
   services: ServicesMessages;
+  chrome: ChromeMessages;
 };
 
 type CoreMessages = {
@@ -118,6 +123,7 @@ function withCatalog(locale: AppLocale, core: CoreMessages): AppMessages {
     home: { ...core.home, ...homeExtraMessages[locale] },
     search: searchMessages[locale],
     services: servicesMessages[locale],
+    chrome: chromeMessages[locale],
   };
 }
 
