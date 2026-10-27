@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { VillaDayOccupancy } from "@prisma/client";
@@ -10,6 +10,11 @@ import {
   convertCurrencyAmount,
   type PublicExchangeRates,
 } from "@/lib/currency-conversion";
+import {
+  localeToBcp47,
+  monthLabelForLocale,
+  weekdayLabelsForLocale,
+} from "@/lib/i18n/locale-display";
 import {
   getPublicVillaDayVisualStyle,
   PUBLIC_VILLA_DAY_VISUAL_LEGEND,
@@ -37,22 +42,6 @@ type VillaAvailabilityCalendarProps = {
   exchangeRates: PublicExchangeRates;
 };
 
-const WEEKDAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"] as const;
-const MONTHS = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
-] as const;
-
 const MAX_CALENDAR_MONTHS = 48;
 
 function monthKey(year: number, month: number) {
@@ -65,8 +54,10 @@ function addMonthKey(key: string, delta: number): string {
   return monthKey(date.getFullYear(), date.getMonth());
 }
 
-function formatDayPrice(price: number) {
-  return price.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
+function formatDayPrice(price: number, locale: string) {
+  return price.toLocaleString(localeToBcp47(locale), {
+    maximumFractionDigits: 0,
+  });
 }
 
 function buildMonthCells(
@@ -104,6 +95,10 @@ function MonthGrid({
   occupancyMap,
   checkInDateKeys,
   exchangeRates,
+  locale,
+  weekdays,
+  nightLabel,
+  nightsLabel,
 }: {
   year: number;
   month: number;
@@ -111,6 +106,10 @@ function MonthGrid({
   occupancyMap: Map<string, VillaDayOccupancy>;
   checkInDateKeys: ReadonlySet<string>;
   exchangeRates: PublicExchangeRates;
+  locale: string;
+  weekdays: string[];
+  nightLabel: string;
+  nightsLabel: string;
 }) {
   const {
     pendingStart,
@@ -132,10 +131,10 @@ function MonthGrid({
   return (
     <div className="min-w-0">
       <h3 className="mb-3 text-center text-base font-semibold text-slate-900">
-        {MONTHS[month]} {year}
+        {monthLabelForLocale(year, month, locale)}
       </h3>
       <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-slate-500 sm:text-xs">
-        {WEEKDAYS.map((label) => (
+        {weekdays.map((label) => (
           <div key={label} className="py-1.5">
             {label}
           </div>
@@ -237,7 +236,7 @@ function MonthGrid({
               </p>
               {visual.showPrice && priceTl != null && hasDayData ? (
                 <p className="mt-0.5 text-[9px] leading-tight text-slate-600 sm:text-[10px]">
-                  {formatDayPrice(priceTl)}
+                  {formatDayPrice(priceTl, locale)}
                   <span className="text-slate-600">₺</span>
                 </p>
               ) : null}
@@ -252,7 +251,8 @@ function MonthGrid({
               />
               {showNightHint ? (
                 <span className="pointer-events-none absolute -bottom-5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
-                  {previewNights} Gece
+                  {previewNights}{" "}
+                  {previewNights === 1 ? nightLabel : nightsLabel}
                 </span>
               ) : null}
             </button>
@@ -267,9 +267,15 @@ export default function VillaAvailabilityCalendar({
   days,
   exchangeRates,
 }: VillaAvailabilityCalendarProps) {
+  const locale = useLocale();
+  const t = useTranslations("villa");
   const tHome = useTranslations("home");
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const { occupancyMap } = useVillaStaySelection();
+  const weekdays = useMemo(() => weekdayLabelsForLocale(locale), [locale]);
+  const nightLabel = tCommon("night");
+  const nightsLabel = tCommon("nights");
 
   const dayMap = useMemo(() => {
     const map = new Map<string, CalendarDay>();
@@ -345,14 +351,14 @@ export default function VillaAvailabilityCalendar({
           onClick={() => setMonthIndex((i) => Math.max(0, i - 1))}
           disabled={monthIndex <= 0}
           className="rounded-lg border border-slate-200 p-2 text-slate-600 disabled:opacity-40"
-          aria-label="Önceki ay"
+          aria-label={t("previousMonth")}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <p className="text-sm font-medium text-slate-600">
           {showTwo
-            ? `${MONTHS[month1]} – ${MONTHS[month2]} ${year2}`
-            : `${MONTHS[month1]} ${year1}`}
+            ? `${monthLabelForLocale(year1, month1, locale)} – ${monthLabelForLocale(year2, month2, locale)}`
+            : monthLabelForLocale(year1, month1, locale)}
         </p>
         <button
           type="button"
@@ -361,7 +367,7 @@ export default function VillaAvailabilityCalendar({
           }
           disabled={monthIndex >= maxMonthIndex && months.length > 1}
           className="rounded-lg border border-slate-200 p-2 text-slate-600 disabled:opacity-40"
-          aria-label="Sonraki ay"
+          aria-label={t("nextMonth")}
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -375,6 +381,10 @@ export default function VillaAvailabilityCalendar({
           occupancyMap={occupancyMap}
           checkInDateKeys={checkInDateKeys}
           exchangeRates={exchangeRates}
+          locale={locale}
+          weekdays={weekdays}
+          nightLabel={nightLabel}
+          nightsLabel={nightsLabel}
         />
         {showTwo ? (
           <MonthGrid
@@ -384,20 +394,33 @@ export default function VillaAvailabilityCalendar({
             occupancyMap={occupancyMap}
             checkInDateKeys={checkInDateKeys}
             exchangeRates={exchangeRates}
+            locale={locale}
+            weekdays={weekdays}
+            nightLabel={nightLabel}
+            nightsLabel={nightsLabel}
           />
         ) : null}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-600">
-        {PUBLIC_VILLA_DAY_VISUAL_LEGEND.map((item) => (
-          <span key={item.label} className="inline-flex items-center gap-1.5">
-            <span
-              className="h-3.5 w-3.5 rounded border border-slate-200"
-              style={item.swatchStyle}
-            />
-            {item.label}
-          </span>
-        ))}
+        {PUBLIC_VILLA_DAY_VISUAL_LEGEND.map((item) => {
+          const legendMap: Record<string, string> = {
+            Dolu: tCommon("booked"),
+            Opsiyon: tCommon("option"),
+            "Giriş / Çıkış": `${tCommon("checkin")} / ${tCommon("checkout")}`,
+            "Giriş + Çıkış": `${tCommon("checkin")} + ${tCommon("checkout")}`,
+            Müsait: tCommon("available"),
+          };
+          return (
+            <span key={item.label} className="inline-flex items-center gap-1.5">
+              <span
+                className="h-3.5 w-3.5 rounded border border-slate-200"
+                style={item.swatchStyle}
+              />
+              {locale === "tr" ? item.label : legendMap[item.label] ?? item.label}
+            </span>
+          );
+        })}
         <HolidayCalendarLegend label={tHome("officialHoliday")} />
       </div>
     </div>

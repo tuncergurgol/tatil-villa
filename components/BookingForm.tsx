@@ -10,7 +10,9 @@ import {
   Phone,
   Share2,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { submitBooking, type BookingActionState } from "@/app/actions/booking";
+import { localeToBcp47 } from "@/lib/i18n/locale-display";
 import { getMemberBookingBenefitsAction } from "@/app/actions/member-booking-benefits";
 import type { PreReservationMemberBenefits } from "@/components/PreReservationModal";
 import FloatingPanel from "@/components/FloatingPanel";
@@ -132,16 +134,17 @@ interface BookingFormProps {
 
 const initialState: BookingActionState = {};
 
-function formatBookingDate(dateKey: string) {
+function formatBookingDate(dateKey: string, locale: string) {
   const date = parseDateKey(dateKey);
+  const bcp47 = localeToBcp47(locale);
   const day = date.getDate();
   const year = date.getFullYear();
   const month = date
-    .toLocaleDateString("tr-TR", { month: "long" })
-    .toLocaleUpperCase("tr-TR");
+    .toLocaleDateString(bcp47, { month: "long" })
+    .toLocaleUpperCase(bcp47);
   const weekday = date
-    .toLocaleDateString("tr-TR", { weekday: "long" })
-    .toLocaleUpperCase("tr-TR");
+    .toLocaleDateString(bcp47, { weekday: "long" })
+    .toLocaleUpperCase(bcp47);
   return `${day} ${month} ${year} ${weekday}`;
 }
 
@@ -155,11 +158,17 @@ function formatCompanyPhoneDisplay(phone: string) {
 
 function guestSummary(
   counts: { adults: number; children: number; babies: number; pets: number },
-  allowPets: boolean
+  allowPets: boolean,
+  labels: {
+    adults: string;
+    children: string;
+    babies: string;
+    pets: string;
+  }
 ) {
-  const base = `${counts.adults} Yetişkin, ${counts.children} Çocuk, ${counts.babies} Bebek`;
+  const base = `${counts.adults} ${labels.adults}, ${counts.children} ${labels.children}, ${counts.babies} ${labels.babies}`;
   if (!allowPets) return base;
-  return `${base}, ${counts.pets} Evcil Hayvan`;
+  return `${base}, ${counts.pets} ${labels.pets}`;
 }
 
 export default function BookingForm({
@@ -178,6 +187,8 @@ export default function BookingForm({
   allowPrepaymentOption = true,
   allowFullPaymentOption = false,
 }: BookingFormProps) {
+  const locale = useLocale();
+  const t = useTranslations("villa");
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
   const [modalOpen, setModalOpen] = useState(false);
   const [memberBenefits, setMemberBenefits] =
@@ -697,41 +708,41 @@ export default function BookingForm({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="text-base font-bold tracking-tight text-slate-900">
-              Rezervasyon Yap
+              {t("makeReservation")}
             </h3>
             {!checkIn || !checkOut ? (
               pricePerNight ? (
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Tarih seçerek konaklama bedelini hesaplayın
+                  {t("selectDatesHint")}
                 </p>
               ) : (
                 <p className="mt-0.5 text-xs font-semibold text-amber-700">
-                  Tarih Seçiniz
+                  {t("selectDates")}
                 </p>
               )
             ) : quote?.valid ? (
               <p className="mt-1 text-[15px] font-bold leading-tight text-slate-900">
-                {quote.nights} Gece
+                {t("nightsTotal", { nights: quote.nights })}
                 <span className="mx-1.5 font-semibold text-slate-400">·</span>
                 {memberDiscountAmount > 0 ? (
                   <>
-                    Toplam{" "}
+                    {t("total")}{" "}
                     <span className="text-emerald-600">
                       {(displayTotals?.grandTotal ?? quote.total).toLocaleString(
-                        "tr-TR"
+                        localeToBcp47(locale)
                       )}{" "}
                       {quote.currency}
                     </span>
                     <span className="mt-0.5 block text-[11px] font-semibold text-teal-700">
-                      {memberDiscountLabel} uygulandı
+                      {t("discountApplied", { label: memberDiscountLabel })}
                     </span>
                   </>
                 ) : (
                   <>
-                    Toplam{" "}
+                    {t("total")}{" "}
                     <span className="text-emerald-600">
                       {(displayTotals?.grandTotal ?? quote.total).toLocaleString(
-                        "tr-TR"
+                        localeToBcp47(locale)
                       )}{" "}
                       {quote.currency}
                     </span>
@@ -740,12 +751,12 @@ export default function BookingForm({
               </p>
             ) : (
               <p className="mt-0.5 text-xs text-amber-700">
-                {quote?.invalidReason ?? "Hesaplama için tarih seçin"}
+                {quote?.invalidReason ?? t("selectDatesToCalculate")}
               </p>
             )}
             {quote?.valid && memberBenefits && !memberBenefits.loggedIn ? (
               <p className="mt-1 text-[11px] font-medium text-amber-800">
-                Üye girişiyle sadakat indirimi kazanın
+                {t("memberLoginDiscount")}
               </p>
             ) : null}
           </div>
@@ -755,14 +766,14 @@ export default function BookingForm({
               void handleShare();
             }}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-            aria-label="Paylaş"
+            aria-label={t("share")}
           >
             {shareCopied ? (
               <Check className="h-3.5 w-3.5 text-teal-600" />
             ) : (
               <Share2 className="h-3.5 w-3.5 text-slate-600" />
             )}
-            {shareCopied ? "Kopyalandı" : "Paylaş"}
+            {shareCopied ? t("copied") : t("share")}
           </button>
         </div>
       </div>
@@ -776,7 +787,7 @@ export default function BookingForm({
 
         {minStayInfoVisible && quote?.belowMinStay && quote.minStayNights ? (
           <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm text-sky-800">
-            Bilgi: Minimum konaklama {quote.minStayNights} gecedir.
+            {t("minStayInfo", { nights: quote.minStayNights })}
           </div>
         ) : null}
 
@@ -802,14 +813,16 @@ export default function BookingForm({
               <CalendarDays className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
               <div className="min-w-0">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  Giriş Tarihi
+                  {t("checkInDate")}
                 </p>
                 <p
                   className={`text-[12px] font-semibold leading-snug ${
                     checkIn ? "text-slate-900" : "text-slate-600"
                   }`}
                 >
-                  {checkIn ? formatBookingDate(checkIn) : "Tarih seçin"}
+                  {checkIn
+                    ? formatBookingDate(checkIn, locale)
+                    : t("selectDate")}
                 </p>
               </div>
             </div>
@@ -817,14 +830,16 @@ export default function BookingForm({
               <CalendarDays className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
               <div className="min-w-0">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  Çıkış Tarihi
+                  {t("checkOutDate")}
                 </p>
                 <p
                   className={`text-[12px] font-semibold leading-snug ${
                     checkOut ? "text-slate-900" : "text-slate-600"
                   }`}
                 >
-                  {checkOut ? formatBookingDate(checkOut) : "Tarih seçin"}
+                  {checkOut
+                    ? formatBookingDate(checkOut, locale)
+                    : t("selectDate")}
                 </p>
               </div>
             </div>
@@ -880,10 +895,15 @@ export default function BookingForm({
           >
             <div className="min-w-0">
               <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                Misafir
+                {t("guest")}
               </p>
               <p className="truncate text-[12px] font-semibold text-slate-900">
-                {guestSummary(guests, allowPets)}
+                {guestSummary(guests, allowPets, {
+                  adults: t("adults"),
+                  children: t("children"),
+                  babies: t("babies"),
+                  pets: t("pets"),
+                })}
               </p>
             </div>
             <ChevronDown
@@ -904,7 +924,7 @@ export default function BookingForm({
               onChange={setGuests}
               showPets={allowPets}
               maxGuests={maxGuests}
-              confirmLabel="Tamam"
+              confirmLabel={t("done")}
               onConfirm={() => setGuestsOpen(false)}
             />
           </FloatingPanel>
@@ -943,7 +963,7 @@ export default function BookingForm({
               : "bg-emerald-600 hover:bg-emerald-700"
           }`}
         >
-          Ön Rezervasyon Talebi Gönder
+          {t("preReservation")}
         </button>
       </div>
 

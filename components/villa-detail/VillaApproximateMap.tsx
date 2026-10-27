@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { approximateMapsDirectionsUrl } from "@/lib/villa-approximate-location";
 
 /**
@@ -93,6 +94,7 @@ export default function VillaApproximateMap({
   longitude,
   regionLabel,
 }: VillaApproximateMapProps) {
+  const t = useTranslations("villa");
   const apiKey =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
   const useJsApi = Boolean(apiKey);
@@ -164,8 +166,8 @@ export default function VillaApproximateMap({
   }, [apiKey, latitude, longitude, useJsApi]);
 
   const ariaLabel = regionLabel
-    ? `${regionLabel} yaklaşık konum haritası`
-    : "Yaklaşık konum haritası";
+    ? t("approximateMapNamed", { region: regionLabel })
+    : t("approximateMap");
 
   const directionsButton = (
     <a
@@ -174,7 +176,7 @@ export default function VillaApproximateMap({
       rel="noreferrer"
       className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-teal-800 shadow-md ring-1 ring-slate-200/80 transition hover:bg-teal-50 hover:text-teal-900"
     >
-      Yol tarifi
+      {t("directions")}
     </a>
   );
 
@@ -197,7 +199,7 @@ export default function VillaApproximateMap({
             <div ref={containerRef} className="absolute inset-0" />
             {status === "loading" ? (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-100/80 text-sm text-slate-500">
-                Harita yükleniyor…
+                {t("mapLoading")}
               </div>
             ) : null}
           </>
@@ -215,8 +217,9 @@ export default function VillaApproximateMap({
         )
       )}
       <p className="border-t border-slate-100 bg-white px-4 py-2.5 text-xs text-slate-500">
-        Yaklaşık konum gösterilir; kesin adres rezervasyon sonrası paylaşılır.
-        {regionLabel ? ` (${regionLabel})` : null}
+        {t("approximateLocationNote", {
+          region: regionLabel ? ` (${regionLabel})` : "",
+        })}
       </p>
     </div>
   );

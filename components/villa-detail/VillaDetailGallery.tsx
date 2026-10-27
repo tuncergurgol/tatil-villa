@@ -3,6 +3,7 @@
 import GalleryImage from "@/components/GalleryImage";
 import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
 import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
@@ -44,6 +45,7 @@ export default function VillaDetailGallery({
   videoUrl = "",
 }: VillaDetailGalleryProps) {
   const listingCopy = usePublicListingCopy();
+  const t = useTranslations("villa");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
@@ -190,7 +192,7 @@ export default function VillaDetailGallery({
         ) : (
           <Share2 className="h-4 w-4 text-slate-700" />
         )}
-        {shareCopied ? "Kopyalandı" : "Paylaş"}
+        {shareCopied ? t("copied") : t("share")}
       </button>
     </div>
   );
@@ -221,7 +223,7 @@ export default function VillaDetailGallery({
                 key={`mobile-${src}-${index}`}
                 role="button"
                 tabIndex={0}
-                aria-label={`${name} fotoğraf ${index + 1}`}
+                aria-label={t("photoAria", { name, index: index + 1 })}
                 onClick={() => {
                   if (gallerySwiped.current) return;
                   openLightbox(index);
@@ -263,7 +265,7 @@ export default function VillaDetailGallery({
               className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-lg bg-white/95 px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-md backdrop-blur hover:bg-white"
             >
               <Images className="h-4 w-4" />
-              Tümünü Göster
+              {t("showAll")}
             </button>
           </>
         ) : null}
@@ -313,7 +315,7 @@ export default function VillaDetailGallery({
             className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-lg bg-white/95 px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-md backdrop-blur hover:bg-white"
           >
             <Images className="h-4 w-4" />
-            Tümünü Göster
+            {t("showAll")}
           </button>
         )}
       </div>
@@ -366,7 +368,7 @@ export default function VillaDetailGallery({
                 type="button"
                 onClick={showPrev}
                 className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:left-6"
-                aria-label="Önceki"
+                aria-label={t("previous")}
               >
                 <ChevronLeft className="h-7 w-7" />
               </button>
@@ -374,7 +376,7 @@ export default function VillaDetailGallery({
                 type="button"
                 onClick={showNext}
                 className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:right-6"
-                aria-label="Sonraki"
+                aria-label={t("next")}
               >
                 <ChevronRight className="h-7 w-7" />
               </button>

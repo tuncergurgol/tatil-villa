@@ -13,6 +13,10 @@ import {
   type SearchMessages,
   type ServicesMessages,
 } from "@/lib/i18n/search-messages";
+import {
+  villaDetailMessages,
+  type VillaDetailMessages,
+} from "@/lib/i18n/villa-detail-messages";
 
 export type AppMessages = {
   nav: {
@@ -71,24 +75,7 @@ export type AppMessages = {
     checkin: string;
     lastMinute: string;
   };
-  villa: {
-    availability: string;
-    availabilityCalendar: string;
-    availabilityHint: string;
-    periodPrices: string;
-    makeReservation: string;
-    similarVillas: string;
-    reviews: string;
-    amenities: string;
-    location: string;
-    knowBefore: string;
-    faq: string;
-    bedrooms: string;
-    bathrooms: string;
-    capacity: string;
-    pools: string;
-    notFound: string;
-  };
+  villa: VillaDetailMessages;
   home: {
     heroAlt: string;
     searchTitle: string;
@@ -184,25 +171,7 @@ const trCore: CoreMessages = {
     checkin: "Giriş",
     lastMinute: "Son Dakika Fırsatı",
   },
-  villa: {
-    availability: "Müsaitlik",
-    availabilityCalendar: "Müsaitlik Takvimi",
-    availabilityHint:
-      "Tarihlere tıklayarak giriş ve çıkış seçebilirsiniz. Müsait günlerde gecelik fiyatlar görünür.",
-    periodPrices: "Dönemlik Fiyatlar",
-    makeReservation: "Rezervasyon Yap",
-    similarVillas: "Benzer Villalar",
-    reviews: "Misafir Yorumları",
-    amenities: "Olanaklar",
-    location: "Konum",
-    knowBefore: "Bilmeniz Gerekenler",
-    faq: "Sık Sorulan Sorular",
-    bedrooms: "Yatak Odası",
-    bathrooms: "Banyo",
-    capacity: "Kapasite",
-    pools: "Havuzlar",
-    notFound: "Villa Bulunamadı",
-  },
+  villa: villaDetailMessages.tr,
   home: {
     heroAlt: "Tatil manzarası",
     searchTitle: "Hayalinizdeki villayı bulun",
@@ -273,25 +242,7 @@ const enCore: CoreMessages = {
     checkin: "Check-in",
     lastMinute: "Last Minute Deal",
   },
-  villa: {
-    availability: "Availability",
-    availabilityCalendar: "Availability Calendar",
-    availabilityHint:
-      "Click dates to select check-in and check-out. Nightly prices are shown on available days.",
-    periodPrices: "Seasonal Prices",
-    makeReservation: "Make a Reservation",
-    similarVillas: "Similar Villas",
-    reviews: "Guest Reviews",
-    amenities: "Amenities",
-    location: "Location",
-    knowBefore: "Good to Know",
-    faq: "FAQ",
-    bedrooms: "Bedrooms",
-    bathrooms: "Bathrooms",
-    capacity: "Capacity",
-    pools: "Pools",
-    notFound: "Villa Not Found",
-  },
+  villa: villaDetailMessages.en,
   home: {
     heroAlt: "Holiday scenery",
     searchTitle: "Find your dream villa",
@@ -362,25 +313,7 @@ const deCore: CoreMessages = {
     checkin: "Anreise",
     lastMinute: "Last-Minute-Angebot",
   },
-  villa: {
-    availability: "Verfügbarkeit",
-    availabilityCalendar: "Verfügbarkeitskalender",
-    availabilityHint:
-      "Klicken Sie auf Daten für An- und Abreise. Nachtpreise werden an verfügbaren Tagen angezeigt.",
-    periodPrices: "Saisonpreise",
-    makeReservation: "Reservierung",
-    similarVillas: "Ähnliche Villen",
-    reviews: "Gästebewertungen",
-    amenities: "Ausstattung",
-    location: "Lage",
-    knowBefore: "Wissenswertes",
-    faq: "FAQ",
-    bedrooms: "Schlafzimmer",
-    bathrooms: "Badezimmer",
-    capacity: "Kapazität",
-    pools: "Pools",
-    notFound: "Villa nicht gefunden",
-  },
+  villa: villaDetailMessages.de,
   home: {
     heroAlt: "Urlaubslandschaft",
     searchTitle: "Finden Sie Ihre Traumvilla",
@@ -451,25 +384,7 @@ const frCore: CoreMessages = {
     checkin: "Arrivée",
     lastMinute: "Offre de dernière minute",
   },
-  villa: {
-    availability: "Disponibilité",
-    availabilityCalendar: "Calendrier de disponibilité",
-    availabilityHint:
-      "Cliquez sur les dates pour choisir l'arrivée et le départ. Les prix par nuit s'affichent sur les jours disponibles.",
-    periodPrices: "Tarifs saisonniers",
-    makeReservation: "Réserver",
-    similarVillas: "Villas similaires",
-    reviews: "Avis des clients",
-    amenities: "Équipements",
-    location: "Emplacement",
-    knowBefore: "À savoir",
-    faq: "FAQ",
-    bedrooms: "Chambres",
-    bathrooms: "Salles de bain",
-    capacity: "Capacité",
-    pools: "Piscines",
-    notFound: "Villa introuvable",
-  },
+  villa: villaDetailMessages.fr,
   home: {
     heroAlt: "Paysage de vacances",
     searchTitle: "Trouvez la villa de vos rêves",
@@ -540,25 +455,7 @@ const esCore: CoreMessages = {
     checkin: "Entrada",
     lastMinute: "Oferta de última hora",
   },
-  villa: {
-    availability: "Disponibilidad",
-    availabilityCalendar: "Calendario de disponibilidad",
-    availabilityHint:
-      "Haga clic en las fechas para elegir entrada y salida. Los precios por noche se muestran en los días disponibles.",
-    periodPrices: "Precios por temporada",
-    makeReservation: "Hacer reserva",
-    similarVillas: "Villas similares",
-    reviews: "Opiniones de huéspedes",
-    amenities: "Comodidades",
-    location: "Ubicación",
-    knowBefore: "Información útil",
-    faq: "Preguntas frecuentes",
-    bedrooms: "Dormitorios",
-    bathrooms: "Baños",
-    capacity: "Capacidad",
-    pools: "Piscinas",
-    notFound: "Villa no encontrada",
-  },
+  villa: villaDetailMessages.es,
   home: {
     heroAlt: "Paisaje vacacional",
     searchTitle: "Encuentra la villa de tus sueños",
@@ -629,25 +526,7 @@ const bgCore: CoreMessages = {
     checkin: "Настаняване",
     lastMinute: "Оферта в последния момент",
   },
-  villa: {
-    availability: "Наличност",
-    availabilityCalendar: "Календар на наличността",
-    availabilityHint:
-      "Кликнете върху датите, за да изберете настаняване и напускане. Цените за нощ се показват на свободните дни.",
-    periodPrices: "Сезонни цени",
-    makeReservation: "Направете резервация",
-    similarVillas: "Подобни вили",
-    reviews: "Отзиви на гости",
-    amenities: "Удобства",
-    location: "Местоположение",
-    knowBefore: "Важно да знаете",
-    faq: "Често задавани въпроси",
-    bedrooms: "Спални",
-    bathrooms: "Бани",
-    capacity: "Капацитет",
-    pools: "Басейни",
-    notFound: "Вилата не е намерена",
-  },
+  villa: villaDetailMessages.bg,
   home: {
     heroAlt: "Ваканционен пейзаж",
     searchTitle: "Намерете вилата на мечтите си",
@@ -718,25 +597,7 @@ const elCore: CoreMessages = {
     checkin: "Άφιξη",
     lastMinute: "Προσφορά τελευταίας στιγμής",
   },
-  villa: {
-    availability: "Διαθεσιμότητα",
-    availabilityCalendar: "Ημερολόγιο διαθεσιμότητας",
-    availabilityHint:
-      "Κάντε κλικ στις ημερομηνίες για άφιξη και αναχώρηση. Οι τιμές ανά νύχτα εμφανίζονται τις διαθέσιμες ημέρες.",
-    periodPrices: "Εποχιακές τιμές",
-    makeReservation: "Κράτηση",
-    similarVillas: "Παρόμοιες βίλες",
-    reviews: "Κριτικές επισκεπτών",
-    amenities: "Παροχές",
-    location: "Τοποθεσία",
-    knowBefore: "Πληροφορίες",
-    faq: "Συχνές ερωτήσεις",
-    bedrooms: "Υπνοδωμάτια",
-    bathrooms: "Μπάνια",
-    capacity: "Χωρητικότητα",
-    pools: "Πισίνες",
-    notFound: "Η βίλα δεν βρέθηκε",
-  },
+  villa: villaDetailMessages.el,
   home: {
     heroAlt: "Τοπίο διακοπών",
     searchTitle: "Βρείτε τη βίλα των ονείρων σας",
@@ -807,24 +668,7 @@ const zhCore: CoreMessages = {
     checkin: "入住",
     lastMinute: "最后时刻优惠",
   },
-  villa: {
-    availability: "可订状态",
-    availabilityCalendar: "可订日历",
-    availabilityHint: "点击日期选择入住和退房。可订日期显示每晚价格。",
-    periodPrices: "季节性价格",
-    makeReservation: "预订",
-    similarVillas: "相似别墅",
-    reviews: "客人评价",
-    amenities: "设施",
-    location: "位置",
-    knowBefore: "须知",
-    faq: "常见问题",
-    bedrooms: "卧室",
-    bathrooms: "浴室",
-    capacity: "容量",
-    pools: "泳池",
-    notFound: "未找到别墅",
-  },
+  villa: villaDetailMessages.zh,
   home: {
     heroAlt: "度假风景",
     searchTitle: "找到您梦想中的别墅",

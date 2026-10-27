@@ -1,5 +1,8 @@
+"use client";
+
 import { BadgeCheck } from "lucide-react";
 import type { TourismDocumentType } from "@prisma/client";
+import { useTranslations } from "next-intl";
 import { buildKonutBelgeCheckUrl } from "@/lib/konut-belge-check";
 import { isKonutBelgeLinkable } from "@/lib/villa-document-types";
 
@@ -12,6 +15,7 @@ export default function TourismPermitBadge({
   documentNo,
   documentType = null,
 }: TourismPermitBadgeProps) {
+  const t = useTranslations("villa");
   const trimmed = documentNo.trim();
   if (!trimmed) return null;
 
@@ -48,7 +52,7 @@ export default function TourismPermitBadge({
           aria-hidden
         />
         <div className="leading-tight">
-          <p className="text-[11px] text-slate-500">Belge No:</p>
+          <p className="text-[11px] text-slate-500">{t("documentNo")}</p>
           <p className="text-sm font-bold text-slate-900 sm:text-[15px]">
             {trimmed}
           </p>
@@ -66,7 +70,7 @@ export default function TourismPermitBadge({
       href={buildKonutBelgeCheckUrl(trimmed)}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Turizm belgesi doğrula: ${trimmed}`}
+      aria-label={t("verifyPermitAria", { no: trimmed })}
       className={className}
     >
       {content}

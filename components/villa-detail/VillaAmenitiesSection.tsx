@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
-import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
+import { useTranslations } from "next-intl";
 
 export type AmenityGroup = {
   category: string;
@@ -15,7 +15,10 @@ type VillaAmenitiesSectionProps = {
 };
 
 function isGeneralCategory(category: string) {
-  return category.localeCompare("Genel", "tr", { sensitivity: "base" }) === 0;
+  return (
+    category.localeCompare("Genel", "tr", { sensitivity: "base" }) === 0 ||
+    category.localeCompare("General", "en", { sensitivity: "base" }) === 0
+  );
 }
 
 function AmenityList({ items }: { items: string[] }) {
@@ -65,6 +68,7 @@ function AllAmenitiesModal({
     };
   }, [open, onClose]);
 
+  const t = useTranslations("villa");
   if (!open || !mounted) return null;
 
   return createPortal(
@@ -85,17 +89,22 @@ function AllAmenitiesModal({
               id="all-amenities-title"
               className="text-lg font-bold text-slate-900"
             >
-              Tüm Olanaklar
+              {t("allAmenities")}
             </h2>
             <p className="mt-0.5 text-sm text-slate-500">
-              {groups.reduce((sum, group) => sum + group.items.length, 0)} olanak
+              {t("amenitiesCount", {
+                count: groups.reduce(
+                  (sum, group) => sum + group.items.length,
+                  0
+                ),
+              })}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="cursor-pointer rounded-full bg-slate-100 p-2 text-slate-600 transition hover:bg-slate-200"
-            aria-label="Kapat"
+            aria-label={t("close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -121,7 +130,7 @@ export default function VillaAmenitiesSection({
   groups,
 }: VillaAmenitiesSectionProps) {
   const [open, setOpen] = useState(false);
-  const listingCopy = usePublicListingCopy();
+  const t = useTranslations("villa");
 
   const generalGroup = groups.find((group) =>
     isGeneralCategory(group.category)
@@ -134,22 +143,21 @@ export default function VillaAmenitiesSection({
   return (
     <div>
       <h2 className="border-l-4 border-teal-700 pl-3 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-        {listingCopy.amenities}
+        {t("villaAmenities")}
       </h2>
 
       <div className="mt-5">
         {generalItems.length > 0 ? (
           <>
-            <h3 className="text-sm font-semibold text-slate-800">Genel</h3>
+            <h3 className="text-sm font-semibold text-slate-800">
+              {t("general")}
+            </h3>
             <div className="mt-2">
               <AmenityList items={generalItems} />
             </div>
           </>
         ) : (
-          <p className="text-sm text-slate-500">
-            Genel olanak listesi boş. Tüm olanakları görüntülemek için butona
-            tıklayın.
-          </p>
+          <p className="text-sm text-slate-500">{t("generalAmenitiesEmpty")}</p>
         )}
 
         <button
@@ -157,7 +165,7 @@ export default function VillaAmenitiesSection({
           onClick={() => setOpen(true)}
           className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full bg-sky-50 px-5 py-2.5 text-sm font-semibold text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-100 hover:ring-sky-300"
         >
-          Tüm Olanaklar
+          {t("allAmenities")}
         </button>
       </div>
 

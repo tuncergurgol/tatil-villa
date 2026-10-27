@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, Info, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   buildForeignCurrencyPaymentDisclaimer,
   convertCurrencyAmount,
   resolveForeignPriceCurrencies,
   type PublicExchangeRates,
 } from "@/lib/currency-conversion";
+import { localeToBcp47 } from "@/lib/i18n/locale-display";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
 import { VILLA_PERIOD_CURRENCIES } from "@/lib/villa-period-pricing";
 
@@ -34,21 +36,6 @@ type PeriodPricesModalProps = {
   onClose: () => void;
 };
 
-const MONTHS_TR = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
-] as const;
-
 const CURRENCY_SYMBOL: Record<string, string> = {
   TL: "₺",
   TRY: "₺",
@@ -66,22 +53,29 @@ function utcParts(iso: string) {
   };
 }
 
-function formatLongDay(iso: string, withYear: boolean) {
+function formatLongDay(iso: string, withYear: boolean, locale: string) {
   const { year, month, day } = utcParts(iso);
-  const label = `${day} ${MONTHS_TR[month]}`;
-  return withYear ? `${label} ${year}` : label;
+  const date = new Date(Date.UTC(year, month, day));
+  return new Intl.DateTimeFormat(localeToBcp47(locale), {
+    day: "numeric",
+    month: "long",
+    ...(withYear ? { year: "numeric" as const } : {}),
+    timeZone: "UTC",
+  }).format(date);
 }
 
-function formatLongRange(startIso: string, endIso: string) {
+function formatLongRange(startIso: string, endIso: string, locale: string) {
   const start = utcParts(startIso);
   const end = utcParts(endIso);
   const sameYear = start.year === end.year;
-  return `${formatLongDay(startIso, !sameYear)} - ${formatLongDay(endIso, true)}`;
+  return `${formatLongDay(startIso, !sameYear, locale)} - ${formatLongDay(endIso, true, locale)}`;
 }
 
-function formatMoney(amount: number, currency: string) {
+function formatMoney(amount: number, currency: string, locale: string) {
   const symbol = CURRENCY_SYMBOL[currency] ?? `${currency} `;
-  const value = amount.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
+  const value = amount.toLocaleString(localeToBcp47(locale), {
+    maximumFractionDigits: 0,
+  });
   if (symbol === "₺" || symbol === "€" || symbol === "$" || symbol === "£") {
     return `${symbol}${value}`;
   }
@@ -119,31 +113,37 @@ export function filterCurrentAndFuturePeriods(
     );
 }
 
-function cleaningTooltip(period: PeriodPriceItem) {
-  if (
-    period.cleaningFee == null ||
-    period.cleaningFee <= 0 ||
-    period.cleaningDayCount == null ||
-    period.cleaningDayCount <= 0
-  ) {
-    return null;
-  }
-  const fee = formatMoney(
-    period.cleaningFee,
-    period.cleaningFeeCurrency || "TL"
-  );
-  return `${period.cleaningDayCount} Gece altındaki kiralamalarda ekstra ${fee} temizlik ücreti alınmaktadır.`;
-}
-
 export default function PeriodPricesModal({
   periods,
   exchangeRates,
   open,
   onClose,
 }: PeriodPricesModalProps) {
+  const locale = useLocale();
+  const t = useTranslations("villa");
   const [currency, setCurrency] = useState<VillaPeriodCurrency>("TL");
   const [tooltipId, setTooltipId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  function cleaningTooltip(period: PeriodPriceItem) {
+    if (
+      period.cleaningFee == null ||
+      period.cleaningFee <= 0 ||
+      period.cleaningDayCount == null ||
+      period.cleaningDayCount <= 0
+    ) {
+      return null;
+    }
+    const fee = formatMoney(
+      period.cleaningFee,
+      period.cleaningFeeCurrency || "TL",
+      locale
+    );
+    return t("cleaningFeeNote", {
+      nights: period.cleaningDayCount,
+      fee,
+    });
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -199,17 +199,17 @@ export default function PeriodPricesModal({
               id="period-prices-title"
               className="text-lg font-bold tracking-tight"
             >
-              Dönemlik Fiyatlar
+              {t("periodPrices")}
             </h2>
             <p className="mt-0.5 text-sm text-rose-100">
-              {sorted.length} dönem mevcut
+              {t("periodsAvailable", { count: sorted.length })}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-full bg-rose-800/40 p-2 text-white transition hover:bg-rose-800/70"
-            aria-label="Kapat"
+            aria-label={t("close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -238,13 +238,15 @@ export default function PeriodPricesModal({
               );
             })}
           </div>
-          <p className="pb-2.5 text-sm font-medium text-slate-500">Gecelik</p>
+          <p className="pb-2.5 text-sm font-medium text-slate-500">
+            {t("nightly")}
+          </p>
         </div>
 
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain bg-slate-50 px-3 py-3 sm:px-4 sm:py-4">
           {sorted.length === 0 ? (
             <p className="rounded-xl bg-white px-4 py-6 text-center text-sm text-slate-500">
-              Gösterilecek güncel dönem bulunamadı.
+              {t("noCurrentPeriods")}
             </p>
           ) : null}
           {sorted.map((period) => {
@@ -293,19 +295,25 @@ export default function PeriodPricesModal({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[15px] font-bold leading-snug text-slate-800">
-                        {formatLongRange(period.startDate, period.endDate)}
+                        {formatLongRange(
+                          period.startDate,
+                          period.endDate,
+                          locale
+                        )}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-slate-500">
                         <span>
                           {period.minStayNights
-                            ? `Minimum ${period.minStayNights} gece konaklama`
-                            : "Minimum konaklama belirtilmemiş"}
+                            ? t("minStayNights", {
+                                nights: period.minStayNights,
+                              })
+                            : t("minStayUnspecified")}
                         </span>
                         {tip ? (
                           <button
                             type="button"
                             className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white"
-                            aria-label="Temizlik ücreti bilgisi"
+                            aria-label={t("cleaningFeeInfo")}
                             aria-expanded={showTip}
                             onClick={() =>
                               setTooltipId((current) =>
@@ -322,14 +330,14 @@ export default function PeriodPricesModal({
                       {salePrice != null ? (
                         <>
                           <p className="text-sm font-semibold tabular-nums text-rose-500 line-through">
-                            {formatMoney(listPrice, currency)}
+                            {formatMoney(listPrice, currency, locale)}
                           </p>
                           <p
                             className={`text-base font-bold tabular-nums sm:text-lg ${
                               active ? "text-teal-600" : "text-slate-800"
                             }`}
                           >
-                            {formatMoney(salePrice, currency)}
+                            {formatMoney(salePrice, currency, locale)}
                           </p>
                         </>
                       ) : (
@@ -338,7 +346,7 @@ export default function PeriodPricesModal({
                             active ? "text-teal-600" : "text-slate-800"
                           }`}
                         >
-                          {formatMoney(listPrice, currency)}
+                          {formatMoney(listPrice, currency, locale)}
                         </p>
                       )}
                     </div>
@@ -357,7 +365,7 @@ export default function PeriodPricesModal({
         <footer className="shrink-0 space-y-1.5 border-t border-slate-100 bg-white px-4 py-3 text-xs text-slate-500">
           <p className="flex items-center justify-center gap-1.5">
             <Info className="h-3.5 w-3.5 shrink-0" />
-            Fiyatlar gecelik olarak gösterilmektedir
+            {t("pricesShownNightly")}
           </p>
           {foreignCurrencyDisclaimer ? (
             <p className="text-center text-[11px] font-medium leading-snug text-amber-800">

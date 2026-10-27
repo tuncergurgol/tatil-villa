@@ -12,7 +12,9 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { formatNightlyAmount } from "@/lib/villa-period-calendar";
+import { localizeCatalogLabel } from "@/lib/i18n/localize-catalog-label";
 import VillaNaturePestNoticeBlock from "@/components/villa-detail/VillaNaturePestNoticeBlock";
 
 type PriceItem = {
@@ -91,7 +93,11 @@ function TimeRangeTimeline({
   const left = (startMin / (24 * 60)) * 100;
   const width = ((safeEnd - startMin) / (24 * 60)) * 100;
   const mid = left + width / 2;
-  const rangeLabel = `${formatTimeLabel(start)} - ${formatTimeLabel(end)} Arası`;
+  const t = useTranslations("villa");
+  const rangeLabel = t("betweenHours", {
+    start: formatTimeLabel(start),
+    end: formatTimeLabel(end),
+  });
 
   return (
     <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
@@ -178,28 +184,33 @@ export default function VillaKnowBeforeSection({
   priceExcluded,
   damageDeposit,
 }: VillaKnowBeforeSectionProps) {
+  const t = useTranslations("villa");
+  const locale = useLocale();
   const checkInStart = checkInTime || "16:00";
   const checkOutEnd = checkOutTime || "10:00";
+  const depositAmount = damageDeposit
+    ? formatDepositAmount(damageDeposit.amount, damageDeposit.currency)
+    : "";
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-          Bilmeniz Gerekenler
+          {t("knowBefore")}
         </h2>
 
         <div className="mt-6 space-y-7">
           <TimeRangeTimeline
             icon={DoorOpen}
             title="Check-in"
-            description="En erken ve en geç tesise giriş yapabileceğiniz saatler."
+            description={t("checkInDesc")}
             start={checkInStart}
             end="23:00"
           />
           <TimeRangeTimeline
             icon={DoorClosed}
             title="Check-out"
-            description="En geç tesisten çıkış yapabileceğiniz saatler."
+            description={t("checkOutDesc")}
             start="08:00"
             end={checkOutEnd}
           />
@@ -207,37 +218,39 @@ export default function VillaKnowBeforeSection({
       </div>
 
       <div className="rounded-2xl border border-slate-200 px-4 py-5 sm:px-6">
-        <h3 className="text-lg font-bold text-slate-900">Tesis Kuralları</h3>
+        <h3 className="text-lg font-bold text-slate-900">
+          {t("propertyRules")}
+        </h3>
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <RuleIconCard
             icon={Baby}
             allowed={allowBaby}
-            allowedLabel="Bebeğe Uygun"
-            deniedLabel="Bebeğe Uygun Değil"
+            allowedLabel={t("babyOk")}
+            deniedLabel={t("babyNotOk")}
           />
           <RuleIconCard
             icon={UsersRound}
             allowed={allowChildren}
-            allowedLabel="Çocuğa Uygun"
-            deniedLabel="Çocuğa Uygun Değil"
+            allowedLabel={t("childOk")}
+            deniedLabel={t("childNotOk")}
           />
           <RuleIconCard
             icon={Dog}
             allowed={allowPets}
-            allowedLabel="Evcil Hayvan Kabul Edilir"
-            deniedLabel="Evcil Hayvan Kabul Edilmez"
+            allowedLabel={t("petsOk")}
+            deniedLabel={t("petsNotOk")}
           />
           <RuleIconCard
             icon={Cigarette}
             allowed={allowSmoking}
-            allowedLabel="Sigara İçilebilir"
-            deniedLabel="Sigara İçilmez"
+            allowedLabel={t("smokingOk")}
+            deniedLabel={t("smokingNotOk")}
           />
           <RuleIconCard
             icon={Music}
             allowed={allowEvents}
-            allowedLabel="Parti / Etkinlik Yapılabilir"
-            deniedLabel="Parti Yapılmaz"
+            allowedLabel={t("eventsOk")}
+            deniedLabel={t("eventsNotOk")}
           />
         </div>
         {customRules.length > 0 ? (
@@ -248,7 +261,7 @@ export default function VillaKnowBeforeSection({
                 className="flex items-start gap-2 text-sm text-slate-700"
               >
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                {rule}
+                {localizeCatalogLabel(rule, locale)}
               </li>
             ))}
           </ul>
@@ -258,7 +271,7 @@ export default function VillaKnowBeforeSection({
       <div className="grid gap-8 lg:grid-cols-2">
         <div>
           <h3 className="text-lg font-bold text-slate-900">
-            Ücrete Dahil olanlar
+            {t("priceIncluded")}
           </h3>
           {priceIncluded.length > 0 ? (
             <ul className="mt-4 space-y-3">
@@ -270,20 +283,18 @@ export default function VillaKnowBeforeSection({
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                     <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
                   </span>
-                  {item.description}
+                  {localizeCatalogLabel(item.description, locale)}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">
-              Dahil kalem tanımlanmamış.
-            </p>
+            <p className="mt-3 text-sm text-slate-500">{t("includedEmpty")}</p>
           )}
 
           {priceExcluded.length > 0 ? (
             <div className="mt-7">
               <h4 className="text-base font-bold text-slate-900">
-                Ücrete Dahil olmayanlar
+                {t("priceExcluded")}
               </h4>
               <ul className="mt-3 space-y-3">
                 {priceExcluded.map((item) => (
@@ -294,7 +305,7 @@ export default function VillaKnowBeforeSection({
                     <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-500">
                       <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                     </span>
-                    {item.description}
+                    {localizeCatalogLabel(item.description, locale)}
                   </li>
                 ))}
               </ul>
@@ -303,26 +314,16 @@ export default function VillaKnowBeforeSection({
         </div>
 
         <div>
-          <h3 className="text-lg font-bold text-slate-900">Hasar Depozitosu</h3>
+          <h3 className="text-lg font-bold text-slate-900">
+            {t("damageDeposit")}
+          </h3>
           {damageDeposit ? (
             <p className="mt-4 text-[15px] leading-relaxed text-slate-600">
-              Depozito ücreti{" "}
-              <strong className="font-bold text-slate-900">
-                {formatDepositAmount(
-                  damageDeposit.amount,
-                  damageDeposit.currency
-                )}
-              </strong>{" "}
-              olarak belirlenmiştir. Konaklama süresince tesiste herhangi bir
-              zarar olmaması durumunda çıkışta{" "}
-              <span className="font-bold underline decoration-slate-400 underline-offset-2">
-                iade edilir
-              </span>
-              .
+              {t("damageDepositSet", { amount: depositAmount })}
             </p>
           ) : (
             <p className="mt-4 text-sm text-slate-500">
-              Güncel dönem için hasar depozitosu tanımlanmamış.
+              {t("damageDepositMissing")}
             </p>
           )}
         </div>
