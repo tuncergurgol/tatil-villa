@@ -95,6 +95,16 @@ export const reviewEnByCommentPrefix: Array<{
     comment:
       "The villa was exactly as listed. The pool, garden and view were magnificent. The booking process was fast and transparent.",
   },
+  {
+    match: "Villa’dan çok menun kaldık",
+    comment:
+      "We were very pleased with the villa. It is well protected—some places claim privacy but still feel exposed. This one does not; it is very private and clean. We will definitely come back.",
+  },
+  {
+    match: "Villa'dan çok menun kaldık",
+    comment:
+      "We were very pleased with the villa. It is well protected—some places claim privacy but still feel exposed. This one does not; it is very private and clean. We will definitely come back.",
+  },
 ];
 
 export function localizeReviewContent(
