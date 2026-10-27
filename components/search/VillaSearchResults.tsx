@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import VillaResultCard from "@/components/search/VillaResultCard";
 import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import {
@@ -37,7 +37,6 @@ export default function VillaSearchResults({
   className = "",
 }: VillaSearchResultsProps) {
   const listingCopy = usePublicListingCopy();
-  const locale = useLocale();
   const t = useTranslations("villaSearch");
   const router = useRouter();
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -71,18 +70,11 @@ export default function VillaSearchResults({
     <div id="villa-arama-sonuclari" className={`min-w-0 flex-1 scroll-mt-24 ${className}`}>
       <div className="mb-4">
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
-          {locale === "tr" ? (
-            <>
-              {titleLabel} için toplam{" "}
-              <span className="text-sky-600">{totalCount}</span> tesis bulduk!
-            </>
-          ) : (
-            <>
-              We found a total of{" "}
-              <span className="text-sky-600">{totalCount}</span> properties for{" "}
-              {titleLabel}!
-            </>
-          )}
+          <>
+            {t("foundFor", { title: titleLabel })}{" "}
+            <span className="text-sky-600">{totalCount}</span>{" "}
+            {t("foundCount", { title: titleLabel, count: totalCount })}
+          </>
         </h1>
         <p className="mt-1 text-sm text-sky-600">
           {t("priceGuarantee")}

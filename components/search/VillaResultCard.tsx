@@ -30,6 +30,7 @@ export default function VillaResultCard({
   const locale = useLocale();
   const tChrome = useTranslations("chrome");
   const tSearch = useTranslations("villaSearch");
+  const tNav = useTranslations("nav");
   const bcp47 = localeToBcp47(locale);
   const badge = listingCopy?.usesTesis
     ? tChrome("rentalProperty")
@@ -73,7 +74,7 @@ export default function VillaResultCard({
               </span>
               {villa.deal ? (
                 <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                  {locale === "tr" ? "Fırsat" : "Deal"}
+                  {tNav("deals")}
                 </span>
               ) : null}
             </div>
@@ -171,7 +172,7 @@ export default function VillaResultCard({
               href={villaPublicPath(villa.slug)}
               className="mt-3 inline-flex rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800 sm:mt-4"
             >
-              {locale === "tr" ? "İncele" : "View"}
+              {tChrome("seeDetails")}
             </Link>
           </div>
         </div>

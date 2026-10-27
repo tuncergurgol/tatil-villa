@@ -100,11 +100,22 @@ export default function ReviewsShowcase({
 }) {
   const locale = useLocale();
   const tHome = useTranslations("home");
+  const noReviewsByLocale: Record<string, string> = {
+    tr: "Henüz yorum yok.",
+    en: "No reviews yet.",
+    de: "Noch keine Bewertungen.",
+    fr: "Aucun avis pour le moment.",
+    es: "Aún no hay opiniones.",
+    bg: "Все още няма отзиви.",
+    el: "Δεν υπάρχουν ακόμη κριτικές.",
+    zh: "暂无评价。",
+    ru: "Пока нет отзывов.",
+  };
 
   if (reviews.length === 0) {
     return (
       <p className="text-center text-sm text-gray-500">
-        {locale === "tr" ? "Henüz yorum yok." : "No reviews yet."}
+        {noReviewsByLocale[locale] ?? noReviewsByLocale.en}
       </p>
     );
   }

@@ -185,6 +185,7 @@ export default function VillaKnowBeforeSection({
   damageDeposit,
 }: VillaKnowBeforeSectionProps) {
   const t = useTranslations("villa");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const checkInStart = checkInTime || "16:00";
   const checkOutEnd = checkOutTime || "10:00";
@@ -202,14 +203,14 @@ export default function VillaKnowBeforeSection({
         <div className="mt-6 space-y-7">
           <TimeRangeTimeline
             icon={DoorOpen}
-            title="Check-in"
+            title={tCommon("checkIn")}
             description={t("checkInDesc")}
             start={checkInStart}
             end="23:00"
           />
           <TimeRangeTimeline
             icon={DoorClosed}
-            title="Check-out"
+            title={tCommon("checkOut")}
             description={t("checkOutDesc")}
             start="08:00"
             end={checkOutEnd}
