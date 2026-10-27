@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { getCorporateMenuIcon } from "@/lib/corporate-nav";
 
 export type CorporateSidebarItem = {
@@ -17,12 +18,13 @@ export default function CorporatePageSidebar({
   currentSlug,
   items,
 }: CorporatePageSidebarProps) {
+  const tFooter = useTranslations("footer");
   if (items.length === 0) return null;
 
   return (
-    <nav aria-label="Kurumsal sayfalar" className="space-y-2">
+    <nav aria-label={tFooter("corporate")} className="space-y-2">
       <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700/80">
-        Kurumsal
+        {tFooter("corporate")}
       </p>
 
       <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">

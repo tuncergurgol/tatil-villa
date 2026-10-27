@@ -1,6 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Bus, Plane, Ticket } from "lucide-react";
+import { useTranslations } from "next-intl";
 import BiletPageActions from "@/components/bilet/BiletPageActions";
 import type { BiletallIframeKind } from "@/lib/biletall";
 import { BILET_PUBLIC_ROUTES } from "@/lib/biletall";
@@ -14,27 +17,6 @@ type BiletShellProps = {
   children: ReactNode;
 };
 
-const STEPS: {
-  kind: BiletallIframeKind;
-  label: string;
-  path: string;
-  icon: typeof Plane;
-}[] = [
-  { kind: "ara", label: "Bilet Ara", path: BILET_PUBLIC_ROUTES.ara, icon: Plane },
-  {
-    kind: "satinal",
-    label: "Satın Al",
-    path: BILET_PUBLIC_ROUTES.satinal,
-    icon: Bus,
-  },
-  {
-    kind: "sonuc",
-    label: "PNR / Sonuç",
-    path: BILET_PUBLIC_ROUTES.sonuc,
-    icon: Ticket,
-  },
-];
-
 export default function BiletShell({
   title,
   description,
@@ -43,7 +25,34 @@ export default function BiletShell({
   size = "default",
   children,
 }: BiletShellProps) {
+  const t = useTranslations("ticket");
   const isLarge = size === "large";
+
+  const steps: {
+    kind: BiletallIframeKind;
+    label: string;
+    path: string;
+    icon: typeof Plane;
+  }[] = [
+    {
+      kind: "ara",
+      label: t("stepSearch"),
+      path: BILET_PUBLIC_ROUTES.ara,
+      icon: Plane,
+    },
+    {
+      kind: "satinal",
+      label: t("stepBuy"),
+      path: BILET_PUBLIC_ROUTES.satinal,
+      icon: Bus,
+    },
+    {
+      kind: "sonuc",
+      label: t("stepResult"),
+      path: BILET_PUBLIC_ROUTES.sonuc,
+      icon: Ticket,
+    },
+  ];
 
   return (
     <div className="relative overflow-hidden bg-[linear-gradient(180deg,#f0f9ff_0%,#fff7ed_38%,#ffffff_100%)]">
@@ -61,7 +70,7 @@ export default function BiletShell({
               href={homeUrl}
               className={`inline-flex items-center gap-1 font-semibold text-sky-700 transition hover:text-sky-900 ${isLarge ? "text-base" : "text-sm"}`}
             >
-              ← Ana Sayfa
+              {t("backHome")}
             </Link>
           ) : null}
 
@@ -77,10 +86,10 @@ export default function BiletShell({
           </p>
 
           <nav
-            aria-label="Bilet adımları"
+            aria-label={t("stepsAria")}
             className="mt-7 flex flex-wrap items-center justify-center gap-2.5"
           >
-            {STEPS.map((step) => {
+            {steps.map((step) => {
               const Icon = step.icon;
               const isActive = activeKind === step.kind;
 
@@ -124,15 +133,15 @@ export default function BiletShell({
         >
           <li className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
-            Güvenli ödeme
+            {t("securePayment")}
           </li>
           <li className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-sky-500" aria-hidden />
-            Anında e-bilet
+            {t("instantETicket")}
           </li>
           <li className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-orange-500" aria-hidden />
-            Tüm firmalar tek ekranda
+            {t("allOperators")}
           </li>
         </ul>
       </div>

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   sendContactMessageAction,
   type ContactActionState,
@@ -18,6 +19,7 @@ type ContactFormProps = {
 };
 
 export default function ContactForm({ brandName }: ContactFormProps) {
+  const t = useTranslations("contact");
   const [state, formAction, isPending] = useActionState(
     sendContactMessageAction,
     initialState
@@ -34,10 +36,10 @@ export default function ContactForm({ brandName }: ContactFormProps) {
     <form ref={formRef} action={formAction} className="space-y-5">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Bizimle iletişime geç!
+          {t("formTitle")}
         </h2>
         <p className="mt-2 text-sm text-slate-500 sm:text-base">
-          Size nasıl yardımcı olabiliriz?
+          {t("formSubtitle")}
         </p>
       </div>
 
@@ -57,7 +59,7 @@ export default function ContactForm({ brandName }: ContactFormProps) {
           name="firstName"
           required
           minLength={2}
-          placeholder="Adınız*"
+          placeholder={t("firstName")}
           className={inputClass}
           autoComplete="given-name"
         />
@@ -65,7 +67,7 @@ export default function ContactForm({ brandName }: ContactFormProps) {
           name="lastName"
           required
           minLength={2}
-          placeholder="Soyadınız*"
+          placeholder={t("lastName")}
           className={inputClass}
           autoComplete="family-name"
         />
@@ -75,14 +77,14 @@ export default function ContactForm({ brandName }: ContactFormProps) {
         name="email"
         type="email"
         required
-        placeholder="Mail Adresiniz*"
+        placeholder={t("email")}
         className={inputClass}
         autoComplete="email"
       />
 
       <TurkishPhoneField
         name="phone"
-        label="Telefon Numaranız"
+        label={t("phoneLabel")}
         focusPalette="teal"
       />
 
@@ -91,7 +93,7 @@ export default function ContactForm({ brandName }: ContactFormProps) {
         required
         minLength={10}
         rows={4}
-        placeholder="Mesajınız*"
+        placeholder={t("message")}
         className={`${inputClass} resize-y`}
       />
 
@@ -103,14 +105,15 @@ export default function ContactForm({ brandName }: ContactFormProps) {
           className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
         />
         <span>
+          {t("kvkkPrefix")}
           <Link
             href="/kurumsal/gizlilik-politikasi"
             target="_blank"
             className="font-medium text-teal-700 underline underline-offset-2 hover:text-teal-800"
           >
-            KVKK Aydınlatma metnini
-          </Link>{" "}
-          okudum.*
+            {t("kvkkLink")}
+          </Link>
+          {t("kvkkSuffix")}
         </span>
       </label>
 
@@ -121,14 +124,13 @@ export default function ContactForm({ brandName }: ContactFormProps) {
           className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
         />
         <span>
-          {brandName} tarafından haber ve kampanyalardan haberdar edilmek
-          istiyorum.{" "}
+          {t("marketingOptIn", { brand: brandName })}{" "}
           <Link
             href="/kurumsal/gizlilik-politikasi"
             target="_blank"
             className="font-medium text-teal-700 underline underline-offset-2 hover:text-teal-800"
           >
-            Detaylı Bilgi
+            {t("detailsLink")}
           </Link>
         </span>
       </label>
@@ -138,7 +140,7 @@ export default function ContactForm({ brandName }: ContactFormProps) {
         disabled={isPending}
         className="inline-flex w-full cursor-pointer items-center justify-center rounded-xl bg-teal-700 px-6 py-3.5 text-sm font-bold tracking-wide text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-[160px]"
       >
-        {isPending ? "Gönderiliyor..." : "GÖNDER"}
+        {isPending ? t("sending") : t("send")}
       </button>
     </form>
   );

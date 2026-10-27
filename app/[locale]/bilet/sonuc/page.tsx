@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import BiletallIframe from "@/components/bilet/BiletallIframe";
 import BiletallResultTracker from "@/components/bilet/BiletallResultTracker";
 import BiletShell from "@/components/bilet/BiletShell";
@@ -9,18 +10,22 @@ import { resolveBiletallIframeSrc } from "@/lib/biletall";
 import { hasBiletallResultContext } from "@/lib/biletall-result-context";
 import { parseBiletallResultQuery } from "@/lib/biletall-result-query";
 
-export const metadata: Metadata = {
-  title: "Bilet Sonuç / PNR",
-  description: "PNR ile biletinizi görüntüleyin — Biletall sonuç ekranı.",
-};
-
 export const dynamic = "force-dynamic";
 
 type BiletSonucPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("ticket");
+  return {
+    title: t("resultTitle"),
+    description: t("resultDescription"),
+  };
+}
+
 export default async function BiletSonucPage({ searchParams }: BiletSonucPageProps) {
+  const t = await getTranslations("ticket");
   const params = await searchParams;
   const {
     enabled,
@@ -46,8 +51,8 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
 
   return (
     <BiletShell
-      title="Bilet Sonuç / PNR"
-      description="Satın alma sonrası biletinizi görüntüleyin. PNR sorgulamak için bilet arama ekranındaki PNR sekmesini kullanın."
+      title={t("resultTitle")}
+      description={t("resultDescription")}
       activeKind="sonuc"
       homeUrl={publicHomeUrl}
     >
@@ -55,11 +60,11 @@ export default async function BiletSonucPage({ searchParams }: BiletSonucPagePro
         <>
           <BiletallResultTracker query={resultQuery} />
           <BiletallIframe
-          kind="sonuc"
-          src={iframeSrc}
-          forwardSessionQuery
-          title="Biletall — Bilet Sonuç"
-        />
+            kind="sonuc"
+            src={iframeSrc}
+            forwardSessionQuery
+            title={t("resultTitle")}
+          />
         </>
       ) : (
         <BiletSonucFallback homeUrl={publicHomeUrl} />

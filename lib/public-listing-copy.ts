@@ -47,6 +47,30 @@ const VILLA_COPY: PublicListingCopy = {
     "Villa konaklamanıza ek olarak otel, transfer, araç kiralama ve ulaşım",
 };
 
+const VILLA_COPY_EN: PublicListingCopy = {
+  usesTesis: false,
+  singular: "Villa",
+  plural: "Villas",
+  rentalSingular: "Villa for Rent",
+  rentalPlural: "Villas for Rent",
+  all: "All Villas",
+  allShow: "Show all villas",
+  deals: "Deal Villas",
+  popular: "Popular Villas",
+  recommended: "Recommended Villas",
+  listingTitle: "Villa for Rent",
+  rentalAndBungalows: "Villas and Bungalows for Rent",
+  similar: "Similar Villas",
+  categories: "Villa Categories",
+  typeFilter: "Home Type",
+  search: "Search Villa",
+  detail: "Villa Details",
+  amenities: "Villa Amenities",
+  breadcrumb: "Villa",
+  travelAddon:
+    "In addition to your villa stay: hotel, transfer, car rental and transport",
+};
+
 const TESIS_COPY: PublicListingCopy = {
   usesTesis: true,
   singular: "Tesis",
@@ -76,24 +100,56 @@ export function usesTesisListingCopy(siteKey?: string | null): boolean {
 }
 
 export function getPublicListingCopy(
-  siteKey?: string | null
+  siteKey?: string | null,
+  locale: string = "tr"
 ): PublicListingCopy {
-  return usesTesisListingCopy(siteKey) ? TESIS_COPY : VILLA_COPY;
+  if (usesTesisListingCopy(siteKey)) {
+    return locale === "tr" ? TESIS_COPY : { ...TESIS_COPY, ...{
+      singular: "Property",
+      plural: "Properties",
+      rentalSingular: "Property for Rent",
+      rentalPlural: "Properties for Rent",
+      all: "All Properties",
+      allShow: "Show all properties",
+      deals: "Deal Properties",
+      popular: "Popular Properties",
+      recommended: "Recommended Properties",
+      listingTitle: "Property for Rent",
+      rentalAndBungalows: "Properties and Bungalows for Rent",
+      similar: "Similar Properties",
+      categories: "Property Categories",
+      typeFilter: "Property Type",
+      search: "Search Property",
+      detail: "Property Details",
+      amenities: "Property Amenities",
+      breadcrumb: "Property",
+      travelAddon:
+        "In addition to your stay: hotel, transfer, car rental and transport",
+    } };
+  }
+  return locale === "tr" ? VILLA_COPY : VILLA_COPY_EN;
 }
 
 export function listingRegionRentalLabel(
   regionName: string,
   siteKey?: string | null,
-  plural = false
+  plural = false,
+  locale: string = "tr"
 ): string {
-  const copy = getPublicListingCopy(siteKey);
+  const copy = getPublicListingCopy(siteKey, locale);
   return `${regionName} ${plural ? copy.rentalPlural : copy.rentalSingular}`;
 }
 
 export function listingEarlyBookingTitle(
   year: number,
-  siteKey?: string | null
+  siteKey?: string | null,
+  locale: string = "tr"
 ): string {
+  if (locale !== "tr") {
+    return usesTesisListingCopy(siteKey)
+      ? `${year} Early Booking Properties`
+      : `${year} Early Booking Villas`;
+  }
   return usesTesisListingCopy(siteKey)
     ? `${year} Erken Rezervasyon Tesisleri`
     : `${year} Erken Rezervasyon Villaları`;

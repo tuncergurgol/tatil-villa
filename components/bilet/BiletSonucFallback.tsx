@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { BILET_PUBLIC_ROUTES } from "@/lib/biletall";
 
 type BiletSonucFallbackProps = {
@@ -7,6 +10,8 @@ type BiletSonucFallbackProps = {
 };
 
 export default function BiletSonucFallback({ homeUrl }: BiletSonucFallbackProps) {
+  const t = useTranslations("ticket");
+
   return (
     <div className="w-full max-w-xl rounded-3xl border border-amber-200 bg-white p-6 text-center shadow-sm ring-1 ring-amber-100/80 sm:p-8">
       <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
@@ -14,29 +19,30 @@ export default function BiletSonucFallback({ homeUrl }: BiletSonucFallbackProps)
       </div>
 
       <h2 className="mt-5 text-lg font-bold text-slate-900">
-        Bilet oturumu bulunamadı
+        {t("sessionMissingTitle")}
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">
-        Bu sayfa satın alma işlemi tamamlandıktan sonra açılır. PNR sorgulamak
-        için bilet arama ekranındaki{" "}
-        <strong className="font-semibold text-slate-800">PNR Arama</strong>{" "}
-        sekmesini kullanın.
+        {t("sessionMissingBodyBefore")}{" "}
+        <strong className="font-semibold text-slate-800">
+          {t("sessionMissingPnr")}
+        </strong>{" "}
+        {t("sessionMissingBodyAfter")}
       </p>
 
       <p className="mt-5 text-xs text-slate-500">
-        Yeni bilet aramak için{" "}
+        {t("sessionMissingSearchBefore")}{" "}
         <Link
           href={BILET_PUBLIC_ROUTES.ara}
           className="font-semibold text-sky-700 underline decoration-sky-200 underline-offset-2 hover:text-sky-900"
         >
-          bilet arama sayfasına
+          {t("sessionMissingSearchLink")}
         </Link>{" "}
-        gidin veya{" "}
+        {t("sessionMissingOr")}{" "}
         <Link
           href={homeUrl}
           className="font-semibold text-sky-700 underline decoration-sky-200 underline-offset-2 hover:text-sky-900"
         >
-          ana sayfaya dönün
+          {t("sessionMissingHomeLink")}
         </Link>
         .
       </p>

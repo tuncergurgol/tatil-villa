@@ -1,9 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import ContactPageView from "@/components/corporate/ContactPageView";
 import CorporateHtmlContent from "@/components/CorporateHtmlContent";
 import CorporatePageSidebar from "@/components/CorporatePageSidebar";
 import { injectCmsCopyButtons } from "@/lib/cms-copy-buttons";
+import type { AppLocale } from "@/i18n/routing";
+import { chromeMessages } from "@/lib/i18n/chrome-messages";
+import { localizeCorporateSlug } from "@/lib/i18n/localize-public-label";
 import {
   getCorporateMenuPages,
   getPublishedCmsPage,
@@ -25,15 +29,29 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
+function resolveChrome(locale: string) {
+  return chromeMessages[
+    (locale as AppLocale) in chromeMessages ? (locale as AppLocale) : "en"
+  ];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const path =
     slug === "sizi-arayalim" ? "/sizi-arayalim" : `/kurumsal/${slug}`;
+  const [locale, tMobile] = await Promise.all([
+    getLocale(),
+    getTranslations("mobileNav"),
+  ]);
+  const chrome = resolveChrome(locale);
+
   if (slug === "sizi-arayalim") {
     return {
-      title: "Sizi Arayalım",
+      title: tMobile("weWillCallYou"),
       description:
-        "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın.",
+        locale === "tr"
+          ? "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın."
+          : "Free callback form. Verify your phone and our villa specialists will call you.",
       alternates: { canonical: "/sizi-arayalim" },
     };
   }
@@ -42,18 +60,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     getCompanySettings(),
   ]);
   if (!page || looksLikeMissingPageText(page.content)) {
-    return { title: "Sayfa Bulunamadı", robots: { index: false, follow: true } };
+    return {
+      title: locale === "tr" ? "Sayfa Bulunamadı" : "Page Not Found",
+      robots: { index: false, follow: true },
+    };
   }
 
   const site = await getPublicSiteProfile(company);
+  const localizedTitle = localizeCorporateSlug(
+    slug,
+    page.title,
+    chrome,
+    tMobile("weWillCallYou")
+  );
   const title = sanitizePublicSeoTitle(
-    page.seoTitle || page.title,
+    locale === "tr" ? page.seoTitle || page.title : localizedTitle,
     site.brandName,
-    page.title
+    localizedTitle
   );
   const description = sanitizePublicSeoDescription(
     page.seoDescription || page.excerpt,
-    page.title,
+    localizedTitle,
     site.brandName
   );
 
@@ -70,7 +97,9 @@ export default async function CorporatePage({ params }: Props) {
     redirect("/sizi-arayalim");
   }
 
-  const [page, menuItems, company] = await Promise.all([
+  const [locale, tMobile, page, menuItems, company] = await Promise.all([
+    getLocale(),
+    getTranslations("mobileNav"),
     getPublishedCmsPage(slug),
     getCorporateMenuPages(),
     getCompanySettings(),
@@ -79,13 +108,25 @@ export default async function CorporatePage({ params }: Props) {
   if (looksLikeMissingPageText(page.content)) notFound();
 
   const site = await getPublicSiteProfile(company);
+  const chrome = resolveChrome(locale);
+  const weWillCallYou = tMobile("weWillCallYou");
+  const localizedMenu = menuItems.map((item) => ({
+    ...item,
+    title: localizeCorporateSlug(item.slug, item.title, chrome, weWillCallYou),
+  }));
+  const localizedTitle = localizeCorporateSlug(
+    slug,
+    page.title,
+    chrome,
+    weWillCallYou
+  );
 
   if (slug === "iletisim") {
     return (
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
         <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
           <aside className="lg:sticky lg:top-28 lg:self-start">
-            <CorporatePageSidebar currentSlug={slug} items={menuItems} />
+            <CorporatePageSidebar currentSlug={slug} items={localizedMenu} />
           </aside>
           <ContactPageView
             company={{
@@ -123,14 +164,14 @@ export default async function CorporatePage({ params }: Props) {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
       <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
         <aside className="lg:sticky lg:top-28 lg:self-start">
-          <CorporatePageSidebar currentSlug={slug} items={menuItems} />
+          <CorporatePageSidebar currentSlug={slug} items={localizedMenu} />
         </aside>
 
         <section className="min-w-0 rounded-3xl border border-slate-200/80 bg-white px-5 py-7 shadow-sm sm:px-8 sm:py-9">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            {page.title}
+            {localizedTitle}
           </h1>
-          {excerpt ? (
+          {excerpt && locale === "tr" ? (
             <p className="mt-3 text-base leading-relaxed text-slate-600 sm:text-lg">
               {excerpt}
             </p>

@@ -1,5 +1,8 @@
+"use client";
+
 import type { ComponentType, ReactNode } from "react";
 import { Clock, MapPin, Phone } from "lucide-react";
+import { useTranslations } from "next-intl";
 import ContactForm from "@/components/corporate/ContactForm";
 import SocialIconLinks from "@/components/SocialIconLinks";
 import { buildCompanySocialLinks } from "@/lib/social-links";
@@ -45,6 +48,7 @@ export default function ContactPageView({
 }: {
   company: ContactPageCompany;
 }) {
+  const t = useTranslations("contact");
   const mapSrc = extractMapEmbedSrc(company.googleMapsEmbed);
   const brandName = company.brandName.trim() || "tatildeyiz.com.tr";
   const phones = [company.phone, company.phone2].filter((p) => p.trim());
@@ -54,10 +58,10 @@ export default function ContactPageView({
     <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
       <div className="border-b border-slate-100 bg-slate-50 px-5 py-8 text-center sm:px-8 sm:py-10">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          İletişim
+          {t("title")}
         </h1>
         <p className="mt-2 text-sm text-slate-500 sm:text-base">
-          Yardım / Destek{" "}
+          {t("helpSupport")}{" "}
           {phones[0] ? (
             <a
               href={telHref(phones[0])}
@@ -66,7 +70,7 @@ export default function ContactPageView({
               {displayPhone(phones[0])}
             </a>
           ) : (
-            <span className="font-semibold text-teal-700">bize yazın</span>
+            <span className="font-semibold text-teal-700">{t("writeUs")}</span>
           )}
         </p>
       </div>
@@ -74,7 +78,7 @@ export default function ContactPageView({
       {mapSrc ? (
         <div className="relative h-[280px] w-full bg-slate-100 sm:h-[360px]">
           <iframe
-            title="Ofis konumu"
+            title={t("officeMap")}
             src={mapSrc}
             className="h-full w-full border-0"
             loading="lazy"
@@ -84,13 +88,13 @@ export default function ContactPageView({
         </div>
       ) : (
         <div className="flex h-[200px] items-center justify-center bg-slate-100 text-sm text-slate-500">
-          Harita henüz tanımlanmadı
+          {t("mapMissing")}
         </div>
       )}
 
       <div className="grid gap-10 px-5 py-8 sm:px-8 sm:py-10 lg:grid-cols-2 lg:gap-12">
         <div className="space-y-8">
-          <InfoBlock title="Adres" icon={MapPin}>
+          <InfoBlock title={t("address")} icon={MapPin}>
             {company.address ? (
               <p className="text-sm leading-relaxed text-slate-700">
                 {company.address}
@@ -106,7 +110,7 @@ export default function ContactPageView({
             ) : null}
           </InfoBlock>
 
-          <InfoBlock title="Telefon" icon={Phone}>
+          <InfoBlock title={t("phone")} icon={Phone}>
             <div className="space-y-1.5">
               {phones.map((phone) => (
                 <a
@@ -128,19 +132,19 @@ export default function ContactPageView({
                 </a>
               ) : null}
               {phones.length === 0 && !company.whatsapp.trim() ? (
-                <p className="text-sm text-slate-500">Telefon tanımlı değil</p>
+                <p className="text-sm text-slate-500">{t("phoneMissing")}</p>
               ) : null}
             </div>
           </InfoBlock>
 
-          <InfoBlock title="Çalışma Saatlerimiz" icon={Clock}>
+          <InfoBlock title={t("workingHours")} icon={Clock}>
             <p className="text-sm leading-relaxed text-slate-700">
               {company.workingHours.trim() || "09:00 - 23:59"}
             </p>
           </InfoBlock>
 
           {socials.length > 0 ? (
-            <InfoBlock title="Sosyal Medya'da">
+            <InfoBlock title={t("socialMedia")}>
               <SocialIconLinks links={socials} />
             </InfoBlock>
           ) : null}

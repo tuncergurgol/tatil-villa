@@ -17,6 +17,14 @@ import {
   villaDetailMessages,
   type VillaDetailMessages,
 } from "@/lib/i18n/villa-detail-messages";
+import {
+  contactMessages,
+  type ContactMessages,
+} from "@/lib/i18n/contact-messages";
+import {
+  ticketMessages,
+  type TicketMessages,
+} from "@/lib/i18n/ticket-messages";
 
 export type AppMessages = {
   nav: {
@@ -90,6 +98,8 @@ export type AppMessages = {
   search: SearchMessages;
   services: ServicesMessages;
   chrome: ChromeMessages;
+  contact: ContactMessages;
+  ticket: TicketMessages;
 };
 
 type CoreMessages = {
@@ -111,6 +121,8 @@ function withCatalog(locale: AppLocale, core: CoreMessages): AppMessages {
     search: searchMessages[locale],
     services: servicesMessages[locale],
     chrome: chromeMessages[locale],
+    contact: contactMessages[locale],
+    ticket: ticketMessages[locale],
   };
 }
 

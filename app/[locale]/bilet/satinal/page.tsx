@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import BiletallIframe from "@/components/bilet/BiletallIframe";
 import BiletShell from "@/components/bilet/BiletShell";
 import { resolveBiletallIframeSrc } from "@/lib/biletall";
 import { getBiletallPageContext } from "@/lib/biletall-page";
 
-export const metadata: Metadata = {
-  title: "Bilet Satın Al",
-  description: "Seçtiğiniz bileti tamamlayın — Biletall satın alma.",
-};
-
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("ticket");
+  return {
+    title: t("buyTitle"),
+    description: t("buyDescription"),
+  };
+}
+
 export default async function BiletSatinalPage() {
+  const t = await getTranslations("ticket");
   const {
     enabled,
     portalSlug,
@@ -35,8 +40,8 @@ export default async function BiletSatinalPage() {
 
   return (
     <BiletShell
-      title="Bilet Satın Al"
-      description="Yolcu bilgilerinizi girin ve ödemeyi güvenle tamamlayın."
+      title={t("buyTitle")}
+      description={t("buyDescription")}
       activeKind="satinal"
       homeUrl={publicHomeUrl}
     >
@@ -44,7 +49,7 @@ export default async function BiletSatinalPage() {
         kind="satinal"
         src={iframeSrc}
         forwardSessionQuery
-        title="Biletall — Bilet Satın Al"
+        title={t("buyTitle")}
       />
     </BiletShell>
   );

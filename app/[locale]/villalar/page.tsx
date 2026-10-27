@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import VillaSearchBar from "@/components/search/VillaSearchBar";
 import VillaSearchSidebar from "@/components/search/VillaSearchSidebar";
 import VillaSearchResults from "@/components/search/VillaSearchResults";
+import { localizeCatalogLabel } from "@/lib/i18n/localize-catalog-label";
 import {
   getHeroSearchRegions,
   getRegionBySlug,
@@ -60,7 +62,7 @@ interface PageProps {
 export async function generateMetadata({
   searchParams,
 }: PageProps): Promise<Metadata> {
-  const query = await searchParams;
+  const [query, locale] = await Promise.all([searchParams, getLocale()]);
   const regionSlug = query.region?.trim() || "";
   const indexable = isIndexableVillaSearch(query);
   const canonical = villaSearchCanonicalPath(query);
@@ -68,19 +70,23 @@ export async function generateMetadata({
   const regionName = region?.name?.trim() || "";
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
-  const copy = getPublicListingCopy(site.key);
+  const copy = getPublicListingCopy(site.key, locale);
 
   return {
     title: regionName
-      ? listingRegionRentalLabel(regionName, site.key, true)
+      ? listingRegionRentalLabel(regionName, site.key, true, locale)
       : copy.rentalAndBungalows,
     description: regionName
       ? maybeRewriteVillaWording(
-          `${regionName} bölgesinde kiralık villa ve bungalovlar. Müsaitliği görün ve rezervasyon yapın.`,
+          locale === "tr"
+            ? `${regionName} bölgesinde kiralık villa ve bungalovlar. Müsaitliği görün ve rezervasyon yapın.`
+            : `Villas and bungalows for rent in ${regionName}. Check availability and book.`,
           site.key
         )
       : maybeRewriteVillaWording(
-          "Türkiye'nin öne çıkan bölgelerinde kiralık villa ve bungalovlar. Filtreleyin, müsaitliği görün ve rezervasyon yapın.",
+          locale === "tr"
+            ? "Türkiye'nin öne çıkan bölgelerinde kiralık villa ve bungalovlar. Filtreleyin, müsaitliği görün ve rezervasyon yapın."
+            : "Villas and bungalows for rent across Turkey’s top regions. Filter, check availability and book.",
           site.key
         ),
     alternates: { canonical },
@@ -126,7 +132,7 @@ async function getSearchAmenityOptions(siteKey?: PublicSiteKey) {
 }
 
 export default async function VillalarPage({ searchParams }: PageProps) {
-  const params = await searchParams;
+  const [params, locale] = await Promise.all([searchParams, getLocale()]);
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
   const amenityList = (params.amenities ?? "")
@@ -196,17 +202,19 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       ? countNightsBetween(params.checkIn, params.checkOut)
       : 0;
 
-  const copy = getPublicListingCopy(site.key);
+  const copy = getPublicListingCopy(site.key, locale);
   const titleLabel = params.q?.trim()
-    ? `"${params.q.trim()}" araması`
+    ? locale === "tr"
+      ? `"${params.q.trim()}" araması`
+      : `Search: "${params.q.trim()}"`
     : selectedRegion
-      ? listingRegionRentalLabel(selectedRegion.name, site.key)
+      ? listingRegionRentalLabel(selectedRegion.name, site.key, false, locale)
       : params.filter === "deal"
         ? copy.deals
         : params.filter === "popular"
           ? copy.popular
           : priceYear
-            ? listingEarlyBookingTitle(priceYear, site.key)
+            ? listingEarlyBookingTitle(priceYear, site.key, locale)
             : copy.listingTitle;
 
   const initialRegion =
@@ -214,7 +222,12 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       ? {
           slug: selectedRegion.slug,
           name: selectedRegion.name,
-          label: listingRegionRentalLabel(selectedRegion.name, site.key),
+          label: listingRegionRentalLabel(
+            selectedRegion.name,
+            site.key,
+            false,
+            locale
+          ),
         }
       : searchRegions.find((r) => r.slug === params.region) ?? null;
 
@@ -262,9 +275,18 @@ export default async function VillalarPage({ searchParams }: PageProps) {
         <div className="flex flex-col gap-6 lg:flex-row">
           <VillaSearchSidebar
             regions={homeRegions}
-            categories={categoryOptions}
-            facilities={facilityOptions}
-            amenities={amenityOptions}
+            categories={categoryOptions.map((item) => ({
+              ...item,
+              label: localizeCatalogLabel(item.label, locale),
+            }))}
+            facilities={facilityOptions.map((item) => ({
+              ...item,
+              name: localizeCatalogLabel(item.name, locale),
+            }))}
+            amenities={amenityOptions.map((item) => ({
+              ...item,
+              name: localizeCatalogLabel(item.name, locale),
+            }))}
             currentParams={currentParams}
           />
           <VillaSearchResults
