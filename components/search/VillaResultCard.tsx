@@ -29,6 +29,7 @@ export default function VillaResultCard({
   const listingCopy = usePublicListingCopy();
   const locale = useLocale();
   const tChrome = useTranslations("chrome");
+  const tSearch = useTranslations("villaSearch");
   const bcp47 = localeToBcp47(locale);
   const badge = listingCopy?.usesTesis
     ? tChrome("rentalProperty")
@@ -105,15 +106,17 @@ export default function VillaResultCard({
 
             <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
               <CheckCircle2 className="h-4 w-4" />
-              Ön Onaylı Rezervasyon
+              {tSearch("preApproved")}
             </p>
           </div>
 
           <div className="flex shrink-0 flex-col items-start justify-between border-t border-gray-100 pt-3 sm:w-[160px] sm:items-end sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
             {nights > 0 ? (
-              <p className="text-sm text-gray-500">{nights} Gece</p>
+              <p className="text-sm text-gray-500">
+                {tSearch("nightsCount", { count: nights })}
+              </p>
             ) : (
-              <p className="text-sm text-gray-400">Gecelik</p>
+              <p className="text-sm text-gray-400">{tSearch("nightly")}</p>
             )}
 
             <div className="mt-2 text-left sm:mt-auto sm:text-right">
@@ -121,7 +124,7 @@ export default function VillaResultCard({
                 <>
                   {nights > 0 ? (
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                      Rezervasyon Toplamı
+                      {tSearch("reservationTotal")}
                     </p>
                   ) : null}
                   <p className="text-xl font-bold text-gray-900">
@@ -129,7 +132,7 @@ export default function VillaResultCard({
                   </p>
                   {nightlyAverage != null ? (
                     <p className="mt-0.5 text-sm text-gray-500">
-                      {formatPrice(nightlyAverage)} / Gece
+                      {formatPrice(nightlyAverage)} {tSearch("perNight")}
                     </p>
                   ) : null}
                 </>

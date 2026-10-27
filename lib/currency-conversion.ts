@@ -61,9 +61,13 @@ export function resolveForeignPriceCurrencies(
 }
 
 export function buildForeignCurrencyPaymentDisclaimer(
-  foreignCurrencies: Exclude<VillaPeriodCurrency, "TL">[]
+  foreignCurrencies: Exclude<VillaPeriodCurrency, "TL">[],
+  locale: string = "tr"
 ): string | null {
   if (foreignCurrencies.length === 0) return null;
   const label = foreignCurrencies.join(" / ");
-  return `Gecelik fiyatlar ${label} olarak belirlenmiş, yaptığınız ön ödeme ve girişte yapacağınız ödeme ${label} olarak değerlendirilir. TL para birimi bilgilendirme amaçlıdır.`;
+  if (locale === "tr") {
+    return `Gecelik fiyatlar ${label} olarak belirlenmiş, yaptığınız ön ödeme ve girişte yapacağınız ödeme ${label} olarak değerlendirilir. TL para birimi bilgilendirme amaçlıdır.`;
+  }
+  return `Nightly rates are set in ${label}. Your prepayment and the payment due at check-in are charged in ${label}. TL amounts are shown for information only.`;
 }

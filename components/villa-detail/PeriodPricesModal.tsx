@@ -171,9 +171,10 @@ export default function PeriodPricesModal({
   const foreignCurrencyDisclaimer = useMemo(
     () =>
       buildForeignCurrencyPaymentDisclaimer(
-        resolveForeignPriceCurrencies(sorted.map((period) => period.currency))
+        resolveForeignPriceCurrencies(sorted.map((period) => period.currency)),
+        locale
       ),
-    [sorted]
+    [sorted, locale]
   );
 
   if (!open || !mounted) return null;

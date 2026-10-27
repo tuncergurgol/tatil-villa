@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getLocale } from "next-intl/server";
 import DeferredContentProtection from "@/components/DeferredContentProtection";
 import { PublicListingCopyProvider } from "@/components/PublicListingCopyProvider";
 import SiteChromeBelowFold from "@/components/SiteChromeBelowFold";
@@ -12,15 +13,17 @@ function HeaderFallback() {
   );
 }
 
-export default function SiteChrome({
+export default async function SiteChrome({
   children,
   siteKey,
 }: {
   children: React.ReactNode;
   siteKey?: string | null;
 }) {
+  const locale = await getLocale();
+
   return (
-    <PublicListingCopyProvider value={getPublicListingCopy(siteKey)}>
+    <PublicListingCopyProvider value={getPublicListingCopy(siteKey, locale)}>
       <DeferredContentProtection />
       <Suspense fallback={<HeaderFallback />}>
         <SiteChromeHeader />

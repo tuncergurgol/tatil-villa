@@ -88,6 +88,11 @@ const EN_LABELS: Record<string, string> = {
   "Özel Havuz": "Private pool",
   "Isıtmalı Havuz": "Heated pool",
   "Çocuk Havuzu": "Children's pool",
+
+  // Ev tipi
+  Apart: "Apartment",
+  "Suit Daire": "Suite",
+  Bungalov: "Bungalow",
 };
 
 function normalizeKey(value: string): string {

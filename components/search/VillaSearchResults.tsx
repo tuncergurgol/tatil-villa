@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import VillaResultCard from "@/components/search/VillaResultCard";
 import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
 import {
@@ -36,6 +37,8 @@ export default function VillaSearchResults({
   className = "",
 }: VillaSearchResultsProps) {
   const listingCopy = usePublicListingCopy();
+  const locale = useLocale();
+  const t = useTranslations("villaSearch");
   const router = useRouter();
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, totalCount);
@@ -68,19 +71,31 @@ export default function VillaSearchResults({
     <div id="villa-arama-sonuclari" className={`min-w-0 flex-1 scroll-mt-24 ${className}`}>
       <div className="mb-4">
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
-          {titleLabel} için toplam{" "}
-          <span className="text-sky-600">{totalCount}</span> tesis bulduk!
+          {locale === "tr" ? (
+            <>
+              {titleLabel} için toplam{" "}
+              <span className="text-sky-600">{totalCount}</span> tesis bulduk!
+            </>
+          ) : (
+            <>
+              We found a total of{" "}
+              <span className="text-sky-600">{totalCount}</span> properties for{" "}
+              {titleLabel}!
+            </>
+          )}
         </h1>
         <p className="mt-1 text-sm text-sky-600">
-          Fiyat ve İndirimler / En İyi Fiyat Garantisi
+          {t("priceGuarantee")}
           {totalCount > 0 ? (
             <span className="text-gray-500">
               {" "}
               ·{" "}
               {totalCount > pageSize && page === 1
-                ? `İlk ${pageSize} sonuç gösteriliyor`
-                : `${rangeStart}–${rangeEnd} arası gösteriliyor`}
-              {totalPages > 1 ? ` (sayfa ${page}/${totalPages})` : ""}
+                ? t("showingFirst", { count: pageSize })
+                : t("showingRange", { start: rangeStart, end: rangeEnd })}
+              {totalPages > 1
+                ? ` ${t("pageOf", { page, total: totalPages })}`
+                : ""}
             </span>
           ) : null}
         </p>
@@ -94,10 +109,10 @@ export default function VillaSearchResults({
             checked={Boolean(currentParams.checkIn && currentParams.checkOut)}
             readOnly
           />
-          Sadece müsait tesisleri göster
+          {t("availableOnly")}{" "}
           {currentParams.checkIn && currentParams.checkOut
-            ? " (tarih seçili)"
-            : " (tarih seçin)"}
+            ? t("datesSelected")
+            : t("selectDates")}
         </label>
 
         <select
@@ -112,20 +127,18 @@ export default function VillaSearchResults({
           }
           className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 outline-none focus:border-sky-400"
         >
-          <option value="recommended">Önerilen Sıralama</option>
-          <option value="random">Karışık</option>
-          <option value="price_asc">Fiyat (Artan)</option>
-          <option value="price_desc">Fiyat (Azalan)</option>
-          <option value="guests">Kapasite</option>
+          <option value="recommended">{t("sortRecommended")}</option>
+          <option value="random">{t("sortRandom")}</option>
+          <option value="price_asc">{t("sortPriceAsc")}</option>
+          <option value="price_desc">{t("sortPriceDesc")}</option>
+          <option value="guests">{t("sortGuests")}</option>
         </select>
       </div>
 
       {villas.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
-          <p className="text-lg font-medium text-gray-600">Sonuç bulunamadı</p>
-          <p className="mt-1 text-sm text-gray-500">
-            Filtreleri değiştirerek tekrar deneyin.
-          </p>
+          <p className="text-lg font-medium text-gray-600">{t("noResults")}</p>
+          <p className="mt-1 text-sm text-gray-500">{t("tryFilters")}</p>
           <a
             href="/villalar"
             className="mt-4 inline-block text-sm font-semibold text-sky-700 hover:text-sky-900"
@@ -144,7 +157,7 @@ export default function VillaSearchResults({
           {totalPages > 1 ? (
             <nav
               className="mt-8 flex flex-wrap items-center justify-center gap-2"
-              aria-label="Sayfalama"
+              aria-label={t("pagination")}
             >
               {page > 1 ? (
                 <Link

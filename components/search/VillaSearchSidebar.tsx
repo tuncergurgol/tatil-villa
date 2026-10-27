@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import type { Region } from "@/lib/types";
 import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
+import { localizeCatalogLabel } from "@/lib/i18n/localize-catalog-label";
 import { rewriteVillaWordingToTesis } from "@/lib/public-listing-copy";
 import { buildVillaSearchHref } from "@/lib/villa-search-params";
 
@@ -114,6 +116,8 @@ export default function VillaSearchSidebar({
   className = "",
 }: VillaSearchSidebarProps) {
   const copy = usePublicListingCopy();
+  const locale = useLocale();
+  const t = useTranslations("villaSearch");
   const router = useRouter();
   const [minPrice, setMinPrice] = useState(currentParams.minPrice ?? "");
   const [maxPrice, setMaxPrice] = useState(currentParams.maxPrice ?? "");
@@ -203,14 +207,14 @@ export default function VillaSearchSidebar({
   return (
     <aside className={`w-full shrink-0 lg:w-[280px] ${className}`}>
       <div className="rounded-2xl border border-gray-100 bg-white px-4 shadow-sm">
-        <FilterSection title="Fiyat Aralığı">
+        <FilterSection title={t("priceRange")}>
           <div className="flex items-center gap-2">
             <input
               type="number"
               min={0}
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
-              placeholder="Min."
+              placeholder={t("minPlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm outline-none focus:border-sky-400"
             />
             <input
@@ -218,21 +222,21 @@ export default function VillaSearchSidebar({
               min={0}
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
-              placeholder="Maks."
+              placeholder={t("maxPlaceholder")}
               className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm outline-none focus:border-sky-400"
             />
             <button
               type="button"
               onClick={applyPrice}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-700 text-white transition hover:bg-sky-800"
-              aria-label="Fiyat uygula"
+              aria-label={t("applyPrice")}
             >
               →
             </button>
           </div>
         </FilterSection>
 
-        <FilterSection title="Bölge">
+        <FilterSection title={t("region")}>
           <ul className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
             {sortedRegions.map((region) => {
               const active = currentParams.region === region.slug;
@@ -279,7 +283,7 @@ export default function VillaSearchSidebar({
                   >
                     <CheckboxRow
                       active={active}
-                      label={category.label}
+                      label={localizeCatalogLabel(category.label, locale)}
                       count={category.count}
                     />
                   </Link>
@@ -306,11 +310,12 @@ export default function VillaSearchSidebar({
                   >
                     <CheckboxRow
                       active={active}
-                      label={
+                      label={localizeCatalogLabel(
                         copy.usesTesis
                           ? rewriteVillaWordingToTesis(facility.name)
-                          : facility.name
-                      }
+                          : facility.name,
+                        locale
+                      )}
                       count={facility.count}
                     />
                   </button>
@@ -320,7 +325,7 @@ export default function VillaSearchSidebar({
           </ul>
         </FilterSection>
 
-        <FilterSection title="Olanaklar">
+        <FilterSection title={t("amenities")}>
           <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
             {visibleAmenities.map((amenity) => {
               const active = selectedAmenities.has(amenity.name);
@@ -337,7 +342,7 @@ export default function VillaSearchSidebar({
                   >
                     <CheckboxRow
                       active={active}
-                      label={amenity.name}
+                      label={localizeCatalogLabel(amenity.name, locale)}
                       count={amenity.count}
                     />
                   </button>

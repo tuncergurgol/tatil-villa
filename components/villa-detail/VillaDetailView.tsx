@@ -208,7 +208,8 @@ export default async function VillaDetailView({
     ...villa.calendarDays.map((day) => day.currency),
   ]);
   const foreignCurrencyDisclaimer = buildForeignCurrencyPaymentDisclaimer(
-    foreignPriceCurrencies
+    foreignPriceCurrencies,
+    locale
   );
 
   const poolDefaultName = t("pool");
