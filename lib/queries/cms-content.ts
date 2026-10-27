@@ -71,6 +71,7 @@ export async function getActiveFaqsForPublic(options?: {
       question: true,
       answer: true,
       category: true,
+      slug: true,
       sortOrder: true,
     },
   });

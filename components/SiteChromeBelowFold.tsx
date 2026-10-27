@@ -158,6 +158,7 @@ export default async function SiteChromeBelowFold() {
         <SitePreFooterAccordions
           faqs={faqs.map((faq) => ({
             ...faq,
+            slug: faq.slug,
             question: maybeRewriteVillaWording(faq.question, site.key),
             answer: maybeRewriteVillaWording(faq.answer, site.key),
           }))}

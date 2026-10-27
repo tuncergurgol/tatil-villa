@@ -6,7 +6,15 @@ export const facilityTypeOptions: { value: VillaCategory; label: string }[] = [
   { value: "suit_daire", label: "Suit Daire" },
 ];
 
-export function facilityTypeLabel(category: VillaCategory): string {
+export function facilityTypeLabel(
+  category: VillaCategory,
+  locale: string = "tr"
+): string {
+  if (locale !== "tr") {
+    if (category === "apart") return "Apartment";
+    if (category === "suit_daire") return "Suite";
+    return "Villa";
+  }
   return (
     facilityTypeOptions.find((option) => option.value === category)?.label ??
     "Villa"

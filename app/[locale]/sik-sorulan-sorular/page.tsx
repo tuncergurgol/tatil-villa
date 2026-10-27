@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { getLocale, getTranslations } from "next-intl/server";
 import {
   getActiveFaqsForPublic,
   getFaqCategoriesForPublic,
 } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { localizeFaqContent } from "@/lib/i18n/faq-en-translations";
 import {
   maybeRewriteVillaWording,
   usesTesisListingCopy,
@@ -13,18 +15,24 @@ import { getPublicSiteProfile } from "@/lib/public-site-profile";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const company = await getCompanySettings();
+  const [company, locale, t] = await Promise.all([
+    getCompanySettings(),
+    getLocale(),
+    getTranslations("villa"),
+  ]);
   const site = await getPublicSiteProfile(company);
   return {
-    title: "Sık Sorulan Sorular",
+    title: t("faq"),
     description: maybeRewriteVillaWording(
-      "Villa kiralama, rezervasyon, ödeme, iptal ve konaklama hakkında sık sorulan sorular ve cevapları.",
+      locale === "tr"
+        ? "Villa kiralama, rezervasyon, ödeme, iptal ve konaklama hakkında sık sorulan sorular ve cevapları."
+        : "Frequently asked questions about villa rental, booking, payment, cancellation and stays.",
       site.key
     ),
   };
 }
 
-const categoryLabels: Record<string, string> = {
+const categoryLabelsTr: Record<string, string> = {
   genel: "Genel",
   rezervasyon: "Rezervasyon",
   odeme: "Ödeme",
@@ -34,20 +42,41 @@ const categoryLabels: Record<string, string> = {
   guvenlik: "Güvenlik",
 };
 
+const categoryLabelsEn: Record<string, string> = {
+  genel: "General",
+  rezervasyon: "Booking",
+  odeme: "Payment",
+  "villa-konaklama": "Villa & Stay",
+  "iptal-iade": "Cancellation & Refund",
+  "bolge-tatil": "Region & Holiday",
+  guvenlik: "Safety",
+};
+
 export default async function FaqPage() {
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
-  const [faqs, categories] = await Promise.all([
+  const [locale, t, faqs, categories] = await Promise.all([
+    getLocale(),
+    getTranslations("villa"),
     getActiveFaqsForPublic(),
     getFaqCategoriesForPublic(),
   ]);
   const tesis = usesTesisListingCopy(site.key);
+  const categoryLabels = locale === "tr" ? categoryLabelsTr : categoryLabelsEn;
 
-  const rewrittenFaqs = faqs.map((faq) => ({
-    ...faq,
-    question: maybeRewriteVillaWording(faq.question, site.key),
-    answer: maybeRewriteVillaWording(faq.answer, site.key),
-  }));
+  const rewrittenFaqs = faqs.map((faq) => {
+    const localized = localizeFaqContent(
+      faq.slug,
+      faq.question,
+      faq.answer,
+      locale
+    );
+    return {
+      ...faq,
+      question: maybeRewriteVillaWording(localized.question, site.key),
+      answer: maybeRewriteVillaWording(localized.answer, site.key),
+    };
+  });
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -68,10 +97,12 @@ export default async function FaqPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <h1 className="text-3xl font-bold text-gray-900">Sık Sorulan Sorular</h1>
+      <h1 className="text-3xl font-bold text-gray-900">{t("faq")}</h1>
       <p className="mt-3 text-gray-600">
         {maybeRewriteVillaWording(
-          "Villa kiralama süreci, ödeme, iptal koşulları ve konaklama hakkında merak edilenler.",
+          locale === "tr"
+            ? "Villa kiralama süreci, ödeme, iptal koşulları ve konaklama hakkında merak edilenler."
+            : "Answers about the villa rental process, payment, cancellation terms and stays.",
           site.key
         )}
       </p>

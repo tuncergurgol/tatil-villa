@@ -4,6 +4,9 @@ import FaqCategoryPanel from "@/components/home/FaqCategoryPanel";
 import HomeContentSection from "@/components/home/HomeContentSection";
 import ReviewsShowcase from "@/components/home/ReviewsShowcase";
 import { localizeBlogCategory } from "@/lib/i18n/localize-public-label";
+import { localizeBlogCard } from "@/lib/i18n/blog-en-translations";
+import { localizeFaqContent } from "@/lib/i18n/faq-en-translations";
+import { localizeReviewContent } from "@/lib/i18n/review-en-translations";
 import { buildReviewItemListJsonLd } from "@/lib/review-json-ld";
 
 type FaqItem = {
@@ -11,6 +14,7 @@ type FaqItem = {
   question: string;
   answer: string;
   category: string;
+  slug?: string;
 };
 
 type ReviewItem = {
@@ -57,31 +61,49 @@ export default async function SitePreFooterAccordions({
     getTranslations("chrome"),
   ]);
 
+  const localizedFaqs = faqs.map((faq) => {
+    const localized = localizeFaqContent(
+      faq.slug,
+      faq.question,
+      faq.answer,
+      locale
+    );
+    return { ...faq, ...localized };
+  });
+
+  const localizedReviews = reviews.map((review) => {
+    const localized = localizeReviewContent(review, locale);
+    return { ...review, ...localized };
+  });
+
   const localizedCategories = blogCategories.map((category) => ({
     ...category,
     name: localizeBlogCategory(category.slug, category.name, locale),
   }));
 
-  const localizedPosts = posts.map((post) => ({
-    id: post.id,
-    slug: post.slug,
-    title: post.title,
-    excerpt: post.excerpt,
-    coverImage: post.coverImage,
-    categoryName: post.category
-      ? localizeBlogCategory(
-          post.category.slug,
-          post.category.name,
-          locale
-        )
-      : null,
-    categorySlug: post.category?.slug ?? null,
-  }));
+  const localizedPosts = posts.map((post) => {
+    const card = localizeBlogCard(post.slug, post.title, post.excerpt, locale);
+    return {
+      id: post.id,
+      slug: post.slug,
+      title: card.title,
+      excerpt: card.excerpt,
+      coverImage: post.coverImage,
+      categoryName: post.category
+        ? localizeBlogCategory(
+            post.category.slug,
+            post.category.name,
+            locale
+          )
+        : null,
+      categorySlug: post.category?.slug ?? null,
+    };
+  });
 
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
+    mainEntity: localizedFaqs.map((faq) => ({
       "@type": "Question",
       name: faq.question,
       acceptedAnswer: {
@@ -92,7 +114,7 @@ export default async function SitePreFooterAccordions({
   };
 
   const reviewJsonLd = buildReviewItemListJsonLd({
-    reviews,
+    reviews: localizedReviews,
     brandName,
     listName: tChrome("reviewsTitle"),
   });
@@ -101,7 +123,7 @@ export default async function SitePreFooterAccordions({
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: tChrome("blogsTitle"),
-    itemListElement: posts.map((post, index) => ({
+    itemListElement: localizedPosts.map((post, index) => ({
       "@type": "ListItem",
       position: index + 1,
       url: `/blog/${post.slug}`,
@@ -143,7 +165,7 @@ export default async function SitePreFooterAccordions({
           id="sik-sorulan-sorular"
           title={tChrome("faqTitle")}
         >
-          <FaqCategoryPanel faqs={faqs} />
+          <FaqCategoryPanel faqs={localizedFaqs} />
         </HomeContentSection>
 
         <HomeContentSection
@@ -152,7 +174,7 @@ export default async function SitePreFooterAccordions({
         >
           <ReviewsShowcase
             brandName={brandName}
-            reviews={reviews.map((review) => ({
+            reviews={localizedReviews.map((review) => ({
               id: review.id,
               guestName: review.guestName,
               rating: review.rating,

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import BlogInspirationSlider from "@/components/blog/BlogInspirationSlider";
+import { localizeBlogCard } from "@/lib/i18n/blog-en-translations";
+import { localizeBlogCategory } from "@/lib/i18n/localize-public-label";
 import {
   getBlogCategoriesForPublic,
   getPublishedBlogPosts,
@@ -7,14 +10,24 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Bir sonraki seyahatiniz için ilham alın | Blog",
-  description: "Villa kiralama rehberi, bölge önerileri ve tatil ipuçları.",
-  alternates: { canonical: "/blog" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title:
+      locale === "tr"
+        ? "Bir sonraki seyahatiniz için ilham alın | Blog"
+        : "Inspiration for your next trip | Blog",
+    description:
+      locale === "tr"
+        ? "Villa kiralama rehberi, bölge önerileri ve tatil ipuçları."
+        : "Villa rental guides, destination tips and holiday ideas.",
+    alternates: { canonical: "/blog" },
+  };
+}
 
 export default async function BlogIndexPage() {
-  const [posts, blogCategoryRows] = await Promise.all([
+  const [locale, posts, blogCategoryRows] = await Promise.all([
+    getLocale(),
     getPublishedBlogPosts(),
     getBlogCategoriesForPublic(),
   ]);
@@ -23,7 +36,7 @@ export default async function BlogIndexPage() {
     .filter((category) => category._count.posts > 0)
     .map((category) => ({
       id: category.id,
-      name: category.name,
+      name: localizeBlogCategory(category.slug, category.name, locale),
       slug: category.slug,
     }));
 
@@ -37,15 +50,29 @@ export default async function BlogIndexPage() {
         <BlogInspirationSlider
           headingLevel={1}
           categories={blogCategories}
-          posts={posts.map((post) => ({
-            id: post.id,
-            slug: post.slug,
-            title: post.title,
-            excerpt: post.excerpt,
-            coverImage: post.coverImage,
-            categoryName: post.category?.name ?? null,
-            categorySlug: post.category?.slug ?? null,
-          }))}
+          posts={posts.map((post) => {
+            const card = localizeBlogCard(
+              post.slug,
+              post.title,
+              post.excerpt,
+              locale
+            );
+            return {
+              id: post.id,
+              slug: post.slug,
+              title: card.title,
+              excerpt: card.excerpt,
+              coverImage: post.coverImage,
+              categoryName: post.category
+                ? localizeBlogCategory(
+                    post.category.slug,
+                    post.category.name,
+                    locale
+                  )
+                : null,
+              categorySlug: post.category?.slug ?? null,
+            };
+          })}
         />
       </div>
     </main>

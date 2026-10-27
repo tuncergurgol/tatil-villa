@@ -1,5 +1,6 @@
 import { permanentRedirect } from "next/navigation";
 import { preconnect } from "react-dom";
+import { getLocale } from "next-intl/server";
 import VillaDetailView from "@/components/villa-detail/VillaDetailView";
 import { getActiveFaqsForPublic } from "@/lib/queries/cms-content";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
@@ -23,6 +24,10 @@ import {
   verifyUndocumentedVillaBookingAccessToken,
 } from "@/lib/undocumented-villa-booking-access";
 import { hasVillaTourismDocument } from "@/lib/villa-document-types";
+import { localizeFaqContent } from "@/lib/i18n/faq-en-translations";
+import { localizeReviewContent } from "@/lib/i18n/review-en-translations";
+import { generateVillaDescriptionTemplate } from "@/lib/villa-description-generator";
+import { buildVillaDescriptionContextFromDetail } from "@/lib/villa-description-from-detail";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -74,16 +79,36 @@ export default async function VillaDetailPage({
 
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
+  const locale = await getLocale();
 
-  const [villa, faqs, exchangeRates] = await Promise.all([
+  const [villaRaw, faqs, exchangeRates] = await Promise.all([
     getVillaDetailBySlug(slug, site.key),
     getActiveFaqsForPublic(),
     getPublicExchangeRates(),
   ]);
 
-  if (!villa) {
+  if (!villaRaw) {
     permanentRedirect("/villalar");
   }
+
+  const villa =
+    locale === "tr"
+      ? villaRaw
+      : {
+          ...villaRaw,
+          description: generateVillaDescriptionTemplate(
+            buildVillaDescriptionContextFromDetail(villaRaw),
+            locale
+          ),
+          reviews: villaRaw.reviews.map((review) => {
+            const localized = localizeReviewContent(review, locale);
+            return {
+              ...review,
+              title: localized.title,
+              comment: localized.comment,
+            };
+          }),
+        };
 
   const rawAccessToken = query.rez;
   const bookingAccessToken = Array.isArray(rawAccessToken)
@@ -175,11 +200,19 @@ export default async function VillaDetailPage({
         }
         allowBookingAccess={allowBookingAccess}
         faqs={(detailFaqs.length > 0 ? detailFaqs : faqs.slice(0, 8)).map(
-          (faq) => ({
-            id: faq.id,
-            question: faq.question,
-            answer: faq.answer,
-          })
+          (faq) => {
+            const localized = localizeFaqContent(
+              faq.slug,
+              faq.question,
+              faq.answer,
+              locale
+            );
+            return {
+              id: faq.id,
+              question: localized.question,
+              answer: localized.answer,
+            };
+          }
         )}
       />
     </>
