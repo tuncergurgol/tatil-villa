@@ -104,6 +104,7 @@ export async function getHomeDreamCategories(
           title: card.title,
           image: category.image || card.fallbackImage,
           href: buildDreamFacilitySearchHref(category.name),
+          facilitySlug: card.facilitySlug,
         },
       ];
     }
@@ -114,6 +115,7 @@ export async function getHomeDreamCategories(
           title: card.title,
           image: category?.image || card.fallbackImage,
           href: buildDreamAmenitySearchHref(card.amenityFallback),
+          facilitySlug: card.facilitySlug,
         },
       ];
     }
@@ -124,6 +126,7 @@ export async function getHomeDreamCategories(
           title: card.title,
           image: category.image || card.fallbackImage,
           href: buildDreamFacilitySearchHref(category.name),
+          facilitySlug: card.facilitySlug,
         },
       ];
     }

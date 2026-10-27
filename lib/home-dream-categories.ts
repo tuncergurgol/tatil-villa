@@ -8,6 +8,7 @@ export type HomeDreamCategoryCard = {
   title: string;
   image: string;
   href: string;
+  facilitySlug: string;
 };
 
 export type HomeDreamCategoryCardDef = {
