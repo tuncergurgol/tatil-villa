@@ -55,7 +55,7 @@ export default function BlogInspirationSlider({
   showHeader = true,
   embedded = false,
   ctaHref = "/blog",
-  ctaLabel = "Tüm yazıları gör",
+  ctaLabel,
   headingLevel = 2,
 }: {
   posts: BlogInspirationPost[];
@@ -72,6 +72,7 @@ export default function BlogInspirationSlider({
   const [activeCategorySlug, setActiveCategorySlug] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const allLabel = tChrome("allCategories");
+  const resolvedCtaLabel = ctaLabel ?? tChrome("viewAllPosts");
 
   const items = useMemo(() => {
     const base = posts.filter((post) => post.title.trim().length > 0);
@@ -230,7 +231,7 @@ export default function BlogInspirationSlider({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  aria-label="Önceki"
+                  aria-label={tChrome("previous")}
                   onClick={() =>
                     setIndex((prev) => (prev - 1 + items.length) % items.length)
                   }
@@ -240,7 +241,7 @@ export default function BlogInspirationSlider({
                 </button>
                 <button
                   type="button"
-                  aria-label="Sonraki"
+                  aria-label={tChrome("next")}
                   onClick={() => setIndex((prev) => (prev + 1) % items.length)}
                   className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-sky-100 bg-white text-sky-600 shadow-sm transition hover:bg-sky-50"
                 >
@@ -259,7 +260,7 @@ export default function BlogInspirationSlider({
                 href={ctaHref}
                 className="hidden rounded-full bg-sky-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-800 sm:inline-flex"
               >
-                {ctaLabel}
+                {resolvedCtaLabel}
               </Link>
             </div>
           </div>
@@ -271,7 +272,7 @@ export default function BlogInspirationSlider({
           href={ctaHref}
           className="inline-flex rounded-full bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
         >
-          {ctaLabel}
+          {resolvedCtaLabel}
         </Link>
       </div>
     </section>

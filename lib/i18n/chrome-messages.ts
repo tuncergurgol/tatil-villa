@@ -21,6 +21,9 @@ export type ChromeMessages = {
   noFaqsYet: string;
   reviewsTitle: string;
   blogsTitle: string;
+  viewAllPosts: string;
+  previous: string;
+  next: string;
   allCategories: string;
   flightBus: string;
   carRental: string;
@@ -82,6 +85,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "Henüz soru eklenmedi.",
     reviewsTitle: "Misafir Yorumları",
     blogsTitle: "Bloglar",
+    viewAllPosts: "Tüm yazıları gör",
+    previous: "Önceki",
+    next: "Sonraki",
     allCategories: "Tümü",
     flightBus: "Uçak / Otobüs",
     carRental: "Araç Kiralama",
@@ -145,6 +151,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "No questions yet.",
     reviewsTitle: "Guest Reviews",
     blogsTitle: "Blogs",
+    viewAllPosts: "View all posts",
+    previous: "Previous",
+    next: "Next",
     allCategories: "All",
     flightBus: "Flight / Bus",
     carRental: "Car Rental",
@@ -208,6 +217,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "Noch keine Fragen.",
     reviewsTitle: "Gästebewertungen",
     blogsTitle: "Blog",
+    viewAllPosts: "Alle Beiträge anzeigen",
+    previous: "Zurück",
+    next: "Weiter",
     allCategories: "Alle",
     flightBus: "Flug / Bus",
     carRental: "Autovermietung",
@@ -271,6 +283,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "Aucune question pour le moment.",
     reviewsTitle: "Avis des clients",
     blogsTitle: "Blogs",
+    viewAllPosts: "Voir tous les articles",
+    previous: "Précédent",
+    next: "Suivant",
     allCategories: "Tout",
     flightBus: "Avion / Bus",
     carRental: "Location de voiture",
@@ -334,6 +349,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "Aún no hay preguntas.",
     reviewsTitle: "Opiniones de huéspedes",
     blogsTitle: "Blogs",
+    viewAllPosts: "Ver todas las entradas",
+    previous: "Anterior",
+    next: "Siguiente",
     allCategories: "Todas",
     flightBus: "Avión / Autobús",
     carRental: "Alquiler de coche",
@@ -397,6 +415,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "Все още няма въпроси.",
     reviewsTitle: "Отзиви на гости",
     blogsTitle: "Блогове",
+    viewAllPosts: "Виж всички публикации",
+    previous: "Предишна",
+    next: "Следваща",
     allCategories: "Всички",
     flightBus: "Самолет / Автобус",
     carRental: "Коли под наем",
@@ -460,6 +481,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "Δεν υπάρχουν ακόμη ερωτήσεις.",
     reviewsTitle: "Κριτικές επισκεπτών",
     blogsTitle: "Blogs",
+    viewAllPosts: "Δείτε όλα τα άρθρα",
+    previous: "Προηγούμενο",
+    next: "Επόμενο",
     allCategories: "Όλα",
     flightBus: "Αεροπλάνο / Λεωφορείο",
     carRental: "Ενοικίαση αυτοκινήτου",
@@ -523,6 +547,9 @@ export const chromeMessages: Record<AppLocale, ChromeMessages> = {
     noFaqsYet: "暂无问题。",
     reviewsTitle: "客人评价",
     blogsTitle: "博客",
+    viewAllPosts: "查看全部文章",
+    previous: "上一篇",
+    next: "下一篇",
     allCategories: "全部",
     flightBus: "飞机 / 巴士",
     carRental: "租车",

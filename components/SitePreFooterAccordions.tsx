@@ -94,6 +94,7 @@ export default async function SitePreFooterAccordions({
   const reviewJsonLd = buildReviewItemListJsonLd({
     reviews,
     brandName,
+    listName: tChrome("reviewsTitle"),
   });
 
   const blogJsonLd = {
