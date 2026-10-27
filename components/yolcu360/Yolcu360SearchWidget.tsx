@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Car, Clock, MapPin, User } from "lucide-react";
+import { Car, Clock, MapPin, User } from "lucide-react";
+import { useLocale } from "next-intl";
 import FloatingPanel from "@/components/FloatingPanel";
+import LocaleDateField from "@/components/LocaleDateField";
 import type { CarRentalPageSettingsData } from "@/lib/queries/car-rental";
 import { buildYolcu360SearchQuery } from "@/lib/yolcu360/session";
 
@@ -25,6 +27,27 @@ type Props = {
   driverAgeOptions: string[];
 };
 
+function uiCopy(locale: string) {
+  if (locale === "tr") {
+    return {
+      locationPlaceholder: "Havalimanı veya şehir ara…",
+      searching: "Konumlar aranıyor…",
+      searchFailed: "Konum araması başarısız",
+      noResults: "Sonuç bulunamadı",
+      selectLocations: "Lütfen alış ve iade konumlarını seçin.",
+      selectDates: "Lütfen alış ve iade tarihlerini seçin.",
+    };
+  }
+  return {
+    locationPlaceholder: "Search airport or city…",
+    searching: "Searching locations…",
+    searchFailed: "Location search failed",
+    noResults: "No results found",
+    selectLocations: "Please select pick-up and drop-off locations.",
+    selectDates: "Please select pick-up and drop-off dates.",
+  };
+}
+
 function LocationAutocomplete({
   label,
   value,
@@ -36,6 +59,8 @@ function LocationAutocomplete({
   onChange: (next: LocationSuggestion | null) => void;
   className?: string;
 }) {
+  const locale = useLocale();
+  const copy = uiCopy(locale);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(value?.description ?? "");
@@ -69,7 +94,7 @@ function LocationAutocomplete({
               !Array.isArray(data) &&
               data.error
               ? data.error
-              : "Konum araması başarısız"
+              : copy.searchFailed
           );
           setOpen(true);
           return;
@@ -78,14 +103,14 @@ function LocationAutocomplete({
         setOpen(true);
       } catch {
         setSuggestions([]);
-        setSearchError("Konum araması başarısız");
+        setSearchError(copy.searchFailed);
         setOpen(true);
       } finally {
         setLoading(false);
       }
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [query]);
+  }, [query, copy.searchFailed]);
 
   useEffect(() => {
     if (!open) return;
@@ -122,7 +147,7 @@ function LocationAutocomplete({
             onChange(null);
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Havalimanı veya şehir ara…"
+          placeholder={copy.locationPlaceholder}
           className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
           autoComplete="off"
         />
@@ -131,7 +156,7 @@ function LocationAutocomplete({
       <FloatingPanel open={showPanel} anchorRef={anchorRef} panelRef={panelRef}>
         {loading ? (
           <p className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-500 shadow-lg">
-            Konumlar aranıyor…
+            {copy.searching}
           </p>
         ) : null}
         {!loading && searchError ? (
@@ -166,7 +191,7 @@ function LocationAutocomplete({
         query.trim().length >= 2 &&
         suggestions.length === 0 ? (
           <p className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-500 shadow-lg">
-            Sonuç bulunamadı
+            {copy.noResults}
           </p>
         ) : null}
       </FloatingPanel>
@@ -193,16 +218,12 @@ function DateTimeField({
     <div className="shrink-0">
       <p className="mb-1.5 text-xs font-semibold text-slate-500">{label}</p>
       <div className="flex gap-2">
-        <label className="flex min-w-[7.5rem] items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 py-2.5 sm:min-w-[8.5rem]">
-          <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
-          <input
-            type="date"
-            value={dateValue}
-            min={minDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-slate-900 outline-none [color-scheme:light]"
-          />
-        </label>
+        <LocaleDateField
+          value={dateValue}
+          minDate={minDate}
+          onChange={onDateChange}
+          className="min-w-[7.5rem] sm:min-w-[8.5rem]"
+        />
         <label className="flex w-[5.25rem] items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/80 px-2 py-2.5 sm:w-[5.5rem]">
           <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
           <select
@@ -224,6 +245,8 @@ function DateTimeField({
 
 export default function Yolcu360SearchWidget({ settings, driverAgeOptions }: Props) {
   const router = useRouter();
+  const locale = useLocale();
+  const copy = uiCopy(locale);
   const [sameLocation, setSameLocation] = useState(settings.sameLocationDefault);
   const [pickup, setPickup] = useState<LocationSuggestion | null>(null);
   const [dropoff, setDropoff] = useState<LocationSuggestion | null>(null);
@@ -243,11 +266,11 @@ export default function Yolcu360SearchWidget({ settings, driverAgeOptions }: Pro
   function handleSearch() {
     setError(null);
     if (!pickup?.placeId || !effectiveDropoff?.placeId) {
-      setError("Lütfen alış ve iade konumlarını seçin.");
+      setError(copy.selectLocations);
       return;
     }
     if (!checkInDate || !checkOutDate) {
-      setError("Lütfen alış ve iade tarihlerini seçin.");
+      setError(copy.selectDates);
       return;
     }
 
