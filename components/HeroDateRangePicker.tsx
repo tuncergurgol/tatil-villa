@@ -203,7 +203,7 @@ export default function HeroDateRangePicker({
                 key={`${year}-${month}-${index}`}
                 type="button"
                 disabled={isDisabled}
-                title={holidayDayTitle(dateKey)}
+                title={holidayDayTitle(dateKey, locale)}
                 onMouseEnter={() => {
                   if (pendingStart) {
                     setHoverDate(dateKey);

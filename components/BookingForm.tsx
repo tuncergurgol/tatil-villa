@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { submitBooking, type BookingActionState } from "@/app/actions/booking";
-import { localeToBcp47 } from "@/lib/i18n/locale-display";
+import {
+  localeToBcp47,
+  monthLabelForLocale,
+  weekdayLabelsForLocale,
+} from "@/lib/i18n/locale-display";
 import { getMemberBookingBenefitsAction } from "@/app/actions/member-booking-benefits";
 import type { PreReservationMemberBenefits } from "@/components/PreReservationModal";
 import FloatingPanel from "@/components/FloatingPanel";
@@ -63,8 +67,6 @@ import {
 import {
   buildMonthGrid,
   compareDates,
-  getMonthLabel,
-  getWeekdayLabels,
   parseDateKey,
   todayDate,
   toDateKey,
@@ -189,6 +191,8 @@ export default function BookingForm({
 }: BookingFormProps) {
   const locale = useLocale();
   const t = useTranslations("villa");
+  const tHome = useTranslations("home");
+  const tCommon = useTranslations("common");
   const [state, formAction, pending] = useActionState(submitBooking, initialState);
   const [modalOpen, setModalOpen] = useState(false);
   const [memberBenefits, setMemberBenefits] =
@@ -389,7 +393,10 @@ export default function BookingForm({
   const minViewMonth = today.getMonth();
   const [viewYear, setViewYear] = useState(minViewYear);
   const [viewMonth, setViewMonth] = useState(minViewMonth);
-  const weekdayLabels = getWeekdayLabels();
+  const weekdayLabels = useMemo(
+    () => weekdayLabelsForLocale(locale),
+    [locale]
+  );
 
   const phoneDisplay = companyPhone
     ? formatCompanyPhoneDisplay(companyPhone)
@@ -444,7 +451,7 @@ export default function BookingForm({
     return (
       <div className={fullWidth ? "w-full min-w-0 shrink" : "w-[248px] shrink-0"}>
         <p className="mb-2 text-center text-sm font-semibold text-slate-800">
-          {getMonthLabel(year, month)}
+          {monthLabelForLocale(year, month, locale)}
         </p>
         <div className="grid grid-cols-7 gap-0.5">
           {weekdayLabels.map((label) => (
@@ -511,7 +518,7 @@ export default function BookingForm({
                 key={`${year}-${month}-${index}`}
                 type="button"
                 disabled={!canClick}
-                title={holidayDayTitle(dateKey)}
+                title={holidayDayTitle(dateKey, locale)}
                 onMouseEnter={() => {
                   if (pendingStart) setHoverDate(dateKey);
                 }}
@@ -559,7 +566,8 @@ export default function BookingForm({
                 />
                 {showNightHint ? (
                   <span className="pointer-events-none absolute -bottom-5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
-                    {previewNights} Gece
+                    {previewNights}{" "}
+                    {previewNights === 1 ? tCommon("night") : tCommon("nights")}
                   </span>
                 ) : null}
               </button>
@@ -878,7 +886,7 @@ export default function BookingForm({
               {!isMobile ? renderMonth(rightYear, rightMonth) : null}
             </div>
             <p className="mt-2 text-center text-[10px] text-slate-500">
-              <HolidayCalendarLegend />
+              <HolidayCalendarLegend label={tHome("officialHoliday")} />
             </p>
           </FloatingPanel>
         </div>

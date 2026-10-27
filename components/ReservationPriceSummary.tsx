@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { StayQuote } from "@/lib/stay-quote";
 import PriceInfoTip from "@/components/PriceInfoTip";
 import {
@@ -181,12 +182,14 @@ export default function ReservationPriceSummary({
   hideDepositNotice = false,
   className = "",
 }: ReservationPriceSummaryProps) {
+  const t = useTranslations("villa");
+
   if (!quote || quote.nights <= 0) {
     return (
       <div
         className={`rounded-xl border border-dashed border-slate-200 bg-white/70 px-3.5 py-3 text-sm text-slate-500 ${className}`}
       >
-        Tarih seçildiğinde konaklama bedeli hesaplanır.
+        {t("selectDatesHint")}
       </div>
     );
   }
@@ -196,10 +199,10 @@ export default function ReservationPriceSummary({
       <div
         className={`rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800 ${className}`}
       >
-        {quote.invalidReason ?? "Bu tarihler için rezervasyon hesaplanamadı."}
+        {quote.invalidReason ?? t("quoteUnavailable")}
         {quote.minStayNights != null ? (
           <p className="mt-1 text-xs text-amber-700">
-            Minimum konaklama: {quote.minStayNights} gece
+            {t("minStayNights", { nights: quote.minStayNights })}
           </p>
         ) : null}
       </div>

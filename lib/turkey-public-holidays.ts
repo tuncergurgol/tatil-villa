@@ -243,13 +243,48 @@ export function getTurkeyPublicHolidaysOnDate(
   return getHolidayIndex().get(dateKey) ?? [];
 }
 
-export function getTurkeyPublicHolidayTooltip(dateKey: string): string | null {
+const HOLIDAY_NAME_EN: Record<TurkeyHolidayKind, string> = {
+  NEW_YEAR: "New Year's Day",
+  NATIONAL_SOVEREIGNTY: "National Sovereignty and Children's Day",
+  LABOR_DAY: "Labour and Solidarity Day",
+  YOUTH_SPORTS: "Commemoration of Atatürk, Youth and Sports Day",
+  DEMOCRACY: "Democracy and National Unity Day",
+  VICTORY: "Victory Day",
+  REPUBLIC_EVE: "Republic Day Eve",
+  REPUBLIC: "Republic Day",
+  RAMADAN_EVE: "Ramadan Festival Eve",
+  RAMADAN: "Ramadan Festival",
+  SACRIFICE_EVE: "Sacrifice Festival Eve",
+  SACRIFICE: "Sacrifice Festival",
+};
+
+function holidayDisplayName(
+  holiday: TurkeyPublicHoliday,
+  locale: string
+): string {
+  if (locale === "tr") return holiday.name;
+  const base = HOLIDAY_NAME_EN[holiday.kind] ?? holiday.name;
+  if (
+    (holiday.kind === "RAMADAN" || holiday.kind === "SACRIFICE") &&
+    holiday.dayIndex
+  ) {
+    return `${base} (Day ${holiday.dayIndex})`;
+  }
+  return base;
+}
+
+export function getTurkeyPublicHolidayTooltip(
+  dateKey: string,
+  locale: string = "tr"
+): string | null {
   const holidays = getTurkeyPublicHolidaysOnDate(dateKey);
   if (holidays.length === 0) return null;
+  const halfDaySuffix = locale === "tr" ? " (yarım gün)" : " (half day)";
   return holidays
-    .map((holiday) =>
-      holiday.halfDay ? `${holiday.name} (yarım gün)` : holiday.name
-    )
+    .map((holiday) => {
+      const name = holidayDisplayName(holiday, locale);
+      return holiday.halfDay ? `${name}${halfDaySuffix}` : name;
+    })
     .join(" / ");
 }
 

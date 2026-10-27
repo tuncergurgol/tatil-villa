@@ -27,6 +27,10 @@ function queryOf(href: string): URLSearchParams {
   return new URLSearchParams(q);
 }
 
+function normalizeNavLabel(label: string): string {
+  return label.trim().toLocaleLowerCase("tr-TR");
+}
+
 export function localizeNavLabel(
   href: string,
   fallback: string,
@@ -37,6 +41,19 @@ export function localizeNavLabel(
   const path = pathOnly(href);
   const query = queryOf(href);
   const hash = href.includes("#") ? href.slice(href.indexOf("#") + 1) : "";
+  const labelKey = normalizeNavLabel(fallback);
+
+  // CMS etiketi href'ten daha güvenilir olabilir (örn. Bölgeler → /villalar yanlışlıkla)
+  if (
+    labelKey === "bölgeler" ||
+    labelKey === "bolgeler" ||
+    labelKey === "regions"
+  ) {
+    return nav.regions;
+  }
+  if (labelKey === "kampanyalar" || labelKey === "campaigns") {
+    return nav.campaigns;
+  }
 
   if (path === "/villalar") {
     if (query.get("filter") === "deal") return nav.dealVillas || nav.deals;

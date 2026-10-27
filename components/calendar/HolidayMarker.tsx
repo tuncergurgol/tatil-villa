@@ -1,7 +1,11 @@
+import { useLocale } from "next-intl";
 import { getTurkeyPublicHolidayTooltip } from "@/lib/turkey-public-holidays";
 
-export function holidayDayTitle(dateKey: string): string | undefined {
-  return getTurkeyPublicHolidayTooltip(dateKey) ?? undefined;
+export function holidayDayTitle(
+  dateKey: string,
+  locale: string = "tr"
+): string | undefined {
+  return getTurkeyPublicHolidayTooltip(dateKey, locale) ?? undefined;
 }
 
 export function HolidayMarker({
@@ -11,7 +15,8 @@ export function HolidayMarker({
   dateKey: string;
   tone?: "default" | "onDark";
 }) {
-  const label = getTurkeyPublicHolidayTooltip(dateKey);
+  const locale = useLocale();
+  const label = getTurkeyPublicHolidayTooltip(dateKey, locale);
   if (!label) return null;
 
   return (

@@ -95,6 +95,7 @@ export type VillaDetailMessages = {
   approximateLocationNote: string;
   directions: string;
   selectDatesHint: string;
+  quoteUnavailable: string;
   selectDates: string;
   nightsTotal: string;
   total: string;
@@ -231,7 +232,8 @@ const en: VillaDetailMessages = {
   approximateLocationNote:
     "Approximate location is shown; the exact address is shared after booking.{region}",
   directions: "Get directions",
-  selectDatesHint: "Select dates to calculate the stay price",
+  selectDatesHint: "Accommodation cost is calculated when dates are selected.",
+  quoteUnavailable: "A reservation could not be calculated for these dates.",
   selectDates: "Select dates",
   nightsTotal: "{nights} Nights",
   total: "Total",
@@ -372,7 +374,8 @@ const tr: VillaDetailMessages = {
   approximateLocationNote:
     "Yaklaşık konum gösterilir; kesin adres rezervasyon sonrası paylaşılır.{region}",
   directions: "Yol tarifi",
-  selectDatesHint: "Tarih seçerek konaklama bedelini hesaplayın",
+  selectDatesHint: "Tarih seçildiğinde konaklama bedeli hesaplanır.",
+  quoteUnavailable: "Bu tarihler için rezervasyon hesaplanamadı.",
   selectDates: "Tarih Seçiniz",
   nightsTotal: "{nights} Gece",
   total: "Toplam",
