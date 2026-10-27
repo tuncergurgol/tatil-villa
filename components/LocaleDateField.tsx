@@ -59,8 +59,28 @@ export default function LocaleDateField({
     () => weekdayLabelsForLocale(locale),
     [locale]
   );
-  const emptyPlaceholder = locale === "tr" ? "gg.aa.yyyy" : "dd.mm.yyyy";
-  const clearLabel = locale === "tr" ? "Temizle" : "Clear";
+  const emptyPlaceholder =
+    locale === "tr"
+      ? "gg.aa.yyyy"
+      : locale === "zh"
+        ? "日.月.年"
+        : locale === "ru" || locale === "bg"
+          ? "дд.мм.гггг"
+          : locale === "el"
+            ? "ηη.μμ.εεεε"
+            : "dd.mm.yyyy";
+  const clearLabelByLocale: Record<string, string> = {
+    tr: "Temizle",
+    en: "Clear",
+    de: "Löschen",
+    fr: "Effacer",
+    es: "Borrar",
+    bg: "Изчисти",
+    el: "Καθαρισμός",
+    zh: "清除",
+    ru: "Очистить",
+  };
+  const clearLabel = clearLabelByLocale[locale] ?? "Clear";
 
   useEffect(() => {
     if (!open) return;

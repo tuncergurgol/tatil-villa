@@ -700,6 +700,77 @@ const zhCore: CoreMessages = {
   },
 };
 
+const ruCore: CoreMessages = {
+  nav: {
+    villas: "Виллы",
+    deals: "Акции",
+    regions: "Регионы",
+    campaigns: "Кампании",
+    loyalty: "Программа лояльности",
+    allVillas: "Все виллы",
+    dealVillas: "Виллы со скидкой",
+    popularRegions: "Популярные регионы",
+    services: "Услуги",
+    reservationVerify: "Проверка бронирования",
+  },
+  header: {
+    memberLogin: "Вход для участников",
+    searchVilla: "Поиск виллы",
+    menu: "Меню",
+    language: "Язык",
+    selectLanguage: "Выберите язык",
+  },
+  footer: {
+    quickLinks: "Быстрые ссылки",
+    corporate: "О компании",
+    popularRegions: "Популярные регионы",
+    neighborhoods: "Районы",
+    contact: "Контакты",
+    workingHours: "Часы работы",
+    allRightsReserved: "Все права защищены.",
+    verifyTursab: "Цифровая проверка TÜRSAB",
+  },
+  mobileNav: {
+    home: "Главная",
+    search: "Поиск виллы",
+    reservation: "Бронирование",
+    callUs: "Позвонить",
+    weWillCallYou: "Мы вам перезвоним",
+    whatsapp: "WhatsApp",
+  },
+  common: {
+    search: "Поиск",
+    close: "Закрыть",
+    loading: "Загрузка…",
+    night: "Ночь",
+    nights: "Ночи",
+    guest: "Гость",
+    guests: "Гости",
+    from: "от",
+    perNight: "за ночь",
+    checkIn: "Заезд",
+    checkOut: "Выезд",
+    available: "Свободно",
+    booked: "Занято",
+    option: "Опцион",
+    checkout: "Выезд",
+    checkin: "Заезд",
+    lastMinute: "Горящее предложение",
+  },
+  villa: villaDetailMessages.ru,
+  home: {
+    heroAlt: "Пейзаж для отпуска",
+    searchTitle: "Найдите виллу мечты",
+  },
+  booking: {
+    preReservation: "Отправить запрос на предварительное бронирование",
+    sendRequest: "Отправить запрос",
+    checkInDate: "Дата заезда",
+    checkOutDate: "Дата выезда",
+    adults: "Взрослые",
+  },
+};
+
 export const messages: Record<AppLocale, AppMessages> = {
   tr: withCatalog("tr", trCore),
   en: withCatalog("en", enCore),
@@ -709,4 +780,5 @@ export const messages: Record<AppLocale, AppMessages> = {
   bg: withCatalog("bg", bgCore),
   el: withCatalog("el", elCore),
   zh: withCatalog("zh", zhCore),
+  ru: withCatalog("ru", ruCore),
 };

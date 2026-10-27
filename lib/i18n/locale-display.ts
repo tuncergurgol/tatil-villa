@@ -9,6 +9,7 @@ const LOCALE_TO_BCP47: Record<AppLocale, string> = {
   bg: "bg-BG",
   el: "el-GR",
   zh: "zh-CN",
+  ru: "ru-RU",
 };
 
 export function localeToBcp47(locale: string): string {

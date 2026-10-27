@@ -9,6 +9,7 @@ export const locales = [
   "bg",
   "el",
   "zh",
+  "ru",
 ] as const;
 
 export type AppLocale = (typeof locales)[number];
@@ -27,6 +28,7 @@ export const localeLabels: Record<
   bg: { code: "BG", name: "Bulgarian", nativeName: "Български" },
   el: { code: "EL", name: "Greek", nativeName: "Ελληνικά" },
   zh: { code: "ZH", name: "Chinese", nativeName: "中文" },
+  ru: { code: "RU", name: "Russian", nativeName: "Русский" },
 };
 
 export const routing = defineRouting({

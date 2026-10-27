@@ -339,6 +339,39 @@ export const searchMessages: Record<AppLocale, SearchMessages> = {
     selectCheckOutHint: "请选择退房日期 — 悬停可预览日期范围",
     nightsStay: "{count} 晚住宿",
   },
+  ru: {
+    tabVilla: "Вилла",
+    tabTour: "Тур",
+    tabHotel: "Отель",
+    tabFlightBus: "Самолёт/Автобус",
+    tabTransfer: "Трансфер",
+    tabCarRental: "Аренда авто",
+    tabDayTour: "Однодневные туры/активности",
+    tabFerry: "Паром",
+    whereTo: "Куда хотите поехать?",
+    regionPlaceholder: "Поиск города, региона или района...",
+    noRegionMatch: "Подходящий регион не найден",
+    guestsLabel: "Гости",
+    guestCount: "{count} гостей",
+    peopleLabel: "Гости",
+    peopleCount: "{count} гостей",
+    selectDate: "Выберите дату",
+    previousMonth: "Предыдущий месяц",
+    nextMonth: "Следующий месяц",
+    today: "Сегодня",
+    adults: "Взрослые",
+    children: "Дети",
+    babies: "Младенцы",
+    pets: "Питомцы",
+    childrenAges: "3 - 12 лет",
+    babiesAges: "0 - 2 года · не учитываются в вместимости",
+    notInCapacity: "Не учитывается в вместимости",
+    close: "ЗАКРЫТЬ",
+    done: "Готово",
+    selectCheckOutHint:
+      "Выберите дату выезда — наведите курсор для предпросмотра диапазона",
+    nightsStay: "{count} ночей проживания",
+  },
 };
 
 export const homeExtraMessages: Record<AppLocale, HomeExtraMessages> = {
@@ -539,6 +572,31 @@ export const homeExtraMessages: Record<AppLocale, HomeExtraMessages> = {
     dreamVacationSubtitle: "选择适合您的别墅风格，立即进入筛选搜索结果。",
     officialHoliday: "公共假日",
   },
+  ru: {
+    heroTitleDefault: "Откройте новое приключение",
+    heroTitleBalayi: "Виллы для медового месяца специально для вашей любви",
+    heroTitleTatilVillacisi: "Вилла мечты для отпуска — в один клик",
+    heroTitleGlamping: "Бунгало и купола на природе",
+    viewAll: "Смотреть все",
+    travelAdventureTitle: "Ваше путешествие начинается здесь",
+    travelAdventureSuffix: "услугами спланируйте отпуск от начала до конца.",
+    travelAddonVilla:
+      "В дополнение к проживанию на вилле: отель, трансфер, аренда авто и транспорт",
+    travelAddonTesis:
+      "В дополнение к проживанию: отель, трансфер, аренда авто и транспорт",
+    allFilter: "Все",
+    villaCountLabel: "{count} вилл",
+    sectionPopularTitle: "Популярные виллы",
+    sectionPopularSubtitle: "Отобрано для вас.",
+    sectionDealTitle: "Виллы со скидкой",
+    sectionDealSubtitle: "Наслаждайтесь отпуском по лучшим ценам.",
+    sectionRecommendedTitle: "Рекомендуемые виллы",
+    sectionRecommendedSubtitle: "Наши самые популярные виллы.",
+    dreamVacationTitle: "О каком отпуске вы мечтаете?",
+    dreamVacationSubtitle:
+      "Выберите стиль виллы под ваши нужды и сразу перейдите к фильтрованному поиску.",
+    officialHoliday: "Государственный праздник",
+  },
 };
 
 export const servicesMessages: Record<AppLocale, ServicesMessages> = {
@@ -622,6 +680,16 @@ export const servicesMessages: Record<AppLocale, ServicesMessages> = {
     tourDesc: "本地体验与行程",
     flightDesc: "完善您的出行计划",
   },
+  ru: {
+    vipTransfer: "VIP-трансфер",
+    tourActivity: "Туры и активности",
+    hotelDesc: "Комфортное проживание с Otelz",
+    carRentalDesc: "Варианты авто под ваш отпуск",
+    transferDesc: "Трансфер из аэропорта и по городу",
+    ferryDesc: "Паромы на острова и в порты",
+    tourDesc: "Местные впечатления и туры",
+    flightDesc: "Завершите план поездки",
+  },
 };
 
 export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
@@ -696,5 +764,14 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     securePaymentAlt:
       "SSL 安全连接、100% 安全结账、iyzico、Mastercard、Visa、American Express、Troy",
     mahalleNavLabel: "社区可租别墅",
+  },
+  ru: {
+    noCorporatePages: "Страницы ещё не добавлены.",
+    noRegionsYet: "Регионы ещё не добавлены.",
+    tursabNoPrefix: "№ TÜRSAB:",
+    tursabVerifyTitle: "Цифровая система проверки TÜRSAB",
+    securePaymentAlt:
+      "SSL-защищённое соединение, 100% безопасная оплата, iyzico, Mastercard, Visa, American Express, Troy",
+    mahalleNavLabel: "Аренда вилл по району",
   },
 };

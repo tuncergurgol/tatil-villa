@@ -28,24 +28,91 @@ type Props = {
 };
 
 function uiCopy(locale: string) {
-  if (locale === "tr") {
-    return {
+  const packs: Record<
+    string,
+    {
+      locationPlaceholder: string;
+      searching: string;
+      searchFailed: string;
+      noResults: string;
+      selectLocations: string;
+      selectDates: string;
+    }
+  > = {
+    tr: {
       locationPlaceholder: "Havalimanı veya şehir ara…",
       searching: "Konumlar aranıyor…",
       searchFailed: "Konum araması başarısız",
       noResults: "Sonuç bulunamadı",
       selectLocations: "Lütfen alış ve iade konumlarını seçin.",
       selectDates: "Lütfen alış ve iade tarihlerini seçin.",
-    };
-  }
-  return {
-    locationPlaceholder: "Search airport or city…",
-    searching: "Searching locations…",
-    searchFailed: "Location search failed",
-    noResults: "No results found",
-    selectLocations: "Please select pick-up and drop-off locations.",
-    selectDates: "Please select pick-up and drop-off dates.",
+    },
+    en: {
+      locationPlaceholder: "Search airport or city…",
+      searching: "Searching locations…",
+      searchFailed: "Location search failed",
+      noResults: "No results found",
+      selectLocations: "Please select pick-up and drop-off locations.",
+      selectDates: "Please select pick-up and drop-off dates.",
+    },
+    de: {
+      locationPlaceholder: "Flughafen oder Stadt suchen…",
+      searching: "Standorte werden gesucht…",
+      searchFailed: "Standortsuche fehlgeschlagen",
+      noResults: "Keine Ergebnisse",
+      selectLocations: "Bitte Abhol- und Rückgabeort wählen.",
+      selectDates: "Bitte Abhol- und Rückgabedatum wählen.",
+    },
+    fr: {
+      locationPlaceholder: "Rechercher un aéroport ou une ville…",
+      searching: "Recherche de lieux…",
+      searchFailed: "Échec de la recherche de lieu",
+      noResults: "Aucun résultat",
+      selectLocations: "Veuillez sélectionner les lieux de prise en charge et de restitution.",
+      selectDates: "Veuillez sélectionner les dates de prise en charge et de restitution.",
+    },
+    es: {
+      locationPlaceholder: "Buscar aeropuerto o ciudad…",
+      searching: "Buscando ubicaciones…",
+      searchFailed: "Error en la búsqueda de ubicación",
+      noResults: "No se encontraron resultados",
+      selectLocations: "Seleccione los lugares de recogida y devolución.",
+      selectDates: "Seleccione las fechas de recogida y devolución.",
+    },
+    bg: {
+      locationPlaceholder: "Търсене на летище или град…",
+      searching: "Търсене на локации…",
+      searchFailed: "Търсенето на локация не успя",
+      noResults: "Няма резултати",
+      selectLocations: "Моля, изберете места за получаване и връщане.",
+      selectDates: "Моля, изберете дати за получаване и връщане.",
+    },
+    el: {
+      locationPlaceholder: "Αναζήτηση αεροδρομίου ή πόλης…",
+      searching: "Αναζήτηση τοποθεσιών…",
+      searchFailed: "Αποτυχία αναζήτησης τοποθεσίας",
+      noResults: "Δεν βρέθηκαν αποτελέσματα",
+      selectLocations: "Επιλέξτε σημεία παραλαβής και επιστροφής.",
+      selectDates: "Επιλέξτε ημερομηνίες παραλαβής και επιστροφής.",
+    },
+    zh: {
+      locationPlaceholder: "搜索机场或城市…",
+      searching: "正在搜索地点…",
+      searchFailed: "地点搜索失败",
+      noResults: "未找到结果",
+      selectLocations: "请选择取车与还车地点。",
+      selectDates: "请选择取车与还车日期。",
+    },
+    ru: {
+      locationPlaceholder: "Поиск аэропорта или города…",
+      searching: "Поиск локаций…",
+      searchFailed: "Не удалось найти локацию",
+      noResults: "Ничего не найдено",
+      selectLocations: "Выберите места получения и возврата.",
+      selectDates: "Выберите даты получения и возврата.",
+    },
   };
+  return packs[locale] ?? packs.en!;
 }
 
 function LocationAutocomplete({
