@@ -1,12 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Search, Users } from "lucide-react";
 import GuestPicker from "@/components/GuestPicker";
 import HeroDateRangePicker from "@/components/HeroDateRangePicker";
 import HeroDestinationSearch from "@/components/HeroDestinationSearch";
 import FloatingPanel from "@/components/FloatingPanel";
+import { useRouter } from "@/lib/i18n/navigation";
 import { totalGuests } from "@/lib/utils";
 import type { GuestCounts, HeroSearchRegionOption } from "@/lib/types";
 
@@ -28,6 +29,8 @@ export default function VillaSearchBar({
   preserveParams,
 }: VillaSearchBarProps) {
   const router = useRouter();
+  const t = useTranslations("search");
+  const tCommon = useTranslations("common");
   const guestRef = useRef<HTMLDivElement>(null);
   const guestAnchorRef = useRef<HTMLButtonElement>(null);
   const guestPanelRef = useRef<HTMLDivElement>(null);
@@ -166,11 +169,11 @@ export default function VillaSearchBar({
             <Users className="h-4 w-4 shrink-0 text-sky-500" />
             <div className="min-w-0 flex-1">
               <span className="block text-[11px] font-normal leading-none text-gray-500">
-                Misafirler
+                {t("guestsLabel")}
               </span>
               <p className="mt-1 truncate text-sm font-semibold leading-tight text-gray-900">
                 <span className="rounded-md bg-sky-50 px-1">
-                  {guestTotal} Misafir
+                  {t("guestCount", { count: guestTotal })}
                 </span>
               </p>
             </div>
@@ -189,7 +192,7 @@ export default function VillaSearchBar({
               counts={guests}
               onChange={setGuests}
               onConfirm={() => setGuestOpen(false)}
-              confirmLabel="KAPAT"
+              confirmLabel={t("close")}
             />
           </FloatingPanel>
         </div>
@@ -199,7 +202,7 @@ export default function VillaSearchBar({
             className="flex h-14 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 text-sm font-bold text-white transition hover:bg-sky-800 sm:min-w-[100px] sm:shrink-0 lg:h-full"
           >
             <Search className="h-4 w-4" />
-            <span>Ara</span>
+            <span>{tCommon("search")}</span>
           </button>
       </div>
     </form>

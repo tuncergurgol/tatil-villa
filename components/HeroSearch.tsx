@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import {
   Bus,
@@ -19,23 +19,44 @@ import GuestPicker from "./GuestPicker";
 import HeroDateRangePicker from "./HeroDateRangePicker";
 import HeroDestinationSearch from "./HeroDestinationSearch";
 import FloatingPanel from "./FloatingPanel";
+import { useRouter } from "@/lib/i18n/navigation";
 import { totalGuests } from "@/lib/utils";
 import type { GuestCounts, HeroSearchRegionOption } from "@/lib/types";
 
-const SEARCH_TABS = [
-  { id: "villa", label: "Villa", icon: Home },
-  { id: "tur", label: "Tur", icon: Map, href: "/tur" },
-  { id: "otel", label: "Otel", icon: Building2, href: "/otel" },
-  { id: "ucak-otobus", label: "Uçak/Otobüs", icon: Plane, href: "/bilet/ara" },
-  { id: "transfer", label: "Transfer", icon: Bus, href: "/vip-transfer" },
-  { id: "arac", label: "Araç Kiralama", icon: Car, href: "/arac-kiralama" },
+const SEARCH_TAB_IDS = [
+  { id: "villa", icon: Home, labelKey: "tabVilla" as const },
+  { id: "tur", icon: Map, href: "/tur", labelKey: "tabTour" as const },
+  { id: "otel", icon: Building2, href: "/otel", labelKey: "tabHotel" as const },
+  {
+    id: "ucak-otobus",
+    icon: Plane,
+    href: "/bilet/ara",
+    labelKey: "tabFlightBus" as const,
+  },
+  {
+    id: "transfer",
+    icon: Bus,
+    href: "/vip-transfer",
+    labelKey: "tabTransfer" as const,
+  },
+  {
+    id: "arac",
+    icon: Car,
+    href: "/arac-kiralama",
+    labelKey: "tabCarRental" as const,
+  },
   {
     id: "gunubirlik",
-    label: "Günübirlik Tur/Aktiviteler",
     icon: Compass,
     href: "/tur/liste",
+    labelKey: "tabDayTour" as const,
   },
-  { id: "feribot", label: "Feribot", icon: Ship, href: "/feribot" },
+  {
+    id: "feribot",
+    icon: Ship,
+    href: "/feribot",
+    labelKey: "tabFerry" as const,
+  },
 ] as const;
 
 interface HeroSearchProps {
@@ -49,11 +70,13 @@ export default function HeroSearch({
   publishedServices,
 }: HeroSearchProps) {
   const router = useRouter();
+  const t = useTranslations("search");
+  const tCommon = useTranslations("common");
   const guestRef = useRef<HTMLDivElement>(null);
   const guestAnchorRef = useRef<HTMLButtonElement>(null);
   const guestPanelRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] =
-    useState<(typeof SEARCH_TABS)[number]["id"]>("villa");
+    useState<(typeof SEARCH_TAB_IDS)[number]["id"]>("villa");
   const [destination, setDestination] =
     useState<HeroSearchRegionOption | null>(null);
   const [destinationOpen, setDestinationOpen] = useState(false);
@@ -122,10 +145,10 @@ export default function HeroSearch({
 
   const guestTotal = totalGuests(guests);
   const visibleTabs = publishedServices
-    ? SEARCH_TABS.filter(
+    ? SEARCH_TAB_IDS.filter(
         (tab) => tab.id === "villa" || publishedServices.includes(tab.id)
       )
-    : SEARCH_TABS;
+    : SEARCH_TAB_IDS;
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -135,6 +158,7 @@ export default function HeroSearch({
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             const href = "href" in tab ? tab.href : undefined;
+            const label = t(tab.labelKey);
             return (
               <button
                 key={tab.id}
@@ -155,8 +179,8 @@ export default function HeroSearch({
                 <Icon
                   className={`h-4 w-4 shrink-0 ${isActive ? "text-sky-600" : "text-gray-500"}`}
                 />
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.split("/")[0]}</span>
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">{label.split("/")[0]}</span>
               </button>
             );
           })}
@@ -211,11 +235,11 @@ export default function HeroSearch({
               <Users className="h-4 w-4 shrink-0 text-sky-500" />
               <div className="min-w-0 flex-1">
                 <span className="block text-[11px] font-normal leading-none text-gray-500">
-                  Misafirler
+                  {t("guestsLabel")}
                 </span>
                 <p className="mt-1 truncate text-sm font-semibold leading-tight text-gray-900">
                   <span className="rounded-md bg-sky-50 px-1">
-                    {guestTotal} Misafir
+                    {t("guestCount", { count: guestTotal })}
                   </span>
                 </p>
               </div>
@@ -234,7 +258,7 @@ export default function HeroSearch({
                 counts={guests}
                 onChange={setGuests}
                 onConfirm={() => setGuestOpen(false)}
-                confirmLabel="KAPAT"
+                confirmLabel={t("close")}
               />
             </FloatingPanel>
           </div>
@@ -244,7 +268,7 @@ export default function HeroSearch({
             className="flex h-14 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 text-sm font-bold text-white transition hover:bg-sky-800 sm:min-w-[100px] sm:shrink-0 lg:h-full"
           >
             <Search className="h-4 w-4" />
-            <span>Ara</span>
+            <span>{tCommon("search")}</span>
           </button>
         </div>
       </form>

@@ -1,7 +1,8 @@
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Building2, Bus, Car, Map, Plane, Ship } from "lucide-react";
+import { Link } from "@/lib/i18n/navigation";
 import { getPublishedServicesForHost } from "@/lib/queries/agency-sites";
-import { getPublicListingCopy } from "@/lib/public-listing-copy";
+import { usesTesisListingCopy } from "@/lib/public-listing-copy";
 import {
   getRequestHostname,
   getRequestPublicSiteKey,
@@ -11,54 +12,61 @@ const SERVICES = [
   {
     key: "otel",
     href: "/otel",
-    label: "Otel",
-    description: "Otelz ile konforlu konaklama",
+    labelKey: "tabHotel" as const,
+    descKey: "hotelDesc" as const,
     icon: Building2,
   },
   {
     key: "arac",
     href: "/arac-kiralama",
-    label: "Araç Kiralama",
-    description: "Tatilinize özel araç seçenekleri",
+    labelKey: "tabCarRental" as const,
+    descKey: "carRentalDesc" as const,
     icon: Car,
   },
   {
     key: "transfer",
     href: "/vip-transfer",
-    label: "VIP Transfer",
-    description: "Havalimanı ve şehir transferi",
+    labelKey: "vipTransfer" as const,
+    descKey: "transferDesc" as const,
     icon: Bus,
   },
   {
     key: "feribot",
     href: "/feribot",
-    label: "Feribot",
-    description: "Ada ve liman geçişleri",
+    labelKey: "tabFerry" as const,
+    descKey: "ferryDesc" as const,
     icon: Ship,
   },
   {
     key: "gunubirlik",
     href: "/tur/liste",
-    label: "Tur & Aktivite",
-    description: "Yerel deneyimler ve turlar",
+    labelKey: "tourActivity" as const,
+    descKey: "tourDesc" as const,
     icon: Map,
   },
   {
     key: "ucak-otobus",
     href: "/bilet/ara",
-    label: "Uçak / Otobüs",
-    description: "Ulaşım planınızı tamamlayın",
+    labelKey: "tabFlightBus" as const,
+    descKey: "flightDesc" as const,
     icon: Plane,
   },
 ] as const;
 
-export function TravelAdventureSectionView({
+export async function TravelAdventureSectionView({
   publishedServices,
-  travelAddon,
+  useTesisCopy = false,
 }: {
   publishedServices?: string[] | null;
-  travelAddon?: string;
+  useTesisCopy?: boolean;
 }) {
+  const tHome = await getTranslations("home");
+  const tSearch = await getTranslations("search");
+  const tServices = await getTranslations("services");
+  const travelAddon = useTesisCopy
+    ? tHome("travelAddonTesis")
+    : tHome("travelAddonVilla");
+
   const visible = publishedServices
     ? SERVICES.filter((service) => publishedServices.includes(service.key))
     : SERVICES;
@@ -80,12 +88,10 @@ export function TravelAdventureSectionView({
     <section className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-sky-50 px-5 py-8 sm:px-8">
       <div className="max-w-2xl">
         <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Seyahat Maceranız burada başlıyor
+          {tHome("travelAdventureTitle")}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">
-          {travelAddon ??
-            "Villa konaklamanıza ek olarak otel, transfer, araç kiralama ve ulaşım"}{" "}
-          hizmetlerimizle tatilinizi uçtan uca planlayın.
+          {travelAddon} {tHome("travelAdventureSuffix")}
         </p>
       </div>
 
@@ -94,6 +100,12 @@ export function TravelAdventureSectionView({
       >
         {visible.map((service) => {
           const Icon = service.icon;
+          const label =
+            service.labelKey === "vipTransfer" ||
+            service.labelKey === "tourActivity"
+              ? tServices(service.labelKey)
+              : tSearch(service.labelKey);
+          const description = tServices(service.descKey);
           return (
             <Link
               key={service.href}
@@ -105,10 +117,10 @@ export function TravelAdventureSectionView({
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-bold text-slate-900">
-                  {service.label}
+                  {label}
                 </span>
                 <span className="mt-0.5 block text-xs leading-snug text-slate-500">
-                  {service.description}
+                  {description}
                 </span>
               </span>
             </Link>
@@ -126,11 +138,10 @@ export default async function TravelAdventureSection() {
     getRequestPublicSiteKey(),
   ]);
   const publishedServices = await getPublishedServicesForHost(hostname);
-  const copy = getPublicListingCopy(siteKey);
   return (
     <TravelAdventureSectionView
       publishedServices={publishedServices}
-      travelAddon={copy.travelAddon}
+      useTesisCopy={usesTesisListingCopy(siteKey)}
     />
   );
 }

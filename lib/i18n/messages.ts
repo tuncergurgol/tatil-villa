@@ -1,4 +1,14 @@
 import type { AppLocale } from "@/i18n/routing";
+import {
+  footerExtraMessages,
+  homeExtraMessages,
+  searchMessages,
+  servicesMessages,
+  type FooterExtraMessages,
+  type HomeExtraMessages,
+  type SearchMessages,
+  type ServicesMessages,
+} from "@/lib/i18n/search-messages";
 
 export type AppMessages = {
   nav: {
@@ -29,7 +39,7 @@ export type AppMessages = {
     workingHours: string;
     allRightsReserved: string;
     verifyTursab: string;
-  };
+  } & FooterExtraMessages;
   mobileNav: {
     home: string;
     search: string;
@@ -78,7 +88,7 @@ export type AppMessages = {
   home: {
     heroAlt: string;
     searchTitle: string;
-  };
+  } & HomeExtraMessages;
   booking: {
     preReservation: string;
     sendRequest: string;
@@ -86,9 +96,32 @@ export type AppMessages = {
     checkOutDate: string;
     adults: string;
   };
+  search: SearchMessages;
+  services: ServicesMessages;
 };
 
-const tr: AppMessages = {
+type CoreMessages = {
+  nav: AppMessages["nav"];
+  header: AppMessages["header"];
+  footer: Omit<AppMessages["footer"], keyof FooterExtraMessages>;
+  mobileNav: AppMessages["mobileNav"];
+  common: AppMessages["common"];
+  villa: AppMessages["villa"];
+  home: Omit<AppMessages["home"], keyof HomeExtraMessages>;
+  booking: AppMessages["booking"];
+};
+
+function withCatalog(locale: AppLocale, core: CoreMessages): AppMessages {
+  return {
+    ...core,
+    footer: { ...core.footer, ...footerExtraMessages[locale] },
+    home: { ...core.home, ...homeExtraMessages[locale] },
+    search: searchMessages[locale],
+    services: servicesMessages[locale],
+  };
+}
+
+const trCore: CoreMessages = {
   nav: {
     villas: "Villalar",
     deals: "Fırsatlar",
@@ -177,7 +210,7 @@ const tr: AppMessages = {
   },
 };
 
-const en: AppMessages = {
+const enCore: CoreMessages = {
   nav: {
     villas: "Villas",
     deals: "Deals",
@@ -266,7 +299,7 @@ const en: AppMessages = {
   },
 };
 
-const de: AppMessages = {
+const deCore: CoreMessages = {
   nav: {
     villas: "Villen",
     deals: "Angebote",
@@ -355,7 +388,7 @@ const de: AppMessages = {
   },
 };
 
-const fr: AppMessages = {
+const frCore: CoreMessages = {
   nav: {
     villas: "Villas",
     deals: "Offres",
@@ -444,7 +477,7 @@ const fr: AppMessages = {
   },
 };
 
-const es: AppMessages = {
+const esCore: CoreMessages = {
   nav: {
     villas: "Villas",
     deals: "Ofertas",
@@ -533,7 +566,7 @@ const es: AppMessages = {
   },
 };
 
-const bg: AppMessages = {
+const bgCore: CoreMessages = {
   nav: {
     villas: "Вили",
     deals: "Оферти",
@@ -622,7 +655,7 @@ const bg: AppMessages = {
   },
 };
 
-const el: AppMessages = {
+const elCore: CoreMessages = {
   nav: {
     villas: "Βίλες",
     deals: "Προσφορές",
@@ -711,7 +744,7 @@ const el: AppMessages = {
   },
 };
 
-const zh: AppMessages = {
+const zhCore: CoreMessages = {
   nav: {
     villas: "别墅",
     deals: "优惠",
@@ -800,12 +833,12 @@ const zh: AppMessages = {
 };
 
 export const messages: Record<AppLocale, AppMessages> = {
-  tr,
-  en,
-  de,
-  fr,
-  es,
-  bg,
-  el,
-  zh,
+  tr: withCatalog("tr", trCore),
+  en: withCatalog("en", enCore),
+  de: withCatalog("de", deCore),
+  fr: withCatalog("fr", frCore),
+  es: withCatalog("es", esCore),
+  bg: withCatalog("bg", bgCore),
+  el: withCatalog("el", elCore),
+  zh: withCatalog("zh", zhCore),
 };

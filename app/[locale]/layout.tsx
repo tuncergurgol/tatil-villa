@@ -57,11 +57,30 @@ export default async function LocaleLayout({
     getCompanySettings(),
   ]);
   const site = await getPublicSiteProfile(company);
+  const typedMessages = messages as {
+    nav?: Record<string, unknown>;
+    header?: Record<string, unknown>;
+    mobileNav?: Record<string, unknown>;
+    common?: Record<string, unknown>;
+    home?: Record<string, unknown>;
+    footer?: Record<string, unknown>;
+    villa?: Record<string, unknown>;
+    booking?: Record<string, unknown>;
+    search?: Record<string, unknown>;
+    services?: Record<string, unknown>;
+  };
   const clientMessages = overlayTesisClientMessages(
     {
-      nav: (messages as { nav?: Record<string, unknown> }).nav,
-      header: (messages as { header?: Record<string, unknown> }).header,
-      mobileNav: (messages as { mobileNav?: Record<string, unknown> }).mobileNav,
+      nav: typedMessages.nav,
+      header: typedMessages.header,
+      mobileNav: typedMessages.mobileNav,
+      common: typedMessages.common,
+      home: typedMessages.home,
+      footer: typedMessages.footer,
+      villa: typedMessages.villa,
+      booking: typedMessages.booking,
+      search: typedMessages.search,
+      services: typedMessages.services,
     },
     site.key
   );

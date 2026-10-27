@@ -1,26 +1,27 @@
 import Image from "next/image";
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/lib/i18n/navigation";
 import type { HomeDreamCategoryCard } from "@/lib/home-dream-categories";
 
 interface DreamVacationSectionProps {
   cards: HomeDreamCategoryCard[];
 }
 
-export default function DreamVacationSection({
+export default async function DreamVacationSection({
   cards,
 }: DreamVacationSectionProps) {
   if (cards.length === 0) return null;
+  const t = await getTranslations("home");
 
   return (
     <section id="tatil-hayali" className="cv-auto bg-[#f7f9fc] py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center sm:mb-10">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Nasıl bir tatil hayal ediyorsunuz?
+            {t("dreamVacationTitle")}
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm text-gray-600 sm:text-base">
-            İhtiyacınıza uygun villa stilini seçin; filtreli arama listesine
-            anında geçin.
+            {t("dreamVacationSubtitle")}
           </p>
           <div className="mx-auto mt-4 h-1 w-12 rounded-full bg-sky-500" />
         </div>

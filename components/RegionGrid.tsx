@@ -1,5 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/lib/i18n/navigation";
 import type { Region } from "@/lib/types";
 
 interface RegionGridProps {
@@ -27,7 +28,9 @@ const BENTO_SIZES = [
 const pillClass =
   "inline-flex min-h-12 items-center rounded-lg border border-sky-300 bg-white px-4 py-2.5 text-sm font-medium text-sky-700 transition hover:border-sky-500 hover:bg-sky-50";
 
-export default function RegionGrid({ regions }: RegionGridProps) {
+export default async function RegionGrid({ regions }: RegionGridProps) {
+  const tNav = await getTranslations("nav");
+  const tHome = await getTranslations("home");
   const sorted = [...regions].sort((a, b) => b.villaCount - a.villaCount);
   const pillRegions = sorted.slice(0, PILL_COUNT);
   const featured = sorted.slice(0, 7);
@@ -39,14 +42,14 @@ export default function RegionGrid({ regions }: RegionGridProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Popüler Bölgeler
+            {tNav("popularRegions")}
           </h2>
           <div className="mx-auto mt-3 h-1 w-12 rounded-full bg-sky-500" />
         </div>
 
         <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
           <Link href="/villalar" className={pillClass}>
-            Tümü
+            {tHome("allFilter")}
           </Link>
           {pillRegions.map((region) => (
             <Link
@@ -83,7 +86,7 @@ export default function RegionGrid({ regions }: RegionGridProps) {
                   {region.name}
                 </h3>
                 <p className="mt-0.5 text-sm text-white/90">
-                  {region.villaCount} Villa
+                  {tHome("villaCountLabel", { count: region.villaCount })}
                 </p>
               </div>
             </Link>

@@ -1,7 +1,8 @@
 import Image from "next/image";
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import SocialIconLinks from "@/components/SocialIconLinks";
+import { Link } from "@/lib/i18n/navigation";
 import { siteConfig } from "@/lib/data";
 import type { SocialLink } from "@/lib/social-links";
 import {
@@ -31,15 +32,6 @@ export type FooterRegionLink = {
   label: string;
 };
 
-const defaultQuickLinks: FooterLink[] = [
-  { href: "/villalar", label: "Tüm Villalar" },
-  { href: "/villalar?filter=deal", label: "Fırsat Villalar" },
-  { href: "/#bolgeler", label: "Popüler Bölgeler" },
-  { href: "/#seyahat-macerasi", label: "Hizmetler" },
-  { href: "/rezervasyon-dogrulama", label: "Rezervasyon Doğrulama" },
-  { href: "/sadakat", label: "Sadakat Programı" },
-];
-
 const DEFAULT_LOGO = "/uploads/company/logo-1783080885848.svg";
 const DEFAULT_TURSAB_DDS_LOGO = "/uploads/company/tursab-dds-12970.png";
 const TURSAB_DDS_VERIFY_URL = "https://www.tursab.org.tr/tr/ddsv";
@@ -54,8 +46,8 @@ function displayPhone(phone: string) {
   return formatted === "-" ? phone : formatted;
 }
 
-export default function Footer({
-  quickLinks = defaultQuickLinks,
+export default async function Footer({
+  quickLinks,
   corporateLinks = [],
   popularRegions = [],
   mahalleRegions = [],
@@ -69,6 +61,8 @@ export default function Footer({
   contact?: FooterContact;
   socialLinks?: SocialLink[];
 }) {
+  const t = await getTranslations("footer");
+  const tNav = await getTranslations("nav");
   const phone = contact?.phone?.trim() || siteConfig.phone;
   const email = contact?.email?.trim() || siteConfig.email;
   const address = contact?.address?.trim() || "";
@@ -82,6 +76,21 @@ export default function Footer({
     (contact?.useDefaultLogo === false ? "" : DEFAULT_LOGO);
   const tursabDdsLogo =
     contact?.tursabVerificationLogoUrl?.trim() || DEFAULT_TURSAB_DDS_LOGO;
+
+  const resolvedQuickLinks =
+    quickLinks && quickLinks.length > 0
+      ? quickLinks
+      : [
+          { href: "/villalar", label: tNav("allVillas") },
+          { href: "/villalar?filter=deal", label: tNav("dealVillas") },
+          { href: "/#bolgeler", label: tNav("popularRegions") },
+          { href: "/#seyahat-macerasi", label: tNav("services") },
+          {
+            href: "/rezervasyon-dogrulama",
+            label: tNav("reservationVerify"),
+          },
+          { href: "/sadakat", label: tNav("loyalty") },
+        ];
 
   return (
     <footer className="cv-auto mt-auto border-t border-gray-100 bg-white text-gray-600">
@@ -144,7 +153,7 @@ export default function Footer({
           <p className="mt-5 text-xs leading-relaxed text-gray-600">
             {agencyName}
             <br />
-            TÜRSAB No: {tursabNo}
+            {t("tursabNoPrefix")} {tursabNo}
           </p>
           {/*
             TÜRSAB DDS: target=_blank, rel=noreferrer OLMAMALI.
@@ -154,12 +163,12 @@ export default function Footer({
             href={TURSAB_DDS_VERIFY_URL}
             target="_blank"
             className="mt-5 inline-block"
-            title="TÜRSAB Dijital Doğrulama Sistemi"
+            title={t("tursabVerifyTitle")}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={tursabDdsLogo}
-              alt={`TÜRSAB Dijital Doğrulama Sistemi — Belge No ${tursabNo}`}
+              alt={`${t("tursabVerifyTitle")} — ${t("tursabNoPrefix")} ${tursabNo}`}
               width={280}
               height={90}
               loading="lazy"
@@ -170,7 +179,9 @@ export default function Footer({
         </div>
 
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Kurumsal</h2>
+          <h2 className="text-sm font-semibold text-gray-900">
+            {t("corporate")}
+          </h2>
           {corporateLinks.length > 0 ? (
             <ul className="mt-4 space-y-2 text-sm">
               {corporateLinks.map((link) => (
@@ -182,13 +193,13 @@ export default function Footer({
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-gray-600">Henüz sayfa eklenmedi.</p>
+            <p className="mt-4 text-sm text-gray-600">{t("noCorporatePages")}</p>
           )}
           <div className="mt-6 bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/guvenli-odeme-rozetleri.png"
-              alt="SSL güvenli bağlantı, %100 güvenli alışveriş, iyzico, Mastercard, Visa, American Express, Troy"
+              alt={t("securePaymentAlt")}
               width={282}
               height={78}
               loading="lazy"
@@ -199,9 +210,11 @@ export default function Footer({
         </div>
 
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Hızlı Bağlantılar</h2>
+          <h2 className="text-sm font-semibold text-gray-900">
+            {t("quickLinks")}
+          </h2>
           <ul className="mt-4 space-y-2 text-sm">
-            {quickLinks.map((link) => (
+            {resolvedQuickLinks.map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className="hover:text-gray-900">
                   {link.label}
@@ -215,7 +228,9 @@ export default function Footer({
         </div>
 
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Popüler Bölgeler</h2>
+          <h2 className="text-sm font-semibold text-gray-900">
+            {t("popularRegions")}
+          </h2>
           {popularRegions.length > 0 ? (
             <ul className="mt-4 space-y-2 text-sm">
               {popularRegions.map((region) => (
@@ -230,13 +245,13 @@ export default function Footer({
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-gray-600">Henüz bölge eklenmedi.</p>
+            <p className="mt-4 text-sm text-gray-600">{t("noRegionsYet")}</p>
           )}
         </div>
       </div>
 
       {mahalleRegions.length > 0 ? (
-        <nav className="sr-only" aria-label="Mahalle kiralık villalar">
+        <nav className="sr-only" aria-label={t("mahalleNavLabel")}>
           <ul>
             {mahalleRegions.map((region) => (
               <li key={region.slug}>
@@ -252,8 +267,8 @@ export default function Footer({
       ) : null}
 
       <div className="border-t border-gray-100 py-4 text-center text-xs text-gray-600">
-        © {new Date().getFullYear()} {companyTitle || brandName}. Tüm hakları
-        saklıdır.
+        © {new Date().getFullYear()} {companyTitle || brandName}.{" "}
+        {t("allRightsReserved")}
       </div>
     </footer>
   );

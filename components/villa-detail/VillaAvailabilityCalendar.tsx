@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { VillaDayOccupancy } from "@prisma/client";
@@ -266,6 +267,7 @@ export default function VillaAvailabilityCalendar({
   days,
   exchangeRates,
 }: VillaAvailabilityCalendarProps) {
+  const tHome = useTranslations("home");
   const isMobile = useIsMobile();
   const { occupancyMap } = useVillaStaySelection();
 
@@ -396,7 +398,7 @@ export default function VillaAvailabilityCalendar({
             {item.label}
           </span>
         ))}
-        <HolidayCalendarLegend />
+        <HolidayCalendarLegend label={tHome("officialHoliday")} />
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { getImageProps } from "next/image";
+import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import HeroSearch from "@/components/HeroSearch";
 import { getHeroSearchRegions } from "@/lib/queries/regions";
@@ -10,16 +11,18 @@ import {
   pickSrcSetCandidate,
 } from "@/lib/preload-lcp-image";
 
-export default function HomeHero({
+export default async function HomeHero({
   title,
   imageUrl,
 }: {
   title: string;
   imageUrl: string;
 }) {
+  const t = await getTranslations("home");
+  const heroAlt = t("heroAlt");
   const { props } = getImageProps({
     src: imageUrl,
-    alt: "Tatil manzarası",
+    alt: heroAlt,
     width: 1400,
     height: 900,
     sizes: HERO_LCP_SIZES,
@@ -44,7 +47,7 @@ export default function HomeHero({
         <img
           {...img}
           srcSet={srcSet}
-          alt="Tatil manzarası"
+          alt={heroAlt}
           className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
           fetchPriority="high"

@@ -170,6 +170,7 @@ export function overlayTesisClientMessages<
     nav?: Record<string, unknown>;
     header?: Record<string, unknown>;
     mobileNav?: Record<string, unknown>;
+    search?: Record<string, unknown>;
   },
 >(messages: T, siteKey?: string | null): T {
   if (!usesTesisListingCopy(siteKey)) return messages;
@@ -190,5 +191,8 @@ export function overlayTesisClientMessages<
     mobileNav: messages.mobileNav
       ? { ...messages.mobileNav, search: copy.search }
       : messages.mobileNav,
+    search: messages.search
+      ? { ...messages.search, tabVilla: copy.singular }
+      : messages.search,
   };
 }

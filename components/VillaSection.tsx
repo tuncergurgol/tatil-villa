@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/lib/i18n/navigation";
 import VillaCard from "./VillaCard";
 import type { Villa } from "@/lib/types";
 
@@ -10,19 +11,20 @@ interface VillaSectionProps {
   viewAllHref?: string;
 }
 
-function ViewAllButton({
+async function ViewAllButton({
   href,
   className = "",
 }: {
   href: string;
   className?: string;
 }) {
+  const t = await getTranslations("home");
   return (
     <Link
       href={href}
       className={`group inline-flex items-center gap-2 rounded-full bg-orange-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-800 hover:shadow-md ${className}`}
     >
-      Tümünü Gör
+      {t("viewAll")}
       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-sm transition group-hover:translate-x-0.5 group-hover:bg-white/30">
         →
       </span>
@@ -30,7 +32,7 @@ function ViewAllButton({
   );
 }
 
-export default function VillaSection({
+export default async function VillaSection({
   id,
   title,
   subtitle,

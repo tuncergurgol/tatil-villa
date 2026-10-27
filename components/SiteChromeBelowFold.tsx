@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import Footer from "@/components/Footer";
 import TatilAssistantWidgetLoader from "@/components/tatil-assistant/TatilAssistantWidgetLoader";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
@@ -14,7 +15,7 @@ import { getSiteMenuItemsForPublic } from "@/lib/queries/site-menus";
 import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 import { getFooterRegionLinks } from "@/lib/queries/regions";
 import { buildCompanySocialLinks } from "@/lib/social-links";
-import { getPublicListingCopy, maybeRewriteVillaWording } from "@/lib/public-listing-copy";
+import { maybeRewriteVillaWording } from "@/lib/public-listing-copy";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { siteConfig } from "@/lib/data";
@@ -30,15 +31,15 @@ export default async function SiteChromeBelowFold() {
 
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
-  const copy = getPublicListingCopy(site.key);
+  const tNav = await getTranslations("nav");
   const brandName = site.brandName?.trim() || siteConfig.name;
   const phone = company.phone?.trim() || siteConfig.phone;
   const defaultQuickLinks = [
-    { href: "/villalar", label: copy.all },
-    { href: "/villalar?filter=deal", label: copy.deals },
-    { href: "/#bolgeler", label: "Popüler Bölgeler" },
-    { href: "/#seyahat-macerasi", label: "Hizmetler" },
-    { href: "/rezervasyon-dogrulama", label: "Rezervasyon Doğrulama" },
+    { href: "/villalar", label: tNav("allVillas") },
+    { href: "/villalar?filter=deal", label: tNav("dealVillas") },
+    { href: "/#bolgeler", label: tNav("popularRegions") },
+    { href: "/#seyahat-macerasi", label: tNav("services") },
+    { href: "/rezervasyon-dogrulama", label: tNav("reservationVerify") },
   ];
 
   const [

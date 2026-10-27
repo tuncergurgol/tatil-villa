@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import FloatingPanel from "./FloatingPanel";
@@ -42,6 +43,7 @@ export default function HeroDestinationSearch({
   open: controlledOpen,
   onOpenChange,
 }: HeroDestinationSearchProps) {
+  const t = useTranslations("search");
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -115,7 +117,7 @@ export default function HeroDestinationSearch({
             className="block text-[11px] font-normal leading-none text-gray-500"
             htmlFor="hero-destination-input"
           >
-            Nereye gitmek istersin?
+            {t("whereTo")}
           </label>
           <input
             ref={inputRef}
@@ -124,7 +126,7 @@ export default function HeroDestinationSearch({
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() => setOpen(true)}
-            placeholder="İl, bölge veya ilçe ara..."
+            placeholder={t("regionPlaceholder")}
             className="mt-1 w-full bg-transparent text-sm font-semibold leading-tight text-gray-900 outline-none placeholder:font-normal placeholder:text-gray-400"
             autoComplete="off"
           />
@@ -154,7 +156,7 @@ export default function HeroDestinationSearch({
           </ul>
         ) : (
           <p className="px-4 py-3 text-sm text-gray-500">
-            Eşleşen bölge bulunamadı
+            {t("noRegionMatch")}
           </p>
         )}
       </FloatingPanel>

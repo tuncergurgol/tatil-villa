@@ -1,12 +1,11 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Moon } from "lucide-react";
 import {
   buildMonthGrid,
   compareDates,
-  getMonthLabel,
-  getWeekdayLabels,
   parseDateKey,
   todayDate,
   toDateKey,
@@ -16,33 +15,17 @@ import {
   isDateKeyInRange,
   normalizeDateRange,
 } from "@/lib/villa-period-selection";
+import {
+  formatHeroDateForLocale,
+  monthLabelForLocale,
+  weekdayLabelsForLocale,
+} from "@/lib/i18n/locale-display";
 import FloatingPanel from "./FloatingPanel";
 import {
   HolidayCalendarLegend,
   HolidayMarker,
   holidayDayTitle,
 } from "@/components/calendar/HolidayMarker";
-
-function formatHeroDate(dateKey: string, compact = false) {
-  const date = parseDateKey(dateKey);
-  if (compact) {
-    return date.toLocaleDateString("tr-TR", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  }
-  const formattedDate = date.toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  const weekday = date.toLocaleDateString("tr-TR", { weekday: "long" });
-  const capitalizedWeekday =
-    weekday.charAt(0).toLocaleUpperCase("tr-TR") + weekday.slice(1);
-
-  return `${formattedDate} - ${capitalizedWeekday}`;
-}
 
 interface HeroDateRangePickerProps {
   checkIn: string;
@@ -61,6 +44,10 @@ export default function HeroDateRangePicker({
   open: controlledOpen,
   onOpenChange,
 }: HeroDateRangePickerProps) {
+  const locale = useLocale();
+  const t = useTranslations("search");
+  const tCommon = useTranslations("common");
+  const tHome = useTranslations("home");
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -82,7 +69,10 @@ export default function HeroDateRangePicker({
   const today = useMemo(() => todayDate(), []);
   const minViewYear = today.getFullYear();
   const minViewMonth = today.getMonth();
-  const weekdayLabels = getWeekdayLabels();
+  const weekdayLabels = useMemo(
+    () => weekdayLabelsForLocale(locale),
+    [locale]
+  );
 
   const canGoPrevious =
     viewYear > minViewYear ||
@@ -174,12 +164,12 @@ export default function HeroDateRangePicker({
     return (
       <div className="w-[228px] shrink-0">
         <p className="mb-3 text-center text-sm font-semibold text-gray-800">
-          {getMonthLabel(year, month)}
+          {monthLabelForLocale(year, month, locale)}
         </p>
         <div className="grid grid-cols-7 gap-1">
-          {weekdayLabels.map((label) => (
+          {weekdayLabels.map((label, index) => (
             <div
-              key={label}
+              key={`${label}-${index}`}
               className="py-1 text-center text-[11px] font-medium text-gray-400"
             >
               {label}
@@ -253,7 +243,7 @@ export default function HeroDateRangePicker({
                 />
                 {showNightHint ? (
                   <span className="pointer-events-none absolute -bottom-4 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
-                    {nights} Gece
+                    {nights} {tCommon("night")}
                   </span>
                 ) : null}
               </button>
@@ -264,10 +254,18 @@ export default function HeroDateRangePicker({
     );
   }
 
-  const checkInFmt = checkIn ? formatHeroDate(checkIn) : null;
-  const checkOutFmt = checkOut ? formatHeroDate(checkOut) : null;
-  const checkInCompact = checkIn ? formatHeroDate(checkIn, true) : null;
-  const checkOutCompact = checkOut ? formatHeroDate(checkOut, true) : null;
+  const checkInFmt = checkIn
+    ? formatHeroDateForLocale(checkIn, locale)
+    : null;
+  const checkOutFmt = checkOut
+    ? formatHeroDateForLocale(checkOut, locale)
+    : null;
+  const checkInCompact = checkIn
+    ? formatHeroDateForLocale(checkIn, locale, true)
+    : null;
+  const checkOutCompact = checkOut
+    ? formatHeroDateForLocale(checkOut, locale, true)
+    : null;
   const displayNights =
     checkIn && checkOut && checkIn !== checkOut
       ? countNightsBetween(checkIn, checkOut)
@@ -308,7 +306,7 @@ export default function HeroDateRangePicker({
       >
         <div className="flex min-w-0 flex-1 flex-col justify-center px-2.5 py-2 sm:px-3">
           <span className="text-[11px] font-normal leading-none text-gray-500">
-            Giriş
+            {tCommon("checkIn")}
           </span>
           {checkInFmt ? (
             <>
@@ -321,14 +319,18 @@ export default function HeroDateRangePicker({
             </>
           ) : (
             <span className="mt-1 text-sm leading-tight text-gray-600">
-              Tarih seçin
+              {t("selectDate")}
             </span>
           )}
         </div>
 
         <div
           className="flex w-9 shrink-0 flex-col items-center justify-center px-1 text-sky-500 sm:min-w-9 sm:px-2"
-          aria-label={displayNights > 0 ? `${displayNights} Gece` : undefined}
+          aria-label={
+            displayNights > 0
+              ? `${displayNights} ${tCommon("night")}`
+              : undefined
+          }
         >
           <Moon className="h-5 w-5" />
           {displayNights > 0 ? (
@@ -342,7 +344,7 @@ export default function HeroDateRangePicker({
 
         <div className="flex min-w-0 flex-1 flex-col justify-center border-l border-gray-100 px-2.5 py-2 sm:px-3">
           <span className="text-[11px] font-normal leading-none text-gray-500">
-            Çıkış
+            {tCommon("checkOut")}
           </span>
           {checkOutFmt ? (
             <>
@@ -355,7 +357,7 @@ export default function HeroDateRangePicker({
             </>
           ) : (
             <span className="mt-1 text-sm leading-tight text-gray-600">
-              Tarih seçin
+              {t("selectDate")}
             </span>
           )}
         </div>
@@ -375,7 +377,7 @@ export default function HeroDateRangePicker({
             onClick={() => shiftMonth(-1)}
             disabled={!canGoPrevious}
             className="rounded-xl p-2 text-gray-500 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Önceki ay"
+            aria-label={t("previousMonth")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -387,13 +389,13 @@ export default function HeroDateRangePicker({
             }}
             className="rounded-lg px-3 py-1 text-xs font-medium text-sky-600 hover:bg-sky-50"
           >
-            Bugün
+            {t("today")}
           </button>
           <button
             type="button"
             onClick={() => shiftMonth(1)}
             className="rounded-xl p-2 text-gray-500 transition hover:bg-gray-100"
-            aria-label="Sonraki ay"
+            aria-label={t("nextMonth")}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -403,16 +405,16 @@ export default function HeroDateRangePicker({
           {renderMonth(rightYear, rightMonth)}
         </div>
         <p className="mt-3 text-center text-[11px] text-gray-500">
-          <HolidayCalendarLegend />
+          <HolidayCalendarLegend label={tHome("officialHoliday")} />
         </p>
         {pendingStart ? (
           <p className="mt-4 text-center text-xs text-gray-500">
-            Çıkış tarihini seçin — fare ile aralığı önizleyebilirsiniz
+            {t("selectCheckOutHint")}
           </p>
         ) : null}
         {displayNights > 0 && !pendingStart ? (
           <p className="mt-3 text-center text-xs font-medium text-sky-600">
-            {displayNights} gece konaklama
+            {t("nightsStay", { count: displayNights })}
           </p>
         ) : null}
       </FloatingPanel>

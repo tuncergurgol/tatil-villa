@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
 import type { GuestCounts } from "@/lib/types";
 
@@ -73,8 +74,9 @@ export default function GuestPicker({
   showPets = true,
   maxGuests,
   onConfirm,
-  confirmLabel = "Tamam",
+  confirmLabel,
 }: GuestPickerProps) {
+  const t = useTranslations("search");
   /** Yetişkin + çocuk kapasitesi; bebek ve evcil hayvan dahil değil */
   const capacityTotal = maxGuests ?? GUEST_LIMITS.adults.max;
   const adultMax = Math.max(
@@ -82,6 +84,7 @@ export default function GuestPicker({
     capacityTotal - counts.children
   );
   const childMax = Math.max(0, capacityTotal - counts.adults);
+  const resolvedConfirmLabel = confirmLabel ?? t("done");
 
   const update = (
     key: keyof GuestCounts,
@@ -99,7 +102,7 @@ export default function GuestPicker({
     <div>
       <div className="divide-y divide-gray-100 px-4 py-1">
         <CounterRow
-          label="Yetişkinler"
+          label={t("adults")}
           value={counts.adults}
           min={GUEST_LIMITS.adults.min}
           max={adultMax}
@@ -117,8 +120,8 @@ export default function GuestPicker({
           }
         />
         <CounterRow
-          label="Çocuklar"
-          sublabel="3 - 12 yaş"
+          label={t("children")}
+          sublabel={t("childrenAges")}
           value={counts.children}
           min={GUEST_LIMITS.children.min}
           max={childMax}
@@ -136,8 +139,8 @@ export default function GuestPicker({
           }
         />
         <CounterRow
-          label="Bebekler"
-          sublabel="0 - 2 yaş · kapasiteye dahil değil"
+          label={t("babies")}
+          sublabel={t("babiesAges")}
           value={counts.babies}
           min={GUEST_LIMITS.babies.min}
           max={GUEST_LIMITS.babies.max}
@@ -146,8 +149,8 @@ export default function GuestPicker({
         />
         {showPets ? (
           <CounterRow
-            label="Evcil Hayvanlar"
-            sublabel="Kapasiteye dahil değil"
+            label={t("pets")}
+            sublabel={t("notInCapacity")}
             value={counts.pets}
             min={GUEST_LIMITS.pets.min}
             max={GUEST_LIMITS.pets.max}
@@ -164,7 +167,7 @@ export default function GuestPicker({
             onClick={onConfirm}
             className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
           >
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
         </div>
       ) : null}
