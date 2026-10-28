@@ -1,17 +1,23 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import MemberAuthPanel from "@/components/member/MemberAuthPanel";
 import { getCurrentMember } from "@/lib/member-session.server";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import { NOINDEX_FOLLOW } from "@/lib/public-indexing";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Üye Girişi",
-  description: "Rezervasyonlarınızı görüntülemek ve üyelik işlemleri için giriş yapın.",
-  robots: NOINDEX_FOLLOW,
-  alternates: { canonical: "/uye" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: "Üye Girişi",
+    description:
+      "Rezervasyonlarınızı görüntülemek ve üyelik işlemleri için giriş yapın.",
+    robots: NOINDEX_FOLLOW,
+    alternates: buildPublicAlternates(locale, "/uye"),
+  };
+}
 
 export default async function MemberLoginPage({
   searchParams,

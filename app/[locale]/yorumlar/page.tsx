@@ -4,6 +4,8 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { getApprovedReviewsForPublic } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { localizeReviewContent } from "@/lib/i18n/review-en-translations";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
+import { reviewsMetaDescription } from "@/lib/i18n/international-seo";
 import { maybeRewriteVillaWording } from "@/lib/public-listing-copy";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { buildReviewItemListJsonLd } from "@/lib/review-json-ld";
@@ -21,11 +23,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("guestReviews"),
     description: maybeRewriteVillaWording(
-      locale === "tr"
-        ? "Villalarımızda konaklayan misafirlerimizin değerlendirmeleri."
-        : "Reviews from guests who stayed in our villas.",
+      reviewsMetaDescription(locale),
       site.key
     ),
+    alternates: buildPublicAlternates(locale, "/yorumlar"),
   };
 }
 

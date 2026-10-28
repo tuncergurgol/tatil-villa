@@ -5,6 +5,8 @@ import {
   absoluteAssetUrl,
   resolveMetadataBase,
 } from "@/lib/site-metadata";
+import { buildPublicAlternates, openGraphLocale } from "@/lib/i18n/hreflang";
+import { locales } from "@/i18n/routing";
 import {
   isIndexableLocale,
   publicIndexingRobots,
@@ -70,19 +72,22 @@ export function buildVillaDetailMetadata(
     images: villa.images ?? [],
   });
   const imageUrl = showcase ? absoluteAssetUrl(metadataBase, showcase) : "";
-  const pageUrl = new URL(`/${villa.slug}`, metadataBase).toString();
+  const locale = options?.locale || "tr";
+  const alternates = buildPublicAlternates(locale, `/${villa.slug}`);
+  const pageUrl = new URL(alternates.canonical, metadataBase).toString();
   const ogImages = imageUrl ? [{ url: imageUrl, alt: villa.name }] : undefined;
 
   return {
     title: { absolute: title },
     description,
-    robots: publicIndexingRobots(isIndexableLocale(options?.locale)),
-    alternates: {
-      canonical: `/${villa.slug}`,
-    },
+    robots: publicIndexingRobots(isIndexableLocale(locale)),
+    alternates,
     openGraph: {
       type: "website",
-      locale: "tr_TR",
+      locale: openGraphLocale(locale),
+      alternateLocale: locales
+        .filter((item) => item !== locale)
+        .map((item) => openGraphLocale(item)),
       siteName: site.brandName || domain,
       title,
       description,

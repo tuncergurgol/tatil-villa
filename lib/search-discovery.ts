@@ -212,7 +212,7 @@ export function buildWebSiteJsonLd(input: {
     name: input.brandName,
     url: input.origin,
     description: input.description || undefined,
-    inLanguage: "tr-TR",
+    inLanguage: ["tr-TR", "en-GB", "de-DE", "fr-FR", "es-ES", "bg-BG", "el-GR", "zh-CN", "ru-RU"],
     potentialAction: {
       "@type": "SearchAction",
       target: {

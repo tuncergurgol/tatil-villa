@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import ConsultantCampaignPageView from "@/components/campaigns/ConsultantCampaignPageView";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { siteConfig } from "@/lib/data";
@@ -10,12 +12,15 @@ import { normalizePhoneToE164, toWhatsAppRecipient } from "@/lib/phone";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Tatilinizin Sonuna Kadar Yanınızdayız",
-  description:
-    "Rezervasyondan çıkış gününe kadar kişisel tatil danışmanı desteği. WhatsApp ve telefon ile sürekli iletişim.",
-  alternates: { canonical: "/kampanyalar/tatil-danismani" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: "Tatilinizin Sonuna Kadar Yanınızdayız",
+    description:
+      "Rezervasyondan çıkış gününe kadar kişisel tatil danışmanı desteği. WhatsApp ve telefon ile sürekli iletişim.",
+    alternates: buildPublicAlternates(locale, "/kampanyalar/tatil-danismani"),
+  };
+}
 
 function companyWhatsappHref(phone: string) {
   const normalized =

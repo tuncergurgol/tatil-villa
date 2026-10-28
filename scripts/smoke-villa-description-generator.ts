@@ -69,6 +69,11 @@ function main() {
   assert(template.includes("7 km"), "template distance");
   assert(template.includes("3 gecedir"), "template min stay");
 
+  const german = generateVillaDescriptionTemplate(sampleContext, "de");
+  assert(german.includes("Ferienvilla"), "german type");
+  assert(german.includes("Nächte"), "german min stay");
+  assert(german.includes("Privater Pool"), "german pool label");
+
   const prompt = buildVillaDescriptionPrompt(sampleContext);
   assert(prompt.includes("ÖNE ÇIKANLAR"), "prompt featured section");
   assert(prompt.includes("SEO"), "prompt seo guidance");

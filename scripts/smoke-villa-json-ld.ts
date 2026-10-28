@@ -112,6 +112,12 @@ assert(Boolean(address?.streetAddress), "streetAddress var");
 assert(Boolean(address?.addressLocality), "addressLocality var");
 assert(Boolean(address?.addressRegion), "addressRegion var");
 assert(Boolean(address?.postalCode), "postalCode var");
+assert(
+  Array.isArray(jsonLd?.knowsLanguage) &&
+    (jsonLd?.knowsLanguage as string[]).includes("en-GB") &&
+    (jsonLd?.knowsLanguage as string[]).includes("de-DE"),
+  "knowsLanguage dilleri"
+);
 assert(Boolean(jsonLd?.aggregateRating), "aggregateRating var");
 assert(Array.isArray(jsonLd?.review) && (jsonLd?.review as unknown[]).length > 0, "review var");
 

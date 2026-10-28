@@ -6,6 +6,8 @@ import {
 } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { localizeFaqContent } from "@/lib/i18n/faq-en-translations";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
+import { faqMetaDescription } from "@/lib/i18n/international-seo";
 import {
   maybeRewriteVillaWording,
   usesTesisListingCopy,
@@ -23,12 +25,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteProfile(company);
   return {
     title: t("faq"),
-    description: maybeRewriteVillaWording(
-      locale === "tr"
-        ? "Villa kiralama, rezervasyon, ödeme, iptal ve konaklama hakkında sık sorulan sorular ve cevapları."
-        : "Frequently asked questions about villa rental, booking, payment, cancellation and stays.",
-      site.key
-    ),
+    description: maybeRewriteVillaWording(faqMetaDescription(locale), site.key),
+    alternates: buildPublicAlternates(locale, "/sik-sorulan-sorular"),
   };
 }
 

@@ -8,11 +8,11 @@ import { routing, type AppLocale } from "@/i18n/routing";
 import { overlayTesisClientMessages } from "@/lib/public-listing-copy";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import {
   publicIndexingRobots,
   isIndexableLocale,
   shouldNoindexPublicUrl,
-  canonicalPublicPath,
 } from "@/lib/public-indexing";
 
 export function generateStaticParams() {
@@ -30,11 +30,10 @@ export async function generateMetadata({
   const search = headerList.get("x-public-search") || "";
   const indexable =
     isIndexableLocale(locale) && !shouldNoindexPublicUrl(pathname, search);
-  const canonical = canonicalPublicPath(pathname, search);
 
   return {
     robots: publicIndexingRobots(indexable),
-    alternates: { canonical },
+    alternates: buildPublicAlternates(locale, pathname, search),
   };
 }
 

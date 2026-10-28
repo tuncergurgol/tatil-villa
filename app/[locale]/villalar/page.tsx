@@ -30,6 +30,8 @@ import {
   listingRegionRentalLabel,
   maybeRewriteVillaWording,
 } from "@/lib/public-listing-copy";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
+import { villaListingDescription } from "@/lib/i18n/international-seo";
 import {
   isIndexableVillaSearch,
   publicIndexingRobots,
@@ -76,20 +78,11 @@ export async function generateMetadata({
     title: regionName
       ? listingRegionRentalLabel(regionName, site.key, true, locale)
       : copy.rentalAndBungalows,
-    description: regionName
-      ? maybeRewriteVillaWording(
-          locale === "tr"
-            ? `${regionName} bölgesinde kiralık villa ve bungalovlar. Müsaitliği görün ve rezervasyon yapın.`
-            : `Villas and bungalows for rent in ${regionName}. Check availability and book.`,
-          site.key
-        )
-      : maybeRewriteVillaWording(
-          locale === "tr"
-            ? "Türkiye'nin öne çıkan bölgelerinde kiralık villa ve bungalovlar. Filtreleyin, müsaitliği görün ve rezervasyon yapın."
-            : "Villas and bungalows for rent across Turkey’s top regions. Filter, check availability and book.",
-          site.key
-        ),
-    alternates: { canonical },
+    description: maybeRewriteVillaWording(
+      villaListingDescription(locale, regionName),
+      site.key
+    ),
+    alternates: buildPublicAlternates(locale, canonical),
     robots: publicIndexingRobots(indexable),
   };
 }

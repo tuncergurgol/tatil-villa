@@ -7,6 +7,7 @@ import { localizeBlogCategory } from "@/lib/i18n/localize-public-label";
 import { getPublishedBlogPost } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import {
   demoteCmsHeadingToH2,
   sanitizePublicSeoDescription,
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card.title,
       site.brandName
     ),
-    alternates: { canonical: `/blog/${post.slug}` },
+    alternates: buildPublicAlternates(locale, `/blog/${post.slug}`),
   };
 }
 

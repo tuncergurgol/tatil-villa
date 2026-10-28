@@ -11,6 +11,7 @@ import {
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { buildVillaDetailMetadata } from "@/lib/villa-page-metadata";
+import { convertCurrencyAmount } from "@/lib/currency-conversion";
 import { buildVillaLodgingJsonLd } from "@/lib/villa-json-ld";
 import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
 import { preloadOptimizedLcpImage } from "@/lib/preload-lcp-image";
@@ -145,11 +146,37 @@ export default async function VillaDetailPage({
     .replace(/^https?:\/\//i, "")
     .replace(/\/+$/, "") || "www.tatildeyiz.com.tr"}`;
   const brandName = site.brandName?.trim() || company.brandName?.trim() || "";
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const currentPeriod = villaRaw.periods.find((period) => {
+    const start = period.startDate.slice(0, 10);
+    const end = period.endDate.slice(0, 10);
+    return start <= todayKey && todayKey <= end;
+  });
+  const nightly =
+    (currentPeriod?.discountedNightlyPrice &&
+    currentPeriod.discountedNightlyPrice > 0
+      ? currentPeriod.discountedNightlyPrice
+      : currentPeriod?.nightlyPrice) || villaRaw.pricePerNight;
+  const nightlyCurrency = currentPeriod?.currency || "TL";
   const lodgingJsonLd = buildVillaLodgingJsonLd({
     villa,
     brandName,
     origin,
     brandOgImage: site.ogImageUrl,
+    locale,
+    minStayNights: currentPeriod?.minStayNights ?? null,
+    offers:
+      nightly && nightly > 0
+        ? (["TL", "EUR", "GBP"] as const).map((currency) => ({
+            price: convertCurrencyAmount(
+              nightly,
+              nightlyCurrency,
+              currency,
+              exchangeRates
+            ),
+            priceCurrency: currency === "TL" ? "TRY" : currency,
+          }))
+        : undefined,
   });
   const heroImage = villa.images[0]
     ? encodeGalleryImageUrl(villa.images[0])

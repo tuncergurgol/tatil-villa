@@ -1,4 +1,7 @@
 import type { MetadataRoute } from "next";
+import { locales } from "@/i18n/routing";
+import { localeToBcp47 } from "@/lib/i18n/locale-display";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import { prisma } from "@/lib/db";
 import { looksLikeMissingPageText } from "@/lib/public-seo";
 import {
@@ -192,61 +195,53 @@ export async function buildPublicSitemap(
     STATIC_PATHS.map((item) => [absolutePublicUrl(origin, item.path), item])
   );
 
-  return pages.map((page) => {
+  return pages.flatMap((page) => {
+    const relative = page.url.startsWith(origin)
+      ? page.url.slice(origin.length) || "/"
+      : page.url;
+    const alternates = buildPublicAlternates("tr", relative);
+    const languages = Object.fromEntries(
+      Object.entries(alternates.languages).map(([code, path]) => [
+        code,
+        absolutePublicUrl(origin, path),
+      ])
+    );
     const staticItem = staticByUrl.get(page.url);
-    if (staticItem) {
-      return {
-        url: page.url,
-        lastModified: page.lastModified,
-        changeFrequency: staticItem.changeFrequency,
-        priority: staticItem.priority,
-      };
-    }
-    if (page.url.includes("/blog/")) {
-      return {
-        url: page.url,
-        lastModified: page.lastModified,
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      };
-    }
-    if (page.url.includes("/tur/")) {
-      return {
-        url: page.url,
-        lastModified: page.lastModified,
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      };
-    }
-    if (page.url.includes("/villalar?region=")) {
-      return {
-        url: page.url,
-        lastModified: page.lastModified,
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      };
-    }
-    if (page.url.endsWith("/yeni-otel")) {
-      return {
-        url: page.url,
-        lastModified: page.lastModified,
-        changeFrequency: "weekly" as const,
-        priority: 0.7,
-      };
-    }
-    if (page.url.includes("/kurumsal/")) {
-      return {
-        url: page.url,
-        lastModified: page.lastModified,
-        changeFrequency: "monthly" as const,
-        priority: 0.5,
-      };
-    }
-    return {
-      url: page.url,
+    const shared = {
       lastModified: page.lastModified,
-      changeFrequency: "daily" as const,
-      priority: 0.8,
+      changeFrequency: staticItem
+        ? staticItem.changeFrequency
+        : page.url.includes("/blog/")
+          ? ("weekly" as const)
+          : page.url.includes("/tur/")
+            ? ("weekly" as const)
+            : page.url.includes("/villalar?region=")
+              ? ("weekly" as const)
+              : page.url.endsWith("/yeni-otel")
+                ? ("weekly" as const)
+                : page.url.includes("/kurumsal/")
+                  ? ("monthly" as const)
+                  : ("daily" as const),
+      priority: staticItem
+        ? staticItem.priority
+        : page.url.includes("/blog/")
+          ? 0.6
+          : page.url.includes("/tur/")
+            ? 0.6
+            : page.url.includes("/villalar?region=")
+              ? 0.6
+              : page.url.endsWith("/yeni-otel")
+                ? 0.7
+                : page.url.includes("/kurumsal/")
+                  ? 0.5
+                  : 0.8,
+      alternates: { languages },
     };
+
+    return locales.flatMap((locale) => {
+      const href = languages[localeToBcp47(locale)];
+      if (!href) return [];
+      return [{ url: href, ...shared }];
+    });
   });
 }

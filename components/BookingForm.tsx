@@ -34,9 +34,14 @@ import ReservationPriceSummary, {
   getReservationGrandTotal,
 } from "@/components/ReservationPriceSummary";
 import {
+  convertCurrencyAmount,
   convertNullableCurrencyAmount,
   type PublicExchangeRates,
 } from "@/lib/currency-conversion";
+import {
+  currencySymbol,
+  preferredDisplayCurrency,
+} from "@/lib/i18n/display-currency";
 import { useVillaStaySelection } from "@/components/villa-detail/VillaStaySelectionContext";
 import { canSelectStayDay } from "@/lib/booking-calendar-selection";
 import {
@@ -741,6 +746,12 @@ export default function BookingForm({
                       )}{" "}
                       {quote.currency}
                     </span>
+                    <IndicativeForeignTotal
+                      amount={displayTotals?.grandTotal ?? quote.total}
+                      fromCurrency={quote.currency}
+                      locale={locale}
+                      exchangeRates={exchangeRates}
+                    />
                     <span className="mt-0.5 block text-[11px] font-semibold text-teal-700">
                       {t("discountApplied", { label: memberDiscountLabel })}
                     </span>
@@ -754,6 +765,12 @@ export default function BookingForm({
                       )}{" "}
                       {quote.currency}
                     </span>
+                    <IndicativeForeignTotal
+                      amount={displayTotals?.grandTotal ?? quote.total}
+                      fromCurrency={quote.currency}
+                      locale={locale}
+                      exchangeRates={exchangeRates}
+                    />
                   </>
                 )}
               </p>
@@ -1017,5 +1034,36 @@ export default function BookingForm({
         />
       ) : null}
     </div>
+  );
+}
+
+function IndicativeForeignTotal({
+  amount,
+  fromCurrency,
+  locale,
+  exchangeRates,
+}: {
+  amount: number;
+  fromCurrency: string;
+  locale: string;
+  exchangeRates: PublicExchangeRates;
+}) {
+  const display = preferredDisplayCurrency(locale);
+  if (display === "TL" || display === fromCurrency) return null;
+  const converted = convertCurrencyAmount(
+    amount,
+    fromCurrency,
+    display,
+    exchangeRates
+  );
+  if (!converted) return null;
+  const symbol = currencySymbol(display);
+  return (
+    <span className="mt-0.5 block text-[11px] font-medium text-slate-500">
+      ≈ {symbol}
+      {converted.toLocaleString(localeToBcp47(locale), {
+        maximumFractionDigits: 0,
+      })}
+    </span>
   );
 }

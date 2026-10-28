@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { buildPublicAlternates } from "../lib/i18n/hreflang";
 import {
   isForeignLocalePath,
   isIndexableLocale,
@@ -10,14 +11,30 @@ import { wwwHostnameForPublicHost } from "../lib/i18n/middleware-host";
 import { LEGACY_PUBLIC_REDIRECTS, legacyBrokenPublicPathDestination, legacyTesisRedirectDestination } from "../lib/legacy-redirects";
 
 assert.equal(isIndexableLocale("tr"), true);
-assert.equal(isIndexableLocale("en"), false);
+assert.equal(isIndexableLocale("en"), true);
+assert.equal(isIndexableLocale("de"), true);
 assert.equal(isForeignLocalePath("/en/villa-divan"), true);
 assert.equal(isForeignLocalePath("/el/villa-prime-1"), true);
 assert.equal(isForeignLocalePath("/villa-funda"), false);
 assert.equal(isForeignLocalePath("/villalar"), false);
 
-assert.equal(shouldNoindexPublicUrl("/en/villa-incl-duo"), true);
-assert.equal(shouldNoindexPublicUrl("/de/villa-nordic-dream"), true);
+assert.equal(shouldNoindexPublicUrl("/en/villa-incl-duo"), false);
+assert.equal(shouldNoindexPublicUrl("/de/villa-nordic-dream"), false);
+assert.equal(shouldNoindexPublicUrl("/de/kurumsal/gizlilik-politikasi"), true);
+assert.equal(shouldNoindexPublicUrl("/en/yorumlar"), false);
+assert.equal(shouldNoindexPublicUrl("/de/yorumlar"), true);
+assert.equal(shouldNoindexPublicUrl("/en/villalar", "sort=random"), true);
+assert.equal(shouldNoindexPublicUrl("/de/villalar", "region=kalkan"), false);
+
+const alternates = buildPublicAlternates("de", "/villa-foo");
+assert.equal(alternates.canonical, "/de/villa-foo");
+assert.equal(alternates.languages["tr-TR"], "/villa-foo");
+assert.equal(alternates.languages["en-GB"], "/en/villa-foo");
+assert.equal(alternates.languages["de-DE"], "/de/villa-foo");
+assert.equal(alternates.languages["x-default"], "/en/villa-foo");
+const regionAlternates = buildPublicAlternates("en", "/villalar", "region=kalkan");
+assert.equal(regionAlternates.canonical, "/en/villalar?region=kalkan");
+assert.equal(regionAlternates.languages["de-DE"], "/de/villalar?region=kalkan");
 assert.equal(shouldNoindexPublicUrl("/villa-cassaba-ugrar-2"), false);
 assert.equal(shouldNoindexPublicUrl("/villalar"), false);
 assert.equal(shouldNoindexPublicUrl("/uye"), true);

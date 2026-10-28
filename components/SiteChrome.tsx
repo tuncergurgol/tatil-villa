@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { getLocale } from "next-intl/server";
 import DeferredContentProtection from "@/components/DeferredContentProtection";
+import { PublicExchangeRatesProvider } from "@/components/PublicExchangeRatesProvider";
 import { PublicListingCopyProvider } from "@/components/PublicListingCopyProvider";
+import { getPublicExchangeRatesFast } from "@/lib/exchange-rates";
 import SiteChromeBelowFold from "@/components/SiteChromeBelowFold";
 import SiteChromeHeader from "@/components/SiteChromeHeader";
 import SiteChromeMobileNav from "@/components/SiteChromeMobileNav";
@@ -21,20 +23,24 @@ export default async function SiteChrome({
   siteKey?: string | null;
 }) {
   const locale = await getLocale();
+  const exchangeRates =
+    locale === "tr" ? null : await getPublicExchangeRatesFast();
 
   return (
-    <PublicListingCopyProvider value={getPublicListingCopy(siteKey, locale)}>
-      <DeferredContentProtection />
-      <Suspense fallback={<HeaderFallback />}>
-        <SiteChromeHeader />
-      </Suspense>
-      <main className="flex-1">{children}</main>
-      <Suspense fallback={null}>
-        <SiteChromeBelowFold />
-      </Suspense>
-      <Suspense fallback={null}>
-        <SiteChromeMobileNav />
-      </Suspense>
-    </PublicListingCopyProvider>
+    <PublicExchangeRatesProvider value={exchangeRates}>
+      <PublicListingCopyProvider value={getPublicListingCopy(siteKey, locale)}>
+        <DeferredContentProtection />
+        <Suspense fallback={<HeaderFallback />}>
+          <SiteChromeHeader />
+        </Suspense>
+        <main className="flex-1">{children}</main>
+        <Suspense fallback={null}>
+          <SiteChromeBelowFold />
+        </Suspense>
+        <Suspense fallback={null}>
+          <SiteChromeMobileNav />
+        </Suspense>
+      </PublicListingCopyProvider>
+    </PublicExchangeRatesProvider>
   );
 }

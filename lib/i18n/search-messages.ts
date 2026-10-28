@@ -73,6 +73,7 @@ export type FooterExtraMessages = {
   tursabNoPrefix: string;
   tursabVerifyTitle: string;
   securePaymentAlt: string;
+  paymentTrust: string;
   mahalleNavLabel: string;
 };
 
@@ -700,6 +701,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "TÜRSAB Dijital Doğrulama Sistemi",
     securePaymentAlt:
       "SSL güvenli bağlantı, %100 güvenli alışveriş, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "TÜRSAB belgeli acente. Ödeme SSL ve 3D Secure ile korunur.",
     mahalleNavLabel: "Mahalle kiralık villalar",
   },
   en: {
@@ -709,6 +712,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "TÜRSAB Digital Verification System",
     securePaymentAlt:
       "SSL secure connection, 100% secure checkout, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "TÜRSAB-licensed agency. Card payments are protected by SSL and 3D Secure.",
     mahalleNavLabel: "Neighborhood rental villas",
   },
   de: {
@@ -718,6 +723,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "TÜRSAB digitales Verifizierungssystem",
     securePaymentAlt:
       "SSL-sichere Verbindung, 100 % sicherer Einkauf, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "TÜRSAB-lizenziertes Reisebüro. Kartenzahlung mit SSL und 3D Secure.",
     mahalleNavLabel: "Villen zur Miete nach Stadtteil",
   },
   fr: {
@@ -727,6 +734,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "Système de vérification numérique TÜRSAB",
     securePaymentAlt:
       "Connexion SSL sécurisée, paiement 100 % sécurisé, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "Agence licenciée TÜRSAB. Paiement par carte protégé par SSL et 3D Secure.",
     mahalleNavLabel: "Villas à louer par quartier",
   },
   es: {
@@ -736,6 +745,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "Sistema de verificación digital TÜRSAB",
     securePaymentAlt:
       "Conexión SSL segura, compra 100 % segura, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "Agencia con licencia TÜRSAB. El pago con tarjeta va protegido por SSL y 3D Secure.",
     mahalleNavLabel: "Villas de alquiler por barrio",
   },
   bg: {
@@ -745,6 +756,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "TÜRSAB система за цифрова проверка",
     securePaymentAlt:
       "SSL сигурна връзка, 100% сигурно плащане, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "Агенция с лиценз TÜRSAB. Плащането с карта е защитено със SSL и 3D Secure.",
     mahalleNavLabel: "Вила под наем по квартал",
   },
   el: {
@@ -754,6 +767,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "Σύστημα ψηφιακής επαλήθευσης TÜRSAB",
     securePaymentAlt:
       "Ασφαλής σύνδεση SSL, 100% ασφαλής αγορά, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "Πρακτορείο με άδεια TÜRSAB. Η πληρωμή με κάρτα προστατεύεται με SSL και 3D Secure.",
     mahalleNavLabel: "Ενοικιαζόμενες βίλες ανά γειτονιά",
   },
   zh: {
@@ -763,6 +778,7 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "TÜRSAB 数字验证系统",
     securePaymentAlt:
       "SSL 安全连接、100% 安全结账、iyzico、Mastercard、Visa、American Express、Troy",
+    paymentTrust: "持有 TÜRSAB 执照的旅行社。银行卡付款受 SSL 与 3D Secure 保护。",
     mahalleNavLabel: "社区可租别墅",
   },
   ru: {
@@ -772,6 +788,8 @@ export const footerExtraMessages: Record<AppLocale, FooterExtraMessages> = {
     tursabVerifyTitle: "Цифровая система проверки TÜRSAB",
     securePaymentAlt:
       "SSL-защищённое соединение, 100% безопасная оплата, iyzico, Mastercard, Visa, American Express, Troy",
+    paymentTrust:
+      "Агентство с лицензией TÜRSAB. Оплата картой защищена SSL и 3D Secure.",
     mahalleNavLabel: "Аренда вилл по району",
   },
 };

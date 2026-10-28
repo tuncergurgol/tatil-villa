@@ -3,6 +3,8 @@ import { getLocale } from "next-intl/server";
 import BlogInspirationSlider from "@/components/blog/BlogInspirationSlider";
 import { localizeBlogCard } from "@/lib/i18n/blog-en-translations";
 import { localizeBlogCategory } from "@/lib/i18n/localize-public-label";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
+import { blogIndexSeo } from "@/lib/i18n/international-seo";
 import {
   getBlogCategoriesForPublic,
   getPublishedBlogPosts,
@@ -12,16 +14,11 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
+  const seo = blogIndexSeo(locale);
   return {
-    title:
-      locale === "tr"
-        ? "Bir sonraki seyahatiniz için ilham alın | Blog"
-        : "Inspiration for your next trip | Blog",
-    description:
-      locale === "tr"
-        ? "Villa kiralama rehberi, bölge önerileri ve tatil ipuçları."
-        : "Villa rental guides, destination tips and holiday ideas.",
-    alternates: { canonical: "/blog" },
+    title: seo.title,
+    description: seo.description,
+    alternates: buildPublicAlternates(locale, "/blog"),
   };
 }
 

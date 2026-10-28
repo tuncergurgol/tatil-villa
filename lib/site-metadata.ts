@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
+import { locales } from "@/i18n/routing";
+import { openGraphLocale } from "@/lib/i18n/hreflang";
 import { siteConfig } from "@/lib/data";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { getCompanySettings } from "@/lib/queries/company-settings";
@@ -21,7 +24,10 @@ export function absoluteAssetUrl(base: URL, assetPath: string): string {
 }
 
 export async function buildRootMetadata(): Promise<Metadata> {
-  const settings = await getCompanySettings();
+  const [settings, locale] = await Promise.all([
+    getCompanySettings(),
+    getLocale(),
+  ]);
   const site = await getPublicSiteProfile(settings);
   const tracking = await getPublicSiteTracking(site.key);
   const metadataBase = resolveMetadataBase(site.domain || siteConfig.name);
@@ -58,7 +64,10 @@ export async function buildRootMetadata(): Promise<Metadata> {
       : undefined,
     openGraph: {
       type: "website",
-      locale: "tr_TR",
+      locale: openGraphLocale(locale),
+      alternateLocale: locales
+        .filter((item) => item !== locale)
+        .map((item) => openGraphLocale(item)),
       siteName: site.brandName || siteConfig.name,
       title,
       description,

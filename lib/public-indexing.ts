@@ -1,5 +1,5 @@
-import { defaultLocale, locales } from "@/i18n/routing";
-import { stripDefaultLocalePrefix } from "@/lib/i18n/path";
+import { defaultLocale, locales, type AppLocale } from "@/i18n/routing";
+import { stripDefaultLocalePrefix, stripLocalePrefix } from "@/lib/i18n/path";
 
 const FOREIGN_LOCALES = locales.filter((locale) => locale !== defaultLocale);
 
@@ -33,7 +33,63 @@ export function isForeignLocalePath(pathname: string): boolean {
 }
 
 export function isIndexableLocale(locale: string | null | undefined): boolean {
-  return !locale || locale === defaultLocale;
+  if (!locale) return true;
+  return (locales as readonly string[]).includes(locale);
+}
+
+/** Yabancı dilde gövdesi hâlâ yalnızca Türkçe olan bölümler. */
+const FOREIGN_UNTRANSLATED_ROOTS = new Set([
+  "kurumsal",
+  "kampanyalar",
+  "tur",
+  "uye",
+  "otel",
+  "bilet",
+  "arac-kiralama",
+  "vip-transfer",
+  "feribot",
+  "sadakat",
+  "yeni-otel",
+  "onay",
+  "rezervasyon",
+  "rezervasyon-onay",
+  "rezervasyon-dogrulama",
+  "teklif",
+  "yorum-yaz",
+  "giris-bilgilendirme",
+  "odemeyonlendir",
+]);
+
+export function unlocalizedPublicPath(pathname: string): string {
+  const stripped = stripLocalePrefix(stripDefaultLocalePrefix(pathname)) || "/";
+  const path = stripped.split("?")[0] || "/";
+  return path.replace(/\/+$/, "") || "/";
+}
+
+export function localeFromPublicPath(pathname: string): AppLocale {
+  const match = pathname.match(/^\/([a-z]{2})(?:\/|$)/);
+  const code = match?.[1];
+  if (code && (locales as readonly string[]).includes(code) && code !== defaultLocale) {
+    return code as AppLocale;
+  }
+  return defaultLocale;
+}
+
+/**
+ * Çevrilmiş kamu sayfaları her dilde indekslenir.
+ * Yorum metinleri yalnızca Türkçe ve İngilizce olduğu için diğer dillerde kapalı kalır.
+ * Kurumsal, kampanya ve operasyon sayfaları yabancı dilde noindex.
+ */
+export function isLocaleIndexablePublicPath(
+  locale: string | null | undefined,
+  pathname: string
+): boolean {
+  if (!locale || locale === defaultLocale) return true;
+  const path = unlocalizedPublicPath(pathname);
+  if (path === "/yorumlar") return locale === "en";
+  const root = path.split("/").filter(Boolean)[0] ?? "";
+  if (!root) return true;
+  return !FOREIGN_UNTRANSLATED_ROOTS.has(root);
 }
 
 export function hasNonEmptySearchParams(
@@ -107,20 +163,21 @@ export function villaSearchCanonicalPath(
   return "/villalar";
 }
 
+/** Dil öneksiz kanonik yol. Bölge listesi `?region=` taşır, diğer filtreler düşer. */
 export function canonicalPublicPath(
   pathname: string,
   search: string | URLSearchParams = ""
 ): string {
-  const path = stripDefaultLocalePrefix(pathname) || "/";
+  const path = unlocalizedPublicPath(pathname);
   if (path === "/villalar") return villaSearchCanonicalPath(search);
   if (path === "/") return "/";
-  return path.replace(/\/+$/, "") || "/";
+  return path;
 }
 
 /**
  * Google'ın tarayıp dizine eklemediği kopyalar:
- * - Dil önekli sayfalar (içerik Türkçe canonical'da)
  * - Üye / ödeme / özel token URL'leri
+ * - Çevrilmemiş yabancı dil sayfaları
  * - /villalar?filtre... (faceted / sonsuz kombinasyon)
  * - Yalnızca ?region= slugu indekslenir
  */
@@ -128,9 +185,10 @@ export function shouldNoindexPublicUrl(
   pathname: string,
   search: string | URLSearchParams = ""
 ): boolean {
-  if (isForeignLocalePath(pathname)) return true;
+  const path = unlocalizedPublicPath(pathname);
+  const locale = localeFromPublicPath(pathname);
+  if (!isLocaleIndexablePublicPath(locale, path)) return true;
 
-  const path = stripDefaultLocalePrefix(pathname);
   if (
     NOINDEX_PATH_PREFIXES.some(
       (prefix) => path === prefix || path.startsWith(`${prefix}/`)

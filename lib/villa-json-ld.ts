@@ -1,16 +1,28 @@
+import { locales } from "@/i18n/routing";
+import { localeToBcp47 } from "@/lib/i18n/locale-display";
+import { localePrefixedPublicPath } from "@/lib/i18n/hreflang";
 import type { VillaDetail } from "@/lib/queries/villa-detail";
 import { resolveRegionPostalCode } from "@/lib/villa-region-postal";
+
+type VillaPriceOffer = {
+  price: number;
+  priceCurrency: "TRY" | "EUR" | "GBP" | "USD";
+};
 
 type VillaJsonLdInput = {
   villa: VillaDetail;
   brandName: string;
   origin: string;
   brandOgImage?: string;
+  locale?: string;
+  offers?: VillaPriceOffer[];
+  minStayNights?: number | null;
 };
 
 const GOOGLE_AMENITY_MAP: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /klima|air.?condition/i, name: "ac" },
   { pattern: /wifi|wi-?fi|internet|kablosuz/i, name: "wifi" },
+  { pattern: /ısıtmalı havuz|isitmali havuz|heated pool|beheizter pool/i, name: "heatedPool" },
   { pattern: /havuz/i, name: "pool" },
   { pattern: /otopark|park/i, name: "parking" },
   { pattern: /deniz|plaj|beach/i, name: "beachAccess" },
@@ -289,20 +301,60 @@ function cleanSchema<T>(value: T): T {
 }
 
 /** Villa detay için Google VacationRental JSON-LD. */
+function buildOffers(url: string, offers: VillaPriceOffer[] | undefined) {
+  if (!offers || offers.length === 0) return undefined;
+  return offers
+    .filter((offer) => Number.isFinite(offer.price) && offer.price > 0)
+    .map((offer) => ({
+      "@type": "Offer",
+      url,
+      availability: "https://schema.org/InStock",
+      priceCurrency: offer.priceCurrency,
+      price: offer.price,
+      priceSpecification: {
+        "@type": "UnitPriceSpecification",
+        price: offer.price,
+        priceCurrency: offer.priceCurrency,
+        unitText: "NIGHT",
+        referenceQuantity: {
+          "@type": "QuantitativeValue",
+          value: 1,
+          unitCode: "DAY",
+        },
+      },
+    }));
+}
+
 export function buildVillaLodgingJsonLd({
   villa,
   brandName,
   origin,
   brandOgImage,
+  locale = "tr",
+  offers,
+  minStayNights,
 }: VillaJsonLdInput): Record<string, unknown> | null {
   if (!villa.hasCoords || !villa.latitude || !villa.longitude) {
     return null;
   }
 
   const images = buildImageList(origin, villa, brandOgImage);
-  const url = absoluteUrl(origin, `/${villa.slug}`);
+  const url = absoluteUrl(origin, localePrefixedPublicPath(locale, `/${villa.slug}`));
   const aggregateRating = buildAggregateRating(villa);
   const review = buildReviews(villa);
+  const offer = buildOffers(url, offers);
+  const containsPlace = buildContainsPlace(villa);
+  const heatedPool = villa.pools?.some((pool) => pool.heated);
+  if (heatedPool) {
+    const features = containsPlace.amenityFeature;
+    if (!features.some((feature) => feature.name === "heatedPool")) {
+      features.unshift({
+        "@type": "LocationFeatureSpecification",
+        name: "heatedPool",
+        value: true,
+      });
+    }
+  }
 
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -316,10 +368,20 @@ export function buildVillaLodgingJsonLd({
     latitude: formatCoord(villa.latitude),
     longitude: formatCoord(villa.longitude),
     address: buildPostalAddress(villa),
-    containsPlace: buildContainsPlace(villa),
+    containsPlace,
     checkinTime: formatCheckTime(villa.checkInTime, "16:00"),
     checkoutTime: formatCheckTime(villa.checkOutTime, "10:00"),
-    knowsLanguage: ["tr-TR"],
+    inLanguage: localeToBcp47(locale),
+    knowsLanguage: locales.map((item) => localeToBcp47(item)),
+    offers: offer,
+    additionalProperty:
+      minStayNights && minStayNights > 0
+        ? {
+            "@type": "PropertyValue",
+            name: "minimum stay nights",
+            value: minStayNights,
+          }
+        : undefined,
     brand: brandName
       ? {
           "@type": "Brand",

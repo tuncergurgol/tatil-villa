@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import {
@@ -20,7 +22,10 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const tour = await getPublishedTourBySlug(slug);
+  const [tour, locale] = await Promise.all([
+    getPublishedTourBySlug(slug),
+    getLocale(),
+  ]);
   if (!tour) return { title: "Tur bulunamadı" };
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
@@ -38,9 +43,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     keywords: tour.seoKeywords || undefined,
-    alternates: {
-      canonical: tour.canonicalPath || `/tur/${tour.slug}`,
-    },
+    alternates: buildPublicAlternates(
+      locale,
+      tour.canonicalPath || `/tur/${tour.slug}`
+    ),
   };
 }
 

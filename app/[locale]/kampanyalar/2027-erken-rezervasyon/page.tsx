@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import EarlyBookingCampaignPageView from "@/components/campaigns/EarlyBookingCampaignPageView";
 import { getVillaSearchResults } from "@/lib/queries/villas";
 import { getCompanySettings } from "@/lib/queries/company-settings";
@@ -8,12 +10,18 @@ import { EARLY_BOOKING_PRICE_YEAR } from "@/lib/home-campaigns";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "2027 Yılı Erken Rezervasyon Fırsatları",
-  description:
-    "2027 sezonu fiyatı açıklanan kiralık villalar. Erken rezervasyon ile istediğiniz tarihi şimdiden ayırtın.",
-  alternates: { canonical: "/kampanyalar/2027-erken-rezervasyon" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: "2027 Yılı Erken Rezervasyon Fırsatları",
+    description:
+      "2027 sezonu fiyatı açıklanan kiralık villalar. Erken rezervasyon ile istediğiniz tarihi şimdiden ayırtın.",
+    alternates: buildPublicAlternates(
+      locale,
+      "/kampanyalar/2027-erken-rezervasyon"
+    ),
+  };
+}
 
 interface PageProps {
   searchParams: Promise<{ page?: string }>;

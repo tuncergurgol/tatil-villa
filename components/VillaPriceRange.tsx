@@ -1,6 +1,12 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { usePublicExchangeRates } from "@/components/PublicExchangeRatesProvider";
+import { convertCurrencyAmount } from "@/lib/currency-conversion";
+import {
+  currencySymbol,
+  preferredDisplayCurrency,
+} from "@/lib/i18n/display-currency";
 import { localeToBcp47 } from "@/lib/i18n/locale-display";
 
 type VillaPriceRangeProps = {
@@ -21,8 +27,20 @@ export default function VillaPriceRange({
   const locale = useLocale();
   const tChrome = useTranslations("chrome");
   const bcp47 = localeToBcp47(locale);
+  const exchangeRates = usePublicExchangeRates();
+  const displayCurrency = preferredDisplayCurrency(locale);
 
   function formatRangeAmount(price: number) {
+    if (exchangeRates && displayCurrency !== "TL") {
+      const converted = convertCurrencyAmount(
+        price,
+        "TL",
+        displayCurrency,
+        exchangeRates
+      );
+      const symbol = currencySymbol(displayCurrency);
+      return `≈ ${symbol}${converted.toLocaleString(bcp47, { maximumFractionDigits: 0 })}`;
+    }
     return `${price.toLocaleString(bcp47, { maximumFractionDigits: 0 })}TL`;
   }
 

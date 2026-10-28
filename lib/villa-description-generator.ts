@@ -2,6 +2,7 @@ import type { VillaCategory } from "@prisma/client";
 import { sortAmenityNamesTr } from "@/lib/amenity-featured";
 import { facilityTypeLabel } from "@/lib/facility-type";
 import { localizeCatalogLabel } from "@/lib/i18n/localize-catalog-label";
+import { villaDescriptionCopy } from "@/lib/i18n/villa-description-copy";
 import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 
 /** Üslup ve paragraf akışı referansı — metin kopyalanmaz, yalnızca ton için kullanılır. */
@@ -93,7 +94,7 @@ function joinNatural(items: string[], locale: string = "tr"): string {
   const cleaned = items.map((item) => item.trim()).filter(Boolean);
   if (cleaned.length === 0) return "";
   if (cleaned.length === 1) return cleaned[0]!;
-  const andWord = locale === "tr" ? "ve" : "and";
+  const andWord = villaDescriptionCopy(locale).and;
   if (cleaned.length === 2) return `${cleaned[0]} ${andWord} ${cleaned[1]}`;
   return `${cleaned.slice(0, -1).join(", ")} ${andWord} ${cleaned[cleaned.length - 1]}`;
 }
@@ -132,15 +133,16 @@ export function buildRulesSummary(
   context: VillaDescriptionContext,
   locale: string = "tr"
 ) {
+  const copy = villaDescriptionCopy(locale);
   const rules: string[] = [];
   if (!context.childFriendly) {
-    rules.push(locale === "tr" ? "çocuk kabul edilmez" : "children are not allowed");
+    rules.push(copy.childRule);
   }
   if (!context.allowPets) {
-    rules.push(locale === "tr" ? "evcil hayvan kabul edilmez" : "pets are not allowed");
+    rules.push(copy.petRule);
   }
   if (!context.allowSmoking) {
-    rules.push(locale === "tr" ? "sigara içilmez" : "smoking is not allowed");
+    rules.push(copy.smokeRule);
   }
   if (context.customRules.length > 0) {
     rules.push(
@@ -223,26 +225,17 @@ function buildDistanceParagraph(
 ) {
   if (distances.length === 0) return "";
 
+  const copy = villaDescriptionCopy(locale);
   const phrases = distances.slice(0, 8).map((item) => {
     const name = localizeCatalogLabel(item.name, locale);
     const distance = item.distanceLabel
-      .replace(/\bMetre\b/gi, locale === "tr" ? "metre" : "m")
-      .replace(/\bmetre\b/gi, locale === "tr" ? "metre" : "m")
-      .replace(/\bKm\b/gi, locale === "tr" ? "km" : "km");
-    return locale === "tr"
-      ? `${name} yaklaşık ${distance}`
-      : `${name} about ${distance}`;
+      .replace(/\bMetre\b/gi, copy.meter)
+      .replace(/\bmetre\b/gi, copy.meter)
+      .replace(/\bKm\b/gi, "km");
+    return copy.distanceAbout(name, distance);
   });
 
-  const locationTail = locationNote.trim()
-    ? ` ${locationNote.trim()}`
-    : locale === "tr"
-      ? " Çevredeki market ve restoranlara kolay erişim sayesinde tatilinizi villadan çıkmadan da rahatlıkla planlayabilirsiniz."
-      : " Easy access to nearby markets and restaurants means you can also plan your holiday without leaving the villa.";
-
-  return locale === "tr"
-    ? `Konum olarak ${joinNatural(phrases, locale)} mesafededir.${locationTail}`
-    : `In terms of location, it is ${joinNatural(phrases, locale)} away.${locationTail}`;
+  return `${copy.distance(joinNatural(phrases, locale))}${copy.distanceTail(locationNote)}`;
 }
 
 function buildSeoKeywords(context: VillaDescriptionContext, typeLabel: string) {
@@ -342,9 +335,12 @@ export function generateVillaDescriptionTemplate(
   context: VillaDescriptionContext,
   locale: string = "tr"
 ): string {
-  const typeLabel = facilityTypeLabel(context.facilityType, locale).toLocaleLowerCase(
-    locale === "tr" ? "tr-TR" : "en-GB"
-  );
+  const copy = villaDescriptionCopy(locale);
+  const rawType = facilityTypeLabel(context.facilityType, locale);
+  const typeLabel =
+    locale === "de" || locale === "bg" || locale === "el" || locale === "ru" || locale === "zh"
+      ? rawType
+      : rawType.toLocaleLowerCase(locale === "tr" ? "tr-TR" : "en-GB");
   const location = buildLocationLabel(context);
   const plan = buildPlanLabel(context.bedrooms, context.livingRooms);
   const featured = localizeAmenityList(context.featuredAmenities, locale);
@@ -354,20 +350,21 @@ export function generateVillaDescriptionTemplate(
     ? localizeCatalogLabel(standoutRaw, locale)
     : null;
   const paragraphs: string[] = [];
-  const en = locale !== "tr";
 
-  const audience = en
-    ? context.guests <= 2 && !context.childFriendly
-      ? "a stay tailored for couples"
-      : `a comfortable stay for ${context.guests} guests`
-    : context.guests <= 2 && !context.childFriendly
-      ? "çiftlere özel bir konaklama deneyimi"
-      : `${context.guests} kişilik konforlu bir konaklama deneyimi`;
+  const audience =
+    context.guests <= 2 && !context.childFriendly
+      ? copy.coupleStay
+      : copy.groupStay(context.guests);
 
   paragraphs.push(
-    en
-      ? `<p><strong>${context.name}</strong> is a distinguished rental ${typeLabel} in the ${location} area. Designed on a ${plan} layout, our home offers ${audience} with a capacity of ${context.guests} guests.</p>`
-      : `<p><strong>${context.name}</strong>, ${location} bölgesinde yer alan seçkin bir kiralık ${typeLabel} seçeneğidir. ${plan} plan düzeninde tasarlanan evimiz ${context.guests} kişilik kapasitesiyle ${audience} sunar.</p>`
+    copy.intro({
+      name: context.name,
+      typeLabel,
+      location,
+      plan,
+      audience,
+      guests: context.guests,
+    })
   );
 
   const conceptBits = localizeAmenityList(
@@ -381,11 +378,7 @@ export function generateVillaDescriptionTemplate(
   );
 
   if (conceptBits.length > 0) {
-    paragraphs.push(
-      en
-        ? `<p>What sets this ${typeLabel} apart is how features such as ${joinNatural(conceptBits, locale)} create a carefully planned atmosphere beyond an ordinary holiday. Every detail is considered for guests seeking comfort close to nature.</p>`
-        : `<p>Bu ${typeLabel}nın öne çıkan yönü, ${joinNatural(conceptBits, locale)} gibi özellikleriyle misafirlere sıradan bir tatilden öte, özenle planlanmış bir atmosfer sunmasıdır. Doğayla iç içe konfor arayanlar için her detay düşünülmüştür.</p>`
-    );
+    paragraphs.push(copy.concept(typeLabel, joinNatural(conceptBits, locale)));
   }
 
   const interiorBits = localizeAmenityList(
@@ -394,9 +387,11 @@ export function generateVillaDescriptionTemplate(
   );
   if (interiorBits.length > 0) {
     paragraphs.push(
-      en
-        ? `<p>Indoors, amenities such as ${joinNatural(interiorBits, locale)} support guest comfort. With ${context.bedrooms} bedrooms and ${context.bathrooms} bathrooms, the living space feels organised and spacious.</p>`
-        : `<p>İç mekânda misafirlerin rahatlığı için ${joinNatural(interiorBits, locale)} gibi donanımlar bulunur. ${context.bedrooms} yatak odası ve ${context.bathrooms} banyo ile düzenli, ferah bir yaşam alanı sunulur.</p>`
+      copy.interior(
+        joinNatural(interiorBits, locale),
+        context.bedrooms,
+        context.bathrooms
+      )
     );
   }
 
@@ -405,28 +400,16 @@ export function generateVillaDescriptionTemplate(
     locale
   );
   if (exteriorBits.length > 0) {
-    paragraphs.push(
-      en
-        ? `<p>Outdoors, facilities such as ${joinNatural(exteriorBits, locale)} let you enjoy your holiday at the villa. Private spaces help you combine privacy and peace throughout your stay.</p>`
-        : `<p>Dış alanda ${joinNatural(exteriorBits, locale)} gibi imkânlarla tatilin keyfini villanızda çıkarabilirsiniz. Özel alanlar sayesinde konaklamanız boyunca mahremiyet ve huzur bir arada yaşanır.</p>`
-    );
+    paragraphs.push(copy.exterior(joinNatural(exteriorBits, locale)));
   }
 
   if (standout) {
-    paragraphs.push(
-      en
-        ? `<p>${standout} is one of the details that set this ${typeLabel} apart from similar options. It adds real value for guests who want to relax during the day or enjoy the evenings.</p>`
-        : `<p>${standout}, bu ${typeLabel}yı benzer seçeneklerden ayıran önemli detaylardan biridir. Gün içinde dinlenmek veya akşam saatlerinde keyifli vakit geçirmek isteyen misafirler için gerçek bir artı değer yaratır.</p>`
-    );
+    paragraphs.push(copy.standout(standout, typeLabel));
   }
 
   const rules = buildRulesSummary(context, locale);
   if (rules) {
-    paragraphs.push(
-      en
-        ? `<p>Under the house rules, ${rules}. Please review the rules before booking.</p>`
-        : `<p>Konaklama kuralları kapsamında ${rules}. Lütfen rezervasyon öncesi kuralları gözden geçirin.</p>`
-    );
+    paragraphs.push(copy.rules(rules));
   }
 
   const distanceParagraph = buildDistanceParagraph(
@@ -439,18 +422,18 @@ export function generateVillaDescriptionTemplate(
   }
 
   if (context.minStayNights) {
-    paragraphs.push(
-      en
-        ? `<p>The minimum stay is ${context.minStayNights} nights. This makes it a good option for a planned, comfortable holiday.</p>`
-        : `<p>Minimum konaklama süresi ${context.minStayNights} gecedir. Bu yönüyle planlı ve konforlu bir tatil için uygun bir seçenektir.</p>`
-    );
+    paragraphs.push(copy.minStay(context.minStayNights));
   }
 
   const seoBits = featured.slice(0, 4);
   paragraphs.push(
-    en
-      ? `<p>This rental ${typeLabel} for ${context.guests} guests in the ${location} area offers an unforgettable villa holiday with ${joinNatural(seoBits, locale) || "comfortable amenities"}. For guests looking for ${context.name}, it is a strong choice in both location and facilities.</p>`
-      : `<p>${location} bölgesinde ${context.guests} kişilik kapasiteye sahip bu kiralık ${typeLabel}, ${joinNatural(seoBits, locale) || "konforlu donanımı"} ile unutulmaz bir villa kiralama deneyimi sunar. ${context.name} arayan misafirler için hem konumu hem de sunduğu imkânlar açısından güçlü bir tercihtir.</p>`
+    copy.closing({
+      location,
+      guests: context.guests,
+      typeLabel,
+      features: joinNatural(seoBits, locale) || copy.groupStay(context.guests),
+      name: context.name,
+    })
   );
 
   const extra = context.extraInfo.trim()

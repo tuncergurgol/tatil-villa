@@ -10,6 +10,7 @@ import {
   resolveForeignPriceCurrencies,
   type PublicExchangeRates,
 } from "@/lib/currency-conversion";
+import { preferredDisplayCurrency } from "@/lib/i18n/display-currency";
 import { localeToBcp47 } from "@/lib/i18n/locale-display";
 import type { VillaPeriodCurrency } from "@/lib/villa-period-pricing";
 import { VILLA_PERIOD_CURRENCIES } from "@/lib/villa-period-pricing";
@@ -121,7 +122,9 @@ export default function PeriodPricesModal({
 }: PeriodPricesModalProps) {
   const locale = useLocale();
   const t = useTranslations("villa");
-  const [currency, setCurrency] = useState<VillaPeriodCurrency>("TL");
+  const [currency, setCurrency] = useState<VillaPeriodCurrency>(() =>
+    preferredDisplayCurrency(locale)
+  );
   const [tooltipId, setTooltipId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 

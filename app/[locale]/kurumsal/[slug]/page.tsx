@@ -14,6 +14,7 @@ import {
 } from "@/lib/queries/cms-content";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import { applyContractBrandDomain } from "@/lib/reservation-document-contract";
 import {
   demoteCmsHeadingToH2,
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         locale === "tr"
           ? "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın."
           : "Free callback form. Verify your phone and our villa specialists will call you.",
-      alternates: { canonical: "/sizi-arayalim" },
+      alternates: buildPublicAlternates(locale, "/sizi-arayalim"),
     };
   }
   const [page, company] = await Promise.all([
@@ -87,7 +88,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: { canonical: path },
+    alternates: buildPublicAlternates(locale, path),
   };
 }
 

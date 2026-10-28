@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import CallbackRequestPageView from "@/components/corporate/CallbackRequestPageView";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Sizi Arayalım",
-  description:
-    "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın.",
-  alternates: { canonical: "/sizi-arayalim" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return {
+    title: "Sizi Arayalım",
+    description:
+      "Ücretsiz geri arama formu. Telefonunuzu doğrulayın, villa uzmanlarımız sizi arasın.",
+    alternates: buildPublicAlternates(locale, "/sizi-arayalim"),
+  };
+}
 
 export default function SiziArayalimPage() {
   return (

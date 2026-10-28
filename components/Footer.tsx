@@ -206,6 +206,9 @@ export default async function Footer({
               decoding="async"
               className="h-auto w-full max-w-[260px] bg-white"
             />
+            <p className="mt-2 max-w-[260px] text-xs leading-relaxed text-gray-600">
+              {t("paymentTrust")}
+            </p>
           </div>
         </div>
 

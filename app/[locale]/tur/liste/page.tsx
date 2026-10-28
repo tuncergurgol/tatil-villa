@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { MapPin, Clock3 } from "lucide-react";
+import { buildPublicAlternates } from "@/lib/i18n/hreflang";
+import { getLocale } from "next-intl/server";
 import { getPublishedTours, type TourItem } from "@/lib/queries/tours";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getPublicSiteProfile } from "@/lib/public-site-profile";
@@ -8,14 +10,15 @@ import { getPublicSiteProfile } from "@/lib/public-site-profile";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const company = await getCompanySettings();
+  const [company, locale] = await Promise.all([
+    getCompanySettings(),
+    getLocale(),
+  ]);
   const site = await getPublicSiteProfile(company);
   return {
     title: "Günübirlik Tur ve Aktiviteler",
     description: `Fethiye ve çevresinde günübirlik turlar, tekne turları, safari ve aktiviteler. ${site.brandName} ile unutulmaz deneyimler.`,
-    alternates: {
-      canonical: "/tur/liste",
-    },
+    alternates: buildPublicAlternates(locale, "/tur/liste"),
   };
 }
 

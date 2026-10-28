@@ -122,6 +122,23 @@ async function fetchGarantiRates(): Promise<PublicExchangeRates> {
  * İki kaynak da geçici olarak kapalıysa aynı process içindeki son başarılı kur
  * kullanılır; hiç başarılı kur yoksa fiyat üretmek yerine hata verir.
  */
+/** Sayfa çizimini kur servisine bağlama. Önbellek yoksa kısa süre bekler. */
+export async function getPublicExchangeRatesFast(): Promise<PublicExchangeRates | null> {
+  if (lastKnownRates && Date.now() - lastKnownFetchedAt < MEMORY_CACHE_MS) {
+    return lastKnownRates;
+  }
+  try {
+    return await Promise.race([
+      getPublicExchangeRates(),
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), 500);
+      }),
+    ]);
+  } catch {
+    return lastKnownRates;
+  }
+}
+
 export async function getPublicExchangeRates(): Promise<PublicExchangeRates> {
   if (
     lastKnownRates &&
