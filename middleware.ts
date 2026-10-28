@@ -113,8 +113,9 @@ function redirectLegacyTesisPath(req: NextRequest): NextResponse | null {
   );
   if (!destination) return null;
   const url = req.nextUrl.clone();
-  url.pathname = destination;
-  url.search = "";
+  const parsed = new URL(destination, "https://tatildeyiz.local");
+  url.pathname = parsed.pathname;
+  url.search = parsed.search;
   applyPublicRedirectHost(req, url);
   return NextResponse.redirect(url, 301);
 }

@@ -99,5 +99,69 @@ export function legacyBrokenPublicPathDestination(
   if (path === "/kiralik-villa" || path === "/kiralik-villalar") {
     return "/villalar";
   }
+
+  if (
+    path === "/zpara-kazandiran-oteller" ||
+    path === "/erken-rezervasyon-otelleri" ||
+    path === "/saatlik-oda" ||
+    path.startsWith("/otel/")
+  ) {
+    return "/otel";
+  }
+
+  if (
+    path === "/arac-kiralama/liste" ||
+    path.startsWith("/arac-kiralama/liste/") ||
+    path === "/arac-kiralama/home" ||
+    path === "/arac-kiralama/detay" ||
+    path.startsWith("/arac-kiralama/detay/")
+  ) {
+    return "/arac-kiralama";
+  }
+
+  if (path === "/destinasyonlar" || path.startsWith("/destinasyonlar/")) {
+    const slug = path.split("/")[2]?.trim().toLowerCase() || "";
+    if (slug && slug !== "home" && /^[a-z0-9-]+$/.test(slug)) {
+      return `/villalar?region=${encodeURIComponent(slug)}`;
+    }
+    return "/villalar";
+  }
+
+  const blogDetail = path.match(/^\/blog\/detay\/([^/]+)$/);
+  if (blogDetail?.[1]) return `/blog/${blogDetail[1]}`;
+
+  if (path === "/rehber" || path.startsWith("/rehber/")) {
+    return path.includes("transfer") ? "/vip-transfer" : "/blog";
+  }
+
+  if (path === "/rota" || path.startsWith("/rota/")) return "/tur/liste";
+  if (path.startsWith("/transfer/")) return "/vip-transfer";
+  if (path === "/tur/home" || path === "/tur/detay") return "/tur/liste";
+  if (path === "/bilet/home") return "/bilet/ara";
+  if (path === "/tekne" || path.startsWith("/tekne/")) return "/tur/liste";
+
+  const corporateRoot: Record<string, string> = {
+    "/banka-bilgilerimiz": "/kurumsal/banka-bilgilerimiz",
+    "/gizlilik-politikasi": "/kurumsal/gizlilik-politikasi",
+    "/iptal-ve-iade-kosullari": "/kurumsal/iptal-ve-iade-kosullari",
+    "/online-rezervasyon-sozlesmesi": "/kurumsal/online-rezervasyon-sozlesmesi",
+    "/kiralama-kosullari": "/kurumsal/iptal-ve-iade-kosullari",
+    "/mesafeli-satis-sozlesmesi": "/kurumsal/gizlilik-politikasi",
+  };
+  if (corporateRoot[path]) return corporateRoot[path];
+
+  const rentalLanding = path.match(
+    /^\/([a-z0-9-]+)-villa-kiralama(?:\/([a-z0-9-]+))?$/i
+  );
+  if (rentalLanding) {
+    const region = (rentalLanding[2] || rentalLanding[1] || "")
+      .trim()
+      .toLowerCase();
+    if (region && region !== "home") {
+      return `/villalar?region=${encodeURIComponent(region)}`;
+    }
+    return "/villalar";
+  }
+
   return null;
 }

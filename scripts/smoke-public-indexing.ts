@@ -82,6 +82,61 @@ assert.equal(
 );
 assert.equal(legacyBrokenPublicPathDestination("/home/home_14"), "/");
 assert.equal(legacyBrokenPublicPathDestination("/tesis/izmir"), "/villalar");
+assert.equal(legacyBrokenPublicPathDestination("/otel/home"), "/otel");
+assert.equal(
+  legacyBrokenPublicPathDestination("/zpara-kazandiran-oteller"),
+  "/otel"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/arac-kiralama/liste"),
+  "/arac-kiralama"
+);
+assert.equal(legacyBrokenPublicPathDestination("/arac-kiralama"), null);
+assert.equal(
+  legacyBrokenPublicPathDestination("/destinasyonlar/kas"),
+  "/villalar?region=kas"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/destinasyonlar/home"),
+  "/villalar"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/blog/detay/oludeniz-plaji"),
+  "/blog/oludeniz-plaji"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/rehber/fethiye-havalimani-transfer"),
+  "/vip-transfer"
+);
+assert.equal(legacyBrokenPublicPathDestination("/rehber/home"), "/blog");
+assert.equal(legacyBrokenPublicPathDestination("/rota/rota-detay"), "/tur/liste");
+assert.equal(
+  legacyBrokenPublicPathDestination("/transfer/transfer-single"),
+  "/vip-transfer"
+);
+assert.equal(legacyBrokenPublicPathDestination("/tur/home"), "/tur/liste");
+assert.equal(legacyBrokenPublicPathDestination("/bilet/home"), "/bilet/ara");
+assert.equal(legacyBrokenPublicPathDestination("/tekne/liste"), "/tur/liste");
+assert.equal(
+  legacyBrokenPublicPathDestination("/banka-bilgilerimiz"),
+  "/kurumsal/banka-bilgilerimiz"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/gizlilik-politikasi"),
+  "/kurumsal/gizlilik-politikasi"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/mesafeli-satis-sozlesmesi"),
+  "/kurumsal/gizlilik-politikasi"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/kayakoy-villa-kiralama/kas"),
+  "/villalar?region=kas"
+);
+assert.equal(
+  legacyBrokenPublicPathDestination("/fethiye-villa-kiralama"),
+  "/villalar?region=fethiye"
+);
 
 assert.equal(
   wwwHostnameForPublicHost("tatildeyiz.com.tr"),
