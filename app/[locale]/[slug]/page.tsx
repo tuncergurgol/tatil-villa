@@ -156,7 +156,7 @@ export default async function VillaDetailPage({
       return { period, price };
     })
     .filter((item) => item.price > 0);
-  const currentPeriod =
+  const inSeason =
     pricedPeriods.find((item) => {
       const start = item.period.startDate.slice(0, 10);
       const end = item.period.endDate.slice(0, 10);
@@ -165,12 +165,14 @@ export default async function VillaDetailPage({
     pricedPeriods
       .filter((item) => item.period.endDate.slice(0, 10) >= todayKey)
       .sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))[0];
-  const nightly = currentPeriod?.price || villaRaw.pricePerNight;
-  const nightlyCurrency = currentPeriod?.period.currency || "TL";
-  const offerWindow = currentPeriod
+  const lowestPublished = [...pricedPeriods].sort((a, b) => a.price - b.price)[0];
+  const priced = inSeason ?? lowestPublished;
+  const nightly = priced?.price || villaRaw.pricePerNight;
+  const nightlyCurrency = priced?.period.currency || "TL";
+  const offerWindow = inSeason
     ? {
-        validFrom: currentPeriod.period.startDate.slice(0, 10),
-        validThrough: currentPeriod.period.endDate.slice(0, 10),
+        validFrom: inSeason.period.startDate.slice(0, 10),
+        validThrough: inSeason.period.endDate.slice(0, 10),
       }
     : {};
   const lodgingJsonLd = buildVillaLodgingJsonLd({
@@ -179,7 +181,7 @@ export default async function VillaDetailPage({
     origin,
     brandOgImage: site.ogImageUrl,
     locale,
-    minStayNights: currentPeriod?.period.minStayNights ?? null,
+    minStayNights: priced?.period.minStayNights ?? null,
     offers:
       nightly && nightly > 0
         ? (["TL", "EUR", "GBP"] as const).map((currency) => ({
