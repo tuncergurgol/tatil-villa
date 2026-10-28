@@ -69,6 +69,9 @@ export default async function LocaleLayout({
     search?: Record<string, unknown>;
     services?: Record<string, unknown>;
     chrome?: Record<string, unknown>;
+    contact?: Record<string, unknown>;
+    ticket?: Record<string, unknown>;
+    villaSearch?: Record<string, unknown>;
   };
   const clientMessages = overlayTesisClientMessages(
     {
@@ -83,6 +86,9 @@ export default async function LocaleLayout({
       search: typedMessages.search,
       services: typedMessages.services,
       chrome: typedMessages.chrome,
+      contact: typedMessages.contact,
+      ticket: typedMessages.ticket,
+      villaSearch: typedMessages.villaSearch,
     },
     site.key
   );

@@ -15,7 +15,10 @@ import { getSiteMenuItemsForPublic } from "@/lib/queries/site-menus";
 import { getPublicSiteTracking } from "@/lib/queries/public-site-tracking";
 import { getFooterRegionLinks } from "@/lib/queries/regions";
 import { buildCompanySocialLinks } from "@/lib/social-links";
-import { maybeRewriteVillaWording } from "@/lib/public-listing-copy";
+import {
+  getPublicListingCopy,
+  maybeRewriteVillaWording,
+} from "@/lib/public-listing-copy";
 import { chromeMessages } from "@/lib/i18n/chrome-messages";
 import {
   localizeCorporateSlug,
@@ -68,11 +71,16 @@ export default async function SiteChromeBelowFold() {
 
   function localizeRegionLabel(label: string): string {
     if (locale === "tr") return label;
+    const copy = getPublicListingCopy(site.key, locale);
     return label
-      .replace(/Kiralık Villalar/g, "Villas for Rent")
-      .replace(/Kiralık Villa/g, "Villa for Rent")
-      .replace(/Kiralık Tesisler/g, "Properties for Rent")
-      .replace(/Kiralık Tesis/g, "Property for Rent");
+      .replace(/Kiralık Villalar/gi, copy.rentalPlural)
+      .replace(/Kiralık Villa/gi, copy.rentalSingular)
+      .replace(/Kiralık Tesisler/gi, copy.rentalPlural)
+      .replace(/Kiralık Tesis/gi, copy.rentalSingular)
+      .replace(/Villas for Rent/gi, copy.rentalPlural)
+      .replace(/Villa for Rent/gi, copy.rentalSingular)
+      .replace(/Properties for Rent/gi, copy.rentalPlural)
+      .replace(/Property for Rent/gi, copy.rentalSingular);
   }
 
   const [

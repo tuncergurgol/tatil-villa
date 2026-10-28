@@ -1,107 +1,29 @@
+import type { AppLocale } from "@/i18n/routing";
+import en from "@/lib/i18n/blog/en.json";
+import de from "@/lib/i18n/blog/de.json";
+import fr from "@/lib/i18n/blog/fr.json";
+import es from "@/lib/i18n/blog/es.json";
+import bg from "@/lib/i18n/blog/bg.json";
+import el from "@/lib/i18n/blog/el.json";
+import zh from "@/lib/i18n/blog/zh.json";
+import ru from "@/lib/i18n/blog/ru.json";
+
 export type BlogEnTranslation = { title: string; excerpt: string };
 
-/** Yayınlanmış blog kartları için EN başlık/özet (özel isimler korunur). */
-export const blogEnBySlug: Record<string, BlogEnTranslation> = {
-  "villa-fotograflarini-dogru-okumak-gercekci-beklenti-olusturma": {
-    title: "Reading Villa Photos Correctly: Realistic Holiday Expectations",
-    excerpt:
-      "When searching for a rental villa, evaluate photo cues carefully. Discover our visual reading guide so your dream holiday is not left to chance.",
-  },
-  "surdurulebilir-villa-tatili-su-ve-enerji-tasarrufu": {
-    title: "Sustainable Villa Holidays: Water and Energy Saving Guide",
-    excerpt:
-      "An eco-friendly holiday is easier than ever. Save water and energy during your sustainable villa stay and help protect the environment.",
-  },
-  "villa-tatilinde-bbq-ve-acik-hava-keyfi": {
-    title: "BBQ and Outdoor Enjoyment on a Villa Holiday: Tips and Guide",
-    excerpt:
-      "Plan unforgettable barbecue evenings with loved ones on your villa holiday. Discover practical tips for outdoor dining and open-air comfort.",
-  },
-  "villa-tatilinde-market-ve-mutfak-alisveris-listesi": {
-    title: "Market and Kitchen Shopping List for Villa Holidays: Complete Guide",
-    excerpt:
-      "A complete market and kitchen shopping guide for a smooth, enjoyable villa stay. Step into a comfortable break with Tatildeyiz.",
-  },
-  "bayram-tatilinde-villa-rezervasyonu-erken-planlama-rehberi": {
-    title: "Early Planning Guide for Villa Bookings Over Public Holidays",
-    excerpt:
-      "Discover the advantages of early villa booking for a flawless public-holiday stay, plus popular areas and key points to check.",
-  },
-  "yaz-sezonunda-villa-kiralama-temmuz-agustos-planlama-ipuclari": {
-    title: "Summer Villa Rental: July–August Planning Tips",
-    excerpt:
-      "Review our summer villa rental guide for a perfect July–August holiday. Early booking and budget tips on Tatildeyiz.",
-  },
-  "balayi-villasi-secerken-nelere-bakilmali": {
-    title: "What to Look for When Choosing a Honeymoon Villa",
-    excerpt:
-      "Discover every detail that matters when choosing a honeymoon villa—from privacy and luxury amenities to location.",
-  },
-  "genis-aile-ve-gruplar-icin-buyuk-villa-kiralama": {
-    title: "Large Villa Rental Guide for Extended Families and Groups",
-    excerpt:
-      "A comfort-focused holiday guide for large groups and extended families. Discover how to choose the right villa with Tatildeyiz.",
-  },
-  "engelli-dostu-villa-secimi-ve-erisilebilir-tatil": {
-    title: "Accessible Villa Selection and Inclusive Holiday Guide",
-    excerpt:
-      "Explore accessible villa options that support comfortable, independent holidays—and what to check when choosing one.",
-  },
-  "evcil-hayvan-kabul-eden-villalar-rezervasyon-oncesi-bilinmesi-gerekenler": {
-    title: "Pet-Friendly Villas: What to Know Before Booking",
-    excerpt:
-      "Ready for an unforgettable trip with your pets? We gathered the key points to check before staying in a pet-friendly villa.",
-  },
-  "isitmahli-havuzlu-villa-kiralama-rehberi": {
-    title: "Heated-Pool Villa Rental Guide: Year-Round Comfort",
-    excerpt:
-      "Want holiday comfort in every season? Discover how to plan your heated-pool villa rental with our complete guide.",
-  },
-  "deniz-manzarali-villa-mi-merkez-villa-mi-nasil-karar-verilir": {
-    title: "Sea-View Villa or Central Villa? How to Decide",
-    excerpt:
-      "Struggling to choose the right location? Compare sea-view and central villa options to plan your ideal holiday.",
-  },
-  "son-dakika-villa-firsatlari-ne-zaman-bakilmali": {
-    title: "Last-Minute Villa Deals: When to Look",
-    excerpt:
-      "Want your dream holiday at a better price? Discover how to catch last-minute villa deals in this guide.",
-  },
-  "erken-rezervasyon-ile-villa-tatilinde-tasarruf": {
-    title: "Saving on Villa Holidays with Early Booking",
-    excerpt:
-      "Stay in your dream luxury villa without overstretching your budget through early booking offers. Discover savings tips with Tatildeyiz.",
-  },
-  "guvenli-villa-kiralama-sahte-ilanlardan-korunma-ipuclari": {
-    title: "Safe Villa Rental: Tips to Avoid Fake Listings",
-    excerpt:
-      "Learn how to avoid fake listings with our safe villa rental guide. Plan a smooth, peaceful holiday with Tatildeyiz.",
-  },
-  "ara-tatilde-villa-tatili-rehberi": {
-    title: "An Unforgettable Break with Kids: Mid-Term Villa Holiday Guide",
-    excerpt:
-      "Family villa stays for November and April mid-term breaks—large gardens, pool safety, and routes that suit short escapes.",
-  },
-  "villa-secerken-kapasite-yatak-odasi-ve-havuz-kontrol-listesi": {
-    title: "Villa Checklist: Capacity, Bedrooms and Pool",
-    excerpt:
-      "Avoid rental mistakes by checking capacity, bedroom layout and pool details. Open the door to a great holiday with Tatildeyiz.",
-  },
-  "somestirde-villa-tatili-5-neden": {
-    title: "A Report-Card Reward Holiday: 5 Reasons for a Winter Break Villa",
-    excerpt:
-      "January–February winter-break villa holidays—heated pools, family-friendly layouts and routes that ease winter stress.",
-  },
-  "villa-rezervasyonunda-iptal-ve-iade-kosullari": {
-    title: "Cancellation and Refund Guide for Villa Bookings",
-    excerpt:
-      "Everything you need to know about cancellation and refund terms for villa bookings. Learn your rights for a safer holiday plan.",
-  },
-  "isitmali-havuzlu-villa-kis-sonbahar": {
-    title: "Year-Round Holiday Enjoyment: Heated-Pool Villas in Winter",
-    excerpt:
-      "Autumn and winter heated-pool villa holidays on the Mediterranean and Aegean—water temperature, climate control and choosing the right home.",
-  },
+type BlogPack = Record<string, BlogEnTranslation>;
+
+/** @deprecated Use locale packs via localizeBlogCard; kept for any direct EN lookups. */
+export const blogEnBySlug: BlogPack = en as BlogPack;
+
+const BLOG_PACKS: Partial<Record<AppLocale, BlogPack>> = {
+  en: en as BlogPack,
+  de: de as BlogPack,
+  fr: fr as BlogPack,
+  es: es as BlogPack,
+  bg: bg as BlogPack,
+  el: el as BlogPack,
+  zh: zh as BlogPack,
+  ru: ru as BlogPack,
 };
 
 export function localizeBlogCard(
@@ -111,6 +33,7 @@ export function localizeBlogCard(
   locale: string
 ): { title: string; excerpt: string } {
   if (locale === "tr") return { title, excerpt };
-  const en = blogEnBySlug[slug];
-  return en ?? { title, excerpt };
+  const pack = BLOG_PACKS[locale as AppLocale] ?? BLOG_PACKS.en;
+  const hit = pack?.[slug] ?? BLOG_PACKS.en?.[slug];
+  return hit ?? { title, excerpt };
 }
