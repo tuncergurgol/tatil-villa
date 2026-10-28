@@ -1,25 +1,41 @@
+"use client";
+
 import GalleryImage from "@/components/GalleryImage";
 import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
-import Link from "next/link";
+import { usePublicExchangeRates } from "@/components/PublicExchangeRatesProvider";
+import { convertCurrencyAmount } from "@/lib/currency-conversion";
+import {
+  currencySymbol,
+  preferredDisplayCurrency,
+} from "@/lib/i18n/display-currency";
+import { localeToBcp47 } from "@/lib/i18n/locale-display";
+import { Link } from "@/lib/i18n/navigation";
 import type { Villa } from "@/lib/types";
 import { villaPublicPath } from "@/lib/villa-public-path";
-
-function formatNightlyPrice(villa: Villa) {
-  const price = villa.minNightlyPrice ?? villa.pricePerNight;
-  if (price == null || price <= 0) return null;
-  return `${price.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL`;
-}
-
-function stayLine(villa: Villa) {
-  const rooms =
-    villa.bedrooms === 1
-      ? "1 yatak odası"
-      : `${villa.bedrooms} yatak odası`;
-  return `${villa.guests} kişilik • ${rooms}`;
-}
+import { useLocale, useTranslations } from "next-intl";
 
 export default function Theme2VillaCard({ villa }: { villa: Villa }) {
-  const price = formatNightlyPrice(villa);
+  const locale = useLocale();
+  const tChrome = useTranslations("chrome");
+  const bcp47 = localeToBcp47(locale);
+  const exchangeRates = usePublicExchangeRates();
+  const displayCurrency = preferredDisplayCurrency(locale);
+  const amount = villa.minNightlyPrice ?? villa.pricePerNight;
+
+  function formatNightly(price: number) {
+    if (!exchangeRates || displayCurrency === "TL") {
+      return `${Math.round(price).toLocaleString(bcp47)} TL`;
+    }
+    const converted = convertCurrencyAmount(
+      price,
+      "TL",
+      displayCurrency,
+      exchangeRates
+    );
+    return `≈ ${currencySymbol(displayCurrency)}${converted.toLocaleString(bcp47, { maximumFractionDigits: 0 })}`;
+  }
+
+  const stayLine = `${villa.guests} ${tChrome("guestsUnit")} • ${villa.bedrooms} ${tChrome("bedroomsUnit")}`;
 
   return (
     <article className="group relative flex h-full min-w-0 flex-col">
@@ -42,18 +58,18 @@ export default function Theme2VillaCard({ villa }: { villa: Villa }) {
           <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900">
             {villa.name}
           </h3>
-          <p className="mt-1 text-[13px] text-slate-500">{stayLine(villa)}</p>
+          <p className="mt-1 text-[13px] text-slate-500">{stayLine}</p>
           <p className="mt-2 text-[15px] font-semibold text-slate-900">
-            {price ? (
+            {amount != null && amount > 0 ? (
               <>
-                {price}
+                {formatNightly(amount)}
                 <span className="ml-1 text-[13px] font-normal text-slate-500">
-                  /gece
+                  {tChrome("perNight")}
                 </span>
               </>
             ) : (
               <span className="text-sm font-medium text-[#0E4F46]">
-                Teklif alınız
+                {tChrome("requestQuote")}
               </span>
             )}
           </p>

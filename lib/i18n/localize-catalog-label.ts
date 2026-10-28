@@ -93,6 +93,7 @@ const EN_LABELS: Record<string, string> = {
   Apart: "Apartment",
   "Suit Daire": "Suite",
   Bungalov: "Bungalow",
+  Domes: "Dome stays",
 };
 
 const DE_LABELS: Record<string, string> = {
@@ -125,6 +126,8 @@ const DE_LABELS: Record<string, string> = {
   "Antalya Havalimanı": "Flughafen Antalya",
   Market: "Supermarkt",
   Restoran: "Restaurant",
+  Bungalov: "Bungalow",
+  Domes: "Kuppelhäuser",
 };
 
 const FR_LABELS: Record<string, string> = {
@@ -140,6 +143,8 @@ const FR_LABELS: Record<string, string> = {
   Kamelya: "tonnelle",
   "Dalaman Havalimanı": "aéroport de Dalaman",
   "Antalya Havalimanı": "aéroport d'Antalya",
+  Bungalov: "Bungalow",
+  Domes: "Dômes",
 };
 
 const ES_LABELS: Record<string, string> = {
@@ -154,6 +159,8 @@ const ES_LABELS: Record<string, string> = {
   Kamelya: "cenador",
   "Dalaman Havalimanı": "aeropuerto de Dalaman",
   "Antalya Havalimanı": "aeropuerto de Antalya",
+  Bungalov: "Bungalow",
+  Domes: "Cúpulas",
 };
 
 const RU_LABELS: Record<string, string> = {
@@ -168,6 +175,8 @@ const RU_LABELS: Record<string, string> = {
   Kamelya: "беседка",
   "Dalaman Havalimanı": "аэропорт Даламан",
   "Antalya Havalimanı": "аэропорт Анталья",
+  Bungalov: "Бунгало",
+  Domes: "Купольные дома",
 };
 
 const BG_LABELS: Record<string, string> = {
@@ -178,6 +187,8 @@ const BG_LABELS: Record<string, string> = {
   "Deniz Manzarası": "гледка към морето",
   Kamelya: "беседка",
   "Dalaman Havalimanı": "летище Даламан",
+  Bungalov: "Бунгало",
+  Domes: "Куполни къщи",
 };
 
 const EL_LABELS: Record<string, string> = {
@@ -188,6 +199,8 @@ const EL_LABELS: Record<string, string> = {
   "Deniz Manzarası": "θέα στη θάλασσα",
   Kamelya: "κιόσκι",
   "Dalaman Havalimanı": "αεροδρόμιο Dalaman",
+  Bungalov: "Μπανγκαλόου",
+  Domes: "Θόλοι",
 };
 
 const ZH_LABELS: Record<string, string> = {
@@ -199,6 +212,8 @@ const ZH_LABELS: Record<string, string> = {
   Kamelya: "凉亭",
   "Dalaman Havalimanı": "达拉曼机场",
   "Antalya Havalimanı": "安塔利亚机场",
+  Bungalov: "平房",
+  Domes: "穹顶屋",
 };
 
 const LOCALE_LABELS: Record<string, Record<string, string>> = {
