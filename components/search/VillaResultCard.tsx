@@ -10,11 +10,16 @@ import {
   Users,
 } from "lucide-react";
 import MemberFavoriteButton from "@/components/member/MemberFavoriteButton";
+import { usePublicExchangeRates } from "@/components/PublicExchangeRatesProvider";
 import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
+import { convertCurrencyAmount } from "@/lib/currency-conversion";
 import { Link } from "@/lib/i18n/navigation";
+import {
+  currencySymbol,
+  preferredDisplayCurrency,
+} from "@/lib/i18n/display-currency";
 import { localeToBcp47 } from "@/lib/i18n/locale-display";
 import type { Villa } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
 import { villaPublicPath } from "@/lib/villa-public-path";
 
 interface VillaResultCardProps {
@@ -32,6 +37,21 @@ export default function VillaResultCard({
   const tSearch = useTranslations("villaSearch");
   const tNav = useTranslations("nav");
   const bcp47 = localeToBcp47(locale);
+  const exchangeRates = usePublicExchangeRates();
+  const displayCurrency = preferredDisplayCurrency(locale);
+
+  function formatDisplayPrice(amount: number) {
+    if (!exchangeRates || displayCurrency === "TL") {
+      return `${Math.round(amount).toLocaleString(bcp47)}TL`;
+    }
+    const converted = convertCurrencyAmount(
+      amount,
+      "TL",
+      displayCurrency,
+      exchangeRates
+    );
+    return `≈ ${currencySymbol(displayCurrency)}${converted.toLocaleString(bcp47)}`;
+  }
   const badge = listingCopy?.usesTesis
     ? tChrome("rentalProperty")
     : tChrome("rentalVilla");
@@ -129,11 +149,11 @@ export default function VillaResultCard({
                     </p>
                   ) : null}
                   <p className="text-xl font-bold text-gray-900">
-                    {formatPrice(reservationTotal)}
+                    {formatDisplayPrice(reservationTotal)}
                   </p>
                   {nightlyAverage != null ? (
                     <p className="mt-0.5 text-sm text-gray-500">
-                      {formatPrice(nightlyAverage)} {tSearch("perNight")}
+                      {formatDisplayPrice(nightlyAverage)} {tSearch("perNight")}
                     </p>
                   ) : null}
                 </>
@@ -142,8 +162,8 @@ export default function VillaResultCard({
                 <>
                   <p className="text-lg font-bold text-slate-800 sm:text-xl">
                     {villa.minNightlyPrice === villa.maxNightlyPrice
-                      ? `${villa.minNightlyPrice.toLocaleString(bcp47)}TL`
-                      : `${villa.minNightlyPrice.toLocaleString(bcp47)}TL - ${villa.maxNightlyPrice.toLocaleString(bcp47)}TL`}
+                      ? formatDisplayPrice(villa.minNightlyPrice)
+                      : `${formatDisplayPrice(villa.minNightlyPrice)} - ${formatDisplayPrice(villa.maxNightlyPrice)}`}
                     <span className="ml-1 text-xs font-semibold text-orange-500">
                       {tChrome("perNight")}
                     </span>
@@ -157,7 +177,7 @@ export default function VillaResultCard({
               ) : villa.pricePerNight ? (
                 <>
                   <p className="text-xl font-bold text-gray-900">
-                    {formatPrice(villa.pricePerNight)}
+                    {formatDisplayPrice(villa.pricePerNight)}
                   </p>
                   <p className="mt-0.5 text-sm text-gray-500">{tChrome("perNight")}</p>
                 </>
