@@ -3,7 +3,7 @@ import { getLocale } from "next-intl/server";
 import DeferredContentProtection from "@/components/DeferredContentProtection";
 import { PublicExchangeRatesProvider } from "@/components/PublicExchangeRatesProvider";
 import { PublicListingCopyProvider } from "@/components/PublicListingCopyProvider";
-import { getPublicExchangeRatesFast } from "@/lib/exchange-rates";
+import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import SiteChromeBelowFold from "@/components/SiteChromeBelowFold";
 import SiteChromeHeader from "@/components/SiteChromeHeader";
 import SiteChromeMobileNav from "@/components/SiteChromeMobileNav";
@@ -24,7 +24,9 @@ export default async function SiteChrome({
 }) {
   const locale = await getLocale();
   const exchangeRates =
-    locale === "tr" ? null : await getPublicExchangeRatesFast();
+    locale === "tr"
+      ? null
+      : await getPublicExchangeRates().catch(() => null);
 
   return (
     <PublicExchangeRatesProvider value={exchangeRates}>
