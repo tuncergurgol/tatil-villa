@@ -147,24 +147,39 @@ export default async function VillaDetailPage({
     .replace(/\/+$/, "") || "www.tatildeyiz.com.tr"}`;
   const brandName = site.brandName?.trim() || company.brandName?.trim() || "";
   const todayKey = new Date().toISOString().slice(0, 10);
-  const currentPeriod = villaRaw.periods.find((period) => {
-    const start = period.startDate.slice(0, 10);
-    const end = period.endDate.slice(0, 10);
-    return start <= todayKey && todayKey <= end;
-  });
-  const nightly =
-    (currentPeriod?.discountedNightlyPrice &&
-    currentPeriod.discountedNightlyPrice > 0
-      ? currentPeriod.discountedNightlyPrice
-      : currentPeriod?.nightlyPrice) || villaRaw.pricePerNight;
-  const nightlyCurrency = currentPeriod?.currency || "TL";
+  const pricedPeriods = villaRaw.periods
+    .map((period) => {
+      const price =
+        period.discountedNightlyPrice && period.discountedNightlyPrice > 0
+          ? period.discountedNightlyPrice
+          : period.nightlyPrice;
+      return { period, price };
+    })
+    .filter((item) => item.price > 0);
+  const currentPeriod =
+    pricedPeriods.find((item) => {
+      const start = item.period.startDate.slice(0, 10);
+      const end = item.period.endDate.slice(0, 10);
+      return start <= todayKey && todayKey <= end;
+    }) ??
+    pricedPeriods
+      .filter((item) => item.period.endDate.slice(0, 10) >= todayKey)
+      .sort((a, b) => a.period.startDate.localeCompare(b.period.startDate))[0];
+  const nightly = currentPeriod?.price || villaRaw.pricePerNight;
+  const nightlyCurrency = currentPeriod?.period.currency || "TL";
+  const offerWindow = currentPeriod
+    ? {
+        validFrom: currentPeriod.period.startDate.slice(0, 10),
+        validThrough: currentPeriod.period.endDate.slice(0, 10),
+      }
+    : {};
   const lodgingJsonLd = buildVillaLodgingJsonLd({
     villa,
     brandName,
     origin,
     brandOgImage: site.ogImageUrl,
     locale,
-    minStayNights: currentPeriod?.minStayNights ?? null,
+    minStayNights: currentPeriod?.period.minStayNights ?? null,
     offers:
       nightly && nightly > 0
         ? (["TL", "EUR", "GBP"] as const).map((currency) => ({
@@ -175,6 +190,7 @@ export default async function VillaDetailPage({
               exchangeRates
             ),
             priceCurrency: currency === "TL" ? "TRY" : currency,
+            ...offerWindow,
           }))
         : undefined,
   });

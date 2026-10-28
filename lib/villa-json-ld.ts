@@ -7,6 +7,8 @@ import { resolveRegionPostalCode } from "@/lib/villa-region-postal";
 type VillaPriceOffer = {
   price: number;
   priceCurrency: "TRY" | "EUR" | "GBP" | "USD";
+  validFrom?: string;
+  validThrough?: string;
 };
 
 type VillaJsonLdInput = {
@@ -194,8 +196,15 @@ function buildImageList(
   return images.slice(0, 20);
 }
 
-function buildDescription(villa: VillaDetail): string {
-  const fromContent = stripHtml(villa.seoDescription || villa.description);
+function buildDescription(villa: VillaDetail, locale: string): string {
+  const preferred =
+    locale !== "tr"
+      ? stripHtml(villa.description)
+      : stripHtml(villa.seoDescription || villa.description);
+  const fromContent =
+    preferred.length >= 40
+      ? preferred
+      : stripHtml(villa.seoDescription || villa.description);
   if (fromContent.length >= 40) {
     return fromContent.slice(0, 5000);
   }
@@ -311,6 +320,8 @@ function buildOffers(url: string, offers: VillaPriceOffer[] | undefined) {
       availability: "https://schema.org/InStock",
       priceCurrency: offer.priceCurrency,
       price: offer.price,
+      validFrom: offer.validFrom,
+      validThrough: offer.validThrough,
       priceSpecification: {
         "@type": "UnitPriceSpecification",
         price: offer.price,
@@ -362,7 +373,7 @@ export function buildVillaLodgingJsonLd({
     additionalType: resolveVacationRentalType(villa),
     identifier: villa.villaCode || villa.id,
     name: villa.name,
-    description: buildDescription(villa),
+    description: buildDescription(villa, locale),
     url,
     image: images,
     latitude: formatCoord(villa.latitude),

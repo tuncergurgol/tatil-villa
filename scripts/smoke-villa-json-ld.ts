@@ -121,4 +121,37 @@ assert(
 assert(Boolean(jsonLd?.aggregateRating), "aggregateRating var");
 assert(Array.isArray(jsonLd?.review) && (jsonLd?.review as unknown[]).length > 0, "review var");
 
+const enLd = buildVillaLodgingJsonLd({
+  villa: {
+    ...villa,
+    description:
+      "Villa Test is a holiday rental in Kalkan with a private heated pool for couples and families.",
+    seoDescription:
+      "Türkçe seo metni yeterince uzun olduğu için yabancı dil şemasında kullanılmamalı.",
+  } as never,
+  brandName: "Tatildeyiz",
+  origin: "https://www.tatildeyiz.com.tr",
+  locale: "en",
+  minStayNights: 3,
+  offers: [
+    {
+      price: 180,
+      priceCurrency: "GBP",
+      validFrom: "2026-11-01",
+      validThrough: "2026-11-30",
+    },
+  ],
+});
+assert(
+  String(enLd?.description).includes("heated pool"),
+  "en açıklama yerelleştirilmiş metin"
+);
+assert(
+  !String(enLd?.description).includes("Türkçe"),
+  "en açıklama Türkçe seo metnini kullanmaz"
+);
+const enOffers = enLd?.offers as Array<{ priceCurrency?: string; validFrom?: string }>;
+assert(enOffers?.[0]?.priceCurrency === "GBP", "offer priceCurrency GBP");
+assert(enOffers?.[0]?.validFrom === "2026-11-01", "offer validFrom");
+
 console.log("\nTüm VacationRental JSON-LD smoke senaryoları geçti.");
