@@ -13,6 +13,9 @@ import { getPublicSiteProfile } from "@/lib/public-site-profile";
 import { buildVillaDetailMetadata } from "@/lib/villa-page-metadata";
 import { convertCurrencyAmount } from "@/lib/currency-conversion";
 import { buildVillaLodgingJsonLd } from "@/lib/villa-json-ld";
+import { buildBreadcrumbListJsonLd } from "@/lib/seo-json-ld";
+import { getPublicListingCopy } from "@/lib/public-listing-copy";
+import { localePrefixedPublicPath } from "@/lib/i18n/hreflang";
 import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
 import { preloadOptimizedLcpImage } from "@/lib/preload-lcp-image";
 import {
@@ -196,6 +199,29 @@ export default async function VillaDetailPage({
           }))
         : undefined,
   });
+  const listingCopy = getPublicListingCopy(site.key, locale);
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd(origin, [
+    { name: "Ana sayfa", path: localePrefixedPublicPath(locale, "/") },
+    {
+      name: listingCopy.plural,
+      path: localePrefixedPublicPath(locale, "/villalar"),
+    },
+    ...(villa.regionSlug
+      ? [
+          {
+            name: villa.regionLabel || villa.regionSlug,
+            path: localePrefixedPublicPath(
+              locale,
+              `/villalar?region=${encodeURIComponent(villa.regionSlug)}`
+            ),
+          },
+        ]
+      : []),
+    {
+      name: villa.name,
+      path: localePrefixedPublicPath(locale, `/${villa.slug}`),
+    },
+  ]);
   const heroImage = villa.images[0]
     ? encodeGalleryImageUrl(villa.images[0])
     : null;
@@ -220,6 +246,12 @@ export default async function VillaDetailPage({
           }}
         />
       ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd),
+        }}
+      />
       <VillaDetailView
         villa={villa}
         siteKey={site.key}

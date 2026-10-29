@@ -25,11 +25,14 @@ import { villaPublicPath } from "@/lib/villa-public-path";
 interface VillaResultCardProps {
   villa: Villa;
   nights?: number;
+  /** LCP: ilk kart görseline priority verilir. */
+  priority?: boolean;
 }
 
 export default function VillaResultCard({
   villa,
   nights = 0,
+  priority = false,
 }: VillaResultCardProps) {
   const listingCopy = usePublicListingCopy();
   const locale = useLocale();
@@ -77,6 +80,7 @@ export default function VillaResultCard({
               src={villa.image}
               alt={villa.name}
               fill
+              priority={priority}
               className="object-cover"
               sizes="(max-width: 640px) 100vw, 320px"
             />

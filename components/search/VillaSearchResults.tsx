@@ -22,6 +22,8 @@ interface VillaSearchResultsProps {
   currentParams: Record<string, string | undefined>;
   sort: string;
   className?: string;
+  /** İlk kart LCP priority (varsayılan true). */
+  prioritizeFirstImage?: boolean;
 }
 
 export default function VillaSearchResults({
@@ -35,6 +37,7 @@ export default function VillaSearchResults({
   currentParams,
   sort,
   className = "",
+  prioritizeFirstImage = true,
 }: VillaSearchResultsProps) {
   const listingCopy = usePublicListingCopy();
   const t = useTranslations("villaSearch");
@@ -141,8 +144,13 @@ export default function VillaSearchResults({
       ) : (
         <>
           <div className="space-y-4">
-            {villas.map((villa) => (
-              <VillaResultCard key={villa.id} villa={villa} nights={nights} />
+            {villas.map((villa, index) => (
+              <VillaResultCard
+                key={villa.id}
+                villa={villa}
+                nights={nights}
+                priority={prioritizeFirstImage && index === 0 && page === 1}
+              />
             ))}
           </div>
 

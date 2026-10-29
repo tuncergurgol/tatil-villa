@@ -235,6 +235,10 @@ export async function getRegionBySlug(slug: string, siteKey?: PublicSiteKey) {
     displayName,
     level: region.level,
     image: region.image,
+    description: region.description,
+    longDescription: region.longDescription,
+    seoTitle: region.seoTitle,
+    seoDescription: region.seoDescription,
     villaCount: region._count.villas,
   };
 }

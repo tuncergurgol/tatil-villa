@@ -10,6 +10,12 @@ import {
 } from "@/lib/public-listing-copy";
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import { resolvePublicSiteVillaFilter } from "@/lib/public-villa-site-filter";
+import { listIndexableSeoCategorySlugs } from "@/lib/queries/seo-category";
+import {
+  SEO_GUIDE_REGION_SLUGS,
+  buildCategoryPath,
+  buildGuidePath,
+} from "@/lib/seo-matrix";
 
 export function absolutePublicUrl(origin: string, path: string): string {
   if (!path || path === "/") return origin;
@@ -93,7 +99,8 @@ export async function getPublicIndexablePages(
     { active: true, showInSearch: true },
     siteKey
   );
-  const [villas, blogPosts, corporatePages, tours, regions] = await Promise.all([
+  const [villas, blogPosts, corporatePages, tours, regions, matrixPages] =
+    await Promise.all([
     prisma.villa.findMany({
       where: villaWhere,
       select: { slug: true, name: true, updatedAt: true },
@@ -123,7 +130,12 @@ export async function getPublicIndexablePages(
       select: { slug: true, name: true, updatedAt: true },
       orderBy: { name: "asc" },
     }),
+    listIndexableSeoCategorySlugs(siteKey),
   ]);
+
+  const guideRegions = regions.filter((region) =>
+    (SEO_GUIDE_REGION_SLUGS as readonly string[]).includes(region.slug)
+  );
 
   const copy = getPublicListingCopy(siteKey);
   const sitePaths =
@@ -183,6 +195,16 @@ export async function getPublicIndexablePages(
       title: listingRegionRentalLabel(region.name, siteKey, true),
       lastModified: region.updatedAt,
     })),
+    ...matrixPages.map((page) => ({
+      url: absolutePublicUrl(origin, buildCategoryPath(page.slug)),
+      title: page.title,
+      lastModified: now,
+    })),
+    ...guideRegions.map((region) => ({
+      url: absolutePublicUrl(origin, buildGuidePath(region.slug)),
+      title: `${region.name} rehberi`,
+      lastModified: region.updatedAt,
+    })),
   ];
 }
 
@@ -217,6 +239,10 @@ export async function buildPublicSitemap(
             ? ("weekly" as const)
             : page.url.includes("/villalar?region=")
               ? ("weekly" as const)
+              : page.url.includes("/kategori/")
+                ? ("weekly" as const)
+                : page.url.includes("/rehber/")
+                  ? ("weekly" as const)
               : page.url.endsWith("/yeni-otel")
                 ? ("weekly" as const)
                 : page.url.includes("/kurumsal/")
@@ -230,6 +256,10 @@ export async function buildPublicSitemap(
             ? 0.6
             : page.url.includes("/villalar?region=")
               ? 0.6
+              : page.url.includes("/kategori/")
+                ? 0.65
+                : page.url.includes("/rehber/")
+                  ? 0.7
               : page.url.endsWith("/yeni-otel")
                 ? 0.7
                 : page.url.includes("/kurumsal/")

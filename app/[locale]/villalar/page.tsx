@@ -37,6 +37,17 @@ import {
   publicIndexingRobots,
   villaSearchCanonicalPath,
 } from "@/lib/public-indexing";
+import ListingBreadcrumbs from "@/components/seo/ListingBreadcrumbs";
+import ListingSeoSection from "@/components/seo/ListingSeoSection";
+import { buildRegionListingSeo } from "@/lib/seo-listing-content";
+import {
+  buildBreadcrumbListJsonLd,
+  buildCollectionPageJsonLd,
+  buildFaqPageJsonLd,
+} from "@/lib/seo-json-ld";
+import { matrixFacilitiesForSite } from "@/lib/seo-matrix";
+import { villaPublicPath } from "@/lib/villa-public-path";
+import { getFacilityCategoryBySlug } from "@/lib/queries/seo-category";
 
 interface PageProps {
   searchParams: Promise<{
@@ -244,8 +255,87 @@ export default async function VillalarPage({ searchParams }: PageProps) {
     year: params.year,
   };
 
+  const indexable = isIndexableVillaSearch(params);
+  const showRegionSeo =
+    indexable && Boolean(selectedRegion) && page === 1 && !params.q?.trim();
+
+  const relatedFacilityRecords = showRegionSeo
+    ? (
+        await Promise.all(
+          matrixFacilitiesForSite(site.key).map((facilitySlug) =>
+            getFacilityCategoryBySlug(facilitySlug)
+          )
+        )
+      ).filter((item): item is NonNullable<typeof item> => Boolean(item))
+    : [];
+
+  const regionSeo =
+    showRegionSeo && selectedRegion
+      ? buildRegionListingSeo({
+          siteKey: site.key,
+          regionName: selectedRegion.name,
+          regionSlug: selectedRegion.slug,
+          longDescription: selectedRegion.longDescription,
+          seoDescription: selectedRegion.seoDescription,
+          villaCount: totalCount,
+          relatedFacilities: relatedFacilityRecords.map((f) => ({
+            slug: f.slug,
+            name: localizeCatalogLabel(f.name, locale),
+          })),
+        })
+      : null;
+
+  const origin = `https://${site.domain}`;
+  const canonicalPath = villaSearchCanonicalPath(params);
+  const crumbItems = [
+    { label: "Ana sayfa", href: "/" },
+    { label: copy.plural, href: "/villalar" },
+    ...(selectedRegion
+      ? [{ label: selectedRegion.name }]
+      : []),
+  ];
+
+  const breadcrumbLd = buildBreadcrumbListJsonLd(
+    origin,
+    crumbItems.map((item) => ({
+      name: item.label,
+      path: item.href || canonicalPath,
+    }))
+  );
+  const faqLd = regionSeo ? buildFaqPageJsonLd(regionSeo.faqs) : null;
+  const collectionLd =
+    showRegionSeo && selectedRegion
+      ? buildCollectionPageJsonLd({
+          name: titleLabel,
+          description: regionSeo?.paragraphs[0] || titleLabel,
+          path: canonicalPath,
+          origin,
+          items: villas.slice(0, 20).map((villa) => ({
+            name: villa.name,
+            path: villaPublicPath(villa.slug),
+          })),
+        })
+      : null;
+
   return (
     <div className="min-h-screen bg-[#f5f7fa]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+      {faqLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+        />
+      ) : null}
+      {collectionLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
+        />
+      ) : null}
+
       <div className="border-b border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <VillaSearchBar
@@ -265,6 +355,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <ListingBreadcrumbs items={crumbItems} />
         <div className="flex flex-col gap-6 lg:flex-row">
           <VillaSearchSidebar
             regions={homeRegions}
@@ -282,17 +373,20 @@ export default async function VillalarPage({ searchParams }: PageProps) {
             }))}
             currentParams={currentParams}
           />
-          <VillaSearchResults
-            villas={villas}
-            totalCount={totalCount}
-            page={page}
-            pageSize={pageSize}
-            totalPages={totalPages}
-            titleLabel={titleLabel}
-            nights={nights}
-            currentParams={currentParams}
-            sort={sort}
-          />
+          <div className="min-w-0 flex-1">
+            <VillaSearchResults
+              villas={villas}
+              totalCount={totalCount}
+              page={page}
+              pageSize={pageSize}
+              totalPages={totalPages}
+              titleLabel={titleLabel}
+              nights={nights}
+              currentParams={currentParams}
+              sort={sort}
+            />
+            {regionSeo ? <ListingSeoSection content={regionSeo} /> : null}
+          </div>
         </div>
       </div>
     </div>

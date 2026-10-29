@@ -59,8 +59,11 @@ Kaydettikten sonra public sayfalarda scriptler ve GSC meta otomatik yüklenir.
 
 ## 5. Schema
 
-Villa detay sayfalarında Google `VacationRental` JSON-LD üretilir (`containsPlace` → `Accommodation`, `identifier`, `latitude`/`longitude`, min. 8 görsel).  
+Villa detay sayfalarında Google `VacationRental` JSON-LD üretilir (`containsPlace` → `Accommodation`, `identifier`, `latitude`/`longitude`, min. 8 görsel) + `BreadcrumbList`.  
+Listeleme / matris: `CollectionPage` + `FAQPage` + `BreadcrumbList`.  
 GSC → Geliştirmeler → Kiralık yer raporunu izleyin; düzeltme sonrası **Düzeltmeyi doğrula** kullanın.
+
+Matris / rehber ölçüm: `scripts/deploy/seo-matrix-checklist.md`
 
 ## 6. 301 / eski URL
 
