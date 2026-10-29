@@ -1,17 +1,34 @@
 #!/usr/bin/env bash
-# R2 kovasına kök (/) için HTML 301 meta + JS yönlendirme nesnesi koy.
-# Cloudflare custom domain bazen boş key veya index.html ile / cevaplar.
+# R2 kovasına kök (/) için HTML yönlendirme nesnesi koy.
 set -euo pipefail
 cd /var/www/tatil-villa
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
 
-: "${R2_ACCOUNT_ID:?}"
-: "${R2_ACCESS_KEY_ID:?}"
-: "${R2_SECRET_ACCESS_KEY:?}"
-: "${R2_BUCKET:?}"
+env_get() {
+  local key="$1"
+  python3 - "$key" <<'PY'
+import sys
+key=sys.argv[1]
+for line in open("/var/www/tatil-villa/.env", encoding="utf-8", errors="replace"):
+  line=line.strip()
+  if not line or line.startswith("#") or "=" not in line:
+    continue
+  k,v=line.split("=",1)
+  if k.strip()!=key:
+    continue
+  v=v.strip()
+  if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+    v=v[1:-1]
+  print(v)
+  break
+else:
+  raise SystemExit(f"missing {key}")
+PY
+}
+
+R2_ACCOUNT_ID="$(env_get R2_ACCOUNT_ID)"
+R2_ACCESS_KEY_ID="$(env_get R2_ACCESS_KEY_ID)"
+R2_SECRET_ACCESS_KEY="$(env_get R2_SECRET_ACCESS_KEY)"
+R2_BUCKET="$(env_get R2_BUCKET)"
 
 ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 TMP="$(mktemp)"
@@ -32,24 +49,32 @@ cat >"$TMP" <<'HTML'
 </html>
 HTML
 
+if ! command -v aws >/dev/null 2>&1; then
+  echo "aws cli yok — pip ile awscli kuruluyor"
+  pip3 install --quiet awscli
+fi
+
 export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
 export AWS_DEFAULT_REGION="auto"
 
-upload() {
-  local key="$1"
-  echo "Upload key=[$key]"
-  aws s3 cp "$TMP" "s3://${R2_BUCKET}/${key}" \
-    --endpoint-url "$ENDPOINT" \
-    --content-type "text/html; charset=utf-8" \
-    --cache-control "public, max-age=300"
-}
+echo "Upload index.html"
+aws s3 cp "$TMP" "s3://${R2_BUCKET}/index.html" \
+  --endpoint-url "$ENDPOINT" \
+  --content-type "text/html; charset=utf-8" \
+  --cache-control "public, max-age=300"
 
-# Boş key (kök) + index.html yedek
-upload ""
-upload "index.html"
+echo "Upload empty key (root)"
+aws s3api put-object \
+  --bucket "$R2_BUCKET" \
+  --key "" \
+  --body "$TMP" \
+  --content-type "text/html; charset=utf-8" \
+  --cache-control "public, max-age=300" \
+  --endpoint-url "$ENDPOINT" || echo "empty key upload failed (bazı R2 hesaplarında desteklenmez)"
 
 rm -f "$TMP"
-echo "DONE"
-curl -sI "https://r2.tatildeyiz.com.tr/" | head -n 15 || true
-curl -sI "https://r2.tatildeyiz.com.tr/index.html" | head -n 10 || true
+echo "--- probe ---"
+curl -sI "https://r2.tatildeyiz.com.tr/" | head -n 20
+echo "---"
+curl -sI "https://r2.tatildeyiz.com.tr/index.html" | head -n 15
