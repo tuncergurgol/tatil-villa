@@ -21,6 +21,6 @@ assert.doesNotMatch(
   /const headers\s*=\s*\{/,
   "const headers = {...} TDZ üretir; responseHeaders kullan"
 );
-assert.match(apiRoute, /X-Robots-Tag:\s*"noindex, nofollow"/);
+assert.match(apiRoute, /"X-Robots-Tag":\s*"noindex, nofollow"/);
 
 console.log("ok — indexnow-key route TDZ smoke geçti");
