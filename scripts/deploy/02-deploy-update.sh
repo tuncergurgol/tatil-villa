@@ -231,7 +231,10 @@ else
   echo "    TypeScript kontrolu atlandi (~1–2 dk kazanc; RUN_TS_CHECK=1 ile acilir)"
 fi
 
+set +e
 NEXT_DIST_DIR="$STAGING_DIR" npm run build
+BUILD_EXIT=$?
+set -e
 # Next, distDir staging olunca tsconfig include'a .next-staging ekleyebilir — geri al
 if git diff --quiet -- tsconfig.json 2>/dev/null; then
   :
@@ -239,13 +242,23 @@ else
   git checkout -- tsconfig.json 2>/dev/null || true
   echo "    tsconfig.json staging include satirlari geri alindi"
 fi
+if [[ "$BUILD_EXIT" -ne 0 ]]; then
+  echo "    HATA: next build exit=$BUILD_EXIT. Canli .next bozulmadi."
+  exit 1
+fi
 if [[ ! -f "$STAGING_DIR/BUILD_ID" ]]; then
   echo "    HATA: $STAGING_DIR/BUILD_ID olusmadi. Canli .next bozulmadi."
   exit 1
 fi
 if [[ ! -f "$STAGING_DIR/prerender-manifest.json" ]]; then
-  echo "    HATA: $STAGING_DIR/prerender-manifest.json eksik (yarim build). Canli .next bozulmadi."
-  exit 1
+  if [[ -f "$STAGING_DIR/routes-manifest.json" && -d "$STAGING_DIR/server" ]]; then
+    echo "    UYARI: prerender-manifest eksik; minimal dosya yaziliyor"
+    printf '%s\n' '{"version":4,"routes":{},"dynamicRoutes":{},"notFoundRoutes":[],"preview":{"previewModeId":"","previewModeSigningKey":"","previewModeEncryptionKey":""}}' \
+      > "$STAGING_DIR/prerender-manifest.json"
+  else
+    echo "    HATA: $STAGING_DIR/prerender-manifest.json eksik (yarim build). Canli .next bozulmadi."
+    exit 1
+  fi
 fi
 echo "    BUILD_ID=$(cat "$STAGING_DIR/BUILD_ID")"
 

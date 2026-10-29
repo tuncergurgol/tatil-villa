@@ -5,6 +5,10 @@ import {
 } from "@/lib/public-listing-copy";
 import type { ListingSeoFaq, ListingSeoPayload } from "@/lib/seo-listing-content";
 import { buildCategoryPath, buildGuidePath } from "@/lib/seo-matrix";
+import {
+  EXTRA_REGION_GUIDE_FACTS,
+  buildRegionGuideFromFacts,
+} from "@/lib/seo-region-guide-factory";
 
 export type RegionSeoGuide = {
   title: string;
@@ -140,6 +144,13 @@ const GUIDE_BUILDERS: Record<
   (siteKey: PublicSiteKey, brandName: string) => RegionSeoGuide
 > = {
   kalkan: buildKalkanGuide,
+  ...Object.fromEntries(
+    EXTRA_REGION_GUIDE_FACTS.map((facts) => [
+      facts.slug,
+      (siteKey: PublicSiteKey, brandName: string) =>
+        buildRegionGuideFromFacts(facts, siteKey, brandName),
+    ])
+  ),
 };
 
 export function getCuratedRegionSeoGuide(

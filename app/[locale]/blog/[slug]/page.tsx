@@ -72,6 +72,10 @@ export default async function BlogPostPage({ params }: Props) {
   );
 
   const pageUrl = `https://${site.domain}/blog/${post.slug}`;
+  const logoPath = site.logoUrl?.trim() || "/favicon.ico";
+  const logoUrl = logoPath.startsWith("http")
+    ? logoPath
+    : `https://${site.domain}${logoPath.startsWith("/") ? logoPath : `/${logoPath}`}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -90,7 +94,7 @@ export default async function BlogPostPage({ params }: Props) {
       name: site.brandName,
       logo: {
         "@type": "ImageObject",
-        url: `https://${site.domain}/logo.png`,
+        url: logoUrl,
       },
     },
     mainEntityOfPage: {

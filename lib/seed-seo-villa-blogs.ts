@@ -34,6 +34,7 @@ export async function seedSeoVillaBlogs() {
       seoTitle: post.seoTitle,
       seoDescription: post.seoDescription,
       seoKeywords: post.seoKeywords,
+      coverImage: post.coverImage || "",
       categoryId,
       published: true,
       publishedAt: post.publishedAt,

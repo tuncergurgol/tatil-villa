@@ -37,6 +37,7 @@ export type SeoVillaBlogPostSeed = {
   seoTitle: string;
   seoDescription: string;
   seoKeywords: string;
+  coverImage?: string;
   categorySlug: (typeof SEO_VILLA_BLOG_CATEGORIES)[number]["slug"];
   publishedAt: Date;
 };
@@ -57,6 +58,7 @@ export function buildSeoVillaBlogPosts(): SeoVillaBlogPostSeed[] {
         "Kalkan'da mutlaka görülmesi gereken koylar, antik kentler, 3 günlük tatil planı ve plajlar! Kaputaş'tan Patara'ya uzanan rota ve Kalkan villa tatili rehberi bu yazıda.",
       seoKeywords:
         "kalkan gezilecek yerler, kalkan plajları, kaputaş plajı, patara plajı, kalkan 3 günlük gezi, kalkan villa, kalkan tatil rehberi",
+      coverImage: "/campaigns/kampanya-tatil-danismani.jpg",
       publishedAt: new Date("2026-10-29T10:00:00+03:00"),
       content: `<p>Akdeniz’in turkuaz sularını dik yamaçlardan selamlayan Kalkan, beyaz badanalı Rum evleri, begonvillerle süslü sokakları ve dünya çapında üne sahip plajlarıyla Türkiye’nin en özel tatil duraklarından biridir. Otel kalabalığından uzakta, tamamen kendinize ait bir alanda dinlenmek ve Akdeniz’in eşsiz koylarını keşfetmek istiyorsanız Kalkan rotanız için hazır olun.</p>
 <p>Bu rehberde, Kalkan tatiliniz boyunca keşfedebileceğiniz en popüler noktaları, yüzme duraklarını, 3 günlük örnek gezi planını ve tatilinizi konforlu kılacak konaklama detaylarını bir araya getirdik. Güncel villa listesi için <a href="/villalar?region=kalkan">Kalkan kiralık villalar</a> ve destinasyon özeti için <a href="/gezi-rehberi/kalkan">Kalkan gezi rehberi</a> sayfalarına da bakabilirsiniz.</p>

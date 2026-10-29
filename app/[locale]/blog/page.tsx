@@ -5,6 +5,7 @@ import { localizeBlogCard } from "@/lib/i18n/blog-en-translations";
 import { localizeBlogCategory } from "@/lib/i18n/localize-public-label";
 import { buildPublicAlternates } from "@/lib/i18n/hreflang";
 import { blogIndexSeo } from "@/lib/i18n/international-seo";
+import { Link } from "@/lib/i18n/navigation";
 import {
   getBlogCategoriesForPublic,
   getPublishedBlogPosts,
@@ -72,6 +73,16 @@ export default async function BlogIndexPage() {
             };
           })}
         />
+        <p className="mt-8 text-center text-sm text-slate-600">
+          <Link
+            href="/blog/yazilar"
+            className="font-semibold text-sky-700 underline-offset-2 hover:underline"
+          >
+            {locale === "tr"
+              ? "Tüm blog yazılarını liste olarak gör"
+              : "Browse all blog posts"}
+          </Link>
+        </p>
       </div>
     </main>
   );
