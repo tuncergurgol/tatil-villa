@@ -28,11 +28,13 @@ function BlogCategoryFilters({
   activeSlug,
   onChange,
   allLabel,
+  linkToArchive,
 }: {
   categories: BlogInspirationCategory[];
   activeSlug: string | null;
   onChange: (slug: string | null) => void;
   allLabel: string;
+  linkToArchive?: boolean;
 }) {
   return (
     <CategoryFilterPills
@@ -43,6 +45,13 @@ function BlogCategoryFilters({
       activeId={activeSlug}
       onChange={onChange}
       allLabel={allLabel}
+      hrefForAll={linkToArchive ? "/blog/yazilar" : undefined}
+      hrefForCategory={
+        linkToArchive
+          ? (slug) =>
+              `/blog/yazilar?kategori=${encodeURIComponent(slug)}`
+          : undefined
+      }
     />
   );
 }
@@ -57,6 +66,8 @@ export default function BlogInspirationSlider({
   ctaHref = "/blog/yazilar",
   ctaLabel,
   headingLevel = 2,
+  /** Kategori haplarını arşiv URL’lerine bağla (ana sayfa /blog slider). */
+  linkCategoriesToArchive = true,
 }: {
   posts: BlogInspirationPost[];
   categories?: BlogInspirationCategory[];
@@ -67,6 +78,7 @@ export default function BlogInspirationSlider({
   ctaHref?: string;
   ctaLabel?: string;
   headingLevel?: 1 | 2;
+  linkCategoriesToArchive?: boolean;
 }) {
   const tChrome = useTranslations("chrome");
   const [activeCategorySlug, setActiveCategorySlug] = useState<string | null>(null);
@@ -139,6 +151,7 @@ export default function BlogInspirationSlider({
               activeSlug={activeCategorySlug}
               onChange={setActiveCategorySlug}
               allLabel={allLabel}
+              linkToArchive={linkCategoriesToArchive}
             />
           </div>
         </div>
@@ -148,6 +161,7 @@ export default function BlogInspirationSlider({
           activeSlug={activeCategorySlug}
           onChange={setActiveCategorySlug}
           allLabel={allLabel}
+          linkToArchive={linkCategoriesToArchive}
         />
       )}
 

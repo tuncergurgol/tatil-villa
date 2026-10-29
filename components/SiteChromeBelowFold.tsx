@@ -21,6 +21,7 @@ import {
 } from "@/lib/public-listing-copy";
 import { chromeMessages } from "@/lib/i18n/chrome-messages";
 import {
+  localizeBlogCategory,
   localizeCorporateSlug,
   localizeNavLabel,
 } from "@/lib/i18n/localize-public-label";
@@ -123,7 +124,7 @@ export default async function SiteChromeBelowFold() {
     .filter((category) => category._count.posts > 0)
     .map((category) => ({
       id: category.id,
-      name: category.name,
+      name: localizeBlogCategory(category.slug, category.name, locale),
       slug: category.slug,
     }));
 

@@ -26,8 +26,17 @@ export type TurkeyHolidayBlogPostSeed = {
   seoTitle: string;
   seoDescription: string;
   seoKeywords: string;
+  coverImage?: string;
   publishedAt: Date;
 };
+
+export function holidayYearCoverPath(year: number) {
+  return `/blog/covers/resmi-tatiller/yil-${year}.png`;
+}
+
+export function holidayTypeCoverPath(slug: string) {
+  return `/blog/covers/resmi-tatiller/tur-${slug}.png`;
+}
 
 const BLOG_YEAR_START = 2026;
 const YEAR_RANGE_LABEL = `${BLOG_YEAR_START}–${TURKEY_HOLIDAY_YEAR_END}`;
@@ -166,6 +175,7 @@ ${longWeekendTips(year)}
     seoTitle: `${year} Resmi Tatil Günleri | Türkiye Bayram Takvimi`,
     seoDescription: `${year} Türkiye resmi tatil günleri, Ramazan ve Kurban Bayramı tarihleri ve villa tatili için uzun hafta sonu önerileri.`,
     seoKeywords: `${year} resmi tatiller, ${year} ramazan bayramı, ${year} kurban bayramı, resmi tatil takvimi, villa tatili, bayram tatili`,
+    coverImage: holidayYearCoverPath(year),
     publishedAt: new Date(Date.UTC(2026, 7, 28 - (year - 2026))),
   };
 }
@@ -270,6 +280,7 @@ ${extra}
     seoTitle: `${page.shortTitle} Tatil Tarihleri ${YEAR_RANGE_LABEL}`,
     seoDescription: `${page.title} resmi tatil günleri ${YEAR_RANGE_LABEL}. Tarihler, süre ve villa kiralama önerileri.`,
     seoKeywords: `${page.shortTitle.toLocaleLowerCase("tr-TR")}, resmi tatil, ${page.slug.replaceAll("-", " ")}, villa tatili, bayram tatili`,
+    coverImage: holidayTypeCoverPath(page.slug),
     publishedAt: new Date(Date.UTC(2026, 7, 20)),
   };
 }

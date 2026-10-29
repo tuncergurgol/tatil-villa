@@ -25,6 +25,7 @@ export async function seedTurkeyHolidayBlogs() {
       seoTitle: post.seoTitle,
       seoDescription: post.seoDescription,
       seoKeywords: post.seoKeywords,
+      coverImage: post.coverImage || "",
       categoryId: category.id,
       published: true,
       publishedAt: post.publishedAt,
