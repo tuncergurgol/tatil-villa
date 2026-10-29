@@ -17,6 +17,7 @@ import type {
 } from "@prisma/client";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import DeviceTokenField from "@/components/public/DeviceTokenField";
+import SimpleCaptchaField from "@/components/public/SimpleCaptchaField";
 import TurnstileField from "@/components/public/TurnstileField";
 
 const initialState: CallbackRequestActionState = {};
@@ -351,7 +352,9 @@ export default function CallbackRequestFormPublic({
           siteKey={turnstileSiteKey}
           resetKey={turnstileResetKey}
         />
-      ) : null}
+      ) : (
+        <SimpleCaptchaField resetKey={turnstileResetKey} />
+      )}
 
       {formState.error ? (
         <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

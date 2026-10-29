@@ -34,7 +34,11 @@ import {
   invalidateActiveOtps,
   type CallbackRequestOtpPayload,
 } from "@/lib/verification-otp";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { verifySimpleCaptcha } from "@/lib/simple-captcha";
+import {
+  isTurnstileConfigured,
+  verifyTurnstileToken,
+} from "@/lib/turnstile";
 import { getRequestClientIp } from "@/lib/request-client-ip";
 
 export type CallbackRequestActionState = {
@@ -156,13 +160,23 @@ export async function submitCallbackRequestAction(
     return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
   }
 
-  const clientIp = await getRequestClientIp();
-  const captcha = await verifyTurnstileToken(
-    String(formData.get("cfTurnstileToken") ?? ""),
-    clientIp
-  );
-  if (!captcha.ok) {
-    return { error: captcha.error };
+  if (isTurnstileConfigured()) {
+    const clientIp = await getRequestClientIp();
+    const captcha = await verifyTurnstileToken(
+      String(formData.get("cfTurnstileToken") ?? ""),
+      clientIp
+    );
+    if (!captcha.ok) {
+      return { error: captcha.error };
+    }
+  } else {
+    const captcha = verifySimpleCaptcha(
+      String(formData.get("simpleCaptchaToken") ?? ""),
+      String(formData.get("simpleCaptchaAnswer") ?? "")
+    );
+    if (!captcha.ok) {
+      return { error: captcha.error };
+    }
   }
 
   const guard = await assertPublicRequestAllowed({

@@ -30,16 +30,8 @@ export async function verifyTurnstileToken(
   remoteIp?: string | null
 ): Promise<TurnstileVerifyResult> {
   const secret = turnstileSecret();
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
   if (!secret) {
-    // Site key varken secret yoksa yapılandırma eksik — formu kapatma.
-    if (siteKey) {
-      return {
-        ok: false,
-        error: "Güvenlik doğrulaması yapılandırılmamış. Lütfen daha sonra deneyin.",
-      };
-    }
-    // Yerel geliştirmede anahtar yoksa atla.
+    // Turnstile yapılandırılmamışsa çağıran taraf basit captcha kullanmalı.
     return { ok: true };
   }
 
