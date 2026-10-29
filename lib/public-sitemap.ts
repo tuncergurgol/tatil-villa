@@ -16,6 +16,7 @@ import {
   buildCategoryPath,
   buildGuidePath,
 } from "@/lib/seo-matrix";
+import { SEO_TEMA_SLUGS } from "@/lib/seo-topic-guides";
 
 export function absolutePublicUrl(origin: string, path: string): string {
   if (!path || path === "/") return origin;
@@ -205,6 +206,11 @@ export async function getPublicIndexablePages(
       title: `${region.name} rehberi`,
       lastModified: region.updatedAt,
     })),
+    ...SEO_TEMA_SLUGS.map((slug) => ({
+      url: absolutePublicUrl(origin, `/tema/${slug}`),
+      title: slug,
+      lastModified: now,
+    })),
   ];
 }
 
@@ -243,11 +249,13 @@ export async function buildPublicSitemap(
                 ? ("weekly" as const)
                 : page.url.includes("/gezi-rehberi/")
                   ? ("weekly" as const)
-              : page.url.endsWith("/yeni-otel")
-                ? ("weekly" as const)
-                : page.url.includes("/kurumsal/")
-                  ? ("monthly" as const)
-                  : ("daily" as const),
+                  : page.url.includes("/tema/")
+                    ? ("weekly" as const)
+                    : page.url.endsWith("/yeni-otel")
+                      ? ("weekly" as const)
+                      : page.url.includes("/kurumsal/")
+                        ? ("monthly" as const)
+                        : ("daily" as const),
       priority: staticItem
         ? staticItem.priority
         : page.url.includes("/blog/")
@@ -260,11 +268,13 @@ export async function buildPublicSitemap(
                 ? 0.65
                 : page.url.includes("/gezi-rehberi/")
                   ? 0.7
-              : page.url.endsWith("/yeni-otel")
-                ? 0.7
-                : page.url.includes("/kurumsal/")
-                  ? 0.5
-                  : 0.8,
+                  : page.url.includes("/tema/")
+                    ? 0.7
+                    : page.url.endsWith("/yeni-otel")
+                      ? 0.7
+                      : page.url.includes("/kurumsal/")
+                        ? 0.5
+                        : 0.8,
       alternates: { languages },
     };
 

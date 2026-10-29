@@ -11,11 +11,13 @@ export default function EarlyBookingCampaignPageView({
   totalCount,
   page,
   totalPages,
+  seoH1,
 }: {
   villas: Villa[];
   totalCount: number;
   page: number;
   totalPages: number;
+  seoH1?: string;
 }) {
   const year = EARLY_BOOKING_PRICE_YEAR;
 
@@ -25,7 +27,7 @@ export default function EarlyBookingCampaignPageView({
         image="/campaigns/kampanya-2027-erken-rezervasyon.jpg"
         imageAlt={`${year} erken rezervasyon fırsatları`}
         eyebrow="Erken rezervasyon"
-        title={`${year} yılı erken rezervasyon fırsatları`}
+        title={seoH1 || `${year} yılı erken rezervasyon fırsatları`}
         subtitle={
           <ListingWording>
             {`${year} sezonu fiyatı girilmiş villaları şimdiden inceleyin. İstediğiniz tarihi dolmadan ayırtın.`}

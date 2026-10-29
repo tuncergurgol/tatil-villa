@@ -14,7 +14,8 @@ Uygulama sonrası her public sitede kontrol:
 1. **Bölge listesi SEO** — `/villalar?region=kalkan` altında metin + FAQ + breadcrumb JSON-LD
 2. **Matris** — örn. `/kategori/kalkan-isitmali-havuzlu-villalar` (stok ≥ 3 ise index)
 3. **Rehber hub** — `/gezi-rehberi/kalkan` CTA + kategori linkleri + örnek villalar
-4. **Sitemap** — `/sitemap.xml` içinde `/kategori/…` ve `/gezi-rehberi/…` URL’leri
+4. **Tema sayfaları** — `/tema/erken-rezervasyon`, `/tema/kis-tatili` + kategori konuları (balayı, ısıtmalı, deniz manzaralı, özel havuz)
+5. **Sitemap** — `/sitemap.xml` içinde `/kategori/…`, `/gezi-rehberi/…`, `/tema/…` URL’leri
 5. **Villa şema** — detayda `VacationRental` + `BreadcrumbList`
 6. **LCP** — liste ilk kartında `priority` görsel
 

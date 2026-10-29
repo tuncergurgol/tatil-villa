@@ -30,6 +30,7 @@ import {
   buildFaqPageJsonLd,
 } from "@/lib/seo-json-ld";
 import { publicIndexingRobots } from "@/lib/public-indexing";
+import { getCuratedFacilityTopicGuide } from "@/lib/seo-topic-guides";
 import { Link } from "@/lib/i18n/navigation";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import { prisma } from "@/lib/db";
@@ -49,10 +50,20 @@ export async function generateMetadata({
 
   const { region, facility } = resolved;
   const facilityLabel = localizeCatalogLabel(facility.name, locale);
-  const title = region
-    ? `${region.name} ${facilityLabel}`
-    : facility.seoTitle?.trim() || facilityLabel;
+  const curated =
+    locale === "tr"
+      ? getCuratedFacilityTopicGuide(
+          facility.slug,
+          site.key,
+          site.brandName,
+          region?.name
+        )
+      : null;
+  const title =
+    curated?.title ||
+    (region ? `${region.name} ${facilityLabel}` : facility.seoTitle?.trim() || facilityLabel);
   const description =
+    curated?.description ||
     facility.seoDescription?.trim() ||
     region?.seoDescription?.trim() ||
     maybeRewriteVillaWording(
@@ -107,10 +118,21 @@ export default async function KategoriPage({ params }: PageProps) {
     take: 6,
   });
 
+  const curatedGuide =
+    locale === "tr"
+      ? getCuratedFacilityTopicGuide(
+          facility.slug,
+          site.key,
+          site.brandName,
+          region?.name
+        )
+      : null;
+
   const seo = buildFacilityListingSeo({
     siteKey: site.key,
     facilityName: facilityLabel,
     facilitySlug: facility.slug,
+    brandName: site.brandName,
     longDescription: facility.longDescription,
     villaCount: search.totalCount,
     regionName: region?.name,
@@ -156,9 +178,10 @@ export default async function KategoriPage({ params }: PageProps) {
     crumbs.map((c) => ({ name: c.label, path: c.href || path }))
   );
   const faqLd = buildFaqPageJsonLd(seo.faqs);
+  const pageHeading = curatedGuide?.h1 || titleLabel;
   const collectionLd = buildCollectionPageJsonLd({
-    name: titleLabel,
-    description: seo.paragraphs[0] || titleLabel,
+    name: pageHeading,
+    description: seo.paragraphs[0] || pageHeading,
     path,
     origin,
     items: search.villas.slice(0, 20).map((villa) => ({
@@ -190,7 +213,7 @@ export default async function KategoriPage({ params }: PageProps) {
         <ListingBreadcrumbs items={crumbs} />
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            {titleLabel}
+            {pageHeading}
           </h1>
           <p className="mt-1 text-sm text-sky-700">
             {search.totalCount} {copy.singular.toLocaleLowerCase("tr")} listeleniyor

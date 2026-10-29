@@ -5,6 +5,11 @@ import {
   curatedRegionToListingSeo,
   getCuratedRegionSeoGuide,
 } from "@/lib/seo-region-guides";
+import {
+  defaultFacilityTopicLinks,
+  getCuratedFacilityTopicGuide,
+  topicGuideToListingSeo,
+} from "@/lib/seo-topic-guides";
 
 export type ListingSeoFaq = { question: string; answer: string };
 
@@ -123,11 +128,30 @@ export function buildFacilityListingSeo(input: {
   siteKey: PublicSiteKey;
   facilityName: string;
   facilitySlug: string;
+  brandName?: string;
   longDescription?: string;
   villaCount: number;
   regionName?: string;
   regionSlug?: string;
 }): ListingSeoPayload {
+  const curated = getCuratedFacilityTopicGuide(
+    input.facilitySlug,
+    input.siteKey,
+    input.brandName || "",
+    input.regionName
+  );
+  if (curated) {
+    return topicGuideToListingSeo(
+      curated,
+      defaultFacilityTopicLinks({
+        siteKey: input.siteKey,
+        facilitySlug: input.facilitySlug,
+        regionSlug: input.regionSlug,
+        regionName: input.regionName,
+      })
+    );
+  }
+
   const unit = unitWord(input.siteKey);
   const units = unitWordPlural(input.siteKey);
   const place = input.regionName?.trim();
