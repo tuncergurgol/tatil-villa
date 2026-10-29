@@ -111,6 +111,14 @@ export default async function RehberPage({ params }: PageProps) {
       href: buildCategoryPath(`${region.slug}-${f.slug}`),
       label: `${region.name} ${localizeCatalogLabel(f.name, locale)}`,
     })),
+    ...(region.slug === "kalkan"
+      ? [
+          {
+            href: "/blog/kalkan-gezilecek-yerler-ve-plajlar",
+            label: "Kalkan gezilecek yerler ve plajlar",
+          },
+        ]
+      : []),
     { href: "/blog", label: "Blog yazıları" },
     { href: "/sizi-arayalim", label: "Sizi arayalım" },
   ];

@@ -71,17 +71,31 @@ export default async function BlogPostPage({ params }: Props) {
     upgradeInsecureSiteLinks(post.content)
   );
 
+  const pageUrl = `https://${site.domain}/blog/${post.slug}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: card.title,
     description: card.excerpt,
+    url: pageUrl,
     datePublished: post.publishedAt?.toISOString(),
     dateModified: post.updatedAt.toISOString(),
     image: post.coverImage || undefined,
     author: {
       "@type": "Organization",
       name: site.brandName,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: site.brandName,
+      logo: {
+        "@type": "ImageObject",
+        url: `https://${site.domain}/logo.png`,
+      },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": pageUrl,
     },
   };
 

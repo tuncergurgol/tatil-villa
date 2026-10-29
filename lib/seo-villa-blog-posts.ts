@@ -46,6 +46,51 @@ const CTA = `<p><strong><a href="/villalar">Tatilinizi Tatildeyiz.com.tr güvenc
 export function buildSeoVillaBlogPosts(): SeoVillaBlogPostSeed[] {
   return [
     {
+      slug: "kalkan-gezilecek-yerler-ve-plajlar",
+      categorySlug: "bolge-rehberleri",
+      title:
+        "Kalkan Gezilecek Yerler ve En Güzel Plajlar: Kapsamlı Tatil Rehberi",
+      excerpt:
+        "Kaputaş’tan Patara’ya koylar, antik kentler ve plajlar; Kalkan villa tatili için pratik rota ve konaklama ipuçları.",
+      seoTitle: "Kalkan Gezilecek Yerler ve En İyi Plajlar Rehberi",
+      seoDescription:
+        "Kalkan'da mutlaka görülmesi gereken koylar, antik kentler ve plajlar! Kaputaş'tan Patara'ya uzanan rota ve Kalkan villa tatili rehberi bu yazıda.",
+      seoKeywords:
+        "kalkan gezilecek yerler, kalkan plajları, kaputaş plajı, patara plajı, kalkan villa, kalkan tatil rehberi",
+      publishedAt: new Date("2026-10-29T10:00:00+03:00"),
+      content: `<p>Akdeniz’in turkuaz sularını dik yamaçlardan selamlayan Kalkan, beyaz badanalı Rum evleri, begonvillerle süslü sokakları ve dünya çapında üne sahip plajlarıyla Türkiye’nin en özel tatil duraklarından biridir. Otel kalabalığından uzakta, tamamen kendinize ait bir alanda dinlenmek ve Akdeniz’in eşsiz koylarını keşfetmek istiyorsanız Kalkan rotanız için hazır olun.</p>
+<p>Bu rehberde, Kalkan tatiliniz boyunca keşfedebileceğiniz en popüler noktaları, yüzme duraklarını ve tatilinizi konforlu kılacak konaklama detaylarını bir araya getirdik. Bölgeye dair güncel villa listesi için <a href="/villalar?region=kalkan">Kalkan kiralık villalar</a> ve destinasyon özeti için <a href="/gezi-rehberi/kalkan">Kalkan gezi rehberi</a> sayfalarına da bakabilirsiniz.</p>
+<h2>Kalkan’ın En Popüler Plajları ve Koyları</h2>
+<p>Kalkan ve çevresi, jeolojik yapısı sayesinde Türkiye’nin en berrak ve zengin deniz ekosistemlerinden birine ev sahipliği yapar.</p>
+<h3>1. Kaputaş Plajı: Kanyonun Denize Açılan Kapısı</h3>
+<p>Kaş ile Kalkan yolu arasında yer alan Kaputaş, yer altından süzülen soğuk su kaynakları sayesinde büyüleyici bir turkuaz tona sahiptir. Yol kenarından kanyon tabanına inen 187 basamağı aştığınızda karşılaştığınız manzara, Kalkan tatilinin imza anlarından biridir.</p>
+<blockquote><p><em>Konaklama ipucu:</em> Sabahın erken saatlerinde Kaputaş’ın sakinliğinin tadını çıkarıp öğleden sonra kendi özel havuzunuzda dinlenmek isterseniz, bölgeye yakın <a href="/kategori/kalkan-deniz-manzarali-villalar">Kalkan deniz manzaralı villalar</a> listesini inceleyebilirsiniz.</p></blockquote>
+<h3>2. Patara Plajı ve Kum Tepeleri</h3>
+<p>18 kilometrelik kesintisiz uzunluğuyla dünyanın en uzun kumsallarından biri olan Patara Plajı, Caretta Caretta deniz kaplumbağalarının doğal üreme alanıdır. İncecik kumu ve sığ deniziyle çocuklu aileler için son derece uygundur. Gün batımında kum tepelerine çıkarak Akdeniz üzerinde batan güneşi fotoğraflamayı unutmayın. Konaklama tarafında <a href="/villalar?region=patara">Patara villaları</a> da aynı rotaya bağlanır.</p>
+<h3>3. Kalkan Halk Plajı</h3>
+<p>Kalkan Limanı’nın hemen yanında bulunan bu plaj, bembeyaz çakıl taşları ve akvaryumu andıran berraklığıyla bilinir. Merkeze yürüme mesafesinde konaklayanlar için en pratik yüzme noktasıdır.</p>
+<h3>4. Kalamar ve Kışla Koyları (Beach Club Deneyimi)</h3>
+<p>Dalgasız ve sakin deniz arayanlar için Kalamar ve Kışla koyları ahşap iskeleleri, su sporları merkezleri ve deniz üstü platformlarıyla öne çıkar. Şnorkel veya dalış merakınız varsa bu koylarda Akdeniz su altı yaşamını rahatlıkla gözlemleyebilirsiniz.</p>
+<h2>Kalkan ve Çevresinde Mutlaka Görülmesi Gereken Tarihi Yerler</h2>
+<p>Kalkan yalnızca deniz tatili değil, binlerce yıllık Likya Uygarlığı’nın kalıntılarını keşfetmek isteyen tarih meraklıları için de açık hava müzesi gibidir.</p>
+<h3>1. Patara Antik Kenti</h3>
+<p>Likya Birliği’nin başkenti olan Patara; meclis binası (Bouleuterion), deniz feneri, zafer takı ve antik tiyatrosu ile tarihe ışık tutar. Plaja gitmeden önce bu görkemli antik kenti mutlaka ziyaret etmelisiniz.</p>
+<h3>2. Xanthos ve Letoon Antik Kentleri</h3>
+<p>UNESCO Dünya Mirası Listesi’nde yer alan Xanthos, Likya uygarlığının idari başkenti; Letoon ise dini merkezi konumundaydı. Kalkan’a yaklaşık 20–25 dakika mesafede yer alan bu iki ören yeri, tarih meraklıları için eşsiz bir rotadır.</p>
+<h3>3. İslamlar ve Üzümlü Köyleri</h3>
+<p>Kalkan merkezinin dik yamaçlarından yukarı çıktığınızda yayla havasının hâkim olduğu İslamlar ve Üzümlü köyleri sizi karşılar. Doğal su kaynakları, asırlık çınar ağaçları ve alabalık restoranlarıyla ünlü olan bu bölge, yaz aylarının kavurucu sıcağında serinlemek için harika bir kaçış noktasıdır.</p>
+<blockquote><p><em>Tatil önerisi:</em> Doğa ile baş başa, dış gözlerden uzak ve huzurlu bir atmosfer arıyorsanız <a href="/kategori/kalkan-muhafazakar-villalar">Kalkan muhafazakar villalar</a> ve <a href="/villalar?region=islamar">İslamlar villaları</a> portföyüne göz atabilirsiniz.</p></blockquote>
+<h2>Kalkan’da Villa Tatili Yapmanın Avantajları</h2>
+<p>Gezilecek yerlerin tadını çıkardıktan sonra akşamları kendinize ait bir alanda günün yorgunluğunu atmak Kalkan’ın ruhunu en iyi yansıtan deneyimdir.</p>
+<ul>
+  <li><strong>Tamamen size özel yaşam alanı:</strong> Otellerin kalabalık yemek sıraları veya havuz başı şezlong kapma telaşından uzakta, yalnızca sevdiklerinizle vakit geçirebilirsiniz. <a href="/kategori/ozel-havuzlu-villalar">Özel havuzlu villalar</a> bu ritmi güçlendirir.</li>
+  <li><strong>Gizlilik ve mahremiyet:</strong> Çevreden görünmeyen korunaklı teraslar sayesinde muhafazakar aileler ve gözlerden uzak olmak isteyen balayı çiftleri için ideal bir tatil sunar. Çift planları için <a href="/kategori/balayi-villalari">balayı villaları</a> kategorisine bakın.</li>
+  <li><strong>Panoramik Akdeniz manzarası:</strong> Kalkan’ın yamaç yerleşimi, villaların teraslarından kesintisiz gün batımı manzaraları izleme ayrıcalığı sağlar. Ayrıntılı seçim için <a href="/blog/deniz-manzarali-villalar-kalkan-kas">deniz manzaralı villalar rehberi</a> yardımcı olur.</li>
+</ul>
+<p>Unutulmaz bir tatil planlamak ve <a href="/tema/erken-rezervasyon">erken rezervasyon fırsatlarından</a> yararlanmak için <a href="/villalar?region=kalkan">Kalkan kiralık villa</a> seçeneklerini hemen keşfedin.</p>
+${CTA}`,
+    },
+    {
       slug: "antalya-villa-kiralama-rehberi",
       categorySlug: "bolge-rehberleri",
       title: "Akdeniz’in Kalbinde Lüks ve Özgürlük: Antalya Villa Kiralama Rehberi",
