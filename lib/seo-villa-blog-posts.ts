@@ -51,15 +51,15 @@ export function buildSeoVillaBlogPosts(): SeoVillaBlogPostSeed[] {
       title:
         "Kalkan Gezilecek Yerler ve En Güzel Plajlar: Kapsamlı Tatil Rehberi",
       excerpt:
-        "Kaputaş’tan Patara’ya koylar, antik kentler ve plajlar; Kalkan villa tatili için pratik rota ve konaklama ipuçları.",
+        "Kaputaş’tan Patara’ya koylar, antik kentler, 3 günlük tatil planı ve plajlar; Kalkan villa tatili için pratik rota.",
       seoTitle: "Kalkan Gezilecek Yerler ve En İyi Plajlar Rehberi",
       seoDescription:
-        "Kalkan'da mutlaka görülmesi gereken koylar, antik kentler ve plajlar! Kaputaş'tan Patara'ya uzanan rota ve Kalkan villa tatili rehberi bu yazıda.",
+        "Kalkan'da mutlaka görülmesi gereken koylar, antik kentler, 3 günlük tatil planı ve plajlar! Kaputaş'tan Patara'ya uzanan rota ve Kalkan villa tatili rehberi bu yazıda.",
       seoKeywords:
-        "kalkan gezilecek yerler, kalkan plajları, kaputaş plajı, patara plajı, kalkan villa, kalkan tatil rehberi",
+        "kalkan gezilecek yerler, kalkan plajları, kaputaş plajı, patara plajı, kalkan 3 günlük gezi, kalkan villa, kalkan tatil rehberi",
       publishedAt: new Date("2026-10-29T10:00:00+03:00"),
       content: `<p>Akdeniz’in turkuaz sularını dik yamaçlardan selamlayan Kalkan, beyaz badanalı Rum evleri, begonvillerle süslü sokakları ve dünya çapında üne sahip plajlarıyla Türkiye’nin en özel tatil duraklarından biridir. Otel kalabalığından uzakta, tamamen kendinize ait bir alanda dinlenmek ve Akdeniz’in eşsiz koylarını keşfetmek istiyorsanız Kalkan rotanız için hazır olun.</p>
-<p>Bu rehberde, Kalkan tatiliniz boyunca keşfedebileceğiniz en popüler noktaları, yüzme duraklarını ve tatilinizi konforlu kılacak konaklama detaylarını bir araya getirdik. Bölgeye dair güncel villa listesi için <a href="/villalar?region=kalkan">Kalkan kiralık villalar</a> ve destinasyon özeti için <a href="/gezi-rehberi/kalkan">Kalkan gezi rehberi</a> sayfalarına da bakabilirsiniz.</p>
+<p>Bu rehberde, Kalkan tatiliniz boyunca keşfedebileceğiniz en popüler noktaları, yüzme duraklarını, 3 günlük örnek gezi planını ve tatilinizi konforlu kılacak konaklama detaylarını bir araya getirdik. Güncel villa listesi için <a href="/villalar?region=kalkan">Kalkan kiralık villalar</a> ve destinasyon özeti için <a href="/gezi-rehberi/kalkan">Kalkan gezi rehberi</a> sayfalarına da bakabilirsiniz.</p>
 <h2>Kalkan’ın En Popüler Plajları ve Koyları</h2>
 <p>Kalkan ve çevresi, jeolojik yapısı sayesinde Türkiye’nin en berrak ve zengin deniz ekosistemlerinden birine ev sahipliği yapar.</p>
 <h3>1. Kaputaş Plajı: Kanyonun Denize Açılan Kapısı</h3>
@@ -80,6 +80,70 @@ export function buildSeoVillaBlogPosts(): SeoVillaBlogPostSeed[] {
 <h3>3. İslamlar ve Üzümlü Köyleri</h3>
 <p>Kalkan merkezinin dik yamaçlarından yukarı çıktığınızda yayla havasının hâkim olduğu İslamlar ve Üzümlü köyleri sizi karşılar. Doğal su kaynakları, asırlık çınar ağaçları ve alabalık restoranlarıyla ünlü olan bu bölge, yaz aylarının kavurucu sıcağında serinlemek için harika bir kaçış noktasıdır.</p>
 <blockquote><p><em>Tatil önerisi:</em> Doğa ile baş başa, dış gözlerden uzak ve huzurlu bir atmosfer arıyorsanız <a href="/kategori/kalkan-muhafazakar-villalar">Kalkan muhafazakar villalar</a> ve <a href="/villalar?region=islamar">İslamlar villaları</a> portföyüne göz atabilirsiniz.</p></blockquote>
+<h2>Kalkan’da 3 Günlük Örnek Tatil ve Gezi Rotası</h2>
+<p>Zamanınızı en verimli şekilde değerlendirmek, tarihi yerleri ve plajları yorulmadan gezebilmek için hazırladığımız rota planını uygulayabilirsiniz:</p>
+<div class="overflow-x-auto">
+<table>
+  <thead>
+    <tr>
+      <th>Gün</th>
+      <th>Zaman Dilimi</th>
+      <th>Aktivite &amp; Gezi Durakları</th>
+      <th>Öne Çıkan Notlar &amp; İpuçları</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowspan="3"><strong>1. Gün</strong><br/><em>(İmza Plajlar ve Merkez)</em></td>
+      <td><strong>Sabah</strong></td>
+      <td>Kaputaş Plajı'nda deniz keyfi</td>
+      <td>Basamakları rahat inip çıkmak ve park sorunu yaşamamak için 08:30–09:00 arası plajda olun.</td>
+    </tr>
+    <tr>
+      <td><strong>Öğleden Sonra</strong></td>
+      <td>Kalkan Tarihi Sokakları ve Liman</td>
+      <td>Begonvillerle kaplı beyaz Rum evlerini fotoğraflayın, limanda serinletici bir dondurma molası verin.</td>
+    </tr>
+    <tr>
+      <td><strong>Akşam</strong></td>
+      <td>Villada Gün Batımı &amp; Barbekü</td>
+      <td>Terasınızda Akdeniz manzarasına karşı gün batımını izleyip <a href="/kategori/kalkan-ozel-havuzlu-villalar">özel havuzlu villanızda</a> dinlenin.</td>
+    </tr>
+    <tr>
+      <td rowspan="3"><strong>2. Gün</strong><br/><em>(Tarih, Kum Tepeleri ve Yayla)</em></td>
+      <td><strong>Sabah</strong></td>
+      <td>Patara Antik Kenti Gezisi</td>
+      <td>Meclis Binası ve antik tiyatroyu günün sıcak saatleri bastırmadan, rahatça keşfedin.</td>
+    </tr>
+    <tr>
+      <td><strong>Öğleden Sonra</strong></td>
+      <td>Patara Plajı &amp; Kum Tepeleri</td>
+      <td>Uçsuz bucaksız kumsalda yüzün, gün batımına doğru meşhur kum tepelerinde fotoğraf çekilin.</td>
+    </tr>
+    <tr>
+      <td><strong>Akşam</strong></td>
+      <td>İslamlar Köyü'nde Akşam Yemeği</td>
+      <td>Kalkan'ın sıcağından uzaklaşıp yayla serinliğinde yerel alabalık veya meze restoranlarını deneyimleyin.</td>
+    </tr>
+    <tr>
+      <td rowspan="3"><strong>3. Gün</strong><br/><em>(Koylar, Tekne ve Veda)</em></td>
+      <td><strong>Sabah &amp; Öğle</strong></td>
+      <td>Kalamar Koyu veya Kalkan Tekne Turu</td>
+      <td>Çevre koyları (Frenk Koyu, Mavi Mağara) keşfedin veya Kalamar Beach Club'da şnorkelle dalış yapın.</td>
+    </tr>
+    <tr>
+      <td><strong>Öğleden Sonra</strong></td>
+      <td>Kalkan Merkezde Alışveriş &amp; Kafe Molası</td>
+      <td>Yerel butikleri, otantik takı, seramik ve el yapımı hediyelik dükkânlarını gezin.</td>
+    </tr>
+    <tr>
+      <td><strong>Akşam</strong></td>
+      <td>Kalkan Teras Restoranlarında Veda Yemeği</td>
+      <td>Kalkan Limanı'na tepeden bakan şık bir çatı restoranında taze Akdeniz lezzetlerinin tadını çıkarın.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
 <h2>Kalkan’da Villa Tatili Yapmanın Avantajları</h2>
 <p>Gezilecek yerlerin tadını çıkardıktan sonra akşamları kendinize ait bir alanda günün yorgunluğunu atmak Kalkan’ın ruhunu en iyi yansıtan deneyimdir.</p>
 <ul>

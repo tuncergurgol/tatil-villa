@@ -179,6 +179,57 @@ export function blogIndexSeo(locale: string): SeoCopy {
   return BLOG[asLocale(locale)];
 }
 
+const BLOG_ARCHIVE: Record<AppLocale, SeoCopy> = {
+  tr: {
+    title: "Tüm Blog Yazıları",
+    description:
+      "Villa kiralama, bölge rehberleri, balayı ve havuz konforu yazılarının tamamı. Tatil planınız için güncel ipuçları.",
+  },
+  en: {
+    title: "All Blog Posts",
+    description:
+      "All villa rental guides, region tips, honeymoon and pool comfort articles for planning your Turkey holiday.",
+  },
+  de: {
+    title: "Alle Blogbeiträge",
+    description:
+      "Alle Villa-Ratgeber, Regions-Tipps sowie Beiträge zu Flitterwochen und Pool-Komfort für Ihren Türkei-Urlaub.",
+  },
+  fr: {
+    title: "Tous les articles du blog",
+    description:
+      "Tous les guides villa, conseils régionaux et articles balnéaires pour préparer vos vacances en Turquie.",
+  },
+  es: {
+    title: "Todas las entradas del blog",
+    description:
+      "Todas las guías de villas, consejos de destino y artículos de confort para planificar tus vacaciones en Turquía.",
+  },
+  bg: {
+    title: "Всички публикации в блога",
+    description:
+      "Всички ръководства за вили, регионални съвети и статии за комфорт за вашата почивка в Турция.",
+  },
+  el: {
+    title: "Όλα τα άρθρα του blog",
+    description:
+      "Όλοι οι οδηγοί βιλών, συμβουλές προορισμών και άρθρα άνεσης για τις διακοπές σας στην Τουρκία.",
+  },
+  zh: {
+    title: "全部博客文章",
+    description: "别墅出租指南、目的地建议与泳池舒适相关文章合集，助您规划土耳其假期。",
+  },
+  ru: {
+    title: "Все статьи блога",
+    description:
+      "Все гиды по виллам, советы по регионам и статьи о комфорте для планирования отдыха в Турции.",
+  },
+};
+
+export function blogArchiveSeo(locale: string): SeoCopy {
+  return BLOG_ARCHIVE[asLocale(locale)];
+}
+
 export function villaListingDescription(
   locale: string,
   regionName = ""

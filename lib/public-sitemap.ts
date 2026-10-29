@@ -32,6 +32,12 @@ const STATIC_PATHS: Array<{
   { path: "/", title: "Ana sayfa", changeFrequency: "daily", priority: 1 },
   { path: "/villalar", title: "Villalar", changeFrequency: "weekly", priority: 0.9 },
   { path: "/blog", title: "Blog", changeFrequency: "weekly", priority: 0.7 },
+  {
+    path: "/blog/yazilar",
+    title: "Tüm blog yazıları",
+    changeFrequency: "weekly",
+    priority: 0.75,
+  },
   { path: "/yorumlar", title: "Yorumlar", changeFrequency: "weekly", priority: 0.7 },
   {
     path: "/sik-sorulan-sorular",

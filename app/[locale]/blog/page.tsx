@@ -46,6 +46,7 @@ export default async function BlogIndexPage() {
       <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <BlogInspirationSlider
           headingLevel={1}
+          ctaHref="/blog/yazilar"
           categories={blogCategories}
           posts={posts.map((post) => {
             const card = localizeBlogCard(

@@ -54,7 +54,7 @@ export default function BlogInspirationSlider({
   subtitle = "Tatil rehberi, bölge önerileri ve villa ipuçları",
   showHeader = true,
   embedded = false,
-  ctaHref = "/blog",
+  ctaHref = "/blog/yazilar",
   ctaLabel,
   headingLevel = 2,
 }: {

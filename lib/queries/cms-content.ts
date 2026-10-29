@@ -106,6 +106,7 @@ export async function getBlogCategoriesForPublic() {
 export async function getPublishedBlogPosts(options?: {
   categorySlug?: string;
   limit?: number;
+  skip?: number;
 }) {
   return prisma.blogPost.findMany({
     where: {
@@ -116,7 +117,21 @@ export async function getPublishedBlogPosts(options?: {
     },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     take: options?.limit,
+    skip: options?.skip,
     select: blogListSelect,
+  });
+}
+
+export async function countPublishedBlogPosts(options?: {
+  categorySlug?: string;
+}) {
+  return prisma.blogPost.count({
+    where: {
+      published: true,
+      ...(options?.categorySlug
+        ? { category: { slug: options.categorySlug } }
+        : {}),
+    },
   });
 }
 
