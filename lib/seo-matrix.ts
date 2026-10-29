@@ -43,7 +43,10 @@ export const SEO_MATRIX_GLAMPING_FACILITY_SLUGS = [
   "jakuzili-villalar",
 ] as const;
 
-/** Bölge rehber hub’ları: /rehber/{slug} */
+/**
+ * Bölge rehber hub’ları: /gezi-rehberi/{slug}
+ * Not: /rehber/* eski CRM yolları için legacy 301 → /blog; yeni hub çakışmasın.
+ */
 export const SEO_GUIDE_REGION_SLUGS = [
   "kalkan",
   "kas",
@@ -83,7 +86,7 @@ export function buildCategoryPath(slug: string): string {
 }
 
 export function buildGuidePath(regionSlug: string): string {
-  return `/rehber/${regionSlug}`;
+  return `/gezi-rehberi/${regionSlug}`;
 }
 
 /**

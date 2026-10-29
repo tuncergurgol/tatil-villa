@@ -241,7 +241,7 @@ export async function buildPublicSitemap(
               ? ("weekly" as const)
               : page.url.includes("/kategori/")
                 ? ("weekly" as const)
-                : page.url.includes("/rehber/")
+                : page.url.includes("/gezi-rehberi/")
                   ? ("weekly" as const)
               : page.url.endsWith("/yeni-otel")
                 ? ("weekly" as const)
@@ -258,7 +258,7 @@ export async function buildPublicSitemap(
               ? 0.6
               : page.url.includes("/kategori/")
                 ? 0.65
-                : page.url.includes("/rehber/")
+                : page.url.includes("/gezi-rehberi/")
                   ? 0.7
               : page.url.endsWith("/yeni-otel")
                 ? 0.7

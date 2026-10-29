@@ -60,7 +60,7 @@ const FOREIGN_UNTRANSLATED_ROOTS = new Set([
   "odemeyonlendir",
   // Matris / rehber gövdesi şu an TR; yabancı dilde noindex
   "kategori",
-  "rehber",
+  "gezi-rehberi",
 ]);
 
 export function unlocalizedPublicPath(pathname: string): string {
