@@ -17,6 +17,7 @@ import type {
 } from "@prisma/client";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import DeviceTokenField from "@/components/public/DeviceTokenField";
+import TurnstileField from "@/components/public/TurnstileField";
 
 const initialState: CallbackRequestActionState = {};
 
@@ -65,6 +66,9 @@ export default function CallbackRequestFormPublic({
   } | null>(null);
 
   const codeInputRef = useRef<HTMLInputElement>(null);
+  const turnstileSiteKey =
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
   useEffect(() => {
     if (formState.needsVerification && formState.phone && formState.verificationId) {
@@ -124,6 +128,12 @@ export default function CallbackRequestFormPublic({
       onSuccess?.();
     }
   }, [formState.success, onSuccess]);
+
+  useEffect(() => {
+    if (formState.error) {
+      setTurnstileResetKey((n) => n + 1);
+    }
+  }, [formState]);
 
   if (verifyState.success || formState.success) {
     return (
@@ -335,6 +345,13 @@ export default function CallbackRequestFormPublic({
           mesajı (WhatsApp/SMS) alınmasını kabul ediyorum.
         </span>
       </label>
+
+      {turnstileSiteKey ? (
+        <TurnstileField
+          siteKey={turnstileSiteKey}
+          resetKey={turnstileResetKey}
+        />
+      ) : null}
 
       {formState.error ? (
         <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

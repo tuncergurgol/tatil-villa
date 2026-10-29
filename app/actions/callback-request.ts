@@ -34,6 +34,8 @@ import {
   invalidateActiveOtps,
   type CallbackRequestOtpPayload,
 } from "@/lib/verification-otp";
+import { verifyTurnstileToken } from "@/lib/turnstile";
+import { getRequestClientIp } from "@/lib/request-client-ip";
 
 export type CallbackRequestActionState = {
   success?: boolean;
@@ -152,6 +154,15 @@ export async function submitCallbackRequestAction(
 
   if (await isBlacklistedContact({ phone: e164 })) {
     return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
+  }
+
+  const clientIp = await getRequestClientIp();
+  const captcha = await verifyTurnstileToken(
+    String(formData.get("cfTurnstileToken") ?? ""),
+    clientIp
+  );
+  if (!captcha.ok) {
+    return { error: captcha.error };
   }
 
   const guard = await assertPublicRequestAllowed({
