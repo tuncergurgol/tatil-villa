@@ -19,18 +19,22 @@ fi
 AUTH_HEADER="Authorization: Bearer ${TOKEN}"
 CT_HEADER="Content-Type: application/json"
 
-accounts_json="$(curl -sS -H "$AUTH_HEADER" -H "$CT_HEADER" \
-  "https://api.cloudflare.com/client/v4/accounts?per_page=50")"
+# Token Zone.Read yetkili; Account.List olmayabilir — account id zone yanıtından alınır.
+zones_json="$(curl -sS -H "$AUTH_HEADER" -H "$CT_HEADER" \
+  "https://api.cloudflare.com/client/v4/zones?per_page=50")"
 
-account_id="$(printf '%s' "$accounts_json" | python3 -c '
+account_id="$(printf '%s' "$zones_json" | python3 -c '
 import json,sys
 data=json.load(sys.stdin)
 if not data.get("success"):
-  raise SystemExit("accounts failed: "+json.dumps(data.get("errors"), ensure_ascii=False))
+  raise SystemExit("zones failed: "+json.dumps(data.get("errors"), ensure_ascii=False))
 results=data.get("result") or []
 if not results:
-  raise SystemExit("no cloudflare accounts")
-print(results[0]["id"])
+  raise SystemExit("no cloudflare zones")
+account=(results[0].get("account") or {}).get("id")
+if not account:
+  raise SystemExit("zone has no account id")
+print(account)
 ')"
 
 echo "Account: $account_id"
