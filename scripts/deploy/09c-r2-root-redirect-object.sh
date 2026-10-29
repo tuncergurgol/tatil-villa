@@ -1,39 +1,38 @@
 #!/usr/bin/env bash
-# R2 kovasına kök (/) için HTML yönlendirme nesnesi koy.
+# R2 kovasına kök (/) için HTML yönlendirme nesnesi koy (Node AWS SDK ile).
 set -euo pipefail
 cd /var/www/tatil-villa
 
-env_get() {
-  local key="$1"
-  python3 - "$key" <<'PY'
-import sys
-key=sys.argv[1]
-for line in open("/var/www/tatil-villa/.env", encoding="utf-8", errors="replace"):
-  line=line.strip()
-  if not line or line.startswith("#") or "=" not in line:
-    continue
-  k,v=line.split("=",1)
-  if k.strip()!=key:
-    continue
-  v=v.strip()
-  if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
-    v=v[1:-1]
-  print(v)
-  break
-else:
-  raise SystemExit(f"missing {key}")
-PY
+node <<'NODE'
+const fs = require("fs");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+
+function envGet(key) {
+  const text = fs.readFileSync("/var/www/tatil-villa/.env", "utf8");
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const i = line.indexOf("=");
+    const k = line.slice(0, i).trim();
+    if (k !== key) continue;
+    let v = line.slice(i + 1).trim();
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
+      v = v.slice(1, -1);
+    }
+    return v;
+  }
+  throw new Error("missing " + key);
 }
 
-R2_ACCOUNT_ID="$(env_get R2_ACCOUNT_ID)"
-R2_ACCESS_KEY_ID="$(env_get R2_ACCESS_KEY_ID)"
-R2_SECRET_ACCESS_KEY="$(env_get R2_SECRET_ACCESS_KEY)"
-R2_BUCKET="$(env_get R2_BUCKET)"
+const accountId = envGet("R2_ACCOUNT_ID");
+const accessKeyId = envGet("R2_ACCESS_KEY_ID");
+const secretAccessKey = envGet("R2_SECRET_ACCESS_KEY");
+const bucket = envGet("R2_BUCKET");
 
-ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-TMP="$(mktemp)"
-cat >"$TMP" <<'HTML'
-<!doctype html>
+const body = `<!doctype html>
 <html lang="tr">
 <head>
   <meta charset="utf-8"/>
@@ -46,35 +45,41 @@ cat >"$TMP" <<'HTML'
 <body>
   <p><a href="https://www.tatildeyiz.com.tr/">www.tatildeyiz.com.tr</a></p>
 </body>
-</html>
-HTML
+</html>`;
 
-if ! command -v aws >/dev/null 2>&1; then
-  echo "aws cli yok — pip ile awscli kuruluyor"
-  pip3 install --quiet awscli
-fi
+const client = new S3Client({
+  region: "auto",
+  endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+  credentials: { accessKeyId, secretAccessKey },
+});
 
-export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
-export AWS_DEFAULT_REGION="auto"
+async function put(key) {
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: "text/html; charset=utf-8",
+      CacheControl: "public, max-age=300",
+    })
+  );
+  console.log("uploaded key=[" + key + "]");
+}
 
-echo "Upload index.html"
-aws s3 cp "$TMP" "s3://${R2_BUCKET}/index.html" \
-  --endpoint-url "$ENDPOINT" \
-  --content-type "text/html; charset=utf-8" \
-  --cache-control "public, max-age=300"
+(async () => {
+  await put("index.html");
+  try {
+    await put("");
+  } catch (err) {
+    console.log("empty key failed:", err && err.message ? err.message : err);
+  }
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
+NODE
 
-echo "Upload empty key (root)"
-aws s3api put-object \
-  --bucket "$R2_BUCKET" \
-  --key "" \
-  --body "$TMP" \
-  --content-type "text/html; charset=utf-8" \
-  --cache-control "public, max-age=300" \
-  --endpoint-url "$ENDPOINT" || echo "empty key upload failed (bazı R2 hesaplarında desteklenmez)"
-
-rm -f "$TMP"
-echo "--- probe ---"
+echo "--- probe / ---"
 curl -sI "https://r2.tatildeyiz.com.tr/" | head -n 20
-echo "---"
+echo "--- probe /index.html ---"
 curl -sI "https://r2.tatildeyiz.com.tr/index.html" | head -n 15
