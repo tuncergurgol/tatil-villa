@@ -1,6 +1,10 @@
 import type { PublicSiteKey } from "@/lib/public-site-keys";
 import { getPublicListingCopy } from "@/lib/public-listing-copy";
 import { buildCategoryPath, buildGuidePath } from "@/lib/seo-matrix";
+import {
+  curatedRegionToListingSeo,
+  getCuratedRegionSeoGuide,
+} from "@/lib/seo-region-guides";
 
 export type ListingSeoFaq = { question: string; answer: string };
 
@@ -43,11 +47,26 @@ export function buildRegionListingSeo(input: {
   siteKey: PublicSiteKey;
   regionName: string;
   regionSlug: string;
+  brandName?: string;
   longDescription?: string;
   seoDescription?: string;
   villaCount: number;
   relatedFacilities?: Array<{ slug: string; name: string }>;
 }): ListingSeoPayload {
+  const curated = getCuratedRegionSeoGuide(
+    input.regionSlug,
+    input.siteKey,
+    input.brandName || ""
+  );
+  if (curated) {
+    return curatedRegionToListingSeo(curated, {
+      siteKey: input.siteKey,
+      regionSlug: input.regionSlug,
+      regionName: input.regionName,
+      relatedFacilities: input.relatedFacilities,
+    });
+  }
+
   const unit = unitWord(input.siteKey);
   const units = unitWordPlural(input.siteKey);
   const name = input.regionName.trim();
@@ -165,9 +184,23 @@ export function buildGuideHubSeo(input: {
   siteKey: PublicSiteKey;
   regionName: string;
   regionSlug: string;
+  brandName?: string;
   longDescription?: string;
   villaCount: number;
 }): ListingSeoPayload {
+  const curated = getCuratedRegionSeoGuide(
+    input.regionSlug,
+    input.siteKey,
+    input.brandName || ""
+  );
+  if (curated) {
+    return curatedRegionToListingSeo(curated, {
+      siteKey: input.siteKey,
+      regionSlug: input.regionSlug,
+      regionName: input.regionName,
+    });
+  }
+
   const units = unitWordPlural(input.siteKey);
   const name = input.regionName;
   const fallback = [

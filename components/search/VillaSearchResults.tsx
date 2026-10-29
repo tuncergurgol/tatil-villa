@@ -24,6 +24,8 @@ interface VillaSearchResultsProps {
   className?: string;
   /** İlk kart LCP priority (varsayılan true). */
   prioritizeFirstImage?: boolean;
+  /** SEO H1 (verilirse sonuç özeti H2 olur). */
+  seoH1?: string;
 }
 
 export default function VillaSearchResults({
@@ -38,6 +40,7 @@ export default function VillaSearchResults({
   sort,
   className = "",
   prioritizeFirstImage = true,
+  seoH1,
 }: VillaSearchResultsProps) {
   const listingCopy = usePublicListingCopy();
   const t = useTranslations("villaSearch");
@@ -72,13 +75,26 @@ export default function VillaSearchResults({
   return (
     <div id="villa-arama-sonuclari" className={`min-w-0 flex-1 scroll-mt-24 ${className}`}>
       <div className="mb-4">
-        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
-          <>
+        {seoH1 ? (
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+            {seoH1}
+          </h1>
+        ) : null}
+        {seoH1 ? (
+          <p className="mt-2 text-base font-semibold text-gray-800 sm:text-lg">
             {t("foundFor", { title: titleLabel })}{" "}
             <span className="text-sky-600">{totalCount}</span>{" "}
             {t("foundCount", { title: titleLabel, count: totalCount })}
-          </>
-        </h1>
+          </p>
+        ) : (
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+            <>
+              {t("foundFor", { title: titleLabel })}{" "}
+              <span className="text-sky-600">{totalCount}</span>{" "}
+              {t("foundCount", { title: titleLabel, count: totalCount })}
+            </>
+          </h1>
+        )}
         <p className="mt-1 text-sm text-sky-600">
           {t("priceGuarantee")}
           {totalCount > 0 ? (

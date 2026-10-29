@@ -26,6 +26,7 @@ import {
   buildFaqPageJsonLd,
 } from "@/lib/seo-json-ld";
 import { publicIndexingRobots } from "@/lib/public-indexing";
+import { getCuratedRegionSeoGuide } from "@/lib/seo-region-guides";
 import { Link } from "@/lib/i18n/navigation";
 import { prisma } from "@/lib/db";
 
@@ -42,10 +43,16 @@ export async function generateMetadata({
   const region = await getRegionBySlug(slug, site.key);
   if (!region) return { title: "Rehber", robots: publicIndexingRobots(false) };
 
+  const curated =
+    locale === "tr"
+      ? getCuratedRegionSeoGuide(slug, site.key, site.brandName)
+      : null;
   const title =
+    curated?.title ||
     region.seoTitle?.trim() ||
     `${region.name} Gezi ve Villa Rehberi`;
   const description =
+    curated?.description ||
     region.seoDescription?.trim() ||
     maybeRewriteVillaWording(
       `${region.name} tatil rehberi: gezilecek yerler, konaklama ipuçları ve ${getPublicListingCopy(site.key, locale).plural}.`,
@@ -68,6 +75,11 @@ export default async function RehberPage({ params }: PageProps) {
   if (!region) notFound();
 
   const copy = getPublicListingCopy(site.key, locale);
+  const curatedGuide = getCuratedRegionSeoGuide(
+    slug,
+    site.key,
+    site.brandName
+  );
   const search = await getVillaSearchResults({
     region: region.slug,
     sort: "recommended",
@@ -85,6 +97,7 @@ export default async function RehberPage({ params }: PageProps) {
     siteKey: site.key,
     regionName: region.name,
     regionSlug: region.slug,
+    brandName: site.brandName,
     longDescription: region.longDescription || region.description,
     villaCount: search.totalCount,
   });
@@ -136,7 +149,8 @@ export default async function RehberPage({ params }: PageProps) {
             Bölge rehberi
           </p>
           <h1 className="mt-1 text-3xl font-bold text-gray-900 sm:text-4xl">
-            {region.name} gezi ve {copy.singular.toLocaleLowerCase("tr")} rehberi
+            {curatedGuide?.h1 ||
+              `${region.name} gezi ve ${copy.singular.toLocaleLowerCase("tr")} rehberi`}
           </h1>
         </header>
 

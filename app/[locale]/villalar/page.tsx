@@ -48,6 +48,7 @@ import {
 import { matrixFacilitiesForSite } from "@/lib/seo-matrix";
 import { villaPublicPath } from "@/lib/villa-public-path";
 import { getFacilityCategoryBySlug } from "@/lib/queries/seo-category";
+import { getCuratedRegionSeoGuide } from "@/lib/seo-region-guides";
 
 interface PageProps {
   searchParams: Promise<{
@@ -84,15 +85,23 @@ export async function generateMetadata({
   const company = await getCompanySettings();
   const site = await getPublicSiteProfile(company);
   const copy = getPublicListingCopy(site.key, locale);
+  const curated =
+    regionSlug && locale === "tr"
+      ? getCuratedRegionSeoGuide(regionSlug, site.key, site.brandName)
+      : null;
 
   return {
-    title: regionName
-      ? listingRegionRentalLabel(regionName, site.key, true, locale)
-      : copy.rentalAndBungalows,
-    description: maybeRewriteVillaWording(
-      villaListingDescription(locale, regionName),
-      site.key
-    ),
+    title: curated
+      ? curated.title
+      : regionName
+        ? listingRegionRentalLabel(regionName, site.key, true, locale)
+        : copy.rentalAndBungalows,
+    description: curated
+      ? curated.description
+      : maybeRewriteVillaWording(
+          villaListingDescription(locale, regionName),
+          site.key
+        ),
     alternates: buildPublicAlternates(locale, canonical),
     robots: publicIndexingRobots(indexable),
   };
@@ -275,6 +284,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
           siteKey: site.key,
           regionName: selectedRegion.name,
           regionSlug: selectedRegion.slug,
+          brandName: site.brandName,
           longDescription: selectedRegion.longDescription,
           seoDescription: selectedRegion.seoDescription,
           villaCount: totalCount,
@@ -285,13 +295,31 @@ export default async function VillalarPage({ searchParams }: PageProps) {
         })
       : null;
 
+  const curatedGuide =
+    showRegionSeo && selectedRegion && locale === "tr"
+      ? getCuratedRegionSeoGuide(
+          selectedRegion.slug,
+          site.key,
+          site.brandName
+        )
+      : null;
+
   const origin = `https://${site.domain}`;
   const canonicalPath = villaSearchCanonicalPath(params);
   const crumbItems = [
-    { label: "Ana sayfa", href: "/" },
-    { label: copy.plural, href: "/villalar" },
+    { label: "Ana Sayfa", href: "/" },
+    { label: copy.rentalPlural, href: "/villalar" },
     ...(selectedRegion
-      ? [{ label: selectedRegion.name }]
+      ? [
+          {
+            label: listingRegionRentalLabel(
+              selectedRegion.name,
+              site.key,
+              true,
+              locale
+            ),
+          },
+        ]
       : []),
   ];
 
@@ -384,6 +412,7 @@ export default async function VillalarPage({ searchParams }: PageProps) {
               nights={nights}
               currentParams={currentParams}
               sort={sort}
+              seoH1={curatedGuide?.h1}
             />
             {regionSeo ? <ListingSeoSection content={regionSeo} /> : null}
           </div>
