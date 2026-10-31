@@ -1,22 +1,34 @@
-import { useLocale } from "next-intl";
+"use client";
+
 import { getTurkeyPublicHolidayTooltip } from "@/lib/turkey-public-holidays";
+
+function resolveLocale(explicit?: string): string {
+  if (explicit && explicit.trim()) return explicit.trim();
+  if (typeof document !== "undefined") {
+    const lang = document.documentElement.lang?.trim();
+    if (lang) return lang.split("-")[0] || "tr";
+  }
+  return "tr";
+}
 
 export function holidayDayTitle(
   dateKey: string,
-  locale: string = "tr"
+  locale?: string
 ): string | undefined {
-  return getTurkeyPublicHolidayTooltip(dateKey, locale) ?? undefined;
+  return getTurkeyPublicHolidayTooltip(dateKey, resolveLocale(locale)) ?? undefined;
 }
 
 export function HolidayMarker({
   dateKey,
   tone = "default",
+  locale,
 }: {
   dateKey: string;
   tone?: "default" | "onDark";
+  locale?: string;
 }) {
-  const locale = useLocale();
-  const label = getTurkeyPublicHolidayTooltip(dateKey, locale);
+  // Admin paneli NextIntlProvider kullanmaz; useLocale() takvim açılınca sayfayı düşürüyordu.
+  const label = getTurkeyPublicHolidayTooltip(dateKey, resolveLocale(locale));
   if (!label) return null;
 
   return (
