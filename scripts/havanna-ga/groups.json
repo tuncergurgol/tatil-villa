@@ -1,0 +1,42 @@
+[
+  {
+    "id": "liqueur",
+    "name": {
+      "tr": "Likör",
+      "en": "Liqueur",
+      "ar": "ليكور"
+    },
+    "sort": 1,
+    "active": true
+  },
+  {
+    "id": "spirits",
+    "name": {
+      "tr": "Distile",
+      "en": "Spirits",
+      "ar": "مشروبات مقطرة"
+    },
+    "sort": 2,
+    "active": true
+  },
+  {
+    "id": "wine",
+    "name": {
+      "tr": "Şarap",
+      "en": "Wine",
+      "ar": "نبيذ"
+    },
+    "sort": 3,
+    "active": true
+  },
+  {
+    "id": "sampanya",
+    "name": {
+      "tr": "Şampanya",
+      "en": "Champagne",
+      "ar": "Şampanya"
+    },
+    "sort": 4,
+    "active": true
+  }
+]

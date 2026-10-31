@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Havanna Global · Giriş</title>
+    <link rel="icon" href="/logo-mark.png" type="image/png" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261031d" />
+  </head>
+  <body>
+    <div class="login-shell">
+      <div class="card login-card">
+        <img src="/logo.png" alt="Havanna Global" width="120" height="48" />
+
+        <div id="login-panel">
+          <h1>Yönetim girişi</h1>
+          <p class="muted">Panele erişmek için e-posta ve şifrenizi girin.</p>
+          <form id="login-form" class="login-form">
+            <label>
+              E-posta
+              <input
+                type="email"
+                name="email"
+                id="email"
+                autocomplete="username"
+                required
+                placeholder="ornek@havannaglobal.com"
+              />
+            </label>
+            <label>
+              Şifre
+              <input
+                type="password"
+                name="password"
+                id="password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <button type="submit" class="btn">Giriş yap</button>
+            <p id="login-error" class="error" hidden></p>
+            <p class="login-links">
+              <button type="button" id="forgot-open" class="link-btn">Şifremi unuttum</button>
+            </p>
+          </form>
+        </div>
+
+        <div id="forgot-panel" hidden>
+          <h1>Şifremi unuttum</h1>
+          <p class="muted">
+            Kayıtlı e-posta adresinizi yazın. Hesap varsa sıfırlama bağlantısı
+            oluşturulur.
+          </p>
+          <form id="forgot-form" class="login-form">
+            <label>
+              E-posta
+              <input type="email" name="forgotEmail" id="forgot-email" required />
+            </label>
+            <button type="submit" class="btn">Sıfırlama bağlantısı oluştur</button>
+            <p id="forgot-error" class="error" hidden></p>
+            <p id="forgot-ok" class="ok-msg" hidden></p>
+            <p id="forgot-link-wrap" class="reset-out" hidden>
+              <span class="muted">Sıfırlama bağlantısı (yerel / test):</span>
+              <a id="forgot-link" href="#"></a>
+            </p>
+            <p class="login-links">
+              <button type="button" id="forgot-back" class="link-btn">Girişe dön</button>
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+    <script src="/admin/login.js" defer></script>
+  </body>
+</html>

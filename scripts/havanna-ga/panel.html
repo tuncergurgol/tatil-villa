@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Havanna Global · Panel</title>
+    <link rel="icon" href="/logo-mark.png" type="image/png" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261031groups" />
+  </head>
+  <body>
+    <div id="app-view" class="cms" hidden>
+      <aside class="sidebar">
+        <div class="sidebar__brand">
+          <img src="/logo-mark.png" alt="" width="28" height="28" />
+          <div>
+            <strong>Havanna</strong>
+            <span>CMS</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Yönetim menüsü">
+          <p class="nav__section">Ürünler</p>
+          <button type="button" class="nav__link is-active" data-view="products">Ürünler</button>
+
+          <p class="nav__section">Site</p>
+          <button type="button" class="nav__link" data-view="settings">Site Ayarları</button>
+          <button type="button" class="nav__link" data-view="users">Kullanıcılar</button>
+        </nav>
+
+        <div class="sidebar__foot">
+          <a href="/" target="_blank" rel="noopener">Siteyi aç</a>
+          <button type="button" id="logout-btn" class="btn btn-ghost btn-block">Çıkış</button>
+        </div>
+      </aside>
+
+      <div class="cms__main">
+        <header class="topbar">
+          <div>
+            <h1 id="page-title">Ürünler</h1>
+            <p id="page-desc" class="muted">Portföydeki ürünleri ekleyin, düzenleyin veya silin.</p>
+          </div>
+          <span id="status-msg" class="status" hidden></span>
+        </header>
+
+        <main class="content">
+          <section id="view-products" class="view is-active" data-view-panel="products">
+            <div class="list-toolbar">
+              <div class="filter-tabs" data-filter-group="products" role="tablist">
+                <button type="button" class="filter-tab is-active" data-filter="active">Aktif</button>
+                <button type="button" class="filter-tab" data-filter="passive">Pasif</button>
+                <button type="button" class="filter-tab" data-filter="all">Tümü</button>
+              </div>
+              <label class="search-field">
+                <span class="sr-only">Ara</span>
+                <input
+                  type="search"
+                  id="product-search"
+                  placeholder="Ad, grup, alt grup veya kısa açıklama…"
+                  autocomplete="off"
+                />
+              </label>
+              <button type="button" id="product-new" class="btn">Yeni kayıt ekle</button>
+            </div>
+            <div class="products-layout">
+              <section class="card products-layout__list">
+                <div class="list-head">
+                  <h2>Ürün listesi</h2>
+                  <span id="product-count" class="muted"></span>
+                </div>
+                <div id="product-list" class="rows"></div>
+              </section>
+
+              <aside class="card products-layout__groups" aria-label="Ürün grupları">
+                <div class="list-head">
+                  <div>
+                    <h2>Ürün Grupları</h2>
+                    <span id="group-count" class="muted"></span>
+                  </div>
+                  <button type="button" id="group-new" class="btn sm">Grup ekle</button>
+                </div>
+                <div class="filter-tabs filter-tabs--compact" data-filter-group="groups" role="tablist">
+                  <button type="button" class="filter-tab is-active" data-filter="active">Aktif</button>
+                  <button type="button" class="filter-tab" data-filter="passive">Pasif</button>
+                  <button type="button" class="filter-tab" data-filter="all">Tümü</button>
+                </div>
+                <div id="group-list" class="rows groups-tree"></div>
+              </aside>
+            </div>
+          </section>
+
+          <section id="view-settings" class="view" data-view-panel="settings" hidden>
+            <section class="card">
+              <div class="card__head">
+                <h2>Site ayarları</h2>
+              </div>
+              <form id="settings-form" class="form-grid settings-grid">
+                <label>
+                  E-posta
+                  <input type="email" name="email" id="settings-email" />
+                </label>
+                <label>
+                  Telefon
+                  <input type="text" name="phone" id="settings-phone" placeholder="+90 ..." />
+                </label>
+                <label>
+                  KEP
+                  <input type="email" name="kep" id="settings-kep" />
+                </label>
+                <label>
+                  Web
+                  <input type="url" name="web" id="settings-web" />
+                </label>
+                <label class="full">
+                  Şirket merkezi
+                  <textarea name="hq" id="settings-hq" rows="2"></textarea>
+                </label>
+                <label class="full">
+                  Antalya depo
+                  <textarea name="warehouse" id="settings-warehouse" rows="2"></textarea>
+                </label>
+                <label>
+                  Vergi dairesi
+                  <input type="text" name="taxOffice" id="settings-tax-office" />
+                </label>
+                <label>
+                  Vergi no
+                  <input type="text" name="taxNumber" id="settings-tax-number" />
+                </label>
+                <label>
+                  MERSİS
+                  <input type="text" name="mersis" id="settings-mersis" />
+                </label>
+                <label>
+                  Footer kısa metin (TR)
+                  <input type="text" name="footerTagTr" id="settings-footer-tag" />
+                </label>
+                <label class="full">
+                  Hero açıklama (TR, boşsa sitedeki varsayılan kalır)
+                  <textarea name="heroLeadTr" id="settings-hero-lead" rows="3"></textarea>
+                </label>
+                <label class="full">
+                  Google Analytics ölçüm kimliği (GA4)
+                  <input
+                    type="text"
+                    name="googleAnalyticsId"
+                    id="settings-ga"
+                    placeholder="G-XXXXXXXXXX"
+                  />
+                </label>
+                <label class="full">
+                  Google Search Console doğrulama kodu
+                  <input
+                    type="text"
+                    name="googleSiteVerification"
+                    id="settings-gsc"
+                    placeholder="google-site-verification meta content değeri"
+                  />
+                </label>
+                <label class="full">
+                  Bing Webmaster doğrulama kodu
+                  <input
+                    type="text"
+                    name="bingSiteVerification"
+                    id="settings-bing"
+                    placeholder="msvalidate.01 meta content değeri"
+                  />
+                </label>
+                <div class="full form-actions">
+                  <button type="submit" class="btn">Ayarları kaydet</button>
+                </div>
+              </form>
+            </section>
+          </section>
+
+          <section id="view-users" class="view" data-view-panel="users" hidden>
+            <div class="list-toolbar">
+              <div class="filter-tabs" data-filter-group="users" role="tablist">
+                <button type="button" class="filter-tab is-active" data-filter="active">Aktif</button>
+                <button type="button" class="filter-tab" data-filter="passive">Pasif</button>
+                <button type="button" class="filter-tab" data-filter="all">Tümü</button>
+              </div>
+              <button type="button" id="user-new" class="btn">Yeni kayıt ekle</button>
+            </div>
+            <section class="card">
+              <div class="list-head">
+                <h2>Panel kullanıcıları</h2>
+                <span id="user-count" class="muted"></span>
+              </div>
+              <div id="user-list" class="rows"></div>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="product-dialog" class="modal modal--wide">
+      <form method="dialog" id="product-form" class="modal__panel">
+        <h2 id="product-dialog-title">Yeni kayıt ekle</h2>
+        <input type="hidden" name="id" id="product-id" />
+        <div class="modal-tabs" role="tablist">
+          <button type="button" class="modal-tab is-active" data-product-tab="general">Genel</button>
+          <button type="button" class="modal-tab" data-product-tab="seo">SEO</button>
+        </div>
+
+        <div class="tab-panel is-active" data-product-panel="general">
+          <div class="product-layout">
+            <div class="product-layout__main">
+              <label>
+                Ürün adı
+                <input type="text" name="name" id="product-name" required maxlength="120" placeholder="Örn. MOJU Nane" />
+              </label>
+              <label>
+                Ürün grubu
+                <select name="category" id="product-category" required></select>
+              </label>
+              <label>
+                Ürün alt grubu
+                <select name="subGroup" id="product-subgroup">
+                  <option value="">— Seçilmedi —</option>
+                </select>
+              </label>
+              <label>
+                Kısa açıklama
+                <input type="text" name="meta" id="product-meta" maxlength="160" placeholder="Örn. Premium vodka" />
+              </label>
+              <label>
+                Uzun açıklama
+                <textarea name="description" id="product-description" rows="6" placeholder="Ürünün detaylı açıklaması"></textarea>
+              </label>
+              <label class="check">
+                <input type="checkbox" name="active" id="product-active" checked />
+                Aktif
+              </label>
+            </div>
+
+            <aside class="product-layout__media">
+              <div class="media-panel">
+                <p class="media-panel__title">Görseller</p>
+                <div class="media-grid" id="product-media-list"></div>
+                <label class="media-upload">
+                  Resim ekle
+                  <input type="file" name="images" id="product-images" accept="image/jpeg,image/png,image/webp" multiple />
+                </label>
+                <span class="hint" id="product-image-hint">Yeni üründe en az 1 görsel zorunlu. Düzenlemede mevcutlar korunabilir.</span>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <div class="tab-panel" data-product-panel="seo" hidden>
+          <div class="seo-toolbar">
+            <p class="muted">SEO alanlarını yapay zeka ile otomatik doldurun.</p>
+            <button type="button" class="btn btn-ai" id="product-seo-ai">Yapay zeka ile doldur</button>
+          </div>
+          <div class="form-grid">
+            <label class="full">
+              SEO başlık
+              <input type="text" name="seoTitle" id="product-seo-title" maxlength="70" />
+            </label>
+            <label class="full">
+              SEO açıklama
+              <textarea name="seoDescription" id="product-seo-description" rows="3" maxlength="160"></textarea>
+            </label>
+            <label class="full">
+              Anahtar kelimeler
+              <input type="text" name="seoKeywords" id="product-seo-keywords" placeholder="virgülle ayırın" />
+            </label>
+            <label class="full">
+              SEO slug
+              <input type="text" name="seoSlug" id="product-seo-slug" maxlength="80" />
+            </label>
+          </div>
+        </div>
+
+        <p id="product-error" class="error" hidden></p>
+        <div class="modal__actions">
+          <button type="submit" class="btn btn-save" id="product-submit" value="save">Kaydet</button>
+          <button type="button" class="btn btn-close" id="product-close">Kapat</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="group-dialog" class="modal">
+      <form method="dialog" id="group-form" class="modal__panel">
+        <h2 id="group-dialog-title">Yeni kayıt ekle</h2>
+        <input type="hidden" name="originalId" id="group-original-id" />
+        <div class="form-grid">
+          <label>
+            Kimlik (slug)
+            <input type="text" name="id" id="group-id" required maxlength="40" placeholder="ornegin-likor" />
+          </label>
+          <label>
+            Sıra
+            <input type="number" name="sort" id="group-sort" min="1" max="99" value="1" />
+          </label>
+          <label>
+            Türkçe ad
+            <input type="text" name="nameTr" id="group-name-tr" required maxlength="60" />
+          </label>
+          <label>
+            English
+            <input type="text" name="nameEn" id="group-name-en" maxlength="60" />
+          </label>
+          <label>
+            العربية
+            <input type="text" name="nameAr" id="group-name-ar" maxlength="60" dir="rtl" />
+          </label>
+          <label class="check">
+            <input type="checkbox" name="active" id="group-active" checked />
+            Sitede göster (Aktif)
+          </label>
+          <div class="full subgroups-block">
+            <div class="subgroups-head">
+              <strong>Alt ürün grupları</strong>
+              <button type="button" class="btn btn-ghost sm" id="subgroup-add">
+                Alt grup ekle
+              </button>
+            </div>
+            <div id="group-subgroups" class="subgroups-editor"></div>
+            <p class="hint">Alt gruplar, ürün formunda bu gruba bağlı seçenek olarak görünür.</p>
+          </div>
+        </div>
+        <p id="group-error" class="error" hidden></p>
+        <div class="modal__actions">
+          <button type="submit" class="btn btn-save" id="group-submit" value="save">Kaydet</button>
+          <button type="button" class="btn btn-close" id="group-close">Kapat</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="user-dialog" class="modal">
+      <form method="dialog" id="user-form" class="modal__panel">
+        <h2 id="user-dialog-title">Yeni kayıt ekle</h2>
+        <input type="hidden" name="id" id="user-id" />
+        <div class="form-grid">
+          <label>
+            Ad soyad
+            <input type="text" name="name" id="user-name" required maxlength="80" />
+          </label>
+          <label>
+            E-posta
+            <input type="email" name="email" id="user-email" required maxlength="120" />
+          </label>
+          <label>
+            Rol
+            <select name="role" id="user-role">
+              <option value="admin">Yönetici</option>
+              <option value="editor">Editör</option>
+            </select>
+          </label>
+          <label class="check">
+            <input type="checkbox" name="active" id="user-active" checked />
+            Aktif
+          </label>
+          <label class="full">
+            Şifre
+            <input type="password" name="password" id="user-password" autocomplete="new-password" minlength="8" />
+            <span class="hint" id="user-password-hint">Yeni kullanıcıda zorunlu. Düzenlemede boş bırakılırsa değişmez.</span>
+          </label>
+        </div>
+        <p id="user-error" class="error" hidden></p>
+        <div class="modal__actions">
+          <button type="submit" class="btn btn-save" id="user-submit" value="save">Kaydet</button>
+          <button type="button" class="btn btn-close" id="user-close">Kapat</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/admin/panel.js?v=20261031groups" defer></script>
+  </body>
+</html>
