@@ -31,6 +31,18 @@ const nextConfig: NextConfig = {
     serverMinification: false,
     optimizePackageImports: ["lucide-react"],
     inlineCss: true,
+    serverActions: {
+      bodySizeLimit: "8mb",
+      allowedOrigins: [
+        "bont.tatildeyiz.com.tr",
+        "www.tatildeyiz.com.tr",
+        "tatildeyiz.com.tr",
+        "www.balayivillacisi.com",
+        "balayivillacisi.com",
+        "www.tatilvillacisi.com",
+        "tatilvillacisi.com",
+      ],
+    },
   },
   async headers() {
     const securityHeaders = [

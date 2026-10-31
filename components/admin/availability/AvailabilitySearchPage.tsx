@@ -13,10 +13,7 @@ import {
   Square,
   X,
 } from "lucide-react";
-import {
-  createPublicVillaShareLinkAction,
-  searchAvailabilityAction,
-} from "@/app/actions/admin/availability-search";
+import { createPublicVillaShareLinkAction } from "@/app/actions/admin/availability-search";
 import { lookupCustomerByPhoneAction } from "@/app/actions/admin/customers";
 import AvailabilityResultCard from "@/components/admin/availability/AvailabilityResultCard";
 import AmenityMultiSelect from "@/components/admin/availability/AmenityMultiSelect";
@@ -205,36 +202,51 @@ export default function AvailabilitySearchPage({
     setSelectedIds([]);
 
     startTransition(async () => {
-      const response = await searchAvailabilityAction({
-        phone,
-        guestName: guestName.trim(),
-        guestEmail: guestEmail.trim() || undefined,
-        contactChannelId,
-        checkIn,
-        checkOut,
-        adults: selectedGuestCount,
-        children: 0,
-        babies: 0,
-        budgetMin: null,
-        budgetMax: null,
-        regionSlugs,
-        amenityNames,
-        guestCounts,
-        flexibleDate,
-        fillEmptyDates,
-        sort,
-      });
+      try {
+        const res = await fetch("/api/admin/availability-search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone,
+            guestName: guestName.trim(),
+            guestEmail: guestEmail.trim() || undefined,
+            contactChannelId,
+            checkIn,
+            checkOut,
+            adults: selectedGuestCount,
+            children: 0,
+            babies: 0,
+            budgetMin: null,
+            budgetMax: null,
+            regionSlugs,
+            amenityNames,
+            guestCounts,
+            flexibleDate,
+            fillEmptyDates,
+            sort,
+          }),
+        });
 
-      if (response.error) {
-        setError(response.error);
+        const response = (await res.json()) as {
+          error?: string;
+          results?: AvailabilitySearchResultItem[];
+        };
+
+        if (!res.ok || response.error) {
+          setError(response.error ?? "Uygunluk araması başarısız");
+          setResults([]);
+          setProgress(100);
+          return;
+        }
+
+        setResults(sortResults(response.results ?? [], sort));
+        setProgress(100);
+        if (autoCollapse) setPanelOpen(false);
+      } catch {
+        setError("Uygunluk araması başarısız");
         setResults([]);
         setProgress(100);
-        return;
       }
-
-      setResults(sortResults(response.results ?? [], sort));
-      setProgress(100);
-      if (autoCollapse) setPanelOpen(false);
     });
   }
 

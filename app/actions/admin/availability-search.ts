@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import {
   getAvailabilitySearchPageData,
   searchAvailability,
+  slimAvailabilitySearchResults,
   type AvailabilitySearchFilters,
   type AvailabilitySearchResultItem,
   type AvailabilitySearchSort,
@@ -112,27 +113,13 @@ export async function searchAvailabilityAction(
       guestEmail: parsed.data.guestEmail,
     });
 
-    const enrichedResults = await Promise.all(
-      results.map(async (result) => {
-        const pricing = await resolveVillaStayQuote(
-          result.id,
-          result.checkIn,
-          result.checkOut
-        );
-        return {
-          ...result,
-          pricingContext: pricing
-            ? {
-                periodFees: pricing.periodFees,
-                heatedPools: pricing.heatedPools,
-                baseCapacity: pricing.baseCapacity,
-              }
-            : undefined,
-        };
-      })
-    );
-
-    return { success: true, results: enrichedResults };
+    // Her villada resolveVillaStayQuote çağırma — yüzlerce sonuçta
+    // timeout / transformAlgorithm hatasına yol açıyordu. Ücret bağlamı
+    // kartta ihtiyaç olduğunda lazy yüklenir.
+    return {
+      success: true,
+      results: slimAvailabilitySearchResults(results),
+    };
   } catch (error) {
     return {
       error:

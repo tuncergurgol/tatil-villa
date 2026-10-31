@@ -103,6 +103,21 @@ export type AvailabilitySearchPageData = {
   amenities: { id: string; name: string }[];
 };
 
+/** Liste yanıtını küçült: Server Action / JSON transfer hatasını önler. */
+export function slimAvailabilitySearchResults(
+  results: AvailabilitySearchResultItem[]
+): AvailabilitySearchResultItem[] {
+  return results.map((result) => ({
+    ...result,
+    pricingContext: undefined,
+    quote: {
+      ...result.quote,
+      nightLines: [],
+      missingNightKeys: [],
+    },
+  }));
+}
+
 async function resolveRegionIds(slugs: string[]): Promise<string[]> {
   if (slugs.length === 0) return [];
 
