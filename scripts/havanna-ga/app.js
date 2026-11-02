@@ -48,6 +48,7 @@
       "catalog.hint": "PDF sunum",
       "refs.eyebrow": "Otel referansları",
       "refs.title": "Otelcilik sektöründeki deneyimimiz",
+      "refs.place": "Antalya / Türkiye",
       "refs.lede":
         "Türkiye’de ürünlerimizin ulaştığı otel markalarından seçmeler.",
       "refs.note":
@@ -205,6 +206,7 @@
       "catalog.hint": "PDF presentation",
       "refs.eyebrow": "Hotel references",
       "refs.title": "Our hospitality experience",
+      "refs.place": "Antalya / Turkey",
       "refs.lede":
         "A selection of hotel brands in Turkey where our products are present.",
       "refs.note":
@@ -362,6 +364,7 @@
       "catalog.hint": "عرض PDF",
       "refs.eyebrow": "مراجع الفنادق",
       "refs.title": "خبرتنا في قطاع الفنادق",
+      "refs.place": "أنطاليا / تركيا",
       "refs.lede": "اختيارات من علامات الفنادق في تركيا التي تصل إليها منتجاتنا.",
       "refs.note":
         "رابط أنطاليا–دبي: يعمل Rixos وKempinski في الوجهتين. توفر هذه الشبكة نقطة تواصل لشراكات جديدة في دبي.",
