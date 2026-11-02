@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Havanna Global · Panel</title>
     <link rel="icon" href="/logo-mark.png" type="image/png" />
-    <link rel="stylesheet" href="/admin/admin.css?v=20261102groups" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261102notice" />
   </head>
   <body>
     <div id="app-view" class="cms" hidden>
@@ -386,12 +386,14 @@
       <div class="notice__backdrop" data-notice-close></div>
       <div class="notice__panel" role="dialog" aria-modal="true" aria-labelledby="notice-text">
         <p id="notice-text"></p>
+        <p id="notice-list-label" class="notice__label" hidden>Bağlı ürünler</p>
+        <ul id="notice-list" class="notice__list" hidden></ul>
         <div class="notice__actions">
           <button type="button" class="btn" id="notice-ok">Tamam</button>
         </div>
       </div>
     </div>
 
-    <script src="/admin/panel.js?v=20261102groups" defer></script>
+    <script src="/admin/panel.js?v=20261102notice" defer></script>
   </body>
 </html>

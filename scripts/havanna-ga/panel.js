@@ -623,12 +623,26 @@
     );
   }
 
-  function showNotice(text) {
+  function showNotice(text, items) {
     const notice = document.getElementById("notice");
     const textEl = document.getElementById("notice-text");
     const ok = document.getElementById("notice-ok");
+    const listEl = document.getElementById("notice-list");
+    const listLabel = document.getElementById("notice-list-label");
     if (!notice || !textEl || !ok) return Promise.resolve();
     textEl.textContent = text;
+    const names = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (listEl) {
+      listEl.replaceChildren(
+        ...names.map((name) => {
+          const li = document.createElement("li");
+          li.textContent = name;
+          return li;
+        })
+      );
+      listEl.hidden = names.length === 0;
+    }
+    if (listLabel) listLabel.hidden = names.length === 0;
     notice.hidden = false;
     ok.focus();
     return new Promise((resolve) => {
@@ -891,8 +905,13 @@
       const used = productsUsingGroup(id);
       const name = groups.find((g) => g.id === id)?.name?.tr || id;
       if (used.length) {
+        const names = used
+          .map((p) => p.name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, "tr"));
         await showNotice(
-          `"${name}" grubu ${used.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`
+          `"${name}" grubu ${used.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`,
+          names
         );
         return;
       }
