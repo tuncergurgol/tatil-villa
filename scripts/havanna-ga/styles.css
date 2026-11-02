@@ -496,9 +496,10 @@ body.age-locked .site-wrap {
 }
 
 .network-map {
+  position: relative;
   margin: 0;
   border: 1px solid var(--line);
-  background: #fff;
+  background: #f5f1e9;
   overflow: hidden;
 }
 
@@ -506,6 +507,95 @@ body.age-locked .site-wrap {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.network-map__ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.network-map__eyebrow,
+.network-map__title,
+.network-map__sub,
+.network-map__legend,
+.map-pin {
+  position: absolute;
+  margin: 0;
+  color: var(--navy);
+}
+
+.network-map__eyebrow {
+  left: 5%;
+  top: 6.4%;
+  color: var(--gold);
+  font-size: clamp(8px, 1.05vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.network-map__title {
+  left: 5%;
+  top: 11.5%;
+  max-width: 62%;
+  font-size: clamp(16px, 2.35vw, 34px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.network-map__sub {
+  left: 5%;
+  top: 21.2%;
+  max-width: 58%;
+  color: var(--muted);
+  font-size: clamp(9px, 1.05vw, 14px);
+}
+
+.map-pin {
+  font-size: clamp(9px, 1.05vw, 15px);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.map-pin--mx { left: 7.2%; top: 32.5%; }
+.map-pin--fr { left: 41.5%; top: 38.2%; }
+.map-pin--es { left: 32.8%; top: 62.5%; }
+.map-pin--ua { left: 69.5%; top: 37.6%; }
+.map-pin--ge { left: 85.2%; top: 53.8%; }
+
+.map-pin--ay {
+  left: 71.2%;
+  top: 63.5%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05em;
+}
+
+.map-pin--ay strong {
+  font-size: 1.05em;
+  letter-spacing: 0.04em;
+}
+
+.map-pin--ay small,
+.map-pin--ay em {
+  font-style: normal;
+  font-weight: 650;
+  font-size: 0.72em;
+  letter-spacing: 0.04em;
+}
+
+.network-map__legend {
+  left: 5%;
+  top: 81%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em 0.9em;
+  max-width: 70%;
+  font-size: clamp(8px, 0.95vw, 13px);
+  font-weight: 650;
 }
 
 .refs-grid {

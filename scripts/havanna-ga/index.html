@@ -80,7 +80,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20261102phone" />
+    <link rel="stylesheet" href="styles.css?v=20261102lang" />
   </head>
   <body class="age-locked">
     <div
@@ -228,12 +228,36 @@
             </div>
             <figure class="network-map">
               <img
-                src="images/site/world-map.png"
+                id="network-map"
+                src="images/site/world-map-blank.png"
                 alt="Havanna Global uluslararası tedarik ağı haritası"
                 width="960"
                 height="540"
                 loading="lazy"
               />
+              <div class="network-map__ui">
+                <p class="network-map__eyebrow" data-i18n="network.eyebrow">Uluslararası kaynaklar</p>
+                <p class="network-map__title" data-i18n="network.title">Altı ülkeden Antalya’ya</p>
+                <p class="network-map__sub" data-i18n="network.mapSub">Uluslararası tedarik ağı · Türkiye / Antalya merkezi</p>
+                <span class="map-pin map-pin--mx" data-i18n="network.pin.mx">Meksika</span>
+                <span class="map-pin map-pin--fr" data-i18n="network.pin.fr">Fransa</span>
+                <span class="map-pin map-pin--es" data-i18n="network.pin.es">İspanya</span>
+                <span class="map-pin map-pin--ua" data-i18n="network.pin.ua">Ukrayna</span>
+                <span class="map-pin map-pin--ge" data-i18n="network.pin.ge">Gürcistan</span>
+                <span class="map-pin map-pin--ay">
+                  <strong data-i18n="network.pin.ay">ANTALYA</strong>
+                  <small data-i18n="network.pin.hub">TÜRKİYE / MERKEZ</small>
+                  <em data-i18n="network.pin.cy">Kıbrıs</em>
+                </span>
+                <p class="network-map__legend">
+                  <span data-i18n="network.c1">İspanya · Viski</span>
+                  <span data-i18n="network.c2">Fransa · Votka</span>
+                  <span data-i18n="network.c3">Meksika · Tekila</span>
+                  <span data-i18n="network.c4">Gürcistan · Şarap</span>
+                  <span data-i18n="network.c5">Kıbrıs · Likör</span>
+                  <span data-i18n="network.c6">Ukrayna · Votka</span>
+                </p>
+              </div>
             </figure>
           </div>
         </section>
@@ -562,6 +586,7 @@
       </div>
     </div>
 
-    <script src="app.js?v=20261102phone" defer></script>
+    <script src="product-labels.js?v=20261102lang" defer></script>
+    <script src="app.js?v=20261102lang" defer></script>
   </body>
 </html>

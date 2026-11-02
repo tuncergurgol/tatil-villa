@@ -34,6 +34,16 @@
       "network.c4": "Gürcistan · Şarap",
       "network.c5": "Kıbrıs · Likör",
       "network.c6": "Ukrayna · Votka",
+      "network.mapSub": "Uluslararası tedarik ağı · Türkiye / Antalya merkezi",
+      "network.pin.mx": "Meksika",
+      "network.pin.fr": "Fransa",
+      "network.pin.es": "İspanya",
+      "network.pin.ua": "Ukrayna",
+      "network.pin.ge": "Gürcistan",
+      "network.pin.ay": "ANTALYA",
+      "network.pin.hub": "TÜRKİYE / MERKEZ",
+      "network.pin.cy": "Kıbrıs",
+      "network.mapAlt": "Havanna Global uluslararası tedarik ağı haritası",
       "catalog.cta": "Dijital kataloğu indir",
       "catalog.hint": "PDF sunum",
       "refs.eyebrow": "Otel referansları",
@@ -181,6 +191,16 @@
       "network.c4": "Georgia · Wine",
       "network.c5": "Cyprus · Liqueur",
       "network.c6": "Ukraine · Vodka",
+      "network.mapSub": "International supply network · Turkey / Antalya hub",
+      "network.pin.mx": "Mexico",
+      "network.pin.fr": "France",
+      "network.pin.es": "Spain",
+      "network.pin.ua": "Ukraine",
+      "network.pin.ge": "Georgia",
+      "network.pin.ay": "ANTALYA",
+      "network.pin.hub": "TURKEY / HUB",
+      "network.pin.cy": "Cyprus",
+      "network.mapAlt": "Havanna Global international supply map",
       "catalog.cta": "Download digital catalogue",
       "catalog.hint": "PDF presentation",
       "refs.eyebrow": "Hotel references",
@@ -328,6 +348,16 @@
       "network.c4": "جورجيا · نبيذ",
       "network.c5": "قبرص · ليكور",
       "network.c6": "أوكرانيا · فودكا",
+      "network.mapSub": "شبكة توريد دولية · تركيا / مركز أنطاليا",
+      "network.pin.mx": "المكسيك",
+      "network.pin.fr": "فرنسا",
+      "network.pin.es": "إسبانيا",
+      "network.pin.ua": "أوكرانيا",
+      "network.pin.ge": "جورجيا",
+      "network.pin.ay": "أنطاليا",
+      "network.pin.hub": "تركيا / المركز",
+      "network.pin.cy": "قبرص",
+      "network.mapAlt": "خريطة شبكة التوريد الدولية لـ Havanna Global",
       "catalog.cta": "تحميل الكتالوج الرقمي",
       "catalog.hint": "عرض PDF",
       "refs.eyebrow": "مراجع الفنادق",
@@ -539,7 +569,8 @@
 
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const settingKey = el.getAttribute("data-setting");
-      if (settingKey && siteSettings?.[settingKey]) return;
+      const turkishOnly = settingKey === "heroLeadTr" || settingKey === "footerTagTr";
+      if (settingKey && siteSettings?.[settingKey] && !(turkishOnly && currentLang !== "tr")) return;
       if (el.hasAttribute("data-setting-tax") && (siteSettings?.taxOffice || siteSettings?.taxNumber))
         return;
       if (
@@ -554,6 +585,9 @@
     sortFlavorList();
 
     if (pack["doc.title"]) document.title = pack["doc.title"];
+
+    const map = document.getElementById("network-map");
+    if (map && pack["network.mapAlt"]) map.alt = pack["network.mapAlt"];
 
     document.querySelectorAll(".lang-switch [data-lang]").forEach((btn) => {
       btn.setAttribute(
@@ -696,6 +730,7 @@
 
     document.querySelectorAll("[data-setting]").forEach((el) => {
       const key = el.getAttribute("data-setting");
+      if ((key === "heroLeadTr" || key === "footerTagTr") && currentLang !== "tr") return;
       const value = settings[key];
       if (value) el.textContent = value;
     });
@@ -796,7 +831,9 @@
       .map((p) => {
         const group = catalogGroups.find((g) => g.id === p.category);
         const label = groupName(group) || t(p.labelKey || `cat.${p.category}`, p.category);
-        const meta = p.meta || "";
+        const localize = window.HavannaLabels?.localize || ((_lang, text) => text);
+        const name = localize(currentLang, p.name);
+        const meta = localize(currentLang, p.meta || "");
         const href = productUrl(p.id);
         const spiritSub = spiritSubIdOf(p);
         return `<a class="product" href="${escapeHtml(href)}" data-cat="${escapeHtml(
@@ -805,11 +842,11 @@
           <div class="product__media">
             <img src="${escapeHtml(
               (Array.isArray(p.images) && p.images[0]) || p.image || ""
-            )}" alt="${escapeHtml(p.name)}" loading="lazy" />
+            )}" alt="${escapeHtml(name)}" loading="lazy" />
           </div>
           <div class="product__body">
             <span class="product__cat">${escapeHtml(label)}</span>
-            <h3 class="product__name">${escapeHtml(p.name)}</h3>
+            <h3 class="product__name">${escapeHtml(name)}</h3>
             <p class="product__meta">${escapeHtml(meta)}</p>
           </div>
         </a>`;
