@@ -47,6 +47,10 @@
       title: "Site Ayarları",
       desc: "İletişim ve kurumsal bilgileri güncelleyin.",
     },
+    inquiries: {
+      title: "İletişim formları",
+      desc: "Sitedeki iletişim formundan gelen talepler.",
+    },
     users: {
       title: "Kullanıcılar",
       desc: "Panel giriş hesaplarını yönetin.",
@@ -516,6 +520,35 @@
     fillSettings(data.settings || {});
   }
 
+  async function loadInquiries() {
+    const listEl = document.getElementById("inquiry-list");
+    const countEl = document.getElementById("inquiry-count");
+    if (!listEl) return;
+    const data = await api("/api/admin/inquiries");
+    const list = data.inquiries || [];
+    if (countEl) countEl.textContent = list.length ? `${list.length} kayıt` : "";
+    if (!list.length) {
+      listEl.innerHTML = `<p class="muted">Henüz form gönderilmedi.</p>`;
+      return;
+    }
+    listEl.innerHTML = list
+      .map((item) => {
+        const when = item.createdAt
+          ? new Date(item.createdAt).toLocaleString("tr-TR")
+          : "";
+        const meta = [item.company, item.email, item.phone].filter(Boolean).join(" · ");
+        return `<article class="inquiry">
+          <div class="inquiry__head">
+            <strong>${escapeHtml(item.name || "")}</strong>
+            <time>${escapeHtml(when)}</time>
+          </div>
+          <p class="inquiry__meta">${escapeHtml(meta)}</p>
+          <p class="inquiry__message">${escapeHtml(item.message || "")}</p>
+        </article>`;
+      })
+      .join("");
+  }
+
   async function loadUsers() {
     const data = await api("/api/admin/users");
     users = data.users || [];
@@ -532,6 +565,9 @@
     const meta = pageMeta[view] || pageMeta.products;
     pageTitle.textContent = meta.title;
     pageDesc.textContent = meta.desc;
+    if (view === "inquiries") {
+      loadInquiries().catch((err) => flash(err.message, true));
+    }
   }
 
   async function boot() {

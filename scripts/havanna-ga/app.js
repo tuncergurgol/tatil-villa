@@ -127,7 +127,23 @@
       "contact.asideTitle": "Kurumsal satış",
       "contact.asideText":
         "Otel zincirleri, satın alma departmanları ve F&B ekipleri için özel teklif.",
-      "contact.asideCta": "E-posta gönderin",
+      "contact.asideCta": "İletişim formu",
+      "form.eyebrow": "İletişim",
+      "form.title": "İletişim formu",
+      "form.lede": "Portföy, tadım veya tedarik talebinizi bırakın. Size dönüş yapalım.",
+      "form.name": "Ad soyad",
+      "form.company": "Firma",
+      "form.email": "E-posta",
+      "form.phone": "Telefon",
+      "form.message": "Mesaj",
+      "form.submit": "Gönder",
+      "form.cancel": "Vazgeç",
+      "form.close": "Kapat",
+      "form.sending": "Gönderiliyor…",
+      "form.success": "Mesajınız alındı. En kısa sürede size dönüş yapacağız.",
+      "form.error": "Mesaj gönderilemedi. Lütfen tekrar deneyin.",
+      "form.invalid": "Lütfen ad soyad, e-posta ve mesaj alanlarını doldurun.",
+      "form.rate": "Çok fazla deneme. Bir süre sonra tekrar deneyin.",
       "footer.tag": "Alkollü içecek ithalatı",
       "footer.legal":
         "18 yaş altı kişilere alkollü içecek satışı yasaktır. Lütfen sorumlu tüketin.",
@@ -258,7 +274,23 @@
       "contact.asideTitle": "Corporate sales",
       "contact.asideText":
         "Dedicated proposals for hotel groups, purchasing departments and F&B teams.",
-      "contact.asideCta": "Send an email",
+      "contact.asideCta": "Contact form",
+      "form.eyebrow": "Contact",
+      "form.title": "Contact form",
+      "form.lede": "Leave a portfolio, tasting or supply request. We will get back to you.",
+      "form.name": "Full name",
+      "form.company": "Company",
+      "form.email": "Email",
+      "form.phone": "Phone",
+      "form.message": "Message",
+      "form.submit": "Send",
+      "form.cancel": "Cancel",
+      "form.close": "Close",
+      "form.sending": "Sending…",
+      "form.success": "Your message has been received. We will get back to you shortly.",
+      "form.error": "The message could not be sent. Please try again.",
+      "form.invalid": "Please fill in your name, email and message.",
+      "form.rate": "Too many attempts. Please try again later.",
       "footer.tag": "Alcoholic beverage import",
       "footer.legal":
         "Sale of alcoholic beverages to persons under 18 is prohibited. Please drink responsibly.",
@@ -388,7 +420,23 @@
       "contact.asideTitle": "مبيعات مؤسسية",
       "contact.asideText":
         "عروض مخصصة لسلاسل الفنادق وأقسام المشتريات وفرق الأغذية والمشروبات.",
-      "contact.asideCta": "أرسل بريدًا",
+      "contact.asideCta": "نموذج التواصل",
+      "form.eyebrow": "تواصل",
+      "form.title": "نموذج التواصل",
+      "form.lede": "اترك طلب المحفظة أو التذوق أو التوريد. سنعاود التواصل معك.",
+      "form.name": "الاسم",
+      "form.company": "الشركة",
+      "form.email": "البريد",
+      "form.phone": "الهاتف",
+      "form.message": "الرسالة",
+      "form.submit": "إرسال",
+      "form.cancel": "إلغاء",
+      "form.close": "إغلاق",
+      "form.sending": "جارٍ الإرسال…",
+      "form.success": "تم استلام رسالتك. سنتواصل معك في أقرب وقت.",
+      "form.error": "تعذر إرسال الرسالة. يُرجى المحاولة مرة أخرى.",
+      "form.invalid": "يُرجى تعبئة الاسم والبريد والرسالة.",
+      "form.rate": "محاولات كثيرة. يُرجى المحاولة لاحقًا.",
       "footer.tag": "استيراد مشروبات كحولية",
       "footer.legal":
         "يُحظر بيع المشروبات الكحولية لمن هم دون 18 عامًا. يُرجى الشرب بمسؤولية.",
@@ -473,6 +521,11 @@
     const html = document.documentElement;
     html.lang = currentLang;
     html.dir = currentLang === "ar" ? "rtl" : "ltr";
+
+    document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+      const key = el.getAttribute("data-i18n-aria");
+      if (pack[key] != null) el.setAttribute("aria-label", pack[key]);
+    });
 
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const settingKey = el.getAttribute("data-setting");
@@ -892,6 +945,108 @@
     applyFilters();
   }
 
+  function initContactForm() {
+    const modal = document.getElementById("contact-modal");
+    const form = document.getElementById("contact-form");
+    const openBtn = document.getElementById("open-contact-form");
+    const fields = document.getElementById("contact-form-fields");
+    const actions = document.getElementById("contact-form-actions");
+    const errorEl = document.getElementById("contact-form-error");
+    const successEl = document.getElementById("contact-form-success");
+    if (!modal || !form || !openBtn) return;
+
+    const submitBtn = form.querySelector('[type="submit"]');
+
+    function showError(message) {
+      if (!errorEl) return;
+      errorEl.hidden = false;
+      errorEl.textContent = message;
+    }
+
+    function openModal() {
+      if (fields) fields.hidden = false;
+      if (actions) actions.hidden = false;
+      if (errorEl) errorEl.hidden = true;
+      if (successEl) successEl.hidden = true;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = t("form.submit", "Gönder");
+      }
+      modal.hidden = false;
+      document.body.classList.add("contact-open");
+      form.querySelector("[name=name]")?.focus();
+    }
+
+    function closeModal() {
+      modal.hidden = true;
+      document.body.classList.remove("contact-open");
+    }
+
+    openBtn.addEventListener("click", openModal);
+    modal.querySelectorAll("[data-contact-close]").forEach((el) => {
+      el.addEventListener("click", closeModal);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) closeModal();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (errorEl) errorEl.hidden = true;
+
+      const data = new FormData(form);
+      const payload = {
+        name: String(data.get("name") || "").trim(),
+        company: String(data.get("company") || "").trim(),
+        email: String(data.get("email") || "").trim(),
+        phone: String(data.get("phone") || "").trim(),
+        message: String(data.get("message") || "").trim(),
+        website: String(data.get("website") || "").trim(),
+      };
+
+      if (payload.name.length < 2 || !payload.email.includes("@") || payload.message.length < 5) {
+        showError(t("form.invalid", "Lütfen ad soyad, e-posta ve mesaj alanlarını doldurun."));
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = t("form.sending", "Gönderiliyor…");
+      }
+
+      try {
+        const res = await fetch("/api/contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const key = body.error === "rate" ? "form.rate" : body.error === "invalid" ? "form.invalid" : "form.error";
+          showError(t(key, "Mesaj gönderilemedi. Lütfen tekrar deneyin."));
+          return;
+        }
+        form.reset();
+        if (fields) fields.hidden = true;
+        if (actions) actions.hidden = true;
+        if (successEl) {
+          successEl.hidden = false;
+          successEl.textContent = t(
+            "form.success",
+            "Mesajınız alındı. En kısa sürede size dönüş yapacağız."
+          );
+        }
+      } catch {
+        showError(t("form.error", "Mesaj gönderilemedi. Lütfen tekrar deneyin."));
+      } finally {
+        if (submitBtn && successEl?.hidden !== false) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = t("form.submit", "Gönder");
+        }
+      }
+    });
+  }
+
   function initMenu() {
     const toggle = document.getElementById("menu-toggle");
     const nav = document.getElementById("main-nav");
@@ -925,5 +1080,6 @@
   initLang();
   initAgeGate();
   initMenu();
+  initContactForm();
   loadProducts();
 })();

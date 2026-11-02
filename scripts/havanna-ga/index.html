@@ -80,7 +80,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20261031webp-bg" />
+    <link rel="stylesheet" href="styles.css?v=20261102contact" />
   </head>
   <body class="age-locked">
     <div
@@ -444,9 +444,9 @@
                   Otel zincirleri, satın alma departmanları ve F&amp;B ekipleri için özel teklif.
                 </p>
               </div>
-              <a class="btn btn-primary" data-setting-mail="email" href="mailto:info@havannaglobal.com.tr" data-i18n="contact.asideCta">
-                E-posta gönderin
-              </a>
+              <button type="button" class="btn btn-primary" id="open-contact-form" data-i18n="contact.asideCta">
+                İletişim formu
+              </button>
             </aside>
           </div>
         </section>
@@ -472,6 +472,67 @@
       </footer>
     </div>
 
-    <script src="app.js?v=20261102network" defer></script>
+    <div id="contact-modal" class="contact-modal" hidden>
+      <div class="contact-modal__backdrop" data-contact-close></div>
+      <div
+        class="contact-modal__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contact-form-title"
+      >
+        <button
+          type="button"
+          class="contact-modal__close"
+          data-contact-close
+          data-i18n-aria="form.close"
+          aria-label="Kapat"
+        >
+          ×
+        </button>
+        <p class="eyebrow" data-i18n="form.eyebrow">İletişim</p>
+        <h2 id="contact-form-title" data-i18n="form.title">İletişim formu</h2>
+        <p class="contact-modal__lede" data-i18n="form.lede">
+          Portföy, tadım veya tedarik talebinizi bırakın. Size dönüş yapalım.
+        </p>
+        <form id="contact-form" class="contact-form" novalidate>
+          <div id="contact-form-fields" class="contact-form__fields">
+            <label>
+              <span data-i18n="form.name">Ad soyad</span>
+              <input name="name" type="text" required maxlength="80" autocomplete="name" />
+            </label>
+            <label>
+              <span data-i18n="form.company">Firma</span>
+              <input name="company" type="text" maxlength="120" autocomplete="organization" />
+            </label>
+            <label>
+              <span data-i18n="form.email">E-posta</span>
+              <input name="email" type="email" required maxlength="120" autocomplete="email" />
+            </label>
+            <label>
+              <span data-i18n="form.phone">Telefon</span>
+              <input name="phone" type="tel" maxlength="40" autocomplete="tel" />
+            </label>
+            <label>
+              <span data-i18n="form.message">Mesaj</span>
+              <textarea name="message" required maxlength="2000" rows="5"></textarea>
+            </label>
+            <label class="contact-hp" aria-hidden="true">
+              <span>Website</span>
+              <input name="website" type="text" tabindex="-1" autocomplete="off" />
+            </label>
+          </div>
+          <p id="contact-form-error" class="contact-form__error" hidden></p>
+          <p id="contact-form-success" class="contact-form__success" hidden></p>
+          <div class="contact-modal__actions" id="contact-form-actions">
+            <button type="button" class="btn btn-ghost-dark" data-contact-close data-i18n="form.cancel">
+              Vazgeç
+            </button>
+            <button type="submit" class="btn btn-primary" data-i18n="form.submit">Gönder</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="app.js?v=20261102contact" defer></script>
   </body>
 </html>

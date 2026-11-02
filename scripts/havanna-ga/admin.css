@@ -803,6 +803,41 @@ textarea {
   grid-template-columns: 1fr auto;
 }
 
+.inquiry-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.inquiry {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.inquiry__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+}
+
+.inquiry__head time,
+.inquiry__meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.inquiry__meta,
+.inquiry__message {
+  margin: 0;
+}
+
+.inquiry__message {
+  white-space: pre-wrap;
+}
+
 .row img {
   width: 64px;
   height: 80px;

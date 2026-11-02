@@ -34,6 +34,7 @@ const GROUPS_FILE = path.join(ROOT, "data", "groups.json");
 const SETTINGS_FILE = path.join(ROOT, "data", "settings.json");
 const USERS_FILE = path.join(ROOT, "data", "users.json");
 const RESET_FILE = path.join(ROOT, "data", "password-resets.json");
+const INQUIRIES_FILE = path.join(ROOT, "data", "inquiries.json");
 const UPLOAD_DIR = path.join(ROOT, "images", "uploads");
 const PORT = Number(process.env.PORT || 5177);
 const SESSION_SECRET =
@@ -98,6 +99,7 @@ ensureJsonFile(GROUPS_FILE, DEFAULT_GROUPS);
 ensureJsonFile(SETTINGS_FILE, DEFAULT_SETTINGS);
 ensureJsonFile(USERS_FILE, []);
 ensureJsonFile(RESET_FILE, []);
+ensureJsonFile(INQUIRIES_FILE, []);
 
 const app = express();
 app.disable("x-powered-by");
@@ -281,6 +283,46 @@ function readSettings() {
 
 function writeSettings(settings) {
   writeJson(SETTINGS_FILE, settings);
+}
+
+function readInquiries() {
+  const data = readJson(INQUIRIES_FILE, []);
+  return Array.isArray(data) ? data : [];
+}
+
+function writeInquiries(list) {
+  writeJson(INQUIRIES_FILE, list);
+}
+
+function clipText(value, max) {
+  return String(value || "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .trim()
+    .slice(0, max);
+}
+
+function isContactEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+const contactAttempts = new Map();
+function rateLimitContact(ip) {
+  const now = Date.now();
+  const row = contactAttempts.get(ip) || { count: 0, start: now };
+  if (now - row.start > 15 * 60 * 1000) {
+    row.count = 0;
+    row.start = now;
+  }
+  row.count += 1;
+  contactAttempts.set(ip, row);
+  return row.count <= 8;
+}
+
+function clientIp(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "")
+    .split(",")[0]
+    .trim();
+  return forwarded || req.ip || req.socket.remoteAddress || "unknown";
 }
 
 function hashPassword(password) {
@@ -1260,6 +1302,49 @@ app.put("/api/admin/settings", requireAdmin, (req, res) => {
   };
   writeSettings(settings);
   res.json({ settings });
+});
+
+app.post("/api/contact", (req, res) => {
+  const ip = clientIp(req);
+  if (!rateLimitContact(ip)) {
+    res.status(429).json({ error: "rate" });
+    return;
+  }
+
+  const body = req.body || {};
+  if (clipText(body.website, 200)) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const name = clipText(body.name, 80);
+  const company = clipText(body.company, 120);
+  const email = clipText(body.email, 120).toLowerCase();
+  const phone = clipText(body.phone, 40);
+  const message = clipText(body.message, 2000);
+
+  if (name.length < 2 || !isContactEmail(email) || message.length < 5) {
+    res.status(400).json({ error: "invalid" });
+    return;
+  }
+
+  const entry = {
+    id: crypto.randomBytes(8).toString("hex"),
+    name,
+    company,
+    email,
+    phone,
+    message,
+    createdAt: new Date().toISOString(),
+  };
+  const list = readInquiries();
+  list.unshift(entry);
+  writeInquiries(list.slice(0, 500));
+  res.status(201).json({ ok: true });
+});
+
+app.get("/api/admin/inquiries", requireAdmin, (_req, res) => {
+  res.json({ inquiries: readInquiries() });
 });
 
 app.use("/admin", express.static(path.join(ROOT, "admin"), { index: "index.html" }));

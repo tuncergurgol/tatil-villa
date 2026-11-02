@@ -915,6 +915,147 @@ a.product:hover {
   font-size: 0.95rem;
 }
 
+.contact-aside .btn {
+  width: 100%;
+}
+
+.contact-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.contact-modal[hidden] {
+  display: none;
+}
+
+.contact-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 21, 36, 0.72);
+}
+
+.contact-modal__panel {
+  position: relative;
+  width: min(100%, 520px);
+  max-height: min(92vh, 760px);
+  overflow: auto;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--gold-dim);
+  padding: 1.75rem 1.5rem 1.4rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.contact-modal__close {
+  position: absolute;
+  top: 0.45rem;
+  inset-inline-end: 0.45rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.contact-modal__lede {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+}
+
+.contact-form {
+  margin-top: 1.1rem;
+}
+
+.contact-form__fields {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.contact-form__fields[hidden],
+.contact-modal__actions[hidden],
+.contact-form__error[hidden],
+.contact-form__success[hidden] {
+  display: none !important;
+}
+
+.contact-form label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.7rem 0.75rem;
+}
+
+.contact-form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  outline: 2px solid var(--gold-dim);
+  border-color: var(--gold);
+}
+
+.contact-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.contact-form__error,
+.contact-form__success {
+  margin: 0.85rem 0 0;
+  font-size: 0.92rem;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+
+.contact-form__error {
+  color: #9b2c2c;
+}
+
+.contact-form__success {
+  color: var(--navy);
+}
+
+.contact-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+body.contact-open {
+  overflow: hidden;
+}
+
 /* ——— Footer ——— */
 .site-footer {
   background: var(--navy-mid);

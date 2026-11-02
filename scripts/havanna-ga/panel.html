@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Havanna Global · Panel</title>
     <link rel="icon" href="/logo-mark.png" type="image/png" />
-    <link rel="stylesheet" href="/admin/admin.css?v=20261031groups" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261102contact" />
   </head>
   <body>
     <div id="app-view" class="cms" hidden>
@@ -25,6 +25,7 @@
 
           <p class="nav__section">Site</p>
           <button type="button" class="nav__link" data-view="settings">Site Ayarları</button>
+          <button type="button" class="nav__link" data-view="inquiries">İletişim formları</button>
           <button type="button" class="nav__link" data-view="users">Kullanıcılar</button>
         </nav>
 
@@ -170,6 +171,16 @@
                   <button type="submit" class="btn">Ayarları kaydet</button>
                 </div>
               </form>
+            </section>
+          </section>
+
+          <section id="view-inquiries" class="view" data-view-panel="inquiries" hidden>
+            <section class="card">
+              <div class="list-head">
+                <h2>Gelen formlar</h2>
+                <span id="inquiry-count" class="muted"></span>
+              </div>
+              <div id="inquiry-list" class="inquiry-list"></div>
             </section>
           </section>
 
@@ -367,6 +378,6 @@
       </form>
     </dialog>
 
-    <script src="/admin/panel.js?v=20261031groups" defer></script>
+    <script src="/admin/panel.js?v=20261102contact" defer></script>
   </body>
 </html>
