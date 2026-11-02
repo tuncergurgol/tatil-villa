@@ -325,6 +325,63 @@ function clientIp(req) {
   return forwarded || req.ip || req.socket.remoteAddress || "unknown";
 }
 
+const CONTACT_INBOX = "info@havannaglobal.com.tr";
+
+function loadNodemailer() {
+  try {
+    return require("nodemailer");
+  } catch {
+    return null;
+  }
+}
+
+function oneLine(value) {
+  return String(value || "")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
+}
+
+async function sendContactEmail(entry) {
+  const nodemailer = loadNodemailer();
+  if (!nodemailer) {
+    throw new Error("Nodemailer yüklü değil.");
+  }
+  const host = String(process.env.HAVANNA_SMTP_HOST || "").trim();
+  const user = String(process.env.HAVANNA_SMTP_USER || "").trim();
+  const pass = String(process.env.HAVANNA_SMTP_PASS || "");
+  if (!host || !user || !pass) {
+    throw new Error("SMTP ayarı eksik.");
+  }
+  const port = Number(process.env.HAVANNA_SMTP_PORT || 587);
+  const secureMode = String(process.env.HAVANNA_SMTP_SECURE || "starttls").toLowerCase();
+  const transport = nodemailer.createTransport({
+    host,
+    port,
+    secure: secureMode === "ssl",
+    auth: { user, pass },
+    ...(secureMode === "starttls"
+      ? { requireTLS: true, tls: { minVersion: "TLSv1.2" } }
+      : {}),
+  });
+  const fromEmail = String(process.env.HAVANNA_SMTP_FROM || user).trim();
+  const fromName = String(process.env.HAVANNA_SMTP_FROM_NAME || "Havanna Global").trim();
+  const lines = [
+    `Ad soyad: ${entry.name}`,
+    entry.company ? `Firma: ${entry.company}` : null,
+    `E-posta: ${entry.email}`,
+    entry.phone ? `Telefon: ${entry.phone}` : null,
+    "",
+    entry.message,
+  ].filter((line) => line !== null);
+  await transport.sendMail({
+    from: fromName ? `${fromName} <${fromEmail}>` : fromEmail,
+    to: CONTACT_INBOX,
+    replyTo: entry.email,
+    subject: `Havanna Global iletişim formu — ${oneLine(entry.name)}`,
+    text: lines.join("\n"),
+  });
+}
+
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(String(password), salt, 64).toString("hex");
@@ -1304,7 +1361,7 @@ app.put("/api/admin/settings", requireAdmin, (req, res) => {
   res.json({ settings });
 });
 
-app.post("/api/contact", (req, res) => {
+app.post("/api/contact", async (req, res) => {
   const ip = clientIp(req);
   if (!rateLimitContact(ip)) {
     res.status(429).json({ error: "rate" });
@@ -1340,6 +1397,13 @@ app.post("/api/contact", (req, res) => {
   const list = readInquiries();
   list.unshift(entry);
   writeInquiries(list.slice(0, 500));
+  try {
+    await sendContactEmail(entry);
+  } catch (err) {
+    console.error("contact mail failed:", err && err.message ? err.message : err);
+    res.status(502).json({ error: "mail" });
+    return;
+  }
   res.status(201).json({ ok: true });
 });
 
