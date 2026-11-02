@@ -510,6 +510,16 @@
   }
   let siteSettings = null;
 
+  function sortFlavorList() {
+    const list = document.querySelector(".flavor-list");
+    if (!list) return;
+    const items = [...list.children];
+    items.sort((a, b) => compareText(a.textContent, b.textContent));
+    const rows = Math.ceil(items.length / 2) || 1;
+    list.style.gridTemplateRows = `repeat(${rows}, auto)`;
+    items.forEach((item) => list.appendChild(item));
+  }
+
   function t(key, fallback = "") {
     const pack = dict[currentLang] || dict.tr;
     return pack[key] != null ? pack[key] : fallback;
@@ -540,6 +550,8 @@
       const key = el.getAttribute("data-i18n");
       if (pack[key] != null) el.textContent = pack[key];
     });
+
+    sortFlavorList();
 
     if (pack["doc.title"]) document.title = pack["doc.title"];
 

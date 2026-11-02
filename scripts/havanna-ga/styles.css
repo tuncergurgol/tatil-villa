@@ -751,6 +751,8 @@ a.product:hover {
 .flavor-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(6, auto);
+  grid-auto-flow: column;
   gap: 0.45rem 1rem;
   margin: 1.25rem 0 1.5rem;
 }
