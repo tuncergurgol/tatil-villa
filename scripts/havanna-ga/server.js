@@ -1253,6 +1253,22 @@ app.post("/api/admin/groups", requireAdmin, (req, res) => {
   res.status(201).json({ group: incoming });
 });
 
+function subgroupKeys(sg) {
+  return [sg?.id, sg?.name?.tr, sg?.name?.en, sg?.name?.ar]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function productUsesSubgroup(product, sg) {
+  const raw = String(product?.subGroup || "").trim().toLowerCase();
+  if (!raw) return false;
+  return subgroupKeys(sg).includes(raw);
+}
+
+function subgroupTitle(sg) {
+  return String(sg?.name?.tr || sg?.id || "").trim();
+}
+
 app.put("/api/admin/groups/:id", requireAdmin, (req, res) => {
   const id = String(req.params.id || "");
   const groups = readGroups();
@@ -1286,6 +1302,27 @@ app.put("/api/admin/groups/:id", requireAdmin, (req, res) => {
     idx
   );
 
+  const removedSubs = (groups[idx].subGroups || []).filter(
+    (old) =>
+      !(updated.subGroups || []).some((sg) => {
+        const oldKeys = new Set(subgroupKeys(old));
+        return subgroupKeys(sg).some((key) => oldKeys.has(key));
+      })
+  );
+  const removedProducts = readProducts().filter(
+    (product) =>
+      (product.category === id || product.category === nextId) &&
+      removedSubs.some((sg) => productUsesSubgroup(product, sg))
+  );
+  if (removedProducts.length) {
+    res.status(400).json({
+      error: `Kaldırılmak istenen alt grup ${removedProducts.length} üründe kayıtlı. Önce bu ürünleri başka bir alt gruba taşıyın veya silin.`,
+      kind: "products",
+      products: removedProducts.map((product) => product.name).filter(Boolean),
+    });
+    return;
+  }
+
   groups[idx] = updated;
 
   if (nextId !== id) {
@@ -1305,16 +1342,22 @@ app.delete("/api/admin/groups/:id", requireAdmin, (req, res) => {
   const id = String(req.params.id || "");
   const groups = readGroups();
   const group = groups.find((g) => g.id === id);
-  const subIds = new Set(
-    (Array.isArray(group?.subGroups) ? group.subGroups : []).map((sg) => sg.id)
-  );
-  const usedCount = readProducts().filter(
-    (p) => p.category === id || (p.subGroup && subIds.has(p.subGroup))
-  ).length;
-  if (usedCount > 0) {
+  const subGroups = Array.isArray(group?.subGroups) ? group.subGroups : [];
+  if (subGroups.length) {
+    const names = subGroups.map(subgroupTitle).filter(Boolean);
     res.status(400).json({
-      error: `Bu grup ${usedCount} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`,
-      used: usedCount,
+      error: `"${group?.name?.tr || id}" üst grubu ${names.length} alt gruba bağlı. Silmek için önce bu alt grupları kaldırın.`,
+      kind: "subgroups",
+      subgroups: names,
+    });
+    return;
+  }
+  const usedProducts = readProducts().filter((product) => product.category === id);
+  if (usedProducts.length) {
+    res.status(400).json({
+      error: `"${group?.name?.tr || id}" grubu ${usedProducts.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`,
+      kind: "products",
+      products: usedProducts.map((product) => product.name).filter(Boolean),
     });
     return;
   }

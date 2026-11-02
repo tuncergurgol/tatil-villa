@@ -431,7 +431,12 @@
                 (sg) => `
             <li class="${isActiveRecord(sg) ? "" : "is-off"}">
               <span>${escapeHtml(sg.name?.tr || sg.id)}</span>
-              <span class="muted">${isActiveRecord(sg) ? "" : "Pasif"}</span>
+              <span class="row-actions">
+                ${isActiveRecord(sg) ? "" : '<span class="muted">Pasif</span>'}
+                <button type="button" class="btn btn-danger sm" data-delete-subgroup="${escapeAttr(
+                  g.id
+                )}" data-subgroup-key="${escapeAttr(sg.id)}">Sil</button>
+              </span>
             </li>`
               )
               .join("")}</ul>`
@@ -613,17 +618,25 @@
     setView("products");
   });
 
-  function productsUsingGroup(id) {
-    const group = groups.find((g) => g.id === id);
-    const subIds = new Set(
-      (Array.isArray(group?.subGroups) ? group.subGroups : []).map((sg) => sg.id)
-    );
+  function subgroupKeys(sg) {
+    return [sg?.id, sg?.name?.tr, sg?.name?.en, sg?.name?.ar]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  function productUsesSubgroup(product, sg) {
+    const raw = String(product?.subGroup || "").trim().toLowerCase();
+    if (!raw) return false;
+    return subgroupKeys(sg).includes(raw);
+  }
+
+  function productsInSubgroup(groupId, sg) {
     return products.filter(
-      (p) => p.category === id || (p.subGroup && subIds.has(p.subGroup))
+      (product) => product.category === groupId && productUsesSubgroup(product, sg)
     );
   }
 
-  function showNotice(text, items) {
+  function showNotice(text, items, label) {
     const notice = document.getElementById("notice");
     const textEl = document.getElementById("notice-text");
     const ok = document.getElementById("notice-ok");
@@ -632,6 +645,7 @@
     if (!notice || !textEl || !ok) return Promise.resolve();
     textEl.textContent = text;
     const names = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (listLabel) listLabel.textContent = label || "Bağlı ürünler";
     if (listEl) {
       listEl.replaceChildren(
         ...names.map((name) => {
@@ -899,19 +913,73 @@
       if (group) openGroupDialog(group);
       return;
     }
+    const subgroupBtn = event.target.closest("[data-delete-subgroup]");
+    if (subgroupBtn) {
+      const groupId = subgroupBtn.getAttribute("data-delete-subgroup");
+      const subId = subgroupBtn.getAttribute("data-subgroup-key");
+      const group = groups.find((item) => item.id === groupId);
+      const sg = (group?.subGroups || []).find((item) => item.id === subId);
+      if (!group || !sg) return;
+      const used = productsInSubgroup(groupId, sg);
+      const subName = sg.name?.tr || sg.id;
+      if (used.length) {
+        const names = used
+          .map((product) => product.name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, "tr"));
+        await showNotice(
+          `"${subName}" alt grubu ${used.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir alt gruba taşıyın veya silin.`,
+          names,
+          "Bağlı ürünler"
+        );
+        return;
+      }
+      try {
+        await api(`/api/admin/groups/${encodeURIComponent(groupId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: group.id,
+            sort: group.sort,
+            active: group.active !== false,
+            name: group.name,
+            subGroups: (group.subGroups || []).filter((item) => item.id !== sg.id),
+          }),
+        });
+        flash("Alt grup silindi.");
+        await loadCatalog();
+      } catch (err) {
+        await showNotice(err.message || "Alt grup silinemedi.");
+      }
+      return;
+    }
     if (deleteBtn) {
       const id = deleteBtn.getAttribute("data-delete-group");
       if (!id) return;
-      const used = productsUsingGroup(id);
-      const name = groups.find((g) => g.id === id)?.name?.tr || id;
+      const group = groups.find((item) => item.id === id);
+      const name = group?.name?.tr || id;
+      const subNames = (group?.subGroups || [])
+        .map((sg) => sg.name?.tr || sg.id)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "tr"));
+      if (subNames.length) {
+        await showNotice(
+          `"${name}" üst grubu ${subNames.length} alt gruba bağlı. Silmek için önce bu alt grupları kaldırın.`,
+          subNames,
+          "Bağlı alt gruplar"
+        );
+        return;
+      }
+      const used = products.filter((product) => product.category === id);
       if (used.length) {
         const names = used
-          .map((p) => p.name)
+          .map((product) => product.name)
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b, "tr"));
         await showNotice(
           `"${name}" grubu ${used.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`,
-          names
+          names,
+          "Bağlı ürünler"
         );
         return;
       }
