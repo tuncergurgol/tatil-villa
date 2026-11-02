@@ -1021,6 +1021,115 @@ a.product:hover {
   border-color: var(--gold);
 }
 
+.phone-field {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  background: #fff;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.phone-field:focus-within {
+  outline: 2px solid var(--gold-dim);
+  border-color: var(--gold);
+}
+
+.phone-field__code {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  border: 0;
+  border-inline-end: 1px solid var(--line);
+  background: transparent;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0 0.7rem;
+  cursor: pointer;
+}
+
+.phone-field__flag {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.phone-field input[name="phoneNational"] {
+  border: 0;
+  outline: none;
+  min-width: 0;
+}
+
+.phone-field input[name="phoneNational"]:focus {
+  outline: none;
+  border: 0;
+}
+
+.phone-field__menu {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  inset-inline-start: 0;
+  width: min(100%, 280px);
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(11, 21, 36, 0.16);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.phone-field__menu[hidden] {
+  display: none !important;
+}
+
+.phone-field__search {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 0.6rem 0.7rem;
+}
+
+.phone-field__menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.phone-field__menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: start;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.phone-field__menu button:hover,
+.phone-field__menu button[aria-selected="true"] {
+  background: rgba(184, 150, 90, 0.14);
+}
+
+.phone-field__menu .dial {
+  margin-inline-start: auto;
+  color: var(--muted);
+}
+
 .contact-hp {
   position: absolute;
   left: -9999px;

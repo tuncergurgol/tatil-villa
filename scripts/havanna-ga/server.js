@@ -1380,7 +1380,7 @@ app.post("/api/contact", async (req, res) => {
   const phone = clipText(body.phone, 40);
   const message = clipText(body.message, 2000);
 
-  if (name.length < 2 || !isContactEmail(email) || message.length < 5) {
+  if (name.length < 2 || !isContactEmail(email) || message.length < 1) {
     res.status(400).json({ error: "invalid" });
     return;
   }

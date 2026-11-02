@@ -968,6 +968,129 @@
     if (!modal || !form || !openBtn) return;
 
     const submitBtn = form.querySelector('[type="submit"]');
+    const phoneRoot = document.getElementById("contact-phone");
+    const phoneCodeBtn = document.getElementById("contact-phone-code");
+    const phoneMenu = document.getElementById("contact-phone-menu");
+    const phoneList = document.getElementById("contact-phone-list");
+    const phoneSearch = phoneMenu?.querySelector(".phone-field__search");
+    const phoneNational = form.querySelector("[name=phoneNational]");
+    const phoneCountries = [
+      { iso: "TR", name: "Türkiye", dial: "90", max: 10 },
+      { iso: "US", name: "Amerika Birleşik Devletleri", dial: "1", max: 10 },
+      { iso: "DE", name: "Almanya", dial: "49", max: 12 },
+      { iso: "AE", name: "Birleşik Arap Emirlikleri", dial: "971", max: 10 },
+      { iso: "GB", name: "Birleşik Krallık", dial: "44", max: 11 },
+      { iso: "BG", name: "Bulgaristan", dial: "359", max: 10 },
+      { iso: "CZ", name: "Çekya", dial: "420", max: 10 },
+      { iso: "CN", name: "Çin", dial: "86", max: 11 },
+      { iso: "FR", name: "Fransa", dial: "33", max: 10 },
+      { iso: "GE", name: "Gürcistan", dial: "995", max: 10 },
+      { iso: "NL", name: "Hollanda", dial: "31", max: 10 },
+      { iso: "ES", name: "İspanya", dial: "34", max: 9 },
+      { iso: "IT", name: "İtalya", dial: "39", max: 11 },
+      { iso: "CY", name: "Kıbrıs", dial: "357", max: 9 },
+      { iso: "MX", name: "Meksika", dial: "52", max: 10 },
+      { iso: "PL", name: "Polonya", dial: "48", max: 10 },
+      { iso: "RO", name: "Romanya", dial: "40", max: 10 },
+      { iso: "RU", name: "Rusya", dial: "7", max: 10 },
+      { iso: "SA", name: "Suudi Arabistan", dial: "966", max: 10 },
+      { iso: "UA", name: "Ukrayna", dial: "380", max: 10 },
+      { iso: "GR", name: "Yunanistan", dial: "30", max: 10 },
+    ];
+    let phoneCountry = phoneCountries[0];
+
+    function phoneFlag(iso) {
+      const code = String(iso || "").toUpperCase();
+      if (!/^[A-Z]{2}$/.test(code)) return "";
+      return [...code]
+        .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+        .join("");
+    }
+
+    function nationalDigits() {
+      let digits = String(phoneNational?.value || "").replace(/\D/g, "");
+      if (phoneCountry.iso === "TR" && digits.startsWith("0")) digits = digits.slice(1);
+      return digits.slice(0, phoneCountry.max);
+    }
+
+    function composedPhone() {
+      const national = nationalDigits();
+      if (!national) return "";
+      return `+${phoneCountry.dial}${national}`;
+    }
+
+    function paintPhoneCode() {
+      const flag = phoneCodeBtn?.querySelector(".phone-field__flag");
+      const dial = phoneCodeBtn?.querySelector(".phone-field__dial");
+      if (flag) flag.textContent = phoneFlag(phoneCountry.iso);
+      if (dial) dial.textContent = `+${phoneCountry.dial}`;
+      if (phoneNational) {
+        phoneNational.maxLength = phoneCountry.max + (phoneCountry.iso === "TR" ? 1 : 0);
+        phoneNational.placeholder = phoneCountry.iso === "TR" ? "5xx xxx xx xx" : "";
+      }
+    }
+
+    function renderPhoneCountries(query) {
+      if (!phoneList) return;
+      const q = String(query || "").trim().toLocaleLowerCase("tr-TR");
+      const items = phoneCountries.filter((item) => {
+        if (!q) return true;
+        return (
+          item.name.toLocaleLowerCase("tr-TR").includes(q) ||
+          item.dial.includes(q.replace(/^\+/, "")) ||
+          item.iso.toLocaleLowerCase("tr-TR").includes(q)
+        );
+      });
+      phoneList.innerHTML = items
+        .map(
+          (item) =>
+            `<li><button type="button" role="option" data-iso="${item.iso}" aria-selected="${
+              item.iso === phoneCountry.iso
+            }"><span>${phoneFlag(item.iso)}</span><span>${item.name}</span><span class="dial">+${
+              item.dial
+            }</span></button></li>`
+        )
+        .join("");
+    }
+
+    function setPhoneMenu(open) {
+      if (!phoneMenu || !phoneCodeBtn) return;
+      phoneMenu.hidden = !open;
+      phoneCodeBtn.setAttribute("aria-expanded", String(open));
+      if (open) {
+        renderPhoneCountries(phoneSearch?.value || "");
+        phoneSearch?.focus();
+      }
+    }
+
+    function resetPhone() {
+      phoneCountry = phoneCountries[0];
+      if (phoneNational) phoneNational.value = "";
+      if (phoneSearch) phoneSearch.value = "";
+      paintPhoneCode();
+      setPhoneMenu(false);
+    }
+
+    paintPhoneCode();
+    phoneCodeBtn?.addEventListener("click", () => {
+      setPhoneMenu(phoneMenu?.hidden !== false);
+    });
+    phoneSearch?.addEventListener("input", () => renderPhoneCountries(phoneSearch.value));
+    phoneList?.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-iso]");
+      if (!btn) return;
+      const next = phoneCountries.find((item) => item.iso === btn.getAttribute("data-iso"));
+      if (!next) return;
+      phoneCountry = next;
+      if (phoneNational) phoneNational.value = nationalDigits();
+      paintPhoneCode();
+      setPhoneMenu(false);
+      phoneNational?.focus();
+    });
+    document.addEventListener("click", (event) => {
+      if (!phoneRoot || phoneMenu?.hidden !== false) return;
+      if (!phoneRoot.contains(event.target)) setPhoneMenu(false);
+    });
 
     function showError(message) {
       if (!errorEl) return;
@@ -1011,12 +1134,12 @@
         name: String(data.get("name") || "").trim(),
         company: String(data.get("company") || "").trim(),
         email: String(data.get("email") || "").trim(),
-        phone: String(data.get("phone") || "").trim(),
+        phone: composedPhone(),
         message: String(data.get("message") || "").trim(),
         website: String(data.get("website") || "").trim(),
       };
 
-      if (payload.name.length < 2 || !payload.email.includes("@") || payload.message.length < 5) {
+      if (payload.name.length < 2 || !payload.email.includes("@") || !payload.message) {
         showError(t("form.invalid", "Lütfen ad soyad, e-posta ve mesaj alanlarını doldurun."));
         return;
       }
@@ -1039,6 +1162,7 @@
           return;
         }
         form.reset();
+        resetPhone();
         if (fields) fields.hidden = true;
         if (actions) actions.hidden = true;
         if (successEl) {

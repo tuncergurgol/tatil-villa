@@ -80,7 +80,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20261102flavors" />
+    <link rel="stylesheet" href="styles.css?v=20261102phone" />
   </head>
   <body class="age-locked">
     <div
@@ -510,7 +510,36 @@
             </label>
             <label>
               <span data-i18n="form.phone">Telefon</span>
-              <input name="phone" type="tel" maxlength="40" autocomplete="tel" />
+              <div class="phone-field" id="contact-phone">
+                <button
+                  type="button"
+                  class="phone-field__code"
+                  id="contact-phone-code"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-label="Ülke kodu"
+                >
+                  <span class="phone-field__flag" aria-hidden="true">🇹🇷</span>
+                  <span class="phone-field__dial">+90</span>
+                </button>
+                <input
+                  name="phoneNational"
+                  type="tel"
+                  inputmode="numeric"
+                  autocomplete="tel-national"
+                  maxlength="15"
+                  placeholder="5xx xxx xx xx"
+                />
+                <div class="phone-field__menu" id="contact-phone-menu" hidden>
+                  <input
+                    type="search"
+                    class="phone-field__search"
+                    placeholder="Ülke veya kod"
+                    aria-label="Ülke ara"
+                  />
+                  <ul id="contact-phone-list" role="listbox"></ul>
+                </div>
+              </div>
             </label>
             <label>
               <span data-i18n="form.message">Mesaj</span>
@@ -533,6 +562,6 @@
       </div>
     </div>
 
-    <script src="app.js?v=20261102flavors" defer></script>
+    <script src="app.js?v=20261102phone" defer></script>
   </body>
 </html>
