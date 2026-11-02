@@ -131,10 +131,17 @@
         String(btn.getAttribute("data-lang") === lang)
       );
     });
+    window.HavannaLabels?.rewriteLinks?.(lang);
+  }
+
+  function labelText(text) {
+    const localize = window.HavannaLabels?.localize;
+    return localize ? localize(currentLang, text) : text || "";
   }
 
   function productUrl(id) {
-    return `/urun/${encodeURIComponent(id)}`;
+    const path = `/urun/${encodeURIComponent(id)}`;
+    return window.HavannaLabels?.withLang?.(path, currentLang) || path;
   }
 
   function mediaUrl(src) {
@@ -206,15 +213,14 @@
   }
 
   function initLang() {
-    let lang = "tr";
-    try {
-      const saved = localStorage.getItem(LANG_KEY);
-      if (saved && dict[saved]) lang = saved;
-    } catch (_) {}
+    const fromPath = window.HavannaLabels?.langFromPath?.(location.pathname);
+    const lang = fromPath && dict[fromPath] ? fromPath : "tr";
     applyLang(lang);
     document.querySelectorAll(".lang-switch [data-lang]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        applyLang(btn.getAttribute("data-lang") || "tr");
+        const nextLang = btn.getAttribute("data-lang") || "tr";
+        if (window.HavannaLabels?.goLang?.(nextLang)) return;
+        applyLang(nextLang);
         if (window.__lastProductPayload) {
           renderProduct(window.__lastProductPayload);
         }
@@ -239,18 +245,21 @@
   function setSeo(product) {
     const slug = product.seo?.slug || product.id;
     const url = `${SITE_ORIGIN}${productUrl(slug)}`;
-    const title =
-      product.seo?.title || `${product.name} | Havanna Global`;
-    const plainDesc = String(
-      product.seo?.description ||
-        product.description ||
-        product.meta ||
-        product.name ||
-        ""
+    const title = labelText(
+      product.seo?.title || `${product.name} | Havanna Global`
+    );
+    const plainDesc = labelText(
+      String(
+        product.seo?.description ||
+          product.description ||
+          product.meta ||
+          product.name ||
+          ""
+      )
     )
       .replace(/\s+/g, " ")
       .trim()
-      .slice(0, 160);
+      .slice(0, 180);
     const imagePath =
       (Array.isArray(product.images) && product.images[0]) || product.image || "";
     const image = imagePath
@@ -258,11 +267,12 @@
         ? imagePath
         : `${SITE_ORIGIN}/${String(imagePath).replace(/^\/+/, "")}`
       : `${SITE_ORIGIN}/logo.png`;
-    const keywords =
+    const keywords = labelText(
       product.seo?.keywords ||
-      [product.name, product.subGroup, product.meta, "Havanna Global", "otel içecek"]
-        .filter(Boolean)
-        .join(", ");
+        [product.name, product.subGroup, product.meta, "Havanna Global", "otel içecek"]
+          .filter(Boolean)
+          .join(", ")
+    );
 
     document.title = title;
     upsertMeta('meta[name="description"]', "content", plainDesc);
@@ -277,7 +287,28 @@
     upsertMeta('meta[property="og:type"]', "content", "product");
     upsertMeta('meta[property="og:image"]', "content", image);
     upsertMeta('meta[property="og:site_name"]', "content", "Havanna Global");
-    upsertMeta('meta[property="og:locale"]', "content", "tr_TR");
+    const locales = { tr: "tr_TR", en: "en_US", ar: "ar_AR" };
+    upsertMeta('meta[property="og:locale"]', "content", locales[currentLang] || "tr_TR");
+    const bare = `/urun/${encodeURIComponent(slug)}`;
+    ["tr", "en", "ar"].forEach((lang) => {
+      const href = `${SITE_ORIGIN}${window.HavannaLabels?.withLang?.(bare, lang) || bare}`;
+      let link = document.querySelector(`link[rel="alternate"][hreflang="${lang}"]`);
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "alternate";
+        link.hreflang = lang;
+        document.head.appendChild(link);
+      }
+      link.href = href;
+    });
+    let xDefault = document.querySelector('link[rel="alternate"][hreflang="x-default"]');
+    if (!xDefault) {
+      xDefault = document.createElement("link");
+      xDefault.rel = "alternate";
+      xDefault.hreflang = "x-default";
+      document.head.appendChild(xDefault);
+    }
+    xDefault.href = `${SITE_ORIGIN}${bare}`;
     upsertMeta('meta[name="twitter:card"]', "content", "summary_large_image");
     upsertMeta('meta[name="twitter:title"]', "content", title);
     upsertMeta('meta[name="twitter:description"]', "content", plainDesc);
@@ -286,7 +317,7 @@
     const schema = {
       "@context": "https://schema.org",
       "@type": "Product",
-      name: product.name,
+      name: labelText(product.name),
       description: plainDesc,
       image: [image],
       sku: product.id,
@@ -294,7 +325,7 @@
         "@type": "Brand",
         name: String(product.name || "").split(" ")[0] || "Havanna Global",
       },
-      category: product.subGroup || product.category || "Beverage",
+      category: labelText(product.subGroup || product.category || "Beverage"),
       url,
       offers: {
         "@type": "Offer",
@@ -468,11 +499,12 @@
             const img = mediaUrl(
               (Array.isArray(p.images) && p.images[0]) || p.image || ""
             );
+            const relatedName = labelText(p.name);
             return `<a class="product-related__card" href="${productUrl(
               p.id
             )}">
-              <img src="${escapeHtml(img)}" alt="${escapeHtml(p.name)}" loading="lazy" />
-              <span>${escapeHtml(p.name)}</span>
+              <img src="${escapeHtml(img)}" alt="${escapeHtml(relatedName)}" loading="lazy" />
+              <span>${escapeHtml(relatedName)}</span>
             </a>`;
           })
           .join("")}
@@ -498,8 +530,9 @@
     }
 
     window.__lastProductPayload = payload;
+    const name = labelText(product.name);
     setSeo(product);
-    if (crumb) crumb.textContent = product.name;
+    if (crumb) crumb.textContent = name;
 
     const group = catalogGroups.find((g) => g.id === product.category);
     const label =
@@ -510,27 +543,28 @@
       : product.image
         ? [product.image]
         : [];
-    const description =
+    const description = labelText(
       product.description ||
-      product.seo?.description ||
-      product.meta ||
-      "";
+        product.seo?.description ||
+        product.meta ||
+        ""
+    );
 
     root.innerHTML = `
-      ${renderGallery(images, product.name)}
+      ${renderGallery(images, name)}
       <div class="product-detail__info">
         <span class="product__cat">${escapeHtml(label)}</span>
-        <h1 class="product-detail__title">${escapeHtml(product.name)}</h1>
+        <h1 class="product-detail__title">${escapeHtml(name)}</h1>
         ${
           product.subGroup
             ? `<p class="product-detail__subgroup">${escapeHtml(
-                product.subGroup
+                labelText(product.subGroup)
               )}</p>`
             : ""
         }
         ${
           product.meta
-            ? `<p class="product__meta">${escapeHtml(product.meta)}</p>`
+            ? `<p class="product__meta">${escapeHtml(labelText(product.meta))}</p>`
             : ""
         }
         ${description ? formatDescription(description) : ""}
@@ -556,6 +590,7 @@
           .forEach((b) => b.classList.toggle("is-active", b === btn));
       });
     });
+    window.HavannaLabels?.rewriteLinks?.(currentLang);
   }
 
   function ensureGoogleAnalytics(id) {

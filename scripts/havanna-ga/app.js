@@ -605,6 +605,19 @@
     }
     applySettings(siteSettings);
 
+    window.HavannaLabels?.rewriteLinks?.(currentLang);
+
+    const origin = "https://havannaglobal.com";
+    const here =
+      origin + (window.HavannaLabels?.withLang?.(location.pathname, currentLang) || "/");
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", here);
+    const ogUrl = document.querySelector('meta[property="og:url"]');
+    if (ogUrl) ogUrl.setAttribute("content", here);
+    const locales = { tr: "tr_TR", en: "en_US", ar: "ar_AR" };
+    const ogLocale = document.querySelector('meta[property="og:locale"]');
+    if (ogLocale) ogLocale.setAttribute("content", locales[currentLang] || "tr_TR");
+
     try {
       localStorage.setItem(LANG_KEY, currentLang);
     } catch (_) {}
@@ -814,7 +827,8 @@
   }
 
   function productUrl(id) {
-    return `/urun/${encodeURIComponent(id)}`;
+    const path = `/urun/${encodeURIComponent(id)}`;
+    return window.HavannaLabels?.withLang?.(path, currentLang) || path;
   }
 
   function renderProducts(products) {
@@ -1238,17 +1252,15 @@
   }
 
   function initLang() {
-    let lang = "tr";
-    try {
-      const saved = localStorage.getItem(LANG_KEY);
-      if (saved && dict[saved]) lang = saved;
-    } catch (_) {}
-
+    const fromPath = window.HavannaLabels?.langFromPath?.(location.pathname);
+    const lang = fromPath && dict[fromPath] ? fromPath : "tr";
     applyLang(lang);
 
     document.querySelectorAll(".lang-switch [data-lang]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        applyLang(btn.getAttribute("data-lang") || "tr");
+        const nextLang = btn.getAttribute("data-lang") || "tr";
+        if (window.HavannaLabels?.goLang?.(nextLang)) return;
+        applyLang(nextLang);
       });
     });
   }

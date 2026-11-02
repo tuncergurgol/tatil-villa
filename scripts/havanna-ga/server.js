@@ -106,6 +106,23 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser(SESSION_SECRET));
 
+// Dil kapısı: /en ve /ar aynı sayfayı sunar; Türkçe öneksiz kalır.
+// Göreli varlıklar (/en/styles.css) kökteki dosyaya düşer.
+app.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  const q = req.url.indexOf("?");
+  const pathOnly = q === -1 ? req.url : req.url.slice(0, q);
+  const search = q === -1 ? "" : req.url.slice(q);
+  const page = pathOnly.match(/^\/(en|ar)(\/urun(?:\/[^/]+)?)?\/?$/i);
+  if (page) {
+    req.url = (page[2] || "/") + search;
+    return next();
+  }
+  const asset = pathOnly.match(/^\/(?:en|ar)\/(.+\.[a-z0-9]{2,5})$/i);
+  if (asset) req.url = `/${asset[1]}${search}`;
+  next();
+});
+
 const allowedMime = new Set(["image/jpeg", "image/png", "image/webp"]);
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -750,28 +767,50 @@ app.get("/urun", (_req, res) => {
   res.sendFile(path.join(ROOT, "urun.html"));
 });
 
+function localizedLocs(path) {
+  const bare = path === "/" ? "/" : path;
+  return [
+    { lang: "tr", loc: `${SITE_ORIGIN}${bare}` },
+    { lang: "en", loc: `${SITE_ORIGIN}/en${bare === "/" ? "/" : bare}` },
+    { lang: "ar", loc: `${SITE_ORIGIN}/ar${bare === "/" ? "/" : bare}` },
+  ];
+}
+
 app.get("/sitemap.xml", (_req, res) => {
   const products = readProducts().filter((p) => p.active !== false);
   const today = new Date().toISOString().slice(0, 10);
-  const urls = [
-    { loc: `${SITE_ORIGIN}/`, priority: "1.0", changefreq: "weekly" },
+  const pages = [
+    { path: "/", priority: "1.0", changefreq: "weekly" },
     ...products.map((p) => ({
-      loc: `${SITE_ORIGIN}/urun/${encodeURIComponent(p.seo?.slug || p.id)}`,
+      path: `/urun/${encodeURIComponent(p.seo?.slug || p.id)}`,
       priority: "0.8",
       changefreq: "weekly",
     })),
   ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls
-  .map(
-    (u) => `  <url>
-    <loc>${u.loc}</loc>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${pages
+  .map((page) => {
+    const locs = localizedLocs(page.path);
+    const alternates = [
+      ...locs.map(
+        (item) =>
+          `    <xhtml:link rel="alternate" hreflang="${item.lang}" href="${item.loc}"/>`
+      ),
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="${locs[0].loc}"/>`,
+    ].join("\n");
+    return locs
+      .map(
+        (item) => `  <url>
+    <loc>${item.loc}</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>${u.changefreq}</changefreq>
-    <priority>${u.priority}</priority>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+${alternates}
   </url>`
-  )
+      )
+      .join("\n");
+  })
   .join("\n")}
 </urlset>
 `;

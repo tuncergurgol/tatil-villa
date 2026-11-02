@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ürün | Havanna Global</title>
+    <meta name="description" content="Havanna Global ürün detayı — otel ve konaklama içecek tedariği." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://havannaglobal.com/" />
+    <meta property="og:type" content="product" />
+    <meta property="og:site_name" content="Havanna Global" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/logo-mark.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/logo-mark.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=20261102lang3" />
+  </head>
+  <body class="age-locked product-page">
+    <div
+      id="age-gate"
+      class="age-gate"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="age-title"
+    >
+      <div class="age-gate__panel">
+        <img class="age-gate__logo" src="/logo.png" alt="Havanna Global" width="88" height="88" />
+        <p class="age-gate__eyebrow" data-i18n="age.eyebrow">Yaş doğrulama</p>
+        <h2 id="age-title" class="age-gate__title" data-i18n="age.title">18 yaşında veya üzeri misiniz?</h2>
+        <p class="age-gate__text" data-i18n="age.text">
+          Bu site alkollü içecek içeriği barındırır. Devam etmek için yasal yaşta
+          olduğunuzu onaylayın.
+        </p>
+        <div class="age-gate__actions">
+          <button type="button" class="btn btn-primary" id="age-yes" data-i18n="age.yes">
+            Evet, 18+
+          </button>
+          <button type="button" class="btn btn-outline" id="age-no" data-i18n="age.no">
+            Hayır
+          </button>
+        </div>
+        <p id="age-denied" class="age-gate__denied" hidden data-i18n="age.denied">
+          Üzgünüz; siteye yalnızca 18 yaş ve üzeri ziyaretçiler girebilir.
+        </p>
+      </div>
+    </div>
+
+    <div class="site-wrap">
+      <header class="site-header">
+        <div class="container site-header__inner">
+          <a class="brand" href="/">
+            <img src="/logo.png" alt="Havanna Global" width="118" height="48" />
+          </a>
+          <nav class="nav" id="main-nav" aria-label="Main">
+            <a href="/#about" data-i18n="nav.about">Hakkımızda</a>
+            <a href="/#portfolio" data-i18n="nav.portfolio">Portföy</a>
+            <a href="/#process" data-i18n="nav.process">Süreç</a>
+            <a href="/#contact" data-i18n="nav.contact">İletişim</a>
+          </nav>
+          <div class="header-tools">
+            <div class="lang-switch" role="group" aria-label="Dil / Language">
+              <button type="button" data-lang="tr" aria-pressed="true" title="Türkçe">
+                <span class="lang-switch__emoji" aria-hidden="true">🇹🇷</span>
+                <span class="lang-switch__code">TR</span>
+              </button>
+              <button type="button" data-lang="en" aria-pressed="false" title="English">
+                <span class="lang-switch__emoji" aria-hidden="true">🇬🇧</span>
+                <span class="lang-switch__code">EN</span>
+              </button>
+              <button type="button" data-lang="ar" aria-pressed="false" title="العربية">
+                <span class="lang-switch__emoji" aria-hidden="true">🇸🇦</span>
+                <span class="lang-switch__code">AR</span>
+              </button>
+            </div>
+            <button class="menu-toggle" type="button" id="menu-toggle" aria-label="Menu">
+              <span></span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main id="top" class="product-detail">
+        <div class="container">
+          <nav class="product-detail__crumb" aria-label="Breadcrumb">
+            <a href="/">Havanna Global</a>
+            <span aria-hidden="true">/</span>
+            <a href="/#portfolio" data-i18n="nav.portfolio">Portföy</a>
+            <span aria-hidden="true">/</span>
+            <span id="product-crumb-name">…</span>
+          </nav>
+
+          <div id="product-detail-root" class="product-detail__layout" aria-live="polite">
+            <p class="product-empty" data-i18n="product.loading">Ürün yükleniyor…</p>
+          </div>
+        </div>
+      </main>
+
+      <footer class="site-footer">
+        <div class="container site-footer__inner">
+          <div>
+            <strong>Havanna Global</strong>
+            <span> · </span>
+            <span data-i18n="footer.tag">Alkollü içecek ithalatı</span>
+          </div>
+          <p class="legal-note">
+            <span data-i18n="footer.legal">
+              18 yaş altı kişilere alkollü içecek satışı yasaktır. Lütfen sorumlu tüketin.
+            </span>
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    <script src="/product-labels.js?v=20261102lang3" defer></script>
+    <script src="/urun.js?v=20261102lang3" defer></script>
+  </body>
+</html>
