@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Havanna Global · Panel</title>
     <link rel="icon" href="/logo-mark.png" type="image/png" />
-    <link rel="stylesheet" href="/admin/admin.css?v=20261102contact" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261102groups" />
   </head>
   <body>
     <div id="app-view" class="cms" hidden>
@@ -41,7 +41,11 @@
             <h1 id="page-title">Ürünler</h1>
             <p id="page-desc" class="muted">Portföydeki ürünleri ekleyin, düzenleyin veya silin.</p>
           </div>
-          <span id="status-msg" class="status" hidden></span>
+          <div class="topbar__actions">
+            <button type="button" class="btn" id="goto-groups">Ürün grupları</button>
+            <button type="button" class="btn" id="goto-products" hidden>Ürünler</button>
+            <span id="status-msg" class="status" hidden></span>
+          </div>
         </header>
 
         <main class="content">
@@ -63,31 +67,31 @@
               </label>
               <button type="button" id="product-new" class="btn">Yeni kayıt ekle</button>
             </div>
-            <div class="products-layout">
-              <section class="card products-layout__list">
-                <div class="list-head">
-                  <h2>Ürün listesi</h2>
-                  <span id="product-count" class="muted"></span>
-                </div>
-                <div id="product-list" class="rows"></div>
-              </section>
+            <section class="card">
+              <div class="list-head">
+                <h2>Ürün listesi</h2>
+                <span id="product-count" class="muted"></span>
+              </div>
+              <div id="product-list" class="rows"></div>
+            </section>
+          </section>
 
-              <aside class="card products-layout__groups" aria-label="Ürün grupları">
-                <div class="list-head">
-                  <div>
-                    <h2>Ürün Grupları</h2>
-                    <span id="group-count" class="muted"></span>
-                  </div>
-                  <button type="button" id="group-new" class="btn sm">Grup ekle</button>
-                </div>
-                <div class="filter-tabs filter-tabs--compact" data-filter-group="groups" role="tablist">
-                  <button type="button" class="filter-tab is-active" data-filter="active">Aktif</button>
-                  <button type="button" class="filter-tab" data-filter="passive">Pasif</button>
-                  <button type="button" class="filter-tab" data-filter="all">Tümü</button>
-                </div>
-                <div id="group-list" class="rows groups-tree"></div>
-              </aside>
+          <section id="view-groups" class="view" data-view-panel="groups" hidden>
+            <div class="list-toolbar">
+              <div class="filter-tabs" data-filter-group="groups" role="tablist">
+                <button type="button" class="filter-tab is-active" data-filter="active">Aktif</button>
+                <button type="button" class="filter-tab" data-filter="passive">Pasif</button>
+                <button type="button" class="filter-tab" data-filter="all">Tümü</button>
+              </div>
+              <button type="button" id="group-new" class="btn">Grup ekle</button>
             </div>
+            <section class="card">
+              <div class="list-head">
+                <h2>Ürün grupları</h2>
+                <span id="group-count" class="muted"></span>
+              </div>
+              <div id="group-list" class="rows groups-tree"></div>
+            </section>
           </section>
 
           <section id="view-settings" class="view" data-view-panel="settings" hidden>
@@ -378,6 +382,16 @@
       </form>
     </dialog>
 
-    <script src="/admin/panel.js?v=20261102contact" defer></script>
+    <div id="notice" class="notice" hidden>
+      <div class="notice__backdrop" data-notice-close></div>
+      <div class="notice__panel" role="dialog" aria-modal="true" aria-labelledby="notice-text">
+        <p id="notice-text"></p>
+        <div class="notice__actions">
+          <button type="button" class="btn" id="notice-ok">Tamam</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/admin/panel.js?v=20261102groups" defer></script>
   </body>
 </html>

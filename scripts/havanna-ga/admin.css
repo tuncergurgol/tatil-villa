@@ -367,6 +367,53 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-left: auto;
+}
+
+.notice {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.notice[hidden] {
+  display: none !important;
+}
+
+.notice__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 32, 0.48);
+}
+
+.notice__panel {
+  position: relative;
+  width: min(100%, 440px);
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.4rem 1.3rem 1.15rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.notice__panel p {
+  margin: 0 0 1.1rem;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.notice__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .topbar p {
   margin: 0.25rem 0 0;
 }
@@ -417,9 +464,8 @@ textarea {
 }
 
 .groups-tree {
-  max-height: calc(100vh - 220px);
-  overflow: auto;
-  padding-right: 0.15rem;
+  display: grid;
+  gap: 0.7rem;
 }
 
 .group-tree-item {

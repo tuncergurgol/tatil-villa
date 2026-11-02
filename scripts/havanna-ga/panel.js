@@ -41,7 +41,11 @@
   const pageMeta = {
     products: {
       title: "Ürünler",
-      desc: "Ürünleri ve sağdaki ürün grupları / alt gruplarını yönetin.",
+      desc: "Portföydeki ürünleri ekleyin, düzenleyin veya silin.",
+    },
+    groups: {
+      title: "Ürün grupları",
+      desc: "Ürün gruplarını ve alt gruplarını yönetin.",
     },
     settings: {
       title: "Site Ayarları",
@@ -565,6 +569,10 @@
     const meta = pageMeta[view] || pageMeta.products;
     pageTitle.textContent = meta.title;
     pageDesc.textContent = meta.desc;
+    const gotoGroups = document.getElementById("goto-groups");
+    const gotoProducts = document.getElementById("goto-products");
+    if (gotoGroups) gotoGroups.hidden = view !== "products";
+    if (gotoProducts) gotoProducts.hidden = view !== "groups";
     if (view === "inquiries") {
       loadInquiries().catch((err) => flash(err.message, true));
     }
@@ -597,6 +605,51 @@
   document.querySelectorAll(".nav__link").forEach((btn) => {
     btn.addEventListener("click", () => setView(btn.getAttribute("data-view")));
   });
+
+  document.getElementById("goto-groups")?.addEventListener("click", () => {
+    setView("groups");
+  });
+  document.getElementById("goto-products")?.addEventListener("click", () => {
+    setView("products");
+  });
+
+  function productsUsingGroup(id) {
+    const group = groups.find((g) => g.id === id);
+    const subIds = new Set(
+      (Array.isArray(group?.subGroups) ? group.subGroups : []).map((sg) => sg.id)
+    );
+    return products.filter(
+      (p) => p.category === id || (p.subGroup && subIds.has(p.subGroup))
+    );
+  }
+
+  function showNotice(text) {
+    const notice = document.getElementById("notice");
+    const textEl = document.getElementById("notice-text");
+    const ok = document.getElementById("notice-ok");
+    if (!notice || !textEl || !ok) return Promise.resolve();
+    textEl.textContent = text;
+    notice.hidden = false;
+    ok.focus();
+    return new Promise((resolve) => {
+      function close() {
+        notice.hidden = true;
+        ok.removeEventListener("click", close);
+        notice.removeEventListener("click", onBackdrop);
+        document.removeEventListener("keydown", onKey);
+        resolve();
+      }
+      function onBackdrop(event) {
+        if (event.target.closest("[data-notice-close]")) close();
+      }
+      function onKey(event) {
+        if (event.key === "Escape" || event.key === "Enter") close();
+      }
+      ok.addEventListener("click", close);
+      notice.addEventListener("click", onBackdrop);
+      document.addEventListener("keydown", onKey);
+    });
+  }
 
   document.querySelectorAll(".filter-tabs").forEach((tabs) => {
     tabs.addEventListener("click", (event) => {
@@ -835,7 +888,14 @@
     if (deleteBtn) {
       const id = deleteBtn.getAttribute("data-delete-group");
       if (!id) return;
-      if (!window.confirm("Bu grubu silmek istediğinize emin misiniz?")) return;
+      const used = productsUsingGroup(id);
+      const name = groups.find((g) => g.id === id)?.name?.tr || id;
+      if (used.length) {
+        await showNotice(
+          `"${name}" grubu ${used.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`
+        );
+        return;
+      }
       try {
         await api(`/api/admin/groups/${encodeURIComponent(id)}`, {
           method: "DELETE",
@@ -843,7 +903,7 @@
         flash("Grup silindi.");
         await loadCatalog();
       } catch (err) {
-        flash(err.message, true);
+        await showNotice(err.message || "Grup silinemedi.");
       }
     }
   });

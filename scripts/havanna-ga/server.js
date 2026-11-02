@@ -1304,14 +1304,17 @@ app.put("/api/admin/groups/:id", requireAdmin, (req, res) => {
 app.delete("/api/admin/groups/:id", requireAdmin, (req, res) => {
   const id = String(req.params.id || "");
   const groups = readGroups();
-  if (groups.length <= 1) {
-    res.status(400).json({ error: "En az bir ürün grubu kalmalı." });
-    return;
-  }
-  const used = readProducts().some((p) => p.category === id);
-  if (used) {
+  const group = groups.find((g) => g.id === id);
+  const subIds = new Set(
+    (Array.isArray(group?.subGroups) ? group.subGroups : []).map((sg) => sg.id)
+  );
+  const usedCount = readProducts().filter(
+    (p) => p.category === id || (p.subGroup && subIds.has(p.subGroup))
+  ).length;
+  if (usedCount > 0) {
     res.status(400).json({
-      error: "Bu grupta ürün var. Önce ürünleri taşıyın veya silin.",
+      error: `Bu grup ${usedCount} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`,
+      used: usedCount,
     });
     return;
   }
