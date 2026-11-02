@@ -139,6 +139,12 @@
     return localize ? localize(currentLang, text) : text || "";
   }
 
+  function copyText(text, id) {
+    const localize = window.HavannaCopy?.localize;
+    if (localize) return localize(currentLang, id, text || "");
+    return text || "";
+  }
+
   function productUrl(id) {
     const path = `/urun/${encodeURIComponent(id)}`;
     return window.HavannaLabels?.withLang?.(path, currentLang) || path;
@@ -248,13 +254,10 @@
     const title = labelText(
       product.seo?.title || `${product.name} | Havanna Global`
     );
-    const plainDesc = labelText(
-      String(
-        product.seo?.description ||
-          product.description ||
-          product.meta ||
-          product.name ||
-          ""
+    const plainDesc = (
+      copyText(product.description, product.id) ||
+      labelText(
+        String(product.seo?.description || product.meta || product.name || "")
       )
     )
       .replace(/\s+/g, " ")
@@ -543,11 +546,9 @@
       : product.image
         ? [product.image]
         : [];
-    const description = labelText(
-      product.description ||
-        product.seo?.description ||
-        product.meta ||
-        ""
+    const description = copyText(
+      product.description || product.seo?.description || product.meta || "",
+      product.id
     );
 
     root.innerHTML = `
