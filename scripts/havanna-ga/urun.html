@@ -19,7 +19,7 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20261103guard" />
+    <link rel="stylesheet" href="/styles.css?v=20261103zoom" />
   </head>
   <body class="age-locked product-page">
     <div
@@ -117,9 +117,20 @@
       </footer>
     </div>
 
+    <div id="image-lightbox" class="lightbox" hidden>
+      <button type="button" class="lightbox__backdrop" data-lightbox-close aria-label="Kapat"></button>
+      <div class="lightbox__frame" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
+        <p id="lightbox-title" class="lightbox__title" data-i18n="product.zoom">Resmi büyük göster</p>
+        <button type="button" class="lightbox__close" data-lightbox-close data-i18n="product.zoomClose">Kapat</button>
+        <button type="button" class="lightbox__nav lightbox__nav--prev" data-lightbox-prev hidden>‹</button>
+        <img id="lightbox-image" alt="" />
+        <button type="button" class="lightbox__nav lightbox__nav--next" data-lightbox-next hidden>›</button>
+      </div>
+    </div>
+
     <script src="/protect.js?v=20261103guard" defer></script>
     <script src="/product-labels.js?v=20261102copy2" defer></script>
     <script src="/product-copy.js?v=20261102copy" defer></script>
-    <script src="/urun.js?v=20261102copy" defer></script>
+    <script src="/urun.js?v=20261103zoom" defer></script>
   </body>
 </html>

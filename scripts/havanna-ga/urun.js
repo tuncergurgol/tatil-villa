@@ -21,6 +21,10 @@
       "product.back": "Portföye dön",
       "product.contact": "Teklif / tadım talep edin",
       "product.gallery": "Görseller",
+      "product.zoom": "Resmi büyük göster",
+      "product.zoomClose": "Kapat",
+      "product.zoomPrev": "Önceki görsel",
+      "product.zoomNext": "Sonraki görsel",
       "product.related": "Diğer Ürünlerimiz",
       "cat.liqueur": "Likör",
       "cat.vodka": "Votka",
@@ -51,6 +55,10 @@
       "product.back": "Back to portfolio",
       "product.contact": "Request a quote / tasting",
       "product.gallery": "Gallery",
+      "product.zoom": "View larger",
+      "product.zoomClose": "Close",
+      "product.zoomPrev": "Previous image",
+      "product.zoomNext": "Next image",
       "product.related": "Other Products",
       "cat.liqueur": "Liqueur",
       "cat.vodka": "Vodka",
@@ -81,6 +89,10 @@
       "product.back": "العودة إلى المحفظة",
       "product.contact": "اطلب عرضًا / تذوقًا",
       "product.gallery": "الصور",
+      "product.zoom": "عرض الصورة بحجم أكبر",
+      "product.zoomClose": "إغلاق",
+      "product.zoomPrev": "الصورة السابقة",
+      "product.zoomNext": "الصورة التالية",
       "product.related": "منتجات أخرى",
       "cat.liqueur": "ليكور",
       "cat.vodka": "فودكا",
@@ -463,6 +475,89 @@
     return `<div class="product-detail__copy">${parts.join("")}</div>`;
   }
 
+  let gallerySources = [];
+  let galleryIndex = 0;
+
+  function setLightboxImage() {
+    const img = document.getElementById("lightbox-image");
+    const prev = document.querySelector("[data-lightbox-prev]");
+    const next = document.querySelector("[data-lightbox-next]");
+    const src = gallerySources[galleryIndex] || "";
+    if (img) {
+      img.src = src;
+      img.alt = document.getElementById("product-main-image")?.alt || "";
+    }
+    const multi = gallerySources.length > 1;
+    if (prev) {
+      prev.hidden = !multi;
+      prev.setAttribute("aria-label", t("product.zoomPrev"));
+    }
+    if (next) {
+      next.hidden = !multi;
+      next.setAttribute("aria-label", t("product.zoomNext"));
+    }
+  }
+
+  function openLightbox(index) {
+    if (!gallerySources.length) return;
+    const count = gallerySources.length;
+    galleryIndex = ((index % count) + count) % count;
+    setLightboxImage();
+    const box = document.getElementById("image-lightbox");
+    if (!box) return;
+    box.hidden = false;
+    document.body.classList.add("lightbox-open");
+    document.querySelector(".lightbox__close")?.focus();
+  }
+
+  function closeLightbox() {
+    const box = document.getElementById("image-lightbox");
+    if (!box || box.hidden) return;
+    box.hidden = true;
+    document.body.classList.remove("lightbox-open");
+  }
+
+  function stepLightbox(delta) {
+    if (!gallerySources.length) return;
+    openLightbox(galleryIndex + delta);
+  }
+
+  function initLightbox() {
+    const box = document.getElementById("image-lightbox");
+    if (!box || box.dataset.bound === "1") return;
+    box.dataset.bound = "1";
+    box.addEventListener("click", (event) => {
+      if (event.target.closest("[data-lightbox-close]")) closeLightbox();
+      else if (event.target.closest("[data-lightbox-prev]")) stepLightbox(-1);
+      else if (event.target.closest("[data-lightbox-next]")) stepLightbox(1);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (box.hidden) return;
+      if (event.key === "Escape") closeLightbox();
+      if (event.key === "ArrowLeft") stepLightbox(-1);
+      if (event.key === "ArrowRight") stepLightbox(1);
+    });
+  }
+
+  function bindGallery(root, sources) {
+    gallerySources = sources;
+    galleryIndex = 0;
+    document.getElementById("product-zoom")?.addEventListener("click", () => {
+      openLightbox(galleryIndex);
+    });
+    root.querySelectorAll(".product-detail__thumb").forEach((btn, index) => {
+      btn.addEventListener("click", () => {
+        const src = btn.getAttribute("data-src");
+        const main = document.getElementById("product-main-image");
+        if (main && src) main.src = src;
+        galleryIndex = index;
+        root
+          .querySelectorAll(".product-detail__thumb")
+          .forEach((item) => item.classList.toggle("is-active", item === btn));
+      });
+    });
+  }
+
   function renderGallery(images, name) {
     if (!images.length) return "";
     const resolved = images.map(mediaUrl).filter(Boolean);
@@ -484,9 +579,14 @@
         : "";
     return `<div class="product-detail__media">
       <div class="product-detail__stage">
-        <img id="product-main-image" src="${escapeHtml(
-          resolved[0]
-        )}" alt="${escapeHtml(name)}" />
+        <button type="button" class="product-detail__zoom" id="product-zoom">
+          <img id="product-main-image" src="${escapeHtml(
+            resolved[0]
+          )}" alt="${escapeHtml(name)}" />
+          <span class="product-detail__zoom-label" data-i18n="product.zoom">${escapeHtml(
+            t("product.zoom")
+          )}</span>
+        </button>
       </div>
       ${thumbs}
     </div>`;
@@ -581,16 +681,11 @@
       ${renderRelated(payload.related || [])}
     `;
 
-    root.querySelectorAll(".product-detail__thumb").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const src = btn.getAttribute("data-src");
-        const main = document.getElementById("product-main-image");
-        if (main && src) main.src = src;
-        root
-          .querySelectorAll(".product-detail__thumb")
-          .forEach((b) => b.classList.toggle("is-active", b === btn));
-      });
-    });
+    const sources = [...root.querySelectorAll(".product-detail__thumb")]
+      .map((btn) => btn.getAttribute("data-src"))
+      .filter(Boolean);
+    const mainSrc = document.getElementById("product-main-image")?.getAttribute("src");
+    bindGallery(root, sources.length ? sources : mainSrc ? [mainSrc] : []);
     window.HavannaLabels?.rewriteLinks?.(currentLang);
   }
 
@@ -665,6 +760,7 @@
   initLang();
   initAgeGate();
   initMenu();
+  initLightbox();
   loadSettings();
   loadProduct();
 })();

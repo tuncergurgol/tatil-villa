@@ -1393,22 +1393,146 @@ body.contact-open {
 }
 
 .product-detail__stage {
+  position: relative;
   background: linear-gradient(180deg, #f3f5f8, #e8ecf2);
   border: 1px solid var(--line);
   min-height: 420px;
   display: grid;
   place-items: center;
   overflow: hidden;
-  padding: 1.5rem 1.25rem;
+  padding: 1.5rem 1.25rem 3.2rem;
 }
 
-.product-detail__stage img {
+.product-detail__zoom {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  cursor: zoom-in;
+  display: grid;
+  place-items: center;
+}
+
+.product-detail__stage img,
+.product-detail__zoom img {
   width: auto;
   height: auto;
   max-width: 100%;
   max-height: min(68vh, 620px);
   object-fit: contain;
   object-position: center center;
+}
+
+.product-detail__zoom-label {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  background: rgba(11, 21, 36, 0.88);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 0.7rem;
+  pointer-events: none;
+}
+
+.lightbox[hidden] {
+  display: none;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+}
+
+.lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(8, 12, 18, 0.9);
+  cursor: pointer;
+}
+
+.lightbox__frame {
+  position: relative;
+  z-index: 1;
+  width: min(1080px, calc(100vw - 5.5rem));
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+}
+
+.lightbox__frame img {
+  max-width: 100%;
+  max-height: 88vh;
+  object-fit: contain;
+}
+
+.lightbox__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.lightbox__close,
+.lightbox__nav {
+  position: absolute;
+  z-index: 2;
+  border: 0;
+  background: #fff;
+  color: var(--navy);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lightbox__close {
+  top: -0.2rem;
+  right: 0;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.lightbox__nav {
+  top: 50%;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 999px;
+  font-size: 1.6rem;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.lightbox__nav--prev {
+  left: -3.2rem;
+}
+
+.lightbox__nav--next {
+  right: -3.2rem;
+}
+
+body.lightbox-open {
+  overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  .lightbox__frame {
+    width: min(100vw - 1.5rem, 1080px);
+  }
+
+  .lightbox__nav--prev {
+    left: 0.2rem;
+  }
+
+  .lightbox__nav--next {
+    right: 0.2rem;
+  }
 }
 
 .product-detail__thumbs {
