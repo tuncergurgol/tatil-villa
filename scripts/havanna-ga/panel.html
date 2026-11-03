@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Havanna Global · Panel</title>
     <link rel="icon" href="/logo-mark.png" type="image/png" />
-    <link rel="stylesheet" href="/admin/admin.css?v=20261102levels" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261103filter" />
   </head>
   <body>
     <div id="app-view" class="cms" hidden>
@@ -65,7 +65,29 @@
                   autocomplete="off"
                 />
               </label>
-              <button type="button" id="product-new" class="btn">Yeni kayıt ekle</button>
+              <div class="list-toolbar__end">
+                <div class="group-filter">
+                  <button
+                    type="button"
+                    class="btn btn-ghost"
+                    id="group-filter-toggle"
+                    aria-expanded="false"
+                    aria-controls="group-filter-panel"
+                  >
+                    Gruplar
+                  </button>
+                  <div id="group-filter-panel" class="group-filter__panel" hidden>
+                    <div class="group-filter__bar">
+                      <span>Grup ve alt grup</span>
+                      <button type="button" class="group-filter__clear" id="group-filter-clear">
+                        Temizle
+                      </button>
+                    </div>
+                    <ul id="group-filter-tree" class="group-filter__tree"></ul>
+                  </div>
+                </div>
+                <button type="button" id="product-new" class="btn">Yeni kayıt ekle</button>
+              </div>
             </div>
             <section class="card">
               <div class="list-head">
@@ -394,6 +416,6 @@
       </div>
     </div>
 
-    <script src="/admin/panel.js?v=20261102levels" defer></script>
+    <script src="/admin/panel.js?v=20261103filter" defer></script>
   </body>
 </html>

@@ -382,9 +382,140 @@
     userDialog.showModal();
   }
 
+  const groupFilterState = { groups: new Set(), subs: new Set() };
+  const groupFilterToggle = document.getElementById("group-filter-toggle");
+  const groupFilterPanel = document.getElementById("group-filter-panel");
+  const groupFilterTree = document.getElementById("group-filter-tree");
+
+  function subFilterKey(groupId, sg) {
+    return `${groupId}\t${sg?.id || sg?.name?.tr || ""}`;
+  }
+
+  function sortedGroups() {
+    return [...groups].sort(
+      (a, b) =>
+        (Number(a.sort) || 0) - (Number(b.sort) || 0) ||
+        String(a.name?.tr || a.id).localeCompare(String(b.name?.tr || b.id), "tr")
+    );
+  }
+
+  function groupFilterSelectionLabels() {
+    const labels = [];
+    sortedGroups().forEach((group) => {
+      const subs = Array.isArray(group.subGroups) ? group.subGroups : [];
+      const title = group.name?.tr || group.id;
+      if (!subs.length) {
+        if (groupFilterState.groups.has(group.id)) labels.push(title);
+        return;
+      }
+      const chosen = subs.filter((sg) =>
+        groupFilterState.subs.has(subFilterKey(group.id, sg))
+      );
+      if (chosen.length === subs.length && groupFilterState.groups.has(group.id)) {
+        labels.push(title);
+        return;
+      }
+      chosen.forEach((sg) => labels.push(sg.name?.tr || sg.id));
+    });
+    return labels;
+  }
+
+  function updateGroupFilterLabel() {
+    if (!groupFilterToggle) return;
+    const labels = groupFilterSelectionLabels();
+    if (!labels.length) groupFilterToggle.textContent = "Gruplar";
+    else if (labels.length <= 2) groupFilterToggle.textContent = labels.join(", ");
+    else groupFilterToggle.textContent = `Gruplar (${labels.length})`;
+  }
+
+  function renderGroupFilter() {
+    if (!groupFilterTree) return;
+    const knownGroups = new Set(groups.map((group) => group.id));
+    for (const id of [...groupFilterState.groups]) {
+      if (!knownGroups.has(id)) groupFilterState.groups.delete(id);
+    }
+    const knownSubs = new Set();
+    groups.forEach((group) => {
+      (group.subGroups || []).forEach((sg) => knownSubs.add(subFilterKey(group.id, sg)));
+    });
+    for (const key of [...groupFilterState.subs]) {
+      if (!knownSubs.has(key)) groupFilterState.subs.delete(key);
+    }
+
+    if (!groups.length) {
+      groupFilterTree.innerHTML = `<li class="muted">Grup yok.</li>`;
+      updateGroupFilterLabel();
+      return;
+    }
+
+    groupFilterTree.innerHTML = sortedGroups()
+      .map((group) => {
+        const subs = Array.isArray(group.subGroups) ? group.subGroups : [];
+        const subHtml = subs
+          .map((sg) => {
+            const checked = groupFilterState.subs.has(subFilterKey(group.id, sg))
+              ? " checked"
+              : "";
+            return `<li>
+              <label class="group-filter__row">
+                <input type="checkbox" data-filter-sub="${escapeAttr(
+                  group.id
+                )}" data-filter-sub-id="${escapeAttr(sg.id || sg.name?.tr || "")}"${checked} />
+                <span>${escapeHtml(sg.name?.tr || sg.id)}${
+                  isActiveRecord(sg) ? "" : ' <em class="muted">pasif</em>'
+                }</span>
+              </label>
+            </li>`;
+          })
+          .join("");
+        const parentOn = groupFilterState.groups.has(group.id) ? " checked" : "";
+        return `<li>
+          <label class="group-filter__row">
+            <input type="checkbox" data-filter-group="${escapeAttr(group.id)}"${parentOn} />
+            <span>${escapeHtml(group.name?.tr || group.id)}${
+              isActiveRecord(group) ? "" : ' <em class="muted">pasif</em>'
+            }</span>
+          </label>
+          ${subs.length ? `<ul class="group-filter__subs">${subHtml}</ul>` : ""}
+        </li>`;
+      })
+      .join("");
+
+    groupFilterTree.querySelectorAll("[data-filter-group]").forEach((parent) => {
+      const groupId = parent.getAttribute("data-filter-group");
+      const children = [...groupFilterTree.querySelectorAll("[data-filter-sub]")].filter(
+        (box) => box.getAttribute("data-filter-sub") === groupId
+      );
+      if (!children.length) return;
+      const on = children.filter((box) => box.checked).length;
+      parent.indeterminate = on > 0 && on < children.length;
+      parent.checked = on === children.length && on > 0;
+    });
+    updateGroupFilterLabel();
+  }
+
+  function filterProductsByGroup(items) {
+    if (!groupFilterState.groups.size && !groupFilterState.subs.size) return items;
+    return items.filter((product) => {
+      const group = groups.find((item) => item.id === product.category);
+      if (!group) return false;
+      const subs = Array.isArray(group.subGroups) ? group.subGroups : [];
+      if (!subs.length) return groupFilterState.groups.has(group.id);
+      const full =
+        groupFilterState.groups.has(group.id) &&
+        subs.every((sg) => groupFilterState.subs.has(subFilterKey(group.id, sg)));
+      if (full) return true;
+      return subs.some(
+        (sg) =>
+          groupFilterState.subs.has(subFilterKey(group.id, sg)) &&
+          productUsesSubgroup(product, sg)
+      );
+    });
+  }
+
   function renderProducts() {
-    const visible = filterProductsBySearch(
-      filterItems(products, filters.products)
+    const visible = filterProductsByGroup(
+      filterProductsBySearch(filterItems(products, filters.products))
     );
     productCount.textContent = `${visible.length} / ${products.length} ürün`;
     if (!visible.length) {
@@ -519,6 +650,7 @@
     const data = await api("/api/admin/products");
     products = data.products || [];
     groups = data.groups || [];
+    renderGroupFilter();
     renderProducts();
     renderGroups();
     fillCategorySelect();
@@ -616,6 +748,73 @@
   });
   document.getElementById("goto-products")?.addEventListener("click", () => {
     setView("products");
+  });
+
+  function setGroupFilterOpen(open) {
+    if (!groupFilterPanel || !groupFilterToggle) return;
+    groupFilterPanel.hidden = !open;
+    groupFilterToggle.setAttribute("aria-expanded", String(open));
+  }
+
+  groupFilterToggle?.addEventListener("click", () => {
+    setGroupFilterOpen(groupFilterPanel.hidden);
+  });
+
+  document.getElementById("group-filter-clear")?.addEventListener("click", () => {
+    groupFilterState.groups.clear();
+    groupFilterState.subs.clear();
+    renderGroupFilter();
+    renderProducts();
+  });
+
+  groupFilterTree?.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const groupId = input.getAttribute("data-filter-group");
+    if (groupId) {
+      const group = groups.find((item) => item.id === groupId);
+      const subs = Array.isArray(group?.subGroups) ? group.subGroups : [];
+      if (input.checked) {
+        groupFilterState.groups.add(groupId);
+        subs.forEach((sg) => groupFilterState.subs.add(subFilterKey(groupId, sg)));
+      } else {
+        groupFilterState.groups.delete(groupId);
+        subs.forEach((sg) => groupFilterState.subs.delete(subFilterKey(groupId, sg)));
+      }
+      input.indeterminate = false;
+      renderGroupFilter();
+      renderProducts();
+      return;
+    }
+    const parentId = input.getAttribute("data-filter-sub");
+    const subId = input.getAttribute("data-filter-sub-id");
+    if (!parentId) return;
+    const group = groups.find((item) => item.id === parentId);
+    const sg = (group?.subGroups || []).find(
+      (item) => (item.id || item.name?.tr || "") === subId
+    );
+    if (!sg) return;
+    const key = subFilterKey(parentId, sg);
+    if (input.checked) groupFilterState.subs.add(key);
+    else groupFilterState.subs.delete(key);
+    const subs = group?.subGroups || [];
+    const allOn = subs.length && subs.every((item) => groupFilterState.subs.has(subFilterKey(parentId, item)));
+    if (allOn) groupFilterState.groups.add(parentId);
+    else groupFilterState.groups.delete(parentId);
+    renderGroupFilter();
+    renderProducts();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!groupFilterPanel || groupFilterPanel.hidden) return;
+    if (event.target.closest(".group-filter")) return;
+    setGroupFilterOpen(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!groupFilterPanel || groupFilterPanel.hidden) return;
+    setGroupFilterOpen(false);
   });
 
   function subgroupKeys(sg) {
