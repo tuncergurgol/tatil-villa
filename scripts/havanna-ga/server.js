@@ -223,25 +223,26 @@ const upload = multer({
 });
 
 async function finalizeUploadedImages(files, productName) {
-  const out = [];
-  for (let i = 0; i < files.length; i += 1) {
-    const file = files[i];
-    const abs = file.path || path.join(UPLOAD_DIR, file.filename);
-    try {
-      const processed = await processProductImage({
-        inputPath: abs,
-        outputDir: UPLOAD_DIR,
-        productName,
-        seq: `${Date.now().toString(36)}${i}${crypto.randomBytes(2).toString("hex")}`,
-      });
-      out.push(processed.relativePath);
-    } finally {
+  const stamp = Date.now().toString(36);
+  const out = await Promise.all(
+    files.map(async (file, i) => {
+      const abs = file.path || path.join(UPLOAD_DIR, file.filename);
       try {
-        if (fs.existsSync(abs)) fs.unlinkSync(abs);
-      } catch (_) {}
-    }
-  }
-  return out;
+        const processed = await processProductImage({
+          inputPath: abs,
+          outputDir: UPLOAD_DIR,
+          productName,
+          seq: `${stamp}${i}${crypto.randomBytes(2).toString("hex")}`,
+        });
+        return processed.relativePath;
+      } finally {
+        try {
+          if (fs.existsSync(abs)) fs.unlinkSync(abs);
+        } catch (_) {}
+      }
+    })
+  );
+  return out.filter(Boolean);
 }
 
 function ensureJsonFile(file, fallback) {
@@ -691,20 +692,23 @@ function parseKeepImages(raw) {
 }
 
 function parseImageOrder(raw) {
-  if (!raw || typeof raw !== "string") return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed
-      .map((item) => {
-        if (item?.t === "k" && item.p) return { t: "k", p: String(item.p) };
-        if (item?.t === "n") return { t: "n" };
-        return null;
-      })
-      .filter(Boolean);
-  } catch {
-    return null;
+  let parsed = raw;
+  if (typeof raw === "string") {
+    if (!raw.trim()) return null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
+  if (!Array.isArray(parsed)) return null;
+  return parsed
+    .map((item) => {
+      if (item?.t === "k" && item.p) return { t: "k", p: String(item.p) };
+      if (item?.t === "n") return { t: "n" };
+      return null;
+    })
+    .filter(Boolean);
 }
 
 function orderedProductImages(order, kept, uploaded) {
@@ -1313,7 +1317,10 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
       return;
     }
 
-    const files = await parseMultiUpload(req, res);
+    const contentType = String(req.headers["content-type"] || "");
+    const files = contentType.includes("multipart/form-data")
+      ? await parseMultiUpload(req, res)
+      : [];
     const current = list[idx];
     const name = String(req.body?.name || current.name).trim();
     const category = String(req.body?.category || current.category).trim();

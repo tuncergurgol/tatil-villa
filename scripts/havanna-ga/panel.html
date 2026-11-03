@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Havanna Global · Panel</title>
     <link rel="icon" href="/logo-mark.png" type="image/png" />
-    <link rel="stylesheet" href="/admin/admin.css?v=20261103sort" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261103tabs" />
   </head>
   <body>
     <div id="app-view" class="cms" hidden>
@@ -237,6 +237,7 @@
         <input type="hidden" name="id" id="product-id" />
         <div class="modal-tabs" role="tablist">
           <button type="button" class="modal-tab is-active" data-product-tab="general">Genel</button>
+          <button type="button" class="modal-tab" data-product-tab="images">Resimler</button>
           <button type="button" class="modal-tab" data-product-tab="seo">SEO</button>
         </div>
 
@@ -273,22 +274,31 @@
 
             <aside class="product-layout__media">
               <div class="media-panel">
-                <div class="media-panel__head">
-                  <p class="media-panel__title">Görseller</p>
-                  <button type="button" class="btn" id="product-image-add">Resim ekle</button>
-                </div>
-                <input
-                  type="file"
-                  id="product-images"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  hidden
-                />
-                <p class="hint media-panel__sort">Sıralamak için sürükleyip bırakın</p>
-                <div class="media-grid" id="product-media-list"></div>
-                <span class="hint" id="product-image-hint">İlk görsel vitrin resmidir. Sırayı fareyle değiştirin.</span>
+                <p class="media-panel__title">Vitrin resmi</p>
+                <div id="product-vitrin"></div>
+                <p class="hint">Bu, sitede ilk görünen resimdir. Sırayı Resimler sekmesinden değiştirin.</p>
+                <button type="button" class="btn btn-ghost sm" id="goto-product-images">Resimler sekmesi</button>
               </div>
             </aside>
+          </div>
+        </div>
+
+        <div class="tab-panel" data-product-panel="images" hidden>
+          <div class="media-panel">
+            <div class="media-panel__head">
+              <p class="media-panel__title">Görseller</p>
+              <button type="button" class="btn" id="product-image-add">Resim ekle</button>
+            </div>
+            <input
+              type="file"
+              id="product-images"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              hidden
+            />
+            <p class="hint media-panel__sort">Sıralamak için sürükleyip bırakın. İlk görsel vitrin resmidir.</p>
+            <div class="media-grid media-grid--gallery" id="product-media-list"></div>
+            <span class="hint" id="product-image-hint">İlk görsel vitrin resmidir. Sırayı fareyle değiştirin, sonra Kaydet.</span>
           </div>
         </div>
 
@@ -430,6 +440,6 @@
       </div>
     </div>
 
-    <script src="/admin/panel.js?v=20261103sort" defer></script>
+    <script src="/admin/panel.js?v=20261103tabs" defer></script>
   </body>
 </html>

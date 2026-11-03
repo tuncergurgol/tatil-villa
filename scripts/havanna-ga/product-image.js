@@ -175,7 +175,7 @@ async function centerOnTransparentCanvas(sharp, inputPath) {
     },
   })
     .composite([{ input: subject, gravity: "centre" }])
-    .webp({ quality: WEBP_QUALITY, alphaQuality: 90, effort: 4 });
+    .webp({ quality: WEBP_QUALITY, alphaQuality: 80, effort: 2 });
 }
 
 /**
@@ -197,7 +197,8 @@ async function processProductImage({
   let tempAlpha = null;
 
   try {
-    if (rembgAvailable()) {
+    // rembg modeli Kaydet'i dakikalarca kilitler. Yalnızca HAVANNA_REMBG=1 iken çalışır.
+    if (process.env.HAVANNA_REMBG === "1" && rembgAvailable()) {
       tempAlpha = path.join(
         outputDir,
         `.tmp-rembg-${crypto.randomBytes(4).toString("hex")}.png`

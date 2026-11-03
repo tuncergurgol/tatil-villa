@@ -308,6 +308,7 @@
   function renderProductMedia() {
     if (!productMediaItems.length) {
       productMediaList.innerHTML = `<p class="muted">Henüz görsel yok.</p>`;
+      renderVitrinPreview();
       return;
     }
     productMediaList.innerHTML = productMediaItems
@@ -328,6 +329,22 @@
       </div>`;
       })
       .join("");
+    renderVitrinPreview();
+  }
+
+  function renderVitrinPreview() {
+    const slot = document.getElementById("product-vitrin");
+    if (!slot) return;
+    const item = productMediaItems[0];
+    if (!item) {
+      slot.innerHTML = `<p class="muted">Henüz vitrin resmi yok.</p>`;
+      return;
+    }
+    slot.innerHTML = `
+      <div class="vitrin-preview">
+        <img src="${escapeAttr(mediaItemSrc(item))}" alt="" />
+        <span class="media-item__badge">VİTRİN</span>
+      </div>`;
   }
 
   function moveProductMedia(from, to) {
@@ -717,6 +734,14 @@
     fillCategorySelect();
   }
 
+  function rememberProduct(product) {
+    if (!product?.id) return;
+    const idx = products.findIndex((item) => item.id === product.id);
+    if (idx === -1) products.unshift(product);
+    else products[idx] = product;
+    renderProducts();
+  }
+
   async function loadSettings() {
     const data = await api("/api/admin/settings");
     fillSettings(data.settings || {});
@@ -986,6 +1011,10 @@
     });
   });
 
+  document.getElementById("goto-product-images")?.addEventListener("click", () => {
+    setProductTab("images");
+  });
+
   productMediaList.addEventListener("mousedown", (event) => {
     const card = event.target.closest("[data-media-index]");
     if (!card) return;
@@ -1124,57 +1153,89 @@
   productForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     productError.hidden = true;
-    const formData = new FormData(productForm);
-    formData.delete("id");
-    formData.set("active", productActive.checked ? "true" : "false");
-    formData.set(
-      "keepImages",
-      JSON.stringify(
-        productMediaItems.filter((item) => item.kind === "saved").map((item) => item.path)
-      )
-    );
-    formData.set(
-      "imageOrder",
-      JSON.stringify(
-        productMediaItems.map((item) =>
-          item.kind === "saved" ? { t: "k", p: item.path } : { t: "n" }
-        )
-      )
-    );
-    formData.delete("images");
-    productMediaItems.forEach((item) => {
-      if (item.kind === "file" && item.file) formData.append("images", item.file);
-    });
-    const fileCount = productMediaItems.filter((item) => item.kind === "file").length;
+    const fileItems = productMediaItems.filter((item) => item.kind === "file" && item.file);
     if (!productMediaItems.length) {
       productError.textContent = editingProductId
         ? "En az bir ürün görseli gerekli."
         : "En az bir ürün görseli seçin.";
       productError.hidden = false;
+      setProductTab("images");
       return;
     }
-    if (!editingProductId && !fileCount) {
+    if (!editingProductId && !fileItems.length) {
       productError.textContent = "En az bir ürün görseli seçin.";
       productError.hidden = false;
+      setProductTab("images");
       return;
     }
+    const submitBtn = document.getElementById("product-submit");
+    const submitLabel = submitBtn?.textContent || "Kaydet";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Kaydediliyor…";
+    }
+    const imageOrder = productMediaItems.map((item) =>
+      item.kind === "saved" ? { t: "k", p: item.path } : { t: "n" }
+    );
+    const keepImages = productMediaItems
+      .filter((item) => item.kind === "saved")
+      .map((item) => item.path);
+    const fields = {
+      name: document.getElementById("product-name").value.trim(),
+      category: productCategory.value,
+      subGroup: document.getElementById("product-subgroup").value,
+      meta: document.getElementById("product-meta").value.trim(),
+      description: document.getElementById("product-description").value.trim(),
+      seoTitle: document.getElementById("product-seo-title").value.trim(),
+      seoDescription: document.getElementById("product-seo-description").value.trim(),
+      seoKeywords: document.getElementById("product-seo-keywords").value.trim(),
+      seoSlug: document.getElementById("product-seo-slug").value.trim(),
+      active: productActive.checked,
+      keepImages,
+      imageOrder,
+    };
     try {
-      if (editingProductId) {
-        await api(`/api/admin/products/${encodeURIComponent(editingProductId)}`, {
+      let saved;
+      if (editingProductId && !fileItems.length) {
+        saved = await api(`/api/admin/products/${encodeURIComponent(editingProductId)}`, {
           method: "PUT",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fields),
         });
         flash("Ürün güncellendi.");
       } else {
-        await api("/api/admin/products", { method: "POST", body: formData });
-        flash("Ürün eklendi.");
+        const formData = new FormData();
+        Object.entries(fields).forEach(([key, value]) => {
+          if (key === "keepImages" || key === "imageOrder") {
+            formData.set(key, JSON.stringify(value));
+            return;
+          }
+          formData.set(key, key === "active" ? (value ? "true" : "false") : String(value ?? ""));
+        });
+        fileItems.forEach((item) => formData.append("images", item.file));
+        if (editingProductId) {
+          saved = await api(`/api/admin/products/${encodeURIComponent(editingProductId)}`, {
+            method: "PUT",
+            body: formData,
+          });
+          flash("Ürün güncellendi.");
+        } else {
+          saved = await api("/api/admin/products", { method: "POST", body: formData });
+          flash("Ürün eklendi.");
+        }
       }
       closeDialog(productDialog);
-      await loadCatalog();
+      if (saved?.product) rememberProduct(saved.product);
+      else await loadCatalog();
     } catch (err) {
       productError.textContent = err.message;
       productError.hidden = false;
       flash(err.message, true);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitLabel;
+      }
     }
   });
 
