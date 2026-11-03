@@ -690,6 +690,40 @@ function parseKeepImages(raw) {
   }
 }
 
+function parseImageOrder(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed
+      .map((item) => {
+        if (item?.t === "k" && item.p) return { t: "k", p: String(item.p) };
+        if (item?.t === "n") return { t: "n" };
+        return null;
+      })
+      .filter(Boolean);
+  } catch {
+    return null;
+  }
+}
+
+function orderedProductImages(order, kept, uploaded) {
+  if (!order) return [...kept, ...uploaded];
+  let uploadCursor = 0;
+  const images = [];
+  for (const entry of order) {
+    if (entry.t === "k") {
+      if (kept.includes(entry.p)) images.push(entry.p);
+      continue;
+    }
+    const next = uploaded[uploadCursor];
+    uploadCursor += 1;
+    if (next) images.push(next);
+  }
+  if (uploadCursor < uploaded.length) images.push(...uploaded.slice(uploadCursor));
+  return images;
+}
+
 function parseSeoFromBody(body = {}, fallback = {}) {
   return {
     title: String(body.seoTitle ?? fallback.title ?? "").trim(),
@@ -1315,7 +1349,11 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const uploaded = files.length
       ? await finalizeUploadedImages(files, name)
       : [];
-    const images = [...kept, ...uploaded];
+    const images = orderedProductImages(
+      parseImageOrder(req.body?.imageOrder),
+      kept,
+      uploaded
+    );
     if (!images.length) {
       res.status(400).json({ error: "En az bir ürün görseli gerekli." });
       return;

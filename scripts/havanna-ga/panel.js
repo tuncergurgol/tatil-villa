@@ -67,7 +67,7 @@
   let editingProductId = null;
   let editingGroupId = null;
   let editingUserId = null;
-  let productKeepImages = [];
+  let productMediaItems = [];
   let productSearchQuery = "";
   let editingSubGroups = [];
   const filters = { products: "active", groups: "active", users: "active" };
@@ -281,19 +281,41 @@
     });
   }
 
+  function releaseProductMedia() {
+    productMediaItems.forEach((item) => {
+      if (item.preview) URL.revokeObjectURL(item.preview);
+    });
+    productMediaItems = [];
+  }
+
+  function mediaItemSrc(item) {
+    if (item.kind === "file") return item.preview || "";
+    const path = String(item.path || "");
+    if (!path) return "";
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
+    return `/${path.replace(/^\/+/, "")}`;
+  }
+
   function renderProductMedia() {
-    if (!productKeepImages.length) {
+    if (!productMediaItems.length) {
       productMediaList.innerHTML = `<p class="muted">Henüz görsel yok.</p>`;
       return;
     }
-    productMediaList.innerHTML = productKeepImages
-      .map(
-        (src, index) => `
-      <div class="media-item">
-        <img src="/${escapeAttr(src)}" alt="" />
-        <button type="button" class="btn btn-ghost sm" data-remove-image="${index}">Kaldır</button>
-      </div>`
-      )
+    productMediaList.innerHTML = productMediaItems
+      .map((item, index) => {
+        const vitrin = index === 0;
+        return `
+      <div class="media-item${vitrin ? " is-vitrin" : ""}">
+        <img src="${escapeAttr(mediaItemSrc(item))}" alt="" />
+        ${vitrin ? '<span class="media-item__badge">VİTRİN</span>' : ""}
+        <div class="media-item__actions">
+          <button type="button" class="btn btn-ghost sm${
+            vitrin ? " is-vitrin" : ""
+          }" data-vitrin-image="${index}"${vitrin ? " disabled" : ""}>Vitrin resmi</button>
+          <button type="button" class="btn btn-danger sm" data-remove-image="${index}">Sil</button>
+        </div>
+      </div>`;
+      })
       .join("");
   }
 
@@ -318,13 +340,17 @@
       product?.category || groups.find((g) => isActiveRecord(g))?.id;
     fillCategorySelect(categoryId);
     fillSubGroupSelect(categoryId, product?.subGroup || "");
-    productKeepImages = productImagesOf(product);
+    releaseProductMedia();
+    productMediaItems = productImagesOf(product).map((path) => ({
+      kind: "saved",
+      path,
+    }));
     renderProductMedia();
+    if (productImagesInput) productImagesInput.value = "";
     productDialogTitle.textContent = product ? "Düzenleme" : "Yeni kayıt ekle";
-    productImagesInput.required = !product;
     productImageHint.textContent = product
-      ? "Yeni dosya eklerseniz mevcutlara eklenir. İstemediğiniz mevcut görselleri kaldırın."
-      : "En az 1 görsel zorunlu. Birden fazla seçebilirsiniz.";
+      ? "İlk görsel vitrin resmidir. Resim ekle yeni görseli sıraya koyar."
+      : "En az 1 görsel zorunlu. İlk görsel vitrin resmi olur.";
     setProductTab("general");
     productDialog.showModal();
   }
@@ -926,11 +952,38 @@
   });
 
   productMediaList.addEventListener("click", (event) => {
-    const btn = event.target.closest("[data-remove-image]");
-    if (!btn) return;
-    const index = Number(btn.getAttribute("data-remove-image"));
-    if (!Number.isInteger(index)) return;
-    productKeepImages.splice(index, 1);
+    const remove = event.target.closest("[data-remove-image]");
+    const vitrin = event.target.closest("[data-vitrin-image]");
+    if (remove) {
+      const index = Number(remove.getAttribute("data-remove-image"));
+      if (!Number.isInteger(index)) return;
+      const [removed] = productMediaItems.splice(index, 1);
+      if (removed?.preview) URL.revokeObjectURL(removed.preview);
+      renderProductMedia();
+      return;
+    }
+    if (!vitrin) return;
+    const index = Number(vitrin.getAttribute("data-vitrin-image"));
+    if (!Number.isInteger(index) || index <= 0 || index >= productMediaItems.length) return;
+    const [item] = productMediaItems.splice(index, 1);
+    productMediaItems.unshift(item);
+    renderProductMedia();
+  });
+
+  document.getElementById("product-image-add")?.addEventListener("click", () => {
+    productImagesInput?.click();
+  });
+
+  productImagesInput?.addEventListener("change", () => {
+    const files = [...(productImagesInput.files || [])];
+    files.forEach((file) => {
+      productMediaItems.push({
+        kind: "file",
+        file,
+        preview: URL.createObjectURL(file),
+      });
+    });
+    productImagesInput.value = "";
     renderProductMedia();
   });
 
@@ -977,17 +1030,34 @@
     const formData = new FormData(productForm);
     formData.delete("id");
     formData.set("active", productActive.checked ? "true" : "false");
-    formData.set("keepImages", JSON.stringify(productKeepImages));
+    formData.set(
+      "keepImages",
+      JSON.stringify(
+        productMediaItems.filter((item) => item.kind === "saved").map((item) => item.path)
+      )
+    );
+    formData.set(
+      "imageOrder",
+      JSON.stringify(
+        productMediaItems.map((item) =>
+          item.kind === "saved" ? { t: "k", p: item.path } : { t: "n" }
+        )
+      )
+    );
     formData.delete("images");
-    const files = productImagesInput.files || [];
-    for (const file of files) formData.append("images", file);
-    if (!editingProductId && !files.length) {
-      productError.textContent = "En az bir ürün görseli seçin.";
+    productMediaItems.forEach((item) => {
+      if (item.kind === "file" && item.file) formData.append("images", item.file);
+    });
+    const fileCount = productMediaItems.filter((item) => item.kind === "file").length;
+    if (!productMediaItems.length) {
+      productError.textContent = editingProductId
+        ? "En az bir ürün görseli gerekli."
+        : "En az bir ürün görseli seçin.";
       productError.hidden = false;
       return;
     }
-    if (editingProductId && !productKeepImages.length && !files.length) {
-      productError.textContent = "En az bir ürün görseli gerekli.";
+    if (!editingProductId && !fileCount) {
+      productError.textContent = "En az bir ürün görseli seçin.";
       productError.hidden = false;
       return;
     }

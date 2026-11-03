@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Havanna Global · Panel</title>
     <link rel="icon" href="/logo-mark.png" type="image/png" />
-    <link rel="stylesheet" href="/admin/admin.css?v=20261103filter" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261103media" />
   </head>
   <body>
     <div id="app-view" class="cms" hidden>
@@ -273,13 +273,19 @@
 
             <aside class="product-layout__media">
               <div class="media-panel">
-                <p class="media-panel__title">Görseller</p>
+                <div class="media-panel__head">
+                  <p class="media-panel__title">Görseller</p>
+                  <button type="button" class="btn" id="product-image-add">Resim ekle</button>
+                </div>
+                <input
+                  type="file"
+                  id="product-images"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  hidden
+                />
                 <div class="media-grid" id="product-media-list"></div>
-                <label class="media-upload">
-                  Resim ekle
-                  <input type="file" name="images" id="product-images" accept="image/jpeg,image/png,image/webp" multiple />
-                </label>
-                <span class="hint" id="product-image-hint">Yeni üründe en az 1 görsel zorunlu. Düzenlemede mevcutlar korunabilir.</span>
+                <span class="hint" id="product-image-hint">İlk görsel vitrin resmidir. Resim ekle ile yeni görsel seçilir.</span>
               </div>
             </aside>
           </div>
@@ -416,6 +422,6 @@
       </div>
     </div>
 
-    <script src="/admin/panel.js?v=20261103filter" defer></script>
+    <script src="/admin/panel.js?v=20261103media" defer></script>
   </body>
 </html>

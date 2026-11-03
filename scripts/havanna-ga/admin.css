@@ -879,6 +879,13 @@ textarea {
   gap: 0.65rem;
 }
 
+.media-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
 .media-panel__title {
   margin: 0;
   font-size: 0.8rem;
@@ -888,16 +895,15 @@ textarea {
   letter-spacing: 0.04em;
 }
 
-.media-upload {
-  display: grid;
-  gap: 0.35rem;
-  font-size: 0.8rem;
-  font-weight: 700;
+#product-image-add {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 0.55rem;
   min-height: 96px;
 }
@@ -911,6 +917,11 @@ textarea {
   gap: 0.35rem;
 }
 
+.media-item.is-vitrin {
+  border-color: #c9a227;
+  box-shadow: inset 0 0 0 1px #c9a227;
+}
+
 .media-item img {
   width: 100%;
   height: 110px;
@@ -920,6 +931,34 @@ textarea {
   background: linear-gradient(180deg, #f3f5f8, #e8ecf2);
   padding: 0.25rem;
   box-sizing: border-box;
+}
+
+.media-item__badge {
+  justify-self: start;
+  background: #f5d76e;
+  color: #1c1403;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+}
+
+.media-item__actions {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.media-item__actions .btn {
+  width: 100%;
+  padding: 0.32rem 0.35rem;
+  font-size: 0.72rem;
+}
+
+.media-item__actions .btn.is-vitrin {
+  background: #f5d76e;
+  border-color: #e0b84a;
+  color: #1c1403;
 }
 
 @media (max-width: 720px) {
