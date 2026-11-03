@@ -103,6 +103,7 @@ ensureJsonFile(INQUIRIES_FILE, []);
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser(SESSION_SECRET));
 
@@ -120,6 +121,78 @@ app.use((req, res, next) => {
   }
   const asset = pathOnly.match(/^\/(?:en|ar)\/(.+\.[a-z0-9]{2,5})$/i);
   if (asset) req.url = `/${asset[1]}${search}`;
+  next();
+});
+
+function isPublicHttps(req) {
+  const host = String(req.headers.host || "");
+  return !/^(localhost|127\.0\.0\.1)(:|$)/i.test(host);
+}
+
+app.use((req, res, next) => {
+  const lower = String(req.path || "").toLowerCase();
+  if (
+    lower.includes("..") ||
+    lower.startsWith("/data/") ||
+    lower === "/server.js" ||
+    lower === "/package.json" ||
+    lower === "/package-lock.json" ||
+    lower.endsWith(".env") ||
+    lower.endsWith(".sh") ||
+    lower.endsWith(".py")
+  ) {
+    res.status(404).end();
+    return;
+  }
+
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  );
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  const csp = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://static.cloudflareinsights.com",
+    "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://cloudflareinsights.com",
+  ];
+  if (isPublicHttps(req)) {
+    csp.push("upgrade-insecure-requests");
+    res.setHeader("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
+  }
+  res.setHeader("Content-Security-Policy", csp.join("; "));
+
+  if (lower.startsWith("/images/")) {
+    const ref = req.get("referer");
+    if (ref) {
+      let host = "";
+      try {
+        host = new URL(ref).hostname.toLowerCase();
+      } catch {
+        host = "";
+      }
+      const allowed =
+        host === "havannaglobal.com" ||
+        host.endsWith(".havannaglobal.com") ||
+        host === "localhost" ||
+        host === "127.0.0.1";
+      if (host && !allowed) {
+        res.status(403).end();
+        return;
+      }
+    }
+  }
   next();
 });
 
@@ -325,6 +398,7 @@ function isContactEmail(value) {
 const contactAttempts = new Map();
 function rateLimitContact(ip) {
   const now = Date.now();
+  pruneLimits(contactAttempts, 15 * 60 * 1000);
   const row = contactAttempts.get(ip) || { count: 0, start: now };
   if (now - row.start > 15 * 60 * 1000) {
     row.count = 0;
@@ -336,10 +410,19 @@ function rateLimitContact(ip) {
 }
 
 function clientIp(req) {
-  const forwarded = String(req.headers["x-forwarded-for"] || "")
+  const real = String(req.headers["x-real-ip"] || "")
     .split(",")[0]
     .trim();
-  return forwarded || req.ip || req.socket.remoteAddress || "unknown";
+  if (real) return real;
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+
+function pruneLimits(map, windowMs) {
+  if (map.size < 4000) return;
+  const now = Date.now();
+  for (const [key, row] of map) {
+    if (!row || now - row.start > windowMs) map.delete(key);
+  }
 }
 
 const CONTACT_INBOX = "info@havannaglobal.com.tr";
@@ -521,6 +604,7 @@ function requireAdmin(req, res, next) {
 const loginAttempts = new Map();
 function rateLimitLogin(ip) {
   const now = Date.now();
+  pruneLimits(loginAttempts, 15 * 60 * 1000);
   const row = loginAttempts.get(ip) || { count: 0, start: now };
   if (now - row.start > 15 * 60 * 1000) {
     row.count = 0;
@@ -853,8 +937,18 @@ app.get("/api/admin/session", (req, res) => {
   });
 });
 
+function adminCookieOptions(req) {
+  return {
+    httpOnly: true,
+    sameSite: "lax",
+    signed: true,
+    secure: isPublicHttps(req),
+    path: "/",
+  };
+}
+
 app.post("/api/admin/login", (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const ip = clientIp(req);
   if (!rateLimitLogin(ip)) {
     res.status(429).json({ error: "Çok fazla deneme. Bir süre sonra tekrar deneyin." });
     return;
@@ -882,22 +976,19 @@ app.post("/api/admin/login", (req, res) => {
     exp: Date.now() + TOKEN_TTL_MS,
   });
   res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    signed: true,
+    ...adminCookieOptions(req),
     maxAge: TOKEN_TTL_MS,
-    path: "/",
   });
   res.json({ ok: true, user: publicUser(user) });
 });
 
-app.post("/api/admin/logout", (_req, res) => {
-  res.clearCookie(COOKIE_NAME, { path: "/" });
+app.post("/api/admin/logout", (req, res) => {
+  res.clearCookie(COOKIE_NAME, adminCookieOptions(req));
   res.json({ ok: true });
 });
 
 app.post("/api/admin/forgot-password", (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const ip = clientIp(req);
   if (!rateLimitLogin(ip)) {
     res.status(429).json({ error: "Çok fazla deneme. Bir süre sonra tekrar deneyin." });
     return;
@@ -954,6 +1045,10 @@ app.post("/api/admin/forgot-password", (req, res) => {
 });
 
 app.post("/api/admin/reset-password", (req, res) => {
+  if (!rateLimitLogin(clientIp(req))) {
+    res.status(429).json({ error: "Çok fazla deneme. Bir süre sonra tekrar deneyin." });
+    return;
+  }
   const token = String(req.body?.token || "").trim();
   const password = String(req.body?.password || "");
   if (!token || password.length < 8) {
@@ -1503,6 +1598,14 @@ app.use(
     setHeaders(res, filePath) {
       if (filePath.endsWith(".json")) {
         res.setHeader("Cache-Control", "no-store");
+      }
+      if (/\.(png|jpe?g|webp|gif|ico)$/i.test(filePath)) {
+        res.setHeader("Content-Disposition", "inline");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+      }
+      if (filePath.endsWith(".svg")) {
+        res.setHeader("Content-Disposition", "attachment");
+        res.setHeader("X-Content-Type-Options", "nosniff");
       }
     },
   })
