@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Havanna Global · Panel</title>
     <link rel="icon" href="/logo-mark.png" type="image/png" />
-    <link rel="stylesheet" href="/admin/admin.css?v=20261103media" />
+    <link rel="stylesheet" href="/admin/admin.css?v=20261103sort" />
   </head>
   <body>
     <div id="app-view" class="cms" hidden>
@@ -284,8 +284,9 @@
                   multiple
                   hidden
                 />
+                <p class="hint media-panel__sort">Sıralamak için sürükleyip bırakın</p>
                 <div class="media-grid" id="product-media-list"></div>
-                <span class="hint" id="product-image-hint">İlk görsel vitrin resmidir. Resim ekle ile yeni görsel seçilir.</span>
+                <span class="hint" id="product-image-hint">İlk görsel vitrin resmidir. Sırayı fareyle değiştirin.</span>
               </div>
             </aside>
           </div>
@@ -320,6 +321,13 @@
         <div class="modal__actions">
           <button type="submit" class="btn btn-save" id="product-submit" value="save">Kaydet</button>
           <button type="button" class="btn btn-close" id="product-close">Kapat</button>
+        </div>
+        <div id="media-preview" class="media-preview" hidden>
+          <button type="button" class="media-preview__backdrop" data-preview-close aria-label="Kapat"></button>
+          <figure class="media-preview__frame">
+            <img id="media-preview-image" alt="" />
+            <button type="button" class="btn" data-preview-close>Kapat</button>
+          </figure>
         </div>
       </form>
     </dialog>
@@ -422,6 +430,6 @@
       </div>
     </div>
 
-    <script src="/admin/panel.js?v=20261103media" defer></script>
+    <script src="/admin/panel.js?v=20261103sort" defer></script>
   </body>
 </html>

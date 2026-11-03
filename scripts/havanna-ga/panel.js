@@ -68,6 +68,7 @@
   let editingGroupId = null;
   let editingUserId = null;
   let productMediaItems = [];
+  let mediaDragIndex = null;
   let productSearchQuery = "";
   let editingSubGroups = [];
   const filters = { products: "active", groups: "active", users: "active" };
@@ -256,6 +257,7 @@
   }
 
   function closeDialog(dialog) {
+    if (dialog === productDialog) closeMediaPreview();
     if (dialog.open) dialog.close();
   }
 
@@ -296,6 +298,13 @@
     return `/${path.replace(/^\/+/, "")}`;
   }
 
+  const mediaStarIcon =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 3 15 9.2 21.6 10 16.8 14.5 18.2 21 12 17.8 5.8 21 7.2 14.5 2.4 10 9 9.2 12 3"/></svg>';
+  const mediaZoomIcon =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.5-3.5"/><path d="M11 8v6M8 11h6"/></svg>';
+  const mediaTrashIcon =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M7 7l1 13h8l1-13"/></svg>';
+
   function renderProductMedia() {
     if (!productMediaItems.length) {
       productMediaList.innerHTML = `<p class="muted">Henüz görsel yok.</p>`;
@@ -305,18 +314,44 @@
       .map((item, index) => {
         const vitrin = index === 0;
         return `
-      <div class="media-item${vitrin ? " is-vitrin" : ""}">
-        <img src="${escapeAttr(mediaItemSrc(item))}" alt="" />
+      <div class="media-item${vitrin ? " is-vitrin" : ""}" draggable="true" data-media-index="${index}">
+        <img src="${escapeAttr(mediaItemSrc(item))}" alt="" draggable="false" />
         ${vitrin ? '<span class="media-item__badge">VİTRİN</span>' : ""}
-        <div class="media-item__actions">
-          <button type="button" class="btn btn-ghost sm${
-            vitrin ? " is-vitrin" : ""
-          }" data-vitrin-image="${index}"${vitrin ? " disabled" : ""}>Vitrin resmi</button>
-          <button type="button" class="btn btn-danger sm" data-remove-image="${index}">Sil</button>
+        <span class="media-item__index">${index + 1}</span>
+        <div class="media-item__overlay">
+          <button type="button" class="media-item__icon is-star" data-vitrin-image="${index}" title="Vitrin yap"${
+            vitrin ? " disabled" : ""
+          }>${mediaStarIcon}</button>
+          <button type="button" class="media-item__icon is-zoom" data-preview-image="${index}" title="Büyüt">${mediaZoomIcon}</button>
+          <button type="button" class="media-item__icon is-delete" data-remove-image="${index}" title="Sil">${mediaTrashIcon}</button>
         </div>
       </div>`;
       })
       .join("");
+  }
+
+  function moveProductMedia(from, to) {
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from === to) return;
+    if (from < 0 || to < 0 || from >= productMediaItems.length || to >= productMediaItems.length) return;
+    const [moved] = productMediaItems.splice(from, 1);
+    productMediaItems.splice(to, 0, moved);
+    renderProductMedia();
+  }
+
+  function openMediaPreview(index) {
+    const item = productMediaItems[index];
+    const preview = document.getElementById("media-preview");
+    const image = document.getElementById("media-preview-image");
+    if (!item || !preview || !image) return;
+    image.src = mediaItemSrc(item);
+    preview.hidden = false;
+  }
+
+  function closeMediaPreview() {
+    const preview = document.getElementById("media-preview");
+    const image = document.getElementById("media-preview-image");
+    if (image) image.removeAttribute("src");
+    if (preview) preview.hidden = true;
   }
 
   function openProductDialog(product) {
@@ -349,7 +384,7 @@
     if (productImagesInput) productImagesInput.value = "";
     productDialogTitle.textContent = product ? "Düzenleme" : "Yeni kayıt ekle";
     productImageHint.textContent = product
-      ? "İlk görsel vitrin resmidir. Resim ekle yeni görseli sıraya koyar."
+      ? "İlk görsel vitrin resmidir. Sırayı fareyle değiştirin, sonra Kaydet."
       : "En az 1 görsel zorunlu. İlk görsel vitrin resmi olur.";
     setProductTab("general");
     productDialog.showModal();
@@ -951,9 +986,57 @@
     });
   });
 
+  productMediaList.addEventListener("mousedown", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    if (!card) return;
+    card.draggable = !event.target.closest("button");
+  });
+
+  productMediaList.addEventListener("dragstart", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    if (!card || event.target.closest("button")) {
+      event.preventDefault();
+      return;
+    }
+    mediaDragIndex = Number(card.getAttribute("data-media-index"));
+    card.classList.add("is-dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(mediaDragIndex));
+  });
+
+  productMediaList.addEventListener("dragover", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    if (!card || mediaDragIndex === null) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    productMediaList.querySelectorAll(".media-item.is-drop").forEach((el) => {
+      if (el !== card) el.classList.remove("is-drop");
+    });
+    card.classList.add("is-drop");
+  });
+
+  productMediaList.addEventListener("drop", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    event.preventDefault();
+    if (!card || mediaDragIndex === null) return;
+    const target = Number(card.getAttribute("data-media-index"));
+    const from = mediaDragIndex;
+    mediaDragIndex = null;
+    moveProductMedia(from, target);
+  });
+
+  productMediaList.addEventListener("dragend", () => {
+    mediaDragIndex = null;
+    productMediaList.querySelectorAll(".media-item").forEach((el) => {
+      el.classList.remove("is-dragging", "is-drop");
+      el.draggable = true;
+    });
+  });
+
   productMediaList.addEventListener("click", (event) => {
     const remove = event.target.closest("[data-remove-image]");
     const vitrin = event.target.closest("[data-vitrin-image]");
+    const preview = event.target.closest("[data-preview-image]");
     if (remove) {
       const index = Number(remove.getAttribute("data-remove-image"));
       if (!Number.isInteger(index)) return;
@@ -962,12 +1045,26 @@
       renderProductMedia();
       return;
     }
+    if (preview) {
+      const index = Number(preview.getAttribute("data-preview-image"));
+      if (Number.isInteger(index)) openMediaPreview(index);
+      return;
+    }
     if (!vitrin) return;
     const index = Number(vitrin.getAttribute("data-vitrin-image"));
     if (!Number.isInteger(index) || index <= 0 || index >= productMediaItems.length) return;
-    const [item] = productMediaItems.splice(index, 1);
-    productMediaItems.unshift(item);
-    renderProductMedia();
+    moveProductMedia(index, 0);
+  });
+
+  document.getElementById("media-preview")?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-preview-close]")) closeMediaPreview();
+  });
+
+  productDialog.addEventListener("cancel", (event) => {
+    const preview = document.getElementById("media-preview");
+    if (!preview || preview.hidden) return;
+    event.preventDefault();
+    closeMediaPreview();
   });
 
   document.getElementById("product-image-add")?.addEventListener("click", () => {
