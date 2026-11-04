@@ -7,6 +7,7 @@ import {
   alignVillaPeriodPrepaymentToCommission,
   DEFAULT_VILLA_PERIOD_COMMISSION_RATE,
   fillMissingVillaPeriodPaymentRates,
+  fixedPrepaymentRateForListing,
 } from "../lib/villa-period-payment-rates";
 
 assert.equal(DEFAULT_VILLA_PERIOD_COMMISSION_RATE, 20);
@@ -45,5 +46,20 @@ const alignedEmpty = alignVillaPeriodPrepaymentToCommission({
 });
 assert.equal(alignedEmpty.commissionRate, 20);
 assert.equal(alignedEmpty.prepaymentRate, 20);
+
+assert.equal(
+  fixedPrepaymentRateForListing({
+    name: "Villa Angel House",
+    originalName: "(HILL VILLAS - Angel House)",
+  }),
+  35
+);
+assert.equal(
+  fixedPrepaymentRateForListing({
+    name: "Villa Hayat 1",
+    originalName: "Villa Hayat",
+  }),
+  null
+);
 
 console.log("smoke-villa-period-payment-rates: OK");

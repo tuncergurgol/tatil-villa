@@ -23,6 +23,7 @@ import {
 import {
   syncVillaPricePeriodDays,
 } from "@/lib/villa-period-day-sync";
+import { fixedPrepaymentRateForListing } from "@/lib/villa-period-payment-rates";
 import {
   applyVillaPriceRangeDiscountEdit,
   applyVillaPriceRangeEdit,
@@ -351,6 +352,19 @@ function parsePeriodDiscountFormData(formData: FormData) {
   });
 }
 
+async function lockFixedPrepayment<T extends { prepaymentRate?: number | null }>(
+  villaId: string,
+  data: T
+): Promise<T> {
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { name: true, originalName: true },
+  });
+  const fixed = fixedPrepaymentRateForListing(villa);
+  if (fixed == null) return data;
+  return { ...data, prepaymentRate: fixed };
+}
+
 function buildPeriodData(parsed: z.infer<typeof periodSchema>) {
   const pricing = resolveVillaPeriodPricing({
     nightlyPrice: parsed.nightlyPrice,
@@ -572,7 +586,10 @@ export async function createVillaPricePeriod(
       parsed.data.startDate,
       parsed.data.endDate
     );
-    const periodData = buildPeriodData(parsed.data);
+    const periodData = await lockFixedPrepayment(
+      villaId,
+      buildPeriodData(parsed.data)
+    );
     const overlapping = await findOverlappingPeriods(villaId, startDate, endDate);
 
     if (overlapping.length > 0) {
@@ -693,7 +710,10 @@ export async function importVillaPricePeriodsFromExcel(
         parsed.startDate,
         parsed.endDate
       );
-      const periodData = buildPeriodData(parsed);
+      const periodData = await lockFixedPrepayment(
+        villaId,
+        buildPeriodData(parsed)
+      );
       const overlapping = await findOverlappingPeriods(
         villaId,
         startDate,
@@ -752,7 +772,10 @@ export async function updateVillaPricePeriod(
       parsed.data.startDate,
       parsed.data.endDate
     );
-    const periodData = buildPeriodData(parsed.data);
+    const periodData = await lockFixedPrepayment(
+      villaId,
+      buildPeriodData(parsed.data)
+    );
     const overlapping = await findOverlappingPeriods(villaId, startDate, endDate);
     const extraRemoveIds = overlapping.some((period) => period.id === periodId)
       ? []
@@ -847,16 +870,28 @@ export async function updateVillaPricePeriodDaysPricing(
       parsed.data.endDate
     );
 
+    const lockedPrepayment = fixedPrepaymentRateForListing(
+      await prisma.villa.findUnique({
+        where: { id: villaId },
+        select: { name: true, originalName: true },
+      })
+    );
+
     await applyVillaPriceRangeEdit(
       villaId,
       startDate,
       endDate,
-      (period) =>
-        buildPricingOnlyPeriodData(parsed.data, {
+      (period) => {
+        const next = buildPricingOnlyPeriodData(parsed.data, {
           discount1Rate: period.discount1Rate,
           discount2Rate: period.discount2Rate,
           extraDiscountAmount: period.extraDiscountAmount,
-        }) as VillaPeriodDayPricingSnapshot
+        }) as VillaPeriodDayPricingSnapshot;
+        if (lockedPrepayment != null) {
+          next.prepaymentRate = lockedPrepayment;
+        }
+        return next;
+      }
     );
 
     await revalidatePeriodPaths(villaId);

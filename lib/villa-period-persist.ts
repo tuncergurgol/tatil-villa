@@ -11,6 +11,7 @@ import {
   reapplyConfirmedBookingReservedOccupancy,
   reapplyImportedIcalBlocksOccupancy,
 } from "@/lib/villa-occupancy-service";
+import { fixedPrepaymentRateForListing } from "@/lib/villa-period-payment-rates";
 
 export const PERIOD_IMPORT_TX_OPTIONS = {
   maxWait: 15_000,
@@ -28,6 +29,11 @@ export async function persistVillaPricePeriods(input: {
   const protectedDateKeys = await loadConfirmedBookingProtectedDateKeys(
     input.villaId
   );
+  const villa = await prisma.villa.findUnique({
+    where: { id: input.villaId },
+    select: { name: true, originalName: true },
+  });
+  const fixedPrepayment = fixedPrepaymentRateForListing(villa);
   const occupancyByDateKey = new Map(input.occupancyByDateKey);
   for (const dateKey of protectedDateKeys) {
     occupancyByDateKey.set(dateKey, "RESERVED");
@@ -38,6 +44,9 @@ export async function persistVillaPricePeriods(input: {
     await tx.villaPricePeriod.deleteMany({ where: { villaId: input.villaId } });
 
     for (const mapped of input.periods) {
+      if (fixedPrepayment != null) {
+        mapped.prepaymentRate = fixedPrepayment;
+      }
       const periodData = mappedPeriodToPeriodData(mapped);
       const created = await tx.villaPricePeriod.create({
         data: {

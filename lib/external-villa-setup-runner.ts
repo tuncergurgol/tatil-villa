@@ -13,7 +13,7 @@ import { syncVillaRoomFeatureCatalog } from "@/lib/queries/villa-rooms";
 import { importVillaGalleryFromUrls } from "@/lib/external-villa-gallery-import";
 import { listGoogleDriveImageUrls } from "@/lib/google-drive-gallery";
 import { importVillaPeriodsFromExternalPage } from "@/lib/external-villa-page-import-runner";
-import { alignVillaPeriodPrepaymentToCommission } from "@/lib/villa-period-payment-rates";
+import { alignVillaPeriodPrepaymentToCommission, fixedPrepaymentRateForListing } from "@/lib/villa-period-payment-rates";
 import {
   scrapeExternalVillaListing,
   type ExternalVillaListing,
@@ -38,12 +38,20 @@ import { normalizeVillaDescriptionForStorage } from "@/lib/villa-html-content";
 import { villaAdminEditPath } from "@/lib/villa-admin-path";
 
 async function alignSetupVillaPeriodPaymentRates(villaId: string) {
+  const villa = await prisma.villa.findUnique({
+    where: { id: villaId },
+    select: { name: true, originalName: true },
+  });
+  const fixedPrepayment = fixedPrepaymentRateForListing(villa);
   const periods = await prisma.villaPricePeriod.findMany({
     where: { villaId },
     select: { id: true, prepaymentRate: true, commissionRate: true },
   });
   for (const period of periods) {
     const next = alignVillaPeriodPrepaymentToCommission(period);
+    if (fixedPrepayment != null) {
+      next.prepaymentRate = fixedPrepayment;
+    }
     if (
       next.prepaymentRate === period.prepaymentRate &&
       next.commissionRate === period.commissionRate
