@@ -376,6 +376,7 @@ export async function sendAvailabilityOfferAction(input: {
     data.linkType === "DETAILED" && total > 0
       ? `Toplam: ${money(total)}`
       : null,
+    data.linkType === "DETAILED" && total > 0 ? "" : null,
     data.linkType === "DETAILED" && total > 0
       ? `Ön Ödeme (%${prepaymentRate.toLocaleString("tr-TR")}): ${money(prepaymentAmount)}`
       : null,
