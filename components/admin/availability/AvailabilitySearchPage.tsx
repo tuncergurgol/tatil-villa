@@ -86,19 +86,19 @@ interface AvailabilitySearchPageProps {
 
 class ResultCardBoundary extends Component<
   { name: string; children: ReactNode },
-  { failed: boolean }
+  { failed: boolean; message: string }
 > {
-  state = { failed: false };
+  state = { failed: false, message: "" };
 
-  static getDerivedStateFromError() {
-    return { failed: true };
+  static getDerivedStateFromError(error: Error) {
+    return { failed: true, message: error?.message || "Hata" };
   }
 
   render() {
     if (this.state.failed) {
       return (
         <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {this.props.name} kartı gösterilemedi.
+          {this.props.name} kartı gösterilemedi. {this.state.message}
         </div>
       );
     }

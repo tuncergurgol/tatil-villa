@@ -40,6 +40,33 @@ function formatNightDate(dateKey: string) {
   return `${day}.${month}.${year}`;
 }
 
+const VILLA_TEXT_TR: Record<string, string> = {
+  selectDatesHint: "Tarih seçildiğinde konaklama bedeli hesaplanır.",
+  quoteUnavailable: "Bu tarihler için rezervasyon hesaplanamadı.",
+  minStayNights: "Minimum {nights} gece konaklama",
+};
+
+function villaTextFallback(
+  key: string,
+  values?: Record<string, string | number>
+) {
+  let text = VILLA_TEXT_TR[key] ?? key;
+  if (values) {
+    for (const [name, value] of Object.entries(values)) {
+      text = text.replaceAll(`{${name}}`, String(value));
+    }
+  }
+  return text;
+}
+
+function useVillaText() {
+  try {
+    return useTranslations("villa");
+  } catch {
+    return villaTextFallback;
+  }
+}
+
 type ReservationPriceSummaryProps = {
   quote: StayQuote | null;
   fees?: StayPeriodFees | null;
@@ -182,7 +209,7 @@ export default function ReservationPriceSummary({
   hideDepositNotice = false,
   className = "",
 }: ReservationPriceSummaryProps) {
-  const t = useTranslations("villa");
+  const t = useVillaText();
 
   if (!quote || quote.nights <= 0) {
     return (
