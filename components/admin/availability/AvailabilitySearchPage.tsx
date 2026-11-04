@@ -49,6 +49,18 @@ const compactInputClass =
 
 const labelClass = "text-[11px] font-medium text-gray-500";
 
+function channelKey(name: string) {
+  return name.trim().toLocaleLowerCase("tr-TR");
+}
+
+function isRezervasyonChannel(name: string) {
+  return channelKey(name) === "rezervasyon";
+}
+
+function isEskiMisafirChannel(name: string) {
+  return channelKey(name) === "eski misafir";
+}
+
 function defaultCheckIn(): string {
   const date = todayDate();
   date.setDate(date.getDate() + 7);
@@ -114,8 +126,23 @@ export default function AvailabilitySearchPage({
   const [phone, setPhone] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  const contactChannels = useMemo(
+    () =>
+      pageData.contactChannels.filter(
+        (item) => !isRezervasyonChannel(item.name)
+      ),
+    [pageData.contactChannels]
+  );
   const [contactChannelId, setContactChannelId] = useState(
-    pageData.contactChannels[0]?.id ?? ""
+    () =>
+      pageData.contactChannels.find(
+        (item) => !isRezervasyonChannel(item.name)
+      )?.id ?? ""
+  );
+  const [discountInput, setDiscountInput] = useState("");
+  const [appliedDiscountRate, setAppliedDiscountRate] = useState(0);
+  const [loyaltyDiscountRate, setLoyaltyDiscountRate] = useState<number | null>(
+    null
   );
   const [checkIn, setCheckIn] = useState(defaultCheckIn);
   const [checkOut, setCheckOut] = useState(() => defaultCheckOut(defaultCheckIn()));
@@ -176,13 +203,41 @@ export default function AvailabilitySearchPage({
     setIsLookingUpPhone(true);
     try {
       const match = await lookupCustomerByPhoneAction(rawPhone);
-      if (!match) return;
+      if (!match) {
+        setLoyaltyDiscountRate(null);
+        return;
+      }
       setGuestName(match.fullName);
       if (match.email) setGuestEmail(match.email);
-      if (match.contactChannelId) setContactChannelId(match.contactChannelId);
+      setLoyaltyDiscountRate(match.loyaltyDiscountRate);
+      const eskiMisafir = contactChannels.find((item) =>
+        isEskiMisafirChannel(item.name)
+      );
+      const storedIsRezervasyon = isRezervasyonChannel(
+        match.contactChannelName ?? ""
+      );
+      if ((match.hasPreviousReservation || storedIsRezervasyon) && eskiMisafir) {
+        setContactChannelId(eskiMisafir.id);
+      } else if (
+        match.contactChannelId &&
+        contactChannels.some((item) => item.id === match.contactChannelId)
+      ) {
+        setContactChannelId(match.contactChannelId);
+      }
     } finally {
       setIsLookingUpPhone(false);
     }
+  }
+
+  function handleApplyDiscount() {
+    const raw = discountInput.replace(",", ".").trim();
+    const value = raw === "" ? 0 : Number(raw);
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      setError("İndirim oranı 0 ile 100 arasında olmalıdır");
+      return;
+    }
+    setError(null);
+    setAppliedDiscountRate(Math.round(value * 100) / 100);
   }
 
   function handleNightCountChange(value: number) {
@@ -451,7 +506,7 @@ export default function AvailabilitySearchPage({
                   className={inputClass}
                 >
                   <option value="">Seçin</option>
-                  {pageData.contactChannels.map((item) => (
+                  {contactChannels.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
                     </option>
@@ -541,7 +596,47 @@ export default function AvailabilitySearchPage({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
+            <div className="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-2">
+              <label className="block w-full min-w-0 sm:w-40">
+                <span className={labelClass}>Uygulanacak İndirim</span>
+                <div className="mt-1 flex items-center rounded-lg border border-gray-200 bg-gray-50/80 focus-within:border-violet-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-violet-100">
+                  <span className="pl-2.5 text-sm font-semibold text-gray-500">%</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={discountInput}
+                    onChange={(event) => setDiscountInput(event.target.value)}
+                    className="w-full bg-transparent px-2 py-1.5 text-sm font-medium text-gray-900 outline-none"
+                    placeholder="0"
+                    aria-label="Uygulanacak indirim oranı"
+                  />
+                </div>
+              </label>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5">
+                <p className="text-[10px] font-medium text-emerald-700">
+                  Sadakat Programı
+                </p>
+                <p className="text-sm font-bold text-emerald-900">
+                  {loyaltyDiscountRate == null
+                    ? "—"
+                    : `%${loyaltyDiscountRate.toLocaleString("tr-TR")}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleApplyDiscount}
+                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+              >
+                İNDİRİM UYGULA
+              </button>
+              {appliedDiscountRate > 0 ? (
+                <p className="text-[11px] font-medium text-emerald-700">
+                  Listede konaklama bedeline %{appliedDiscountRate.toLocaleString("tr-TR")} acente indirimi uygulanıyor.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <label className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700">
                 <input
                   type="checkbox"
@@ -740,6 +835,7 @@ export default function AvailabilitySearchPage({
                   childGuests={0}
                   babies={0}
                   siteKey={siteKey}
+                  agencyDiscountRate={appliedDiscountRate}
                 />
               </ResultCardBoundary>
             ))}

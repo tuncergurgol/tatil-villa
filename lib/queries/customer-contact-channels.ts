@@ -8,11 +8,14 @@ export type CustomerContactChannelItem = {
 };
 
 export async function getCustomerContactChannelsForPicker() {
-  return prisma.customerContactChannel.findMany({
+  const items = await prisma.customerContactChannel.findMany({
     where: { active: true },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     select: { id: true, name: true },
   });
+  return items.filter(
+    (item) => item.name.trim().toLocaleLowerCase("tr-TR") !== "rezervasyon"
+  );
 }
 
 export async function getCustomerContactChannelAdminData() {

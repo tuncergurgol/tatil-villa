@@ -33,6 +33,7 @@ import {
   createUndocumentedVillaBookingAccessToken,
 } from "@/lib/undocumented-villa-booking-access";
 import { villaPublicPath } from "@/lib/villa-public-path";
+import { computeDiscountAmount } from "@/lib/booking-form-details";
 
 const searchFiltersSchema = z.object({
   phone: z.string().min(1, "Telefon numarası zorunlu"),
@@ -246,6 +247,7 @@ const availabilityOfferSchema = z.object({
   babies: z.coerce.number().int().min(0).max(50).default(0),
   linkType: z.enum(["DETAILED", "VILLA_ONLY"]),
   grandTotal: z.coerce.number().min(0).optional(),
+  agencyDiscountRate: z.coerce.number().min(0).max(100).optional().default(0),
 });
 
 export async function sendAvailabilityOfferAction(input: {
@@ -262,6 +264,7 @@ export async function sendAvailabilityOfferAction(input: {
   babies: number;
   linkType: "DETAILED" | "VILLA_ONLY";
   grandTotal?: number;
+  agencyDiscountRate?: number;
 }): Promise<{ success?: boolean; error?: string; message?: string }> {
   await requireAdmin();
 
@@ -327,8 +330,19 @@ export async function sendAvailabilityOfferAction(input: {
     };
   }
 
-  const total = data.grandTotal ?? quote?.quote.total ?? 0;
+  const accommodation = quote?.quote.valid ? quote.quote.accommodationTotal : 0;
+  const cleaning = quote?.quote.valid ? quote.quote.cleaningFee : 0;
+  const discountAmount =
+    data.linkType === "DETAILED"
+      ? computeDiscountAmount(accommodation, data.agencyDiscountRate)
+      : 0;
+  const quotedTotal = quote?.quote.total ?? 0;
+  const total =
+    data.grandTotal ??
+    Math.max(0, quotedTotal - discountAmount);
   const nights = quote?.quote.nights ?? 0;
+  const money = (amount: number) =>
+    `${Math.round(amount).toLocaleString("tr-TR")} TL`;
   const lines = [
     data.guestName ? `Merhaba ${data.guestName},` : "Merhaba,",
     "",
@@ -336,8 +350,17 @@ export async function sendAvailabilityOfferAction(input: {
     data.linkType === "DETAILED" ? `Giriş: ${data.checkIn}` : null,
     data.linkType === "DETAILED" ? `Çıkış: ${data.checkOut}` : null,
     data.linkType === "DETAILED" && nights > 0 ? `Gece: ${nights}` : null,
+    data.linkType === "DETAILED" && discountAmount > 0 && accommodation > 0
+      ? `Konaklama: ${money(accommodation)}`
+      : null,
+    data.linkType === "DETAILED" && discountAmount > 0
+      ? `Acente indirimi (%${data.agencyDiscountRate.toLocaleString("tr-TR")}): -${money(discountAmount)}`
+      : null,
+    data.linkType === "DETAILED" && discountAmount > 0 && cleaning > 0
+      ? `Temizlik: ${money(cleaning)}`
+      : null,
     data.linkType === "DETAILED" && total > 0
-      ? `Toplam: ${total.toLocaleString("tr-TR")} TL`
+      ? `Toplam: ${money(total)}`
       : null,
     "",
     url,

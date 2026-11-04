@@ -136,6 +136,28 @@ export async function assignConfirmedBookingCustomerTags(input: {
   await assignCustomerTags(input.customerId, tagNames);
 }
 
+async function resolveEskiMisafirChannelId(): Promise<string> {
+  const channels = await prisma.customerContactChannel.findMany({
+    select: { id: true, name: true, active: true },
+  });
+  const eski = channels.find(
+    (item) => item.name.trim().toLocaleLowerCase("tr-TR") === "eski misafir"
+  );
+  if (eski) {
+    if (!eski.active) {
+      await prisma.customerContactChannel.update({
+        where: { id: eski.id },
+        data: { active: true },
+      });
+    }
+    return eski.id;
+  }
+  const created = await prisma.customerContactChannel.create({
+    data: { name: "Eski Misafir", sortOrder: 12, active: true },
+  });
+  return created.id;
+}
+
 export async function syncCustomerFromBookingGuest(input: {
   guestName: string;
   guestEmail?: string;
@@ -151,7 +173,7 @@ export async function syncCustomerFromBookingGuest(input: {
     fullName: input.guestName,
     phone,
     email: input.guestEmail,
-    contactChannelId: CRM_CONTACT_CHANNEL_IDS.REZERVASYON,
+    contactChannelId: await resolveEskiMisafirChannelId(),
     firstContactAt: input.firstContactAt,
   });
 

@@ -30,6 +30,11 @@ import type {
   PoolHeatingSelections,
   StayFeeSelections,
 } from "@/lib/stay-period-fees";
+import {
+  clampDiscountRate,
+  computeDiscountAmount,
+  computePrepaymentAmount,
+} from "@/lib/booking-form-details";
 
 interface AvailabilityResultCardProps {
   result: AvailabilitySearchResultItem;
@@ -42,6 +47,7 @@ interface AvailabilityResultCardProps {
   childGuests: number;
   babies: number;
   siteKey: PublicSiteKey;
+  agencyDiscountRate?: number;
 }
 
 function buildVillaPublicUrl(
@@ -96,6 +102,7 @@ export default function AvailabilityResultCard({
   childGuests,
   babies,
   siteKey,
+  agencyDiscountRate = 0,
 }: AvailabilityResultCardProps) {
   const [checkIn, setCheckIn] = useState(result.checkIn);
   const [checkOut, setCheckOut] = useState(result.checkOut);
@@ -133,9 +140,15 @@ export default function AvailabilityResultCard({
     setQuoteError(null);
   }, [result]);
 
+  const discountRate = clampDiscountRate(agencyDiscountRate);
+  const agencyDiscountAmount =
+    quote?.valid && discountRate > 0
+      ? computeDiscountAmount(quote.accommodationTotal, discountRate)
+      : 0;
+
   const pricingTotals = useMemo(() => {
     if (!quote?.valid) return null;
-    return getReservationGrandTotal(
+    const base = getReservationGrandTotal(
       quote,
       pricingContext?.periodFees,
       0,
@@ -150,8 +163,24 @@ export default function AvailabilityResultCard({
         checkOut,
       }
     );
+    if (agencyDiscountAmount <= 0) return base;
+    const grandTotal = Math.max(0, base.grandTotal - agencyDiscountAmount);
+    const prepaymentAmount =
+      computePrepaymentAmount(
+        quote.accommodationTotal,
+        0,
+        quote.prepaymentRate,
+        agencyDiscountAmount
+      ) ?? 0;
+    return {
+      ...base,
+      grandTotal,
+      prepaymentAmount,
+      checkInPayment: Math.max(0, grandTotal - prepaymentAmount),
+    };
   }, [
     adults,
+    agencyDiscountAmount,
     checkIn,
     checkOut,
     childGuests,
@@ -252,6 +281,7 @@ export default function AvailabilityResultCard({
         babies,
         linkType,
         grandTotal: pricingTotals?.grandTotal ?? quote?.total,
+        agencyDiscountRate: discountRate,
       });
       setSendNotice({
         type: response.success ? "ok" : "error",
@@ -446,6 +476,21 @@ export default function AvailabilityResultCard({
               }
               compactPrimaryRows
               hideDepositNotice
+              memberDiscountAmount={agencyDiscountAmount}
+              memberDiscountLabel={
+                discountRate > 0
+                  ? `Acente indirimi (%${discountRate.toLocaleString("tr-TR")})`
+                  : undefined
+              }
+              displayTotals={
+                agencyDiscountAmount > 0 && pricingTotals
+                  ? {
+                      grandTotal: pricingTotals.grandTotal,
+                      prepaymentAmount: pricingTotals.prepaymentAmount,
+                      checkInPayment: pricingTotals.checkInPayment,
+                    }
+                  : undefined
+              }
             />
           </div>
 
