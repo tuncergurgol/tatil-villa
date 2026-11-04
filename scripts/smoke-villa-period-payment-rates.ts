@@ -50,7 +50,7 @@ assert.equal(alignedEmpty.prepaymentRate, 20);
 assert.equal(
   fixedPrepaymentRateForListing({
     name: "Villa Angel House",
-    originalName: "(HILL VILLAS - Angel House)",
+    originalName: "HILL VİLLAS - Angel House",
   }),
   35
 );

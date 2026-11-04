@@ -8,13 +8,15 @@ export const DEFAULT_VILLA_PERIOD_COMMISSION_RATE = 20;
 /** HILL VILLAS ilanlarında ön ödeme bu oranda sabit kalır. */
 export const HILL_VILLAS_PREPAYMENT_RATE = 35;
 
+function foldBrandText(value: string): string {
+  return value.toLocaleUpperCase("tr-TR").replace(/İ/g, "I");
+}
+
 export function isHillVillasListing(
   input: { name?: string | null; originalName?: string | null } | null | undefined
 ): boolean {
   if (!input) return false;
-  const text = `${input.originalName ?? ""} ${input.name ?? ""}`.toLocaleUpperCase(
-    "tr-TR"
-  );
+  const text = foldBrandText(`${input.originalName ?? ""} ${input.name ?? ""}`);
   return text.includes("HILL VILLAS");
 }
 
