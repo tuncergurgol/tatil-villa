@@ -33,7 +33,10 @@ import {
   createUndocumentedVillaBookingAccessToken,
 } from "@/lib/undocumented-villa-booking-access";
 import { villaPublicPath } from "@/lib/villa-public-path";
-import { computeDiscountAmount } from "@/lib/booking-form-details";
+import {
+  computeDiscountAmount,
+  computePrepaymentAmount,
+} from "@/lib/booking-form-details";
 
 const searchFiltersSchema = z.object({
   phone: z.string().min(1, "Telefon numarası zorunlu"),
@@ -340,6 +343,17 @@ export async function sendAvailabilityOfferAction(input: {
   const total =
     data.grandTotal ??
     Math.max(0, quotedTotal - discountAmount);
+  const prepaymentRate = quote?.quote.valid ? quote.quote.prepaymentRate : 0;
+  const prepaymentAmount =
+    data.linkType === "DETAILED"
+      ? (computePrepaymentAmount(
+          accommodation,
+          0,
+          prepaymentRate,
+          discountAmount
+        ) ?? 0)
+      : 0;
+  const checkInPayment = Math.max(0, total - prepaymentAmount);
   const nights = quote?.quote.nights ?? 0;
   const money = (amount: number) =>
     `${Math.round(amount).toLocaleString("tr-TR")} TL`;
@@ -361,6 +375,12 @@ export async function sendAvailabilityOfferAction(input: {
       : null,
     data.linkType === "DETAILED" && total > 0
       ? `Toplam: ${money(total)}`
+      : null,
+    data.linkType === "DETAILED" && total > 0
+      ? `Ön Ödeme (%${prepaymentRate.toLocaleString("tr-TR")}): ${money(prepaymentAmount)}`
+      : null,
+    data.linkType === "DETAILED" && total > 0
+      ? `Girişte Yapılacak Ödeme: ${money(checkInPayment)}`
       : null,
     "",
     url,
