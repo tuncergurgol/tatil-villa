@@ -278,8 +278,12 @@ export function findBookedStayCheckoutDateKey(
   occupancyMap: ReadonlyMap<string, VillaDayOccupancy>
 ): string {
   let cursor = fromBookedDateKey;
-  while (isOccupied(getOccupancy(occupancyMap, cursor))) {
-    cursor = offsetDateKey(cursor, 1);
+  let guard = 0;
+  while (isOccupied(getOccupancy(occupancyMap, cursor)) && guard < 400) {
+    const next = offsetDateKey(cursor, 1);
+    if (next === cursor) break;
+    cursor = next;
+    guard += 1;
   }
   return cursor;
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Loader2,
@@ -317,13 +316,11 @@ export default function AvailabilityResultCard({
               </label>
               <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-gray-100">
                 {result.image ? (
-                  <Image
-                    src={result.image}
+                  <img
+                    src={encodeURI(result.image)}
                     alt={result.name}
-                    fill
-                    className="object-cover"
-                    sizes="128px"
-                    unoptimized
+                    className="h-full w-full object-cover"
+                    decoding="async"
                   />
                 ) : null}
               </div>

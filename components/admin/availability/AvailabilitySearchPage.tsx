@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CheckSquare,
   ChevronDown,
@@ -84,6 +84,28 @@ interface AvailabilitySearchPageProps {
   pageData: AvailabilitySearchPageData;
 }
 
+class ResultCardBoundary extends Component<
+  { name: string; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {this.props.name} kartı gösterilemedi.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function AvailabilitySearchPage({
   pageData,
 }: AvailabilitySearchPageProps) {
@@ -111,7 +133,7 @@ export default function AvailabilitySearchPage({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [hasSearched, setHasSearched] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isPending, startTransition] = useTransition();
+  const [isSearching, setIsSearching] = useState(false);
   const [isLookingUpPhone, setIsLookingUpPhone] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [isCreatingShare, setIsCreatingShare] = useState(false);
@@ -137,14 +159,14 @@ export default function AvailabilitySearchPage({
   );
 
   useEffect(() => {
-    if (!isPending) return;
+    if (!isSearching) return;
 
     const timer = window.setInterval(() => {
       setProgress((value) => (value >= 92 ? value : value + 8));
     }, 180);
 
     return () => window.clearInterval(timer);
-  }, [isPending]);
+  }, [isSearching]);
 
   async function handlePhoneLookup(rawPhone: string) {
     if (!isValidStoredPhoneE164(rawPhone) && rawPhone.replace(/\D/g, "").length < 10) {
@@ -193,61 +215,61 @@ export default function AvailabilitySearchPage({
     return Object.keys(nextErrors).length === 0;
   }
 
-  function handleSearch() {
+  async function handleSearch() {
     setError(null);
     if (!validateForm()) return;
 
     setHasSearched(true);
+    setIsSearching(true);
     setProgress(12);
     setSelectedIds([]);
+    setResults([]);
 
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/admin/availability-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone,
-            guestName: guestName.trim(),
-            guestEmail: guestEmail.trim() || undefined,
-            contactChannelId,
-            checkIn,
-            checkOut,
-            adults: selectedGuestCount,
-            children: 0,
-            babies: 0,
-            budgetMin: null,
-            budgetMax: null,
-            regionSlugs,
-            amenityNames,
-            guestCounts,
-            flexibleDate,
-            fillEmptyDates,
-            sort,
-          }),
-        });
+    try {
+      const res = await fetch("/api/admin/availability-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone,
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim() || undefined,
+          contactChannelId,
+          checkIn,
+          checkOut,
+          adults: selectedGuestCount,
+          children: 0,
+          babies: 0,
+          budgetMin: null,
+          budgetMax: null,
+          regionSlugs,
+          amenityNames,
+          guestCounts,
+          flexibleDate,
+          fillEmptyDates,
+          sort,
+        }),
+      });
 
-        const response = (await res.json()) as {
-          error?: string;
-          results?: AvailabilitySearchResultItem[];
-        };
+      const response = (await res.json()) as {
+        error?: string;
+        results?: AvailabilitySearchResultItem[];
+      };
 
-        if (!res.ok || response.error) {
-          setError(response.error ?? "Uygunluk araması başarısız");
-          setResults([]);
-          setProgress(100);
-          return;
-        }
-
-        setResults(sortResults(response.results ?? [], sort));
-        setProgress(100);
-        if (autoCollapse) setPanelOpen(false);
-      } catch {
-        setError("Uygunluk araması başarısız");
+      if (!res.ok || response.error) {
+        setError(response.error ?? "Uygunluk araması başarısız");
         setResults([]);
-        setProgress(100);
+        return;
       }
-    });
+
+      setResults(sortResults(response.results ?? [], sort));
+      if (autoCollapse) setPanelOpen(false);
+    } catch {
+      setError("Uygunluk araması başarısız");
+      setResults([]);
+    } finally {
+      setProgress(100);
+      setIsSearching(false);
+    }
   }
 
   function handleSortChange(nextSort: AvailabilitySearchSort) {
@@ -568,10 +590,10 @@ export default function AvailabilitySearchPage({
               <button
                 type="button"
                 onClick={handleSearch}
-                disabled={isPending}
+                disabled={isSearching}
                 className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70 sm:ml-auto sm:w-auto"
               >
-                {isPending ? (
+                {isSearching ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Search className="h-4 w-4" />
@@ -694,7 +716,7 @@ export default function AvailabilitySearchPage({
           <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-500">
             Henüz arama yapılmadı.
           </div>
-        ) : isPending ? (
+        ) : isSearching ? (
           <div className="flex flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-500">
             <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-violet-600" />
             Uygun villalar aranıyor...
@@ -706,19 +728,20 @@ export default function AvailabilitySearchPage({
         ) : (
           <div className="space-y-3 pb-3">
             {results.map((result) => (
-              <AvailabilityResultCard
-                key={result.id}
-                result={result}
-                selected={selectedIds.includes(result.id)}
-                onToggleSelect={toggleSelect}
-                guestPhone={phone}
-                guestName={guestName.trim()}
-                guestEmail={guestEmail.trim()}
-                adults={selectedGuestCount}
-                childGuests={0}
-                babies={0}
-                siteKey={siteKey}
-              />
+              <ResultCardBoundary key={result.id} name={result.name}>
+                <AvailabilityResultCard
+                  result={result}
+                  selected={selectedIds.includes(result.id)}
+                  onToggleSelect={toggleSelect}
+                  guestPhone={phone}
+                  guestName={guestName.trim()}
+                  guestEmail={guestEmail.trim()}
+                  adults={selectedGuestCount}
+                  childGuests={0}
+                  babies={0}
+                  siteKey={siteKey}
+                />
+              </ResultCardBoundary>
             ))}
           </div>
         )}

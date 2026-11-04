@@ -260,8 +260,10 @@ export function enumerateDateKeys(startKey: string, endKey: string): string[] {
   const cursor = startOfDay(parseDateKey(startKey));
   const end = startOfDay(parseDateKey(endKey));
 
-  while (compareDates(cursor, end) <= 0) {
-    keys.push(toDateKey(cursor));
+  while (compareDates(cursor, end) <= 0 && keys.length < 2500) {
+    const key = toDateKey(cursor);
+    if (keys.length > 0 && keys[keys.length - 1] === key) break;
+    keys.push(key);
     cursor.setDate(cursor.getDate() + 1);
   }
 
