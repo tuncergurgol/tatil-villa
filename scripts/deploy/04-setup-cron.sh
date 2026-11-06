@@ -46,6 +46,7 @@ CRON_FILE="$(mktemp)"
     | grep -v '/api/cron/' \
     | grep -v 'warm-meta-catalog-feed' \
     | grep -v 'backup-to-gdrive' \
+    | grep -v 'security-weekly-check' \
     | grep -v 'feeds/meta-catalog.xml' \
     | grep -v '^CRON_TZ=' \
     || true
@@ -76,6 +77,8 @@ CRON_FILE="$(mktemp)"
 45 * * * * cd ${APP_DIR} && npx tsx scripts/warm-meta-catalog-feed.ts >>"${LOG_DIR}/meta-catalog-feed-warm.log" 2>&1 && for FEED_HOST in www.tatildeyiz.com.tr www.tatilvillacisi.com www.balayivillacisi.com; do curl -fsS -m 180 -H "Host: \${FEED_HOST}" "http://127.0.0.1:3000/feeds/meta-catalog.xml" >/dev/null; done
 # tatil-villa cron — SQL + site dosyaları Google Drive yedek (her gece 04:30 Europe/Istanbul)
 30 4 * * * /bin/bash ${BACKUP_SCRIPT} >>"${LOG_DIR}/gdrive-backup.log" 2>&1
+# tatil-villa cron — haftalık güvenlik kontrolü e-postası (her pazar 03:00 Europe/Istanbul; info@)
+0 3 * * 0 cd ${APP_DIR} && npx tsx scripts/security-weekly-check.ts >>"${LOG_DIR}/security-weekly-check.log" 2>&1
 EOF
 } > "$CRON_FILE"
 
@@ -103,4 +106,5 @@ echo "  BTRANS 538 : her ayın 1'i 09:10 Europe/Istanbul'da önceki ay XML maili
 echo "  IndexNow  : her gün 06:20'de Bing/Yandex'e sitemap URL'leri bildirilir."
 echo "  Meta feed  : saat :45'te önbellek yenilenir."
 echo "  GDrive yedek: her gece 04:30 (SQL + dosyalar ayrı)."
+echo "  Güvenlik   : her pazar 03:00'te kontrol raporu maili (info@)."
 echo "=========================================================="
