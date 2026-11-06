@@ -810,6 +810,8 @@ function extractDefaultMinStayNights(html: string): number | null {
     /minimum\s*kiralama[^0-9]{0,30}(\d+)\s*gece/i,
     /min(?:imum|umum)?\.?\s*(\d+)\s*gece\s*konaklama/i,
     /en\s+az\s+(\d+)\s*gece\s*konaklama/i,
+    // elitvillam vb.: "Aylara göre 7 gecelik (haftalık) konaklama fiyatları"
+    /(\d+)\s*gecelik\s*(?:\([^)]*haftal[ıi]k[^)]*\)|haftal[ıi]k)\s*konaklama/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
@@ -817,6 +819,11 @@ function extractDefaultMinStayNights(html: string): number | null {
     if (value != null) return value;
   }
   return null;
+}
+
+/** Elitvillam haftalık fiyat modelinde min gece genelde 7'dir. */
+function extractElitvillamMinStayNights(html: string): number {
+  return extractDefaultMinStayNights(html) ?? 7;
 }
 
 export function extractScrapedPeriodDefaults(html: string): ScrapedVillaPeriodDefaults {
@@ -5679,6 +5686,7 @@ export function parseElitvillamMonthlyPriceBlocks(
   if (!Number.isFinite(year) || year < 2000) return [];
 
   const deposit = extractDamageDeposit(html);
+  const minStayNights = extractElitvillamMinStayNights(html);
   const periods: MappedVillaPricePeriod[] = [];
   const monthPriceRe =
     /<span class="tv"\s+id="m(\d{1,2})"[^>]*>([\s\S]*?)<\/span>/gi;
@@ -5704,6 +5712,7 @@ export function parseElitvillamMonthlyPriceBlocks(
         nightlyPrice: nightly,
         currency: weeklyParsed.currency,
         weeklyPrice: weeklyParsed.amount,
+        minStayNights,
         damageDeposit: deposit.amount,
         damageDepositCurrency: deposit.currency,
       })
@@ -5721,6 +5730,7 @@ async function scrapeElitvillamFromPage(
   if (!looksLikeElitvillam(pageUrl, html)) return null;
 
   const deposit = extractDamageDeposit(html);
+  const minStayNights = extractElitvillamMinStayNights(html);
   const itemId = extractHepsivillaCalendarItemId(html);
   const occupancyByDateKey = new Map<string, VillaDayOccupancy>();
   const checkInDateKeys = new Set<string>();
@@ -5775,6 +5785,7 @@ async function scrapeElitvillamFromPage(
     dateKeys.length > 0
       ? collapseDailyPricesToPeriods(dateKeys, prices, "TL").map((period) => ({
           ...period,
+          minStayNights: period.minStayNights ?? minStayNights,
           damageDeposit: deposit.amount ?? period.damageDeposit,
           damageDepositCurrency: deposit.currency,
         }))
@@ -5786,6 +5797,12 @@ async function scrapeElitvillamFromPage(
       warnings.push(
         "Elitvillam günlük fiyat (data-p) yok; aylık haftalık fiyat tablosu kullanıldı"
       );
+    }
+  }
+
+  for (const period of periods) {
+    if (period.minStayNights == null) {
+      period.minStayNights = minStayNights;
     }
   }
 

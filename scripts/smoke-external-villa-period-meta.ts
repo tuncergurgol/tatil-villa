@@ -35,6 +35,12 @@ assert.equal(bravoDefaults.minStayNights, 3);
 assert.equal(bravoDefaults.cleaningDayCount, 7);
 assert.equal(bravoDefaults.cleaningFee, 3000);
 
+const elitvillamWeeklyHtml = `
+<div class="im">Aylara göre 7 gecelik (haftalık) konaklama fiyatları yukarıda belirtilmiştir. Fiyatlar 2027 yılı için geçerlidir.</div>
+`;
+const elitvillamDefaults = extractScrapedPeriodDefaults(elitvillamWeeklyHtml);
+assert.equal(elitvillamDefaults.minStayNights, 7);
+
 const hepsivillaBilbayHtml = `
 <p><strong>NOT : 5 geceden daha az konaklamalarda ekstra 4000 TL temizlik ücreti talep edilmektedir.</strong></p>
 <p><strong>Hasar Depozitosu :</strong> Hasar, zayi, kırık, dökük, vb. için girişte <strong>5000 TL</strong> depozito alınmaktadır.</p>
