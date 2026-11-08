@@ -567,9 +567,13 @@ async function main() {
         rows.push(row);
         continue;
       }
+      console.log(
+        `→ ${villa.villaId ?? "-"} ${villa.name} | ${match.siteKey} | ${match.url}`
+      );
       const saved = await setVillaExternalSyncUrl(villa.id, 1, match.url);
       if (!saved.ok) {
         row.note = `kaydetme hatası: ${saved.message}`;
+        console.log(`  kaydetme HATA: ${saved.message}`);
       } else {
         applied += 1;
         row.note = `güncellendi → ${match.siteKey}`;
@@ -583,6 +587,9 @@ async function main() {
             select: { _count: { select: { pricePeriods: true } } },
           });
           row.periodsAfter = after?._count.pricePeriods ?? 0;
+          console.log(
+            `  sync ${sync.ok ? "OK" : "FAIL"} periods=${row.periodsAfter} | ${sync.message}`
+          );
         }
       }
     }
