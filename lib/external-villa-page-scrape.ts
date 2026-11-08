@@ -4,7 +4,7 @@
  *
  * Destek:
  * - heryervillam.com (HTML fiyat tablosu + takvim)
- * - villavillam.com.tr / villacim.com.tr (NEXT_DATA id + api PriceList/Availability)
+ * - villavillam.com.tr / villacim.com.tr (NEXT_DATA id + api PriceList/Availability; CF 403 → Playwright yedek)
  * - tatilpremium.com (RSC routingData id + api.tatilpremium.com PriceList/Availability)
  * - akdenizvillam.com (Next.js RSC gömülü prices_data / availabilitys_data)
  * - akdenizdevilla.com (HTML Gecelik/Haftalık dönem + calendarBox booked takvim)
@@ -56,6 +56,11 @@ import {
 import type { MappedVillaPricePeriod } from "@/lib/tatildeyiz-period-import";
 import { sleep } from "@/lib/tatildeyiz-gallery";
 import { fillMissingVillaPeriodPaymentRates } from "@/lib/villa-period-payment-rates";
+import {
+  isBlockedHttpError,
+  looksLikeCloudflareChallenge,
+  withVillaBrowserSession,
+} from "@/lib/external-villa-browser-fetch";
 
 export type ScrapedVillaPage = {
   sourceHost: string;
@@ -4035,7 +4040,13 @@ function parseVillavillamAvailabilityFromResult(
   return null;
 }
 
-async function fetchVillaApiJson<T>(
+type VillaApiJsonFetcher = <T>(
+  site: VillaApiSiteConfig,
+  pathAndQuery: string,
+  referer: string
+) => Promise<T>;
+
+async function defaultFetchVillaApiJson<T>(
   site: VillaApiSiteConfig,
   pathAndQuery: string,
   referer: string
@@ -4058,6 +4069,68 @@ async function fetchVillaApiJson<T>(
     throw new Error(`Villa API ${response.status}: ${pathAndQuery}`);
   }
   return (await response.json()) as T;
+}
+
+let villaApiJsonFetcher: VillaApiJsonFetcher = defaultFetchVillaApiJson;
+
+async function fetchVillaApiJson<T>(
+  site: VillaApiSiteConfig,
+  pathAndQuery: string,
+  referer: string
+): Promise<T> {
+  return villaApiJsonFetcher<T>(site, pathAndQuery, referer);
+}
+
+async function withVillaApiJsonFetcher<T>(
+  fetcher: VillaApiJsonFetcher,
+  fn: () => Promise<T>
+): Promise<T> {
+  const previous = villaApiJsonFetcher;
+  villaApiJsonFetcher = fetcher;
+  try {
+    return await fn();
+  } finally {
+    villaApiJsonFetcher = previous;
+  }
+}
+
+/** Cloudflare 403 vb. için Chromium oturumuyla villa API ailesi scrape. */
+async function scrapeVillaApiViaPlaywright(
+  pageUrl: string,
+  warnings: string[]
+): Promise<ScrapedVillaPage | null> {
+  warnings.push("Playwright yedek yol (Cloudflare/bot engeli)");
+  return withVillaBrowserSession(pageUrl, async ({ html, fetchJson }) => {
+    if (looksLikeCloudflareChallenge(html)) {
+      warnings.push(
+        "Playwright sonrası HTML hâlâ challenge görünüyor; API cookie ile denenecek"
+      );
+    }
+    return withVillaApiJsonFetcher(
+      async (site, pathAndQuery, referer) =>
+        fetchJson(`${site.apiHost}${pathAndQuery}`, referer),
+      () => scrapeVillavillamFromPage(pageUrl, html, warnings)
+    );
+  });
+}
+
+function villaApiScrapeLooksBlocked(
+  page: ScrapedVillaPage | null,
+  warnings: string[]
+): boolean {
+  if (
+    warnings.some(
+      (w) =>
+        isBlockedHttpError(new Error(w)) ||
+        /Villa API 403|Sayfa alınamadı \(403\)|PriceList başarısız:.*\b403\b/i.test(
+          w
+        )
+    )
+  ) {
+    return true;
+  }
+  if (!page) return true;
+  return page.periods.length === 0 && page.occupancyByDateKey.size === 0;
 }
 
 /** @deprecated fetchVillaApiJson kullanın */
@@ -7471,6 +7544,7 @@ export async function scrapeExternalVillaPage(
     extractEntityIdFromPageUrl(normalizedUrl);
 
   let html = "";
+  let preferPlaywrightForVillaApi = false;
   if (entityIdEarly) {
     // Cloudflare sayfa 429 sık; entityId varsa doğrudan API ailesine git
     warnings.push(
@@ -7480,15 +7554,49 @@ export async function scrapeExternalVillaPage(
     try {
       html = await fetchText(normalizedUrl);
       await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
-    } catch (error) {
-      const entityIdFallback =
+      if (
         looksLikeVillaApiSite(normalizedUrl) &&
-        extractEntityIdFromPageUrl(normalizedUrl);
-      if (!entityIdFallback) throw error;
+        looksLikeCloudflareChallenge(html)
+      ) {
+        preferPlaywrightForVillaApi = true;
+        warnings.push(
+          "Sayfa HTML Cloudflare challenge; Playwright yedek yoluna geçilecek"
+        );
+      }
+    } catch (error) {
+      if (looksLikeVillaApiSite(normalizedUrl) && isBlockedHttpError(error)) {
+        preferPlaywrightForVillaApi = true;
+        warnings.push(
+          error instanceof Error
+            ? `Sayfa HTML alınamadı (${error.message}); Playwright yedek yol`
+            : "Sayfa HTML alınamadı; Playwright yedek yol"
+        );
+      } else {
+        const entityIdFallback =
+          looksLikeVillaApiSite(normalizedUrl) &&
+          extractEntityIdFromPageUrl(normalizedUrl);
+        if (!entityIdFallback) throw error;
+        warnings.push(
+          error instanceof Error
+            ? `Sayfa HTML alınamadı (${error.message}); API entityId fallback`
+            : "Sayfa HTML alınamadı; API entityId fallback"
+        );
+      }
+    }
+  }
+
+  if (preferPlaywrightForVillaApi) {
+    try {
+      const viaBrowser = await scrapeVillaApiViaPlaywright(
+        normalizedUrl,
+        warnings
+      );
+      if (viaBrowser) return finalizeScrapedPage(viaBrowser, html);
+    } catch (error) {
       warnings.push(
         error instanceof Error
-          ? `Sayfa HTML alınamadı (${error.message}); API entityId fallback`
-          : "Sayfa HTML alınamadı; API entityId fallback"
+          ? `Playwright yedek yol başarısız: ${error.message}`
+          : "Playwright yedek yol başarısız"
       );
     }
   }
@@ -7542,6 +7650,25 @@ export async function scrapeExternalVillaPage(
     html,
     warnings
   );
+  if (
+    looksLikeVillaApiSite(normalizedUrl) &&
+    !preferPlaywrightForVillaApi &&
+    villaApiScrapeLooksBlocked(villavillam, warnings)
+  ) {
+    try {
+      const viaBrowser = await scrapeVillaApiViaPlaywright(
+        normalizedUrl,
+        warnings
+      );
+      if (viaBrowser) return finalizeScrapedPage(viaBrowser, html);
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `Playwright yedek yol başarısız: ${error.message}`
+          : "Playwright yedek yol başarısız"
+      );
+    }
+  }
   if (villavillam) return finalizeScrapedPage(villavillam, html);
 
   const tatilvillasi = await scrapeTatilvillasiFromPage(
