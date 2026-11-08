@@ -14,7 +14,8 @@ const BROWSER_UA =
 
 export function looksLikeCloudflareChallenge(html: string): boolean {
   if (!html || html.length < 40) return false;
-  return /just a moment|cf-browser-verification|challenge-platform|cdn-cgi\/challenge|attention required|sorry, you have been blocked|cloudflare/i.test(
+  // "cloudflare" kelimesi tek başına challenge değildir (neredeyse her CF sayfasında geçer).
+  return /just a moment|cf-browser-verification|challenge-platform|cdn-cgi\/challenge|attention required!|sorry, you have been blocked|enable javascript and cookies to continue/i.test(
     html
   );
 }
