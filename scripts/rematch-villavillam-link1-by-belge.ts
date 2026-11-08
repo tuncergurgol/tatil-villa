@@ -217,15 +217,19 @@ function parseCatalogEntry(
     }
   }
 
-  // baslik + id yakınlığı
   let name = "";
-  const nameMatch = html.match(/\\"baslik\\":\\"([^\\"]+)\\"/);
-  if (nameMatch?.[1]) name = nameMatch[1];
-  if (!name && entityId) {
+  if (entityId) {
     const idName = html.match(
       new RegExp(`\\\\"id\\\\":\\\\"${entityId}\\\\",\\\\"baslik\\\\":\\\\"([^\\\\"]+)\\\\"`)
     );
     if (idName?.[1]) name = idName[1];
+  }
+  if (!name) {
+    const title = html.match(/<title>([^<]+)<\/title>/i)?.[1] || "";
+    name = title.split("|")[0]?.trim() || "";
+  }
+  if (!name) {
+    name = slug.replace(/[-_]+/g, " ");
   }
 
   const belgeMatch = html.match(/gavelBelgeNo\\*":\\*"([^"\\]+)/);
@@ -365,43 +369,104 @@ function saveCatalog(entries: CatalogEntry[]) {
   );
 }
 
+function normalizeName(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\bvilla\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function nameScore(ourName: string, ourSlug: string, entry: CatalogEntry): number {
+  const a = normalizeName(ourName);
+  const b = normalizeName(entry.name || entry.slug.replace(/-/g, " "));
+  const slug = normalizeName(ourSlug.replace(/-/g, " "));
+  const entrySlug = normalizeName(entry.slug.replace(/-/g, " "));
+  if (!a && !slug) return 0;
+  if (a && b && a === b) return 1;
+  if (slug && entrySlug && slug === entrySlug) return 0.98;
+  if (a && entrySlug && (a === entrySlug || entrySlug.includes(a) || a.includes(entrySlug))) {
+    return 0.9;
+  }
+  if (slug && b && (slug === b || b.includes(slug) || slug.includes(b))) return 0.88;
+  // token overlap
+  const ta = new Set((a || slug).split(" ").filter((t) => t.length > 1));
+  const tb = new Set((b || entrySlug).split(" ").filter((t) => t.length > 1));
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter += 1;
+  return inter / Math.max(ta.size, tb.size);
+}
+
 function pickBestMatch(
   belgeNorm: string,
-  catalog: CatalogEntry[]
-): { match: CatalogEntry | null; ambiguous: CatalogEntry[]; note: string } {
+  catalog: CatalogEntry[],
+  ourName: string,
+  ourSlug: string
+): {
+  match: CatalogEntry | null;
+  ambiguous: CatalogEntry[];
+  note: string;
+  confidence: "exact" | "none" | "ambiguous";
+} {
   const hits = catalog
     .filter((e) => e.fetchStatus === "ok" && e.belgeNorm === belgeNorm)
     .sort((a, b) => {
       const pa = SITES.find((s) => s.key === a.siteKey)?.priority ?? 99;
       const pb = SITES.find((s) => s.key === b.siteKey)?.priority ?? 99;
-      return pa - pb;
+      if (pa !== pb) return pa - pb;
+      return nameScore(ourName, ourSlug, b) - nameScore(ourName, ourSlug, a);
     });
-  if (hits.length === 0) return { match: null, ambiguous: [], note: "eşleşme yok" };
-  // Aynı site önceliğinde birden fazla URL varsa ambiguous
+  if (hits.length === 0) {
+    return { match: null, ambiguous: [], note: "eşleşme yok", confidence: "none" };
+  }
+
   const topPriority = SITES.find((s) => s.key === hits[0]!.siteKey)?.priority ?? 99;
   const topHits = hits.filter(
     (h) => (SITES.find((s) => s.key === h.siteKey)?.priority ?? 99) === topPriority
   );
-  if (topHits.length > 1) {
-    // Aynı entityId ise sorun yok
-    const ids = new Set(topHits.map((h) => h.entityId));
-    if (ids.size === 1) {
-      return {
-        match: topHits[0]!,
-        ambiguous: [],
-        note: `exact (${topHits[0]!.siteKey})`,
-      };
-    }
+
+  if (topHits.length === 1) {
     return {
-      match: null,
-      ambiguous: topHits,
-      note: `ambiguous: ${topHits.map((h) => h.url).join(" | ")}`,
+      match: topHits[0]!,
+      ambiguous: [],
+      note: `exact (${topHits[0]!.siteKey})`,
+      confidence: "exact",
     };
   }
+
+  const ids = new Set(topHits.map((h) => h.entityId));
+  if (ids.size === 1) {
+    return {
+      match: topHits[0]!,
+      ambiguous: [],
+      note: `exact (${topHits[0]!.siteKey})`,
+      confidence: "exact",
+    };
+  }
+
+  // Aynı belge, farklı ilan → isim/slug ile çöz
+  const scored = topHits
+    .map((h) => ({ h, score: nameScore(ourName, ourSlug, h) }))
+    .sort((a, b) => b.score - a.score);
+  if (scored[0]!.score >= 0.85 && scored[0]!.score - (scored[1]?.score ?? 0) >= 0.08) {
+    return {
+      match: scored[0]!.h,
+      ambiguous: [],
+      note: `exact-name (${scored[0]!.h.siteKey}, score=${scored[0]!.score.toFixed(2)})`,
+      confidence: "exact",
+    };
+  }
+
   return {
-    match: hits[0]!,
-    ambiguous: [],
-    note: `exact (${hits[0]!.siteKey})`,
+    match: null,
+    ambiguous: topHits,
+    note: `ambiguous: ${topHits.map((h) => h.url).join(" | ")}`,
+    confidence: "ambiguous",
   };
 }
 
@@ -427,19 +492,16 @@ async function main() {
   });
 
   let catalog: CatalogEntry[];
-  if (resume && existsSync(CACHE_PATH) && !argFlag("rebuild")) {
+  if (argFlag("match-only") && existsSync(CACHE_PATH)) {
     const parsed = JSON.parse(readFileSync(CACHE_PATH, "utf8")) as {
       entries?: CatalogEntry[];
     };
     catalog = parsed.entries || [];
-    const ok = catalog.filter((e) => e.fetchStatus === "ok").length;
-    console.log(`mevcut katalog: ${catalog.length} (ok=${ok}) — devam için --rebuild yok`);
-    if (ok < 50 || argFlag("build")) {
-      catalog = await buildCatalog({ resume: true, delayMs, concurrency, siteFilter });
-    }
+    console.log(`match-only: katalog ${catalog.length} kayıt`);
   } else {
+    // --resume varsa OK kayıtlar atlanır; yoksa yeniden çeker.
     catalog = await buildCatalog({
-      resume,
+      resume: resume || existsSync(CACHE_PATH),
       delayMs,
       concurrency,
       siteFilter,
@@ -475,9 +537,15 @@ async function main() {
   for (const villa of villas) {
     if (limit > 0 && applied >= limit && !dryRun) break;
     const belgeNorm = normalizeBelge(villa.documentNo);
-    const { match, ambiguous, note } = belgeNorm
-      ? pickBestMatch(belgeNorm, okCatalog)
-      : { match: null, ambiguous: [], note: "belge boş" };
+    const picked = belgeNorm
+      ? pickBestMatch(belgeNorm, okCatalog, villa.name, villa.slug)
+      : {
+          match: null,
+          ambiguous: [] as CatalogEntry[],
+          note: "belge boş",
+          confidence: "none" as const,
+        };
+    const { match, note, confidence } = picked;
 
     const row: MatchRow = {
       villaDbId: villa.id,
@@ -490,11 +558,7 @@ async function main() {
       matchSite: match?.siteKey ?? null,
       matchName: match?.name ?? null,
       matchEntityId: match?.entityId ?? null,
-      matchConfidence: match
-        ? "exact"
-        : ambiguous.length
-          ? "ambiguous"
-          : "none",
+      matchConfidence: confidence,
       note,
     };
 
