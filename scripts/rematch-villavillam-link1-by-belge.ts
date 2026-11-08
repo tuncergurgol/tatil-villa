@@ -133,13 +133,11 @@ async function fetchText(url: string): Promise<{ status: number; text: string }>
 function isVillaPath(pathname: string): boolean {
   const path = pathname.replace(/\/$/, "");
   if (!path || path === "/") return false;
-  const leaf = path.split("/").filter(Boolean).pop() || "";
-  if (!leaf) return false;
-  if (/^(bolgeler|destek|blog|iletisim|hakkimizda|villa-secenekleri|kategoriler)$/i.test(leaf)) {
-    return false;
-  }
-  // /Villa-Betul, /villa-monalisa, /villa-xxx-1
-  return /^villa[-_a-z0-9]+$/i.test(leaf) || /^[A-Z][A-Za-z0-9-]*$/.test(leaf);
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length !== 1) return false;
+  const leaf = parts[0] || "";
+  // Sadece villa ilan path'leri: /villa-xxx veya /Villa-Xxx
+  return /^villa[-_][a-z0-9][a-z0-9_-]*$/i.test(leaf);
 }
 
 async function collectSitemapUrls(seeds: string[]): Promise<string[]> {
@@ -567,10 +565,15 @@ async function main() {
         rows.push(row);
         continue;
       }
+      const targetUrl =
+        match.entityId && !/[?&]entityId=/i.test(match.url)
+          ? `${match.url}${match.url.includes("?") ? "&" : "?"}entityId=${encodeURIComponent(match.entityId)}`
+          : match.url;
+      row.newLink1 = targetUrl;
       console.log(
-        `→ ${villa.villaId ?? "-"} ${villa.name} | ${match.siteKey} | ${match.url}`
+        `→ ${villa.villaId ?? "-"} ${villa.name} | ${match.siteKey} | ${targetUrl}`
       );
-      const saved = await setVillaExternalSyncUrl(villa.id, 1, match.url);
+      const saved = await setVillaExternalSyncUrl(villa.id, 1, targetUrl);
       if (!saved.ok) {
         row.note = `kaydetme hatası: ${saved.message}`;
         console.log(`  kaydetme HATA: ${saved.message}`);
