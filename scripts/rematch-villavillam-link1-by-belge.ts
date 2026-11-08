@@ -276,6 +276,15 @@ function parseCatalogEntry(
   const belgeNo = (belgeFlight?.[1] || belgeClassic?.[1] || "").trim();
   const belgeNorm = normalizeBelge(belgeNo);
 
+  const nameLooksJunk =
+    /rezervasyon|yard[iı]mc[iı]|en uygun|kayıt ol|uye ol|üye ol|login|giriş/i.test(
+      name
+    );
+  // Villayolu sayfalarında title sıkça "Rezervasyonlarım" geliyor; slug'ı isim yap.
+  if (nameLooksJunk || !name) {
+    name = slug.replace(/[-_]+/g, " ").trim() || name;
+  }
+
   if (!belgeNorm || !entityId) {
     return {
       siteKey: site.key,
@@ -551,7 +560,7 @@ async function catalogEntryHasPrice(entry: CatalogEntry): Promise<boolean> {
   }
 }
 
-/** Belge eşleşmelerinde fiyatı olan ilk adayı seç (öncelik + isim sırası). */
+/** Belge eşleşmelerinde fiyatı olan + isim skoru yeterli adayı seç. */
 async function pickPricedMatch(
   belgeNorm: string,
   catalog: CatalogEntry[],
@@ -563,33 +572,72 @@ async function pickPricedMatch(
   confidence: "exact" | "none" | "ambiguous";
 }> {
   const hits = catalog
-    .filter((e) => e.fetchStatus === "ok" && e.belgeNorm === belgeNorm)
+    .filter((e) => e.belgeNorm === belgeNorm)
     .sort((a, b) => {
+      const sa = nameScore(ourName, ourSlug, a);
+      const sb = nameScore(ourName, ourSlug, b);
+      if (Math.abs(sb - sa) > 0.02) return sb - sa;
       const pa = SITES.find((s) => s.key === a.siteKey)?.priority ?? 99;
       const pb = SITES.find((s) => s.key === b.siteKey)?.priority ?? 99;
-      if (pa !== pb) return pa - pb;
-      return nameScore(ourName, ourSlug, b) - nameScore(ourName, ourSlug, a);
+      return pa - pb;
     });
   if (hits.length === 0) {
     return { match: null, note: "eşleşme yok", confidence: "none" };
   }
 
+  const priced: Array<{ hit: CatalogEntry; score: number }> = [];
   for (const hit of hits) {
+    const score = nameScore(ourName, ourSlug, hit);
+    if (score < 0.45 && hits.length > 1) {
+      // Aynı belgede birden fazla ilan varsa düşük skorları atla
+      continue;
+    }
     const ok = await catalogEntryHasPrice(hit);
     await sleep(80);
-    if (ok) {
-      return {
-        match: hit,
-        note: `priced (${hit.siteKey}#${hit.entityId})`,
-        confidence: "exact",
-      };
-    }
+    if (ok) priced.push({ hit, score });
   }
 
+  if (priced.length === 0) {
+    // Tek aday / hepsi düşük skor: fiyatı olan ilkini yine dene
+    for (const hit of hits) {
+      const ok = await catalogEntryHasPrice(hit);
+      await sleep(80);
+      if (ok) {
+        const score = nameScore(ourName, ourSlug, hit);
+        if (score < 0.35) {
+          return {
+            match: null,
+            note: `isim uyumsuz (score=${score.toFixed(2)}) ${hit.url}`,
+            confidence: "none",
+          };
+        }
+        return {
+          match: hit,
+          note: `priced-weak-name (${hit.siteKey}#${hit.entityId}, score=${score.toFixed(2)})`,
+          confidence: "exact",
+        };
+      }
+    }
+    return {
+      match: null,
+      note: `fiyatı olan aday yok (${hits.length} belge eşleşmesi)`,
+      confidence: "none",
+    };
+  }
+
+  priced.sort((a, b) => b.score - a.score);
+  const best = priced[0]!;
+  if (best.score < 0.35) {
+    return {
+      match: null,
+      note: `isim uyumsuz (score=${best.score.toFixed(2)}) ${best.hit.url}`,
+      confidence: "none",
+    };
+  }
   return {
-    match: null,
-    note: `fiyatı olan aday yok (${hits.length} belge eşleşmesi boş PriceList)`,
-    confidence: "none",
+    match: best.hit,
+    note: `priced (${best.hit.siteKey}#${best.hit.entityId}, score=${best.score.toFixed(2)})`,
+    confidence: "exact",
   };
 }
 
@@ -631,7 +679,20 @@ async function main() {
     });
   }
 
-  const okCatalog = catalog.filter((e) => e.fetchStatus === "ok");
+  // Eski cache: junk title → slug'dan isim; belge+entity zorunlu
+  const okCatalog = catalog
+    .filter((e) => e.fetchStatus === "ok" && e.belgeNorm && e.entityId)
+    .map((e) => {
+      const junk =
+        /rezervasyon|yard[iı]mc[iı]|en uygun|kayıt ol|uye ol|üye ol|login|giriş/i.test(
+          e.name || ""
+        );
+      if (!junk && e.name) return e;
+      return {
+        ...e,
+        name: (e.slug || "").replace(/[-_]+/g, " ").trim() || e.name,
+      };
+    });
   console.log(`\nkatalog ok: ${okCatalog.length}`);
   if (buildOnly) {
     console.log("build-only — eşleştirme atlandı");
