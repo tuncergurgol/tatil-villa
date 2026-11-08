@@ -510,6 +510,89 @@ function pickBestMatch(
   };
 }
 
+function apiHostForSiteKey(siteKey: string): string | null {
+  switch (siteKey) {
+    case "villayolu":
+      return "https://api.villayolu.com";
+    case "ovillam":
+      return "https://api.ovillam.com";
+    case "tatilpremium":
+      return "https://api.tatilpremium.com";
+    case "villapaketi":
+      return "https://api.villapaketi.com";
+    default:
+      return null;
+  }
+}
+
+async function catalogEntryHasPrice(entry: CatalogEntry): Promise<boolean> {
+  const apiHost = apiHostForSiteKey(entry.siteKey);
+  if (!apiHost || !entry.entityId) return false;
+  try {
+    const origin = SITES.find((s) => s.key === entry.siteKey)?.origin;
+    const res = await fetch(
+      `${apiHost}/PriceList?id=${encodeURIComponent(entry.entityId)}&currency=tl`,
+      {
+        headers: {
+          "User-Agent": UA,
+          Accept: "application/json",
+          ...(origin
+            ? { Origin: origin, Referer: `${origin}/` }
+            : {}),
+        },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return false;
+    const json = (await res.json()) as { data?: unknown[] };
+    return Array.isArray(json.data) && json.data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Belge eşleşmelerinde fiyatı olan ilk adayı seç (öncelik + isim sırası). */
+async function pickPricedMatch(
+  belgeNorm: string,
+  catalog: CatalogEntry[],
+  ourName: string,
+  ourSlug: string
+): Promise<{
+  match: CatalogEntry | null;
+  note: string;
+  confidence: "exact" | "none" | "ambiguous";
+}> {
+  const hits = catalog
+    .filter((e) => e.fetchStatus === "ok" && e.belgeNorm === belgeNorm)
+    .sort((a, b) => {
+      const pa = SITES.find((s) => s.key === a.siteKey)?.priority ?? 99;
+      const pb = SITES.find((s) => s.key === b.siteKey)?.priority ?? 99;
+      if (pa !== pb) return pa - pb;
+      return nameScore(ourName, ourSlug, b) - nameScore(ourName, ourSlug, a);
+    });
+  if (hits.length === 0) {
+    return { match: null, note: "eşleşme yok", confidence: "none" };
+  }
+
+  for (const hit of hits) {
+    const ok = await catalogEntryHasPrice(hit);
+    await sleep(80);
+    if (ok) {
+      return {
+        match: hit,
+        note: `priced (${hit.siteKey}#${hit.entityId})`,
+        confidence: "exact",
+      };
+    }
+  }
+
+  return {
+    match: null,
+    note: `fiyatı olan aday yok (${hits.length} belge eşleşmesi boş PriceList)`,
+    confidence: "none",
+  };
+}
+
 async function main() {
   const dryRun = argFlag("dry-run") || !argFlag("apply");
   const buildOnly = argFlag("build-only");
@@ -578,10 +661,9 @@ async function main() {
     if (limit > 0 && applied >= limit && !dryRun) break;
     const belgeNorm = normalizeBelge(villa.documentNo);
     const picked = belgeNorm
-      ? pickBestMatch(belgeNorm, okCatalog, villa.name, villa.slug)
+      ? await pickPricedMatch(belgeNorm, okCatalog, villa.name, villa.slug)
       : {
           match: null,
-          ambiguous: [] as CatalogEntry[],
           note: "belge boş",
           confidence: "none" as const,
         };
