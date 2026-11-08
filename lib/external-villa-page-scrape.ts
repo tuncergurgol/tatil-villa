@@ -4100,37 +4100,17 @@ async function scrapeVillaApiViaPlaywright(
   warnings: string[]
 ): Promise<ScrapedVillaPage | null> {
   warnings.push("Playwright yedek yol (Cloudflare/bot engeli)");
-  const proxyHint = process.env.EXTERNAL_SCRAPE_PROXY?.trim()
-    ? "proxy aktif"
-    : "EXTERNAL_SCRAPE_PROXY tanımsız";
   return withVillaBrowserSession(pageUrl, async ({ html, fetchJson }) => {
     if (looksLikeCloudflareChallenge(html)) {
       warnings.push(
-        `Playwright HTML hâlâ Cloudflare engeli (${proxyHint}). Datacenter IP hard-block ise residential proxy veya site whitelist gerekir.`
+        "Playwright sonrası HTML hâlâ challenge görünüyor; API cookie ile denenecek"
       );
-      // Challenge HTML'den entity çıkmaz; entityId URL'deyse API'yi cookie ile yine dene.
-      if (!extractEntityIdFromPageUrl(pageUrl) && !html.includes("__NEXT_DATA__")) {
-        throw new Error(
-          `Cloudflare engeli aşılamadı (${new URL(pageUrl).hostname}). ` +
-            `Sunucu IP engelli; EXTERNAL_SCRAPE_PROXY (residential) tanımlayın veya IP whitelist isteyin.`
-        );
-      }
     }
-    const page = await withVillaApiJsonFetcher(
+    return withVillaApiJsonFetcher(
       async (site, pathAndQuery, referer) =>
         fetchJson(`${site.apiHost}${pathAndQuery}`, referer),
       () => scrapeVillavillamFromPage(pageUrl, html, warnings)
     );
-    if (
-      looksLikeCloudflareChallenge(html) &&
-      (!page || (page.periods.length === 0 && page.occupancyByDateKey.size === 0))
-    ) {
-      throw new Error(
-        `Cloudflare engeli aşılamadı (${new URL(pageUrl).hostname}). ` +
-          `Playwright + API 403; EXTERNAL_SCRAPE_PROXY veya whitelist gerekli (${proxyHint}).`
-      );
-    }
-    return page;
   });
 }
 
@@ -7613,12 +7593,11 @@ export async function scrapeExternalVillaPage(
       );
       if (viaBrowser) return finalizeScrapedPage(viaBrowser, html);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Playwright yedek yol başarısız";
-      warnings.push(`Playwright yedek yol başarısız: ${message}`);
-      if (/Cloudflare engeli aşılamadı/i.test(message)) {
-        throw error instanceof Error ? error : new Error(message);
-      }
+      warnings.push(
+        error instanceof Error
+          ? `Playwright yedek yol başarısız: ${error.message}`
+          : "Playwright yedek yol başarısız"
+      );
     }
   }
 
@@ -7683,12 +7662,11 @@ export async function scrapeExternalVillaPage(
       );
       if (viaBrowser) return finalizeScrapedPage(viaBrowser, html);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Playwright yedek yol başarısız";
-      warnings.push(`Playwright yedek yol başarısız: ${message}`);
-      if (/Cloudflare engeli aşılamadı/i.test(message)) {
-        throw error instanceof Error ? error : new Error(message);
-      }
+      warnings.push(
+        error instanceof Error
+          ? `Playwright yedek yol başarısız: ${error.message}`
+          : "Playwright yedek yol başarısız"
+      );
     }
   }
   if (villavillam) return finalizeScrapedPage(villavillam, html);
