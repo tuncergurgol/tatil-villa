@@ -4393,9 +4393,11 @@ export async function scrapeVillavillamFromPage(
   ) {
     entity = extractTatilpremiumRoutingEntity(html, pageUrl);
   }
+  let entityFromUrl = false;
   if (!entity) {
     const entityIdFromUrl = extractEntityIdFromPageUrl(pageUrl);
     if (entityIdFromUrl) {
+      entityFromUrl = true;
       entity = {
         entityId: entityIdFromUrl,
         title: null,
@@ -4416,44 +4418,6 @@ export async function scrapeVillavillamFromPage(
     return null;
   }
 
-  const apiCurrency = apiCurrencyParam(
-    site,
-    entity.symbol,
-    entity.currencyCode
-  );
-  const { currency: symbolCurrency } = currencyFromVillavillamSymbol(
-    entity.symbol
-  );
-
-  await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
-  let priceRows: unknown[] = [];
-  const priceQueries = [
-    `/PriceList?id=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}`,
-    `/PriceList?id=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}&start2=`,
-  ];
-  for (const query of priceQueries) {
-    if (priceRows.length > 0) break;
-    try {
-      const priceJson = await fetchVillaApiJson<{
-        data?: unknown[];
-        error?: string;
-      }>(site, query, pageUrl);
-      priceRows = Array.isArray(priceJson.data) ? priceJson.data : [];
-      if (priceRows.length === 0 && priceJson.error) {
-        warnings.push(`${site.hostKey} PriceList: ${priceJson.error}`);
-      }
-    } catch (error) {
-      warnings.push(
-        error instanceof Error
-          ? `${site.hostKey} PriceList başarısız: ${error.message}`
-          : `${site.hostKey} PriceList başarısız`
-      );
-    }
-  }
-
-  await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
-  let availability: ReturnType<typeof parseVillavillamAvailability> | null =
-    null;
   const hasAvailabilityCalendar = (parsed: {
     occupancyByDateKey: Map<string, VillaDayOccupancy>;
     dailyDateKeys: string[];
@@ -4463,22 +4427,119 @@ export async function scrapeVillavillamFromPage(
         (parsed.occupancyByDateKey.size > 0 || parsed.dailyDateKeys.length > 0)
     );
 
-  const availabilityQueries = [
-    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}`,
-    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&start2=`,
-    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&currency=${encodeURIComponent(apiCurrency)}`,
-    `/Availability?EntityId=${encodeURIComponent(entity.entityId)}&start2=&currency=${encodeURIComponent(apiCurrency)}`,
-  ];
-  for (const query of availabilityQueries) {
-    if (hasAvailabilityCalendar(availability)) break;
+  const loadPriceAndAvailability = async (entityId: string, currency: string) => {
+    let priceRows: unknown[] = [];
+    const priceQueries = [
+      `/PriceList?id=${encodeURIComponent(entityId)}&currency=${encodeURIComponent(currency)}`,
+      `/PriceList?id=${encodeURIComponent(entityId)}&currency=${encodeURIComponent(currency)}&start2=`,
+    ];
+    for (const query of priceQueries) {
+      if (priceRows.length > 0) break;
+      try {
+        const priceJson = await fetchVillaApiJson<{
+          data?: unknown[];
+          error?: string;
+        }>(site, query, pageUrl);
+        priceRows = Array.isArray(priceJson.data) ? priceJson.data : [];
+        if (priceRows.length === 0 && priceJson.error) {
+          warnings.push(`${site.hostKey} PriceList: ${priceJson.error}`);
+        }
+      } catch (error) {
+        warnings.push(
+          error instanceof Error
+            ? `${site.hostKey} PriceList başarısız: ${error.message}`
+            : `${site.hostKey} PriceList başarısız`
+        );
+      }
+    }
+
+    await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+    let availability: ReturnType<typeof parseVillavillamAvailability> | null =
+      null;
+    const availabilityQueries = [
+      `/Availability?EntityId=${encodeURIComponent(entityId)}`,
+      `/Availability?EntityId=${encodeURIComponent(entityId)}&start2=`,
+      `/Availability?EntityId=${encodeURIComponent(entityId)}&currency=${encodeURIComponent(currency)}`,
+      `/Availability?EntityId=${encodeURIComponent(entityId)}&start2=&currency=${encodeURIComponent(currency)}`,
+    ];
+    for (const query of availabilityQueries) {
+      if (hasAvailabilityCalendar(availability)) break;
+      try {
+        const availJson = await fetchVillaApiJson<{
+          Symbol?: string;
+          data?: Record<string, unknown>;
+        }>(site, query, pageUrl);
+        availability = parseVillavillamAvailability(availJson);
+      } catch {
+        // Sonraki parametreyle dene
+      }
+    }
+    return { priceRows, availability };
+  };
+
+  let apiCurrency = apiCurrencyParam(
+    site,
+    entity.symbol,
+    entity.currencyCode
+  );
+  let { currency: symbolCurrency } = currencyFromVillavillamSymbol(
+    entity.symbol
+  );
+
+  await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+  let { priceRows, availability } = await loadPriceAndAvailability(
+    entity.entityId,
+    apiCurrency
+  );
+
+  // URL entityId yanlış/stale ise sayfa HTML'den doğru id ile bir kez daha dene
+  if (
+    entityFromUrl &&
+    priceRows.length === 0 &&
+    !hasAvailabilityCalendar(availability)
+  ) {
     try {
-      const availJson = await fetchVillaApiJson<{
-        Symbol?: string;
-        data?: Record<string, unknown>;
-      }>(site, query, pageUrl);
-      availability = parseVillavillamAvailability(availJson);
-    } catch {
-      // Sonraki parametreyle dene
+      const cleanUrl = (() => {
+        const u = new URL(pageUrl);
+        for (const key of ["entityId", "EntityId", "id", "villaId", "villa_id"]) {
+          u.searchParams.delete(key);
+        }
+        return `${u.origin}${u.pathname}`;
+      })();
+      const pageHtml = html.trim() ? html : await fetchText(cleanUrl);
+      await sleep(EXTERNAL_PAGE_SCRAPE_DELAY_MS);
+      let recovered =
+        extractVillaApiEntity(pageHtml) ||
+        (site.hostKey === "villareyonu"
+          ? extractRscVillaApiEntity(pageHtml)
+          : null) ||
+        extractTatilpremiumRoutingEntity(pageHtml, cleanUrl);
+      if (
+        recovered?.entityId &&
+        recovered.entityId !== entity.entityId
+      ) {
+        warnings.push(
+          `${site.hostKey}: URL entityId=${entity.entityId} boş döndü; sayfadan ${recovered.entityId} ile yeniden denendi`
+        );
+        entity = recovered;
+        entityFromUrl = false;
+        apiCurrency = apiCurrencyParam(
+          site,
+          entity.symbol,
+          entity.currencyCode
+        );
+        symbolCurrency = currencyFromVillavillamSymbol(entity.symbol).currency;
+        ({ priceRows, availability } = await loadPriceAndAvailability(
+          entity.entityId,
+          apiCurrency
+        ));
+      }
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? `${site.hostKey} entityId düzeltme HTML başarısız: ${error.message}`
+          : `${site.hostKey} entityId düzeltme HTML başarısız`
+      );
     }
   }
 
