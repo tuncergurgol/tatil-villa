@@ -2,7 +2,9 @@
  * Cloudflare / bot engeli (403) için Playwright yedek yolu.
  * Sayfayı gerçek Chromium ile açar; aynı oturum cookie'leriyle API JSON çeker.
  *
- * Opsiyonel: EXTERNAL_SCRAPE_PROXY=http://user:pass@host:port
+ * Datacenter IP hard-block ("Attention Required!") tek başına aşılmaz;
+ * o durumda residential proxy gerekir:
+ *   EXTERNAL_SCRAPE_PROXY=http://user:pass@host:port
  */
 
 import { chromium, type Browser, type BrowserContext } from "playwright";
