@@ -134,9 +134,14 @@ function isVillaPath(pathname: string): boolean {
   const path = pathname.replace(/\/$/, "");
   if (!path || path === "/") return false;
   const parts = path.split("/").filter(Boolean);
-  if (parts.length !== 1) return false;
-  const leaf = parts[0] || "";
-  // Sadece villa ilan path'leri: /villa-xxx veya /Villa-Xxx
+  // /villa-xxx  veya  /tr/villa-xxx (tatilpremium)
+  let leaf = "";
+  if (parts.length === 1) leaf = parts[0] || "";
+  else if (parts.length === 2 && /^(tr|en)$/i.test(parts[0] || "")) {
+    leaf = parts[1] || "";
+  } else {
+    return false;
+  }
   return /^villa[-_][a-z0-9][a-z0-9_-]*$/i.test(leaf);
 }
 
@@ -177,21 +182,38 @@ async function collectSitemapUrls(seeds: string[]): Promise<string[]> {
   return [...found];
 }
 
+function decodeRscHtml(html: string): string {
+  return html
+    .replace(/&quot;/gi, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#x27;/gi, "'")
+    .replace(/&amp;/gi, "&");
+}
+
+/** "value" veya Flight [0,"value"] */
+function flightStringPattern(key: string): RegExp {
+  return new RegExp(
+    `${key}"\\s*:\\s*(?:\\[\\s*0\\s*,\\s*)?"([^"]+)"`,
+    "i"
+  );
+}
+
 function parseCatalogEntry(
   site: SisterSite,
   pageUrl: string,
-  html: string
+  htmlRaw: string
 ): CatalogEntry {
+  const html = decodeRscHtml(htmlRaw);
   const slug =
     new URL(pageUrl).pathname.split("/").filter(Boolean).pop()?.replace(/\/$/, "") ||
     "";
 
-  // routingData id + url (slug eşleşmeli)
+  // routingData id + url (slug eşleşmeli) — klasik escaped JSON
   let entityId = "";
-  const routingRe =
-    /routingData\\":\{\\"id\\":\\"(\d+)\\"[^\}]{0,500}?\\"url\\":\\"(\/[^\\"]+)\\"/gi;
+  const routingReClassic =
+    /routingData\\?":\s*\{\s*\\?"id\\?":\s*\\?"(\d+)\\?"[\s\S]{0,500}?\\?"url\\?":\s*\\?"(\/[^\\"]+)\\?"/gi;
   let m: RegExpExecArray | null;
-  while ((m = routingRe.exec(html)) !== null) {
+  while ((m = routingReClassic.exec(htmlRaw)) !== null) {
     const urlSlug = (m[2] || "").split("/").filter(Boolean).pop() || "";
     if (urlSlug.localeCompare(slug, undefined, { sensitivity: "accent" }) === 0) {
       entityId = m[1] || "";
@@ -199,9 +221,22 @@ function parseCatalogEntry(
     }
   }
 
+  // Flight / RSC: routingData":[0,{"id":[0,"4346"],"url":[0,"/villa-x"]}]
+  if (!entityId) {
+    const flightRe =
+      /routingData"\s*:\s*\[\s*0\s*,\s*\{\s*"id"\s*:\s*\[\s*0\s*,\s*"(\d+)"\s*\][\s\S]{0,600}?"url"\s*:\s*\[\s*0\s*,\s*"(\/[^"]+)"\s*\]/gi;
+    while ((m = flightRe.exec(html)) !== null) {
+      const urlSlug = (m[2] || "").split("/").filter(Boolean).pop() || "";
+      if (urlSlug.localeCompare(slug, undefined, { sensitivity: "accent" }) === 0) {
+        entityId = m[1] || "";
+        break;
+      }
+    }
+  }
+
   // __NEXT_DATA__ fallback
   if (!entityId) {
-    const next = html.match(
+    const next = htmlRaw.match(
       /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s
     );
     if (next?.[1]) {
@@ -216,9 +251,15 @@ function parseCatalogEntry(
   }
 
   let name = "";
-  if (entityId) {
+  const baslikFlight = html.match(flightStringPattern("baslik"));
+  if (baslikFlight?.[1] && /villa/i.test(baslikFlight[1])) {
+    name = baslikFlight[1];
+  }
+  if (!name && entityId) {
     const idName = html.match(
-      new RegExp(`\\\\"id\\\\":\\\\"${entityId}\\\\",\\\\"baslik\\\\":\\\\"([^\\\\"]+)\\\\"`)
+      new RegExp(
+        `"id"\\s*:\\s*(?:\\[\\s*0\\s*,\\s*)?"${entityId}"[\\s\\S]{0,80}?"baslik"\\s*:\\s*(?:\\[\\s*0\\s*,\\s*)?"([^"]+)"`
+      )
     );
     if (idName?.[1]) name = idName[1];
   }
@@ -230,8 +271,9 @@ function parseCatalogEntry(
     name = slug.replace(/[-_]+/g, " ");
   }
 
-  const belgeMatch = html.match(/gavelBelgeNo\\*":\\*"([^"\\]+)/);
-  const belgeNo = (belgeMatch?.[1] || "").trim();
+  const belgeFlight = html.match(flightStringPattern("gavelBelgeNo"));
+  const belgeClassic = htmlRaw.match(/gavelBelgeNo\\*":\\*"([^"\\]+)/);
+  const belgeNo = (belgeFlight?.[1] || belgeClassic?.[1] || "").trim();
   const belgeNorm = normalizeBelge(belgeNo);
 
   if (!belgeNorm || !entityId) {
