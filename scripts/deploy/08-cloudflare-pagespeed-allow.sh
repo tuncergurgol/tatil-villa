@@ -79,25 +79,8 @@ rule_exists() {
     | jq -e --arg d "$description" '.result.rules[]? | select(.description == $d)' >/dev/null 2>&1
 }
 
-disable_bot_fight() {
-  local zone_id="$1" code
-  code="$(cf_try -X PATCH "${API}/zones/${zone_id}/settings/bot_fight_mode" -d '{"value":"off"}')"
-  if [[ "$code" == "200" ]] && json_ok /tmp/cf-pagespeed-allow.json; then
-    echo "    Bot Fight Mode: off"
-  else
-    echo "    UYARI: Bot Fight Mode kapatılamadı (HTTP ${code}). Token'a Zone Settings Edit verin veya Dashboard → Security → Bots"
-  fi
-}
-
-set_security_medium() {
-  local zone_id="$1" code
-  code="$(cf_try -X PATCH "${API}/zones/${zone_id}/settings/security_level" -d '{"value":"medium"}')"
-  if [[ "$code" == "200" ]] && json_ok /tmp/cf-pagespeed-allow.json; then
-    echo "    Security Level: medium"
-  else
-    echo "    UYARI: Security Level ayarlanamadı (HTTP ${code})"
-  fi
-}
+# Not: Agresif bot koruması (10-cloudflare-enable-aggressive-bots.sh) açık kalır.
+# Bu script Bot Fight Mode / Security Level'ı düşürmez; yalnızca WAF/config skip ekler.
 
 add_waf_skip_rule() {
   local zone_id="$1" ruleset_id
@@ -166,8 +149,6 @@ for zone_name in "${ZONES[@]}"; do
     continue
   fi
   echo "    id: ${zone_id}"
-  disable_bot_fight "$zone_id"
-  set_security_medium "$zone_id"
   add_waf_skip_rule "$zone_id"
   add_config_rule "$zone_id"
 done
@@ -176,9 +157,8 @@ echo ""
 if [[ "$missing" -ne 0 ]]; then
   echo "Eksik zone var. Cloudflare → My Profile → API Tokens → token'ı Edit:"
   echo "  Zone Resources: Include → tatildeyiz.com.tr, balayivillacisi.com, tatilvillacisi.com"
-  echo "Dashboard (tatilvillacisi.com): Security → Bots → Bot Fight Mode = Off"
-  echo "  Security → Settings → Security Level = Medium"
   exit 1
 fi
 
-echo "Tamamlandı. PageSpeed'i www.tatilvillacisi.com için yeniden çalıştırın."
+echo "Tamamlandı. Bot Fight Mode kapatılmadı (agresif koruma korunur)."
+echo "PageSpeed hâlâ 403 verirse Meta/R2 benzeri WAF skip veya verified bot path kullanın."

@@ -48,20 +48,7 @@ echo "==> Cloudflare Meta privacy fix (${ZONE_NAME})"
 echo "    Zone id: ${zone_id}"
 
 echo ""
-echo "--> Bot Fight Mode kapatılıyor..."
-if cf_patch "${API}/zones/${zone_id}/settings/bot_fight_mode" -d '{"value":"off"}' | jq -e '.success' >/dev/null; then
-  echo "    Bot Fight Mode: off"
-else
-  echo "    UYARI: Bot Fight Mode ayarlanamadı (plan veya izin)"
-fi
-
-echo ""
-echo "--> Security Level: medium..."
-if cf_patch "${API}/zones/${zone_id}/settings/security_level" -d '{"value":"medium"}' | jq -e '.success' >/dev/null; then
-  echo "    Security Level: medium"
-else
-  echo "    UYARI: Security Level ayarlanamadı"
-fi
+echo "--> Bot Fight Mode / Security Level korunuyor (agresif koruma kapatılmaz)"
 
 ruleset_id_for_phase() {
   cf_get "${API}/zones/${zone_id}/rulesets/phases/$1/entrypoint" | jq -r '.result.id // empty'
