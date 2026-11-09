@@ -8,6 +8,10 @@ import type {
   Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import {
+  findActiveOtpCooldown,
+  otpCooldownUserMessage,
+} from "@/lib/otp-cooldown";
 import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
 import { notifyNewCallbackRequest } from "@/lib/callback-request-notify";
 import { syncCustomerFromCallback } from "@/lib/customer-crm";
@@ -15,6 +19,7 @@ import {
   CUSTOMER_BLACKLIST_PUBLIC_MESSAGE,
   isBlacklistedContact,
 } from "@/lib/customer-blacklist";
+import { assertPublicBotChallenge } from "@/lib/public-bot-challenge";
 import {
   assertPublicRequestAllowed,
   PUBLIC_OTP_SEND_PURPOSE,
@@ -34,12 +39,6 @@ import {
   invalidateActiveOtps,
   type CallbackRequestOtpPayload,
 } from "@/lib/verification-otp";
-import { verifySimpleCaptcha } from "@/lib/simple-captcha";
-import {
-  isTurnstileConfigured,
-  verifyTurnstileToken,
-} from "@/lib/turnstile";
-import { getRequestClientIp } from "@/lib/request-client-ip";
 
 export type CallbackRequestActionState = {
   success?: boolean;
@@ -50,6 +49,8 @@ export type CallbackRequestActionState = {
   phone?: string;
   verificationId?: string;
   channel?: "sms" | "whatsapp";
+  cooldownActive?: boolean;
+  retryAfterSec?: number;
 };
 
 const formSchema = z.object({
@@ -160,23 +161,9 @@ export async function submitCallbackRequestAction(
     return { error: CUSTOMER_BLACKLIST_PUBLIC_MESSAGE };
   }
 
-  if (isTurnstileConfigured()) {
-    const clientIp = await getRequestClientIp();
-    const captcha = await verifyTurnstileToken(
-      String(formData.get("cfTurnstileToken") ?? ""),
-      clientIp
-    );
-    if (!captcha.ok) {
-      return { error: captcha.error };
-    }
-  } else {
-    const captcha = verifySimpleCaptcha(
-      String(formData.get("simpleCaptchaToken") ?? ""),
-      String(formData.get("simpleCaptchaAnswer") ?? "")
-    );
-    if (!captcha.ok) {
-      return { error: captcha.error };
-    }
+  const bot = await assertPublicBotChallenge(formData);
+  if (!bot.ok) {
+    return { error: bot.error };
   }
 
   const guard = await assertPublicRequestAllowed({
@@ -206,6 +193,19 @@ export async function submitCallbackRequestAction(
 
   if (!(await isPhoneOtpRequired())) {
     return createVerifiedCallbackFromPayload(payload, guard);
+  }
+
+  const cooldown = await findActiveOtpCooldown(e164, CALLBACK_OTP_PURPOSE);
+  if (cooldown) {
+    return {
+      needsVerification: true,
+      phone: e164,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      cooldownActive: true,
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
+    };
   }
 
   await invalidateActiveOtps(e164, CALLBACK_OTP_PURPOSE);
@@ -375,6 +375,29 @@ export async function resendCallbackRequestOtpAction(
   const payload = existing.payload as CallbackRequestOtpPayload | null;
   if (!payload) {
     return { error: "Form verisi bulunamadı" };
+  }
+
+  const cooldown = await findActiveOtpCooldown(e164, CALLBACK_OTP_PURPOSE);
+  if (cooldown) {
+    return {
+      needsVerification: true,
+      phone: e164,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      cooldownActive: true,
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
+    };
+  }
+
+  const bot = await assertPublicBotChallenge(formData);
+  if (!bot.ok) {
+    return {
+      error: bot.error,
+      needsVerification: true,
+      phone: e164,
+      verificationId,
+    };
   }
 
   const guard = await assertPublicRequestAllowed({

@@ -3,10 +3,16 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import {
+  findActiveOtpCooldown,
+  otpCooldownUserMessage,
+} from "@/lib/otp-cooldown";
 import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
+import { assertPublicBotChallenge } from "@/lib/public-bot-challenge";
 import {
   assertPublicRequestAllowed,
   PUBLIC_OTP_SEND_PURPOSE,
+  PUBLIC_OTP_VERIFY_PURPOSE,
 } from "@/lib/public-request-guard";
 import {
   createMemberAccountWithLoyalty,
@@ -63,6 +69,9 @@ export type MemberAuthState = {
   otpMode?: "login" | "register" | "reservation";
   welcomeTitle?: string;
   welcomeBody?: string;
+  /** Aktif kod varken yeniden gönderim engellendi */
+  cooldownActive?: boolean;
+  retryAfterSec?: number;
 };
 
 function maskPhone(e164: string): string {
@@ -117,11 +126,32 @@ const emailLoginSchema = z.object({
 async function sendMemberOtp(
   phone: string,
   purpose: string,
-  payload: MemberOtpPayload
+  payload: MemberOtpPayload,
+  options?: { formData?: FormData | null; formDeviceToken?: string | null }
 ) {
+  const bot = await assertPublicBotChallenge(options?.formData ?? null);
+  if (!bot.ok) {
+    return { error: bot.error };
+  }
+
+  const cooldown = await findActiveOtpCooldown(phone, purpose);
+  if (cooldown) {
+    return {
+      cooldownActive: true as const,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      phone: maskPhone(phone),
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
+    };
+  }
+
   const guard = await assertPublicRequestAllowed({
     purpose: PUBLIC_OTP_SEND_PURPOSE,
     phone,
+    formDeviceToken:
+      options?.formDeviceToken ??
+      String(options?.formData?.get("deviceToken") ?? ""),
   });
   if (!guard.ok) {
     return { error: guard.error };
@@ -129,7 +159,7 @@ async function sendMemberOtp(
 
   const rate = checkRateLimit({
     key: `member-otp:${phone}:${purpose}`,
-    limit: 5,
+    limit: 3,
     windowMs: 15 * 60 * 1000,
   });
   if (!rate.ok) {
@@ -314,7 +344,8 @@ async function completeMemberReservationLogin(
 }
 
 export async function startMemberPhoneLoginAction(
-  phoneRaw: string
+  phoneRaw: string,
+  formData?: FormData | null
 ): Promise<MemberAuthState> {
   const phone = normalizePhoneToE164(phoneRaw);
   if (!phone || !isValidTurkishMobileE164(phone)) {
@@ -334,19 +365,27 @@ export async function startMemberPhoneLoginAction(
   }
 
   if (!(await isPhoneOtpRequired())) {
+    const bot = await assertPublicBotChallenge(formData ?? null);
+    if (!bot.ok) return { error: bot.error };
     const guard = await assertPublicRequestAllowed({
       purpose: PUBLIC_OTP_SEND_PURPOSE,
       phone,
+      formDeviceToken: String(formData?.get("deviceToken") ?? ""),
     });
     if (!guard.ok) return { error: guard.error };
     return completeMemberPhoneLogin(phone);
   }
 
-  const otp = await sendMemberOtp(phone, MEMBER_LOGIN_OTP_PURPOSE, {
-    memberId: member?.id,
-    email: member?.email || guest?.email || undefined,
-    fullName: member?.fullName || guest?.fullName || undefined,
-  });
+  const otp = await sendMemberOtp(
+    phone,
+    MEMBER_LOGIN_OTP_PURPOSE,
+    {
+      memberId: member?.id,
+      email: member?.email || guest?.email || undefined,
+      fullName: member?.fullName || guest?.fullName || undefined,
+    },
+    { formData }
+  );
   if ("error" in otp) return { error: otp.error };
 
   return {
@@ -357,7 +396,12 @@ export async function startMemberPhoneLoginAction(
     channel: otp.channel,
     phone: otp.phone,
     verifyPhone: phone,
-    message: `${otp.phone} numarasına doğrulama kodu gönderildi`,
+    cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+    retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+    message:
+      "cooldownActive" in otp && otp.cooldownActive
+        ? otp.message
+        : `${otp.phone} numarasına doğrulama kodu gönderildi`,
     ...welcomeFields(guest),
   };
 }
@@ -368,6 +412,12 @@ export async function verifyMemberPhoneLoginAction(input: {
 }): Promise<MemberAuthState> {
   const phone = normalizePhoneToE164(input.phone);
   if (!phone) return { error: "Geçersiz telefon" };
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) return { error: guard.error };
 
   const record = await prisma.verificationCode.findFirst({
     where: {
@@ -418,18 +468,26 @@ export async function startMemberRegisterAction(
     }
     const otpPhone = existingMember.phone;
     if (!(await isPhoneOtpRequired())) {
+      const bot = await assertPublicBotChallenge(formData);
+      if (!bot.ok) return { error: bot.error };
       const guard = await assertPublicRequestAllowed({
         purpose: PUBLIC_OTP_SEND_PURPOSE,
         phone: otpPhone,
+        formDeviceToken: String(formData.get("deviceToken") ?? ""),
       });
       if (!guard.ok) return { error: guard.error };
       return completeMemberPhoneLogin(otpPhone);
     }
-    const otp = await sendMemberOtp(otpPhone, MEMBER_LOGIN_OTP_PURPOSE, {
-      memberId: existingMember.id,
-      email: existingMember.email,
-      fullName: existingMember.fullName,
-    });
+    const otp = await sendMemberOtp(
+      otpPhone,
+      MEMBER_LOGIN_OTP_PURPOSE,
+      {
+        memberId: existingMember.id,
+        email: existingMember.email,
+        fullName: existingMember.fullName,
+      },
+      { formData }
+    );
     if ("error" in otp) return { error: otp.error };
 
     return {
@@ -441,15 +499,23 @@ export async function startMemberRegisterAction(
       channel: otp.channel,
       phone: otp.phone,
       verifyPhone: otpPhone,
-      message: `${otp.phone} numarasına doğrulama kodu gönderildi. Yeni üyelik açmanıza gerek yok.`,
+      cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+      retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+      message:
+        "cooldownActive" in otp && otp.cooldownActive
+          ? otp.message
+          : `${otp.phone} numarasına doğrulama kodu gönderildi. Yeni üyelik açmanıza gerek yok.`,
       ...welcomeFields(guest),
     };
   }
 
   if (!(await isPhoneOtpRequired())) {
+    const bot = await assertPublicBotChallenge(formData);
+    if (!bot.ok) return { error: bot.error };
     const guard = await assertPublicRequestAllowed({
       purpose: PUBLIC_OTP_SEND_PURPOSE,
       phone,
+      formDeviceToken: String(formData.get("deviceToken") ?? ""),
     });
     if (!guard.ok) return { error: guard.error };
     return completeMemberRegister({
@@ -461,12 +527,17 @@ export async function startMemberRegisterAction(
     });
   }
 
-  const otp = await sendMemberOtp(phone, MEMBER_REGISTER_OTP_PURPOSE, {
-    email,
-    fullName: parsed.data.fullName,
-    inviteCode: parsed.data.inviteCode || undefined,
-    marketingConsent: parsed.data.acceptMarketing,
-  });
+  const otp = await sendMemberOtp(
+    phone,
+    MEMBER_REGISTER_OTP_PURPOSE,
+    {
+      email,
+      fullName: parsed.data.fullName,
+      inviteCode: parsed.data.inviteCode || undefined,
+      marketingConsent: parsed.data.acceptMarketing,
+    },
+    { formData }
+  );
   if ("error" in otp) return { error: otp.error };
 
   return {
@@ -477,9 +548,14 @@ export async function startMemberRegisterAction(
     channel: otp.channel,
     phone: otp.phone,
     verifyPhone: phone,
-    message: guest
-      ? "Sizi sistemimizde hatırladık. Üyeliğinizi tamamlamak için doğrulama kodu gönderildi"
-      : "Kayıt için doğrulama kodu gönderildi",
+    cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+    retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+    message:
+      "cooldownActive" in otp && otp.cooldownActive
+        ? otp.message
+        : guest
+          ? "Sizi sistemimizde hatırladık. Üyeliğinizi tamamlamak için doğrulama kodu gönderildi"
+          : "Kayıt için doğrulama kodu gönderildi",
     ...welcomeFields(guest),
   };
 }
@@ -491,6 +567,12 @@ export async function verifyMemberRegisterAction(input: {
 }): Promise<MemberAuthState> {
   const phone = normalizePhoneToE164(input.phone);
   if (!phone) return { error: "Geçersiz telefon" };
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) return { error: guard.error };
 
   const record = await prisma.verificationCode.findFirst({
     where: {
@@ -529,11 +611,33 @@ const RESERVATION_CREDENTIALS_ERROR =
 
 async function sendMemberReservationOtp(
   phone: string,
-  payload: MemberReservationOtpPayload
+  payload: MemberReservationOtpPayload,
+  formData?: FormData | null
 ) {
+  const bot = await assertPublicBotChallenge(formData ?? null);
+  if (!bot.ok) {
+    return { error: bot.error };
+  }
+
+  const cooldown = await findActiveOtpCooldown(
+    phone,
+    MEMBER_RESERVATION_OTP_PURPOSE
+  );
+  if (cooldown) {
+    return {
+      cooldownActive: true as const,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      phone: maskPhone(phone),
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
+    };
+  }
+
   const guard = await assertPublicRequestAllowed({
     purpose: PUBLIC_OTP_SEND_PURPOSE,
     phone,
+    formDeviceToken: String(formData?.get("deviceToken") ?? ""),
   });
   if (!guard.ok) {
     return { error: guard.error };
@@ -541,7 +645,7 @@ async function sendMemberReservationOtp(
 
   const rate = checkRateLimit({
     key: `member-otp:${phone}:${MEMBER_RESERVATION_OTP_PURPOSE}`,
-    limit: 5,
+    limit: 3,
     windowMs: 15 * 60 * 1000,
   });
   if (!rate.ok) {
@@ -601,28 +705,42 @@ export async function startMemberReservationLoginAction(
   }
 
   if (!(await isPhoneOtpRequired())) {
+    const bot = await assertPublicBotChallenge(formData);
+    if (!bot.ok) return { error: bot.error };
     const guard = await assertPublicRequestAllowed({
       purpose: PUBLIC_OTP_SEND_PURPOSE,
       phone: booking.phone,
+      formDeviceToken: String(formData.get("deviceToken") ?? ""),
     });
     if (!guard.ok) return { error: guard.error };
     return completeMemberReservationLogin(booking.phone, booking.id);
   }
 
-  const otp = await sendMemberReservationOtp(booking.phone, {
-    bookingId: booking.id,
-    email,
-    reservationCode: String(reservationCode),
-  });
+  const otp = await sendMemberReservationOtp(
+    booking.phone,
+    {
+      bookingId: booking.id,
+      email,
+      reservationCode: String(reservationCode),
+    },
+    formData
+  );
   if ("error" in otp) return { error: otp.error };
 
   return {
     success: true,
     needsVerification: true,
+    otpMode: "reservation",
     verificationId: otp.verificationId,
     channel: otp.channel,
     phone: booking.phone,
-    message: `Doğrulama kodu ${otp.phone} numarasına gönderildi`,
+    verifyPhone: booking.phone,
+    cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+    retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+    message:
+      "cooldownActive" in otp && otp.cooldownActive
+        ? otp.message
+        : `Doğrulama kodu ${otp.phone} numarasına gönderildi`,
   };
 }
 
@@ -632,6 +750,12 @@ export async function verifyMemberReservationLoginAction(input: {
 }): Promise<MemberAuthState> {
   const phone = normalizePhoneToE164(input.phone);
   if (!phone) return { error: "Geçersiz telefon" };
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) return { error: guard.error };
 
   const record = await prisma.verificationCode.findFirst({
     where: {

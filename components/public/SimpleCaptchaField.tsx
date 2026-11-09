@@ -73,7 +73,7 @@ export default function SimpleCaptchaField({
         <p className="mt-1.5 text-xs text-red-600">{error}</p>
       ) : (
         <p className="mt-1.5 text-[11px] text-[#1a4a5c]/50">
-          Bot koruması için toplamı yazın.
+          Kısa güvenlik kontrolü — toplamı yazmanız yeterli.
         </p>
       )}
     </div>

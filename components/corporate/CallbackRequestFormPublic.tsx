@@ -17,6 +17,8 @@ import type {
 } from "@prisma/client";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import DeviceTokenField from "@/components/public/DeviceTokenField";
+import OtpCooldownModal from "@/components/public/OtpCooldownModal";
+import PublicBotChallengeFields from "@/components/public/PublicBotChallengeFields";
 import SimpleCaptchaField from "@/components/public/SimpleCaptchaField";
 import TurnstileField from "@/components/public/TurnstileField";
 
@@ -70,6 +72,10 @@ export default function CallbackRequestFormPublic({
   const turnstileSiteKey =
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+  const [cooldownOpen, setCooldownOpen] = useState(false);
+  const [cooldownChannel, setCooldownChannel] = useState<
+    "sms" | "whatsapp" | null
+  >(null);
 
   useEffect(() => {
     if (formState.needsVerification && formState.phone && formState.verificationId) {
@@ -79,6 +85,10 @@ export default function CallbackRequestFormPublic({
         channel: formState.channel,
         hint: formState.message,
       });
+      if (formState.cooldownActive) {
+        setCooldownOpen(true);
+        setCooldownChannel(formState.channel ?? "whatsapp");
+      }
     }
   }, [formState]);
 
@@ -94,6 +104,10 @@ export default function CallbackRequestFormPublic({
         channel: resendState.channel,
         hint: resendState.message,
       });
+      if (resendState.cooldownActive) {
+        setCooldownOpen(true);
+        setCooldownChannel(resendState.channel ?? "whatsapp");
+      }
     }
   }, [resendState]);
 
@@ -160,6 +174,11 @@ export default function CallbackRequestFormPublic({
     const error = verifyState.error || resendState.error || undefined;
     return (
       <div className="space-y-4">
+        <OtpCooldownModal
+          open={cooldownOpen}
+          channel={cooldownChannel}
+          onClose={() => setCooldownOpen(false)}
+        />
         <div className="rounded-2xl border border-[#1a4a5c]/10 bg-[#fff8f0] px-4 py-3 text-sm text-[#0f2f3a]">
           <p className="font-semibold">Telefon doğrulama</p>
           <p className="mt-1 text-[#1a4a5c]/80">
@@ -211,29 +230,31 @@ export default function CallbackRequestFormPublic({
 
         <form
           action={resendAction}
-          className="flex flex-wrap items-center justify-between gap-2"
+          className="space-y-3"
         >
-          <DeviceTokenField />
+          <PublicBotChallengeFields resetKey={turnstileResetKey} />
           <input
             type="hidden"
             name="verificationId"
             value={otpSession.verificationId}
           />
           <input type="hidden" name="phone" value={otpSession.phone} />
-          <button
-            type="button"
-            onClick={() => setOtpSession(null)}
-            className="text-sm font-medium text-[#1a4a5c]/70 underline-offset-2 hover:underline"
-          >
-            Formu düzenle
-          </button>
-          <button
-            type="submit"
-            disabled={resendPending}
-            className="text-sm font-semibold text-[#e85d04] hover:text-[#d00000] disabled:opacity-60"
-          >
-            {resendPending ? "Gönderiliyor…" : "Kodu tekrar gönder"}
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setOtpSession(null)}
+              className="text-sm font-medium text-[#1a4a5c]/70 underline-offset-2 hover:underline"
+            >
+              Formu düzenle
+            </button>
+            <button
+              type="submit"
+              disabled={resendPending}
+              className="text-sm font-semibold text-[#e85d04] hover:text-[#d00000] disabled:opacity-60"
+            >
+              {resendPending ? "Gönderiliyor…" : "Kodu tekrar gönder"}
+            </button>
+          </div>
         </form>
       </div>
     );

@@ -115,7 +115,7 @@ export default function TurnstileField({
         className="min-h-[65px] overflow-hidden rounded-2xl"
       />
       <p className="mt-1.5 text-[11px] text-[#1a4a5c]/50">
-        Güvenlik doğrulaması Cloudflare Turnstile ile sağlanır.
+        Kısa güvenlik kontrolü — çoğu zaman otomatik tamamlanır.
       </p>
     </div>
   );

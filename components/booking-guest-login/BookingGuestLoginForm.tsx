@@ -9,6 +9,8 @@ import {
   type BookingGuestLoginState,
 } from "@/app/actions/booking-guest-login";
 import DeviceTokenField from "@/components/public/DeviceTokenField";
+import OtpCooldownModal from "@/components/public/OtpCooldownModal";
+import PublicBotChallengeFields from "@/components/public/PublicBotChallengeFields";
 
 const initialState: BookingGuestLoginState = {};
 
@@ -38,6 +40,11 @@ export default function BookingGuestLoginForm() {
   } | null>(null);
 
   const codeInputRef = useRef<HTMLInputElement>(null);
+  const [cooldownOpen, setCooldownOpen] = useState(false);
+  const [cooldownChannel, setCooldownChannel] = useState<
+    "sms" | "whatsapp" | null
+  >(null);
+  const [botResetKey, setBotResetKey] = useState(0);
 
   useEffect(() => {
     if (
@@ -51,7 +58,12 @@ export default function BookingGuestLoginForm() {
         channel: startState.channel,
         hint: startState.message,
       });
+      if (startState.cooldownActive) {
+        setCooldownOpen(true);
+        setCooldownChannel(startState.channel ?? "whatsapp");
+      }
     }
+    if (startState.error) setBotResetKey((n) => n + 1);
   }, [startState]);
 
   useEffect(() => {
@@ -66,7 +78,12 @@ export default function BookingGuestLoginForm() {
         channel: resendState.channel,
         hint: resendState.message,
       });
+      if (resendState.cooldownActive) {
+        setCooldownOpen(true);
+        setCooldownChannel(resendState.channel ?? "whatsapp");
+      }
     }
+    if (resendState.error) setBotResetKey((n) => n + 1);
   }, [resendState]);
 
   useEffect(() => {
@@ -117,6 +134,11 @@ export default function BookingGuestLoginForm() {
     const error = verifyState.error || resendState.error || undefined;
     return (
       <div className="space-y-4">
+        <OtpCooldownModal
+          open={cooldownOpen}
+          channel={cooldownChannel}
+          onClose={() => setCooldownOpen(false)}
+        />
         <div className="rounded-xl border border-[#e85d04]/20 bg-[#fff8f0] px-4 py-3 text-sm text-slate-800">
           <p className="font-semibold">WhatsApp doğrulama</p>
           <p className="mt-1 text-slate-600">
@@ -170,7 +192,7 @@ export default function BookingGuestLoginForm() {
           action={resendAction}
           className="flex flex-wrap items-center justify-between gap-2"
         >
-          <DeviceTokenField />
+          <PublicBotChallengeFields resetKey={botResetKey} />
           <input
             type="hidden"
             name="verificationId"
@@ -179,7 +201,10 @@ export default function BookingGuestLoginForm() {
           <input type="hidden" name="phone" value={otpSession.phone} />
           <button
             type="button"
-            onClick={() => setOtpSession(null)}
+            onClick={() => {
+              setOtpSession(null);
+              setBotResetKey((n) => n + 1);
+            }}
             className="text-sm font-medium text-slate-500 underline-offset-2 hover:underline"
           >
             Bilgileri düzenle
@@ -198,7 +223,11 @@ export default function BookingGuestLoginForm() {
 
   return (
     <form action={startAction} className="space-y-4">
-      <DeviceTokenField />
+      <OtpCooldownModal
+        open={cooldownOpen}
+        channel={cooldownChannel}
+        onClose={() => setCooldownOpen(false)}
+      />
       <label className="block">
         <span className="text-sm font-semibold text-slate-800">
           E-Posta Adresiniz
@@ -227,6 +256,8 @@ export default function BookingGuestLoginForm() {
           className={fieldClass}
         />
       </label>
+
+      <PublicBotChallengeFields resetKey={botResetKey} />
 
       {startState.error ? (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

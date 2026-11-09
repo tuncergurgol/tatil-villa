@@ -16,6 +16,8 @@ import {
 import { lookupReturningGuestAction } from "@/app/actions/returning-guest";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import ReturningGuestBanner from "@/components/member/ReturningGuestBanner";
+import OtpCooldownModal from "@/components/public/OtpCooldownModal";
+import PublicBotChallengeFields from "@/components/public/PublicBotChallengeFields";
 import type { ReturningGuestPreview } from "@/lib/returning-guest-shared";
 
 type Tab = "phone" | "email" | "reservation" | "register";
@@ -40,39 +42,52 @@ export default function MemberAuthPanel({
   const [welcomeTitle, setWelcomeTitle] = useState<string | null>(null);
   const [welcomeBody, setWelcomeBody] = useState<string | null>(null);
   const [liveGuest, setLiveGuest] = useState<ReturningGuestPreview | null>(null);
+  const [cooldownOpen, setCooldownOpen] = useState(false);
+  const [cooldownChannel, setCooldownChannel] = useState<
+    "sms" | "whatsapp" | null
+  >(null);
+  const [botResetKey, setBotResetKey] = useState(0);
+
+  function applyResult(result: MemberAuthState) {
+    if (result.welcomeTitle) {
+      setWelcomeTitle(result.welcomeTitle);
+      setLiveGuest(null);
+    }
+    if (result.welcomeBody) setWelcomeBody(result.welcomeBody);
+    if (result.error) {
+      setError(result.error);
+      setBotResetKey((n) => n + 1);
+      return;
+    }
+    if (result.message) setMessage(result.message);
+    if (result.verifyPhone) setPhone(result.verifyPhone);
+    if (result.cooldownActive) {
+      setCooldownOpen(true);
+      setCooldownChannel(result.channel ?? "whatsapp");
+    }
+    if (result.needsVerification) {
+      setOtpMode(
+        result.otpMode ??
+          (tab === "register"
+            ? "register"
+            : tab === "reservation"
+              ? "reservation"
+              : "login")
+      );
+      return;
+    }
+    if (result.success) {
+      router.push(redirectTo || result.redirectTo || "/uye/hesabim");
+      router.refresh();
+    }
+  }
 
   function run(action: () => Promise<MemberAuthState>) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
       const result = await action();
-      if (result.welcomeTitle) {
-        setWelcomeTitle(result.welcomeTitle);
-        setLiveGuest(null);
-      }
-      if (result.welcomeBody) setWelcomeBody(result.welcomeBody);
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      if (result.message) setMessage(result.message);
-      if (result.verifyPhone) setPhone(result.verifyPhone);
-      if (result.needsVerification) {
-        setOtpMode(
-          result.otpMode ??
-            (tab === "register"
-              ? "register"
-              : tab === "reservation"
-                ? "reservation"
-                : "login")
-        );
-        return;
-      }
-      if (result.success) {
-        // Sayfa ?redirect= ile geldiyse rezervasyon akışına geri dön (aksiyon sabit /uye/hesabim döner).
-        router.push(redirectTo || result.redirectTo || "/uye/hesabim");
-        router.refresh();
-      }
+      applyResult(result);
     });
   }
 
@@ -113,6 +128,11 @@ export default function MemberAuthPanel({
 
   return (
     <div className="mx-auto max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+      <OtpCooldownModal
+        open={cooldownOpen}
+        channel={cooldownChannel}
+        onClose={() => setCooldownOpen(false)}
+      />
       <div className="mb-4 flex justify-center">
         <Link
           href="/"
@@ -146,6 +166,8 @@ export default function MemberAuthPanel({
               setWelcomeTitle(null);
               setWelcomeBody(null);
               setLiveGuest(null);
+              setCooldownOpen(false);
+              setBotResetKey((n) => n + 1);
             }}
             className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
               tab === item.id
@@ -208,29 +230,45 @@ export default function MemberAuthPanel({
           >
             Doğrula ve Giriş Yap
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setOtpMode(null);
+              setOtpCode("");
+              setBotResetKey((n) => n + 1);
+            }}
+            className="w-full text-sm font-medium text-slate-500 underline-offset-2 hover:underline"
+          >
+            Geri dön
+          </button>
         </div>
       ) : tab === "phone" ? (
-        <div className="space-y-4">
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
+            run(async () => {
+              const result = await startMemberPhoneLoginAction(phone, formData);
+              if (result.needsVerification) setPhone(phone);
+              return result;
+            });
+          }}
+        >
           <TurkishPhoneField
             label="Telefon Numaranız"
             value={phone}
             onChange={setPhone}
           />
+          <PublicBotChallengeFields resetKey={botResetKey} />
           <button
-            type="button"
+            type="submit"
             disabled={pending}
-            onClick={() =>
-              run(async () => {
-                const result = await startMemberPhoneLoginAction(phone);
-                if (result.needsVerification) setPhone(phone);
-                return result;
-              })
-            }
             className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
           >
             Kod Gönder
           </button>
-        </div>
+        </form>
       ) : tab === "email" ? (
         <form
           className="space-y-4"
@@ -301,6 +339,7 @@ export default function MemberAuthPanel({
               placeholder="Örn. 5902"
             />
           </label>
+          <PublicBotChallengeFields resetKey={botResetKey} />
           <button
             type="submit"
             disabled={pending}
@@ -370,6 +409,7 @@ export default function MemberAuthPanel({
             <input type="checkbox" name="acceptMarketing" value="true" />
             <span>Fırsat ve kampanyalar hakkında haberdar olmak istiyorum.</span>
           </label>
+          <PublicBotChallengeFields resetKey={botResetKey} />
           <button
             type="submit"
             disabled={pending}

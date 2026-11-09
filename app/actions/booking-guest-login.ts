@@ -4,10 +4,16 @@ import { BookingStatus, type Prisma } from "@prisma/client";
 import { z } from "zod";
 import { isImportedPlaceholderEmail } from "@/lib/booking-guest-contact";
 import { prisma } from "@/lib/db";
+import {
+  findActiveOtpCooldown,
+  otpCooldownUserMessage,
+} from "@/lib/otp-cooldown";
 import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
+import { assertPublicBotChallenge } from "@/lib/public-bot-challenge";
 import {
   assertPublicRequestAllowed,
   PUBLIC_OTP_SEND_PURPOSE,
+  PUBLIC_OTP_VERIFY_PURPOSE,
 } from "@/lib/public-request-guard";
 import {
   isValidTurkishMobileE164,
@@ -32,6 +38,8 @@ export type BookingGuestLoginState = {
   verificationId?: string;
   channel?: "sms" | "whatsapp";
   redirectTo?: string;
+  cooldownActive?: boolean;
+  retryAfterSec?: number;
 };
 
 const CREDENTIALS_ERROR =
@@ -122,6 +130,11 @@ export async function startBookingGuestLoginAction(
     return { error: CREDENTIALS_ERROR };
   }
 
+  const bot = await assertPublicBotChallenge(formData);
+  if (!bot.ok) {
+    return { error: bot.error };
+  }
+
   const guard = await assertPublicRequestAllowed({
     purpose: PUBLIC_OTP_SEND_PURPOSE,
     phone: booking.phone,
@@ -136,6 +149,22 @@ export async function startBookingGuestLoginAction(
       success: true,
       message: "Giriş başarılı",
       redirectTo: `/giris-bilgilendirme/${booking.id}`,
+    };
+  }
+
+  const cooldown = await findActiveOtpCooldown(
+    booking.phone,
+    BOOKING_GUEST_LOGIN_OTP_PURPOSE
+  );
+  if (cooldown) {
+    return {
+      needsVerification: true,
+      phone: booking.phone,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      cooldownActive: true,
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
     };
   }
 
@@ -219,6 +248,20 @@ export async function verifyBookingGuestLoginAction(
   }
 
   const e164 = normalizePhoneToE164(parsed.data.phone);
+  const verifyGuard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone: e164,
+    formDeviceToken: String(formData.get("deviceToken") ?? ""),
+  });
+  if (!verifyGuard.ok) {
+    return {
+      error: verifyGuard.error,
+      needsVerification: true,
+      phone: String(formData.get("phone") ?? ""),
+      verificationId: String(formData.get("verificationId") ?? ""),
+    };
+  }
+
   const record = await prisma.verificationCode.findFirst({
     where: {
       id: parsed.data.verificationId,
@@ -313,6 +356,32 @@ export async function resendBookingGuestLoginOtpAction(
   const payload = existing.payload as BookingGuestLoginOtpPayload | null;
   if (!payload?.bookingId) {
     return { error: "Doğrulama oturumu geçersiz. Bilgilerinizi yeniden girin." };
+  }
+
+  const cooldown = await findActiveOtpCooldown(
+    e164,
+    BOOKING_GUEST_LOGIN_OTP_PURPOSE
+  );
+  if (cooldown) {
+    return {
+      needsVerification: true,
+      phone: e164,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      cooldownActive: true,
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
+    };
+  }
+
+  const bot = await assertPublicBotChallenge(formData);
+  if (!bot.ok) {
+    return {
+      error: bot.error,
+      needsVerification: true,
+      phone: e164,
+      verificationId,
+    };
   }
 
   const guard = await assertPublicRequestAllowed({
