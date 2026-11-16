@@ -13,6 +13,7 @@ import {
 } from "@/lib/evolution-client";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function getConfig(settings: Awaited<ReturnType<typeof getCompanySettings>>) {
   return {
@@ -229,14 +230,16 @@ export async function POST(request: Request) {
       );
     }
 
+    let qrDataUrl: string | null = null;
     if (action === "force-restart" || action === "retry") {
-      await restartEvolutionInstance(
+      const created = await restartEvolutionInstance(
         config.baseUrl,
         config.apiKey,
         config.instanceName,
         webhookUrl,
         settings.whatsappCalendarWebhookSecret
       );
+      qrDataUrl = extractEvolutionQrDataUrl(created);
     } else {
       await ensureEvolutionInstance(
         config.baseUrl,
@@ -247,12 +250,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const connect = await connectEvolutionInstance(
-      config.baseUrl,
-      config.apiKey,
-      config.instanceName
-    );
-    const qrDataUrl = extractEvolutionQrDataUrl(connect);
+    if (!qrDataUrl) {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const connect = await connectEvolutionInstance(
+          config.baseUrl,
+          config.apiKey,
+          config.instanceName
+        );
+        qrDataUrl = extractEvolutionQrDataUrl(connect);
+        if (qrDataUrl) break;
+        if (attempt < 4) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+    }
     const latest = await getEvolutionConnectionState(
       config.baseUrl,
       config.apiKey,

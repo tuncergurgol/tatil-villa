@@ -54,13 +54,35 @@ function buildHeaders(apiKey: string) {
   };
 }
 
+function evolutionErrorText(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => evolutionErrorText(item))
+      .filter((item): item is string => Boolean(item));
+    return parts.length ? parts.join(", ") : null;
+  }
+  if (value && typeof value === "object" && "message" in value) {
+    return evolutionErrorText((value as { message: unknown }).message);
+  }
+  return null;
+}
+
 async function parseEvolutionError(res: Response) {
   const text = await res.text().catch(() => "");
   try {
-    const json = JSON.parse(text) as { message?: string | string[]; error?: string };
-    const message = json.message;
-    if (Array.isArray(message)) return message.join(", ");
-    return message ?? json.error ?? text ?? `Evolution API hata (${res.status})`;
+    const json = JSON.parse(text) as {
+      message?: unknown;
+      error?: string;
+      response?: { message?: unknown };
+    };
+    return (
+      evolutionErrorText(json.message) ??
+      evolutionErrorText(json.response?.message) ??
+      json.error ??
+      text ??
+      `Evolution API hata (${res.status})`
+    );
   } catch {
     return text || `Evolution API hata (${res.status})`;
   }
@@ -143,13 +165,56 @@ export function getDockerReachableWebhookUrl(webhookUrl: string) {
   }
 }
 
-export async function fetchEvolutionInstances(baseUrl: string, apiKey: string) {
-  const data = await evolutionRequest<
-    EvolutionInstanceInfo[] | { instances?: EvolutionInstanceInfo[] }
-  >(baseUrl, apiKey, "/instance/fetchInstances");
+function readEvolutionString(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
 
-  if (Array.isArray(data)) return data;
-  return data.instances ?? [];
+/** Evolution v2 fetchInstances `name` / `ownerJid` / `connectionStatus` döndürür. */
+export function normalizeEvolutionInstance(raw: unknown): EvolutionInstanceInfo | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  const nested =
+    record.instance && typeof record.instance === "object"
+      ? (record.instance as Record<string, unknown>)
+      : null;
+  const source = nested ?? record;
+  const instanceName = readEvolutionString(source, ["instanceName", "name"]);
+  if (!instanceName) return null;
+  const owner = readEvolutionString(source, ["owner", "ownerJid"]);
+  const status = readEvolutionString(source, ["status", "connectionStatus", "state"]);
+  const instanceId = readEvolutionString(source, ["instanceId", "id"]);
+  const profileName = readEvolutionString(source, ["profileName"]);
+
+  return {
+    instanceName,
+    instanceId: instanceId || undefined,
+    status: status || undefined,
+    state: readEvolutionString(source, ["state", "connectionStatus", "status"]) || undefined,
+    owner: owner || undefined,
+    profileName: profileName || undefined,
+  };
+}
+
+export async function fetchEvolutionInstances(baseUrl: string, apiKey: string) {
+  const data = await evolutionRequest<unknown>(
+    baseUrl,
+    apiKey,
+    "/instance/fetchInstances"
+  );
+
+  const rows = Array.isArray(data)
+    ? data
+    : data && typeof data === "object" && Array.isArray((data as { instances?: unknown[] }).instances)
+      ? (data as { instances: unknown[] }).instances
+      : [];
+
+  return rows
+    .map((row) => normalizeEvolutionInstance(row))
+    .filter((row): row is EvolutionInstanceInfo => row != null);
 }
 
 export async function getEvolutionConnectionState(
@@ -177,7 +242,8 @@ export async function createEvolutionInstance(
   apiKey: string,
   instanceName: string,
   webhookUrl: string,
-  webhookSecret: string
+  webhookSecret: string,
+  options?: { requestQr?: boolean }
 ) {
   const url = new URL(getDockerReachableWebhookUrl(webhookUrl));
   if (webhookSecret) {
@@ -189,7 +255,7 @@ export async function createEvolutionInstance(
     body: JSON.stringify({
       instanceName,
       integration: "WHATSAPP-BAILEYS",
-      qrcode: false,
+      qrcode: options?.requestQr === true,
       groupsIgnore: false,
       alwaysOnline: true,
       readMessages: true,
@@ -322,6 +388,37 @@ export async function deleteEvolutionInstance(
   );
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function evolutionInstanceExists(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string
+) {
+  const instances = await fetchEvolutionInstances(baseUrl, apiKey);
+  return instances.some((item) => item.instanceName === instanceName);
+}
+
+/**
+ * Evolution delete, kaydı silen olayı beklemeden 200 döner.
+ * Hemen create atılırsa aynı ad "already in use" yüzünden 403 Forbidden olur.
+ */
+async function waitUntilEvolutionInstanceGone(
+  baseUrl: string,
+  apiKey: string,
+  instanceName: string
+) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    if (!(await evolutionInstanceExists(baseUrl, apiKey, instanceName))) {
+      return true;
+    }
+    await sleep(1000);
+  }
+  return false;
+}
+
 export async function restartEvolutionInstance(
   baseUrl: string,
   apiKey: string,
@@ -332,22 +429,70 @@ export async function restartEvolutionInstance(
   try {
     await logoutEvolutionInstance(baseUrl, apiKey, instanceName);
   } catch {
-    // ignore
+    // Kapalı oturumda logout 400 döner; silmeye devam edilir.
   }
 
+  let deleteError = "";
   try {
     await deleteEvolutionInstance(baseUrl, apiKey, instanceName);
-  } catch {
-    // ignore
+  } catch (error) {
+    deleteError = error instanceof Error ? error.message : "oturum silinemedi";
   }
 
-  await createEvolutionInstance(
-    baseUrl,
-    apiKey,
-    instanceName,
-    webhookUrl,
-    webhookSecret
-  );
+  let gone = await waitUntilEvolutionInstanceGone(baseUrl, apiKey, instanceName);
+  if (!gone) {
+    try {
+      await deleteEvolutionInstance(baseUrl, apiKey, instanceName);
+      deleteError = "";
+    } catch (error) {
+      deleteError = error instanceof Error ? error.message : deleteError;
+    }
+    gone = await waitUntilEvolutionInstanceGone(baseUrl, apiKey, instanceName);
+  }
+
+  if (!gone) {
+    const detail = deleteError ? ` Evolution: ${deleteError}` : "";
+    throw new Error(
+      `Eski WhatsApp oturumu silinemediği için yeni QR alınamadı.${detail}`
+    );
+  }
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const created = await createEvolutionInstance(
+        baseUrl,
+        apiKey,
+        instanceName,
+        webhookUrl,
+        webhookSecret,
+        { requestQr: true }
+      );
+      try {
+        await setEvolutionWebhook(
+          baseUrl,
+          apiKey,
+          instanceName,
+          webhookUrl,
+          webhookSecret
+        );
+      } catch {
+        // QR alındıysa webhook sonra da yazılabilir.
+      }
+      return created;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      const nameTaken =
+        message.includes("already in use") || message === "forbidden";
+      if (!nameTaken || attempt === 3) break;
+      await sleep(1500);
+    }
+  }
+
+  const message =
+    lastError instanceof Error ? lastError.message : "oturum oluşturulamadı";
+  throw new Error(`Yeni QR alınamadı. ${message}`);
 }
 
 export type EvolutionWhatsappGroup = {

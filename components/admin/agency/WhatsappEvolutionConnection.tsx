@@ -325,8 +325,9 @@ export default function WhatsappEvolutionConnection({
       if (state.qrDataUrl) qrShownAtRef.current = Date.now();
 
       if (state.error) {
-        setNotice({ type: "error", message: state.error });
-      } else if (state.status === "WORKING") {
+        return;
+      }
+      if (state.status === "WORKING") {
         setNotice({ type: "ok", message: "WhatsApp bağlantısı aktif" });
       } else if (state.status === "SCAN_QR_CODE" && state.qrDataUrl) {
         setNotice({
@@ -403,8 +404,9 @@ export default function WhatsappEvolutionConnection({
       applyState(state);
 
       if (state.error) {
-        setNotice({ type: "error", message: state.error });
-      } else if (state.status === "WORKING") {
+        return;
+      }
+      if (state.status === "WORKING") {
         setNotice({ type: "ok", message: "WhatsApp bağlantısı aktif" });
       } else if (state.pairingCode) {
         setNotice({
