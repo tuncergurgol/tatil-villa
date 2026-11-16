@@ -11,7 +11,8 @@
  * - villavakti.com (sezon fiyat tablosu + api.php villa_dates takvim)
  * - villaciniz.com.tr / villapaketi.com / villayolu.com (routingData id + api PriceList/Availability)
  * - villaekstra.com (routingData id + api2.villaekstra.com PriceList/Availability; CF 403 olursa fiyat uydurulmaz)
- * - mustakilvillam.com / myvillacity.com / villakilavuzu.com / ovillam.com (routingData id + api PriceList/Availability)
+ * - mustakilvillam.com / villakilavuzu.com / ovillam.com (routingData id + api PriceList/Availability)
+ * - myvillacity.com (TurizmPlus seasonalRates; eski sitede routingData + PriceList)
  * - luxuryvillam.com (window.VILLA_CALENDAR gömülü günlük fiyat + müsaitlik)
  * - hepsivilla.com (price_block haftalık/gecelik + AJAX cal.do takvim)
  * - kastavillam.com (li.price_block data-day1 + span.dt + AJAX cal.do takvim; hepsivilla ailesi)
@@ -61,6 +62,7 @@ import {
   looksLikeCloudflareChallenge,
   withVillaBrowserSession,
 } from "@/lib/external-villa-browser-fetch";
+import { parseTurizmplusVilla } from "@/lib/turizmplus-villa";
 
 export type ScrapedVillaPage = {
   sourceHost: string;
@@ -104,7 +106,8 @@ export type ScrapedVillaPage = {
     | "birvillas"
     | "plato_macrovilla"
     | "egetatilevleri"
-    | "labirent";
+    | "labirent"
+    | "turizmplus";
   pageTitle: string | null;
   periods: MappedVillaPricePeriod[];
   occupancyByDateKey: Map<string, VillaDayOccupancy>;
@@ -7585,6 +7588,41 @@ function scrapeEgetatilevleriFromHtml(
   };
 }
 
+function scrapeTurizmplusFromHtml(
+  pageUrl: string,
+  html: string,
+  warnings: string[]
+): ScrapedVillaPage | null {
+  const villa = parseTurizmplusVilla(html);
+  if (!villa || villa.periods.length === 0) return null;
+
+  const periods = villa.periods.map((period, index) =>
+    buildMappedPeriod({
+      sourceId: index + 1,
+      startDate: parseDateKey(period.startDate),
+      endDate: parseDateKey(period.endDate),
+      nightlyPrice: period.nightlyRate,
+      currency: villa.currency,
+      minStayNights: period.minStay,
+      prepaymentRate: villa.prepaymentRate,
+      cleaningFee: period.cleaningFee,
+      damageDeposit: villa.damageDeposit,
+    })
+  );
+  warnings.push(
+    "MyVillaCity fiyat dönemleri sayfadan okundu. Dolu gün listesi bu sitede sayfaya gömülü değil."
+  );
+
+  return {
+    sourceHost: normalizeHost(new URL(pageUrl).hostname),
+    strategy: "turizmplus",
+    pageTitle: villa.name,
+    periods,
+    occupancyByDateKey: new Map(),
+    warnings,
+  };
+}
+
 export async function scrapeExternalVillaPage(
   pageUrl: string
 ): Promise<ScrapedVillaPage> {
@@ -7660,6 +7698,11 @@ export async function scrapeExternalVillaPage(
           : "Playwright yedek yol başarısız"
       );
     }
+  }
+
+  if (html) {
+    const turizmplus = scrapeTurizmplusFromHtml(normalizedUrl, html, warnings);
+    if (turizmplus) return finalizeScrapedPage(turizmplus, html);
   }
 
   const birvillas = scrapeBirvillasFromHtml(normalizedUrl, html, warnings);

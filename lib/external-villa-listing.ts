@@ -1,6 +1,7 @@
 import { parseDistanceToKm } from "@/lib/tatildeyiz-location-import";
 import { sleep } from "@/lib/tatildeyiz-gallery";
 import { mapRoomFeatureNames } from "@/lib/tatildeyiz-room-import";
+import { parseTurizmplusVilla } from "@/lib/turizmplus-villa";
 
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -691,11 +692,74 @@ export function parseVillareyonuListing(
   };
 }
 
+function parseTurizmplusListing(
+  pageUrl: string,
+  html: string
+): ExternalVillaListing | null {
+  const villa = parseTurizmplusVilla(html);
+  if (!villa) return null;
+  const host = normalizeHost(new URL(pageUrl).hostname);
+  return {
+    sourceHost: host,
+    pageUrl,
+    name: villa.name,
+    originalName: villa.name,
+    locationLabel: villa.locationLabel,
+    districtName: villa.districtName,
+    cityName: villa.cityName,
+    guests: villa.guests,
+    bedrooms: villa.bedrooms,
+    bathrooms: villa.bathrooms,
+    livingRooms: 1,
+    latitude: villa.latitude,
+    longitude: villa.longitude,
+    documentNo: villa.documentNo,
+    checkInTime: villa.checkInTime,
+    checkOutTime: villa.checkOutTime,
+    ribbonText1: "",
+    minNightlyPrice: villa.minNightlyPrice,
+    damageDeposit: villa.damageDeposit,
+    prepaymentRate: villa.prepaymentRate,
+    descriptionHtml: villa.longDescription || villa.shortDescription,
+    amenityLabels: villa.amenityLabels,
+    facilityLabels: [],
+    imageUrls: villa.imageUrls,
+    distances: villa.distances,
+    pool: villa.pool
+      ? {
+          poolType: villa.pool.poolType,
+          length: null,
+          width: null,
+          depth: null,
+          conservative: villa.pool.conservative,
+          heated: villa.pool.heated,
+        }
+      : null,
+    rooms: villa.rooms.map((room, index) => ({
+      roomType: "yatak_odasi",
+      name: String(index + 1),
+      singleBeds: room.singleBeds,
+      doubleBeds: room.doubleBeds,
+      features: [],
+      customFeatures: [],
+      sortOrder: index + 1,
+    })),
+    entityId: null,
+    allowPets: villa.allowPets,
+    allowEvents: villa.allowEvents,
+    allowSmoking: villa.allowSmoking,
+    allowChildren: villa.allowChildren,
+    allowBaby: villa.allowBaby,
+  };
+}
+
 export function parseExternalVillaListing(
   pageUrl: string,
   html: string
 ): ExternalVillaListing | null {
   try {
+    const turizmplus = parseTurizmplusListing(pageUrl, html);
+    if (turizmplus) return turizmplus;
     const host = normalizeHost(new URL(pageUrl).hostname);
     if (host.includes("villareyonu")) {
       return parseVillareyonuListing(pageUrl, html);

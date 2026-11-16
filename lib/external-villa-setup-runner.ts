@@ -583,11 +583,36 @@ export async function setupVillaFromExternalUrl(
   }
 
   let imageCount = 0;
-  if (listing.imageUrls.length > 0) {
+  const existingImageCount = created
+    ? 0
+    : (
+        await prisma.villa.findUnique({
+          where: { id: villaId },
+          select: { images: true },
+        })
+      )?.images.length ?? 0;
+  const galleryAlreadyImported =
+    !created &&
+    !googleDriveUrl &&
+    existingImageCount > 0 &&
+    listing.imageUrls.length > 0 &&
+    existingImageCount >= listing.imageUrls.length;
+
+  if (listing.imageUrls.length > 0 && !galleryAlreadyImported) {
     const gallery = await importVillaGalleryFromUrls(villaId, listing.imageUrls, {
       force: true,
     });
     imageCount = gallery.importedCount;
+    if (gallery.failedCount > 0) {
+      warnings.push(
+        `${gallery.failedCount} görsel indirilemedi, ${gallery.importedCount} fotoğraf kaydedildi`
+      );
+    }
+  } else if (galleryAlreadyImported) {
+    imageCount = existingImageCount;
+    warnings.push(
+      `Galeri zaten dolu (${existingImageCount} fotoğraf); yeniden indirilmedi`
+    );
   } else {
     warnings.push(
       googleDriveUrl

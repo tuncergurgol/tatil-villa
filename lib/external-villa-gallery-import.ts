@@ -5,12 +5,14 @@ import { processGalleryImageToWebp } from "@/lib/process-gallery-image";
 import { sleep } from "@/lib/tatildeyiz-gallery";
 import { buildSeoGalleryFileName } from "@/lib/villa-gallery-filename";
 
-const REQUEST_DELAY_MS = 200;
+const REQUEST_DELAY_MS = 40;
+const GALLERY_CONCURRENCY = 4;
 
 export type VillaGalleryFromUrlsResult = {
   importedCount: number;
   sourceUrlCount: number;
   localUrls: string[];
+  failedCount: number;
 };
 
 async function downloadImage(url: string) {
@@ -22,6 +24,7 @@ async function downloadImage(url: string) {
     /villadenizi\.com|plato-static\.s3|macrovilla\.com/i.test(url);
   const isKastavillam = /kastavillam\.com/i.test(url);
   const isTatilox = /tatilox\.com/i.test(url);
+  const isTurizmplus = /myvillacity|turizmplus\.com/i.test(url);
   const response = await fetch(url, {
     headers: {
       "User-Agent":
@@ -37,7 +40,9 @@ async function downloadImage(url: string) {
               ? "https://www.kastavillam.com/"
               : isTatilox
                 ? "https://www.tatilox.com/"
-                : "https://www.villareyonu.com/",
+                : isTurizmplus
+                  ? "https://www.myvillacity.com/"
+                  : "https://www.villareyonu.com/",
     },
     redirect: "follow",
   });
@@ -85,30 +90,48 @@ export async function importVillaGalleryFromUrls(
   }
   await mkdir(uploadDir, { recursive: true });
 
-  const localUrls: string[] = [];
-  for (let index = 0; index < uniqueUrls.length; index += 1) {
-    const sourceUrl = uniqueUrls[index]!;
-    const sequence = index + 1;
-    const fileName = buildSeoGalleryFileName(villa.name, sequence);
-    await sleep(delayMs);
-    const sourceBuffer = await downloadImage(sourceUrl);
-    const webpBuffer = await processGalleryImageToWebp(sourceBuffer);
-    await writeFile(path.join(uploadDir, fileName), webpBuffer);
-    localUrls.push(`/uploads/villas/${villa.id}/${fileName}`);
+  const localUrls = new Array<string>(uniqueUrls.length);
+  let failedCount = 0;
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < uniqueUrls.length) {
+      const index = cursor;
+      cursor += 1;
+      const sourceUrl = uniqueUrls[index]!;
+      const fileName = buildSeoGalleryFileName(villa.name, index + 1);
+      try {
+        if (delayMs > 0) await sleep(delayMs);
+        const sourceBuffer = await downloadImage(sourceUrl);
+        const webpBuffer = await processGalleryImageToWebp(sourceBuffer);
+        await writeFile(path.join(uploadDir, fileName), webpBuffer);
+        localUrls[index] = `/uploads/villas/${villa.id}/${fileName}`;
+      } catch {
+        failedCount += 1;
+      }
+    }
   }
 
-  const cover = localUrls[0] ?? "";
+  const workers = Math.min(GALLERY_CONCURRENCY, uniqueUrls.length);
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+
+  const saved = localUrls.filter((url) => Boolean(url));
+  if (saved.length === 0) {
+    throw new Error("Görseller indirilemedi");
+  }
+
   await prisma.villa.update({
     where: { id: villa.id },
     data: {
-      image: cover,
-      images: localUrls,
+      image: saved[0] ?? "",
+      images: saved,
     },
   });
 
   return {
-    importedCount: localUrls.length,
+    importedCount: saved.length,
     sourceUrlCount: uniqueUrls.length,
-    localUrls,
+    localUrls: saved,
+    failedCount,
   };
 }
