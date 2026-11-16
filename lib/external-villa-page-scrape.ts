@@ -500,11 +500,17 @@ function parseTurkishMoneyAmount(raw: string): number | null {
 }
 
 function parseCleaningDayThreshold(text: string): number | null {
+  // "6 geceye kadar alınır" = 7. gecede alınmaz. Sistem nights < eşik kullanır.
+  const upToMatch = text.match(/(\d+)\s*geceye\s+kadar/i);
+  if (upToMatch?.[1]) {
+    const nights = positiveInt(Number(upToMatch[1]));
+    if (nights != null) return nights + 1;
+  }
+
   const nightPatterns = [
     /(\d+)\s*gece\s*alt/i,
     /(\d+)\s*geceden\s+(?:daha\s+)?(?:az|k[ıi]sa)/i,
     /(\d+)\s*gece\s+ve\s+alt/i,
-    /(\d+)\s*geceye\s+kadar/i,
   ];
   for (const pattern of nightPatterns) {
     const match = text.match(pattern);

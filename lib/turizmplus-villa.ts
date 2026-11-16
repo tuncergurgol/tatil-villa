@@ -26,7 +26,10 @@ export type TurizmplusPeriod = {
   nightlyRate: number;
   minStay: number | null;
   cleaningFee: number | null;
-  /** Temizlik ücretinin uygulandığı üst gece sayısı (ör. 6 geceye kadar). */
+  /**
+   * Temizlik eşiği. Kaynak "6 geceye kadar" ise 7 yazılır:
+   * sistem ücreti yalnızca konaklama gecesi bu sayıdan küçükken alır.
+   */
   cleaningDayCount: number | null;
 };
 
@@ -227,9 +230,10 @@ function extractCleaningFees(slice: string) {
   while ((match = re.exec(slice)) !== null) {
     const amount = Math.round(Number(match[1]));
     if (!Number.isFinite(amount) || amount <= 0) continue;
+    const maxNights = nightCount(match[3]);
     fees.push({
       amount,
-      dayCount: nightCount(match[3]),
+      dayCount: maxNights != null ? maxNights + 1 : null,
       start: match[4]!,
       end: match[5]!,
     });
