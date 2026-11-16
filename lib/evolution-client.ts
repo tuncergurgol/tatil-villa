@@ -388,6 +388,70 @@ export async function deleteEvolutionInstance(
   );
 }
 
+function assertEvolutionInstanceName(instanceName: string) {
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(instanceName)) {
+    throw new Error("Geçersiz instance adı");
+  }
+}
+
+async function runDocker(args: string[]) {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execFileAsync = promisify(execFile);
+  let lastError: unknown;
+  for (const bin of ["docker", "/usr/bin/docker"]) {
+    try {
+      return await execFileAsync(bin, args, { timeout: 90_000 });
+    } catch (error) {
+      lastError = error;
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("docker bulunamadı");
+}
+
+/**
+ * Baileys soketi "Connection Closed" iken logout/delete instance'ı silmez
+ * ve durum "connecting"de kalır. Kayıtlı oturumu kapatıp süreci yeniden
+ * yükleyince bağlantı "close" olur ve QR üretilebilir.
+ */
+async function resetClosedEvolutionSocket(
+  instanceName: string,
+  baseUrl: string,
+  apiKey: string
+) {
+  assertEvolutionInstanceName(instanceName);
+  const sql = [
+    `UPDATE "Instance" SET "connectionStatus" = 'close', "ownerJid" = NULL WHERE name = '${instanceName}';`,
+    `DELETE FROM "Session" s USING "Instance" i WHERE s."sessionId" = i.id AND i.name = '${instanceName}';`,
+  ].join(" ");
+
+  await runDocker([
+    "exec",
+    "evolution-postgres",
+    "psql",
+    "-U",
+    "evolution",
+    "-d",
+    "evolution",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    sql,
+  ]);
+  await runDocker(["restart", "evolution-api"]);
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try {
+      if (await evolutionInstanceExists(baseUrl, apiKey, instanceName)) return;
+    } catch {
+      // Konteyner henüz dinlemiyor.
+    }
+    await sleep(1000);
+  }
+  throw new Error("Evolution API yeniden başlamadı");
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -426,10 +490,27 @@ export async function restartEvolutionInstance(
   webhookUrl: string,
   webhookSecret: string
 ) {
+  let logoutMessage = "";
   try {
     await logoutEvolutionInstance(baseUrl, apiKey, instanceName);
-  } catch {
-    // Kapalı oturumda logout 400 döner; silmeye devam edilir.
+  } catch (error) {
+    logoutMessage = error instanceof Error ? error.message : "";
+  }
+
+  if (/connection closed|\[object object\]/i.test(logoutMessage)) {
+    await resetClosedEvolutionSocket(instanceName, baseUrl, apiKey);
+    try {
+      await setEvolutionWebhook(
+        baseUrl,
+        apiKey,
+        instanceName,
+        webhookUrl,
+        webhookSecret
+      );
+    } catch {
+      // QR, webhook yazılamasa da üretilebilir.
+    }
+    return {};
   }
 
   let deleteError = "";

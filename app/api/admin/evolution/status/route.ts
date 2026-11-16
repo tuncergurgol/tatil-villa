@@ -13,7 +13,7 @@ import {
 } from "@/lib/evolution-client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function getConfig(settings: Awaited<ReturnType<typeof getCompanySettings>>) {
   return {
@@ -251,7 +251,7 @@ export async function POST(request: Request) {
     }
 
     if (!qrDataUrl) {
-      for (let attempt = 0; attempt < 5; attempt += 1) {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
         const connect = await connectEvolutionInstance(
           config.baseUrl,
           config.apiKey,
@@ -259,7 +259,7 @@ export async function POST(request: Request) {
         );
         qrDataUrl = extractEvolutionQrDataUrl(connect);
         if (qrDataUrl) break;
-        if (attempt < 4) {
+        if (attempt < 7) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       }
