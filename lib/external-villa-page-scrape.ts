@@ -504,6 +504,7 @@ function parseCleaningDayThreshold(text: string): number | null {
     /(\d+)\s*gece\s*alt/i,
     /(\d+)\s*geceden\s+(?:daha\s+)?(?:az|k[ıi]sa)/i,
     /(\d+)\s*gece\s+ve\s+alt/i,
+    /(\d+)\s*geceye\s+kadar/i,
   ];
   for (const pattern of nightPatterns) {
     const match = text.match(pattern);
@@ -7606,6 +7607,7 @@ function scrapeTurizmplusFromHtml(
       minStayNights: period.minStay,
       prepaymentRate: villa.prepaymentRate,
       cleaningFee: period.cleaningFee,
+      cleaningDayCount: period.cleaningDayCount,
       damageDeposit: villa.damageDeposit,
     })
   );

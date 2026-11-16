@@ -26,6 +26,8 @@ export type TurizmplusPeriod = {
   nightlyRate: number;
   minStay: number | null;
   cleaningFee: number | null;
+  /** Temizlik ücretinin uygulandığı üst gece sayısı (ör. 6 geceye kadar). */
+  cleaningDayCount: number | null;
 };
 
 export type TurizmplusVilla = {
@@ -170,7 +172,12 @@ function extractDistances(slice: string): TurizmplusDistance[] {
 
 function extractPeriods(
   slice: string,
-  cleaningFees: Array<{ start: string; end: string; amount: number }>
+  cleaningFees: Array<{
+    start: string;
+    end: string;
+    amount: number;
+    dayCount: number | null;
+  }>
 ): TurizmplusPeriod[] {
   const chunk = between(
     slice,
@@ -195,20 +202,37 @@ function extractPeriods(
       nightlyRate,
       minStay: match[4] === "null" ? null : Number(match[4]),
       cleaningFee: fee?.amount ?? null,
+      cleaningDayCount: fee?.dayCount ?? null,
     });
   }
   return periods;
 }
 
+function nightCount(raw: string | undefined): number | null {
+  if (!raw || raw === "null") return null;
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? Math.round(value) : null;
+}
+
 function extractCleaningFees(slice: string) {
-  const fees: Array<{ start: string; end: string; amount: number }> = [];
+  const fees: Array<{
+    start: string;
+    end: string;
+    amount: number;
+    dayCount: number | null;
+  }> = [];
   const re =
-    /name:"Temizlik Ücreti",feeType:"[^"]*",amount:(\d+(?:\.\d+)?)[\s\S]{0,180}?startDate:"(\d{4}-\d{2}-\d{2})",endDate:"(\d{4}-\d{2}-\d{2})"/g;
+    /name:"Temizlik Ücreti",feeType:"[^"]*",amount:(\d+(?:\.\d+)?),collectAt:"[^"]*",minNights:(null|\d+),maxNights:(null|\d+),startDate:"(\d{4}-\d{2}-\d{2})",endDate:"(\d{4}-\d{2}-\d{2})"/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(slice)) !== null) {
     const amount = Math.round(Number(match[1]));
     if (!Number.isFinite(amount) || amount <= 0) continue;
-    fees.push({ amount, start: match[2]!, end: match[3]! });
+    fees.push({
+      amount,
+      dayCount: nightCount(match[3]),
+      start: match[4]!,
+      end: match[5]!,
+    });
   }
   return fees;
 }
