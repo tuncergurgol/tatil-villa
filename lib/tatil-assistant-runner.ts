@@ -144,6 +144,54 @@ Teknik:
 - Admin panel, bont.* veya localhost linki asla verme.`;
 }
 
+async function expandAssistantRegionSlugs(slugs: string[] | undefined) {
+  if (!slugs?.length) return slugs;
+  const regions = await prisma.region.findMany({
+    where: { active: true },
+    select: { slug: true, name: true },
+  });
+  const expanded = new Set<string>();
+  for (const slug of slugs) {
+    const needle = slug.toLocaleLowerCase("tr-TR");
+    const hits = regions.filter((region) => {
+      const regionSlug = region.slug.toLocaleLowerCase("tr-TR");
+      const name = region.name.toLocaleLowerCase("tr-TR");
+      return (
+        regionSlug === needle ||
+        regionSlug.startsWith(`${needle}-`) ||
+        name === needle ||
+        name.startsWith(`${needle} `)
+      );
+    });
+    if (hits.length === 0) expanded.add(slug);
+    else hits.forEach((hit) => expanded.add(hit.slug));
+  }
+  return [...expanded];
+}
+
+async function expandAssistantAmenityNames(names: string[] | undefined) {
+  if (!names?.length) return undefined;
+  const amenities = await prisma.amenity.findMany({
+    where: { active: true },
+    select: { name: true },
+  });
+  const resolved: string[] = [];
+  for (const name of names) {
+    const needle = name.toLocaleLowerCase("tr-TR");
+    const hit =
+      amenities.find(
+        (amenity) => amenity.name.toLocaleLowerCase("tr-TR") === needle
+      ) ??
+      amenities.find((amenity) => {
+        const current = amenity.name.toLocaleLowerCase("tr-TR");
+        return current.includes(needle) || needle.includes(current);
+      });
+    if (hit) resolved.push(hit.name);
+  }
+  const unique = [...new Set(resolved)];
+  return unique.length ? unique : undefined;
+}
+
 async function runVillaSearch(args: {
   checkIn: string;
   checkOut: string;
@@ -152,14 +200,19 @@ async function runVillaSearch(args: {
   amenityNames?: string[];
   flexibleDate?: boolean;
 }) {
+  const [regionSlugs, amenityNames] = await Promise.all([
+    expandAssistantRegionSlugs(args.regionSlugs),
+    expandAssistantAmenityNames(args.amenityNames),
+  ]);
+
   return searchAvailability({
     checkIn: args.checkIn,
     checkOut: args.checkOut,
     adults: args.adults,
     children: 0,
     babies: 0,
-    regionSlugs: args.regionSlugs,
-    amenityNames: args.amenityNames,
+    regionSlugs,
+    amenityNames,
     flexibleDate: args.flexibleDate ?? true,
     fillEmptyDates: true,
     sort: "price_asc",

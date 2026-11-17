@@ -61,6 +61,8 @@ const MONTH_MAP: Record<string, number> = {
 
 const REGION_ALIASES: Record<string, string> = {
   kalkan: "kalkan",
+  islamlar: "islamar",
+  "islamlar": "islamar",
   fethiye: "fethiye",
   ölüdeniz: "oludeniz",
   oludeniz: "oludeniz",
