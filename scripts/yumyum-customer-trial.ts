@@ -10,7 +10,6 @@ import { processAssistantMessage } from "../lib/tatil-assistant-runner";
 import { ASSISTANT_REFRESH_CRITERIA_MESSAGE } from "../lib/tatil-assistant-format";
 
 const CUSTOMER_PHONE = "0546 645 60 72";
-const CUSTOMER_CHAT = "905466456072@c.us";
 
 const SCENARIOS: Array<{
   name: string;
@@ -61,13 +60,22 @@ function pricesAscend(rows: OptionRow[]) {
   return prices.every((price, index) => index === 0 || price >= prices[index - 1]!);
 }
 
-async function say(conversationId: string | undefined, message: string) {
+function trialChatId(index: number) {
+  return `905466456072-deneme-${index}@c.us`;
+}
+
+async function say(
+  index: number,
+  conversationId: string | undefined,
+  message: string,
+  includePhone: boolean
+) {
   return processAssistantMessage({
     conversationId,
     message,
     channel: "whatsapp",
-    whatsappChatId: CUSTOMER_CHAT,
-    guestPhone: CUSTOMER_PHONE,
+    whatsappChatId: trialChatId(index),
+    guestPhone: includePhone ? CUSTOMER_PHONE : undefined,
   });
 }
 
@@ -95,13 +103,7 @@ async function main() {
       let whatsappSent = false;
       for (const [stepIndex, message] of steps.entries()) {
         const isPhoneStep = stepIndex === steps.length - 1;
-        const result = await processAssistantMessage({
-          conversationId,
-          message,
-          channel: "whatsapp",
-          whatsappChatId: CUSTOMER_CHAT,
-          guestPhone: isPhoneStep ? CUSTOMER_PHONE : undefined,
-        });
+        const result = await say(index, conversationId, message, isPhoneStep);
         conversationId = result.conversationId;
         lastReply = result.reply;
         whatsappSent = result.whatsappSent === true;
@@ -122,7 +124,7 @@ async function main() {
       const seen = new Set(first.map((row) => row.name));
       let refreshedAt: number | null = null;
       for (let more = 1; more <= 4; more += 1) {
-        const result = await say(conversationId, "Başka Yokmu");
+        const result = await say(index, conversationId, "Başka Yokmu", true);
         conversationId = result.conversationId;
         const refreshed = result.reply.includes(ASSISTANT_REFRESH_CRITERIA_MESSAGE);
         const options = parseOptions(result.reply);
