@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCompanySettings } from "@/lib/queries/company-settings";
+import { processAssistantMessage } from "@/lib/tatil-assistant-runner";
+import {
+  classifyWahaWebhook,
+  sendAssistantWhatsAppMessage,
+} from "@/lib/tatil-assistant-whatsapp";
 import {
   processWhatsappCalendarWebhook,
   verifyWhatsappCalendarWebhookSecret,
@@ -36,6 +41,39 @@ export async function POST(request: Request) {
       { ok: false, message: "Geçersiz JSON" },
       { status: 400 }
     );
+  }
+
+  const inbound = classifyWahaWebhook(payload);
+  if (inbound.action === "ignore") {
+    return NextResponse.json({ ok: true, skipped: "ignored" });
+  }
+
+  if (inbound.action === "customer") {
+    try {
+      const assistant = await processAssistantMessage({
+        message: inbound.text,
+        channel: "whatsapp",
+        whatsappChatId: inbound.chatId,
+        guestPhone: inbound.phone,
+      });
+      if (!assistant.whatsappSent && assistant.reply.trim()) {
+        await sendAssistantWhatsAppMessage(inbound.phone, assistant.reply);
+      }
+      return NextResponse.json({
+        ok: true,
+        conversationId: assistant.conversationId,
+      });
+    } catch (error) {
+      console.error("[whatsapp-assistant]", error);
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            error instanceof Error ? error.message : "Asistan yanıtlayamadı",
+        },
+        { status: 500 }
+      );
+    }
   }
 
   const result = await processWhatsappCalendarWebhook(payload);

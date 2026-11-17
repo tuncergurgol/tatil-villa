@@ -481,6 +481,29 @@ export async function processAssistantMessage(
     };
   }
 
+  const sameText = (left: string, right: string) =>
+    left.replace(/\s+/g, " ").trim() === right.replace(/\s+/g, " ").trim();
+  const recentUser = [...conversation.messages]
+    .reverse()
+    .find((message) => message.role === "user");
+  if (recentUser && sameText(recentUser.content, userText)) {
+    const age = Date.now() - new Date(recentUser.createdAt).getTime();
+    const recentAssistant = [...conversation.messages]
+      .reverse()
+      .find(
+        (message) =>
+          message.role === "assistant" &&
+          message.createdAt >= recentUser.createdAt
+      );
+    if (recentAssistant && age >= 0 && age < 20 * 60 * 1000) {
+      return {
+        conversationId: conversation.id,
+        reply: recentAssistant.content,
+        whatsappSent: true,
+      };
+    }
+  }
+
   await prisma.tatilAssistantMessage.create({
     data: {
       conversationId: conversation.id,

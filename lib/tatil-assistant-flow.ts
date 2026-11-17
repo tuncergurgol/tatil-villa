@@ -102,7 +102,14 @@ function formatName(name: string) {
 }
 
 export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep {
-  if (!state.guestName?.trim()) return "awaiting_name";
+  const hasRequest =
+    Boolean(state.checkIn && state.checkOut) ||
+    Boolean(state.adults) ||
+    Boolean(state.regionSlugs?.length) ||
+    Boolean(state.amenityNames?.length) ||
+    Boolean(state.amenitiesCollected);
+
+  if (!state.guestName?.trim() && !hasRequest) return "awaiting_name";
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
   if (!state.adults) return "awaiting_guests";
   if (!state.regionSlugs?.length) return "awaiting_region";
@@ -246,9 +253,9 @@ export function extractStayDates(text: string): {
     ? Number(explicitYearMatch[1])
     : undefined;
 
-  // 3/7 eylül / 3 - 7 eylül / 3-7 eylül
+  // 3/7 eylül / 3 - 7 eylül / 1-5 ocak 2027 (cümle içinde de)
   const sharedMonth = normalized.match(
-    /^(\d{1,2})\s*(?:\/|-)\s*(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)(?:\s+(20\d{2}))?$/u
+    /(\d{1,2})\s*(?:\/|-)\s*(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)(?:\s+(20\d{2}))?/u
   );
   if (sharedMonth) {
     const month = normalizeMonthName(sharedMonth[3]);
@@ -373,14 +380,22 @@ export function extractAmenityNames(text: string): string[] {
   }
 
   const amenities: string[] = [];
+  const heated = /ısıtmalı\s*havuz|isitmali\s*havuz/iu.test(lower);
+  const indoor = /kapalı\s*havuz|kapali\s*havuz/iu.test(lower);
+  if (heated) amenities.push("Isıtmalı Havuz");
+  if (indoor) amenities.push("Kapalı Havuz");
+
   const patterns: Array<[RegExp, string]> = [
-    [/özel\s*havuz|ozel\s*havuz|havuzlu/iu, "Özel Havuz"],
     [/deniz\s*manzar/iu, "Deniz Manzarası"],
     [/jakuzi/iu, "Jakuzi"],
     [/çocuk\s*havuz|cocuk\s*havuz/iu, "Çocuk Havuzu"],
     [/klimal/iu, "Klima"],
     [/merkeze\s*yakın|merkeze\s*yakin/iu, "Merkeze Yakın"],
   ];
+
+  if (!heated && !indoor && /özel\s*havuz|ozel\s*havuz|havuzlu/iu.test(lower)) {
+    amenities.push("Özel Havuz");
+  }
 
   for (const [pattern, label] of patterns) {
     if (pattern.test(lower)) amenities.push(label);
@@ -430,6 +445,101 @@ function buildRegionAckReply() {
 
 function buildAmenitiesAckReply() {
   return "Tercihlerinizi not aldım. Size villa seçeneklerini WhatsApp üzerinden iletebilmem için WhatsApp numaranızı yazar mısınız?";
+}
+
+function mentionsAlias(text: string, alias: string) {
+  const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(
+    `(^|[^a-zA-ZçğıöşüÇĞİÖŞÜ])${escaped}([^a-zA-ZçğıöşüÇĞİÖŞÜ]|$)`,
+    "iu"
+  ).test(text);
+}
+
+function harvestKnownSlots(
+  text: string,
+  state: AssistantSearchState
+): AssistantSearchState {
+  const next: AssistantSearchState = { ...state };
+
+  if (!next.checkIn || !next.checkOut) {
+    const dates = extractStayDates(text);
+    if (dates) Object.assign(next, dates);
+  }
+
+  if (!next.adults) {
+    const adults = extractGuestCount(text);
+    if (adults) next.adults = adults;
+  }
+
+  if (!next.regionSlugs?.length) {
+    const slugs = new Set<string>();
+    for (const [alias, slug] of Object.entries(REGION_ALIASES)) {
+      if (mentionsAlias(text, alias)) slugs.add(slug);
+    }
+    if (slugs.size > 0) next.regionSlugs = [...slugs];
+  }
+
+  if (!next.amenitiesCollected) {
+    const amenityNames = extractAmenityNames(text);
+    if (amenityNames.length > 0) {
+      next.amenityNames = amenityNames;
+      next.amenitiesCollected = true;
+    }
+  }
+
+  if (!next.guestPhone) {
+    const guestPhone = extractGuestPhone(text);
+    if (guestPhone) {
+      next.guestPhone = guestPhone;
+      next.phoneCollected = true;
+    }
+  }
+
+  if (!next.guestName) {
+    const guestName = extractGuestName(text);
+    if (guestName) next.guestName = guestName;
+  }
+
+  return next;
+}
+
+function slotsChanged(before: AssistantSearchState, after: AssistantSearchState) {
+  return (
+    before.guestName !== after.guestName ||
+    before.checkIn !== after.checkIn ||
+    before.checkOut !== after.checkOut ||
+    before.adults !== after.adults ||
+    before.amenitiesCollected !== after.amenitiesCollected ||
+    before.phoneCollected !== after.phoneCollected ||
+    (before.regionSlugs ?? []).join(",") !== (after.regionSlugs ?? []).join(",") ||
+    (before.amenityNames ?? []).join(",") !== (after.amenityNames ?? []).join(",")
+  );
+}
+
+function buildProgressReply(
+  before: AssistantSearchState,
+  after: AssistantSearchState,
+  nextStep: AssistantFlowStep
+) {
+  const notes: string[] = [];
+  if (!before.checkIn && after.checkIn && after.checkOut) {
+    notes.push(
+      `${formatDateRangeDisplay(after.checkIn, after.checkOut)} tarihlerini`
+    );
+  }
+  if (!before.amenityNames?.length && after.amenityNames?.length) {
+    notes.push(`${after.amenityNames.join(" ve ")} tercihinizi`);
+  }
+  if (!before.adults && after.adults) {
+    notes.push(`${after.adults} kişilik konaklamayı`);
+  }
+  if (!before.regionSlugs?.length && after.regionSlugs?.length) {
+    notes.push("bölge tercihinizi");
+  }
+
+  const question = buildFlowReply(nextStep, after);
+  if (notes.length === 0) return question;
+  return `${notes.join(", ")} not aldım. ${question}`;
 }
 
 function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
@@ -557,6 +667,25 @@ export function processFlowStep(
 ): FlowAdvanceResult {
   const step = resolveFlowStep(state);
   if (step === "ready") return { handled: false };
+
+  const harvested = harvestKnownSlots(userText, state);
+  if (slotsChanged(state, harvested)) {
+    const nextStep = resolveFlowStep(harvested);
+    if (nextStep === "ready") {
+      return {
+        handled: true,
+        reply: buildFlowReply("ready", harvested),
+        state: harvested,
+        readyToSearch: true,
+      };
+    }
+    return {
+      handled: true,
+      reply: buildProgressReply(state, harvested, nextStep),
+      state: harvested,
+      readyToSearch: false,
+    };
+  }
 
   const parsed = tryParseStep(step, userText, state);
   if (parsed) return parsed;

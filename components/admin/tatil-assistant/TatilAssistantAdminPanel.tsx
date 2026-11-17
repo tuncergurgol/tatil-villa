@@ -107,7 +107,7 @@ export default function TatilAssistantAdminPanel(props: TatilAssistantAdminPanel
             </p>
             <h1 className="text-2xl font-bold text-gray-900">Tatil Asistanı</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Web sitesi sohbet widget&apos;ı ve +90 549 618 01 08 WhatsApp hattı.
+              Web sitesi sohbet widget&apos;ı ve +90 252 618 01 08 WhatsApp hattı.
               Uygunluk arama kriterleriyle villa önerir.
             </p>
             {!props.enabled ? (
