@@ -3,6 +3,7 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { processAssistantMessage } from "@/lib/tatil-assistant-runner";
 import {
   classifyWahaWebhook,
+  resolveAssistantInboundPhone,
   sendAssistantWhatsAppMessage,
 } from "@/lib/tatil-assistant-whatsapp";
 import {
@@ -50,14 +51,18 @@ export async function POST(request: Request) {
 
   if (inbound.action === "customer") {
     try {
+      const phone = await resolveAssistantInboundPhone(
+        inbound.chatId,
+        inbound.phone
+      );
       const assistant = await processAssistantMessage({
         message: inbound.text,
         channel: "whatsapp",
         whatsappChatId: inbound.chatId,
-        guestPhone: inbound.phone,
+        guestPhone: phone,
       });
       if (!assistant.whatsappSent && assistant.reply.trim()) {
-        await sendAssistantWhatsAppMessage(inbound.phone, assistant.reply);
+        await sendAssistantWhatsAppMessage(phone, assistant.reply);
       }
       return NextResponse.json({
         ok: true,

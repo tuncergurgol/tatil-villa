@@ -7,6 +7,7 @@ import {
   getWahaConnectionState,
   normalizePhoneNumberForWaha,
   sendWahaTextMessageToPhone,
+  wahaRequest,
 } from "@/lib/waha-client";
 
 async function sessionCanSend(
@@ -54,6 +55,43 @@ export async function sendAssistantWhatsAppMessage(
     normalized,
     text
   );
+}
+
+function isCustomerMobile(digits: string) {
+  return /^(?:90)?5\d{9}$/.test(digits);
+}
+
+export async function resolveAssistantInboundPhone(
+  chatId: string,
+  fallbackDigits: string
+) {
+  const digits = fallbackDigits.replace(/\D/g, "");
+  if (isCustomerMobile(digits)) return digits;
+  if (!chatId.includes("@lid")) return digits;
+
+  const settings = await getCompanySettings();
+  const configs = [
+    getNotificationWahaConfig(settings),
+    getAssistantWahaConfig(settings),
+  ];
+  const lid = chatId.replace(/@.*/, "");
+
+  for (const config of configs) {
+    if (!config.baseUrl || !config.apiKey || !config.sessionName) continue;
+    try {
+      const data = await wahaRequest<{ pn?: string }>(
+        config.baseUrl,
+        config.apiKey,
+        `/api/${encodeURIComponent(config.sessionName)}/lids/${encodeURIComponent(lid)}`
+      );
+      const pn = (data.pn ?? "").replace(/@.*/, "").replace(/\D/g, "");
+      if (isCustomerMobile(pn)) return pn;
+    } catch {
+      // bir sonraki oturum
+    }
+  }
+
+  return digits;
 }
 
 export type WahaWebhookClassification =
