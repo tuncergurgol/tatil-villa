@@ -3828,6 +3828,36 @@ function extractVillavillamEntity(html: string) {
   return extractVillaApiEntity(html);
 }
 
+/** RSC HTML: &quot; → " ve gereksiz escape temizliği (Flight payload eşlemesi için). */
+function normalizeRscHtml(html: string): string {
+  return decodeHtmlEntities(html).replace(/\\+"/g, '"');
+}
+
+/**
+ * routingData / villa kartı alanları — klasik escaped veya Flight `[0,"value"]`.
+ */
+function extractRoutingField(chunk: string, key: string): string | null {
+  const flight = chunk.match(
+    new RegExp(`"${key}"\\s*:\\s*\\[\\s*0\\s*,\\s*"([^"]*)"\\s*\\]`)
+  )?.[1];
+  if (flight != null && flight !== "") return flight;
+  const plain = chunk.match(new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`))?.[1];
+  if (plain != null && plain !== "") return plain;
+  const escaped = chunk.match(
+    new RegExp(`\\\\"${key}\\\\":\\\\"([^\\\\]*)\\\\"`)
+  )?.[1];
+  if (escaped != null && escaped !== "") return escaped;
+  return extractEscapedRscField(chunk, key);
+}
+
+function slugMatchesRoutingUrl(
+  urlPath: string,
+  slug: string
+): boolean {
+  const urlSlug = urlPath.split("/").filter(Boolean).pop() ?? "";
+  return urlSlug.localeCompare(slug, undefined, { sensitivity: "accent" }) === 0;
+}
+
 /** Next.js RSC `routingData` içinden villa entity id (tatilpremium, villapaketi, villaciniz, villayolu). */
 export function extractTatilpremiumRoutingEntity(
   html: string,
@@ -3843,59 +3873,98 @@ export function extractTatilpremiumRoutingEntity(
   if (!slug) return null;
 
   const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const blockMatch = html.match(
-    new RegExp(
-      `routingData\\\\":\\{\\\\"id\\\\":\\\\"(\\d+)\\\\"[\\s\\S]*?\\\\"url\\\\":\\\\"/([^\\\\"]+)\\\\"`,
-      "i"
-    )
-  );
-  // Aynı slug’ı (büyük/küçük harf duyarsız) taşıyan routingData bloğunu bul
+  const normalized = normalizeRscHtml(html);
+
   let entityId: string | null = null;
   let chunk = "";
-  if (blockMatch) {
-    const re = new RegExp(
+
+  // Flight / RSC: "routingData":[0,{"id":[0,"7481"],..."url":[0,"/villa-zya"]}]
+  {
+    const flightRe =
+      /"routingData"\s*:\s*\[\s*0\s*,\s*\{\s*"id"\s*:\s*\[\s*0\s*,\s*"(\d+)"\s*\][\s\S]{0,8000}?"url"\s*:\s*\[\s*0\s*,\s*"(\/[^"]+)"\s*\]/gi;
+    let m: RegExpExecArray | null;
+    while ((m = flightRe.exec(normalized)) !== null) {
+      if (!slugMatchesRoutingUrl(m[2] ?? "", slug)) continue;
+      entityId = m[1] ?? null;
+      const start = m.index ?? 0;
+      chunk = normalized.slice(start, start + 20000);
+      break;
+    }
+  }
+
+  // Klasik escaped JSON: routingData\":{\"id\":\"123\"...\"url\":\"/slug\"
+  if (!entityId) {
+    const classicRe = new RegExp(
       `routingData\\\\":\\{\\\\"id\\\\":\\\\"(\\d+)\\\\"[\\s\\S]*?\\\\"url\\\\":\\\\"/([^\\\\"]+)\\\\"`,
       "gi"
     );
     let m: RegExpExecArray | null;
-    while ((m = re.exec(html)) !== null) {
-      const urlSlug = (m[2] ?? "").split("/").filter(Boolean).pop() ?? "";
-      if (urlSlug.localeCompare(slug, undefined, { sensitivity: "accent" }) === 0) {
-        entityId = m[1] ?? null;
-        const start = m.index ?? 0;
-        chunk = html.slice(start, start + 12000);
-        break;
-      }
+    while ((m = classicRe.exec(html)) !== null) {
+      if (!slugMatchesRoutingUrl(m[2] ?? "", slug)) continue;
+      entityId = m[1] ?? null;
+      const start = m.index ?? 0;
+      chunk = html.slice(start, start + 12000);
+      break;
     }
   }
+
   if (!entityId) {
-    // Eski dar eşleşme (tam path)
+    // Eski dar eşleşme (tam path, escaped)
     const exact = html.match(
       new RegExp(
         `routingData\\\\":\\{\\\\"id\\\\":\\\\"(\\d+)\\\\"[\\s\\S]*?\\\\"url\\\\":\\\\"/${escapedSlug}\\\\"`,
         "i"
       )
     );
-    if (!exact?.[1]) return null;
-    entityId = exact[1];
-    const start = exact.index ?? html.indexOf(exact[0]);
-    chunk = html.slice(start, start + 12000);
+    if (exact?.[1]) {
+      entityId = exact[1];
+      const start = exact.index ?? html.indexOf(exact[0]);
+      chunk = html.slice(start, start + 12000);
+    }
   }
 
-  const hasarRaw = chunk.match(/\\"hasar\\":\\"([^\\]+)\\"/)?.[1];
+  if (!entityId) {
+    // Flight dar eşleşme (slug path)
+    const exactFlight = normalized.match(
+      new RegExp(
+        `"routingData"\\s*:\\s*\\[\\s*0\\s*,\\s*\\{\\s*"id"\\s*:\\s*\\[\\s*0\\s*,\\s*"(\\d+)"\\s*\\][\\s\\S]{0,8000}?"url"\\s*:\\s*\\[\\s*0\\s*,\\s*"/${escapedSlug}"\\s*\\]`,
+        "i"
+      )
+    );
+    if (!exactFlight?.[1]) return null;
+    entityId = exactFlight[1];
+    const start = exactFlight.index ?? normalized.indexOf(exactFlight[0]);
+    chunk = normalized.slice(start, start + 20000);
+  }
+
+  const hasarRaw = extractRoutingField(chunk, "hasar");
   const damageDeposit = hasarRaw
     ? Number(String(hasarRaw).replace(/[^\d.]/g, ""))
     : NaN;
+  const depozito = extractRoutingField(chunk, "depozito");
+  const symbol = extractRoutingField(chunk, "Symbol") ?? "₺";
+  const currencyCode =
+    extractRoutingField(chunk, "CurrencyCode") ??
+    extractRoutingField(chunk, "FromCurrencyCode") ??
+    "TRY";
+  const title =
+    extractRoutingField(chunk, "baslik") ??
+    extractRoutingField(chunk, "kisa_icerik");
 
   return {
     entityId,
-    title: chunk.match(/\\"baslik\\":\\"([^\\]+)\\"/)?.[1] ?? null,
-    symbol: chunk.match(/\\"Symbol\\":\\"([^\\]+)\\"/)?.[1] ?? "₺",
-    currencyCode:
-      chunk.match(/\\"FromCurrencyCode\\":\\"([^\\]+)\\"/)?.[1] ?? "TRY",
+    title,
+    symbol,
+    currencyCode,
     damageDeposit:
       Number.isFinite(damageDeposit) && damageDeposit > 0 ? damageDeposit : null,
-    result: {},
+    result: {
+      depozito: depozito ?? "",
+      hasar: hasarRaw ?? "",
+      onOdemeOrani: depozito ?? "",
+      Symbol: symbol,
+      CurrencyCode: currencyCode,
+    },
   };
 }
 
@@ -3911,38 +3980,51 @@ function extractEscapedRscField(chunk: string, key: string): string | null {
 /**
  * App Router RSC (`self.__next_f`) gömülü villa kartı.
  * villareyonu.com PriceList/Availability `id` (ör. 4390) kullanır; RoutingId (1036) değil.
+ * VC-/VR- evkodu ve Flight `[0,"…"]` / HTML-entity payload desteklenir.
  */
 export function extractRscVillaApiEntity(
   html: string
 ): ReturnType<typeof extractVillaApiEntity> {
-  const marker = html.search(/evkodu\\":\\"VR-/i);
-  if (marker < 0) return null;
+  const normalized = normalizeRscHtml(html);
+  let marker = normalized.search(/"evkodu"\s*:\s*(?:\[\s*0\s*,\s*)?"(?:VR|VC)-/i);
+  let source = normalized;
+  if (marker < 0) {
+    marker = html.search(/evkodu\\":\\"(?:VR|VC)-/i);
+    if (marker < 0) return null;
+    source = html;
+  }
 
-  const chunk = html.slice(Math.max(0, marker - 25000), marker + 6000);
-  const routingId = extractEscapedRscField(chunk, "RoutingId");
-  const ids = [...chunk.matchAll(/"id\\":\\"(\d+)\\"/g)].map((match) => match[1]!);
+  const chunk = source.slice(Math.max(0, marker - 25000), marker + 6000);
+  const routingId = extractRoutingField(chunk, "RoutingId");
+  const flightIds = [
+    ...chunk.matchAll(/"id"\s*:\s*\[\s*0\s*,\s*"(\d+)"\s*\]/g),
+  ].map((match) => match[1]!);
+  const escapedIds = [...chunk.matchAll(/"id\\":\\"(\d+)\\"/g)].map(
+    (match) => match[1]!
+  );
+  const ids = flightIds.length > 0 ? flightIds : escapedIds;
   const entityId =
     ids.find((id) => id !== routingId) ??
-    extractEscapedRscField(chunk, "id") ??
+    extractRoutingField(chunk, "id") ??
     routingId;
   if (!entityId || !/^\d+$/.test(entityId)) return null;
 
-  const hasarRaw = extractEscapedRscField(chunk, "hasar");
+  const hasarRaw = extractRoutingField(chunk, "hasar");
   const damageDeposit = hasarRaw
     ? Number(String(hasarRaw).replace(/[^\d.]/g, ""))
     : NaN;
-  const depozito = extractEscapedRscField(chunk, "depozito");
-  const symbol = extractEscapedRscField(chunk, "Symbol") ?? "₺";
+  const depozito = extractRoutingField(chunk, "depozito");
+  const symbol = extractRoutingField(chunk, "Symbol") ?? "₺";
   const currencyCode =
-    extractEscapedRscField(chunk, "CurrencyCode") ??
-    extractEscapedRscField(chunk, "FromCurrencyCode") ??
+    extractRoutingField(chunk, "CurrencyCode") ??
+    extractRoutingField(chunk, "FromCurrencyCode") ??
     "TRY";
 
   return {
     entityId,
     title:
-      extractEscapedRscField(chunk, "baslik") ??
-      extractEscapedRscField(chunk, "kisa_icerik"),
+      extractRoutingField(chunk, "baslik") ??
+      extractRoutingField(chunk, "kisa_icerik"),
     symbol,
     currencyCode,
     damageDeposit:
@@ -4402,6 +4484,23 @@ export async function scrapeVillavillamFromPage(
       site.hostKey === "villaekstra")
   ) {
     entity = extractTatilpremiumRoutingEntity(html, pageUrl);
+  }
+  // Flight/RSC evkodu (VR-/VC-) — routingData kaçarsa yedek
+  if (
+    !entity &&
+    html.trim() &&
+    (site.hostKey === "villaciniz" ||
+      site.hostKey === "villapaketi" ||
+      site.hostKey === "villayolu" ||
+      site.hostKey === "tatilpremium" ||
+      site.hostKey === "villaekstra" ||
+      site.hostKey === "mustakilvillam" ||
+      site.hostKey === "myvillacity" ||
+      site.hostKey === "villakilavuzu" ||
+      site.hostKey === "ovillam" ||
+      site.hostKey === "kiralikvillaniz")
+  ) {
+    entity = extractRscVillaApiEntity(html);
   }
   let entityFromUrl = false;
   if (!entity) {

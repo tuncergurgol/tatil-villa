@@ -1112,6 +1112,32 @@ function extractRoutingEntityId(html: string, pageUrl: string): string | null {
       )
     );
     if (near?.[1]) return near[1];
+
+    // Flight / RSC + HTML-entity: "routingData":[0,{"id":[0,"7481"],"url":[0,"/villa-zya"]}]
+    const normalized = html
+      .replace(/&quot;/gi, '"')
+      .replace(/&#34;/g, '"')
+      .replace(/&amp;/gi, "&")
+      .replace(/\\+"/g, '"');
+    const flightRe =
+      /"routingData"\s*:\s*\[\s*0\s*,\s*\{\s*"id"\s*:\s*\[\s*0\s*,\s*"(\d+)"\s*\][\s\S]{0,8000}?"url"\s*:\s*\[\s*0\s*,\s*"(\/[^"]+)"\s*\]/gi;
+    let m: RegExpExecArray | null;
+    while ((m = flightRe.exec(normalized)) !== null) {
+      const urlSlug = (m[2] ?? "").split("/").filter(Boolean).pop() ?? "";
+      if (
+        urlSlug.localeCompare(slug, undefined, { sensitivity: "accent" }) === 0
+      ) {
+        return m[1] ?? null;
+      }
+    }
+    const flightExact = normalized.match(
+      new RegExp(
+        `"routingData"\\s*:\\s*\\[\\s*0\\s*,\\s*\\{\\s*"id"\\s*:\\s*\\[\\s*0\\s*,\\s*"(\\d+)"\\s*\\][\\s\\S]{0,8000}?"url"\\s*:\\s*\\[\\s*0\\s*,\\s*"/${escapedSlug}"\\s*\\]`,
+        "i"
+      )
+    );
+    if (flightExact?.[1]) return flightExact[1];
+
     const urlParam = new URL(pageUrl).searchParams.get("entityId");
     if (urlParam && /^\d+$/.test(urlParam)) return urlParam;
   } catch {
