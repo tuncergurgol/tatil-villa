@@ -10,4 +10,8 @@ export type AssistantSearchState = {
   amenityNames?: string[];
   amenitiesCollected?: boolean;
   phoneCollected?: boolean;
+  /** Bu sorguda WhatsApp ile gönderilmiş villa id'leri. */
+  sentVillaIds?: string[];
+  /** "Başka yok mu" ile kaç ek liste gönderildi. En fazla 3. */
+  moreOptionRounds?: number;
 };

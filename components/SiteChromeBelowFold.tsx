@@ -203,7 +203,7 @@ export default async function SiteChromeBelowFold() {
           tursabVerificationLogoUrl: company.tursabVerificationLogoUrl,
         }}
       />
-      <TatilAssistantWidgetLoader />
+      {site.key === "tatildeyiz" ? <TatilAssistantWidgetLoader /> : null}
     </>
   );
 }

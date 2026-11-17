@@ -8,7 +8,14 @@ import {
   getTatilAssistantRuntimeContext,
 } from "@/lib/queries/tatil-assistant";
 import {
+  ASSISTANT_FIRST_OPTION_COUNT,
+  ASSISTANT_MAX_MORE_ROUNDS,
+  ASSISTANT_MORE_OPTION_COUNT,
+  ASSISTANT_REFRESH_CRITERIA_MESSAGE,
   formatAssistantVillasForChat,
+  formatAssistantVillasForWhatsApp,
+  isAssistantMoreOptionsRequest,
+  pricedAssistantVillas,
 } from "@/lib/tatil-assistant-format";
 import { createAssistantPublicShareLink } from "@/lib/tatil-assistant-share";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
@@ -155,7 +162,7 @@ async function runVillaSearch(args: {
     amenityNames: args.amenityNames,
     flexibleDate: args.flexibleDate ?? true,
     fillEmptyDates: true,
-    sort: "recommended",
+    sort: "price_asc",
   });
 }
 
@@ -214,32 +221,63 @@ async function callOpenAi(
   };
 }
 
-function buildShareLinkReply(shareUrl: string, guestName?: string | null) {
-  const name = guestName?.trim();
-  return name
-    ? `Merhaba ${name}, size özel villa seçeneklerinizi hazırladım. Buyurun:\n${shareUrl}`
-    : `Size özel villa seçeneklerinizi hazırladım. Buyurun:\n${shareUrl}`;
+const TATILDEYIZ_PUBLIC_DOMAIN = "www.tatildeyiz.com.tr";
+
+function refreshCriteriaState(state: AssistantSearchState): AssistantSearchState {
+  return {
+    guestName: state.guestName,
+    guestPhone: state.guestPhone,
+    phoneCollected: Boolean(state.guestPhone?.trim()),
+  };
 }
 
-function buildShareWhatsAppMessage(shareUrl: string, guestName?: string | null) {
-  const name = guestName?.trim();
-  return name
-    ? `Merhaba ${name},\n\nSize özel villa seçenekleriniz:\n${shareUrl}`
-    : `Size özel villa seçenekleriniz:\n${shareUrl}`;
+function refreshCriteriaReply(state: AssistantSearchState) {
+  const name = state.guestName?.trim();
+  const ask = name
+    ? `${name}, hangi tarihlerde konaklamak istiyorsunuz?`
+    : "Hangi tarihlerde konaklamak istiyorsunuz?";
+  return `${ASSISTANT_REFRESH_CRITERIA_MESSAGE} ${ask}`;
 }
 
-async function finalizeAssistantSearch(input: {
+async function deliverAssistantOffers(input: {
   searchState: AssistantSearchState;
-  publicDomain: string | null;
   phone?: string;
+  more: boolean;
 }) {
-  const { searchState, publicDomain, phone } = input;
+  const { searchState, phone, more } = input;
+  const domain = TATILDEYIZ_PUBLIC_DOMAIN;
+
   if (!searchState.checkIn || !searchState.checkOut || !searchState.adults) {
     return {
       reply: "Arama için gerekli bilgiler eksik görünüyor.",
+      searchState,
       searchResults: [] as AvailabilitySearchResultItem[],
       shareUrl: undefined as string | undefined,
       whatsappSent: false,
+      refreshed: false,
+    };
+  }
+
+  const moreRounds = searchState.moreOptionRounds ?? 0;
+  if (more && moreRounds >= ASSISTANT_MAX_MORE_ROUNDS) {
+    const nextState = refreshCriteriaState(searchState);
+    const reply = refreshCriteriaReply(searchState);
+    let whatsappSent = false;
+    if (phone) {
+      try {
+        await sendAssistantWhatsAppMessage(phone, reply);
+        whatsappSent = true;
+      } catch {
+        whatsappSent = false;
+      }
+    }
+    return {
+      reply,
+      searchState: nextState,
+      searchResults: [] as AvailabilitySearchResultItem[],
+      shareUrl: undefined,
+      whatsappSent,
+      refreshed: true,
     };
   }
 
@@ -252,53 +290,75 @@ async function finalizeAssistantSearch(input: {
     flexibleDate: true,
   });
 
-  if (searchResults.length === 0) {
+  const sent = new Set(searchState.sentVillaIds ?? []);
+  const limit = more ? ASSISTANT_MORE_OPTION_COUNT : ASSISTANT_FIRST_OPTION_COUNT;
+  const batch = pricedAssistantVillas(searchResults)
+    .filter((item) => !sent.has(item.id))
+    .slice(0, limit);
+
+  if (batch.length === 0) {
+    const nextState = refreshCriteriaState(searchState);
+    const reply = searchResults.length
+      ? refreshCriteriaReply(searchState)
+      : "Bu kriterlerle uygun villa bulamadım. Dilerseniz kriterleri yenileyip yeniden deneyelim. Hangi tarihlerde konaklamak istiyorsunuz?";
+    let whatsappSent = false;
+    if (phone) {
+      try {
+        await sendAssistantWhatsAppMessage(phone, reply);
+        whatsappSent = true;
+      } catch {
+        whatsappSent = false;
+      }
+    }
     return {
-      reply:
-        "Bu kriterlerle uygun villa bulamadım. Tarih veya bölgeyi değiştirmek ister misiniz?",
+      reply,
+      searchState: nextState,
       searchResults,
       shareUrl: undefined,
-      whatsappSent: false,
+      whatsappSent,
+      refreshed: true,
     };
   }
 
   const shareUrl = await createAssistantPublicShareLink({
-    villaIds: searchResults.slice(0, 10).map((item) => item.id),
+    villaIds: batch.map((item) => item.id),
     checkIn: searchState.checkIn,
     checkOut: searchState.checkOut,
     adults: searchState.adults,
-    domain: publicDomain,
+    domain,
   });
 
-  if (!shareUrl) {
-    return {
-      reply: "Villa seçenekleri bulundu ancak teklif bağlantısı oluşturulamadı. Lütfen tekrar deneyin.",
-      searchResults,
-      shareUrl: undefined,
-      whatsappSent: false,
-    };
-  }
-
-  const reply = buildShareLinkReply(shareUrl, searchState.guestName);
+  const reply = formatAssistantVillasForWhatsApp(
+    batch,
+    domain,
+    searchState.guestName,
+    more
+      ? "Başka seçenekler, yine ekonomikten pahalıya:"
+      : "Size uygun villa seçenekleri, ekonomikten pahalıya:"
+  );
   let whatsappSent = false;
-
   if (phone) {
     try {
-      await sendAssistantWhatsAppMessage(
-        phone,
-        buildShareWhatsAppMessage(shareUrl, searchState.guestName)
-      );
+      await sendAssistantWhatsAppMessage(phone, reply);
       whatsappSent = true;
     } catch {
       whatsappSent = false;
     }
   }
 
+  const nextState: AssistantSearchState = {
+    ...searchState,
+    sentVillaIds: [...sent, ...batch.map((item) => item.id)],
+    moreOptionRounds: more ? moreRounds + 1 : moreRounds,
+  };
+
   return {
-    reply,
-    searchResults,
+    reply: shareUrl ? `${reply}\n\nToplu liste: ${shareUrl}` : reply,
+    searchState: nextState,
+    searchResults: batch,
     shareUrl,
     whatsappSent,
+    refreshed: false,
   };
 }
 
@@ -415,13 +475,14 @@ export async function processAssistantMessage(
         conversation.guestPhone?.trim() ||
         input.guestPhone?.trim();
 
-      const finalized = await finalizeAssistantSearch({
+      const finalized = await deliverAssistantOffers({
         searchState,
-        publicDomain: context.publicDomain,
         phone,
+        more: false,
       });
 
       reply = finalized.reply;
+      searchState = finalized.searchState;
       searchResults = finalized.searchResults;
       shareUrl = finalized.shareUrl;
       whatsappSent = finalized.whatsappSent;
@@ -460,6 +521,53 @@ export async function processAssistantMessage(
       shareUrl,
       villas: undefined,
       whatsappSent,
+    };
+  }
+
+  if (
+    isAssistantMoreOptionsRequest(userText) &&
+    resolveFlowStep(searchState) === "ready"
+  ) {
+    const phone =
+      searchState.guestPhone?.trim() ||
+      conversation.guestPhone?.trim() ||
+      input.guestPhone?.trim();
+    const finalized = await deliverAssistantOffers({
+      searchState,
+      phone,
+      more: true,
+    });
+
+    await prisma.tatilAssistantConversation.update({
+      where: { id: conversation.id },
+      data: {
+        guestName: finalized.searchState.guestName ?? conversation.guestName,
+        guestPhone: phone ?? conversation.guestPhone,
+        searchState: finalized.searchState,
+      },
+    });
+
+    await prisma.tatilAssistantMessage.create({
+      data: {
+        conversationId: conversation.id,
+        role: "assistant",
+        content: finalized.reply,
+        metadata: {
+          shareUrl: finalized.shareUrl,
+          whatsappSent: finalized.whatsappSent,
+          more: true,
+          refreshed: finalized.refreshed,
+          villaCount: finalized.searchResults.length,
+        },
+      },
+    });
+
+    return {
+      conversationId: conversation.id,
+      reply: finalized.reply,
+      shareUrl: finalized.shareUrl,
+      villas: undefined,
+      whatsappSent: finalized.whatsappSent,
     };
   }
 
@@ -595,12 +703,13 @@ export async function processAssistantMessage(
     searchState.checkOut &&
     searchState.adults
   ) {
-    const finalized = await finalizeAssistantSearch({
+    const finalized = await deliverAssistantOffers({
       searchState,
-      publicDomain: context.publicDomain,
       phone,
+      more: false,
     });
-    finalReply = finalized.shareUrl ? finalized.reply : reply;
+    searchState = finalized.searchState;
+    finalReply = finalized.reply;
     shareUrl = finalized.shareUrl;
     whatsappSent = finalized.whatsappSent;
   }

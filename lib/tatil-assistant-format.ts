@@ -48,20 +48,59 @@ export function formatAssistantVillaSummary(
   };
 }
 
+export const ASSISTANT_FIRST_OPTION_COUNT = 5;
+export const ASSISTANT_MORE_OPTION_COUNT = 4;
+export const ASSISTANT_MAX_MORE_ROUNDS = 3;
+export const ASSISTANT_REFRESH_CRITERIA_MESSAGE =
+  "Dilerseniz kriterleri yenileyip yeniden deneyelim.";
+
+export function isAssistantMoreOptionsRequest(text: string) {
+  const normalized = text
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return (
+    normalized.includes("baska yok") ||
+    normalized.includes("baska var") ||
+    normalized.includes("baska secenek") ||
+    normalized === "baska"
+  );
+}
+
+export function pricedAssistantVillas(
+  items: AvailabilitySearchResultItem[]
+) {
+  return items
+    .filter((item) => item.quote.valid && item.quote.total > 0)
+    .sort(
+      (left, right) =>
+        left.quote.total - right.quote.total ||
+        left.name.localeCompare(right.name, "tr")
+    );
+}
+
 export function formatAssistantVillasForChat(
   items: AvailabilitySearchResultItem[],
   domain?: string | null
 ) {
-  return items.slice(0, 5).map((item) => formatAssistantVillaSummary(item, domain));
+  return items
+    .slice(0, ASSISTANT_FIRST_OPTION_COUNT)
+    .map((item) => formatAssistantVillaSummary(item, domain));
 }
 
 export function formatAssistantVillasForWhatsApp(
   items: AvailabilitySearchResultItem[],
   domain?: string | null,
-  guestName?: string | null
+  guestName?: string | null,
+  intro = "Size uygun villa seçenekleri, ekonomikten pahalıya:"
 ) {
   const greeting = guestName?.trim() ? `Merhaba ${guestName.trim()},` : "Merhaba,";
-  const lines = items.slice(0, 5).map((item, index) => {
+  const lines = items.map((item, index) => {
     const summary = formatAssistantVillaSummary(item, domain);
     return `${index + 1}. ${summary.name} (${summary.region})
 ${summary.checkIn} → ${summary.checkOut} · ${summary.nights} gece · ${summary.totalPrice}
@@ -70,7 +109,7 @@ ${summary.link}`;
 
   return `${greeting}
 
-Size uygun villa seçenekleri:
+${intro}
 
 ${lines.join("\n\n")}
 
