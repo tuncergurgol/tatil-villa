@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import Footer from "@/components/Footer";
-import TatilAssistantWidgetLoader from "@/components/tatil-assistant/TatilAssistantWidgetLoader";
 import SitePreFooterAccordions from "@/components/SitePreFooterAccordions";
 import SiteTrackingScripts from "@/components/SiteTrackingScripts";
 import {
@@ -203,7 +202,6 @@ export default async function SiteChromeBelowFold() {
           tursabVerificationLogoUrl: company.tursabVerificationLogoUrl,
         }}
       />
-      {site.key === "tatildeyiz" ? <TatilAssistantWidgetLoader /> : null}
     </>
   );
 }

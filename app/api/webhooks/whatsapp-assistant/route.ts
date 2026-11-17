@@ -3,7 +3,9 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAssistantWahaConfig } from "@/lib/queries/tatil-assistant";
 import { processAssistantMessage } from "@/lib/tatil-assistant-runner";
 import {
+  isAssistantDevWhatsAppAllowed,
   normalizeWahaAssistantPayload,
+  resolveAssistantInboundPhone,
   sendAssistantWhatsAppMessage,
 } from "@/lib/tatil-assistant-whatsapp";
 import { isBlacklistedContact } from "@/lib/customer-blacklist";
@@ -30,7 +32,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, skipped: "ignored" });
   }
 
-  if (await isBlacklistedContact({ phone: normalized.phone })) {
+  const phone = await resolveAssistantInboundPhone(
+    normalized.chatId,
+    normalized.phone
+  );
+  if (!isAssistantDevWhatsAppAllowed(phone)) {
+    return NextResponse.json({ ok: true, skipped: "dev-allowlist" });
+  }
+
+  if (await isBlacklistedContact({ phone })) {
     return NextResponse.json({ ok: true, skipped: "blacklist" });
   }
 
@@ -39,14 +49,14 @@ export async function POST(request: Request) {
       message: normalized.text,
       channel: "whatsapp",
       whatsappChatId: normalized.chatId,
-      guestPhone: normalized.phone,
+      guestPhone: phone,
     });
 
     if (result.whatsappSent) {
       return NextResponse.json({ ok: true, conversationId: result.conversationId });
     }
 
-    await sendAssistantWhatsAppMessage(normalized.phone, result.reply);
+    await sendAssistantWhatsAppMessage(phone, result.reply);
 
     return NextResponse.json({ ok: true, conversationId: result.conversationId });
   } catch (error) {

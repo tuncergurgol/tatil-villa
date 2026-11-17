@@ -10,6 +10,16 @@ import {
   wahaRequest,
 } from "@/lib/waha-client";
 
+/** Geliştirme: YumYum yalnızca bu WhatsApp numarasına cevap verir. */
+const ASSISTANT_DEV_WHATSAPP_ALLOWLIST = ["905466456072"];
+
+export function isAssistantDevWhatsAppAllowed(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const last10 = digits.slice(-10);
+  if (last10.length < 10) return false;
+  return ASSISTANT_DEV_WHATSAPP_ALLOWLIST.some((item) => item.endsWith(last10));
+}
+
 async function sessionCanSend(
   baseUrl: string,
   apiKey: string,
@@ -31,6 +41,9 @@ export async function sendAssistantWhatsAppMessage(
   const normalized = normalizePhoneNumberForWaha(phone);
   if (!normalized) {
     throw new Error("Geçersiz telefon numarası");
+  }
+  if (!isAssistantDevWhatsAppAllowed(normalized)) {
+    throw new Error("YumYum geliştirme aşamasında yalnızca deneme numarasına yazar");
   }
 
   const assistantReady = await sessionCanSend(

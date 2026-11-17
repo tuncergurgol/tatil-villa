@@ -3,6 +3,7 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { processAssistantMessage } from "@/lib/tatil-assistant-runner";
 import {
   classifyWahaWebhook,
+  isAssistantDevWhatsAppAllowed,
   resolveAssistantInboundPhone,
   sendAssistantWhatsAppMessage,
 } from "@/lib/tatil-assistant-whatsapp";
@@ -55,6 +56,9 @@ export async function POST(request: Request) {
         inbound.chatId,
         inbound.phone
       );
+      if (!isAssistantDevWhatsAppAllowed(phone)) {
+        return NextResponse.json({ ok: true, skipped: "dev-allowlist" });
+      }
       const assistant = await processAssistantMessage({
         message: inbound.text,
         channel: "whatsapp",
