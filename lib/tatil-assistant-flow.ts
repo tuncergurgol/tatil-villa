@@ -485,6 +485,7 @@ export function extractRegionSlugs(text: string): string[] {
     if (lower.includes(alias)) slugs.add(slug);
   }
   if (slugs.size > 0) return [...slugs];
+  if (/fark\s*etmez|farketmez/iu.test(lower) || SKIP_WORDS.has(lower)) return [];
 
   const slug = slugifyTurkish(text.trim());
   return slug.length >= 2 ? [slug] : [];
@@ -524,6 +525,9 @@ export function extractAmenityNames(text: string): string[] {
   }
 
   const amenities: string[] = [];
+  if (/evcil\s*hayvan/iu.test(lower) && !/giremez|edilmez|yasak/iu.test(lower)) {
+    amenities.push("Evcil Hayvan İzinli");
+  }
   const heated = /ısıtmalı\s*havuz|isitmali\s*havuz/iu.test(lower);
   const indoor = /kapalı\s*havuz|kapali\s*havuz/iu.test(lower);
   if (heated) amenities.push("Isıtmalı Havuz");
