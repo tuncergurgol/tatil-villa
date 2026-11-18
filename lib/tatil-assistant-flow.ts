@@ -707,7 +707,7 @@ export function buildFlowReply(
     case "awaiting_phone":
       return "WhatsApp numaranızı yazar mısınız?";
     default:
-      return "Uygun villalara bakıyorum.";
+      return "Seçenekleri inceliyorum, uygun olanları size sunacağım.";
   }
 }
 
@@ -879,7 +879,7 @@ function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
     case "awaiting_help":
       return buildHelpQuestion(state);
     case "awaiting_dates":
-      return "Tarihi net anlayamadım. 3/7 Eylül ya da 03.09.2026 - 07.09.2026 şeklinde yazabilirsiniz.";
+      return "Tarihi tam anlayamadım. 3/7 Eylül ya da 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?";
     case "awaiting_guests":
       return "Kaç kişilik bir yer arıyorsunuz?";
     case "awaiting_region":
@@ -1109,7 +1109,7 @@ export function processFlowStep(
       const nextStep = resolveFlowStep(nextState);
       return finishTurn(
         nextStep === "ready"
-          ? "Uygun villalara bakıyorum."
+          ? "Seçenekleri inceliyorum, uygun olanları size sunacağım."
           : buildFlowReply(nextStep, nextState),
         nextState,
         nextStep === "ready"
@@ -1144,7 +1144,7 @@ export function processFlowStep(
       const nextStep = resolveFlowStep(indifferent);
       return finishTurn(
         nextStep === "ready"
-          ? "Uygun villalara bakıyorum."
+          ? "Seçenekleri inceliyorum, uygun olanları size sunacağım."
           : buildFlowReply(nextStep, indifferent),
         indifferent,
         nextStep === "ready"
@@ -1165,7 +1165,7 @@ export function processFlowStep(
     const nextStep = resolveFlowStep(nextState);
     return finishTurn(
       nextStep === "ready"
-        ? "Uygun villalara bakıyorum."
+        ? "Seçenekleri inceliyorum, uygun olanları size sunacağım."
         : buildFlowReply(nextStep, nextState),
       nextState,
       nextStep === "ready"

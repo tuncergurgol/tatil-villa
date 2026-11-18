@@ -9,10 +9,13 @@ import {
   getTatilAssistantRuntimeContext,
 } from "@/lib/queries/tatil-assistant";
 import {
+  ASSISTANT_EMPTY_SEARCH_MESSAGE,
   ASSISTANT_FIRST_OPTION_COUNT,
   ASSISTANT_MAX_MORE_ROUNDS,
   ASSISTANT_MORE_OPTION_COUNT,
   ASSISTANT_REFRESH_CRITERIA_MESSAGE,
+  ASSISTANT_UPDATE_HINT_MESSAGE,
+  buildAssistantLookingMessage,
   formatAssistantVillaOfferMessage,
   isAssistantMoreOptionsRequest,
   pricedAssistantVillas,
@@ -187,6 +190,29 @@ function refreshCriteriaReply(_state: AssistantSearchState) {
   return `${ASSISTANT_REFRESH_CRITERIA_MESSAGE} Hangi tarihlerde konaklamak istiyorsunuz.`;
 }
 
+async function describeAssistantSearch(state: AssistantSearchState) {
+  let regionNames: string[] = [];
+  if (!state.regionAny && state.regionSlugs?.length) {
+    const regions = await prisma.region.findMany({
+      where: { slug: { in: state.regionSlugs } },
+      select: { name: true, slug: true },
+    });
+    regionNames = state.regionSlugs.map((slug) => {
+      const found = regions.find((region) => region.slug === slug);
+      if (found?.name) return found.name;
+      return slug
+        .split("-")
+        .map((part) => part.charAt(0).toLocaleUpperCase("tr-TR") + part.slice(1))
+        .join(" ");
+    });
+  }
+  return buildAssistantLookingMessage({
+    regionNames,
+    regionAny: state.regionAny,
+    amenityNames: state.amenityNames,
+  });
+}
+
 async function deliverAssistantOffers(input: {
   searchState: AssistantSearchState;
   phone?: string;
@@ -201,7 +227,7 @@ async function deliverAssistantOffers(input: {
     (!searchState.adults && !searchState.guestsAny)
   ) {
     return {
-      reply: "Arama için gerekli bilgiler eksik görünüyor.",
+      reply: "Aramaya geçebilmem için birkaç bilgiye daha ihtiyacım var.",
       searchState,
       searchResults: [] as AvailabilitySearchResultItem[],
       shareUrl: undefined as string | undefined,
@@ -297,16 +323,22 @@ async function deliverAssistantOffers(input: {
   if (offerBatch.length === 0) {
     const keepCriteria = !more;
     const nextState = keepCriteria ? searchState : refreshCriteriaState(searchState);
+    const looking = await describeAssistantSearch(searchState);
     const reply = keepCriteria
-      ? "Bu kriterlerle uygun villa bulamadım. Tarih, bölge, kişi sayısı veya özelliği değiştirirseniz yeniden bakarım."
+      ? `${looking}\n\n${ASSISTANT_EMPTY_SEARCH_MESSAGE}`
       : refreshCriteriaReply(searchState);
     let whatsappSent = false;
     if (phone) {
-      try {
-        await sendAssistantWhatsAppMessage(phone, reply);
-        whatsappSent = true;
-      } catch {
-        whatsappSent = false;
+      const outbound = keepCriteria
+        ? [looking, ASSISTANT_EMPTY_SEARCH_MESSAGE]
+        : [reply];
+      for (const text of outbound) {
+        try {
+          await sendAssistantWhatsAppMessage(phone, text);
+          whatsappSent = true;
+        } catch {
+          break;
+        }
       }
     }
     return {
@@ -333,7 +365,7 @@ async function deliverAssistantOffers(input: {
   const messages = [
     ...(missingSizes.length
       ? [
-          `${missingSizes.join(" ve ")} kişilik villa bu kriterlerde çıkmadı.`,
+          `${missingSizes.join(" ve ")} kişilik bir villa bu kriterlerde çıkmadı. Uygun olan diğer seçenekleri iletiyorum.`,
         ]
       : []),
     ...offerBatch.map((item) =>
@@ -345,17 +377,18 @@ async function deliverAssistantOffers(input: {
       })
     ),
   ];
-  const reply = messages.join("\n\n");
+  const looking = await describeAssistantSearch(searchState);
+  const reply = [looking, ...messages].join("\n\n");
   const deliveredIds: string[] = [];
   if (phone) {
-    const preface = missingSizes.length ? messages[0] : "";
+    const prefaceCount = 1 + (missingSizes.length ? 1 : 0);
     const villaMessages = missingSizes.length ? messages.slice(1) : messages;
-    const outbound = preface ? [preface, ...villaMessages] : villaMessages;
+    const outbound = [looking, ...(missingSizes.length ? [messages[0]!] : []), ...villaMessages];
     for (const [index, text] of outbound.entries()) {
       try {
         await sendAssistantWhatsAppMessage(phone, text);
-        if (!preface || index > 0) {
-          deliveredIds.push(offerBatch[preface ? index - 1 : index]!.id);
+        if (index >= prefaceCount) {
+          deliveredIds.push(offerBatch[index - prefaceCount]!.id);
         }
       } catch {
         break;
@@ -688,7 +721,7 @@ export async function processAssistantMessage(
     input.guestPhone?.trim();
   if (searchState.checkIn && searchState.adults && !isConversationGreeting(userText)) {
     const reply =
-      "Tarih, kişi sayısı, bölge veya bir özellik yazarsanız seçenekleri ona göre güncellerim.";
+      ASSISTANT_UPDATE_HINT_MESSAGE;
     await prisma.tatilAssistantConversation.update({
       where: { id: conversation.id },
       data: {

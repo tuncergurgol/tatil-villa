@@ -53,7 +53,56 @@ export const ASSISTANT_FIRST_OPTION_COUNT = 5;
 export const ASSISTANT_MORE_OPTION_COUNT = 4;
 export const ASSISTANT_MAX_MORE_ROUNDS = 3;
 export const ASSISTANT_REFRESH_CRITERIA_MESSAGE =
-  "Dilerseniz kriterleri yenileyip yeniden deneyelim.";
+  "Dilerseniz kriterleri birlikte yenileyelim.";
+
+export const ASSISTANT_EMPTY_SEARCH_MESSAGE =
+  "Bu kriterlerle uygun villa bulamadım. Tarih, bölge, kişi sayısı veya özelliği değiştirebilirsek yeniden bakabilirim.";
+
+export const ASSISTANT_UPDATE_HINT_MESSAGE =
+  "Tarih, kişi sayısı, bölge ya da bir özellik yazarsanız seçeneklere birlikte bakalım.";
+
+function turkishLocative(name: string) {
+  const lower = name.toLocaleLowerCase("tr-TR");
+  const vowels = "aıoueiöü";
+  const lastVowel = [...lower].reverse().find((char) => vowels.includes(char)) ?? "a";
+  const back = "aıou".includes(lastVowel);
+  const hard = "çfhkpşst".includes(lower.slice(-1));
+  const suffix = `${hard ? "t" : "d"}${back ? "a" : "e"}`;
+  return `${name}’${suffix}`;
+}
+
+function featurePhrase(name: string) {
+  let text = name.replace(/\s*villalar$/iu, "").trim().toLocaleLowerCase("tr-TR");
+  text = text.replace(/manzaras[ıi]$/iu, "manzaralı");
+  if (/havuz$/iu.test(text)) text = `${text}lu`;
+  return text;
+}
+
+function joinTurkish(items: string[]) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} ve ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} ve ${items[items.length - 1]}`;
+}
+
+/** Arama başlamadan önce müşteriye kriterleri nazikçe söyler. */
+export function buildAssistantLookingMessage(input: {
+  regionNames?: string[];
+  regionAny?: boolean;
+  amenityNames?: string[];
+}) {
+  const features = joinTurkish(
+    (input.amenityNames ?? []).map(featurePhrase).filter(Boolean)
+  );
+  const names = (input.regionNames ?? []).filter(Boolean);
+  const place = input.regionAny || names.length === 0
+    ? "Tüm bölgelerde"
+    : names.length === 1
+      ? turkishLocative(names[0]!)
+      : `${joinTurkish(names)} için`;
+  const subject = features ? `${place} ${features} seçenekleri` : `${place} seçenekleri`;
+  const sentence = `${subject} inceliyorum, uygun olanları size sunacağım.`;
+  return sentence.charAt(0).toLocaleUpperCase("tr-TR") + sentence.slice(1);
+}
 
 export function isAssistantMoreOptionsRequest(text: string) {
   const normalized = text
@@ -118,7 +167,7 @@ export function formatAssistantVillaOfferMessage(
   return [
     greeting,
     "",
-    `${item.name} için uygunluk / teklif bilgisi:`,
+    `${item.name} uygun görünüyor:`,
     `Giriş: ${item.checkIn}`,
     `Çıkış: ${item.checkOut}`,
     `Gece: ${item.quote.nights}`,
