@@ -171,10 +171,7 @@ export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep 
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
   if (!state.adults && !state.guestsAny) return "awaiting_guests";
   if (!state.regionAny && !state.regionSlugs?.length) return "awaiting_region";
-  if (
-    !state.amenitiesCollected &&
-    !(state.freshIntake && (state.amenityNames?.length ?? 0) > 0)
-  ) {
+  if (!state.amenitiesCollected && !(state.amenityNames?.length ?? 0)) {
     return "awaiting_amenities";
   }
   if (!state.phoneCollected || !state.guestPhone?.trim()) return "awaiting_phone";
@@ -1022,14 +1019,16 @@ function applyIndifferentAnswer(
   }
   if (step === "awaiting_region") {
     const mentioned = extractAmenityNames(userText);
+    const amenityNames = [
+      ...new Set([...(state.amenityNames ?? []), ...mentioned]),
+    ];
     return {
       ...state,
       regionSlugs: [],
       regionAny: true,
-      amenityNames: mentioned.length
-        ? [...new Set([...(state.amenityNames ?? []), ...mentioned])]
-        : [],
-      amenitiesCollected: mentioned.length > 0,
+      amenityNames,
+      amenitiesCollected:
+        Boolean(state.amenitiesCollected) || amenityNames.length > 0,
     };
   }
   if (step === "awaiting_amenities") {
