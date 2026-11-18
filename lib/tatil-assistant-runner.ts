@@ -132,12 +132,8 @@ function refreshCriteriaState(state: AssistantSearchState): AssistantSearchState
   };
 }
 
-function refreshCriteriaReply(state: AssistantSearchState) {
-  const name = state.guestName?.trim();
-  const ask = name
-    ? `${name}, hangi tarihlerde konaklamak istiyorsunuz?`
-    : "Hangi tarihlerde konaklamak istiyorsunuz?";
-  return `${ASSISTANT_REFRESH_CRITERIA_MESSAGE} ${ask}`;
+function refreshCriteriaReply(_state: AssistantSearchState) {
+  return `${ASSISTANT_REFRESH_CRITERIA_MESSAGE} Hangi tarihlerde konaklamak istiyorsunuz.`;
 }
 
 async function deliverAssistantOffers(input: {

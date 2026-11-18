@@ -456,14 +456,6 @@ function markHelpAsked(state: AssistantSearchState): AssistantSearchState {
   return state.helpAsked ? state : { ...state, helpAsked: true };
 }
 
-function addressGuest(state: AssistantSearchState, question: string) {
-  const name = usablePersonName(state.guestName);
-  if (!name) return question;
-  const lowered =
-    question.charAt(0).toLocaleLowerCase("tr-TR") + question.slice(1);
-  return `Merhaba ${name}, ${lowered}`;
-}
-
 export function buildFlowReply(
   step: AssistantFlowStep,
   state: AssistantSearchState
@@ -474,41 +466,34 @@ export function buildFlowReply(
     case "awaiting_help":
       return buildHelpQuestion(state);
     case "awaiting_dates":
-      return addressGuest(state, "Hangi tarihlerde konaklamak istiyorsunuz?");
+      return "Hangi tarihlerde konaklamak istiyorsunuz.";
     case "awaiting_guests":
-      return addressGuest(state, "Kaç kişilik bir yer arıyorsunuz?");
+      return "Kaç kişilik bir yer arıyorsunuz?";
     case "awaiting_region":
-      return addressGuest(state, "Hangi bölgede tatil yapmak istersiniz?");
+      return "Hangi bölgede tatil yapmak istersiniz?";
     case "awaiting_amenities":
-      return addressGuest(
-        state,
-        "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?"
-      );
+      return "Villada hangi özellikleri istersiniz?";
     case "awaiting_phone":
-      return addressGuest(
-        state,
-        "Size villa seçeneklerini WhatsApp üzerinden iletebilmem için WhatsApp numaranızı yazar mısınız?"
-      );
+      return "WhatsApp numaranızı yazar mısınız?";
     default:
-      return addressGuest(state, "Bir dakika, size uygun villaları arıyorum...");
+      return "Uygun villalara bakıyorum.";
   }
 }
 
 function buildDatesAckReply(state: AssistantSearchState) {
-  const range = formatDateRangeDisplay(state.checkIn!, state.checkOut!);
-  return `${range} tarihlerini not aldım. ${addressGuest(state, "Kaç kişilik bir yer arıyorsunuz?")}`;
+  return buildFlowReply("awaiting_guests", state);
 }
 
 function buildGuestsAckReply(state: AssistantSearchState) {
-  return `${state.adults} kişi için not aldım. ${addressGuest(state, "Hangi bölgede tatil yapmak istersiniz?")}`;
+  return buildFlowReply("awaiting_region", state);
 }
 
 function buildRegionAckReply() {
-  return "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?";
+  return "Villada hangi özellikleri istersiniz?";
 }
 
 function buildAmenitiesAckReply() {
-  return "Tercihlerinizi not aldım. Size villa seçeneklerini WhatsApp üzerinden iletebilmem için WhatsApp numaranızı yazar mısınız?";
+  return "WhatsApp numaranızı yazar mısınız?";
 }
 
 function mentionsAlias(text: string, alias: string) {
@@ -581,55 +566,29 @@ function slotsChanged(before: AssistantSearchState, after: AssistantSearchState)
 }
 
 function buildProgressReply(
-  before: AssistantSearchState,
+  _before: AssistantSearchState,
   after: AssistantSearchState,
   nextStep: AssistantFlowStep
 ) {
-  const notes: string[] = [];
-  if (!before.checkIn && after.checkIn && after.checkOut) {
-    notes.push(
-      `${formatDateRangeDisplay(after.checkIn, after.checkOut)} tarihlerini`
-    );
-  }
-  if (!before.amenityNames?.length && after.amenityNames?.length) {
-    notes.push(`${after.amenityNames.join(" ve ")} tercihinizi`);
-  }
-  if (!before.adults && after.adults) {
-    notes.push(`${after.adults} kişilik konaklamayı`);
-  }
-  if (!before.regionSlugs?.length && after.regionSlugs?.length) {
-    notes.push("bölge tercihinizi");
-  }
-
-  if (nextStep === "awaiting_name" || nextStep === "awaiting_help") {
-    return buildFlowReply(nextStep, after);
-  }
-
-  const question = buildFlowReply(nextStep, after);
-  if (notes.length === 0) return question;
-  return `${notes.join(", ")} not aldım. ${question}`;
+  return buildFlowReply(nextStep, after);
 }
 
 function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
-  const name = usablePersonName(state.guestName);
-
   switch (step) {
     case "awaiting_name":
       return ASSISTANT_ASK_NAME;
     case "awaiting_help":
       return buildHelpQuestion(state);
     case "awaiting_dates":
-      return name
-        ? `${name}, tarihi tam anlayamadım. Örneğin: 3/7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?`
-        : "Tarihi tam anlayamadım. Örneğin: 3/7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?";
+      return "Tarihi net anlayamadım. 3/7 Eylül ya da 03.09.2026 - 07.09.2026 şeklinde yazabilirsiniz.";
     case "awaiting_guests":
-      return "Kaç kişi konaklayacaksınız? (Örneğin: 4)";
+      return "Kaç kişilik bir yer arıyorsunuz?";
     case "awaiting_region":
-      return "Hangi bölgede tatil yapmak istersiniz? (Örneğin: Kalkan, Fethiye, Kaş)";
+      return "Hangi bölgede tatil yapmak istersiniz?";
     case "awaiting_amenities":
-      return "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz? (İstemiyorsanız 'fark etmez' yazabilirsiniz.)";
+      return "Villada hangi özellikleri istersiniz? Fark etmezse öyle de yazabilirsiniz.";
     case "awaiting_phone":
-      return "WhatsApp numaranızı yazar mısınız? (Örneğin: 0532 123 45 67)";
+      return "WhatsApp numaranızı yazar mısınız?";
     default:
       return buildFlowReply(step, state);
   }
