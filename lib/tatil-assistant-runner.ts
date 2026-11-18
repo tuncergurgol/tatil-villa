@@ -14,13 +14,13 @@ import {
   ASSISTANT_MORE_OPTION_COUNT,
   ASSISTANT_REFRESH_CRITERIA_MESSAGE,
   formatAssistantVillaOfferMessages,
-  formatAssistantVillasForChat,
   isAssistantMoreOptionsRequest,
   pricedAssistantVillas,
 } from "@/lib/tatil-assistant-format";
 import { createAssistantPublicShareLink } from "@/lib/tatil-assistant-share";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import {
+  buildConsultantOpening,
   buildFlowReply,
   extractGuestPhone,
   processFlowStep,
@@ -30,12 +30,6 @@ import {
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
 
 export type { AssistantSearchState } from "@/lib/tatil-assistant-types";
-
-type OpenAiToolCall = {
-  id: string;
-  type: "function";
-  function: { name: string; arguments: string };
-};
 
 type ProcessAssistantInput = {
   conversationId?: string;
@@ -48,102 +42,9 @@ type ProcessAssistantInput = {
 export type ProcessAssistantResult = {
   conversationId: string;
   reply: string;
-  villas?: ReturnType<typeof formatAssistantVillasForChat>;
   shareUrl?: string;
   whatsappSent?: boolean;
 };
-
-const SEARCH_TOOL = {
-  type: "function" as const,
-  function: {
-    name: "search_available_villas",
-    description:
-      "UYGUNLUK ARA kriterleriyle müsait villaları listeler. Tarih, kişi sayısı ve bölge bilgisi olmadan çağırma.",
-    parameters: {
-      type: "object",
-      properties: {
-        checkIn: { type: "string", description: "YYYY-MM-DD giriş" },
-        checkOut: { type: "string", description: "YYYY-MM-DD çıkış" },
-        adults: { type: "number", description: "Yetişkin / toplam kişi sayısı" },
-        regionSlugs: {
-          type: "array",
-          items: { type: "string" },
-          description: "Bölge slug listesi (ör. kalkan, fethiye)",
-        },
-        amenityNames: {
-          type: "array",
-          items: { type: "string" },
-          description: "İstenen villa özellikleri (Türkçe isimler)",
-        },
-        flexibleDate: {
-          type: "boolean",
-          description: "±10 gün esnek tarih araması",
-        },
-        guestName: { type: "string" },
-        guestPhone: { type: "string" },
-      },
-      required: ["checkIn", "checkOut", "adults"],
-    },
-  },
-};
-
-function buildSystemPrompt(
-  welcomeMessage: string,
-  rules: { title: string; content: string }[],
-  topics: {
-    title: string;
-    examples: { question: string; answer: string }[];
-  }[]
-) {
-  const rulesBlock = rules
-    .map((rule, index) => `${index + 1}. ${rule.title}\n${rule.content}`)
-    .join("\n\n");
-
-  const examplesBlock = topics
-    .map((topic) => {
-      const pairs = topic.examples
-        .map((ex) => `S: ${ex.question}\nC: ${ex.answer}`)
-        .join("\n");
-      return `### ${topic.title}\n${pairs}`;
-    })
-    .join("\n\n");
-
-  return `Sen Tatil Asistanı YumYum'sun — sevimli, yardımsever bir villa kiralama asistanısın (arı maskotu 🐝).
-
-Görevin: öncelikle konaklama / villa kiralama taleplerinde misafire rehberlik etmek. Diğer hizmetler için ilgili sayfa linklerini ver.
-
-Karşılama mesajı: ${welcomeMessage}
-
-Sırayla toplaman gereken bilgiler (her adımda yalnızca bir sonraki soruyu sor):
-1. Misafirin adı
-2. Konaklama tarihleri — ad öğrenildikten sonra mutlaka "Merhaba {ad}, hangi tarihlerde konaklamak istiyorsunuz?" formatında sor
-3. Kişi sayısı
-4. Bölge tercihi
-5. İstenen villa özellikleri
-6. WhatsApp numarası — tüm bilgiler alındıktan sonra sor
-
-Önemli: İsim alındığında hemen 2. soruya geç; ismi yalnızca ilk karşılamada kullan. Her mesajda "Teşekkürler {ad}" yazma.
-
-Kurallar (Öğrenme):
-${rulesBlock}
-
-Mesaj örnekleri (Öğrenme):
-${examplesBlock}
-
-Diğer hizmet linkleri (mutlak path kullan):
-- Uçak/Otobüs: /bilet/ara
-- Otel: /otel
-- Tur: /tur
-- Araç kiralama: /arac-kiralama
-- VIP transfer: /vip-transfer
-- Feribot: /feribot
-
-Teknik:
-- Türkçe konuş, kısa ve samimi ol.
-- Villa araması için yeterli bilgi toplandığında search_available_villas aracını çağır.
-- Sonuçları özetle; fiyatları TL olarak yaz.
-- Admin panel, bont.* veya localhost linki asla verme.`;
-}
 
 async function expandAssistantRegionSlugs(slugs: string[] | undefined) {
   if (!slugs?.length) return slugs;
@@ -218,61 +119,6 @@ async function runVillaSearch(args: {
     fillEmptyDates: true,
     sort: "price_asc",
   });
-}
-
-async function callOpenAi(
-  systemPrompt: string,
-  history: { role: string; content: string }[]
-): Promise<{
-  content: string | null;
-  toolCalls: OpenAiToolCall[];
-}> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return {
-      content:
-        "Şu an yapay zeka servisim hazırlanıyor. Lütfen kısa süre sonra tekrar deneyin veya +90 252 618 01 08 numarasından bize ulaşın.",
-      toolCalls: [],
-    };
-  }
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-      temperature: 0.6,
-      messages: [{ role: "system", content: systemPrompt }, ...history],
-      tools: [SEARCH_TOOL],
-      tool_choice: "auto",
-    }),
-  });
-
-  if (!response.ok) {
-    return {
-      content:
-        "Bir sorun oluştu, lütfen tekrar deneyin. Yardım için +90 252 618 01 08.",
-      toolCalls: [],
-    };
-  }
-
-  const data = (await response.json()) as {
-    choices?: {
-      message?: {
-        content?: string | null;
-        tool_calls?: OpenAiToolCall[];
-      };
-    }[];
-  };
-
-  const message = data.choices?.[0]?.message;
-  return {
-    content: message?.content ?? null,
-    toolCalls: message?.tool_calls ?? [],
-  };
 }
 
 const TATILDEYIZ_PUBLIC_DOMAIN = "www.tatildeyiz.com.tr";
@@ -443,13 +289,6 @@ async function applyKnownCustomerName(
   const name = usableCustomerName(customer?.fullName);
   if (!name) return state;
   return { ...state, guestName: name };
-}
-
-function mergeSearchState(
-  current: AssistantSearchState | null | undefined,
-  patch: Partial<AssistantSearchState>
-): AssistantSearchState {
-  return { ...(current ?? {}), ...patch };
 }
 
 export async function processAssistantMessage(
@@ -628,7 +467,6 @@ export async function processAssistantMessage(
       conversationId: conversation.id,
       reply,
       shareUrl,
-      villas: undefined,
       whatsappSent,
     };
   }
@@ -675,150 +513,43 @@ export async function processAssistantMessage(
       conversationId: conversation.id,
       reply: finalized.reply,
       shareUrl: finalized.shareUrl,
-      villas: undefined,
       whatsappSent: finalized.whatsappSent,
     };
   }
 
-  const systemPrompt = buildSystemPrompt(
-    context.welcomeMessage,
-    context.rules,
-    context.topics
-  );
-
-  const history = [
-    ...conversation.messages.map((m) => ({
-      role: m.role === "assistant" ? "assistant" : "user",
-      content: m.content,
-    })),
-    { role: "user", content: userText },
-  ];
-
-  let aiResult = await callOpenAi(systemPrompt, history);
-  let searchResults: AvailabilitySearchResultItem[] = [];
-  searchState = (conversation.searchState ?? {}) as AssistantSearchState;
-
-  if (aiResult.toolCalls.length > 0) {
-    const toolMessages: { role: string; content: string; tool_call_id?: string }[] =
-      [];
-
-    for (const toolCall of aiResult.toolCalls) {
-      if (toolCall.function.name !== "search_available_villas") continue;
-
-      let parsed: Record<string, unknown> = {};
-      try {
-        parsed = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
-      } catch {
-        parsed = {};
-      }
-
-      searchState = mergeSearchState(searchState, {
-        guestName:
-          typeof parsed.guestName === "string" ? parsed.guestName : searchState.guestName,
-        guestPhone:
-          typeof parsed.guestPhone === "string"
-            ? parsed.guestPhone
-            : searchState.guestPhone ?? input.guestPhone,
-        checkIn:
-          typeof parsed.checkIn === "string" ? parsed.checkIn : searchState.checkIn,
-        checkOut:
-          typeof parsed.checkOut === "string" ? parsed.checkOut : searchState.checkOut,
-        adults:
-          typeof parsed.adults === "number" ? parsed.adults : searchState.adults,
-        regionSlugs: Array.isArray(parsed.regionSlugs)
-          ? (parsed.regionSlugs as string[])
-          : searchState.regionSlugs,
-        amenityNames: Array.isArray(parsed.amenityNames)
-          ? (parsed.amenityNames as string[])
-          : searchState.amenityNames,
-      });
-
-      if (searchState.checkIn && searchState.checkOut && searchState.adults) {
-        searchResults = await runVillaSearch({
-          checkIn: searchState.checkIn,
-          checkOut: searchState.checkOut,
-          adults: searchState.adults,
-          regionSlugs: searchState.regionSlugs,
-          amenityNames: searchState.amenityNames,
-          flexibleDate: parsed.flexibleDate === true || true,
-        });
-      }
-
-      toolMessages.push({
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content: JSON.stringify({
-          count: searchResults.length,
-          villas: formatAssistantVillasForChat(
-            searchResults,
-            context.publicDomain
-          ),
-        }),
-      });
-    }
-
-    const followUp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-        temperature: 0.6,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...history,
-          {
-            role: "assistant",
-            content: aiResult.content,
-            tool_calls: aiResult.toolCalls,
-          },
-          ...toolMessages,
-        ],
-      }),
-    });
-
-    if (followUp.ok) {
-      const followData = (await followUp.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      aiResult = {
-        content:
-          followData.choices?.[0]?.message?.content ??
-          "Arama tamamlandı, sonuçları aşağıda görebilirsiniz.",
-        toolCalls: [],
-      };
-    }
-  }
-
-  const reply =
-    aiResult.content?.trim() ||
-    (searchResults.length > 0
-      ? `${searchResults.length} uygun villa buldum.`
-      : "Size nasıl yardımcı olabilirim?");
-
-  let whatsappSent = false;
-  let shareUrl: string | undefined;
-  let finalReply = reply;
   const phone =
     searchState.guestPhone?.trim() ||
     conversation.guestPhone?.trim() ||
     input.guestPhone?.trim();
+  const intake = processFlowStep(userText, {
+    guestName: searchState.guestName,
+    guestPhone: phone,
+    phoneCollected: Boolean(phone),
+  });
+  let reply = intake.handled
+    ? intake.reply
+    : buildConsultantOpening(searchState);
+  let nextState = intake.handled
+    ? intake.state
+    : {
+        guestName: searchState.guestName,
+        guestPhone: phone,
+        phoneCollected: Boolean(phone),
+      };
+  if (reply.includes("tam anlayamadım")) {
+    reply = buildConsultantOpening(nextState);
+  }
 
-  if (
-    searchResults.length > 0 &&
-    searchState.checkIn &&
-    searchState.checkOut &&
-    searchState.adults
-  ) {
+  let whatsappSent = false;
+  let shareUrl: string | undefined;
+  if (intake.handled && intake.readyToSearch) {
     const finalized = await deliverAssistantOffers({
-      searchState,
+      searchState: nextState,
       phone,
       more: false,
     });
-    searchState = finalized.searchState;
-    finalReply = finalized.reply;
+    nextState = finalized.searchState;
+    reply = finalized.reply;
     shareUrl = finalized.shareUrl;
     whatsappSent = finalized.whatsappSent;
   }
@@ -826,9 +557,9 @@ export async function processAssistantMessage(
   await prisma.tatilAssistantConversation.update({
     where: { id: conversation.id },
     data: {
-      guestName: searchState.guestName ?? conversation.guestName,
+      guestName: nextState.guestName ?? conversation.guestName,
       guestPhone: phone ?? conversation.guestPhone,
-      searchState,
+      searchState: nextState,
     },
   });
 
@@ -836,20 +567,15 @@ export async function processAssistantMessage(
     data: {
       conversationId: conversation.id,
       role: "assistant",
-      content: finalReply,
-      metadata: shareUrl
-        ? { shareUrl, whatsappSent }
-        : searchResults.length
-          ? { villaCount: searchResults.length, whatsappSent }
-          : undefined,
+      content: reply,
+      metadata: shareUrl ? { shareUrl, whatsappSent } : { whatsappSent },
     },
   });
 
   return {
     conversationId: conversation.id,
-    reply: finalReply,
+    reply,
     shareUrl,
-    villas: undefined,
     whatsappSent,
   };
 }

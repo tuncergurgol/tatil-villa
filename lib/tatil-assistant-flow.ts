@@ -398,7 +398,13 @@ export function extractAmenityNames(text: string): string[] {
 }
 
 export const ASSISTANT_ASK_NAME =
-  "Hitap edebilmek için adınızı öğrenebilir miyim.";
+  "Hitap edebilmek için adınızı öğrenebilir miyim?\nNasıl yardımcı olabilirim?";
+
+export function buildConsultantOpening(state: AssistantSearchState) {
+  const name = state.guestName?.trim();
+  if (!name) return ASSISTANT_ASK_NAME;
+  return `Merhaba ${name}, nasıl yardımcı olabilirim?`;
+}
 
 function addressGuest(state: AssistantSearchState, question: string) {
   const name = state.guestName?.trim();
@@ -680,7 +686,7 @@ export function processFlowStep(
   if (greetingOnly && !slotsChanged(state, harvested)) {
     return {
       handled: true,
-      reply: buildFlowReply(step, state),
+      reply: buildConsultantOpening(state),
       state,
       readyToSearch: false,
     };
