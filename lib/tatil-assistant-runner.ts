@@ -13,14 +13,16 @@ import {
   ASSISTANT_MAX_MORE_ROUNDS,
   ASSISTANT_MORE_OPTION_COUNT,
   ASSISTANT_REFRESH_CRITERIA_MESSAGE,
-  formatAssistantVillaOfferMessages,
+  formatAssistantVillaOfferMessage,
   isAssistantMoreOptionsRequest,
   pricedAssistantVillas,
 } from "@/lib/tatil-assistant-format";
 import { createAssistantPublicShareLink } from "@/lib/tatil-assistant-share";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import {
+  applyCriterionUpdate,
   buildConsultantOpening,
+  buildHelpQuestion,
   usablePersonName,
   buildFlowReply,
   extractGuestPhone,
@@ -38,6 +40,8 @@ type ProcessAssistantInput = {
   channel?: "web" | "whatsapp";
   whatsappChatId?: string;
   guestPhone?: string;
+  /** Son kullanıcı mesajını yeniden işle; ikinci kez kaydetme. */
+  reuseLastUserMessage?: boolean;
 };
 
 export type ProcessAssistantResult = {
@@ -116,7 +120,7 @@ async function runVillaSearch(args: {
     babies: 0,
     regionSlugs,
     amenityNames,
-    flexibleDate: args.flexibleDate ?? true,
+    flexibleDate: args.flexibleDate ?? false,
     fillEmptyDates: true,
     sort: "price_asc",
   });
@@ -178,26 +182,55 @@ async function deliverAssistantOffers(input: {
     };
   }
 
-  const searchResults = await runVillaSearch({
-    checkIn: searchState.checkIn,
-    checkOut: searchState.checkOut,
-    adults: searchState.adults,
-    regionSlugs: searchState.regionSlugs,
-    amenityNames: searchState.amenityNames,
-    flexibleDate: true,
-  });
+  const partySizes = (
+    searchState.partySizes?.length
+      ? searchState.partySizes
+      : [searchState.adults]
+  ).filter((size): size is number => typeof size === "number" && size > 0);
 
   const sent = new Set(searchState.sentVillaIds ?? []);
   const limit = more ? ASSISTANT_MORE_OPTION_COUNT : ASSISTANT_FIRST_OPTION_COUNT;
-  const batch = pricedAssistantVillas(searchResults)
-    .filter((item) => !sent.has(item.id))
-    .slice(0, limit);
+  type PartyResult = AvailabilitySearchResultItem & { partySize: number };
+  const byId = new Map<string, PartyResult>();
+  for (const partySize of partySizes) {
+    const results = await runVillaSearch({
+      checkIn: searchState.checkIn,
+      checkOut: searchState.checkOut,
+      adults: partySize,
+      regionSlugs: searchState.regionSlugs,
+      amenityNames: searchState.amenityNames,
+      flexibleDate: false,
+    });
+    for (const item of pricedAssistantVillas(results)) {
+      if (sent.has(item.id) || byId.has(item.id)) continue;
+      byId.set(item.id, { ...item, partySize });
+    }
+  }
+  const ranked = [...byId.values()].sort(
+    (left, right) =>
+      left.quote.total - right.quote.total ||
+      left.name.localeCompare(right.name, "tr")
+  );
+  const batch: PartyResult[] = [];
+  const covered = new Set<number>();
+  for (const item of ranked) {
+    if (covered.has(item.partySize)) continue;
+    batch.push(item);
+    covered.add(item.partySize);
+  }
+  for (const item of ranked) {
+    if (batch.length >= limit) break;
+    if (batch.some((picked) => picked.id === item.id)) continue;
+    batch.push(item);
+  }
+  const offerBatch = batch.slice(0, limit);
 
-  if (batch.length === 0) {
-    const nextState = refreshCriteriaState(searchState);
-    const reply = searchResults.length
-      ? refreshCriteriaReply(searchState)
-      : "Bu kriterlerle uygun villa bulamadım. Dilerseniz kriterleri yenileyip yeniden deneyelim. Hangi tarihlerde konaklamak istiyorsunuz?";
+  if (offerBatch.length === 0) {
+    const keepCriteria = !more;
+    const nextState = keepCriteria ? searchState : refreshCriteriaState(searchState);
+    const reply = keepCriteria
+      ? "Bu kriterlerle uygun villa bulamadım. Tarih, bölge, kişi sayısı veya özelliği değiştirirseniz yeniden bakarım."
+      : refreshCriteriaReply(searchState);
     let whatsappSent = false;
     if (phone) {
       try {
@@ -210,34 +243,36 @@ async function deliverAssistantOffers(input: {
     return {
       reply,
       searchState: nextState,
-      searchResults,
+      searchResults: offerBatch,
       shareUrl: undefined,
       whatsappSent,
-      refreshed: true,
+      refreshed: !keepCriteria,
     };
   }
 
   const shareUrl = await createAssistantPublicShareLink({
-    villaIds: batch.map((item) => item.id),
+    villaIds: offerBatch.map((item) => item.id),
     checkIn: searchState.checkIn,
     checkOut: searchState.checkOut,
     adults: searchState.adults,
     domain,
   });
 
-  const messages = formatAssistantVillaOfferMessages(batch, {
-    domain,
-    guestName: searchState.guestName,
-    adults: searchState.adults,
-    brand: "Tatildeyiz",
-  });
+  const messages = offerBatch.map((item) =>
+    formatAssistantVillaOfferMessage(item, {
+      domain,
+      guestName: searchState.guestName,
+      adults: item.partySize,
+      brand: "Tatildeyiz",
+    })
+  );
   const reply = messages.join("\n\n");
   const deliveredIds: string[] = [];
   if (phone) {
     for (const [index, text] of messages.entries()) {
       try {
         await sendAssistantWhatsAppMessage(phone, text);
-        deliveredIds.push(batch[index]!.id);
+        deliveredIds.push(offerBatch[index]!.id);
       } catch {
         break;
       }
@@ -252,7 +287,7 @@ async function deliverAssistantOffers(input: {
     ...searchState,
     sentVillaIds: [
       ...sent,
-      ...(phone ? deliveredIds : batch.map((item) => item.id)),
+      ...(phone ? deliveredIds : offerBatch.map((item) => item.id)),
     ],
     moreOptionRounds: more ? moreRounds + 1 : moreRounds,
   };
@@ -260,7 +295,7 @@ async function deliverAssistantOffers(input: {
   return {
     reply,
     searchState: nextState,
-    searchResults: batch,
+    searchResults: offerBatch,
     shareUrl,
     whatsappSent,
     refreshed: false,
@@ -356,7 +391,7 @@ export async function processAssistantMessage(
   const recentUser = [...conversation.messages]
     .reverse()
     .find((message) => message.role === "user");
-  if (recentUser && sameText(recentUser.content, userText)) {
+  if (!input.reuseLastUserMessage && recentUser && sameText(recentUser.content, userText)) {
     const age = Date.now() - new Date(recentUser.createdAt).getTime();
     const recentAssistant = [...conversation.messages]
       .reverse()
@@ -374,13 +409,15 @@ export async function processAssistantMessage(
     }
   }
 
-  await prisma.tatilAssistantMessage.create({
-    data: {
-      conversationId: conversation.id,
-      role: "user",
-      content: userText,
-    },
-  });
+  if (!input.reuseLastUserMessage) {
+    await prisma.tatilAssistantMessage.create({
+      data: {
+        conversationId: conversation.id,
+        role: "user",
+        content: userText,
+      },
+    });
+  }
 
   const storedState = (conversation.searchState ?? {}) as AssistantSearchState;
   let searchState = await applyKnownCustomerName(
@@ -389,6 +426,30 @@ export async function processAssistantMessage(
       : { ...storedState, guestName: undefined },
     input.guestPhone || conversation.guestPhone
   );
+  const priorUserTexts = conversation.messages
+    .filter((message) => message.role === "user")
+    .map((message) => message.content);
+  const history = input.reuseLastUserMessage
+    ? priorUserTexts.slice(0, -1)
+    : priorUserTexts;
+  if (!searchState.checkIn || !searchState.adults || !searchState.regionSlugs?.length) {
+    let rebuilt: AssistantSearchState = {
+      guestName: searchState.guestName,
+      guestPhone: searchState.guestPhone || input.guestPhone || undefined,
+      phoneCollected: Boolean(searchState.guestPhone || input.guestPhone),
+      helpAsked: true,
+    };
+    for (const text of history) rebuilt = applyCriterionUpdate(rebuilt, text);
+    if (rebuilt.checkIn || rebuilt.adults || rebuilt.regionSlugs?.length) {
+      searchState = {
+        ...rebuilt,
+        guestName: searchState.guestName ?? rebuilt.guestName,
+        guestPhone: searchState.guestPhone || rebuilt.guestPhone,
+        phoneCollected: true,
+        helpAsked: true,
+      };
+    }
+  }
   let flowAdvance = processFlowStep(userText, searchState);
 
   if (flowAdvance.handled) {
@@ -528,6 +589,37 @@ export async function processAssistantMessage(
     searchState.guestPhone?.trim() ||
     conversation.guestPhone?.trim() ||
     input.guestPhone?.trim();
+  if (searchState.checkIn && searchState.adults) {
+    const greeting = /^(merhaba|merhabalar|selam|selamlar|hey|hi|hello|mrb|slm)$/iu.test(
+      userText.trim()
+    );
+    const reply = greeting
+      ? buildHelpQuestion(searchState)
+      : "Tarih, kişi sayısı, bölge veya bir özellik yazarsanız seçenekleri ona göre güncellerim.";
+    await prisma.tatilAssistantConversation.update({
+      where: { id: conversation.id },
+      data: {
+        guestName: persistedGuestName(searchState.guestName, conversation.guestName),
+        guestPhone: phone ?? conversation.guestPhone,
+        searchState,
+      },
+    });
+    await prisma.tatilAssistantMessage.create({
+      data: {
+        conversationId: conversation.id,
+        role: "assistant",
+        content: reply,
+      },
+    });
+    if (phone) {
+      try {
+        await sendAssistantWhatsAppMessage(phone, reply);
+      } catch {
+        return { conversationId: conversation.id, reply, whatsappSent: false };
+      }
+    }
+    return { conversationId: conversation.id, reply, whatsappSent: Boolean(phone) };
+  }
   const intake = processFlowStep(userText, {
     guestName: searchState.guestName,
     guestPhone: phone,

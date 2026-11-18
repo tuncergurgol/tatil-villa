@@ -7,6 +7,8 @@ export type AssistantSearchState = {
   checkIn?: string;
   checkOut?: string;
   adults?: number;
+  /** Tek kişi sayısı verildiyse o sayı ve sonraki iki kapasite. */
+  partySizes?: number[];
   children?: number;
   regionSlugs?: string[];
   amenityNames?: string[];

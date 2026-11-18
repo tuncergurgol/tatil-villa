@@ -122,6 +122,7 @@ export function formatAssistantVillaOfferMessage(
     `Giriş: ${item.checkIn}`,
     `Çıkış: ${item.checkOut}`,
     `Gece: ${item.quote.nights}`,
+    ...(options?.adults ? [`Kişi: ${options.adults}`] : []),
     `Toplam: ${total}`,
     "",
     url,

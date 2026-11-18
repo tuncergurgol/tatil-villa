@@ -1,4 +1,5 @@
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
+import { isAssistantMoreOptionsRequest } from "@/lib/tatil-assistant-format";
 import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
 import {
   isValidTurkishMobileE164,
@@ -395,6 +396,20 @@ export function extractStayDates(text: string): {
   return null;
 }
 
+export function extractGuestCounts(text: string): number[] {
+  const list = text.match(
+    /(\d{1,2}(?:\s*(?:,|\/|ve)\s*\d{1,2})+)\s*(?:kişilik|kisilik|kişi|kisi)/iu
+  );
+  if (list?.[1]) {
+    const counts = [...list[1].matchAll(/\d{1,2}/g)]
+      .map((match) => Number(match[0]))
+      .filter((count) => count >= 1 && count <= 30);
+    return [...new Set(counts)];
+  }
+  const single = extractGuestCount(text);
+  return single ? [single] : [];
+}
+
 export function extractGuestCount(text: string): number | null {
   const match = text.match(
     /(\d{1,2})\s*(?:kişi|kisi|misafir|yetişkin|yetiskin|person|kisi)/iu
@@ -542,42 +557,102 @@ function buildAmenitiesAckReply() {
 function mentionsAlias(text: string, alias: string) {
   const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(
-    `(^|[^a-zA-ZçğıöşüÇĞİÖŞÜ])${escaped}([^a-zA-ZçğıöşüÇĞİÖŞÜ]|$)`,
+    `(^|[^a-zA-ZçğıöşüÇĞİÖŞÜ])${escaped}(?:['’]?(?:da|de|ta|te|dan|den|tan|ten))?(?=$|[^a-zA-ZçğıöşüÇĞİÖŞÜ])`,
     "iu"
   ).test(text);
+}
+
+function partySizesFor(counts: number[]) {
+  const unique = [...new Set(counts.filter((count) => count >= 1 && count <= 16))];
+  if (unique.length !== 1) return unique;
+  const count = unique[0]!;
+  return [count, count + 1, count + 2].filter((value) => value <= 16);
+}
+
+function regionSlugsInText(text: string) {
+  const slugs = new Set<string>();
+  for (const [alias, slug] of Object.entries(REGION_ALIASES)) {
+    if (mentionsAlias(text, alias)) slugs.add(slug);
+  }
+  if (slugs.size > 0) return [...slugs];
+  const trimmed = text.trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const lower = trimmed.toLocaleLowerCase("tr-TR");
+  if (
+    words.length === 0 ||
+    words.length > 3 ||
+    GREETINGS.has(lower) ||
+    SKIP_WORDS.has(lower) ||
+    extractStayDates(text) ||
+    extractAmenityNames(text).length > 0 ||
+    /\d/.test(text)
+  ) {
+    return [];
+  }
+  const slug = slugifyTurkish(text.trim());
+  return slug.length >= 2 ? [slug] : [];
+}
+
+/** Dolu bir aramada yeni tarih, bölge, kişi veya özellik gelirse eski kriteri silmeden günceller. */
+export function applyCriterionUpdate(
+  state: AssistantSearchState,
+  text: string
+): AssistantSearchState {
+  const next: AssistantSearchState = { ...state };
+  const dates = extractStayDates(text);
+  if (dates) Object.assign(next, dates);
+
+  const counts = extractGuestCounts(text);
+  if (counts.length > 0) {
+    next.adults = counts[0];
+    next.partySizes = partySizesFor(counts);
+  }
+
+  const regions = regionSlugsInText(text);
+  if (regions.length > 0) next.regionSlugs = regions;
+
+  const lower = text.toLocaleLowerCase("tr-TR");
+  const mentioned = extractAmenityNames(text);
+  const clearsAmenities = /fark\s*etmez|farketmez/u.test(lower);
+  const rejectsAmenity = /olmas[ıi]n|istemiyorum|istemiyoruz|olmadan/u.test(lower);
+  const replacesAmenities = /sadece|yaln[ıi]zca/u.test(lower);
+  if (clearsAmenities) {
+    next.amenityNames = [];
+    next.amenitiesCollected = true;
+  } else if (mentioned.length > 0 && rejectsAmenity) {
+    const drop = new Set(mentioned);
+    next.amenityNames = (next.amenityNames ?? []).filter((name) => !drop.has(name));
+    next.amenitiesCollected = true;
+  } else if (mentioned.length > 0 && replacesAmenities) {
+    next.amenityNames = mentioned;
+    next.amenitiesCollected = true;
+  } else if (mentioned.length > 0) {
+    next.amenityNames = [...new Set([...(next.amenityNames ?? []), ...mentioned])];
+    next.amenitiesCollected = true;
+  }
+
+  return next;
+}
+
+export function searchCriteriaChanged(
+  before: AssistantSearchState,
+  after: AssistantSearchState
+) {
+  return (
+    before.checkIn !== after.checkIn ||
+    before.checkOut !== after.checkOut ||
+    before.adults !== after.adults ||
+    (before.partySizes ?? []).join(",") !== (after.partySizes ?? []).join(",") ||
+    (before.regionSlugs ?? []).join(",") !== (after.regionSlugs ?? []).join(",") ||
+    (before.amenityNames ?? []).join(",") !== (after.amenityNames ?? []).join(",")
+  );
 }
 
 function harvestKnownSlots(
   text: string,
   state: AssistantSearchState
 ): AssistantSearchState {
-  const next: AssistantSearchState = { ...state };
-
-  if (!next.checkIn || !next.checkOut) {
-    const dates = extractStayDates(text);
-    if (dates) Object.assign(next, dates);
-  }
-
-  if (!next.adults) {
-    const adults = extractGuestCount(text);
-    if (adults) next.adults = adults;
-  }
-
-  if (!next.regionSlugs?.length) {
-    const slugs = new Set<string>();
-    for (const [alias, slug] of Object.entries(REGION_ALIASES)) {
-      if (mentionsAlias(text, alias)) slugs.add(slug);
-    }
-    if (slugs.size > 0) next.regionSlugs = [...slugs];
-  }
-
-  if (!next.amenitiesCollected) {
-    const amenityNames = extractAmenityNames(text);
-    if (amenityNames.length > 0) {
-      next.amenityNames = amenityNames;
-      next.amenitiesCollected = true;
-    }
-  }
+  const next = applyCriterionUpdate(state, text);
 
   if (!next.guestPhone) {
     const guestPhone = extractGuestPhone(text);
@@ -601,6 +676,7 @@ function slotsChanged(before: AssistantSearchState, after: AssistantSearchState)
     before.checkIn !== after.checkIn ||
     before.checkOut !== after.checkOut ||
     before.adults !== after.adults ||
+    (before.partySizes ?? []).join(",") !== (after.partySizes ?? []).join(",") ||
     before.amenitiesCollected !== after.amenitiesCollected ||
     before.phoneCollected !== after.phoneCollected ||
     (before.regionSlugs ?? []).join(",") !== (after.regionSlugs ?? []).join(",") ||
@@ -749,7 +825,25 @@ export function processFlowStep(
   state: AssistantSearchState
 ): FlowAdvanceResult {
   const step = resolveFlowStep(state);
-  if (step === "ready") return { handled: false };
+  if (step === "ready") {
+    if (isAssistantMoreOptionsRequest(userText)) return { handled: false };
+    const updated = applyCriterionUpdate(state, userText);
+    if (!searchCriteriaChanged(state, updated)) return { handled: false };
+    const nextState: AssistantSearchState = {
+      ...updated,
+      helpAsked: true,
+      sentVillaIds: [],
+      moreOptionRounds: 0,
+    };
+    const nextStep = resolveFlowStep(nextState);
+    return finishTurn(
+      nextStep === "ready"
+        ? "Uygun villalara bakıyorum."
+        : buildFlowReply(nextStep, nextState),
+      nextState,
+      nextStep === "ready"
+    );
+  }
 
   const harvested = harvestKnownSlots(userText, state);
   const greetingOnly = GREETINGS.has(userText.trim().toLocaleLowerCase("tr-TR"));
