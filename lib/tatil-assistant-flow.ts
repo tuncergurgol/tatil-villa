@@ -543,7 +543,7 @@ export function extractAmenityNames(text: string): string[] {
   ];
 
   if (!heated && !indoor && /özel\s*havuz|ozel\s*havuz|havuzlu/iu.test(lower)) {
-    amenities.push("Özel Havuz");
+    amenities.push("Özel Havuzlu");
   }
 
   for (const [pattern, label] of patterns) {
