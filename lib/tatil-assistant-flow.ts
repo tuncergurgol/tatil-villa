@@ -16,10 +16,14 @@ export type AssistantFlowStep =
 
 const GREETINGS = new Set([
   "merhaba",
+  "merhabalar",
   "selam",
   "selamlar",
   "iyi günler",
+  "iyi akşamlar",
+  "iyi aksamlar",
   "günaydın",
+  "kolay gelsin",
   "hey",
   "hello",
   "hi",
@@ -101,8 +105,42 @@ function formatName(name: string) {
     .join(" ");
 }
 
+const PLACEHOLDER_NAMES = new Set([
+  "misafir",
+  "müşteri",
+  "musteri",
+  "test",
+  "test test",
+  "deneme",
+]);
+
+function foldedName(name: string) {
+  return name.trim().toLocaleLowerCase("tr-TR");
+}
+
+/** Bölge, selamlama ve yer tutucu kelimeler kişi adı değildir. */
+export function usablePersonName(name: string | null | undefined) {
+  const trimmed = name?.trim() ?? "";
+  if (trimmed.length < 2) return "";
+  const folded = foldedName(trimmed);
+  if (PLACEHOLDER_NAMES.has(folded)) return "";
+  const parts = folded.split(/\s+/).filter(Boolean);
+  if (
+    parts.length > 0 &&
+    parts.every(
+      (part) =>
+        GREETINGS.has(part) ||
+        SKIP_WORDS.has(part) ||
+        Boolean(REGION_ALIASES[part])
+    )
+  ) {
+    return "";
+  }
+  return formatName(trimmed);
+}
+
 export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep {
-  if (!state.guestName?.trim()) return "awaiting_name";
+  if (!usablePersonName(state.guestName)) return "awaiting_name";
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
   if (!state.adults) return "awaiting_guests";
   if (!state.regionSlugs?.length) return "awaiting_region";
@@ -134,10 +172,11 @@ export function extractGuestName(text: string): string | null {
     GREETINGS.has(words[0]?.toLocaleLowerCase("tr-TR") ?? "")
   ) {
     if (words.length === 1) return null;
-    return formatName(words.slice(1).join(" "));
+    const greeted = words.slice(1).join(" ");
+    return usablePersonName(greeted) || null;
   }
 
-  return formatName(words.slice(0, 2).join(" "));
+  return usablePersonName(words.slice(0, 2).join(" ")) || null;
 }
 
 function pad2(n: number) {
@@ -401,13 +440,13 @@ export const ASSISTANT_ASK_NAME =
   "Hitap edebilmek için adınızı öğrenebilir miyim?\nNasıl yardımcı olabilirim?";
 
 export function buildConsultantOpening(state: AssistantSearchState) {
-  const name = state.guestName?.trim();
+  const name = usablePersonName(state.guestName);
   if (!name) return ASSISTANT_ASK_NAME;
   return `Merhaba ${name}, nasıl yardımcı olabilirim?`;
 }
 
 function addressGuest(state: AssistantSearchState, question: string) {
-  const name = state.guestName?.trim();
+  const name = usablePersonName(state.guestName);
   if (!name) return question;
   const lowered =
     question.charAt(0).toLocaleLowerCase("tr-TR") + question.slice(1);
@@ -555,7 +594,7 @@ function buildProgressReply(
 }
 
 function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
-  const name = state.guestName?.trim();
+  const name = usablePersonName(state.guestName);
 
   switch (step) {
     case "awaiting_name":

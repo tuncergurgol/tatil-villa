@@ -21,6 +21,7 @@ import { createAssistantPublicShareLink } from "@/lib/tatil-assistant-share";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import {
   buildConsultantOpening,
+  usablePersonName,
   buildFlowReply,
   extractGuestPhone,
   processFlowStep,
@@ -271,13 +272,17 @@ async function deliverAssistantOffers(input: {
 }
 
 function usableCustomerName(name: string | null | undefined) {
-  const trimmed = name?.trim() ?? "";
-  if (trimmed.length < 2) return "";
-  const folded = trimmed.toLocaleLowerCase("tr-TR");
-  if (folded === "misafir" || folded === "müşteri" || folded === "musteri") {
-    return "";
+  return usablePersonName(name);
+}
+
+function persistedGuestName(
+  ...names: Array<string | null | undefined>
+) {
+  for (const name of names) {
+    const usable = usablePersonName(name);
+    if (usable) return usable;
   }
-  return trimmed;
+  return null;
 }
 
 async function applyKnownCustomerName(
@@ -381,8 +386,11 @@ export async function processAssistantMessage(
     },
   });
 
+  const storedState = (conversation.searchState ?? {}) as AssistantSearchState;
   let searchState = await applyKnownCustomerName(
-    (conversation.searchState ?? {}) as AssistantSearchState,
+    usablePersonName(storedState.guestName)
+      ? storedState
+      : { ...storedState, guestName: undefined },
     input.guestPhone || conversation.guestPhone
   );
   let flowAdvance = processFlowStep(userText, searchState);
@@ -444,7 +452,7 @@ export async function processAssistantMessage(
     await prisma.tatilAssistantConversation.update({
       where: { id: conversation.id },
       data: {
-        guestName: searchState.guestName ?? conversation.guestName,
+        guestName: persistedGuestName(searchState.guestName, conversation.guestName),
         guestPhone: phone ?? conversation.guestPhone,
         searchState,
       },
@@ -488,7 +496,10 @@ export async function processAssistantMessage(
     await prisma.tatilAssistantConversation.update({
       where: { id: conversation.id },
       data: {
-        guestName: finalized.searchState.guestName ?? conversation.guestName,
+        guestName: persistedGuestName(
+          finalized.searchState.guestName,
+          conversation.guestName
+        ),
         guestPhone: phone ?? conversation.guestPhone,
         searchState: finalized.searchState,
       },
@@ -557,7 +568,7 @@ export async function processAssistantMessage(
   await prisma.tatilAssistantConversation.update({
     where: { id: conversation.id },
     data: {
-      guestName: nextState.guestName ?? conversation.guestName,
+      guestName: persistedGuestName(nextState.guestName, conversation.guestName),
       guestPhone: phone ?? conversation.guestPhone,
       searchState: nextState,
     },
