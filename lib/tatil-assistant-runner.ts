@@ -24,6 +24,7 @@ import { createAssistantPublicShareLink } from "@/lib/tatil-assistant-share";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import {
   applyCriterionUpdate,
+  partyCapacity,
   buildConsultantOpening,
   isConversationGreeting,
   usablePersonName,
@@ -224,7 +225,7 @@ async function deliverAssistantOffers(input: {
   if (
     !searchState.checkIn ||
     !searchState.checkOut ||
-    (!searchState.adults && !searchState.guestsAny)
+    (partyCapacity(searchState) <= 0 && !searchState.guestsAny)
   ) {
     return {
       reply: "Aramaya geçebilmem için birkaç bilgiye daha ihtiyacım var.",
@@ -259,12 +260,15 @@ async function deliverAssistantOffers(input: {
     };
   }
 
+  const capacity = partyCapacity(searchState);
   const partySizes = searchState.guestsAny
     ? []
     : (
         searchState.partySizes?.length
           ? searchState.partySizes
-          : [searchState.adults]
+          : capacity > 0
+            ? [capacity, capacity + 1].filter((size) => size <= 16)
+            : []
       ).filter((size): size is number => typeof size === "number" && size > 0);
   const regionSlugs = searchState.regionAny ? undefined : searchState.regionSlugs;
 
@@ -560,7 +564,7 @@ export async function processAssistantMessage(
     !searchState.freshIntake &&
     !searchState.regionAny &&
     !searchState.guestsAny &&
-    (!searchState.checkIn || !searchState.adults || !searchState.regionSlugs?.length)
+    (!searchState.checkIn || partyCapacity(searchState) <= 0 || !searchState.regionSlugs?.length)
   ) {
     let rebuilt: AssistantSearchState = {
       guestName: searchState.guestName,
@@ -569,7 +573,7 @@ export async function processAssistantMessage(
       helpAsked: true,
     };
     for (const text of history) rebuilt = applyCriterionUpdate(rebuilt, text);
-    if (rebuilt.checkIn || rebuilt.adults || rebuilt.regionSlugs?.length) {
+    if (rebuilt.checkIn || partyCapacity(rebuilt) > 0 || rebuilt.regionSlugs?.length) {
       searchState = {
         ...rebuilt,
         guestName: searchState.guestName ?? rebuilt.guestName,
@@ -719,7 +723,7 @@ export async function processAssistantMessage(
     searchState.guestPhone?.trim() ||
     conversation.guestPhone?.trim() ||
     input.guestPhone?.trim();
-  if (searchState.checkIn && searchState.adults && !isConversationGreeting(userText)) {
+  if (searchState.checkIn && (partyCapacity(searchState) > 0 || searchState.guestsAny) && !isConversationGreeting(userText)) {
     const reply =
       ASSISTANT_UPDATE_HINT_MESSAGE;
     await prisma.tatilAssistantConversation.update({

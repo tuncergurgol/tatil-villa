@@ -11,6 +11,8 @@ export type AssistantFlowStep =
   | "awaiting_help"
   | "awaiting_dates"
   | "awaiting_guests"
+  | "awaiting_party_kind"
+  | "awaiting_party_detail"
   | "awaiting_region"
   | "awaiting_amenities"
   | "awaiting_phone"
@@ -66,6 +68,19 @@ const SKIP_WORDS = new Set([
   "yok",
   "farketmez",
   "fark etmez",
+  "aile",
+  "ailece",
+  "arkadaş",
+  "arkadas",
+  "arkadaşlar",
+  "arkadaslar",
+  "arkadaşlarla",
+  "yetişkin",
+  "yetiskin",
+  "çocuk",
+  "cocuk",
+  "bebek",
+  "grubu",
 ]);
 
 const MONTH_MAP: Record<string, number> = {
@@ -165,11 +180,38 @@ export function usablePersonName(name: string | null | undefined) {
   return formatName(trimmed);
 }
 
+function legacyGuestFlow(state: AssistantSearchState) {
+  return (
+    !state.freshIntake &&
+    !state.partyKind &&
+    !state.countsCollected &&
+    (state.regionAny ||
+      (state.regionSlugs?.length ?? 0) > 0 ||
+      Boolean(state.amenitiesCollected) ||
+      (state.sentVillaIds?.length ?? 0) > 0)
+  );
+}
+
+export function partyCapacity(state: AssistantSearchState) {
+  return (state.adults ?? 0) + (state.children ?? 0);
+}
+
 export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep {
   if (!usablePersonName(state.guestName)) return "awaiting_name";
   if (!state.helpAsked) return "awaiting_help";
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
-  if (!state.adults && !state.guestsAny) return "awaiting_guests";
+  if (!legacyGuestFlow(state)) {
+    const hasGuestAnswer =
+      state.guestsAny ||
+      state.countsCollected ||
+      (state.provisionalGuests ?? 0) > 0 ||
+      partyCapacity(state) > 0;
+    if (!hasGuestAnswer) return "awaiting_guests";
+    if (!state.partyKind) return "awaiting_party_kind";
+    if (!state.countsCollected && !state.guestsAny) return "awaiting_party_detail";
+  } else if (!state.adults && !state.guestsAny && partyCapacity(state) <= 0) {
+    return "awaiting_guests";
+  }
   if (!state.regionAny && !state.regionSlugs?.length) return "awaiting_region";
   if (!state.amenitiesCollected && !(state.amenityNames?.length ?? 0)) {
     return "awaiting_amenities";
@@ -480,6 +522,63 @@ export function extractGuestCount(text: string): number | null {
   return null;
 }
 
+function labeledCount(text: string, label: string) {
+  const before = text.match(new RegExp(`(\\d{1,2})\\s*(?:${label})`, "iu"));
+  const after = text.match(new RegExp(`(?:${label})\\s*[:\\-]?\\s*(\\d{1,2})`, "iu"));
+  const raw = before?.[1] ?? after?.[1];
+  if (!raw) return null;
+  const count = Number(raw);
+  return count >= 0 && count <= 20 ? count : null;
+}
+
+/** "2 yetişkin 1 çocuk 1 bebek" gibi bir dağılım. Bebek kapasiteye girmez. */
+export function extractPartyComposition(text: string) {
+  const lower = text.toLocaleLowerCase("tr-TR");
+  const adults = labeledCount(lower, "yetişkin|yetiskin|yetişikin");
+  const children = labeledCount(lower, "çocuk|cocuk");
+  const babies = labeledCount(lower, "bebek|bebeg");
+  const childNone = /çocuk(?:lar)?\s*yok|cocuk(?:lar)?\s*yok|çocuksuz|cocuksuz/iu.test(lower);
+  const babyNone = /bebek(?:ler)?\s*yok|bebeg(?:ler)?\s*yok|bebeksiz/iu.test(lower);
+  if (adults == null && children == null && babies == null && !childNone && !babyNone) {
+    return null;
+  }
+  return {
+    adults: adults ?? 0,
+    children: childNone ? 0 : (children ?? 0),
+    babies: babyNone ? 0 : (babies ?? 0),
+  };
+}
+
+export function extractPartyKind(text: string): "family" | "friends" | null {
+  if (/arkada[sş]/iu.test(text)) return "friends";
+  if (/aile\s*de[gğ]il/iu.test(text)) return "friends";
+  if (/(^|[^\p{L}])aile(?:ce|yle|miz|yiz)?(?=$|[^\p{L}])/iu.test(text)) return "family";
+  return null;
+}
+
+function partyDetailFromText(text: string, provisionalGuests?: number) {
+  const composition = extractPartyComposition(text);
+  if (composition) return composition;
+  if (
+    provisionalGuests &&
+    provisionalGuests > 0 &&
+    /hepsi\s*yetişkin|hepsi\s*yetiskin|sadece\s*yetişkin|sadece\s*yetiskin|yetişkiniz|yetiskinler/iu.test(
+      text
+    )
+  ) {
+    return { adults: provisionalGuests, children: 0, babies: 0 };
+  }
+  const triple = text
+    .trim()
+    .match(/^(\d{1,2})\s*[,/+-]\s*(\d{1,2})\s*[,/+-]\s*(\d{1,2})$/);
+  if (!triple) return null;
+  const adults = Number(triple[1]);
+  const children = Number(triple[2]);
+  const babies = Number(triple[3]);
+  if ([adults, children, babies].some((count) => count < 0 || count > 20)) return null;
+  return { adults, children, babies };
+}
+
 export function extractRegionSlugs(text: string): string[] {
   const lower = text.toLocaleLowerCase("tr-TR");
   const slugs = new Set<string>();
@@ -535,6 +634,13 @@ const FEATURE_STOP = new Set([
   "edilir",
   "olur",
   "olsun",
+  "aile",
+  "arkadas",
+  "grup",
+  "grubu",
+  "yetiskin",
+  "cocuk",
+  "bebek",
 ]);
 
 let featureCatalog: string[] = [];
@@ -697,6 +803,10 @@ export function buildFlowReply(
       return "Hangi tarihlerde konaklamak istiyorsunuz.";
     case "awaiting_guests":
       return "Kaç kişilik bir yer arıyorsunuz?";
+    case "awaiting_party_kind":
+      return "Aile mi, arkadaş grubu mu?";
+    case "awaiting_party_detail":
+      return "Yetişkin, çocuk ve bebek sayısını yazar mısınız?";
     case "awaiting_region":
       return "Hangi bölgede tatil yapmak istersiniz?";
     case "awaiting_amenities":
@@ -713,7 +823,7 @@ function buildDatesAckReply(state: AssistantSearchState) {
 }
 
 function buildGuestsAckReply(state: AssistantSearchState) {
-  return buildFlowReply("awaiting_region", state);
+  return buildFlowReply(resolveFlowStep(state), state);
 }
 
 function buildRegionAckReply() {
@@ -736,7 +846,24 @@ function partySizesFor(counts: number[]) {
   const unique = [...new Set(counts.filter((count) => count >= 1 && count <= 16))];
   if (unique.length !== 1) return unique;
   const count = unique[0]!;
-  return [count, count + 1, count + 2].filter((value) => value <= 16);
+  return [count, count + 1].filter((value) => value <= 16);
+}
+
+function withPartyCounts(
+  state: AssistantSearchState,
+  counts: { adults: number; children: number; babies: number }
+): AssistantSearchState {
+  const capacity = counts.adults + counts.children;
+  return {
+    ...state,
+    adults: counts.adults,
+    children: counts.children,
+    babies: counts.babies,
+    provisionalGuests: capacity > 0 ? capacity : state.provisionalGuests,
+    countsCollected: capacity > 0,
+    guestsAny: false,
+    partySizes: capacity > 0 ? partySizesFor([capacity]) : [],
+  };
 }
 
 function regionSlugsInText(text: string) {
@@ -775,12 +902,31 @@ export function applyCriterionUpdate(
   const dates = extractStayDates(text);
   if (dates) Object.assign(next, dates);
 
+  const composition = extractPartyComposition(text);
   const counts = extractGuestCounts(text);
-  if (counts.length > 0) {
+  if (composition && composition.adults + composition.children > 0) {
+    Object.assign(next, withPartyCounts(next, composition));
+  } else if (counts.length > 1) {
     next.adults = counts[0];
+    next.children = 0;
+    next.babies = next.babies ?? 0;
+    next.provisionalGuests = counts[0];
+    next.countsCollected = true;
     next.partySizes = partySizesFor(counts);
     next.guestsAny = false;
+  } else if (counts.length === 1 && next.countsCollected) {
+    next.adults = counts[0];
+    next.children = 0;
+    next.provisionalGuests = counts[0];
+    next.partySizes = partySizesFor(counts);
+    next.guestsAny = false;
+  } else if (counts.length === 1) {
+    next.provisionalGuests = counts[0];
+    next.guestsAny = false;
   }
+
+  const partyKind = extractPartyKind(text);
+  if (partyKind) next.partyKind = partyKind;
 
   const regions = regionSlugsInText(text);
   if (regions.length > 0) {
@@ -815,6 +961,8 @@ export function searchCriteriaChanged(
     before.checkIn !== after.checkIn ||
     before.checkOut !== after.checkOut ||
     before.adults !== after.adults ||
+    before.children !== after.children ||
+    before.babies !== after.babies ||
     before.guestsAny !== after.guestsAny ||
     before.regionAny !== after.regionAny ||
     (before.partySizes ?? []).join(",") !== (after.partySizes ?? []).join(",") ||
@@ -851,6 +999,11 @@ function slotsChanged(before: AssistantSearchState, after: AssistantSearchState)
     before.checkIn !== after.checkIn ||
     before.checkOut !== after.checkOut ||
     before.adults !== after.adults ||
+    before.children !== after.children ||
+    before.babies !== after.babies ||
+    before.provisionalGuests !== after.provisionalGuests ||
+    before.countsCollected !== after.countsCollected ||
+    before.partyKind !== after.partyKind ||
     before.guestsAny !== after.guestsAny ||
     before.regionAny !== after.regionAny ||
     (before.partySizes ?? []).join(",") !== (after.partySizes ?? []).join(",") ||
@@ -879,6 +1032,10 @@ function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
       return "Tarihi tam anlayamadım. 3/7 Eylül ya da 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?";
     case "awaiting_guests":
       return "Kaç kişilik bir yer arıyorsunuz?";
+    case "awaiting_party_kind":
+      return "Aile mi, arkadaş grubu mu?";
+    case "awaiting_party_detail":
+      return "Yetişkin, çocuk ve bebek sayısını yazar mısınız? Örneğin 2 yetişkin, 1 çocuk, 0 bebek.";
     case "awaiting_region":
       return "Hangi bölgede tatil yapmak istersiniz?";
     case "awaiting_amenities":
@@ -939,14 +1096,43 @@ function tryParseStep(
   }
 
   if (step === "awaiting_guests") {
-    const adults = extractGuestCount(userText);
-    if (!adults) return null;
-    const nextState: AssistantSearchState = { ...state, adults };
+    const updated = applyCriterionUpdate(state, userText);
+    if (!updated.provisionalGuests && !updated.countsCollected) return null;
+    const nextStep = resolveFlowStep(updated);
     return {
       handled: true,
-      reply: buildGuestsAckReply(nextState),
+      reply: buildFlowReply(nextStep, updated),
+      state: updated,
+      readyToSearch: nextStep === "ready",
+    };
+  }
+
+  if (step === "awaiting_party_kind") {
+    const kind = extractPartyKind(userText);
+    if (!kind) return null;
+    const nextState: AssistantSearchState = {
+      ...applyCriterionUpdate(state, userText),
+      partyKind: kind,
+    };
+    const nextStep = resolveFlowStep(nextState);
+    return {
+      handled: true,
+      reply: buildFlowReply(nextStep, nextState),
       state: nextState,
-      readyToSearch: false,
+      readyToSearch: nextStep === "ready",
+    };
+  }
+
+  if (step === "awaiting_party_detail") {
+    const composition = partyDetailFromText(userText, state.provisionalGuests);
+    if (!composition || composition.adults + composition.children < 1) return null;
+    const nextState = withPartyCounts(state, composition);
+    const nextStep = resolveFlowStep(nextState);
+    return {
+      handled: true,
+      reply: buildFlowReply(nextStep, nextState),
+      state: nextState,
+      readyToSearch: nextStep === "ready",
     };
   }
 
@@ -1013,7 +1199,29 @@ function applyIndifferentAnswer(
     return {
       ...state,
       adults: undefined,
+      children: undefined,
+      babies: undefined,
+      provisionalGuests: undefined,
+      countsCollected: false,
       partySizes: undefined,
+      guestsAny: true,
+    };
+  }
+  if (step === "awaiting_party_kind") {
+    return { ...state, partyKind: "any" };
+  }
+  if (step === "awaiting_party_detail") {
+    const total = state.provisionalGuests ?? partyCapacity(state);
+    if (total > 0) {
+      return withPartyCounts(state, { adults: total, children: 0, babies: 0 });
+    }
+    return {
+      ...state,
+      adults: undefined,
+      children: undefined,
+      babies: undefined,
+      partySizes: undefined,
+      countsCollected: false,
       guestsAny: true,
     };
   }

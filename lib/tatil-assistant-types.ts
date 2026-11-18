@@ -7,11 +7,18 @@ export type AssistantSearchState = {
   checkIn?: string;
   checkOut?: string;
   adults?: number;
+  children?: number;
+  babies?: number;
+  /** "Kaç kişilik" cevabı. Kapasite, yetişkin ve çocuk sayısı netleşince hesaplanır. */
+  provisionalGuests?: number;
+  /** Yetişkin, çocuk ve bebek sayısı alındı. */
+  countsCollected?: boolean;
+  /** Aile, arkadaş grubu veya farketmez. */
+  partyKind?: "family" | "friends" | "any";
   /** Kişi sayısı sorusuna "farketmez" denildi; kapasite filtresi yok. */
   guestsAny?: boolean;
-  /** Tek kişi sayısı verildiyse o sayı ve sonraki iki kapasite. */
+  /** Kapasite ve bir üst kapasite. Birden fazla sayı yazıldıysa yalnızca onlar. */
   partySizes?: number[];
-  children?: number;
   regionSlugs?: string[];
   /** Bölge sorusuna "farketmez" denildi; tüm bölgeler aranır. */
   regionAny?: boolean;
