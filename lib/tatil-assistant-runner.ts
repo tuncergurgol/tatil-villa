@@ -20,10 +20,12 @@ import {
   isAssistantMoreOptionsRequest,
   pricedAssistantVillas,
 } from "@/lib/tatil-assistant-format";
+import { missingRegionPriceReply } from "@/lib/tatil-assistant-price-gap";
 import { createAssistantPublicShareLink } from "@/lib/tatil-assistant-share";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import {
   applyCriterionUpdate,
+  assistantPlaceName,
   partyCapacity,
   buildConsultantOpening,
   isConversationGreeting,
@@ -99,7 +101,7 @@ function matchFeatureName(
 async function loadAssistantRegionCatalog() {
   return prisma.region.findMany({
     where: { active: true },
-    select: { name: true, slug: true },
+    select: { id: true, parentId: true, level: true, name: true, slug: true },
   });
 }
 
@@ -200,8 +202,9 @@ function refreshCriteriaReply(_state: AssistantSearchState) {
 }
 
 async function describeAssistantSearch(state: AssistantSearchState) {
-  let regionNames: string[] = [];
-  if (!state.regionAny && state.regionSlugs?.length) {
+  const remembered = assistantPlaceName(state);
+  let regionNames: string[] = remembered ? [remembered] : [];
+  if (!remembered && !state.regionAny && state.regionSlugs?.length) {
     const regions = await prisma.region.findMany({
       where: { slug: { in: state.regionSlugs } },
       select: { name: true, slug: true },
@@ -336,14 +339,14 @@ async function deliverAssistantOffers(input: {
     const keepCriteria = !more;
     const nextState = keepCriteria ? searchState : refreshCriteriaState(searchState);
     const looking = await describeAssistantSearch(searchState);
+    const missingPrice = keepCriteria ? await missingRegionPriceReply(searchState) : "";
+    const follow = missingPrice || ASSISTANT_EMPTY_SEARCH_MESSAGE;
     const reply = keepCriteria
-      ? `${looking}\n\n${ASSISTANT_EMPTY_SEARCH_MESSAGE}`
+      ? `${looking}\n\n${follow}`
       : refreshCriteriaReply(searchState);
     let whatsappSent = false;
     if (phone) {
-      const outbound = keepCriteria
-        ? [looking, ASSISTANT_EMPTY_SEARCH_MESSAGE]
-        : [reply];
+      const outbound = keepCriteria ? [looking, follow] : [reply];
       for (const text of outbound) {
         try {
           await sendAssistantWhatsAppMessage(phone, text);

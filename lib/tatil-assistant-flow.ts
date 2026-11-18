@@ -1,5 +1,8 @@
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
-import { isAssistantMoreOptionsRequest } from "@/lib/tatil-assistant-format";
+import {
+  assistantOutsideServiceMessage,
+  isAssistantMoreOptionsRequest,
+} from "@/lib/tatil-assistant-format";
 import { slugifyTurkish } from "@/lib/tatildeyiz-next-data";
 import {
   isValidTurkishMobileE164,
@@ -583,8 +586,8 @@ function partyDetailFromText(text: string, provisionalGuests?: number) {
 
 export function extractRegionSlugs(text: string): string[] {
   const lower = text.toLocaleLowerCase("tr-TR");
-  const known = regionHitsInText(text).map((hit) => hit.slug);
-  if (known.length > 0) return [...new Set(known)];
+  const specific = specificRegionSlug(text);
+  if (specific) return [specific];
   if (
     /fark\s*etmez|farketmez/iu.test(lower) ||
     SKIP_WORDS.has(lower.trim()) ||
@@ -593,7 +596,7 @@ export function extractRegionSlugs(text: string): string[] {
     return [];
   }
   const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length !== 1 || /\d/.test(text)) return [];
+  if (words.length !== 1 || /\d/.test(text) || regionCatalog.length > 0) return [];
 
   const slug = slugifyTurkish(text.trim());
   return slug.length >= 2 ? [slug] : [];
@@ -643,7 +646,16 @@ const FEATURE_STOP = new Set([
 ]);
 
 let featureCatalog: string[] = [];
-let regionCatalog: { name: string; slug: string }[] = [];
+
+export type AssistantRegionNode = {
+  id: string;
+  parentId: string | null;
+  level: "IL" | "ILCE" | "MAHALLE";
+  name: string;
+  slug: string;
+};
+
+let regionCatalog: AssistantRegionNode[] = [];
 
 /** Bu turdaki villa özellik ve kategori adları. Akış senkron ilerlediği için tur başında kurulur. */
 export function setAssistantFeatureCatalog(names: string[]) {
@@ -651,8 +663,39 @@ export function setAssistantFeatureCatalog(names: string[]) {
 }
 
 /** Aktif bölgeler. Akış senkron ilerlediği için tur başında kurulur. */
-export function setAssistantRegionCatalog(regions: { name: string; slug: string }[]) {
+export function setAssistantRegionCatalog(regions: AssistantRegionNode[]) {
   regionCatalog = regions;
+}
+
+function regionNodeBySlug(slug: string) {
+  return regionCatalog.find((region) => region.slug === slug);
+}
+
+/** Seçilen yerin il, ilçe ve mahalle zinciri. */
+export function regionTrailForSlug(slug: string) {
+  const trail: NonNullable<AssistantSearchState["regionTrail"]> = {};
+  const seen = new Set<string>();
+  let current = regionNodeBySlug(slug);
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    const place = { name: current.name, slug: current.slug };
+    if (current.level === "IL") trail.il = place;
+    else if (current.level === "ILCE") trail.ilce = place;
+    else trail.mahalle = place;
+    current = current.parentId
+      ? regionCatalog.find((region) => region.id === current?.parentId)
+      : undefined;
+  }
+  return trail;
+}
+
+export function assistantPlaceName(state: AssistantSearchState) {
+  return (
+    state.regionTrail?.mahalle?.name ||
+    state.regionTrail?.ilce?.name ||
+    state.regionTrail?.il?.name ||
+    ""
+  );
 }
 
 function foldRegionText(value: string) {
@@ -682,9 +725,18 @@ function mentionsRegionName(text: string, name: string) {
 }
 
 function regionHitsInText(text: string) {
-  const hits: { name: string; slug: string }[] = [];
+  const hits: AssistantRegionNode[] = [];
   for (const [alias, slug] of Object.entries(REGION_ALIASES)) {
-    if (mentionsRegionName(text, alias)) hits.push({ name: alias, slug });
+    if (!mentionsRegionName(text, alias)) continue;
+    hits.push(
+      regionNodeBySlug(slug) ?? {
+        id: slug,
+        parentId: null,
+        level: "ILCE",
+        name: alias,
+        slug,
+      }
+    );
   }
   for (const region of regionCatalog) {
     const label = region.slug.replace(/-/g, " ");
@@ -692,7 +744,7 @@ function regionHitsInText(text: string) {
       hits.push(region);
     }
   }
-  const unique = new Map<string, { name: string; slug: string }>();
+  const unique = new Map<string, AssistantRegionNode>();
   for (const hit of hits) unique.set(hit.slug, hit);
   return [...unique.values()].filter((hit) => {
     const name = foldRegionText(hit.name);
@@ -702,6 +754,76 @@ function regionHitsInText(text: string) {
       return otherName.length > name.length && otherName.includes(name);
     });
   });
+}
+
+const REGION_LEVEL_RANK = { IL: 1, ILCE: 2, MAHALLE: 3 };
+
+function specificRegionSlug(text: string) {
+  const hits = regionHitsInText(text);
+  if (hits.length === 0) return "";
+  const deepest = Math.max(...hits.map((hit) => REGION_LEVEL_RANK[hit.level]));
+  const atDepth = hits.filter((hit) => REGION_LEVEL_RANK[hit.level] === deepest);
+  return atDepth.sort((left, right) => right.name.length - left.name.length)[0]?.slug ?? "";
+}
+
+const PLACE_STEM_STOP = new Set([
+  "havuz",
+  "manzara",
+  "deniz",
+  "villa",
+  "kisi",
+  "yetiskin",
+  "cocuk",
+  "bebek",
+  "aile",
+  "arkadas",
+  "tarih",
+  "gece",
+  "fiyat",
+  "uygun",
+  "ozellik",
+  "secenek",
+  "plaj",
+]);
+
+function locativePlace(token: string) {
+  const folded = foldRegionText(token);
+  const match = folded.match(/^([a-z0-9]{3,})(?:dan|den|tan|ten|da|de|ta|te)$/);
+  if (!match?.[1] || PLACE_STEM_STOP.has(match[1])) return "";
+  const known =
+    regionCatalog.some(
+      (region) =>
+        foldRegionText(region.name) === match[1] ||
+        foldRegionText(region.slug.replace(/-/g, "")) === match[1]
+    ) ||
+    Object.keys(REGION_ALIASES).some((alias) => foldRegionText(alias) === match[1]);
+  if (known) return "";
+  const visible = token
+    .replace(/['’]?(?:dan|den|tan|ten|da|de|ta|te)$/iu, "")
+    .trim();
+  if (visible.length < 3) return "";
+  return visible.charAt(0).toLocaleUpperCase("tr-TR") + visible.slice(1).toLocaleLowerCase("tr-TR");
+}
+
+/** Katalogda olmayan bir yer. Locative ya da bölge sorusundaki tek kelime. */
+export function unknownServicePlace(text: string, step?: AssistantFlowStep) {
+  if (regionCatalog.length === 0) return "";
+  if (regionHitsInText(text).length > 0) return "";
+  if (extractStayDates(text) || mentionsIndifferent(text)) return "";
+  if (extractAmenityNames(text).length > 0) return "";
+  for (const token of text.split(/\s+/).filter(Boolean)) {
+    const place = locativePlace(token);
+    if (place) return place;
+  }
+  if (step !== "awaiting_region") return "";
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length !== 1 || /\d/.test(words[0] ?? "")) return "";
+  const word = words[0] ?? "";
+  const folded = foldRegionText(word);
+  if (!folded || folded.length < 3 || SKIP_WORDS.has(folded) || PLACE_STEM_STOP.has(folded)) {
+    return "";
+  }
+  return word.charAt(0).toLocaleUpperCase("tr-TR") + word.slice(1).toLocaleLowerCase("tr-TR");
 }
 
 function foldFeatureText(value: string) {
@@ -921,8 +1043,8 @@ function withPartyCounts(
 }
 
 function regionSlugsInText(text: string) {
-  const known = regionHitsInText(text).map((hit) => hit.slug);
-  if (known.length > 0) return [...new Set(known)];
+  const specific = specificRegionSlug(text);
+  if (specific) return [specific];
   const trimmed = text.trim();
   const words = trimmed.split(/\s+/).filter(Boolean);
   const lower = trimmed.toLocaleLowerCase("tr-TR");
@@ -983,6 +1105,8 @@ export function applyCriterionUpdate(
   if (regions.length > 0) {
     next.regionSlugs = regions;
     next.regionAny = false;
+    const trail = regionTrailForSlug(regions[0] ?? "");
+    if (trail.il || trail.ilce || trail.mahalle) next.regionTrail = trail;
   }
 
   const lower = text.toLocaleLowerCase("tr-TR");
@@ -1284,6 +1408,7 @@ function applyIndifferentAnswer(
     return {
       ...state,
       regionSlugs: [],
+      regionTrail: undefined,
       regionAny: true,
       amenityNames,
       amenitiesCollected:
@@ -1309,7 +1434,7 @@ export function isFreshVillaRequest(text: string) {
   const lower = text.trim().toLocaleLowerCase("tr-TR");
   if (!lower.includes("villa")) return false;
   if (extractStayDates(text) || extractGuestCounts(text).length > 0) return false;
-  if (hasRegionAlias(text) || extractAmenityNames(text).length > 0) return false;
+  if (regionHitsInText(text).length > 0 || extractAmenityNames(text).length > 0) return false;
   return /laz[ıi]m|istiyor|ar[ıi]yor|bakar|gerek|bul|öner|oner/.test(lower);
 }
 
@@ -1343,6 +1468,20 @@ export function processFlowStep(
     const nextState = restartedConversationState(state);
     const nextStep = resolveFlowStep(nextState);
     return finishTurn(buildFlowReply(nextStep, nextState), nextState, false);
+  }
+
+  const outsidePlace = unknownServicePlace(userText, resolveFlowStep(state));
+  if (outsidePlace) {
+    const updated = applyCriterionUpdate(state, userText);
+    const known = regionHitsInText(userText).length > 0;
+    return finishTurn(assistantOutsideServiceMessage(outsidePlace), known
+      ? updated
+      : {
+          ...updated,
+          regionSlugs: state.regionSlugs,
+          regionAny: state.regionAny,
+          regionTrail: state.regionTrail,
+        }, false);
   }
 
   if (isFreshVillaRequest(userText)) {

@@ -58,10 +58,18 @@ export const ASSISTANT_REFRESH_CRITERIA_MESSAGE =
 export const ASSISTANT_EMPTY_SEARCH_MESSAGE =
   "Bu kriterlerle uygun villa bulamadım. Tarih, bölge, kişi sayısı veya özelliği değiştirebilirsek yeniden bakabilirim.";
 
+export function assistantOutsideServiceMessage(place: string) {
+  return `${turkishLocative(place)} size hizmet veremiyoruz.`;
+}
+
+export function assistantMissingPriceMessage(place: string) {
+  return `${turkishLocative(place)} henüz fiyat bilgisi iletilmedi, Tesis sahibi ile iletişime geçip size bilgi vereceğim.`;
+}
+
 export const ASSISTANT_UPDATE_HINT_MESSAGE =
   "Tarih, kişi sayısı, bölge ya da bir özellik yazarsanız seçeneklere birlikte bakalım.";
 
-function turkishLocative(name: string) {
+export function turkishLocative(name: string) {
   const lower = name.toLocaleLowerCase("tr-TR");
   const vowels = "aıoueiöü";
   const lastVowel = [...lower].reverse().find((char) => vowels.includes(char)) ?? "a";

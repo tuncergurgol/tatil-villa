@@ -20,6 +20,12 @@ export type AssistantSearchState = {
   /** Kapasite ve bir üst kapasite. Birden fazla sayı yazıldıysa yalnızca onlar. */
   partySizes?: number[];
   regionSlugs?: string[];
+  /** Seçilen yerin il, ilçe ve mahalle zinciri. */
+  regionTrail?: {
+    il?: { name: string; slug: string };
+    ilce?: { name: string; slug: string };
+    mahalle?: { name: string; slug: string };
+  };
   /** Bölge sorusuna "farketmez" denildi; tüm bölgeler aranır. */
   regionAny?: boolean;
   amenityNames?: string[];
