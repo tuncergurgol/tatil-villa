@@ -547,10 +547,6 @@ export async function processAssistantMessage(
         guestPhone: phone,
         phoneCollected: Boolean(phone),
       };
-  if (reply.includes("tam anlayamadım")) {
-    reply = buildConsultantOpening(nextState);
-  }
-
   let whatsappSent = false;
   let shareUrl: string | undefined;
   if (intake.handled && intake.readyToSearch) {

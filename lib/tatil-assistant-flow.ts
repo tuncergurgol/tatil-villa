@@ -7,6 +7,7 @@ import {
 
 export type AssistantFlowStep =
   | "awaiting_name"
+  | "awaiting_help"
   | "awaiting_dates"
   | "awaiting_guests"
   | "awaiting_region"
@@ -141,6 +142,7 @@ export function usablePersonName(name: string | null | undefined) {
 
 export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep {
   if (!usablePersonName(state.guestName)) return "awaiting_name";
+  if (!state.helpAsked) return "awaiting_help";
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
   if (!state.adults) return "awaiting_guests";
   if (!state.regionSlugs?.length) return "awaiting_region";
@@ -437,12 +439,21 @@ export function extractAmenityNames(text: string): string[] {
 }
 
 export const ASSISTANT_ASK_NAME =
-  "Hitap edebilmek için adınızı öğrenebilir miyim?\nNasıl yardımcı olabilirim?";
+  "Hitap edebilmek için adınızı öğrenebilir miyim?";
+
+export function buildHelpQuestion(state: AssistantSearchState) {
+  const name = usablePersonName(state.guestName);
+  if (!name) return "Nasıl yardımcı olabilirim?";
+  return `Merhaba ${name}, nasıl yardımcı olabilirim?`;
+}
 
 export function buildConsultantOpening(state: AssistantSearchState) {
-  const name = usablePersonName(state.guestName);
-  if (!name) return ASSISTANT_ASK_NAME;
-  return `Merhaba ${name}, nasıl yardımcı olabilirim?`;
+  if (!usablePersonName(state.guestName)) return ASSISTANT_ASK_NAME;
+  return buildHelpQuestion(state);
+}
+
+function markHelpAsked(state: AssistantSearchState): AssistantSearchState {
+  return state.helpAsked ? state : { ...state, helpAsked: true };
 }
 
 function addressGuest(state: AssistantSearchState, question: string) {
@@ -460,6 +471,8 @@ export function buildFlowReply(
   switch (step) {
     case "awaiting_name":
       return ASSISTANT_ASK_NAME;
+    case "awaiting_help":
+      return buildHelpQuestion(state);
     case "awaiting_dates":
       return addressGuest(state, "Hangi tarihlerde konaklamak istiyorsunuz?");
     case "awaiting_guests":
@@ -588,6 +601,10 @@ function buildProgressReply(
     notes.push("bölge tercihinizi");
   }
 
+  if (nextStep === "awaiting_name" || nextStep === "awaiting_help") {
+    return buildFlowReply(nextStep, after);
+  }
+
   const question = buildFlowReply(nextStep, after);
   if (notes.length === 0) return question;
   return `${notes.join(", ")} not aldım. ${question}`;
@@ -599,6 +616,8 @@ function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
   switch (step) {
     case "awaiting_name":
       return ASSISTANT_ASK_NAME;
+    case "awaiting_help":
+      return buildHelpQuestion(state);
     case "awaiting_dates":
       return name
         ? `${name}, tarihi tam anlayamadım. Örneğin: 3/7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?`
@@ -629,6 +648,16 @@ function tryParseStep(
     const guestName = extractGuestName(userText);
     if (!guestName) return null;
     const nextState: AssistantSearchState = { ...state, guestName };
+    return {
+      handled: true,
+      reply: buildHelpQuestion(nextState),
+      state: nextState,
+      readyToSearch: false,
+    };
+  }
+
+  if (step === "awaiting_help") {
+    const nextState = markHelpAsked(state);
     const nextStep = resolveFlowStep(nextState);
     return {
       handled: true,
@@ -723,40 +752,37 @@ export function processFlowStep(
   const harvested = harvestKnownSlots(userText, state);
   const greetingOnly = GREETINGS.has(userText.trim().toLocaleLowerCase("tr-TR"));
   if (greetingOnly && !slotsChanged(state, harvested)) {
-    return {
-      handled: true,
-      reply: buildConsultantOpening(state),
-      state,
-      readyToSearch: false,
-    };
+    return finishTurn(buildFlowReply(step, state), state, false);
   }
 
   if (slotsChanged(state, harvested)) {
     const nextStep = resolveFlowStep(harvested);
-    if (nextStep === "ready") {
-      return {
-        handled: true,
-        reply: buildFlowReply("ready", harvested),
-        state: harvested,
-        readyToSearch: true,
-      };
-    }
-    return {
-      handled: true,
-      reply: buildProgressReply(state, harvested, nextStep),
-      state: harvested,
-      readyToSearch: false,
-    };
+    return finishTurn(
+      nextStep === "ready"
+        ? buildFlowReply("ready", harvested)
+        : buildProgressReply(state, harvested, nextStep),
+      harvested,
+      nextStep === "ready"
+    );
   }
 
   const parsed = tryParseStep(step, userText, state);
-  if (parsed) return parsed;
+  if (parsed) return finishTurn(parsed.reply, parsed.state, parsed.readyToSearch);
 
+  return finishTurn(buildRetryReply(step, state), state, false);
+}
+
+function finishTurn(
+  reply: string,
+  state: AssistantSearchState,
+  readyToSearch: boolean
+): FlowAdvanceResult {
+  const askingHelp = resolveFlowStep(state) === "awaiting_help";
   return {
     handled: true,
-    reply: buildRetryReply(step, state),
-    state,
-    readyToSearch: false,
+    reply,
+    state: askingHelp ? markHelpAsked(state) : state,
+    readyToSearch,
   };
 }
 

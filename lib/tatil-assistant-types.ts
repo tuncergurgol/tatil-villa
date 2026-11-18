@@ -1,5 +1,7 @@
 export type AssistantSearchState = {
   guestName?: string;
+  /** Ad alındıktan sonra "Nasıl yardımcı olabilirim?" soruldu. */
+  helpAsked?: boolean;
   guestPhone?: string;
   guestEmail?: string;
   checkIn?: string;
