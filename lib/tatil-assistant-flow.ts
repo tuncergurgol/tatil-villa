@@ -21,10 +21,13 @@ const GREETINGS = new Set([
   "merhabalar",
   "selam",
   "selamlar",
-  "iyi günler",
-  "iyi akşamlar",
+  "selamun aleykum",
+  "selamunaleykum",
+  "sa",
+  "s.a",
+  "iyi gunler",
   "iyi aksamlar",
-  "günaydın",
+  "gunaydin",
   "kolay gelsin",
   "hey",
   "hello",
@@ -32,6 +35,27 @@ const GREETINGS = new Set([
   "mrb",
   "slm",
 ]);
+
+function foldGreeting(text: string) {
+  return text
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ç/g, "c")
+    .replace(/\s+/g, " ")
+    .replace(/\s*\.\s*/g, ".")
+    .replace(/[.!?,…]+$/g, "")
+    .trim();
+}
+
+/** Mesajın tamamı selamlaşmaysa sohbet başa alınır. */
+export function isConversationGreeting(text: string) {
+  return GREETINGS.has(foldGreeting(text));
+}
 
 const SKIP_WORDS = new Set([
   "evet",
@@ -170,10 +194,8 @@ export function extractGuestName(text: string): string | null {
   const words = trimmed.split(/\s+/).filter(Boolean);
   if (words.length === 0 || words.length > 3) return null;
   if (/\d/.test(trimmed)) return null;
-  if (
-    GREETINGS.has(lower) ||
-    GREETINGS.has(words[0]?.toLocaleLowerCase("tr-TR") ?? "")
-  ) {
+  if (isConversationGreeting(trimmed)) return null;
+  if (GREETINGS.has(foldGreeting(words[0] ?? ""))) {
     if (words.length === 1) return null;
     const greeted = words.slice(1).join(" ");
     return usablePersonName(greeted) || null;
@@ -582,7 +604,7 @@ function regionSlugsInText(text: string) {
   if (
     words.length === 0 ||
     words.length > 3 ||
-    GREETINGS.has(lower) ||
+    isConversationGreeting(trimmed) ||
     SKIP_WORDS.has(lower) ||
     extractStayDates(text) ||
     extractAmenityNames(text).length > 0 ||
@@ -844,11 +866,28 @@ function freshCriteriaState(state: AssistantSearchState): AssistantSearchState {
   };
 }
 
+function restartedConversationState(state: AssistantSearchState): AssistantSearchState {
+  const guestName = usablePersonName(state.guestName);
+  return {
+    guestName: guestName ?? undefined,
+    guestPhone: state.guestPhone,
+    phoneCollected: Boolean(state.guestPhone?.trim() || state.phoneCollected),
+    helpAsked: false,
+    freshIntake: true,
+  };
+}
+
 /** Aktif akış adımında cevabı işler; anlaşılmazsa aynı adım için tekrar sorar. */
 export function processFlowStep(
   userText: string,
   state: AssistantSearchState
 ): FlowAdvanceResult {
+  if (isConversationGreeting(userText)) {
+    const nextState = restartedConversationState(state);
+    const nextStep = resolveFlowStep(nextState);
+    return finishTurn(buildFlowReply(nextStep, nextState), nextState, false);
+  }
+
   if (isFreshVillaRequest(userText)) {
     const nextState = freshCriteriaState(state);
     const nextStep = resolveFlowStep(nextState);
@@ -881,11 +920,6 @@ export function processFlowStep(
   }
 
   const harvested = harvestKnownSlots(userText, state);
-  const greetingOnly = GREETINGS.has(userText.trim().toLocaleLowerCase("tr-TR"));
-  if (greetingOnly && !slotsChanged(state, harvested)) {
-    return finishTurn(buildFlowReply(step, state), state, false);
-  }
-
   if (slotsChanged(state, harvested)) {
     const nextStep = resolveFlowStep(harvested);
     return finishTurn(

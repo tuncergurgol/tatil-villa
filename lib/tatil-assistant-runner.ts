@@ -22,7 +22,7 @@ import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import {
   applyCriterionUpdate,
   buildConsultantOpening,
-  buildHelpQuestion,
+  isConversationGreeting,
   usablePersonName,
   buildFlowReply,
   extractGuestPhone,
@@ -636,13 +636,9 @@ export async function processAssistantMessage(
     searchState.guestPhone?.trim() ||
     conversation.guestPhone?.trim() ||
     input.guestPhone?.trim();
-  if (searchState.checkIn && searchState.adults) {
-    const greeting = /^(merhaba|merhabalar|selam|selamlar|hey|hi|hello|mrb|slm)$/iu.test(
-      userText.trim()
-    );
-    const reply = greeting
-      ? buildHelpQuestion(searchState)
-      : "Tarih, kişi sayısı, bölge veya bir özellik yazarsanız seçenekleri ona göre güncellerim.";
+  if (searchState.checkIn && searchState.adults && !isConversationGreeting(userText)) {
+    const reply =
+      "Tarih, kişi sayısı, bölge veya bir özellik yazarsanız seçenekleri ona göre güncellerim.";
     await prisma.tatilAssistantConversation.update({
       where: { id: conversation.id },
       data: {
