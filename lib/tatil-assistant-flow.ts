@@ -586,7 +586,8 @@ function regionSlugsInText(text: string) {
     SKIP_WORDS.has(lower) ||
     extractStayDates(text) ||
     extractAmenityNames(text).length > 0 ||
-    /\d/.test(text)
+    /\d/.test(text) ||
+    lower.includes("villa")
   ) {
     return [];
   }
@@ -820,11 +821,43 @@ function tryParseStep(
   return null;
 }
 
+function hasRegionAlias(text: string) {
+  return Object.keys(REGION_ALIASES).some((alias) => mentionsAlias(text, alias));
+}
+
+/** "Bana villa lazım" gibi kriter içermeyen yeni bir talep. */
+export function isFreshVillaRequest(text: string) {
+  const lower = text.trim().toLocaleLowerCase("tr-TR");
+  if (!lower.includes("villa")) return false;
+  if (extractStayDates(text) || extractGuestCounts(text).length > 0) return false;
+  if (hasRegionAlias(text) || extractAmenityNames(text).length > 0) return false;
+  return /laz[ıi]m|istiyor|ar[ıi]yor|bakar|gerek|bul|öner|oner/.test(lower);
+}
+
+function freshCriteriaState(state: AssistantSearchState): AssistantSearchState {
+  return {
+    guestName: state.guestName,
+    guestPhone: state.guestPhone,
+    phoneCollected: Boolean(state.guestPhone?.trim() || state.phoneCollected),
+    helpAsked: Boolean(usablePersonName(state.guestName)),
+  };
+}
+
 /** Aktif akış adımında cevabı işler; anlaşılmazsa aynı adım için tekrar sorar. */
 export function processFlowStep(
   userText: string,
   state: AssistantSearchState
 ): FlowAdvanceResult {
+  if (isFreshVillaRequest(userText)) {
+    const nextState = freshCriteriaState(state);
+    const nextStep = resolveFlowStep(nextState);
+    return finishTurn(
+      buildFlowReply(nextStep, nextState),
+      nextState,
+      nextStep === "ready"
+    );
+  }
+
   const step = resolveFlowStep(state);
   if (step === "ready") {
     if (isAssistantMoreOptionsRequest(userText)) return { handled: false };
