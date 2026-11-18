@@ -120,6 +120,7 @@ async function runVillaSearch(args: {
     babies: 0,
     regionSlugs,
     amenityNames,
+    guestCounts: [args.adults],
     flexibleDate: args.flexibleDate ?? false,
     fillEmptyDates: true,
     sort: "price_asc",
@@ -258,25 +259,40 @@ async function deliverAssistantOffers(input: {
     domain,
   });
 
-  const messages = offerBatch.map((item) =>
-    formatAssistantVillaOfferMessage(item, {
-      domain,
-      guestName: searchState.guestName,
-      adults: item.partySize,
-      brand: "Tatildeyiz",
-    })
+  const missingSizes = partySizes.filter(
+    (size) => !offerBatch.some((item) => item.partySize === size)
   );
+  const messages = [
+    ...(missingSizes.length
+      ? [
+          `${missingSizes.join(" ve ")} kişilik villa bu kriterlerde çıkmadı.`,
+        ]
+      : []),
+    ...offerBatch.map((item) =>
+      formatAssistantVillaOfferMessage(item, {
+        domain,
+        guestName: searchState.guestName,
+        adults: item.partySize,
+        brand: "Tatildeyiz",
+      })
+    ),
+  ];
   const reply = messages.join("\n\n");
   const deliveredIds: string[] = [];
   if (phone) {
-    for (const [index, text] of messages.entries()) {
+    const preface = missingSizes.length ? messages[0] : "";
+    const villaMessages = missingSizes.length ? messages.slice(1) : messages;
+    const outbound = preface ? [preface, ...villaMessages] : villaMessages;
+    for (const [index, text] of outbound.entries()) {
       try {
         await sendAssistantWhatsAppMessage(phone, text);
-        deliveredIds.push(offerBatch[index]!.id);
+        if (!preface || index > 0) {
+          deliveredIds.push(offerBatch[preface ? index - 1 : index]!.id);
+        }
       } catch {
         break;
       }
-      if (index < messages.length - 1) {
+      if (index < outbound.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 700));
       }
     }
