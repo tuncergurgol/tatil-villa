@@ -127,6 +127,8 @@ const REGION_ALIASES: Record<string, string> = {
   alanya: "alanya",
   belek: "belek",
   kemer: "kemer",
+  kayaköy: "kayakoy",
+  kayakoy: "kayakoy",
 };
 
 function capitalizeWord(word: string) {
@@ -581,11 +583,8 @@ function partyDetailFromText(text: string, provisionalGuests?: number) {
 
 export function extractRegionSlugs(text: string): string[] {
   const lower = text.toLocaleLowerCase("tr-TR");
-  const slugs = new Set<string>();
-  for (const [alias, slug] of Object.entries(REGION_ALIASES)) {
-    if (lower.includes(alias)) slugs.add(slug);
-  }
-  if (slugs.size > 0) return [...slugs];
+  const known = regionHitsInText(text).map((hit) => hit.slug);
+  if (known.length > 0) return [...new Set(known)];
   if (
     /fark\s*etmez|farketmez/iu.test(lower) ||
     SKIP_WORDS.has(lower.trim()) ||
@@ -644,10 +643,65 @@ const FEATURE_STOP = new Set([
 ]);
 
 let featureCatalog: string[] = [];
+let regionCatalog: { name: string; slug: string }[] = [];
 
 /** Bu turdaki villa özellik ve kategori adları. Akış senkron ilerlediği için tur başında kurulur. */
 export function setAssistantFeatureCatalog(names: string[]) {
   featureCatalog = names;
+}
+
+/** Aktif bölgeler. Akış senkron ilerlediği için tur başında kurulur. */
+export function setAssistantRegionCatalog(regions: { name: string; slug: string }[]) {
+  regionCatalog = regions;
+}
+
+function foldRegionText(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ç/g, "c")
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function mentionsRegionName(text: string, name: string) {
+  const foldedText = foldRegionText(text);
+  const foldedName = foldRegionText(name);
+  if (foldedName.length < 3) return false;
+  const escaped = foldedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(
+    `(^|[^a-z0-9])${escaped}(?:da|de|ta|te|dan|den|tan|ten|ya|ye|a|e)?(?=$|[^a-z0-9])`,
+    "i"
+  ).test(foldedText);
+}
+
+function regionHitsInText(text: string) {
+  const hits: { name: string; slug: string }[] = [];
+  for (const [alias, slug] of Object.entries(REGION_ALIASES)) {
+    if (mentionsRegionName(text, alias)) hits.push({ name: alias, slug });
+  }
+  for (const region of regionCatalog) {
+    const label = region.slug.replace(/-/g, " ");
+    if (mentionsRegionName(text, region.name) || mentionsRegionName(text, label)) {
+      hits.push(region);
+    }
+  }
+  const unique = new Map<string, { name: string; slug: string }>();
+  for (const hit of hits) unique.set(hit.slug, hit);
+  return [...unique.values()].filter((hit) => {
+    const name = foldRegionText(hit.name);
+    return ![...unique.values()].some((other) => {
+      if (other.slug === hit.slug) return false;
+      const otherName = foldRegionText(other.name);
+      return otherName.length > name.length && otherName.includes(name);
+    });
+  });
 }
 
 function foldFeatureText(value: string) {
@@ -867,11 +921,8 @@ function withPartyCounts(
 }
 
 function regionSlugsInText(text: string) {
-  const slugs = new Set<string>();
-  for (const [alias, slug] of Object.entries(REGION_ALIASES)) {
-    if (mentionsAlias(text, alias)) slugs.add(slug);
-  }
-  if (slugs.size > 0) return [...slugs];
+  const known = regionHitsInText(text).map((hit) => hit.slug);
+  if (known.length > 0) return [...new Set(known)];
   const trimmed = text.trim();
   const words = trimmed.split(/\s+/).filter(Boolean);
   const lower = trimmed.toLocaleLowerCase("tr-TR");
@@ -1362,7 +1413,9 @@ export function processFlowStep(
   if (step === "ready") {
     if (isAssistantMoreOptionsRequest(userText)) return { handled: false };
     const updated = applyCriterionUpdate(state, userText);
-    if (!searchCriteriaChanged(state, updated)) return { handled: false };
+    const continues =
+      regionSlugsInText(userText).length > 0 || Boolean(extractStayDates(userText));
+    if (!searchCriteriaChanged(state, updated) && !continues) return { handled: false };
     const nextState: AssistantSearchState = {
       ...updated,
       helpAsked: true,

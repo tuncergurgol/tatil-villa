@@ -33,6 +33,7 @@ import {
   processFlowStep,
   resolveFlowStep,
   setAssistantFeatureCatalog,
+  setAssistantRegionCatalog,
 } from "@/lib/tatil-assistant-flow";
 
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
@@ -93,6 +94,13 @@ function matchFeatureName(
       return current.includes(folded) || folded.includes(current);
     })
   );
+}
+
+async function loadAssistantRegionCatalog() {
+  return prisma.region.findMany({
+    where: { active: true },
+    select: { name: true, slug: true },
+  });
 }
 
 async function loadAssistantFeatureCatalog() {
@@ -552,8 +560,12 @@ export async function processAssistantMessage(
       : { ...storedState, guestName: undefined },
     input.guestPhone || conversation.guestPhone
   );
-  const featureCatalog = await loadAssistantFeatureCatalog();
+  const [featureCatalog, regionCatalog] = await Promise.all([
+    loadAssistantFeatureCatalog(),
+    loadAssistantRegionCatalog(),
+  ]);
   setAssistantFeatureCatalog(featureCatalog);
+  setAssistantRegionCatalog(regionCatalog);
   const priorUserTexts = conversation.messages
     .filter((message) => message.role === "user")
     .map((message) => message.content);
@@ -585,6 +597,7 @@ export async function processAssistantMessage(
   }
   let flowAdvance = processFlowStep(userText, searchState);
   setAssistantFeatureCatalog([]);
+  setAssistantRegionCatalog([]);
 
   if (flowAdvance.handled) {
     searchState = flowAdvance.state;
@@ -751,12 +764,14 @@ export async function processAssistantMessage(
     return { conversationId: conversation.id, reply, whatsappSent: Boolean(phone) };
   }
   setAssistantFeatureCatalog(featureCatalog);
+  setAssistantRegionCatalog(regionCatalog);
   const intake = processFlowStep(userText, {
     guestName: searchState.guestName,
     guestPhone: phone,
     phoneCollected: Boolean(phone),
   });
   setAssistantFeatureCatalog([]);
+  setAssistantRegionCatalog([]);
   let reply = intake.handled
     ? intake.reply
     : buildConsultantOpening(searchState);
