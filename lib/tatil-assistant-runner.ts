@@ -100,7 +100,7 @@ async function expandAssistantFeatures(names: string[] | undefined) {
   const [amenities, categories] = await Promise.all([
     prisma.amenity.findMany({ where: { active: true }, select: { name: true } }),
     prisma.facilityCategory.findMany({
-      where: { active: true },
+      where: { published: true },
       select: { name: true },
     }),
   ]);
