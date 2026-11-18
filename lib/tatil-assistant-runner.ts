@@ -118,12 +118,22 @@ async function expandAssistantFeatures(names: string[] | undefined) {
   ]);
   const amenityNames: string[] = [];
   const facilityCategoryNames: string[] = [];
+  const exactName = (rows: { name: string }[], needle: string) => {
+    const folded = needle.toLocaleLowerCase("tr-TR");
+    return rows.find((item) => item.name.toLocaleLowerCase("tr-TR") === folded);
+  };
   for (const name of names) {
-    const category = matchFeatureName(categories, name);
-    const amenity = matchFeatureName(amenities, name);
-    if (category) facilityCategoryNames.push(category.name);
-    else if (amenity) amenityNames.push(amenity.name);
-    else amenityNames.push(name);
+    const amenityExact = exactName(amenities, name);
+    const categoryExact = exactName(categories, name);
+    if (amenityExact) amenityNames.push(amenityExact.name);
+    else if (categoryExact) facilityCategoryNames.push(categoryExact.name);
+    else {
+      const amenity = matchFeatureName(amenities, name);
+      const category = matchFeatureName(categories, name);
+      if (amenity) amenityNames.push(amenity.name);
+      else if (category) facilityCategoryNames.push(category.name);
+      else amenityNames.push(name);
+    }
   }
   return {
     amenityNames: amenityNames.length ? [...new Set(amenityNames)] : undefined,

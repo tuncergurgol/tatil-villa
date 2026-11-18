@@ -490,7 +490,15 @@ export function extractRegionSlugs(text: string): string[] {
     if (lower.includes(alias)) slugs.add(slug);
   }
   if (slugs.size > 0) return [...slugs];
-  if (/fark\s*etmez|farketmez/iu.test(lower) || SKIP_WORDS.has(lower)) return [];
+  if (
+    /fark\s*etmez|farketmez/iu.test(lower) ||
+    SKIP_WORDS.has(lower.trim()) ||
+    extractAmenityNames(text).length > 0
+  ) {
+    return [];
+  }
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length !== 1 || /\d/.test(text)) return [];
 
   const slug = slugifyTurkish(text.trim());
   return slug.length >= 2 ? [slug] : [];
@@ -556,7 +564,7 @@ function foldFeatureText(value: string) {
 function featureTokens(value: string) {
   return foldFeatureText(value)
     .split(" ")
-    .map((token) => token.replace(/(imiz|umuz|miz|muz|lar|ler|lu|li)$/u, ""))
+    .map((token) => token.replace(/(imiz|umuz|miz|muz|lar|ler|lu|li|si)$/u, ""))
     .filter((token) => token.length >= 3 && !FEATURE_STOP.has(token));
 }
 
@@ -573,8 +581,19 @@ function matchCatalogFeatures(text: string) {
     );
     if (matched) hits.push(name);
   }
+  const specific = hits.filter((name) => {
+    const tokens = featureTokens(name);
+    return !hits.some((other) => {
+      if (other === name) return false;
+      const otherTokens = featureTokens(other);
+      return (
+        otherTokens.length > tokens.length &&
+        tokens.every((token) => otherTokens.includes(token))
+      );
+    });
+  });
   const groups = new Map<string, string[]>();
-  for (const name of hits) {
+  for (const name of specific) {
     const key = featureTokens(name).slice().sort().join("|");
     const list = groups.get(key) ?? [];
     list.push(name);
@@ -630,7 +649,22 @@ export function extractAmenityNames(text: string): string[] {
     }
   }
 
-  return amenities;
+  return amenities.filter((name) => {
+    const tokens = featureTokens(name);
+    return !amenities.some((other) => {
+      if (other === name) return false;
+      const otherTokens = featureTokens(other);
+      const narrower =
+        otherTokens.length > tokens.length &&
+        tokens.every((token) => otherTokens.includes(token));
+      const villaAlias =
+        otherTokens.length === tokens.length &&
+        tokens.every((token) => otherTokens.includes(token)) &&
+        foldFeatureText(name).includes("villa") &&
+        !foldFeatureText(other).includes("villa");
+      return narrower || villaAlias;
+    });
+  });
 }
 
 export const ASSISTANT_ASK_NAME =
@@ -726,7 +760,8 @@ function regionSlugsInText(text: string) {
     extractStayDates(text) ||
     extractAmenityNames(text).length > 0 ||
     /\d/.test(text) ||
-    lower.includes("villa")
+    lower.includes("villa") ||
+    words.length !== 1
   ) {
     return [];
   }
