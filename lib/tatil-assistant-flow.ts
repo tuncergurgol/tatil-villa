@@ -171,7 +171,12 @@ export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep 
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
   if (!state.adults && !state.guestsAny) return "awaiting_guests";
   if (!state.regionAny && !state.regionSlugs?.length) return "awaiting_region";
-  if (!state.amenitiesCollected) return "awaiting_amenities";
+  if (
+    !state.amenitiesCollected &&
+    !(state.freshIntake && (state.amenityNames?.length ?? 0) > 0)
+  ) {
+    return "awaiting_amenities";
+  }
   if (!state.phoneCollected || !state.guestPhone?.trim()) return "awaiting_phone";
   return "ready";
 }
@@ -511,6 +516,75 @@ export function extractGuestPhone(text: string): string | null {
   return null;
 }
 
+const FEATURE_STOP = new Set([
+  "villa",
+  "izin",
+  "var",
+  "yok",
+  "ile",
+  "ve",
+  "icin",
+  "bir",
+  "birde",
+  "kabul",
+  "edilir",
+  "olur",
+  "olsun",
+]);
+
+let featureCatalog: string[] = [];
+
+/** Bu turdaki villa özellik ve kategori adları. Akış senkron ilerlediği için tur başında kurulur. */
+export function setAssistantFeatureCatalog(names: string[]) {
+  featureCatalog = names;
+}
+
+function foldFeatureText(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/ü/g, "u")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function featureTokens(value: string) {
+  return foldFeatureText(value)
+    .split(" ")
+    .map((token) => token.replace(/(imiz|umuz|miz|muz|lar|ler|lu|li)$/u, ""))
+    .filter((token) => token.length >= 3 && !FEATURE_STOP.has(token));
+}
+
+function matchCatalogFeatures(text: string) {
+  if (featureCatalog.length === 0) return [];
+  const textTokens = featureTokens(text);
+  if (textTokens.length === 0) return [];
+  const hits: string[] = [];
+  for (const name of featureCatalog) {
+    const nameTokens = featureTokens(name);
+    if (nameTokens.length === 0) continue;
+    const matched = nameTokens.every((token) =>
+      textTokens.some((word) => word === token || word.startsWith(token))
+    );
+    if (matched) hits.push(name);
+  }
+  const groups = new Map<string, string[]>();
+  for (const name of hits) {
+    const key = featureTokens(name).slice().sort().join("|");
+    const list = groups.get(key) ?? [];
+    list.push(name);
+    groups.set(key, list);
+  }
+  return [...groups.values()].map(
+    (list) => list.find((name) => !foldFeatureText(name).includes("villa")) ?? list[0]!
+  );
+}
+
 export function extractAmenityNames(text: string): string[] {
   const lower = text.toLocaleLowerCase("tr-TR").trim();
   if (
@@ -548,6 +622,12 @@ export function extractAmenityNames(text: string): string[] {
 
   for (const [pattern, label] of patterns) {
     if (pattern.test(lower)) amenities.push(label);
+  }
+
+  for (const name of matchCatalogFeatures(text)) {
+    if (!amenities.some((item) => item.toLocaleLowerCase("tr-TR") === name.toLocaleLowerCase("tr-TR"))) {
+      amenities.push(name);
+    }
   }
 
   return amenities;
