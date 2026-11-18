@@ -7,6 +7,7 @@ import {
 } from "@/lib/gemini-client";
 
 export type FacilityCategoryCopy = {
+  tag: string;
   description: string;
   longDescription: string;
   seoTitle: string;
@@ -27,15 +28,17 @@ function parseCopy(raw: string): FacilityCategoryCopy | null {
     .trim();
   try {
     const parsed = JSON.parse(json) as Partial<FacilityCategoryCopy>;
+    const tag = parsed.tag?.trim().replace(/[.]+$/u, "") ?? "";
     const description = parsed.description?.trim() ?? "";
     const longDescription = parsed.longDescription?.trim() ?? "";
     const seoTitle = parsed.seoTitle?.trim() ?? "";
     const seoKeywords = parsed.seoKeywords?.trim() ?? "";
     const seoDescription = parsed.seoDescription?.trim() ?? "";
-    if (!description || !longDescription || !seoTitle || !seoDescription) {
+    if (!tag || !description || !longDescription || !seoTitle || !seoDescription) {
       return null;
     }
     return {
+      tag: tag.slice(0, 40),
       description,
       longDescription,
       seoTitle: seoTitle.slice(0, 70),
@@ -62,7 +65,7 @@ export async function generateFacilityCategoryCopy(
     "Dil Türkçe. Üslup saygılı, samimi ve sade olsun.",
     "Uydurma fiyat, puan veya garanti yazma.",
     "Yalnızca şu JSON'u döndür:",
-    '{"description":"1-2 cümle kısa açıklama","longDescription":"iki kısa paragraf","seoTitle":"60 karakter civarı başlık","seoKeywords":"virgülle ayrılmış 6 anahtar kelime","seoDescription":"150 karakter civarı meta açıklama"}',
+    '{"tag":"2-4 kelimelik kısa etiket","description":"1-2 cümle kısa açıklama","longDescription":"iki kısa paragraf","seoTitle":"60 karakter civarı başlık","seoKeywords":"virgülle ayrılmış 6 anahtar kelime","seoDescription":"150 karakter civarı meta açıklama"}',
   ].join("\n");
 
   const raw = await generateTextWithGemini({

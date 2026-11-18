@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition, type ChangeEvent } from "react";
 import Image from "next/image";
 import { Save, Sparkles, Trash2, UploadCloud, X } from "lucide-react";
 import { generateFacilityCategoryCopy } from "@/app/actions/admin/facility-category-ai";
@@ -23,11 +23,15 @@ function Field({
   label,
   name,
   defaultValue = "",
+  value,
+  onChange,
   type = "text",
 }: {
   label: string;
   name: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   type?: string;
 }) {
   return (
@@ -36,7 +40,9 @@ function Field({
       <input
         name={name}
         type={type}
-        defaultValue={defaultValue}
+        {...(onChange
+          ? { value: value ?? "", onChange: (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value) }
+          : { defaultValue })}
         className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
       />
     </label>
@@ -122,6 +128,7 @@ export default function FacilityCategoryFormModal({
   );
   const [showInOffer, setShowInOffer] = useState(category?.showInOffer ?? false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [tag, setTag] = useState(category?.tag ?? "");
   const [description, setDescription] = useState(category?.description ?? "");
   const [longDescription, setLongDescription] = useState(
     category?.longDescription ?? ""
@@ -159,6 +166,10 @@ export default function FacilityCategoryFormModal({
       }
       const copy = result.copy;
       let filled = 0;
+      if (!tag.trim()) {
+        setTag(copy.tag);
+        filled += 1;
+      }
       if (!description.trim()) {
         setDescription(copy.description);
         filled += 1;
@@ -265,7 +276,7 @@ export default function FacilityCategoryFormModal({
                     name="name"
                     defaultValue={category?.name}
                   />
-                  <Field label="Tag" name="tag" defaultValue={category?.tag} />
+                  <Field label="Tag" name="tag" value={tag} onChange={setTag} />
                 </div>
 
                 <TextareaField
