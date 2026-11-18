@@ -5,8 +5,35 @@ import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getRegionIdsForFilter } from "@/lib/queries/region-tree";
 import { getStayNightKeys } from "@/lib/stay-quote";
 import { assistantMissingPriceMessage } from "@/lib/tatil-assistant-format";
-import { assistantPlaceName } from "@/lib/tatil-assistant-flow";
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
+
+type RegionTrail = NonNullable<AssistantSearchState["regionTrail"]>;
+
+async function trailFromDatabase(slug: string): Promise<RegionTrail> {
+  const regions = await prisma.region.findMany({
+    where: { active: true },
+    select: { id: true, parentId: true, level: true, name: true, slug: true },
+  });
+  const trail: RegionTrail = {};
+  const seen = new Set<string>();
+  let current = regions.find((region) => region.slug === slug);
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    const place = { name: current.name, slug: current.slug };
+    if (current.level === "IL") trail.il = place;
+    else if (current.level === "ILCE") trail.ilce = place;
+    else trail.mahalle = place;
+    current = current.parentId
+      ? regions.find((region) => region.id === current?.parentId)
+      : undefined;
+  }
+  return trail;
+}
+
+function placeLabel(trail: RegionTrail | undefined, fallback: string) {
+  const parts = [trail?.il?.name, trail?.ilce?.name, trail?.mahalle?.name].filter(Boolean);
+  return parts.join(", ") || fallback;
+}
 import { dbDateToDateKey } from "@/lib/villa-period-calendar";
 
 export const ASSISTANT_PRICE_GAP_EMAIL = "info@tatildeyiz.com.tr";
@@ -104,14 +131,19 @@ export async function missingRegionPriceReply(state: AssistantSearchState) {
   }
   if (villas.some((villa) => covered.get(villa.id)?.size === nights.length)) return "";
 
-  const named = assistantPlaceName(state);
-  const region = named
-    ? null
-    : await prisma.region.findFirst({
-        where: { slug: state.regionSlugs[0] },
-        select: { name: true },
-      });
-  const place = named || region?.name || "Bu bölge";
-  await notifyMissingPrices(state, place, villas.map((villa) => villa.name));
+  const trail =
+    state.regionTrail?.il || state.regionTrail?.ilce || state.regionTrail?.mahalle
+      ? state.regionTrail
+      : await trailFromDatabase(state.regionSlugs[0] ?? "");
+  const region = await prisma.region.findFirst({
+    where: { slug: state.regionSlugs[0] },
+    select: { name: true },
+  });
+  const place = placeLabel(trail, region?.name || "Bu bölge");
+  await notifyMissingPrices(
+    { ...state, regionTrail: trail },
+    place,
+    villas.map((villa) => villa.name)
+  );
   return assistantMissingPriceMessage(place);
 }

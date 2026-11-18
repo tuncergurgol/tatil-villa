@@ -27,6 +27,7 @@ import {
   applyCriterionUpdate,
   assistantPlaceName,
   partyCapacity,
+  rememberRegionTrail,
   buildConsultantOpening,
   isConversationGreeting,
   usablePersonName,
@@ -569,6 +570,7 @@ export async function processAssistantMessage(
   ]);
   setAssistantFeatureCatalog(featureCatalog);
   setAssistantRegionCatalog(regionCatalog);
+  searchState = rememberRegionTrail(searchState);
   const priorUserTexts = conversation.messages
     .filter((message) => message.role === "user")
     .map((message) => message.content);

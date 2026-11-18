@@ -690,12 +690,23 @@ export function regionTrailForSlug(slug: string) {
 }
 
 export function assistantPlaceName(state: AssistantSearchState) {
-  return (
-    state.regionTrail?.mahalle?.name ||
-    state.regionTrail?.ilce?.name ||
-    state.regionTrail?.il?.name ||
-    ""
-  );
+  return [
+    state.regionTrail?.il?.name,
+    state.regionTrail?.ilce?.name,
+    state.regionTrail?.mahalle?.name,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function rememberRegionTrail(state: AssistantSearchState): AssistantSearchState {
+  if (state.regionAny || !state.regionSlugs?.[0]) return state;
+  if (state.regionTrail?.il || state.regionTrail?.ilce || state.regionTrail?.mahalle) {
+    return state;
+  }
+  const trail = regionTrailForSlug(state.regionSlugs[0]);
+  if (!trail.il && !trail.ilce && !trail.mahalle) return state;
+  return { ...state, regionTrail: trail };
 }
 
 function foldRegionText(value: string) {
@@ -786,36 +797,62 @@ const PLACE_STEM_STOP = new Set([
   "plaj",
 ]);
 
+function isKnownPlaceStem(stem: string) {
+  return (
+    regionCatalog.some(
+      (region) =>
+        foldRegionText(region.name) === stem ||
+        foldRegionText(region.slug.replace(/-/g, "")) === stem
+    ) || Object.keys(REGION_ALIASES).some((alias) => foldRegionText(alias) === stem)
+  );
+}
+
+function displayPlace(raw: string) {
+  const visible = raw
+    .replace(
+      /['’]?(?:dan|den|tan|ten|da|de|ta|te|bölgesi|bolgesi|mahallesi|ilçesi|ilcesi)$/iu,
+      ""
+    )
+    .trim();
+  if (visible.length < 3) return "";
+  return (
+    visible.charAt(0).toLocaleUpperCase("tr-TR") +
+    visible.slice(1).toLocaleLowerCase("tr-TR")
+  );
+}
+
 function locativePlace(token: string) {
   const folded = foldRegionText(token);
   const match = folded.match(/^([a-z0-9]{3,})(?:dan|den|tan|ten|da|de|ta|te)$/);
-  if (!match?.[1] || PLACE_STEM_STOP.has(match[1])) return "";
-  const known =
-    regionCatalog.some(
-      (region) =>
-        foldRegionText(region.name) === match[1] ||
-        foldRegionText(region.slug.replace(/-/g, "")) === match[1]
-    ) ||
-    Object.keys(REGION_ALIASES).some((alias) => foldRegionText(alias) === match[1]);
-  if (known) return "";
-  const visible = token
-    .replace(/['’]?(?:dan|den|tan|ten|da|de|ta|te)$/iu, "")
-    .trim();
-  if (visible.length < 3) return "";
-  return visible.charAt(0).toLocaleUpperCase("tr-TR") + visible.slice(1).toLocaleLowerCase("tr-TR");
+  if (!match?.[1] || PLACE_STEM_STOP.has(match[1]) || isKnownPlaceStem(match[1])) return "";
+  return displayPlace(token);
 }
 
-/** Katalogda olmayan bir yer. Locative ya da bölge sorusundaki tek kelime. */
+/** Katalogda olmayan bir yer. Tarih veya özellikle birlikte söylense de yakalanır. */
 export function unknownServicePlace(text: string, step?: AssistantFlowStep) {
   if (regionCatalog.length === 0) return "";
-  if (regionHitsInText(text).length > 0) return "";
-  if (extractStayDates(text) || mentionsIndifferent(text)) return "";
-  if (extractAmenityNames(text).length > 0) return "";
+  if (regionHitsInText(text).length > 0 || mentionsIndifferent(text)) return "";
+
   for (const token of text.split(/\s+/).filter(Boolean)) {
     const place = locativePlace(token);
     if (place) return place;
   }
-  if (step !== "awaiting_region") return "";
+
+  const hasAmenity = extractAmenityNames(text).length > 0;
+  const hasGuests = extractGuestCounts(text).length > 0;
+  if (!hasAmenity && !hasGuests) {
+    const asked = text.match(
+      /([a-zA-ZçğıöşüÇĞİÖŞÜ]{3,})\s+(?:bölgesi(?:nde)?|bolgesi(?:nde)?|mahallesi(?:nde)?|ilçesi(?:nde)?|ilcesi(?:nde)?|var\s*m[ıi]|varm[ıi])/iu
+    );
+    if (asked?.[1]) {
+      const stem = foldRegionText(asked[1]);
+      if (stem.length >= 3 && !PLACE_STEM_STOP.has(stem) && !isKnownPlaceStem(stem)) {
+        return displayPlace(asked[1]);
+      }
+    }
+  }
+
+  if (step !== "awaiting_region" || hasAmenity || hasGuests || extractStayDates(text)) return "";
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (words.length !== 1 || /\d/.test(words[0] ?? "")) return "";
   const word = words[0] ?? "";
@@ -823,7 +860,8 @@ export function unknownServicePlace(text: string, step?: AssistantFlowStep) {
   if (!folded || folded.length < 3 || SKIP_WORDS.has(folded) || PLACE_STEM_STOP.has(folded)) {
     return "";
   }
-  return word.charAt(0).toLocaleUpperCase("tr-TR") + word.slice(1).toLocaleLowerCase("tr-TR");
+  if (isKnownPlaceStem(folded)) return "";
+  return displayPlace(word);
 }
 
 function foldFeatureText(value: string) {
