@@ -20,4 +20,6 @@ export type AssistantSearchState = {
   moreOptionRounds?: number;
   /** Kriter içermeyen yeni bir villa talebi; eski arama geçmişten geri yüklenmez. */
   freshIntake?: boolean;
+  /** "Ocak başı" gibi yaklaşık bir dönemden sonra net tarih soruldu. */
+  askedNetDates?: boolean;
 };

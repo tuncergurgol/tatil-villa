@@ -418,6 +418,36 @@ export function extractStayDates(text: string): {
   return null;
 }
 
+function mentionsMonthName(text: string) {
+  return Object.keys(MONTH_MAP).some((name) => {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(
+      `(^|[^a-zA-ZçğıöşüÇĞİÖŞÜ])${escaped}(?:['’]?(?:ta|te|da|de|ın|in|un|ün|a|e))?(?=$|[^a-zA-ZçğıöşüÇĞİÖŞÜ])`,
+      "iu"
+    ).test(text);
+  });
+}
+
+/** "Ocak başı" gibi günü belli olmayan dönem. */
+export function isVagueStayPeriod(text: string) {
+  if (extractStayDates(text) || /\d/.test(text)) return false;
+  const lower = text.toLocaleLowerCase("tr-TR");
+  if (mentionsMonthName(text)) return true;
+  return /ba[sş][ıi](?:nda)?|sonu(?:nda)?|ortas[ıi](?:nda)?|civar|dolay|haftaya|bu\s*ay|gelecek\s*ay|önümüzdeki\s*hafta|onumuzdeki\s*hafta|yaz[ıi]n|k[ıi][sş][ıi]n|bayram/iu.test(
+    lower
+  );
+}
+
+function isAffirmative(text: string) {
+  return /^(evet|evt|var|olur|tamam|net)(?:\b|[\s!.?]|$)/iu.test(text.trim());
+}
+
+function isNegative(text: string) {
+  return /^(yok|yoktur|hayır|hayir|değil|degil|maalesef|net\s*değil|net\s*degil)(?:\b|[\s!.?]|$)/iu.test(
+    text.trim()
+  );
+}
+
 export function extractGuestCounts(text: string): number[] {
   const list = text.match(
     /(\d{1,2}(?:\s*(?:,|\/|ve)\s*\d{1,2})+)\s*(?:kişilik|kisilik|kişi|kisi)/iu
@@ -522,6 +552,8 @@ export function extractAmenityNames(text: string): string[] {
 export const ASSISTANT_ASK_NAME =
   "Hitap edebilmek için adınızı öğrenebilir miyim?";
 
+export const ASSISTANT_ASK_NET_DATES = "Net tarihleriniz var mı?";
+
 export function buildHelpQuestion(state: AssistantSearchState) {
   const name = usablePersonName(state.guestName);
   if (!name) return "Nasıl yardımcı olabilirim?";
@@ -605,6 +637,7 @@ function regionSlugsInText(text: string) {
     words.length === 0 ||
     words.length > 3 ||
     isConversationGreeting(trimmed) ||
+    isVagueStayPeriod(trimmed) ||
     SKIP_WORDS.has(lower) ||
     extractStayDates(text) ||
     extractAmenityNames(text).length > 0 ||
@@ -772,7 +805,11 @@ function tryParseStep(
   if (step === "awaiting_dates") {
     const dates = extractStayDates(userText);
     if (!dates) return null;
-    const nextState: AssistantSearchState = { ...state, ...dates };
+    const nextState: AssistantSearchState = {
+      ...state,
+      ...dates,
+      askedNetDates: false,
+    };
     return {
       handled: true,
       reply: buildDatesAckReply(nextState),
@@ -899,6 +936,46 @@ export function processFlowStep(
   }
 
   const step = resolveFlowStep(state);
+  if (step === "awaiting_dates" && state.askedNetDates) {
+    const dates = extractStayDates(userText);
+    if (dates) {
+      const nextState: AssistantSearchState = {
+        ...state,
+        ...dates,
+        askedNetDates: false,
+      };
+      const nextStep = resolveFlowStep(nextState);
+      return finishTurn(
+        nextStep === "ready"
+          ? "Uygun villalara bakıyorum."
+          : buildFlowReply(nextStep, nextState),
+        nextState,
+        nextStep === "ready"
+      );
+    }
+    if (isAffirmative(userText) || isNegative(userText)) {
+      return finishTurn("Hangi tarihlerde konaklamak istiyorsunuz.", {
+        ...state,
+        askedNetDates: false,
+      }, false);
+    }
+  }
+
+  if (
+    (step === "awaiting_dates" || step === "ready") &&
+    isVagueStayPeriod(userText)
+  ) {
+    const harvested = harvestKnownSlots(userText, state);
+    return finishTurn(ASSISTANT_ASK_NET_DATES, {
+      ...harvested,
+      checkIn: undefined,
+      checkOut: undefined,
+      askedNetDates: true,
+      sentVillaIds: [],
+      moreOptionRounds: 0,
+    }, false);
+  }
+
   if (step === "ready") {
     if (isAssistantMoreOptionsRequest(userText)) return { handled: false };
     const updated = applyCriterionUpdate(state, userText);
