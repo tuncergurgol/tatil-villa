@@ -1,5 +1,6 @@
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-search";
+import { villaPublicPath } from "@/lib/villa-public-path";
 
 export function buildAssistantVillaPublicUrl(
   domain: string | null | undefined,
@@ -14,7 +15,7 @@ export function buildAssistantVillaPublicUrl(
   if (checkOut) params.set("checkOut", checkOut);
   if (adults) params.set("adults", String(adults));
   const query = params.toString();
-  return `https://${host}/villalar/${slug}${query ? `?${query}` : ""}`;
+  return `https://${host}${villaPublicPath(slug)}${query ? `?${query}` : ""}`;
 }
 
 export function formatAssistantVillaSummary(
@@ -93,25 +94,50 @@ export function formatAssistantVillasForChat(
     .map((item) => formatAssistantVillaSummary(item, domain));
 }
 
-export function formatAssistantVillasForWhatsApp(
-  items: AvailabilitySearchResultItem[],
-  domain?: string | null,
-  guestName?: string | null,
-  intro = "Size uygun villa seçenekleri, ekonomikten pahalıya:"
+export function formatAssistantVillaOfferMessage(
+  item: AvailabilitySearchResultItem,
+  options?: {
+    domain?: string | null;
+    guestName?: string | null;
+    adults?: number;
+    brand?: string;
+  }
 ) {
-  const greeting = guestName?.trim() ? `Merhaba ${guestName.trim()},` : "Merhaba,";
-  const lines = items.map((item, index) => {
-    const summary = formatAssistantVillaSummary(item, domain);
-    return `${index + 1}. ${summary.name} (${summary.region})
-${summary.checkIn} → ${summary.checkOut} · ${summary.nights} gece · ${summary.totalPrice}
-${summary.link}`;
-  });
+  const greeting = options?.guestName?.trim()
+    ? `Merhaba ${options.guestName.trim()},`
+    : "Merhaba,";
+  const total = `${Math.round(item.quote.total).toLocaleString("tr-TR")} TL`;
+  const url = buildAssistantVillaPublicUrl(
+    options?.domain,
+    item.slug,
+    item.checkIn,
+    item.checkOut,
+    options?.adults
+  );
 
-  return `${greeting}
+  return [
+    greeting,
+    "",
+    `${item.name} için uygunluk / teklif bilgisi:`,
+    `Giriş: ${item.checkIn}`,
+    `Çıkış: ${item.checkOut}`,
+    `Gece: ${item.quote.nights}`,
+    `Toplam: ${total}`,
+    "",
+    url,
+    "",
+    options?.brand?.trim() || "Tatildeyiz",
+  ].join("\n");
+}
 
-${intro}
-
-${lines.join("\n\n")}
-
-Detay ve rezervasyon için linklere tıklayabilir veya buradan yazmaya devam edebilirsiniz. 🐝`;
+export function formatAssistantVillaOfferMessages(
+  items: AvailabilitySearchResultItem[],
+  options?: {
+    domain?: string | null;
+    guestName?: string | null;
+    adults?: number;
+    brand?: string;
+  }
+) {
+  return items.map((item) => formatAssistantVillaOfferMessage(item, options));
 }

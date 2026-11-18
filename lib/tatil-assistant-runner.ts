@@ -12,8 +12,8 @@ import {
   ASSISTANT_MAX_MORE_ROUNDS,
   ASSISTANT_MORE_OPTION_COUNT,
   ASSISTANT_REFRESH_CRITERIA_MESSAGE,
+  formatAssistantVillaOfferMessages,
   formatAssistantVillasForChat,
-  formatAssistantVillasForWhatsApp,
   isAssistantMoreOptionsRequest,
   pricedAssistantVillas,
 } from "@/lib/tatil-assistant-format";
@@ -381,32 +381,40 @@ async function deliverAssistantOffers(input: {
     domain,
   });
 
-  const reply = formatAssistantVillasForWhatsApp(
-    batch,
+  const messages = formatAssistantVillaOfferMessages(batch, {
     domain,
-    searchState.guestName,
-    more
-      ? "Başka seçenekler, yine ekonomikten pahalıya:"
-      : "Size uygun villa seçenekleri, ekonomikten pahalıya:"
-  );
-  let whatsappSent = false;
+    guestName: searchState.guestName,
+    adults: searchState.adults,
+    brand: "Tatildeyiz",
+  });
+  const reply = messages.join("\n\n");
+  const deliveredIds: string[] = [];
   if (phone) {
-    try {
-      await sendAssistantWhatsAppMessage(phone, reply);
-      whatsappSent = true;
-    } catch {
-      whatsappSent = false;
+    for (const [index, text] of messages.entries()) {
+      try {
+        await sendAssistantWhatsAppMessage(phone, text);
+        deliveredIds.push(batch[index]!.id);
+      } catch {
+        break;
+      }
+      if (index < messages.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
     }
   }
+  const whatsappSent = !phone || deliveredIds.length > 0;
 
   const nextState: AssistantSearchState = {
     ...searchState,
-    sentVillaIds: [...sent, ...batch.map((item) => item.id)],
+    sentVillaIds: [
+      ...sent,
+      ...(phone ? deliveredIds : batch.map((item) => item.id)),
+    ],
     moreOptionRounds: more ? moreRounds + 1 : moreRounds,
   };
 
   return {
-    reply: shareUrl ? `${reply}\n\nToplu liste: ${shareUrl}` : reply,
+    reply,
     searchState: nextState,
     searchResults: batch,
     shareUrl,
