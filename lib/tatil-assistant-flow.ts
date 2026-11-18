@@ -169,8 +169,8 @@ export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep 
   if (!usablePersonName(state.guestName)) return "awaiting_name";
   if (!state.helpAsked) return "awaiting_help";
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
-  if (!state.adults) return "awaiting_guests";
-  if (!state.regionSlugs?.length) return "awaiting_region";
+  if (!state.adults && !state.guestsAny) return "awaiting_guests";
+  if (!state.regionAny && !state.regionSlugs?.length) return "awaiting_region";
   if (!state.amenitiesCollected) return "awaiting_amenities";
   if (!state.phoneCollected || !state.guestPhone?.trim()) return "awaiting_phone";
   return "ready";
@@ -663,20 +663,20 @@ export function applyCriterionUpdate(
   if (counts.length > 0) {
     next.adults = counts[0];
     next.partySizes = partySizesFor(counts);
+    next.guestsAny = false;
   }
 
   const regions = regionSlugsInText(text);
-  if (regions.length > 0) next.regionSlugs = regions;
+  if (regions.length > 0) {
+    next.regionSlugs = regions;
+    next.regionAny = false;
+  }
 
   const lower = text.toLocaleLowerCase("tr-TR");
   const mentioned = extractAmenityNames(text);
-  const clearsAmenities = /fark\s*etmez|farketmez/u.test(lower);
   const rejectsAmenity = /olmas[ıi]n|istemiyorum|istemiyoruz|olmadan/u.test(lower);
   const replacesAmenities = /sadece|yaln[ıi]zca/u.test(lower);
-  if (clearsAmenities) {
-    next.amenityNames = [];
-    next.amenitiesCollected = true;
-  } else if (mentioned.length > 0 && rejectsAmenity) {
+  if (mentioned.length > 0 && rejectsAmenity) {
     const drop = new Set(mentioned);
     next.amenityNames = (next.amenityNames ?? []).filter((name) => !drop.has(name));
     next.amenitiesCollected = true;
@@ -699,6 +699,8 @@ export function searchCriteriaChanged(
     before.checkIn !== after.checkIn ||
     before.checkOut !== after.checkOut ||
     before.adults !== after.adults ||
+    before.guestsAny !== after.guestsAny ||
+    before.regionAny !== after.regionAny ||
     (before.partySizes ?? []).join(",") !== (after.partySizes ?? []).join(",") ||
     (before.regionSlugs ?? []).join(",") !== (after.regionSlugs ?? []).join(",") ||
     (before.amenityNames ?? []).join(",") !== (after.amenityNames ?? []).join(",")
@@ -733,6 +735,8 @@ function slotsChanged(before: AssistantSearchState, after: AssistantSearchState)
     before.checkIn !== after.checkIn ||
     before.checkOut !== after.checkOut ||
     before.adults !== after.adults ||
+    before.guestsAny !== after.guestsAny ||
+    before.regionAny !== after.regionAny ||
     (before.partySizes ?? []).join(",") !== (after.partySizes ?? []).join(",") ||
     before.amenitiesCollected !== after.amenitiesCollected ||
     before.phoneCollected !== after.phoneCollected ||
@@ -880,6 +884,45 @@ function tryParseStep(
   return null;
 }
 
+function mentionsIndifferent(text: string) {
+  return /fark\s*etmez|farketmez/iu.test(text);
+}
+
+function applyIndifferentAnswer(
+  step: AssistantFlowStep,
+  state: AssistantSearchState,
+  userText: string
+): AssistantSearchState | null {
+  if (step === "awaiting_guests") {
+    return {
+      ...state,
+      adults: undefined,
+      partySizes: undefined,
+      guestsAny: true,
+    };
+  }
+  if (step === "awaiting_region") {
+    const mentioned = extractAmenityNames(userText);
+    return {
+      ...state,
+      regionSlugs: [],
+      regionAny: true,
+      amenityNames: mentioned.length
+        ? [...new Set([...(state.amenityNames ?? []), ...mentioned])]
+        : [],
+      amenitiesCollected: mentioned.length > 0,
+    };
+  }
+  if (step === "awaiting_amenities") {
+    return {
+      ...state,
+      amenityNames: [],
+      amenitiesCollected: true,
+    };
+  }
+  return null;
+}
+
 function hasRegionAlias(text: string) {
   return Object.keys(REGION_ALIASES).some((alias) => mentionsAlias(text, alias));
 }
@@ -974,6 +1017,20 @@ export function processFlowStep(
       sentVillaIds: [],
       moreOptionRounds: 0,
     }, false);
+  }
+
+  if (mentionsIndifferent(userText)) {
+    const indifferent = applyIndifferentAnswer(step, state, userText);
+    if (indifferent) {
+      const nextStep = resolveFlowStep(indifferent);
+      return finishTurn(
+        nextStep === "ready"
+          ? "Uygun villalara bakıyorum."
+          : buildFlowReply(nextStep, indifferent),
+        indifferent,
+        nextStep === "ready"
+      );
+    }
   }
 
   if (step === "ready") {

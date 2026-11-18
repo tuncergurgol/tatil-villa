@@ -125,6 +125,7 @@ async function runVillaSearch(args: {
   checkIn: string;
   checkOut: string;
   adults: number;
+  guestCounts?: number[];
   regionSlugs?: string[];
   amenityNames?: string[];
   flexibleDate?: boolean;
@@ -143,7 +144,7 @@ async function runVillaSearch(args: {
     regionSlugs,
     amenityNames: features.amenityNames,
     facilityCategoryNames: features.facilityCategoryNames,
-    guestCounts: [args.adults],
+    guestCounts: args.guestCounts ?? (args.adults > 0 ? [args.adults] : []),
     flexibleDate: args.flexibleDate ?? false,
     fillEmptyDates: true,
     sort: "price_asc",
@@ -172,7 +173,11 @@ async function deliverAssistantOffers(input: {
   const { searchState, phone, more } = input;
   const domain = TATILDEYIZ_PUBLIC_DOMAIN;
 
-  if (!searchState.checkIn || !searchState.checkOut || !searchState.adults) {
+  if (
+    !searchState.checkIn ||
+    !searchState.checkOut ||
+    (!searchState.adults && !searchState.guestsAny)
+  ) {
     return {
       reply: "Arama için gerekli bilgiler eksik görünüyor.",
       searchState,
@@ -206,22 +211,40 @@ async function deliverAssistantOffers(input: {
     };
   }
 
-  const partySizes = (
-    searchState.partySizes?.length
-      ? searchState.partySizes
-      : [searchState.adults]
-  ).filter((size): size is number => typeof size === "number" && size > 0);
+  const partySizes = searchState.guestsAny
+    ? []
+    : (
+        searchState.partySizes?.length
+          ? searchState.partySizes
+          : [searchState.adults]
+      ).filter((size): size is number => typeof size === "number" && size > 0);
+  const regionSlugs = searchState.regionAny ? undefined : searchState.regionSlugs;
 
   const sent = new Set(searchState.sentVillaIds ?? []);
   const limit = more ? ASSISTANT_MORE_OPTION_COUNT : ASSISTANT_FIRST_OPTION_COUNT;
   type PartyResult = AvailabilitySearchResultItem & { partySize: number };
   const byId = new Map<string, PartyResult>();
+  if (searchState.guestsAny) {
+    const results = await runVillaSearch({
+      checkIn: searchState.checkIn,
+      checkOut: searchState.checkOut,
+      adults: 0,
+      guestCounts: [],
+      regionSlugs,
+      amenityNames: searchState.amenityNames,
+      flexibleDate: false,
+    });
+    for (const item of pricedAssistantVillas(results)) {
+      if (sent.has(item.id) || byId.has(item.id)) continue;
+      byId.set(item.id, { ...item, partySize: item.guests || 0 });
+    }
+  }
   for (const partySize of partySizes) {
     const results = await runVillaSearch({
       checkIn: searchState.checkIn,
       checkOut: searchState.checkOut,
       adults: partySize,
-      regionSlugs: searchState.regionSlugs,
+      regionSlugs,
       amenityNames: searchState.amenityNames,
       flexibleDate: false,
     });
@@ -478,6 +501,8 @@ export async function processAssistantMessage(
     : priorUserTexts;
   if (
     !searchState.freshIntake &&
+    !searchState.regionAny &&
+    !searchState.guestsAny &&
     (!searchState.checkIn || !searchState.adults || !searchState.regionSlugs?.length)
   ) {
     let rebuilt: AssistantSearchState = {

@@ -7,10 +7,14 @@ export type AssistantSearchState = {
   checkIn?: string;
   checkOut?: string;
   adults?: number;
+  /** Kişi sayısı sorusuna "farketmez" denildi; kapasite filtresi yok. */
+  guestsAny?: boolean;
   /** Tek kişi sayısı verildiyse o sayı ve sonraki iki kapasite. */
   partySizes?: number[];
   children?: number;
   regionSlugs?: string[];
+  /** Bölge sorusuna "farketmez" denildi; tüm bölgeler aranır. */
+  regionAny?: boolean;
   amenityNames?: string[];
   amenitiesCollected?: boolean;
   phoneCollected?: boolean;
