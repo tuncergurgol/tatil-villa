@@ -324,6 +324,7 @@ async function deliverAssistantOffers(input: {
 
   const nextState: AssistantSearchState = {
     ...searchState,
+    freshIntake: false,
     sentVillaIds: [
       ...sent,
       ...(phone ? deliveredIds : offerBatch.map((item) => item.id)),
@@ -380,7 +381,7 @@ export async function processAssistantMessage(
     (await prisma.tatilAssistantConversation.findUnique({
       where: { id: input.conversationId },
       include: {
-        messages: { orderBy: { createdAt: "asc" }, take: 30 },
+        messages: { orderBy: { createdAt: "desc" }, take: 40 },
       },
     }));
 
@@ -388,7 +389,7 @@ export async function processAssistantMessage(
     conversation = await prisma.tatilAssistantConversation.findFirst({
       where: { whatsappChatId: input.whatsappChatId, status: "active" },
       include: {
-        messages: { orderBy: { createdAt: "asc" }, take: 30 },
+        messages: { orderBy: { createdAt: "desc" }, take: 40 },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -412,6 +413,10 @@ export async function processAssistantMessage(
         messages: { orderBy: { createdAt: "asc" } },
       },
     });
+  }
+
+  if (conversation.messages.length > 1) {
+    conversation.messages.reverse();
   }
 
   const userText = input.message.trim();
@@ -471,7 +476,10 @@ export async function processAssistantMessage(
   const history = input.reuseLastUserMessage
     ? priorUserTexts.slice(0, -1)
     : priorUserTexts;
-  if (!searchState.checkIn || !searchState.adults || !searchState.regionSlugs?.length) {
+  if (
+    !searchState.freshIntake &&
+    (!searchState.checkIn || !searchState.adults || !searchState.regionSlugs?.length)
+  ) {
     let rebuilt: AssistantSearchState = {
       guestName: searchState.guestName,
       guestPhone: searchState.guestPhone || input.guestPhone || undefined,

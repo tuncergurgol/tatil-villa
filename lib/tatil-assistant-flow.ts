@@ -840,6 +840,7 @@ function freshCriteriaState(state: AssistantSearchState): AssistantSearchState {
     guestPhone: state.guestPhone,
     phoneCollected: Boolean(state.guestPhone?.trim() || state.phoneCollected),
     helpAsked: Boolean(usablePersonName(state.guestName)),
+    freshIntake: true,
   };
 }
 

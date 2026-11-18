@@ -18,4 +18,6 @@ export type AssistantSearchState = {
   sentVillaIds?: string[];
   /** "Başka yok mu" ile kaç ek liste gönderildi. En fazla 3. */
   moreOptionRounds?: number;
+  /** Kriter içermeyen yeni bir villa talebi; eski arama geçmişten geri yüklenmez. */
+  freshIntake?: boolean;
 };
