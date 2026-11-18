@@ -76,27 +76,49 @@ async function expandAssistantRegionSlugs(slugs: string[] | undefined) {
   return [...expanded];
 }
 
-async function expandAssistantAmenityNames(names: string[] | undefined) {
-  if (!names?.length) return undefined;
-  const amenities = await prisma.amenity.findMany({
-    where: { active: true },
-    select: { name: true },
-  });
-  const resolved: string[] = [];
-  for (const name of names) {
-    const needle = name.toLocaleLowerCase("tr-TR");
-    const hit =
-      amenities.find(
-        (amenity) => amenity.name.toLocaleLowerCase("tr-TR") === needle
-      ) ??
-      amenities.find((amenity) => {
-        const current = amenity.name.toLocaleLowerCase("tr-TR");
-        return current.includes(needle) || needle.includes(current);
-      });
-    if (hit) resolved.push(hit.name);
+function matchFeatureName(
+  names: { name: string }[],
+  needle: string
+) {
+  const folded = needle.toLocaleLowerCase("tr-TR");
+  return (
+    names.find((item) => item.name.toLocaleLowerCase("tr-TR") === folded) ??
+    names.find((item) => {
+      const current = item.name.toLocaleLowerCase("tr-TR");
+      return current.includes(folded) || folded.includes(current);
+    })
+  );
+}
+
+async function expandAssistantFeatures(names: string[] | undefined) {
+  if (!names?.length) {
+    return {
+      amenityNames: undefined as string[] | undefined,
+      facilityCategoryNames: undefined as string[] | undefined,
+    };
   }
-  const unique = [...new Set(resolved)];
-  return unique.length ? unique : undefined;
+  const [amenities, categories] = await Promise.all([
+    prisma.amenity.findMany({ where: { active: true }, select: { name: true } }),
+    prisma.facilityCategory.findMany({
+      where: { active: true },
+      select: { name: true },
+    }),
+  ]);
+  const amenityNames: string[] = [];
+  const facilityCategoryNames: string[] = [];
+  for (const name of names) {
+    const category = matchFeatureName(categories, name);
+    const amenity = matchFeatureName(amenities, name);
+    if (category) facilityCategoryNames.push(category.name);
+    else if (amenity) amenityNames.push(amenity.name);
+    else amenityNames.push(name);
+  }
+  return {
+    amenityNames: amenityNames.length ? [...new Set(amenityNames)] : undefined,
+    facilityCategoryNames: facilityCategoryNames.length
+      ? [...new Set(facilityCategoryNames)]
+      : undefined,
+  };
 }
 
 async function runVillaSearch(args: {
@@ -107,9 +129,9 @@ async function runVillaSearch(args: {
   amenityNames?: string[];
   flexibleDate?: boolean;
 }) {
-  const [regionSlugs, amenityNames] = await Promise.all([
+  const [regionSlugs, features] = await Promise.all([
     expandAssistantRegionSlugs(args.regionSlugs),
-    expandAssistantAmenityNames(args.amenityNames),
+    expandAssistantFeatures(args.amenityNames),
   ]);
 
   return searchAvailability({
@@ -119,7 +141,8 @@ async function runVillaSearch(args: {
     children: 0,
     babies: 0,
     regionSlugs,
-    amenityNames,
+    amenityNames: features.amenityNames,
+    facilityCategoryNames: features.facilityCategoryNames,
     guestCounts: [args.adults],
     flexibleDate: args.flexibleDate ?? false,
     fillEmptyDates: true,

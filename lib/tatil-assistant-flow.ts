@@ -478,6 +478,7 @@ export function extractAmenityNames(text: string): string[] {
   if (indoor) amenities.push("Kapalı Havuz");
 
   const patterns: Array<[RegExp, string]> = [
+    [/kahvalt/iu, "Ücretsiz Kahvaltı"],
     [/deniz\s*manzar/iu, "Deniz Manzarası"],
     [/jakuzi/iu, "Jakuzi"],
     [/çocuk\s*havuz|cocuk\s*havuz/iu, "Çocuk Havuzu"],

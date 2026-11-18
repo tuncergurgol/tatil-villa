@@ -52,6 +52,7 @@ export type AvailabilitySearchFilters = {
   budgetMax?: number | null;
   regionSlugs?: string[];
   amenityNames?: string[];
+  facilityCategoryNames?: string[];
   guestCounts?: number[];
   flexibleDate?: boolean;
   fillEmptyDates?: boolean;
@@ -396,6 +397,9 @@ export async function searchAvailability(
 
   const regionIds = await resolveRegionIds(filters.regionSlugs ?? []);
   const amenityNames = await resolveAmenityNames(filters.amenityNames ?? []);
+  const facilityCategoryNames = await resolveAmenityNames(
+    filters.facilityCategoryNames ?? []
+  );
   const guestCounts = (filters.guestCounts ?? []).filter((value) => value > 0);
 
   const where: Record<string, unknown> = {
@@ -411,6 +415,9 @@ export async function searchAvailability(
 
   if (amenityNames.length > 0) {
     where.amenities = { hasEvery: amenityNames };
+  }
+  if (facilityCategoryNames.length > 0) {
+    where.facilityCategories = { hasEvery: facilityCategoryNames };
   }
 
   const [villas, featuredAmenityRows] = await Promise.all([
