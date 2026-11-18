@@ -1,3 +1,4 @@
+import { findCustomerByPhone } from "@/lib/customer-crm";
 import { prisma } from "@/lib/db";
 import {
   searchAvailability,
@@ -423,6 +424,27 @@ async function deliverAssistantOffers(input: {
   };
 }
 
+function usableCustomerName(name: string | null | undefined) {
+  const trimmed = name?.trim() ?? "";
+  if (trimmed.length < 2) return "";
+  const folded = trimmed.toLocaleLowerCase("tr-TR");
+  if (folded === "misafir" || folded === "müşteri" || folded === "musteri") {
+    return "";
+  }
+  return trimmed;
+}
+
+async function applyKnownCustomerName(
+  state: AssistantSearchState,
+  phone?: string | null
+) {
+  if (state.guestName?.trim() || !phone?.trim()) return state;
+  const customer = await findCustomerByPhone(phone);
+  const name = usableCustomerName(customer?.fullName);
+  if (!name) return state;
+  return { ...state, guestName: name };
+}
+
 function mergeSearchState(
   current: AssistantSearchState | null | undefined,
   patch: Partial<AssistantSearchState>
@@ -520,7 +542,10 @@ export async function processAssistantMessage(
     },
   });
 
-  let searchState = (conversation.searchState ?? {}) as AssistantSearchState;
+  let searchState = await applyKnownCustomerName(
+    (conversation.searchState ?? {}) as AssistantSearchState,
+    input.guestPhone || conversation.guestPhone
+  );
   let flowAdvance = processFlowStep(userText, searchState);
 
   if (flowAdvance.handled) {

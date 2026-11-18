@@ -102,14 +102,7 @@ function formatName(name: string) {
 }
 
 export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep {
-  const hasRequest =
-    Boolean(state.checkIn && state.checkOut) ||
-    Boolean(state.adults) ||
-    Boolean(state.regionSlugs?.length) ||
-    Boolean(state.amenityNames?.length) ||
-    Boolean(state.amenitiesCollected);
-
-  if (!state.guestName?.trim() && !hasRequest) return "awaiting_name";
+  if (!state.guestName?.trim()) return "awaiting_name";
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
   if (!state.adults) return "awaiting_guests";
   if (!state.regionSlugs?.length) return "awaiting_region";
@@ -404,39 +397,52 @@ export function extractAmenityNames(text: string): string[] {
   return amenities;
 }
 
+export const ASSISTANT_ASK_NAME =
+  "Hitap edebilmek için adınızı öğrenebilir miyim.";
+
+function addressGuest(state: AssistantSearchState, question: string) {
+  const name = state.guestName?.trim();
+  if (!name) return question;
+  const lowered =
+    question.charAt(0).toLocaleLowerCase("tr-TR") + question.slice(1);
+  return `Merhaba ${name}, ${lowered}`;
+}
+
 export function buildFlowReply(
   step: AssistantFlowStep,
   state: AssistantSearchState
 ): string {
-  const name = state.guestName?.trim() || "";
-
   switch (step) {
     case "awaiting_name":
-      return "Hitap edebilmem için adınızı öğrenebilir miyim?";
+      return ASSISTANT_ASK_NAME;
     case "awaiting_dates":
-      return name
-        ? `Merhaba ${name}, hangi tarihlerde konaklamak istiyorsunuz?`
-        : "Hangi tarihlerde konaklamak istiyorsunuz?";
+      return addressGuest(state, "Hangi tarihlerde konaklamak istiyorsunuz?");
     case "awaiting_guests":
-      return "Kaç kişilik bir yer arıyorsunuz?";
+      return addressGuest(state, "Kaç kişilik bir yer arıyorsunuz?");
     case "awaiting_region":
-      return "Hangi bölgede tatil yapmak istersiniz?";
+      return addressGuest(state, "Hangi bölgede tatil yapmak istersiniz?");
     case "awaiting_amenities":
-      return "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?";
+      return addressGuest(
+        state,
+        "Tatil yapmak istediğiniz villada hangi özellikleri istersiniz?"
+      );
     case "awaiting_phone":
-      return "Size villa seçeneklerini WhatsApp üzerinden iletebilmem için WhatsApp numaranızı yazar mısınız?";
+      return addressGuest(
+        state,
+        "Size villa seçeneklerini WhatsApp üzerinden iletebilmem için WhatsApp numaranızı yazar mısınız?"
+      );
     default:
-      return "Bir dakika, size uygun villaları arıyorum...";
+      return addressGuest(state, "Bir dakika, size uygun villaları arıyorum...");
   }
 }
 
 function buildDatesAckReply(state: AssistantSearchState) {
   const range = formatDateRangeDisplay(state.checkIn!, state.checkOut!);
-  return `${range} tarihlerini not aldım. Kaç kişilik bir yer arıyorsunuz?`;
+  return `${range} tarihlerini not aldım. ${addressGuest(state, "Kaç kişilik bir yer arıyorsunuz?")}`;
 }
 
 function buildGuestsAckReply(state: AssistantSearchState) {
-  return `${state.adults} kişi için not aldım. Hangi bölgede tatil yapmak istersiniz?`;
+  return `${state.adults} kişi için not aldım. ${addressGuest(state, "Hangi bölgede tatil yapmak istersiniz?")}`;
 }
 
 function buildRegionAckReply() {
@@ -547,7 +553,7 @@ function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
 
   switch (step) {
     case "awaiting_name":
-      return "Adınızı yazar mısınız? (Örneğin: Ahmet)";
+      return ASSISTANT_ASK_NAME;
     case "awaiting_dates":
       return name
         ? `${name}, tarihi tam anlayamadım. Örneğin: 3/7 Eylül veya 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?`
@@ -578,11 +584,12 @@ function tryParseStep(
     const guestName = extractGuestName(userText);
     if (!guestName) return null;
     const nextState: AssistantSearchState = { ...state, guestName };
+    const nextStep = resolveFlowStep(nextState);
     return {
       handled: true,
-      reply: buildFlowReply("awaiting_dates", nextState),
+      reply: buildFlowReply(nextStep, nextState),
       state: nextState,
-      readyToSearch: false,
+      readyToSearch: nextStep === "ready",
     };
   }
 
@@ -669,6 +676,16 @@ export function processFlowStep(
   if (step === "ready") return { handled: false };
 
   const harvested = harvestKnownSlots(userText, state);
+  const greetingOnly = GREETINGS.has(userText.trim().toLocaleLowerCase("tr-TR"));
+  if (greetingOnly && !slotsChanged(state, harvested)) {
+    return {
+      handled: true,
+      reply: buildFlowReply(step, state),
+      state,
+      readyToSearch: false,
+    };
+  }
+
   if (slotsChanged(state, harvested)) {
     const nextStep = resolveFlowStep(harvested);
     if (nextStep === "ready") {
