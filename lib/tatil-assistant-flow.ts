@@ -198,13 +198,35 @@ function toDateKey(year: number, month: number, day: number) {
   return `${year}-${pad2(month)}-${pad2(day)}`;
 }
 
-function normalizeMonthName(raw: string): number | null {
-  const key = raw
+function foldTr(raw: string) {
+  return raw
     .trim()
     .toLocaleLowerCase("tr-TR")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/['’]/g, "")
     .normalize("NFD")
     .replace(/\p{M}/gu, "");
-  return MONTH_MAP[key] ?? MONTH_MAP[raw.toLocaleLowerCase("tr-TR")] ?? null;
+}
+
+const MONTH_BY_FOLD: Record<string, number> = {};
+for (const [name, month] of Object.entries(MONTH_MAP)) {
+  MONTH_BY_FOLD[foldTr(name)] = month;
+}
+
+const MONTH_NAME_RE =
+  "ocak|subat|şubat|mart|nisan|mayis|mayıs|haziran|temmuz|agustos|ağustos|eylul|eylül|ekim|kasim|kasım|aralik|aralık";
+
+function normalizeMonthName(raw: string): number | null {
+  const key = foldTr(raw);
+  if (MONTH_BY_FOLD[key]) return MONTH_BY_FOLD[key];
+  const softened = key.replace(/g(?=(tan|ten|dan|den|ta|te|da|de|a|e)$)/, "k");
+  const stem = softened.replace(/(tan|ten|dan|den|ta|te|da|de|a|e)$/, "");
+  return MONTH_BY_FOLD[stem] ?? null;
 }
 
 function parseYearToken(raw?: string) {
@@ -224,32 +246,42 @@ function inferStayYear(month: number, day: number, explicitYear?: number) {
   return year;
 }
 
-function parseTurkishDateToken(token: string, defaultYear?: number) {
-  const trimmed = token.trim();
-  const year = defaultYear ?? new Date().getFullYear();
+type DateMention = { day: number; month: number; year?: number };
 
-  const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) return toDateKey(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+function nightsBetween(checkIn: string, checkOut: string) {
+  const start = new Date(`${checkIn}T00:00:00`);
+  const end = new Date(`${checkOut}T00:00:00`);
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
 
-  const dotted = trimmed.match(/^(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?$/);
-  if (dotted) {
-    const day = Number(dotted[1]);
-    const month = Number(dotted[2]);
-    const y = parseYearToken(dotted[3]) ?? inferStayYear(month, day);
-    return toDateKey(y, month, day);
+function resolveStayRange(start: DateMention, end: DateMention) {
+  let startYear = start.year;
+  let endYear = end.year;
+  const rollsForward =
+    end.month < start.month ||
+    (end.month === start.month && end.day <= start.day);
+
+  if (startYear && !endYear) {
+    endYear = rollsForward ? startYear + 1 : startYear;
+  } else if (!startYear && endYear) {
+    startYear = rollsForward ? endYear - 1 : endYear;
+  } else if (!startYear && !endYear) {
+    startYear = inferStayYear(start.month, start.day);
+    endYear = startYear;
+    const sameYearEnd = toDateKey(endYear, end.month, end.day);
+    const sameYearStart = toDateKey(startYear, start.month, start.day);
+    if (sameYearStart && sameYearEnd && sameYearEnd <= sameYearStart) {
+      endYear = startYear + 1;
+    }
   }
 
-  const monthName = trimmed.match(/^(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)(?:\s+(\d{4}))?$/u);
-  if (monthName) {
-    const day = Number(monthName[1]);
-    const month = normalizeMonthName(monthName[2]);
-    const y =
-      parseYearToken(monthName[3]) ?? inferStayYear(month!, day, undefined);
-    if (!month) return null;
-    return toDateKey(y, month, day);
-  }
-
-  return null;
+  if (!startYear || !endYear) return null;
+  const checkIn = toDateKey(startYear, start.month, start.day);
+  const checkOut = toDateKey(endYear, end.month, end.day);
+  if (!checkIn || !checkOut || checkIn >= checkOut) return null;
+  const nights = nightsBetween(checkIn, checkOut);
+  if (nights < 1 || nights > 180) return null;
+  return { checkIn, checkOut };
 }
 
 function buildRange(
@@ -258,11 +290,36 @@ function buildRange(
   month: number,
   explicitYear?: number
 ) {
-  const year = inferStayYear(month, startDay, explicitYear);
-  const checkIn = toDateKey(year, month, startDay);
-  const checkOut = toDateKey(year, month, endDay);
-  if (!checkIn || !checkOut || checkIn >= checkOut) return null;
-  return { checkIn, checkOut };
+  return resolveStayRange(
+    { day: startDay, month, year: explicitYear },
+    { day: endDay, month, year: explicitYear }
+  );
+}
+
+function findDateMentions(text: string): DateMention[] {
+  const re = new RegExp(
+    String.raw`(?<!\d)(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?(?!\d)|(?<!\d)(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ']{3,})(?:\s+(20\d{2}|\d{2})(?!\d)(?!\s+\p{L}))?`,
+    "giu"
+  );
+  const mentions: DateMention[] = [];
+  for (const match of text.matchAll(re)) {
+    if (match[1]) {
+      mentions.push({
+        day: Number(match[1]),
+        month: Number(match[2]),
+        year: parseYearToken(match[3]),
+      });
+      continue;
+    }
+    const month = normalizeMonthName(match[5] ?? "");
+    if (!month) continue;
+    mentions.push({
+      day: Number(match[4]),
+      month,
+      year: parseYearToken(match[6]),
+    });
+  }
+  return mentions;
 }
 
 export function formatDateRangeDisplay(checkIn: string, checkOut: string) {
@@ -287,9 +344,14 @@ export function extractStayDates(text: string): {
     ? Number(explicitYearMatch[1])
     : undefined;
 
-  // 3/7 eylül / 3 - 7 eylül / 1-5 ocak 2027 (cümle içinde de)
+  const iso = normalized.match(
+    /(20\d{2}-\d{2}-\d{2})\s*-\s*(20\d{2}-\d{2}-\d{2})/
+  );
+  if (iso && iso[1] < iso[2]) return { checkIn: iso[1], checkOut: iso[2] };
+
+  // 3/7 eylül, 1-5 ocak 2027, 1 ile 5 ocak
   const sharedMonth = normalized.match(
-    /(\d{1,2})\s*(?:\/|-)\s*(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ]+)(?:\s+(20\d{2}))?/u
+    /(\d{1,2})\s*(?:\/|-|ile|ve)\s*(\d{1,2})\s+([a-zA-ZçğıöşüÇĞİÖŞÜ']+)(?:\s+(20\d{2}|\d{2}))?/u
   );
   if (sharedMonth) {
     const month = normalizeMonthName(sharedMonth[3]);
@@ -306,7 +368,10 @@ export function extractStayDates(text: string): {
 
   // eylül 3-7 / Eylül 3 - 7 2026
   const monthFirst = normalized.match(
-    /^([a-zA-ZçğıöşüÇĞİÖŞÜ]+)\s+(\d{1,2})\s*-\s*(\d{1,2})(?:\s+(20\d{2}))?$/u
+    new RegExp(
+      String.raw`(?:^|[^\p{L}])(${MONTH_NAME_RE})\s+(\d{1,2})\s*(?:-|ile|ve)\s*(\d{1,2})(?:\s+(20\d{2}|\d{2}))?`,
+      "iu"
+    )
   );
   if (monthFirst) {
     const month = normalizeMonthName(monthFirst[1]);
@@ -321,32 +386,10 @@ export function extractStayDates(text: string): {
     }
   }
 
-  // 10-17 Ağustos / 3/9 - 7/9
-  const range = normalized.match(
-    /(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?|\d{1,2}\s+[a-zA-ZçğıöşüÇĞİÖŞÜ]+(?:\s+20\d{2})?)\s*-\s*(\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?|\d{1,2}\s+[a-zA-ZçğıöşüÇĞİÖŞÜ]+(?:\s+20\d{2})?)/iu
-  );
-  if (range) {
-    const checkIn = parseTurkishDateToken(range[1], explicitYear);
-    const checkOut = parseTurkishDateToken(range[2], explicitYear);
-    if (checkIn && checkOut && checkIn < checkOut) return { checkIn, checkOut };
-  }
-
-  // 03.09.2026 - 07.09.2026
-  const fullDotted = normalized.match(
-    /^(\d{1,2})[./](\d{1,2})[./](\d{2,4})\s*-\s*(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/u
-  );
-  if (fullDotted) {
-    const checkIn = toDateKey(
-      parseYearToken(fullDotted[3])!,
-      Number(fullDotted[2]),
-      Number(fullDotted[1])
-    );
-    const checkOut = toDateKey(
-      parseYearToken(fullDotted[6])!,
-      Number(fullDotted[5]),
-      Number(fullDotted[4])
-    );
-    if (checkIn && checkOut && checkIn < checkOut) return { checkIn, checkOut };
+  const mentions = findDateMentions(normalized);
+  if (mentions.length >= 2) {
+    const range = resolveStayRange(mentions[0], mentions[1]);
+    if (range) return range;
   }
 
   return null;
