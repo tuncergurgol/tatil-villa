@@ -13,6 +13,9 @@ export type AssistantSearchState = {
   provisionalGuests?: number;
   /** Yetişkin, çocuk ve bebek sayısı alındı. */
   countsCollected?: boolean;
+  /** Dağılım sorusunda sayı ve rol ayrı mesajlarda gelirse birleştirmek için. */
+  pendingPartyCount?: number;
+  pendingPartyRole?: "adults" | "children" | "babies";
   /** Aile, arkadaş grubu veya farketmez. */
   partyKind?: "family" | "friends" | "any";
   /** Kişi sayısı sorusuna "farketmez" denildi; kapasite filtresi yok. */

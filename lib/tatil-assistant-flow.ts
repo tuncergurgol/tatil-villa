@@ -537,21 +537,102 @@ function labeledCount(text: string, label: string) {
   return count >= 0 && count <= 20 ? count : null;
 }
 
+type PartyRole = "adults" | "children" | "babies";
+
+type PartyComposition = {
+  adults: number;
+  children: number;
+  babies: number;
+  adultsSpecified: boolean;
+  childrenSpecified: boolean;
+  babiesSpecified: boolean;
+};
+
+const PARTY_ROLE_LABEL: Record<PartyRole, string> = {
+  adults: "yetişkin",
+  children: "çocuk",
+  babies: "bebek",
+};
+
+function barePartyCount(text: string) {
+  const match = text.trim().match(/^(\d{1,2})[.!?]?$/);
+  if (!match) return null;
+  const count = Number(match[1]);
+  return count >= 1 && count <= 20 ? count : null;
+}
+
+function partyRoleWord(text: string): "yetişkin" | "çocuk" | "bebek" | null {
+  const cleaned = text
+    .trim()
+    .replace(/[.!?]+$/g, "")
+    .trim()
+    .toLocaleLowerCase("tr-TR");
+  if (/^yetişkin(?:ler)?$|^yetiskin(?:ler)?$|^yetişikin(?:ler)?$/iu.test(cleaned)) {
+    return "yetişkin";
+  }
+  if (/^çocuk(?:lar)?$|^cocuk(?:lar)?$/iu.test(cleaned)) return "çocuk";
+  if (/^bebek(?:ler)?$|^bebeg(?:ler)?$/iu.test(cleaned)) return "bebek";
+  return null;
+}
+
+function partyRoleKey(role: "yetişkin" | "çocuk" | "bebek"): PartyRole {
+  if (role === "yetişkin") return "adults";
+  if (role === "çocuk") return "children";
+  return "babies";
+}
+
+/** "2" ve alt satırda "yetişkin" aynı dağılım cevabıdır. */
+function stitchPartyLines(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return text.trim();
+  const merged: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const count = barePartyCount(lines[index] ?? "");
+    const nextRole = partyRoleWord(lines[index + 1] ?? "");
+    if (count != null && nextRole) {
+      merged.push(`${count} ${nextRole}`);
+      index += 1;
+      continue;
+    }
+    const role = partyRoleWord(lines[index] ?? "");
+    const nextCount = barePartyCount(lines[index + 1] ?? "");
+    if (role && nextCount != null) {
+      merged.push(`${nextCount} ${role}`);
+      index += 1;
+      continue;
+    }
+    merged.push(lines[index] ?? "");
+  }
+  return merged.join(", ");
+}
+
+function clearPartyPending(state: AssistantSearchState): AssistantSearchState {
+  if (state.pendingPartyCount == null && state.pendingPartyRole == null) return state;
+  return { ...state, pendingPartyCount: undefined, pendingPartyRole: undefined };
+}
+
 /** "2 yetişkin 1 çocuk 1 bebek" gibi bir dağılım. Bebek kapasiteye girmez. */
-export function extractPartyComposition(text: string) {
-  const lower = text.toLocaleLowerCase("tr-TR");
+export function extractPartyComposition(text: string): PartyComposition | null {
+  const lower = stitchPartyLines(text).toLocaleLowerCase("tr-TR");
   const adults = labeledCount(lower, "yetişkin|yetiskin|yetişikin");
   const children = labeledCount(lower, "çocuk|cocuk");
   const babies = labeledCount(lower, "bebek|bebeg");
   const childNone = /çocuk(?:lar)?\s*yok|cocuk(?:lar)?\s*yok|çocuksuz|cocuksuz/iu.test(lower);
   const babyNone = /bebek(?:ler)?\s*yok|bebeg(?:ler)?\s*yok|bebeksiz/iu.test(lower);
-  if (adults == null && children == null && babies == null && !childNone && !babyNone) {
-    return null;
-  }
+  const adultsSpecified = adults != null;
+  const childrenSpecified = children != null || childNone;
+  const babiesSpecified = babies != null || babyNone;
+  if (!adultsSpecified && !childrenSpecified && !babiesSpecified) return null;
   return {
     adults: adults ?? 0,
     children: childNone ? 0 : (children ?? 0),
     babies: babyNone ? 0 : (babies ?? 0),
+    adultsSpecified,
+    childrenSpecified,
+    babiesSpecified,
   };
 }
 
@@ -562,7 +643,7 @@ export function extractPartyKind(text: string): "family" | "friends" | null {
   return null;
 }
 
-function partyDetailFromText(text: string, provisionalGuests?: number) {
+function partyDetailFromText(text: string, provisionalGuests?: number): PartyComposition | null {
   const composition = extractPartyComposition(text);
   if (composition) return composition;
   if (
@@ -572,9 +653,16 @@ function partyDetailFromText(text: string, provisionalGuests?: number) {
       text
     )
   ) {
-    return { adults: provisionalGuests, children: 0, babies: 0 };
+    return {
+      adults: provisionalGuests,
+      children: 0,
+      babies: 0,
+      adultsSpecified: true,
+      childrenSpecified: true,
+      babiesSpecified: true,
+    };
   }
-  const triple = text
+  const triple = stitchPartyLines(text)
     .trim()
     .match(/^(\d{1,2})\s*[,/+-]\s*(\d{1,2})\s*[,/+-]\s*(\d{1,2})$/);
   if (!triple) return null;
@@ -582,7 +670,64 @@ function partyDetailFromText(text: string, provisionalGuests?: number) {
   const children = Number(triple[2]);
   const babies = Number(triple[3]);
   if ([adults, children, babies].some((count) => count < 0 || count > 20)) return null;
-  return { adults, children, babies };
+  return {
+    adults,
+    children,
+    babies,
+    adultsSpecified: true,
+    childrenSpecified: true,
+    babiesSpecified: true,
+  };
+}
+
+function preparePartyDetailAnswer(
+  text: string,
+  state: AssistantSearchState,
+  previousUserText?: string
+):
+  | { hold: true; reply: string; state: AssistantSearchState }
+  | { hold: false; text: string; state: AssistantSearchState } {
+  const stitched = stitchPartyLines(text);
+  if (extractPartyComposition(stitched) || partyDetailFromText(stitched, state.provisionalGuests)) {
+    return { hold: false, text: stitched, state: clearPartyPending(state) };
+  }
+
+  const count = barePartyCount(stitched);
+  const role = partyRoleWord(stitched);
+  const previousCount = barePartyCount(previousUserText ?? "");
+  const previousRole = partyRoleWord(previousUserText ?? "");
+  const pendingCount = state.pendingPartyCount ?? previousCount;
+  const pendingRole = state.pendingPartyRole ?? (previousRole ? partyRoleKey(previousRole) : undefined);
+
+  if (count != null && pendingRole) {
+    return {
+      hold: false,
+      text: `${count} ${PARTY_ROLE_LABEL[pendingRole]}`,
+      state: clearPartyPending(state),
+    };
+  }
+  if (role && pendingCount != null) {
+    return {
+      hold: false,
+      text: `${pendingCount} ${role}`,
+      state: clearPartyPending(state),
+    };
+  }
+  if (count != null) {
+    return {
+      hold: true,
+      reply: `Bu ${count} kişi yetişkin mi, çocuk mu, bebek mi?`,
+      state: { ...state, pendingPartyCount: count, pendingPartyRole: undefined },
+    };
+  }
+  if (role) {
+    return {
+      hold: true,
+      reply: `Kaç ${role}?`,
+      state: { ...state, pendingPartyRole: partyRoleKey(role), pendingPartyCount: undefined },
+    };
+  }
+  return { hold: false, text: stitched, state };
 }
 
 export function extractRegionSlugs(text: string): string[] {
@@ -1015,6 +1160,39 @@ function markHelpAsked(state: AssistantSearchState): AssistantSearchState {
   return state.helpAsked ? state : { ...state, helpAsked: true };
 }
 
+function partyRemainder(state: AssistantSearchState) {
+  if (state.countsCollected || state.guestsAny) return 0;
+  const total = state.provisionalGuests ?? 0;
+  if (total <= 0) return 0;
+  if (state.adults == null && state.children == null && state.babies == null) return 0;
+  const specified = (state.adults ?? 0) + (state.children ?? 0) + (state.babies ?? 0);
+  return Math.max(0, total - specified);
+}
+
+function missingPartyLabels(state: AssistantSearchState) {
+  const labels: string[] = [];
+  if (state.adults == null) labels.push("yetişkin");
+  if (state.children == null) labels.push("çocuk");
+  if (state.babies == null) labels.push("bebek");
+  return labels;
+}
+
+function joinTurkishList(items: string[]) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} ve ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} ve ${items[items.length - 1]}`;
+}
+
+function buildPartyDetailQuestion(state: AssistantSearchState) {
+  const remaining = partyRemainder(state);
+  if (remaining <= 0) return "Yetişkin, çocuk ve bebek sayısını yazar mısınız?";
+  const missing = missingPartyLabels(state);
+  if (missing.length === 0) {
+    return `Toplam ${state.provisionalGuests} kişi olmuyor. Kalan ${remaining} kişi için yetişkin, çocuk ve bebek sayısını yazar mısınız?`;
+  }
+  return `Kalan ${remaining} kişi için ${joinTurkishList(missing)} sayısını yazar mısınız?`;
+}
+
 export function buildFlowReply(
   step: AssistantFlowStep,
   state: AssistantSearchState
@@ -1031,7 +1209,7 @@ export function buildFlowReply(
     case "awaiting_party_kind":
       return "Aile mi, arkadaş grubu mu?";
     case "awaiting_party_detail":
-      return "Yetişkin, çocuk ve bebek sayısını yazar mısınız?";
+      return buildPartyDetailQuestion(state);
     case "awaiting_region":
       return "Hangi bölgede tatil yapmak istersiniz?";
     case "awaiting_amenities":
@@ -1088,6 +1266,57 @@ function withPartyCounts(
     countsCollected: capacity > 0,
     guestsAny: false,
     partySizes: capacity > 0 ? partySizesFor([capacity]) : [],
+    pendingPartyCount: undefined,
+    pendingPartyRole: undefined,
+  };
+}
+
+function applyPartyComposition(
+  state: AssistantSearchState,
+  composition: PartyComposition
+): AssistantSearchState {
+  const inherit = !state.countsCollected;
+  const adultsSpecified =
+    composition.adultsSpecified || (inherit && state.adults != null);
+  const childrenSpecified =
+    composition.childrenSpecified || (inherit && state.children != null);
+  const babiesSpecified =
+    composition.babiesSpecified || (inherit && state.babies != null);
+  const adults = composition.adultsSpecified
+    ? composition.adults
+    : adultsSpecified
+      ? (state.adults ?? 0)
+      : 0;
+  const children = composition.childrenSpecified
+    ? composition.children
+    : childrenSpecified
+      ? (state.children ?? 0)
+      : 0;
+  const babies = composition.babiesSpecified
+    ? composition.babies
+    : babiesSpecified
+      ? (state.babies ?? 0)
+      : 0;
+  const total = state.provisionalGuests ?? 0;
+  const specifiedSum =
+    (adultsSpecified ? adults : 0) +
+    (childrenSpecified ? children : 0) +
+    (babiesSpecified ? babies : 0);
+  const openEnded = Boolean(state.countsCollected) || total <= 0;
+  const covered = openEnded || specifiedSum >= total;
+  if (covered && adults + children > 0) {
+    return withPartyCounts(state, { adults, children, babies });
+  }
+  return {
+    ...state,
+    adults: adultsSpecified ? adults : undefined,
+    children: childrenSpecified ? children : undefined,
+    babies: babiesSpecified ? babies : undefined,
+    countsCollected: false,
+    guestsAny: false,
+    partySizes: undefined,
+    pendingPartyCount: undefined,
+    pendingPartyRole: undefined,
   };
 }
 
@@ -1126,8 +1355,13 @@ export function applyCriterionUpdate(
 
   const composition = extractPartyComposition(text);
   const counts = extractGuestCounts(text);
-  if (composition && composition.adults + composition.children > 0) {
-    Object.assign(next, withPartyCounts(next, composition));
+  if (
+    composition &&
+    (composition.adultsSpecified ||
+      composition.childrenSpecified ||
+      composition.babiesSpecified)
+  ) {
+    Object.assign(next, applyPartyComposition(next, composition));
   } else if (counts.length > 1) {
     next.adults = counts[0];
     next.children = 0;
@@ -1143,8 +1377,15 @@ export function applyCriterionUpdate(
     next.partySizes = partySizesFor(counts);
     next.guestsAny = false;
   } else if (counts.length === 1) {
-    next.provisionalGuests = counts[0];
-    next.guestsAny = false;
+    const breakdownFragment =
+      barePartyCount(text) != null &&
+      Boolean(next.partyKind) &&
+      (next.provisionalGuests ?? 0) > 0 &&
+      !next.countsCollected;
+    if (!breakdownFragment) {
+      next.provisionalGuests = counts[0];
+      next.guestsAny = false;
+    }
   }
 
   const partyKind = extractPartyKind(text);
@@ -1259,6 +1500,7 @@ function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
     case "awaiting_party_kind":
       return "Aile mi, arkadaş grubu mu?";
     case "awaiting_party_detail":
+      if (partyRemainder(state) > 0) return buildPartyDetailQuestion(state);
       return "Yetişkin, çocuk ve bebek sayısını yazar mısınız? Örneğin 2 yetişkin, 1 çocuk, 0 bebek.";
     case "awaiting_region":
       return "Hangi bölgede tatil yapmak istersiniz?";
@@ -1349,8 +1591,8 @@ function tryParseStep(
 
   if (step === "awaiting_party_detail") {
     const composition = partyDetailFromText(userText, state.provisionalGuests);
-    if (!composition || composition.adults + composition.children < 1) return null;
-    const nextState = withPartyCounts(state, composition);
+    if (!composition) return null;
+    const nextState = applyPartyComposition(state, composition);
     const nextStep = resolveFlowStep(nextState);
     return {
       handled: true,
@@ -1511,7 +1753,8 @@ function restartedConversationState(state: AssistantSearchState): AssistantSearc
 /** Aktif akış adımında cevabı işler; anlaşılmazsa aynı adım için tekrar sorar. */
 export function processFlowStep(
   userText: string,
-  state: AssistantSearchState
+  state: AssistantSearchState,
+  previousUserText?: string
 ): FlowAdvanceResult {
   if (isConversationGreeting(userText)) {
     const nextState = restartedConversationState(state);
@@ -1620,22 +1863,31 @@ export function processFlowStep(
     );
   }
 
-  const harvested = harvestKnownSlots(userText, state);
-  if (slotsChanged(state, harvested)) {
+  let answer = userText;
+  let answerState = state;
+  if (step === "awaiting_party_detail") {
+    const prepared = preparePartyDetailAnswer(userText, state, previousUserText);
+    if (prepared.hold) return finishTurn(prepared.reply, prepared.state, false);
+    answer = prepared.text;
+    answerState = prepared.state;
+  }
+
+  const harvested = harvestKnownSlots(answer, answerState);
+  if (slotsChanged(answerState, harvested)) {
     const nextStep = resolveFlowStep(harvested);
     return finishTurn(
       nextStep === "ready"
         ? buildFlowReply("ready", harvested)
-        : buildProgressReply(state, harvested, nextStep),
+        : buildProgressReply(answerState, harvested, nextStep),
       harvested,
       nextStep === "ready"
     );
   }
 
-  const parsed = tryParseStep(step, userText, state);
+  const parsed = tryParseStep(step, answer, answerState);
   if (parsed) return finishTurn(parsed.reply, parsed.state, parsed.readyToSearch);
 
-  return finishTurn(buildRetryReply(step, state), state, false);
+  return finishTurn(buildRetryReply(step, answerState), answerState, false);
 }
 
 function finishTurn(
@@ -1655,7 +1907,8 @@ function finishTurn(
 /** @deprecated processFlowStep kullanın */
 export function tryAdvanceFlow(
   userText: string,
-  state: AssistantSearchState
+  state: AssistantSearchState,
+  previousUserText?: string
 ): FlowAdvanceResult {
-  return processFlowStep(userText, state);
+  return processFlowStep(userText, state, previousUserText);
 }

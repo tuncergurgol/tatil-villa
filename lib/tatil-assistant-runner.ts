@@ -609,7 +609,8 @@ export async function processAssistantMessage(
       };
     }
   }
-  let flowAdvance = processFlowStep(userText, searchState);
+  const previousUserText = history.length ? history[history.length - 1] : undefined;
+  let flowAdvance = processFlowStep(userText, searchState, previousUserText);
   setAssistantFeatureCatalog([]);
   setAssistantRegionCatalog([]);
 
