@@ -19,7 +19,7 @@ import { deleteCustomer } from "@/app/actions/admin/customers";
 import CustomerFormModal from "@/components/admin/customers/CustomerFormModal";
 import CustomerStaysModal from "@/components/admin/customers/CustomerStaysModal";
 import type { CustomerListItem } from "@/lib/queries/customers";
-import { formatStoredTurkishPhoneDisplay } from "@/lib/phone-utils";
+import { formatStoredTurkishPhoneDisplay, includesPhoneSearch } from "@/lib/phone-utils";
 import { includesSearchText } from "@/lib/search-text";
 import {
   LOYALTY_TIER_META,
@@ -154,7 +154,8 @@ export default function CustomerManagement({
       const matchesQuery =
         includesSearchText(customer.fullName, search) ||
         includesSearchText(customer.email, search) ||
-        includesSearchText(customer.phone, search);
+        includesSearchText(customer.phone, search) ||
+        includesPhoneSearch(customer.phone, search);
 
       const matchesStatus =
         statusFilter === "all" ||

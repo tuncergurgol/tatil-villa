@@ -50,6 +50,17 @@ export function formatStoredTurkishPhoneDisplay(phone: string): string {
   return `+${parsed.country.dial} ${parsed.national}`;
 }
 
+/** Boşluk, parantez ve tireli numara araması kayıtlı E.164 telefonla eşleşir. */
+export function includesPhoneSearch(phone: string, query: string): boolean {
+  const normalizedQuery = query.trim().toLocaleLowerCase("tr-TR");
+  if (!normalizedQuery) return true;
+  if (phone.trim().toLocaleLowerCase("tr-TR").includes(normalizedQuery)) return true;
+  const queryDigits = query.replace(/\D/g, "");
+  if (queryDigits.length < 6) return false;
+  const phoneDigits = phone.replace(/\D/g, "");
+  return phoneDigits.includes(queryDigits);
+}
+
 export function isValidStoredPhoneE164(phone: string): boolean {
   return /^\+[1-9]\d{7,14}$/.test(phone.trim());
 }
