@@ -38,7 +38,7 @@ async function main() {
       guestName: true,
       searchState: true,
       messages: {
-        select: { role: true, content: true },
+        select: { id: true, role: true, content: true },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -78,7 +78,38 @@ async function main() {
     );
   }
 
-  console.log(`guncellenen kayit: ${updated}`);
+  let messagesUpdated = 0;
+  for (const conversation of conversations) {
+    let barePoolActive = false;
+    for (const message of conversation.messages) {
+      if (message.role === "user") {
+        if (askedChildPool(message.content)) barePoolActive = false;
+        else if (
+          /özel\s*havuz|ozel\s*havuz|kapal[ıi]\s*havuz|ortak\s*havuz|is[ıi]tmal[ıi]\s*havuz|havuzlu/iu.test(
+            message.content
+          )
+        ) {
+          barePoolActive = false;
+        } else if (askedBarePool(message.content)) barePoolActive = true;
+        else if (/^(selam|merhaba|merhabalar|selamlar)$/iu.test(message.content.trim())) {
+          barePoolActive = false;
+        }
+        continue;
+      }
+      if (!barePoolActive || message.role !== "assistant") continue;
+      if (!/çocuk havuzlu/iu.test(message.content)) continue;
+      const content = message.content.replace(/çocuk havuzlu/giu, "havuzlu");
+      if (content === message.content) continue;
+      await prisma.tatilAssistantMessage.update({
+        where: { id: message.id },
+        data: { content },
+      });
+      messagesUpdated += 1;
+    }
+  }
+
+  console.log(`guncellenen arama: ${updated}`);
+  console.log(`guncellenen mesaj: ${messagesUpdated}`);
 }
 
 main()
