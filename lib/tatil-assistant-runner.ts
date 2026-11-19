@@ -1,4 +1,5 @@
 import { findCustomerByPhone } from "@/lib/customer-crm";
+import { isActiveLoyaltyMemberPhone } from "@/lib/queries/customer-lookup";
 import { prisma } from "@/lib/db";
 import {
   searchAvailability,
@@ -174,6 +175,7 @@ async function runVillaSearch(args: {
   regionSlugs?: string[];
   amenityNames?: string[];
   flexibleDate?: boolean;
+  includeUndocumented?: boolean;
 }) {
   const [regionSlugs, features] = await Promise.all([
     expandAssistantRegionSlugs(args.regionSlugs),
@@ -194,8 +196,8 @@ async function runVillaSearch(args: {
     flexibleDate: args.flexibleDate ?? false,
     fillEmptyDates: true,
     sort: "price_asc",
-    // Belgesiz villalar aramada kapalı, teklifte açık kalır. WhatsApp teklif kanalıdır.
-    listScope: "offer",
+    requireDocument: true,
+    includeUndocumented: args.includeUndocumented ?? false,
   });
 }
 
@@ -297,6 +299,9 @@ async function deliverAssistantOffers(input: {
 
   const sent = new Set(searchState.sentVillaIds ?? []);
   const limit = more ? ASSISTANT_MORE_OPTION_COUNT : ASSISTANT_FIRST_OPTION_COUNT;
+  const includeUndocumented = phone
+    ? await isActiveLoyaltyMemberPhone(phone)
+    : false;
   type PartyResult = AvailabilitySearchResultItem & { partySize: number };
   const byId = new Map<string, PartyResult>();
   if (searchState.guestsAny) {
@@ -308,6 +313,7 @@ async function deliverAssistantOffers(input: {
       regionSlugs,
       amenityNames: searchState.amenityNames,
       flexibleDate: false,
+      includeUndocumented,
     });
     for (const item of pricedAssistantVillas(results)) {
       if (sent.has(item.id) || byId.has(item.id)) continue;
@@ -322,6 +328,7 @@ async function deliverAssistantOffers(input: {
       regionSlugs,
       amenityNames: searchState.amenityNames,
       flexibleDate: false,
+      includeUndocumented,
     });
     for (const item of pricedAssistantVillas(results)) {
       if (sent.has(item.id) || byId.has(item.id)) continue;

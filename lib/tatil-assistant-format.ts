@@ -1,6 +1,21 @@
 import { sanitizePublicBookingDomain } from "@/lib/booking-site-brand";
 import type { AvailabilitySearchResultItem } from "@/lib/queries/availability-search";
+import {
+  appendUndocumentedBookingAccessParam,
+  createUndocumentedVillaBookingAccessToken,
+} from "@/lib/undocumented-villa-booking-access";
 import { villaPublicPath } from "@/lib/villa-public-path";
+
+function withGuestBookingAccess(
+  url: string,
+  item: Pick<AvailabilitySearchResultItem, "id" | "documented">
+) {
+  if (item.documented !== false) return url;
+  return appendUndocumentedBookingAccessParam(
+    url,
+    createUndocumentedVillaBookingAccessToken(item.id)
+  );
+}
 
 export function buildAssistantVillaPublicUrl(
   domain: string | null | undefined,
@@ -26,12 +41,15 @@ export function formatAssistantVillaSummary(
     item.quote.valid && item.quote.total > 0
       ? `${item.quote.total.toLocaleString("tr-TR")} ${item.quote.currency}`
       : "Fiyat için iletişime geçin";
-  const link = buildAssistantVillaPublicUrl(
-    domain,
-    item.slug,
-    item.checkIn,
-    item.checkOut,
-    item.guests + item.extraCapacity > 0 ? item.guests : undefined
+  const link = withGuestBookingAccess(
+    buildAssistantVillaPublicUrl(
+      domain,
+      item.slug,
+      item.checkIn,
+      item.checkOut,
+      item.guests + item.extraCapacity > 0 ? item.guests : undefined
+    ),
+    item
   );
 
   return {
@@ -164,12 +182,15 @@ export function formatAssistantVillaOfferMessage(
     ? `Merhaba ${options.guestName.trim()},`
     : "Merhaba,";
   const total = `${Math.round(item.quote.total).toLocaleString("tr-TR")} TL`;
-  const url = buildAssistantVillaPublicUrl(
-    options?.domain,
-    item.slug,
-    item.checkIn,
-    item.checkOut,
-    options?.adults
+  const url = withGuestBookingAccess(
+    buildAssistantVillaPublicUrl(
+      options?.domain,
+      item.slug,
+      item.checkIn,
+      item.checkOut,
+      options?.adults
+    ),
+    item
   );
 
   return [

@@ -27,6 +27,10 @@ import {
   type StayQuoteDayInput,
 } from "@/lib/stay-quote";
 import { isOccupancyNightBlocked } from "@/lib/booking-calendar-selection";
+import {
+  hasVillaTourismDocument,
+  isVillaVisibleForGuest,
+} from "@/lib/villa-document-types";
 import type { PublicExchangeRates } from "@/lib/currency-conversion";
 import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import { formatVillaRegionLabelMahalleIlceIl } from "@/lib/villa-location-helpers";
@@ -64,6 +68,10 @@ export type AvailabilitySearchFilters = {
   fillEmptyDates?: boolean;
   /** search: public/detaylı arama; offer: Bont uygunluk / teklif listesi */
   listScope?: "search" | "offer";
+  /** Üye misafir: aramadaki belgeli villalara ek olarak teklifteki belgesiz villalar. */
+  includeUndocumented?: boolean;
+  /** Asistan: belgesiz satırlar üye değilse elenir. */
+  requireDocument?: boolean;
   sort?: AvailabilitySearchSort;
 };
 
@@ -90,6 +98,8 @@ export type AvailabilitySearchResultItem = {
   customRules: string[];
   popular: boolean;
   recommended: boolean;
+  /** false ise misafir linkine belgesiz rezervasyon anahtarı eklenir. */
+  documented?: boolean;
   startingPrice: number | null;
   minStayNights: number | null;
   checkIn: string;
@@ -418,7 +428,9 @@ export async function searchAvailability(
     active: true,
     ...(filters.listScope === "offer"
       ? { showInOffer: true }
-      : { showInSearch: true }),
+      : filters.includeUndocumented
+        ? { OR: [{ showInSearch: true }, { showInOffer: true }] }
+        : { showInSearch: true }),
   };
 
   if (regionIds.length > 0) {
@@ -462,6 +474,9 @@ export async function searchAvailability(
         customRules: true,
         popular: true,
         recommended: true,
+        showInSearch: true,
+        showInOffer: true,
+        documentType: true,
         region: {
           select: {
             name: true,
@@ -488,7 +503,13 @@ export async function searchAvailability(
     featuredAmenityRows.map((amenity) => amenity.name)
   );
 
-  const capacityFiltered = villas.filter((villa) => {
+  const listed = villas.filter((villa) => {
+    if (filters.includeUndocumented) return isVillaVisibleForGuest(villa, true);
+    if (filters.requireDocument) return hasVillaTourismDocument(villa);
+    return true;
+  });
+
+  const capacityFiltered = listed.filter((villa) => {
     const baseCapacity = villa.guests;
     const totalCapacity = villa.guests + villa.extraCapacity;
     if (partySize > 0 && partySize > totalCapacity) return false;
@@ -703,6 +724,7 @@ export async function searchAvailability(
         .filter(Boolean),
       popular: villa.popular,
       recommended: villa.recommended,
+      documented: hasVillaTourismDocument(villa),
       startingPrice: minNightly ?? villa.pricePerNight,
       minStayNights: quote.minStayNights,
       checkIn: stayCheckIn,

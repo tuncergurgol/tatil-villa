@@ -91,6 +91,20 @@ export function hasVillaTourismDocument(villa: {
   );
 }
 
+/** Üye misafir belgesiz teklif villasını da görür. Üye olmayan yalnızca aramadaki belgeli villayı görür. */
+export function isVillaVisibleForGuest(
+  villa: {
+    documentType: TourismDocumentType | null;
+    documentNo: string;
+    showInSearch: boolean;
+    showInOffer: boolean;
+  },
+  includeUndocumented: boolean
+) {
+  if (hasVillaTourismDocument(villa)) return villa.showInSearch;
+  return includeUndocumented && villa.showInOffer;
+}
+
 /** Belgesiz villaların yayın / arama / teklif görünürlüğü. */
 export const UNDOCUMENTED_VILLA_VISIBILITY = {
   active: true,

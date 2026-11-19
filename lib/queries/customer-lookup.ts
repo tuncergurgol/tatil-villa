@@ -113,3 +113,29 @@ export async function lookupCustomerByPhone(
     source: "booking",
   };
 }
+
+/** Sadakat üyeliği kabul edilmiş, aktif hesap. Telefon üye kaydında veya bağlı müşteride olabilir. */
+export async function isActiveLoyaltyMemberPhone(phone: string) {
+  const stored = normalizeStoredTurkishPhone(phone);
+  const digits = normalizeTurkishPhoneDigits(phone);
+  if (!digits || digits.length < 10) return false;
+
+  const phoneMatch = [{ phone: stored }, { phone: { endsWith: digits } }];
+  const member = await prisma.memberAccount.findFirst({
+    where: {
+      active: true,
+      membershipAcceptedAt: { not: null },
+      OR: [
+        ...phoneMatch,
+        {
+          customer: {
+            active: true,
+            OR: phoneMatch,
+          },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  return Boolean(member);
+}
