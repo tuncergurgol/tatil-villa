@@ -79,6 +79,8 @@ CRON_FILE="$(mktemp)"
 30 4 * * * /bin/bash ${BACKUP_SCRIPT} >>"${LOG_DIR}/gdrive-backup.log" 2>&1
 # tatil-villa cron — haftalık güvenlik kontrolü e-postası (her pazar 03:00 Europe/Istanbul; info@)
 0 3 * * 0 cd ${APP_DIR} && npx tsx scripts/security-weekly-check.ts >>"${LOG_DIR}/security-weekly-check.log" 2>&1
+# tatil-villa cron — saat başı site kontrolü (200 değilse info@)
+0 * * * * cd ${APP_DIR} && npx tsx scripts/site-health-check.ts >>"${LOG_DIR}/site-health-check.log" 2>&1
 EOF
 } > "$CRON_FILE"
 
@@ -107,4 +109,5 @@ echo "  IndexNow  : her gün 06:20'de Bing/Yandex'e sitemap URL'leri bildirilir.
 echo "  Meta feed  : saat :45'te önbellek yenilenir."
 echo "  GDrive yedek: her gece 04:30 (SQL + dosyalar ayrı)."
 echo "  Güvenlik   : her pazar 03:00'te kontrol raporu maili (info@)."
+echo "  Site sağlık: her saat başı; 200 dönmeyen site için info@ maili."
 echo "=========================================================="
