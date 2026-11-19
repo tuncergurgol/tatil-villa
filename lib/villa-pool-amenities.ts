@@ -2,6 +2,32 @@
 
 export const HEATED_POOL_AMENITY_NAME = "Isıtmalı Havuz";
 
+/**
+ * Misafir yalnızca "havuz" dediyse tür belirtilmemiş demektir.
+ * Arama, aşağıdaki dört türden herhangi birini yeterli sayar.
+ */
+export const GENERIC_POOL_REQUEST = "Havuz";
+
+export const ANY_POOL_TYPES = [
+  "Özel Havuz",
+  "Kapalı Havuz",
+  "Çocuk Havuzu",
+  "Ortak Havuz",
+] as const;
+
+export const ANY_POOL_AMENITY_NAMES = [
+  "Özel Havuzlu",
+  "Kapalı Havuz",
+  "Çocuk Havuzu",
+  "Ortak Havuz",
+] as const;
+
+export const ANY_POOL_FACILITY_CATEGORIES = [
+  "Özel Havuzlu Villalar",
+  "Kapalı Havuzlu Villalar",
+  "Çocuk Havuzlu Villalar",
+] as const;
+
 /** poolType (Havuz Bilgileri) → Amenity.name (Özellikler) */
 export const POOL_TYPE_TO_AMENITY_NAME: Record<string, string> = {
   "Özel Havuz": "Özel Havuzlu",
@@ -9,6 +35,22 @@ export const POOL_TYPE_TO_AMENITY_NAME: Record<string, string> = {
   "Çocuk Havuzu": "Çocuk Havuzu",
   "Kapalı Havuz": "Kapalı Havuz",
 };
+
+export function isGenericPoolRequestName(name: string) {
+  const folded = name.trim().toLocaleLowerCase("tr-TR");
+  return folded === "havuz" || folded === "havuzu";
+}
+
+/** Dört havuz türünden en az biri olan villa. */
+export function anyPoolMatchWhere() {
+  return {
+    OR: [
+      { amenities: { hasSome: [...ANY_POOL_AMENITY_NAMES] } },
+      { facilityCategories: { hasSome: [...ANY_POOL_FACILITY_CATEGORIES] } },
+      { pools: { some: { poolType: { in: [...ANY_POOL_TYPES] } } } },
+    ],
+  };
+}
 
 export type PoolAmenitySource = {
   poolType: string | null | undefined;

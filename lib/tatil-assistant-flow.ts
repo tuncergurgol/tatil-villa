@@ -1,4 +1,5 @@
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
+import { GENERIC_POOL_REQUEST } from "@/lib/villa-pool-amenities";
 import {
   assistantOutsideServiceMessage,
   isAssistantMoreOptionsRequest,
@@ -636,13 +637,9 @@ const FEATURE_STOP = new Set([
   "edilir",
   "olur",
   "olsun",
-  "aile",
   "arkadas",
   "grup",
   "grubu",
-  "yetiskin",
-  "cocuk",
-  "bebek",
 ]);
 
 let featureCatalog: string[] = [];
@@ -948,12 +945,26 @@ export function extractAmenityNames(text: string): string[] {
     [/deniz\s*manzar/iu, "Deniz Manzarası"],
     [/jakuzi/iu, "Jakuzi"],
     [/çocuk\s*havuz|cocuk\s*havuz/iu, "Çocuk Havuzu"],
+    [/ortak\s*havuz/iu, "Ortak Havuz"],
     [/klimal/iu, "Klima"],
     [/merkeze\s*yakın|merkeze\s*yakin/iu, "Merkeze Yakın"],
   ];
 
   if (!heated && !indoor && /özel\s*havuz|ozel\s*havuz|havuzlu/iu.test(lower)) {
     amenities.push("Özel Havuzlu");
+  }
+
+  const specificPool =
+    heated ||
+    indoor ||
+    /çocuk\s*havuz|cocuk\s*havuz|özel\s*havuz|ozel\s*havuz|kapal[ıi]\s*havuz|ortak\s*havuz|is[ıi]tmal[ıi]\s*havuz|havuzlu|infinity|sonsuzluk|korunakl[ıi]\s*havuz/iu.test(
+      lower
+    );
+  if (
+    !specificPool &&
+    /(?:^|[^a-zçğıöşü0-9])havuz(?:u)?(?:[^a-zçğıöşü0-9]|$)/iu.test(lower)
+  ) {
+    amenities.push(GENERIC_POOL_REQUEST);
   }
 
   for (const [pattern, label] of patterns) {

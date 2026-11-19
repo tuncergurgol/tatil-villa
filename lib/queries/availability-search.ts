@@ -35,6 +35,10 @@ import type {
   HeatedPoolOption,
   StayPeriodFees,
 } from "@/lib/stay-period-fees";
+import {
+  anyPoolMatchWhere,
+  isGenericPoolRequestName,
+} from "@/lib/villa-pool-amenities";
 
 export type AvailabilitySearchSort = "recommended" | "price_asc";
 
@@ -53,6 +57,8 @@ export type AvailabilitySearchFilters = {
   regionSlugs?: string[];
   amenityNames?: string[];
   facilityCategoryNames?: string[];
+  /** "Havuz" — dört havuz türünden herhangi biri yeterli. */
+  anyPool?: boolean;
   guestCounts?: number[];
   flexibleDate?: boolean;
   fillEmptyDates?: boolean;
@@ -396,7 +402,13 @@ export async function searchAvailability(
   const sort = filters.sort ?? "recommended";
 
   const regionIds = await resolveRegionIds(filters.regionSlugs ?? []);
-  const amenityNames = await resolveAmenityNames(filters.amenityNames ?? []);
+  const requestedAmenities = filters.amenityNames ?? [];
+  const anyPool =
+    Boolean(filters.anyPool) ||
+    requestedAmenities.some((name) => isGenericPoolRequestName(name));
+  const amenityNames = (
+    await resolveAmenityNames(requestedAmenities)
+  ).filter((name) => !isGenericPoolRequestName(name));
   const facilityCategoryNames = await resolveAmenityNames(
     filters.facilityCategoryNames ?? []
   );
@@ -418,6 +430,14 @@ export async function searchAvailability(
   }
   if (facilityCategoryNames.length > 0) {
     where.facilityCategories = { hasEvery: facilityCategoryNames };
+  }
+  if (anyPool) {
+    const existingAnd = Array.isArray(where.AND)
+      ? where.AND
+      : where.AND
+        ? [where.AND]
+        : [];
+    where.AND = [...existingAnd, anyPoolMatchWhere()];
   }
 
   const [villas, featuredAmenityRows] = await Promise.all([

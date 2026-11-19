@@ -23,6 +23,7 @@ import {
 import { missingRegionPriceReply } from "@/lib/tatil-assistant-price-gap";
 import { createAssistantPublicShareLink } from "@/lib/tatil-assistant-share";
 import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
+import { isGenericPoolRequestName } from "@/lib/villa-pool-amenities";
 import {
   applyCriterionUpdate,
   assistantPlaceName,
@@ -122,6 +123,7 @@ async function expandAssistantFeatures(names: string[] | undefined) {
     return {
       amenityNames: undefined as string[] | undefined,
       facilityCategoryNames: undefined as string[] | undefined,
+      anyPool: false,
     };
   }
   const [amenities, categories] = await Promise.all([
@@ -133,11 +135,16 @@ async function expandAssistantFeatures(names: string[] | undefined) {
   ]);
   const amenityNames: string[] = [];
   const facilityCategoryNames: string[] = [];
+  let anyPool = false;
   const exactName = (rows: { name: string }[], needle: string) => {
     const folded = needle.toLocaleLowerCase("tr-TR");
     return rows.find((item) => item.name.toLocaleLowerCase("tr-TR") === folded);
   };
   for (const name of names) {
+    if (isGenericPoolRequestName(name)) {
+      anyPool = true;
+      continue;
+    }
     const amenityExact = exactName(amenities, name);
     const categoryExact = exactName(categories, name);
     if (amenityExact) amenityNames.push(amenityExact.name);
@@ -155,6 +162,7 @@ async function expandAssistantFeatures(names: string[] | undefined) {
     facilityCategoryNames: facilityCategoryNames.length
       ? [...new Set(facilityCategoryNames)]
       : undefined,
+    anyPool,
   };
 }
 
@@ -181,6 +189,7 @@ async function runVillaSearch(args: {
     regionSlugs,
     amenityNames: features.amenityNames,
     facilityCategoryNames: features.facilityCategoryNames,
+    anyPool: features.anyPool,
     guestCounts: args.guestCounts ?? (args.adults > 0 ? [args.adults] : []),
     flexibleDate: args.flexibleDate ?? false,
     fillEmptyDates: true,
