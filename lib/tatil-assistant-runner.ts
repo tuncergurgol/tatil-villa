@@ -194,6 +194,8 @@ async function runVillaSearch(args: {
     flexibleDate: args.flexibleDate ?? false,
     fillEmptyDates: true,
     sort: "price_asc",
+    // Belgesiz villalar aramada kapalı, teklifte açık kalır. WhatsApp teklif kanalıdır.
+    listScope: "offer",
   });
 }
 
