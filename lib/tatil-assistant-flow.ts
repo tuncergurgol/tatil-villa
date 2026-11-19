@@ -1,4 +1,7 @@
-import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
+import type {
+  AssistantPendingConfirm,
+  AssistantSearchState,
+} from "@/lib/tatil-assistant-types";
 import { GENERIC_POOL_REQUEST } from "@/lib/villa-pool-amenities";
 import {
   assistantOutsideServiceMessage,
@@ -468,6 +471,246 @@ export function extractStayDates(text: string): {
   return null;
 }
 
+const WEEKDAY_FOLDS: Array<{ fold: string; day: number }> = [
+  { fold: "pazartesi", day: 1 },
+  { fold: "cumartesi", day: 6 },
+  { fold: "carsamba", day: 3 },
+  { fold: "persembe", day: 4 },
+  { fold: "cuma", day: 5 },
+  { fold: "sali", day: 2 },
+  { fold: "pazar", day: 0 },
+];
+
+const WEEKDAY_LABELS = [
+  "Pazar",
+  "Pazartesi",
+  "Salı",
+  "Çarşamba",
+  "Perşembe",
+  "Cuma",
+  "Cumartesi",
+];
+
+const MONTH_LABELS = [
+  "",
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
+];
+
+const ORDINAL_NTH: Record<string, number | "last"> = {
+  ilk: 1,
+  birinci: 1,
+  ikinci: 2,
+  ucuncu: 3,
+  dorduncu: 4,
+  besinci: 5,
+  sonuncu: "last",
+  son: "last",
+};
+
+const WEEKDAY_SUFFIX =
+  /^(?:n(?:den|dan|ten|tan|de|da|te|ta|in|un)|den|dan|ten|tan|de|da|te|ta|si|i|u|un|unun|gun|gunu|gunden)?$/;
+
+const MONTH_SUFFIX =
+  /^(?:un|unun|in|nin|n(?:dan|den|da|de|ta|te)|dan|den|da|de|ta|te|ayi|ayinin|ayinda)?$/;
+
+function weekdayFromToken(token: string) {
+  for (const item of WEEKDAY_FOLDS) {
+    if (!token.startsWith(item.fold)) continue;
+    if (WEEKDAY_SUFFIX.test(token.slice(item.fold.length))) return item.day;
+  }
+  return null;
+}
+
+function monthFromToken(token: string) {
+  const names = Object.keys(MONTH_BY_FOLD).sort((left, right) => right.length - left.length);
+  for (const name of names) {
+    if (!token.startsWith(name)) continue;
+    if (MONTH_SUFFIX.test(token.slice(name.length))) return MONTH_BY_FOLD[name] ?? null;
+  }
+  return null;
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function weekdayOfMonth(
+  year: number,
+  month: number,
+  weekday: number,
+  nth: number | "last"
+) {
+  if (nth === "last") {
+    const last = new Date(year, month, 0);
+    const day = last.getDate() - ((last.getDay() - weekday + 7) % 7);
+    return new Date(year, month - 1, day);
+  }
+  if (nth < 1 || nth > 5) return null;
+  const first = new Date(year, month - 1, 1);
+  const day = 1 + ((weekday - first.getDay() + 7) % 7) + (nth - 1) * 7;
+  const date = new Date(year, month - 1, day);
+  if (date.getMonth() !== month - 1) return null;
+  return date;
+}
+
+function upcomingWeekdayOfMonth(
+  month: number,
+  weekday: number,
+  nth: number | "last",
+  today: Date
+) {
+  const todayStart = startOfLocalDay(today);
+  for (const year of [today.getFullYear(), today.getFullYear() + 1]) {
+    const date = weekdayOfMonth(year, month, weekday, nth);
+    if (date && date >= todayStart) return date;
+  }
+  return null;
+}
+
+function nextWeekdayAfter(start: Date, weekday: number) {
+  const delta = (weekday - start.getDay() + 7) % 7;
+  const days = delta === 0 ? 7 : delta;
+  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + days);
+}
+
+function dateKeyFromLocal(date: Date) {
+  return toDateKey(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+function isDepartureToken(token: string) {
+  return /^(cik|cikis|ayril)/.test(token);
+}
+
+/**
+ * "Temmuzun ilk cumartesinden başlayıp bir sonraki cuma çıkmak".
+ * Ayın sıradaki günü takvimden bulunur; çıkış, girişten sonraki ilk hedef gündür.
+ * Gün sırası veya ay yoksa tarih uydurulmaz.
+ */
+export function extractRelativeStay(
+  text: string,
+  now: Date = new Date()
+): { checkIn: string; checkOut: string } | null {
+  const tokens = foldTr(text)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((raw) => ({
+      raw,
+      month: monthFromToken(raw),
+      weekday: weekdayFromToken(raw),
+      ordinal: Object.prototype.hasOwnProperty.call(ORDINAL_NTH, raw)
+        ? ORDINAL_NTH[raw]
+        : null,
+      isNext: raw === "sonraki" || raw === "ertesi",
+    }));
+
+  let startAt = -1;
+  let ordinal: number | "last" | null = null;
+  let startWeekday: number | null = null;
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const current = tokens[index];
+    const next = tokens[index + 1];
+    if (current?.ordinal == null || next?.weekday == null) continue;
+    startAt = index + 1;
+    ordinal = current.ordinal;
+    startWeekday = next.weekday;
+    break;
+  }
+  if (startAt < 0 || ordinal == null || startWeekday == null) return null;
+
+  let month: number | null = null;
+  for (
+    let index = Math.max(0, startAt - 3);
+    index <= Math.min(tokens.length - 1, startAt + 3);
+    index += 1
+  ) {
+    if (tokens[index]?.month != null) {
+      month = tokens[index]?.month ?? null;
+      break;
+    }
+  }
+  if (month == null) return null;
+
+  let endWeekday: number | null = null;
+  for (let index = startAt + 1; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (!token) continue;
+    if (token.isNext && tokens[index + 1]?.weekday != null) {
+      endWeekday = tokens[index + 1]?.weekday ?? null;
+      break;
+    }
+    if (token.weekday == null) continue;
+    const ahead = tokens
+      .slice(index + 1, index + 3)
+      .some((item) => item && isDepartureToken(item.raw));
+    if (ahead || isDepartureToken(token.raw)) {
+      endWeekday = token.weekday;
+      break;
+    }
+  }
+  if (endWeekday == null) return null;
+
+  const start = upcomingWeekdayOfMonth(month, startWeekday, ordinal, now);
+  if (!start) return null;
+  const end = nextWeekdayAfter(start, endWeekday);
+  const checkIn = dateKeyFromLocal(start);
+  const checkOut = dateKeyFromLocal(end);
+  if (!checkIn || !checkOut || checkIn >= checkOut) return null;
+  const nights = nightsBetween(checkIn, checkOut);
+  if (nights < 1 || nights > 180) return null;
+  return { checkIn, checkOut };
+}
+
+export function formatStayConfirmQuestion(checkIn: string, checkOut: string) {
+  const describe = (key: string) => {
+    const [yearRaw, monthRaw, dayRaw] = key.split("-").map(Number);
+    const year = yearRaw ?? 0;
+    const month = monthRaw ?? 0;
+    const day = dayRaw ?? 0;
+    const date = new Date(year, month - 1, day);
+    return {
+      day: pad2(day),
+      month: MONTH_LABELS[month] ?? "",
+      year,
+      weekday: WEEKDAY_LABELS[date.getDay()] ?? "",
+    };
+  };
+  const start = describe(checkIn);
+  const end = describe(checkOut);
+  const nights = nightsBetween(checkIn, checkOut);
+  return `${start.day} ${start.month} ${start.year} ${start.weekday} Günü girişli ${end.day} ${end.month} ${end.year} ${end.weekday} günü çıkışlı ${nights} Gece doğru mudur`;
+}
+
+/** "6 y 2 ç" = 6 yetişkin, 2 çocuk. Tam yazılmış "6 yetişkin" buna girmez. */
+export function extractShorthandParty(text: string): {
+  adults?: number;
+  children?: number;
+  babies?: number;
+} | null {
+  const found: { adults?: number; children?: number; babies?: number } = {};
+  const re = /(?:^|[^\p{L}\d])(\d{1,2})\s*([yçcb])(?!\p{L})/giu;
+  for (const match of text.matchAll(re)) {
+    const count = Number(match[1]);
+    if (!Number.isFinite(count) || count < 0 || count > 20) continue;
+    const letter = (match[2] ?? "").toLocaleLowerCase("tr-TR");
+    if (letter === "y" && found.adults == null) found.adults = count;
+    if ((letter === "ç" || letter === "c") && found.children == null) found.children = count;
+    if (letter === "b" && found.babies == null) found.babies = count;
+  }
+  if (found.adults == null && found.children == null && found.babies == null) return null;
+  return found;
+}
+
 function mentionsMonthName(text: string) {
   return Object.keys(MONTH_MAP).some((name) => {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -480,7 +723,7 @@ function mentionsMonthName(text: string) {
 
 /** "Ocak başı" gibi günü belli olmayan dönem. */
 export function isVagueStayPeriod(text: string) {
-  if (extractStayDates(text) || /\d/.test(text)) return false;
+  if (extractStayDates(text) || extractRelativeStay(text) || /\d/.test(text)) return false;
   const lower = text.toLocaleLowerCase("tr-TR");
   if (mentionsMonthName(text)) return true;
   return /ba[sş][ıi](?:nda)?|sonu(?:nda)?|ortas[ıi](?:nda)?|civar|dolay|haftaya|bu\s*ay|gelecek\s*ay|önümüzdeki\s*hafta|onumuzdeki\s*hafta|yaz[ıi]n|k[ıi][sş][ıi]n|bayram/iu.test(
@@ -937,6 +1180,25 @@ const PLACE_STEM_STOP = new Set([
   "ozellik",
   "secenek",
   "plaj",
+  "pazartesi",
+  "sali",
+  "carsamba",
+  "persembe",
+  "cuma",
+  "cumartesi",
+  "pazar",
+  "ocak",
+  "subat",
+  "mart",
+  "nisan",
+  "mayis",
+  "haziran",
+  "temmuz",
+  "agustos",
+  "eylul",
+  "ekim",
+  "kasim",
+  "aralik",
 ]);
 
 function isKnownPlaceStem(stem: string) {
@@ -963,10 +1225,33 @@ function displayPlace(raw: string) {
   );
 }
 
+function locativeStem(folded: string) {
+  const suffixes = [
+    "nden",
+    "ndan",
+    "nten",
+    "ntan",
+    "den",
+    "dan",
+    "ten",
+    "tan",
+    "de",
+    "da",
+    "te",
+    "ta",
+  ];
+  for (const suffix of suffixes) {
+    if (!folded.endsWith(suffix)) continue;
+    const stem = folded.slice(0, -suffix.length);
+    if (stem.length >= 3) return stem;
+  }
+  return "";
+}
+
 function locativePlace(token: string) {
   const folded = foldRegionText(token);
-  const match = folded.match(/^([a-z0-9]{3,})(?:dan|den|tan|ten|da|de|ta|te)$/);
-  if (!match?.[1] || PLACE_STEM_STOP.has(match[1]) || isKnownPlaceStem(match[1])) return "";
+  const stem = locativeStem(folded);
+  if (!stem || PLACE_STEM_STOP.has(stem) || isKnownPlaceStem(stem)) return "";
   return displayPlace(token);
 }
 
@@ -1720,11 +2005,195 @@ function hasRegionAlias(text: string) {
   return Object.keys(REGION_ALIASES).some((alias) => mentionsAlias(text, alias));
 }
 
+function isPureAffirmative(text: string) {
+  const folded = foldTr(text).replace(/[.!?,]+$/g, "").trim();
+  return [
+    "evet",
+    "evt",
+    "olur",
+    "tamam",
+    "dogru",
+    "aynen",
+    "tabi",
+    "tabii",
+    "evet dogru",
+    "dogru olur",
+    "evet olur",
+    "evet tamam",
+  ].includes(folded);
+}
+
+function isPureNegative(text: string) {
+  const folded = foldTr(text).replace(/[.!?,]+$/g, "").trim();
+  return ["hayir", "degil", "yanlis", "yok", "hayir degil"].includes(folded);
+}
+
+function confirmRegion(text: string) {
+  const slug = specificRegionSlug(text);
+  if (!slug) return null;
+  const hit = regionHitsInText(text).find((item) => item.slug === slug);
+  const name = capitalizeWord(hit?.name || slug);
+  const folded = foldRegionText(name);
+  const label = /(bolge|mahalle|ilce)/.test(folded) ? name : `${name} bölgesi`;
+  return { slug, label };
+}
+
+function inferredAlreadySaved(
+  state: AssistantSearchState,
+  proposal: AssistantPendingConfirm
+) {
+  const datesSame =
+    !proposal.checkIn ||
+    (state.checkIn === proposal.checkIn && state.checkOut === proposal.checkOut);
+  const partySame =
+    !proposal.party ||
+    (Boolean(state.countsCollected) &&
+      state.adults === proposal.adults &&
+      state.children === proposal.children &&
+      state.babies === proposal.babies);
+  const regionSame =
+    !proposal.regionSlugs?.length ||
+    (state.regionSlugs ?? []).join(",") === proposal.regionSlugs.join(",");
+  return datesSame && partySame && regionSame;
+}
+
+/** Kısaltılmış kişi sayısı, bölge ve göreli tarihi onay cümlesine çevirir. */
+export function buildInferredConfirm(
+  text: string,
+  now: Date = new Date()
+): AssistantPendingConfirm | null {
+  const shorthand = extractShorthandParty(text);
+  const stay = extractRelativeStay(text, now);
+  if (!shorthand && !stay) return null;
+
+  const region = confirmRegion(text);
+  const labels: string[] = [];
+  if (shorthand?.adults != null) labels.push(`${shorthand.adults} yetişkin`);
+  if (shorthand?.children != null) labels.push(`${shorthand.children} çocuk`);
+  if (shorthand?.babies != null) labels.push(`${shorthand.babies} bebek`);
+  if ((shorthand || stay) && region) labels.push(region.label);
+
+  const party = shorthand
+    ? {
+        adults: shorthand.adults ?? 0,
+        children: shorthand.children ?? 0,
+        babies: shorthand.babies ?? 0,
+      }
+    : null;
+  const dateQuestion = stay
+    ? formatStayConfirmQuestion(stay.checkIn, stay.checkOut)
+    : "";
+  const partyClause = labels.join(", ");
+  const question = dateQuestion
+    ? partyClause
+      ? `${partyClause}, ${dateQuestion}`
+      : dateQuestion
+    : `${partyClause} doğru mudur`;
+
+  return {
+    question,
+    checkIn: stay?.checkIn,
+    checkOut: stay?.checkOut,
+    party: Boolean(party),
+    adults: party?.adults,
+    children: party?.children,
+    babies: party?.babies,
+    regionSlugs: region && (shorthand || stay) ? [region.slug] : undefined,
+  };
+}
+
+function topicsDiffer(left: AssistantPendingConfirm, right: AssistantPendingConfirm) {
+  return Boolean(left.checkIn) !== Boolean(right.checkIn) || Boolean(left.party) !== Boolean(right.party);
+}
+
+function commitPending(
+  state: AssistantSearchState,
+  pending: AssistantPendingConfirm
+): AssistantSearchState {
+  let next: AssistantSearchState = { ...state, pendingConfirm: undefined };
+  if (pending.checkIn && pending.checkOut) {
+    next = {
+      ...next,
+      checkIn: pending.checkIn,
+      checkOut: pending.checkOut,
+      askedNetDates: false,
+    };
+  }
+  if (pending.party) {
+    next = withPartyCounts(next, {
+      adults: pending.adults ?? 0,
+      children: pending.children ?? 0,
+      babies: pending.babies ?? 0,
+    });
+  }
+  if (pending.regionSlugs?.length) {
+    const trail = regionTrailForSlug(pending.regionSlugs[0] ?? "");
+    next = {
+      ...next,
+      regionSlugs: pending.regionSlugs,
+      regionAny: false,
+      ...(trail.il || trail.ilce || trail.mahalle ? { regionTrail: trail } : {}),
+    };
+  }
+  return next;
+}
+
+function rejectConfirmReply(pending: AssistantPendingConfirm) {
+  if (pending.checkIn && pending.party) {
+    return "Tarih, kişi sayısı veya bölge uymadı. Net tarih, yetişkin, çocuk ve bölgeyi yazar mısınız?";
+  }
+  if (pending.checkIn) {
+    return "Tarihi tam anlayamadım. 3/7 Eylül ya da 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?";
+  }
+  if (pending.regionSlugs?.length) {
+    return "Kaç yetişkin, kaç çocuk olduğunu ve bölgeyi net yazar mısınız?";
+  }
+  return "Kaç yetişkin, kaç çocuk ve kaç bebek olduğunu yazar mısınız?";
+}
+
+function takeConfirmReply(
+  userText: string,
+  state: AssistantSearchState
+): FlowAdvanceResult | null {
+  const pending = state.pendingConfirm;
+  if (!pending) return null;
+  if (isPureAffirmative(userText)) {
+    const committed = commitPending(state, pending);
+    const queued = committed.confirmQueue ?? [];
+    if (queued.length > 0) {
+      const [nextConfirm, ...rest] = queued;
+      if (!nextConfirm) {
+        const step = resolveFlowStep(committed);
+        return finishTurn(buildFlowReply(step, committed), committed, step === "ready");
+      }
+      const nextState: AssistantSearchState = {
+        ...committed,
+        pendingConfirm: nextConfirm,
+        confirmQueue: rest.length > 0 ? rest : undefined,
+      };
+      return finishTurn(nextConfirm.question, nextState, false);
+    }
+    const step = resolveFlowStep(committed);
+    return finishTurn(buildFlowReply(step, committed), committed, step === "ready");
+  }
+  if (isPureNegative(userText)) {
+    return finishTurn(rejectConfirmReply(pending), {
+      ...state,
+      pendingConfirm: undefined,
+      confirmQueue: undefined,
+    }, false);
+  }
+  return null;
+}
+
 /** "Bana villa lazım" gibi kriter içermeyen yeni bir talep. */
 export function isFreshVillaRequest(text: string) {
   const lower = text.trim().toLocaleLowerCase("tr-TR");
   if (!lower.includes("villa")) return false;
-  if (extractStayDates(text) || extractGuestCounts(text).length > 0) return false;
+  if (extractStayDates(text) || extractRelativeStay(text) || extractGuestCounts(text).length > 0) {
+    return false;
+  }
+  if (extractShorthandParty(text)) return false;
   if (regionHitsInText(text).length > 0 || extractAmenityNames(text).length > 0) return false;
   return /laz[ıi]m|istiyor|ar[ıi]yor|bakar|gerek|bul|öner|oner/.test(lower);
 }
@@ -1754,13 +2223,17 @@ function restartedConversationState(state: AssistantSearchState): AssistantSearc
 export function processFlowStep(
   userText: string,
   state: AssistantSearchState,
-  previousUserText?: string
+  previousUserText?: string,
+  now: Date = new Date()
 ): FlowAdvanceResult {
   if (isConversationGreeting(userText)) {
     const nextState = restartedConversationState(state);
     const nextStep = resolveFlowStep(nextState);
     return finishTurn(buildFlowReply(nextStep, nextState), nextState, false);
   }
+
+  const pendingReply = takeConfirmReply(userText, state);
+  if (pendingReply) return pendingReply;
 
   const outsidePlace = unknownServicePlace(userText, resolveFlowStep(state));
   if (outsidePlace) {
@@ -1784,6 +2257,23 @@ export function processFlowStep(
       nextState,
       nextStep === "ready"
     );
+  }
+
+  const proposal = buildInferredConfirm(userText, now);
+  if (proposal && !inferredAlreadySaved(state, proposal)) {
+    const queue = [...(state.confirmQueue ?? [])];
+    if (state.pendingConfirm && topicsDiffer(state.pendingConfirm, proposal)) {
+      queue.unshift(state.pendingConfirm);
+    }
+    return finishTurn(proposal.question, {
+      ...state,
+      pendingConfirm: proposal,
+      confirmQueue: queue.length > 0 ? queue : undefined,
+    }, false);
+  }
+
+  if (state.pendingConfirm || state.confirmQueue?.length) {
+    state = { ...state, pendingConfirm: undefined, confirmQueue: undefined };
   }
 
   const step = resolveFlowStep(state);

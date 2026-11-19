@@ -595,7 +595,11 @@ export async function processAssistantMessage(
   const history = input.reuseLastUserMessage
     ? priorUserTexts.slice(0, -1)
     : priorUserTexts;
+  const confirmationOpen = Boolean(
+    searchState.pendingConfirm || searchState.confirmQueue?.length
+  );
   if (
+    !confirmationOpen &&
     !searchState.freshIntake &&
     !searchState.regionAny &&
     !searchState.guestsAny &&
@@ -609,8 +613,12 @@ export async function processAssistantMessage(
     };
     for (const text of history) rebuilt = applyCriterionUpdate(rebuilt, text);
     if (rebuilt.checkIn || partyCapacity(rebuilt) > 0 || rebuilt.regionSlugs?.length) {
+      const kept = Object.fromEntries(
+        Object.entries(searchState).filter(([, value]) => value !== undefined)
+      ) as AssistantSearchState;
       searchState = {
         ...rebuilt,
+        ...kept,
         guestName: searchState.guestName ?? rebuilt.guestName,
         guestPhone: searchState.guestPhone || rebuilt.guestPhone,
         phoneCollected: true,

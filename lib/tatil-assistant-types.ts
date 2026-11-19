@@ -1,3 +1,15 @@
+/** Müşteri "evet" demeden aramaya yazılmayan kişi, bölge veya tarih. */
+export type AssistantPendingConfirm = {
+  question: string;
+  checkIn?: string;
+  checkOut?: string;
+  party?: boolean;
+  adults?: number;
+  children?: number;
+  babies?: number;
+  regionSlugs?: string[];
+};
+
 export type AssistantSearchState = {
   guestName?: string;
   /** Ad alındıktan sonra "Nasıl yardımcı olabilirim?" soruldu. */
@@ -42,4 +54,8 @@ export type AssistantSearchState = {
   freshIntake?: boolean;
   /** "Ocak başı" gibi yaklaşık bir dönemden sonra net tarih soruldu. */
   askedNetDates?: boolean;
+  /** Kısaltma veya göreli tarihten üretilen, henüz onaylanmamış okuma. */
+  pendingConfirm?: AssistantPendingConfirm;
+  /** Sırada bekleyen diğer onay soruları. */
+  confirmQueue?: AssistantPendingConfirm[];
 };
