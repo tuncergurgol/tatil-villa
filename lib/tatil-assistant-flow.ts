@@ -1504,6 +1504,20 @@ export function omitCalendarMonthAmenities(names: string[] | undefined) {
   return (names ?? []).filter((name) => !isCalendarMonthFeature(name));
 }
 
+export const FRIENDS_GROUP_AMENITY = "Arkadaş Grubu Kabul Eden";
+
+/** Aile tüm villalar. Arkadaş grubu yalnızca bu olanağı olan villalar. */
+export function amenitiesForPartyKind(
+  partyKind: "family" | "friends" | "any" | undefined,
+  amenityNames: string[] | undefined
+) {
+  const names = omitCalendarMonthAmenities(amenityNames);
+  if (partyKind !== "friends") return names;
+  const folded = FRIENDS_GROUP_AMENITY.toLocaleLowerCase("tr-TR");
+  if (names.some((name) => name.toLocaleLowerCase("tr-TR") === folded)) return names;
+  return [...names, FRIENDS_GROUP_AMENITY];
+}
+
 function matchCatalogFeatures(text: string) {
   if (featureCatalog.length === 0) return [];
   const textTokens = featureTokens(textWithoutDates(text));

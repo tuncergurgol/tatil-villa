@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import {
+  amenitiesForPartyKind,
   applyCriterionUpdate,
   assistantPartySizeWindow,
   buildInferredConfirm,
   extractAmenityNames,
   extractRegionSlugs,
   extractStayDates,
+  FRIENDS_GROUP_AMENITY,
   processFlowStep,
   setAssistantFeatureCatalog,
 } from "../lib/tatil-assistant-flow";
@@ -111,6 +113,15 @@ if (winterTurn.handled) {
 }
 assert.deepEqual(assistantPartySizeWindow([4]), [4, 5, 6]);
 assert.deepEqual(assistantPartySizeWindow([2, 3]), [2, 3, 4]);
+assert.deepEqual(amenitiesForPartyKind("family", ["Isıtmalı Havuz"]), ["Isıtmalı Havuz"]);
+assert.deepEqual(amenitiesForPartyKind("any", ["Isıtmalı Havuz"]), ["Isıtmalı Havuz"]);
+assert.deepEqual(amenitiesForPartyKind("friends", ["Isıtmalı Havuz"]), [
+  "Isıtmalı Havuz",
+  FRIENDS_GROUP_AMENITY,
+]);
+assert.deepEqual(amenitiesForPartyKind("friends", [FRIENDS_GROUP_AMENITY]), [
+  FRIENDS_GROUP_AMENITY,
+]);
 setAssistantFeatureCatalog([]);
 
 console.log("assistant regions smoke ok");

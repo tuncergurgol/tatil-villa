@@ -27,6 +27,7 @@ import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import { isGenericPoolRequestName } from "@/lib/villa-pool-amenities";
 import {
   applyCriterionUpdate,
+  amenitiesForPartyKind,
   assistantPartySizeWindow,
   assistantPlaceName,
   omitCalendarMonthAmenities,
@@ -305,6 +306,10 @@ async function deliverAssistantOffers(input: {
             : []
       );
   const regionSlugs = searchState.regionAny ? undefined : searchState.regionSlugs;
+  const amenityNames = amenitiesForPartyKind(
+    searchState.partyKind,
+    searchState.amenityNames
+  );
 
   const sent = new Set(searchState.sentVillaIds ?? []);
   const limit = more ? ASSISTANT_MORE_OPTION_COUNT : ASSISTANT_FIRST_OPTION_COUNT;
@@ -320,7 +325,7 @@ async function deliverAssistantOffers(input: {
       adults: 0,
       guestCounts: [],
       regionSlugs,
-      amenityNames: searchState.amenityNames,
+      amenityNames,
       flexibleDate: false,
       includeUndocumented,
     });
@@ -335,7 +340,7 @@ async function deliverAssistantOffers(input: {
       checkOut: searchState.checkOut,
       adults: partySize,
       regionSlugs,
-      amenityNames: searchState.amenityNames,
+      amenityNames,
       flexibleDate: false,
       includeUndocumented,
     });
