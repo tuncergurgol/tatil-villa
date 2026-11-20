@@ -462,6 +462,33 @@ export function extractStayDates(text: string): {
     }
   }
 
+  // Kasım 20 Aralık 20 arası → 20 Kasım giriş, 20 Aralık çıkış
+  const monthDaySpan = normalized.match(
+    new RegExp(
+      String.raw`(?:^|[^\p{L}])(${MONTH_NAME_RE})\s+(\d{1,2})(?:\s+(20\d{2}|\d{2}))?\s*(?:-|\/|ile|ve|aras[ıi](?:nda)?)?\s*(${MONTH_NAME_RE})\s+(\d{1,2})(?:\s+(20\d{2}|\d{2}))?(?:\s+aras[ıi](?:nda)?)?`,
+      "iu"
+    )
+  );
+  if (monthDaySpan) {
+    const startMonth = normalizeMonthName(monthDaySpan[1] ?? "");
+    const endMonth = normalizeMonthName(monthDaySpan[4] ?? "");
+    if (startMonth && endMonth) {
+      const range = resolveStayRange(
+        {
+          day: Number(monthDaySpan[2]),
+          month: startMonth,
+          year: parseYearToken(monthDaySpan[3]) ?? explicitYear,
+        },
+        {
+          day: Number(monthDaySpan[5]),
+          month: endMonth,
+          year: parseYearToken(monthDaySpan[6]) ?? explicitYear,
+        }
+      );
+      if (range) return range;
+    }
+  }
+
   const mentions = findDateMentions(normalized);
   if (mentions.length >= 2) {
     const range = resolveStayRange(mentions[0], mentions[1]);
