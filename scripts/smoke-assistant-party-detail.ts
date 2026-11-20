@@ -81,6 +81,17 @@ assert.equal(guests.handled, true);
 if (guests.handled) {
   assert.equal(guests.state.provisionalGuests, 2);
   assert.match(guests.reply, /Aile mi, arkadaş grubu mu/);
+
+  const pair = processFlowStep("aile", guests.state);
+  assert.equal(pair.handled, true);
+  if (pair.handled) {
+    assert.equal(pair.state.adults, 2);
+    assert.equal(pair.state.children, 0);
+    assert.equal(pair.state.babies, 0);
+    assert.equal(pair.state.countsCollected, true);
+    assert.match(pair.reply, /Hangi bölgede/);
+    assert.doesNotMatch(pair.reply, /Yetişkin, çocuk ve bebek/);
+  }
 }
 
 const fullSplit = processFlowStep("2\nyetişkin\n1\nçocuk\n1\nbebek", partyState(4));

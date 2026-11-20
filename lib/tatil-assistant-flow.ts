@@ -1650,6 +1650,15 @@ function partySizesFor(counts: number[]) {
   return [count, count + 1].filter((value) => value <= 16);
 }
 
+/** 2 kişilik grupta döküm sorulmaz; 2 yetişkin kabul edilir. */
+function withPairAdults(state: AssistantSearchState): AssistantSearchState {
+  if (state.countsCollected || state.guestsAny || !state.partyKind) return state;
+  if (state.provisionalGuests !== 2) return state;
+  if (state.adults != null || state.children != null || state.babies != null) return state;
+  if (state.pendingPartyCount != null || state.pendingPartyRole != null) return state;
+  return withPartyCounts(state, { adults: 2, children: 0, babies: 0 });
+}
+
 function withPartyCounts(
   state: AssistantSearchState,
   counts: { adults: number; children: number; babies: number }
@@ -1960,7 +1969,7 @@ function tryParseStep(
   }
 
   if (step === "awaiting_guests") {
-    const updated = applyCriterionUpdate(state, userText);
+    const updated = withPairAdults(applyCriterionUpdate(state, userText));
     if (!updated.provisionalGuests && !updated.countsCollected) return null;
     const nextStep = resolveFlowStep(updated);
     return {
@@ -1974,10 +1983,10 @@ function tryParseStep(
   if (step === "awaiting_party_kind") {
     const kind = extractPartyKind(userText);
     if (!kind) return null;
-    const nextState: AssistantSearchState = {
+    const nextState = withPairAdults({
       ...applyCriterionUpdate(state, userText),
       partyKind: kind,
-    };
+    });
     const nextStep = resolveFlowStep(nextState);
     return {
       handled: true,
@@ -2276,8 +2285,9 @@ function takeConfirmReply(
     if (queued.length > 0) {
       const [nextConfirm, ...rest] = queued;
       if (!nextConfirm) {
-        const step = resolveFlowStep(committed);
-        return finishTurn(buildFlowReply(step, committed), committed, step === "ready");
+        const settled = withPairAdults(committed);
+        const step = resolveFlowStep(settled);
+        return finishTurn(buildFlowReply(step, settled), settled, step === "ready");
       }
       const nextState: AssistantSearchState = {
         ...committed,
@@ -2286,8 +2296,9 @@ function takeConfirmReply(
       };
       return finishTurn(nextConfirm.question, nextState, false);
     }
-    const step = resolveFlowStep(committed);
-    return finishTurn(buildFlowReply(step, committed), committed, step === "ready");
+    const settled = withPairAdults(committed);
+    const step = resolveFlowStep(settled);
+    return finishTurn(buildFlowReply(step, settled), settled, step === "ready");
   }
   if (isPureNegative(userText)) {
     return finishTurn(rejectConfirmReply(pending), {
@@ -2410,12 +2421,13 @@ export function processFlowStep(
         ...dates,
         askedNetDates: false,
       };
-      const nextStep = resolveFlowStep(nextState);
+      const settled = withPairAdults(nextState);
+      const nextStep = resolveFlowStep(settled);
       return finishTurn(
         nextStep === "ready"
           ? "Seçenekleri inceliyorum, uygun olanları size sunacağım."
-          : buildFlowReply(nextStep, nextState),
-        nextState,
+          : buildFlowReply(nextStep, settled),
+        settled,
         nextStep === "ready"
       );
     }
@@ -2445,12 +2457,13 @@ export function processFlowStep(
   if (mentionsIndifferent(userText)) {
     const indifferent = applyIndifferentAnswer(step, state, userText);
     if (indifferent) {
-      const nextStep = resolveFlowStep(indifferent);
+      const settled = step === "awaiting_party_detail" ? indifferent : withPairAdults(indifferent);
+      const nextStep = resolveFlowStep(settled);
       return finishTurn(
         nextStep === "ready"
           ? "Seçenekleri inceliyorum, uygun olanları size sunacağım."
-          : buildFlowReply(nextStep, indifferent),
-        indifferent,
+          : buildFlowReply(nextStep, settled),
+        settled,
         nextStep === "ready"
       );
     }
@@ -2462,12 +2475,12 @@ export function processFlowStep(
     const continues =
       regionSlugsInText(userText).length > 0 || Boolean(extractStayDates(userText));
     if (!searchCriteriaChanged(state, updated) && !continues) return { handled: false };
-    const nextState: AssistantSearchState = {
+    const nextState: AssistantSearchState = withPairAdults({
       ...updated,
       helpAsked: true,
       sentVillaIds: [],
       moreOptionRounds: 0,
-    };
+    });
     const nextStep = resolveFlowStep(nextState);
     return finishTurn(
       nextStep === "ready"
@@ -2489,12 +2502,13 @@ export function processFlowStep(
 
   const harvested = harvestKnownSlots(answer, answerState);
   if (slotsChanged(answerState, harvested)) {
-    const nextStep = resolveFlowStep(harvested);
+    const settled = step === "awaiting_party_detail" ? harvested : withPairAdults(harvested);
+    const nextStep = resolveFlowStep(settled);
     return finishTurn(
       nextStep === "ready"
-        ? buildFlowReply("ready", harvested)
-        : buildProgressReply(answerState, harvested, nextStep),
-      harvested,
+        ? buildFlowReply("ready", settled)
+        : buildProgressReply(answerState, settled, nextStep),
+      settled,
       nextStep === "ready"
     );
   }
