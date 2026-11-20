@@ -872,13 +872,11 @@ export function isVagueStayPeriod(text: string) {
 }
 
 function isAffirmative(text: string) {
-  return /^(evet|evt|var|olur|tamam|net)(?:\b|[\s!.?]|$)/iu.test(text.trim());
+  return /^(evet|evt|var|olur|tamam|net)(?:$|[^a-z])/.test(foldTr(text));
 }
 
 function isNegative(text: string) {
-  return /^(yok|yoktur|hayır|hayir|değil|degil|maalesef|net\s*değil|net\s*degil)(?:\b|[\s!.?]|$)/iu.test(
-    text.trim()
-  );
+  return /^(yok|yoktur|hayir|degil|maalesef|net\s*degil)(?:$|[^a-z])/.test(foldTr(text));
 }
 
 export function extractGuestCounts(text: string): number[] {
@@ -1020,9 +1018,10 @@ export function extractPartyComposition(text: string): PartyComposition | null {
 }
 
 export function extractPartyKind(text: string): "family" | "friends" | null {
-  if (/arkada[sş]/iu.test(text)) return "friends";
-  if (/aile\s*de[gğ]il/iu.test(text)) return "friends";
-  if (/(^|[^\p{L}])aile(?:ce|yle|miz|yiz)?(?=$|[^\p{L}])/iu.test(text)) return "family";
+  const folded = foldTr(text);
+  if (/arkadas/.test(folded)) return "friends";
+  if (/aile\s*degil/.test(folded)) return "friends";
+  if (/(^|[^a-z])aile(?:ce|yle|miz|yiz)?(?=$|[^a-z])/.test(folded)) return "family";
   return null;
 }
 
@@ -2114,7 +2113,7 @@ function tryParseStep(
 }
 
 function mentionsIndifferent(text: string) {
-  return /fark\s*etmez|farketmez/iu.test(text);
+  return /fark\s*etmez|farketmez/.test(foldTr(text));
 }
 
 function applyIndifferentAnswer(

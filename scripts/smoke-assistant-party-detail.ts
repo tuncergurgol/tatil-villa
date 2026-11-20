@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { processFlowStep } from "../lib/tatil-assistant-flow";
+import { extractPartyKind, processFlowStep } from "../lib/tatil-assistant-flow";
 import type { AssistantSearchState } from "../lib/tatil-assistant-types";
 
 function partyState(total: number): AssistantSearchState {
@@ -82,7 +82,7 @@ if (guests.handled) {
   assert.equal(guests.state.provisionalGuests, 2);
   assert.match(guests.reply, /Aile mi, arkadaş grubu mu/);
 
-  const pair = processFlowStep("aile", guests.state);
+  const pair = processFlowStep("AİLE", guests.state);
   assert.equal(pair.handled, true);
   if (pair.handled) {
     assert.equal(pair.state.adults, 2);
@@ -112,5 +112,10 @@ if (childrenFill.handled) {
   assert.equal(childrenFill.state.babies, 0);
   assert.equal(childrenFill.state.countsCollected, true);
 }
+
+assert.equal(extractPartyKind("AİLE"), "family");
+assert.equal(extractPartyKind("Ailece"), "family");
+assert.equal(extractPartyKind("ARKADAŞ"), "friends");
+assert.equal(extractPartyKind("aile değil"), "friends");
 
 console.log("assistant party detail smoke ok");
