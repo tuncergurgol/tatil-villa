@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   applyCriterionUpdate,
+  assistantPartySizeWindow,
   buildInferredConfirm,
   extractAmenityNames,
   extractRegionSlugs,
@@ -8,6 +9,7 @@ import {
   processFlowStep,
   setAssistantFeatureCatalog,
 } from "../lib/tatil-assistant-flow";
+import { buildAssistantLookingMessage } from "../lib/tatil-assistant-format";
 
 const phrase = "kaş veya kalkan 31 aralık 2 ocak 12 kişilik ısıtmalı havuzlu";
 
@@ -88,7 +90,27 @@ if (winterTurn.handled) {
   assert.deepEqual(winterTurn.state.amenityNames, ["Isıtmalı Havuz"]);
   assert.match(winterTurn.reply, /Aile mi, arkadaş grubu mu/);
   assert.doesNotMatch(winterTurn.reply, /ocak/iu);
+
+  const looking = buildAssistantLookingMessage({
+    regionNames: ["Kaş", "Kalkan"],
+    amenityNames: winterTurn.state.amenityNames,
+  });
+  assert.match(looking, /ısıtmalı havuzlu seçenekleri inceliyorum/);
+  assert.doesNotMatch(looking, /ocak/iu);
+
+  const pair = processFlowStep("arkadaş", {
+    ...winterTurn.state,
+    amenityNames: ["Isıtmalı Havuz", "Ocak"],
+  });
+  assert.equal(pair.handled, true);
+  if (pair.handled) {
+    assert.deepEqual(pair.state.amenityNames, ["Isıtmalı Havuz"]);
+    assert.deepEqual(pair.state.partySizes, [2, 3, 4]);
+    assert.equal(pair.state.adults, 2);
+  }
 }
+assert.deepEqual(assistantPartySizeWindow([4]), [4, 5, 6]);
+assert.deepEqual(assistantPartySizeWindow([2, 3]), [2, 3, 4]);
 setAssistantFeatureCatalog([]);
 
 console.log("assistant regions smoke ok");

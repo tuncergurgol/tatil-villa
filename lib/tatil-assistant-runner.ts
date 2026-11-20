@@ -27,7 +27,9 @@ import { sendAssistantWhatsAppMessage } from "@/lib/tatil-assistant-whatsapp";
 import { isGenericPoolRequestName } from "@/lib/villa-pool-amenities";
 import {
   applyCriterionUpdate,
+  assistantPartySizeWindow,
   assistantPlaceName,
+  omitCalendarMonthAmenities,
   partyCapacity,
   rememberRegionTrail,
   buildConsultantOpening,
@@ -236,7 +238,7 @@ async function describeAssistantSearch(state: AssistantSearchState) {
   return buildAssistantLookingMessage({
     regionNames,
     regionAny: state.regionAny,
-    amenityNames: state.amenityNames,
+    amenityNames: omitCalendarMonthAmenities(state.amenityNames),
   });
 }
 
@@ -245,7 +247,13 @@ async function deliverAssistantOffers(input: {
   phone?: string;
   more: boolean;
 }) {
-  const { searchState, phone, more } = input;
+  const phone = input.phone;
+  const more = input.more;
+  const cleanedAmenities = omitCalendarMonthAmenities(input.searchState.amenityNames);
+  const searchState: AssistantSearchState =
+    cleanedAmenities.length === (input.searchState.amenityNames ?? []).length
+      ? input.searchState
+      : { ...input.searchState, amenityNames: cleanedAmenities };
   const domain = TATILDEYIZ_PUBLIC_DOMAIN;
 
   if (
@@ -289,13 +297,13 @@ async function deliverAssistantOffers(input: {
   const capacity = partyCapacity(searchState);
   const partySizes = searchState.guestsAny
     ? []
-    : (
+    : assistantPartySizeWindow(
         searchState.partySizes?.length
           ? searchState.partySizes
           : capacity > 0
-            ? [capacity, capacity + 1].filter((size) => size <= 16)
+            ? [capacity]
             : []
-      ).filter((size): size is number => typeof size === "number" && size > 0);
+      );
   const regionSlugs = searchState.regionAny ? undefined : searchState.regionSlugs;
 
   const sent = new Set(searchState.sentVillaIds ?? []);

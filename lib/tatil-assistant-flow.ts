@@ -1486,18 +1486,33 @@ function featureTokens(value: string) {
     .filter((token) => token.length >= 3 && !FEATURE_STOP.has(token));
 }
 
+function calendarMonthTokens() {
+  return new Set(
+    Object.keys(MONTH_MAP).map((name) => featureTokens(name)[0] ?? foldFeatureText(name))
+  );
+}
+
+/** Katalogdaki "Ocak" mutfak ekipmanıdır. Müşteri mesajında ay adıdır, seçenek değildir. */
+export function isCalendarMonthFeature(name: string) {
+  const tokens = featureTokens(name);
+  if (tokens.length === 0) return calendarMonthTokens().has(foldFeatureText(name));
+  const months = calendarMonthTokens();
+  return tokens.every((token) => months.has(token));
+}
+
+export function omitCalendarMonthAmenities(names: string[] | undefined) {
+  return (names ?? []).filter((name) => !isCalendarMonthFeature(name));
+}
+
 function matchCatalogFeatures(text: string) {
   if (featureCatalog.length === 0) return [];
   const textTokens = featureTokens(textWithoutDates(text));
   if (textTokens.length === 0) return [];
-  const monthTokens = new Set(
-    Object.keys(MONTH_MAP).map((name) => featureTokens(name)[0] ?? foldFeatureText(name))
-  );
   const hits: string[] = [];
   for (const name of featureCatalog) {
     const nameTokens = featureTokens(name);
     if (nameTokens.length === 0) continue;
-    if (nameTokens.every((token) => monthTokens.has(token))) continue;
+    if (isCalendarMonthFeature(name)) continue;
     const matched = nameTokens.every((token) =>
       textTokens.some((word) => word === token || word.startsWith(token))
     );
@@ -1708,11 +1723,22 @@ function mentionsAlias(text: string, alias: string) {
   ).test(text);
 }
 
+/** İstenen kişi sayısı ve +1/+2 kapasite. 2 kişilik → 2, 3, 4. 4 kişilik → 4, 5, 6. */
+export function assistantPartySizeWindow(counts: number[]) {
+  const unique = [
+    ...new Set(counts.filter((count) => count >= 1 && count <= 16)),
+  ].sort((left, right) => left - right);
+  if (unique.length === 0) return [];
+  const base = unique[0]!;
+  const contiguous = unique.every((size, index) => size === base + index);
+  if (unique.length === 1 || (contiguous && unique.length <= 3)) {
+    return [base, base + 1, base + 2].filter((value) => value <= 16);
+  }
+  return unique;
+}
+
 function partySizesFor(counts: number[]) {
-  const unique = [...new Set(counts.filter((count) => count >= 1 && count <= 16))];
-  if (unique.length !== 1) return unique;
-  const count = unique[0]!;
-  return [count, count + 1].filter((value) => value <= 16);
+  return assistantPartySizeWindow(counts);
 }
 
 /** 2 kişilik grupta döküm sorulmaz; 2 yetişkin kabul edilir. */
@@ -1889,6 +1915,10 @@ export function applyCriterionUpdate(
   } else if (mentioned.length > 0) {
     next.amenityNames = [...new Set([...(next.amenityNames ?? []), ...mentioned])];
     next.amenitiesCollected = true;
+  }
+
+  if (next.amenityNames?.length) {
+    next.amenityNames = omitCalendarMonthAmenities(next.amenityNames);
   }
 
   return next;
