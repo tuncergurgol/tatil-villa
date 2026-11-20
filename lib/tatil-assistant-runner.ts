@@ -216,7 +216,8 @@ function refreshCriteriaReply(_state: AssistantSearchState) {
 }
 
 async function describeAssistantSearch(state: AssistantSearchState) {
-  const remembered = assistantPlaceName(state);
+  const multipleRegions = (state.regionSlugs?.length ?? 0) > 1;
+  const remembered = multipleRegions ? "" : assistantPlaceName(state);
   let regionNames: string[] = remembered ? [remembered] : [];
   if (!remembered && !state.regionAny && state.regionSlugs?.length) {
     const regions = await prisma.region.findMany({

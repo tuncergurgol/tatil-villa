@@ -1088,8 +1088,8 @@ function preparePartyDetailAnswer(
 
 export function extractRegionSlugs(text: string): string[] {
   const lower = text.toLocaleLowerCase("tr-TR");
-  const specific = specificRegionSlug(text);
-  if (specific) return [specific];
+  const mentioned = regionSlugsMentioned(text);
+  if (mentioned.length > 0) return mentioned;
   if (
     /fark\s*etmez|farketmez/iu.test(lower) ||
     SKIP_WORDS.has(lower.trim()) ||
@@ -1254,7 +1254,17 @@ function regionHitsInText(text: string) {
     }
   }
   const unique = new Map<string, AssistantRegionNode>();
-  for (const hit of hits) unique.set(hit.slug, hit);
+  for (const hit of hits) {
+    const current = unique.get(hit.slug);
+    if (!current) {
+      unique.set(hit.slug, hit);
+      continue;
+    }
+    const currentTurkish = /[çğıöşüÇĞİÖŞÜ]/.test(current.name);
+    const nextTurkish = /[çğıöşüÇĞİÖŞÜ]/.test(hit.name);
+    if (nextTurkish && !currentTurkish) unique.set(hit.slug, hit);
+    else if (!currentTurkish && !nextTurkish) unique.set(hit.slug, hit);
+  }
   return [...unique.values()].filter((hit) => {
     const name = foldRegionText(hit.name);
     return ![...unique.values()].some((other) => {
@@ -1267,12 +1277,25 @@ function regionHitsInText(text: string) {
 
 const REGION_LEVEL_RANK = { IL: 1, ILCE: 2, MAHALLE: 3 };
 
-function specificRegionSlug(text: string) {
+/** Aynı netlikteki bütün yerler. "Kaş veya Kalkan" ikisini de bırakır. */
+function regionSlugsMentioned(text: string): string[] {
   const hits = regionHitsInText(text);
-  if (hits.length === 0) return "";
+  if (hits.length === 0) return [];
   const deepest = Math.max(...hits.map((hit) => REGION_LEVEL_RANK[hit.level]));
-  const atDepth = hits.filter((hit) => REGION_LEVEL_RANK[hit.level] === deepest);
-  return atDepth.sort((left, right) => right.name.length - left.name.length)[0]?.slug ?? "";
+  const folded = foldRegionText(text);
+  return hits
+    .filter((hit) => REGION_LEVEL_RANK[hit.level] === deepest)
+    .sort((left, right) => {
+      const leftAt = folded.indexOf(foldRegionText(left.name));
+      const rightAt = folded.indexOf(foldRegionText(right.name));
+      return (leftAt < 0 ? folded.length : leftAt) - (rightAt < 0 ? folded.length : rightAt);
+    })
+    .map((hit) => hit.slug);
+}
+
+function specificRegionSlug(text: string) {
+  const slugs = regionSlugsMentioned(text);
+  return slugs.length === 1 ? (slugs[0] ?? "") : "";
 }
 
 const PLACE_STEM_STOP = new Set([
@@ -1728,8 +1751,8 @@ function applyPartyComposition(
 }
 
 function regionSlugsInText(text: string) {
-  const specific = specificRegionSlug(text);
-  if (specific) return [specific];
+  const mentioned = regionSlugsMentioned(text);
+  if (mentioned.length > 0) return mentioned;
   const trimmed = text.trim();
   const words = trimmed.split(/\s+/).filter(Boolean);
   const lower = trimmed.toLocaleLowerCase("tr-TR");
@@ -1802,8 +1825,12 @@ export function applyCriterionUpdate(
   if (regions.length > 0) {
     next.regionSlugs = regions;
     next.regionAny = false;
-    const trail = regionTrailForSlug(regions[0] ?? "");
-    if (trail.il || trail.ilce || trail.mahalle) next.regionTrail = trail;
+    if (regions.length === 1) {
+      const trail = regionTrailForSlug(regions[0] ?? "");
+      if (trail.il || trail.ilce || trail.mahalle) next.regionTrail = trail;
+    } else {
+      next.regionTrail = undefined;
+    }
   }
 
   const lower = text.toLocaleLowerCase("tr-TR");
@@ -2151,13 +2178,19 @@ function isPureNegative(text: string) {
 }
 
 function confirmRegion(text: string) {
-  const slug = specificRegionSlug(text);
-  if (!slug) return null;
-  const hit = regionHitsInText(text).find((item) => item.slug === slug);
-  const name = capitalizeWord(hit?.name || slug);
-  const folded = foldRegionText(name);
-  const label = /(bolge|mahalle|ilce)/.test(folded) ? name : `${name} bölgesi`;
-  return { slug, label };
+  const slugs = regionSlugsMentioned(text);
+  if (slugs.length === 0) return null;
+  const hits = regionHitsInText(text);
+  const names = slugs.map((slug) =>
+    capitalizeWord(hits.find((item) => item.slug === slug)?.name || slug)
+  );
+  if (names.length === 1) {
+    const name = names[0] ?? "";
+    const folded = foldRegionText(name);
+    const label = /(bolge|mahalle|ilce)/.test(folded) ? name : `${name} bölgesi`;
+    return { slugs, label };
+  }
+  return { slugs, label: `${joinTurkishList(names)} bölgeleri` };
 }
 
 function inferredAlreadySaved(
@@ -2220,7 +2253,7 @@ export function buildInferredConfirm(
     adults: party?.adults,
     children: party?.children,
     babies: party?.babies,
-    regionSlugs: region && (shorthand || stay) ? [region.slug] : undefined,
+    regionSlugs: region && (shorthand || stay) ? region.slugs : undefined,
   };
 }
 
@@ -2248,13 +2281,20 @@ function commitPending(
       babies: pending.babies ?? 0,
     });
   }
-  if (pending.regionSlugs?.length) {
+  if (pending.regionSlugs?.length === 1) {
     const trail = regionTrailForSlug(pending.regionSlugs[0] ?? "");
     next = {
       ...next,
       regionSlugs: pending.regionSlugs,
       regionAny: false,
       ...(trail.il || trail.ilce || trail.mahalle ? { regionTrail: trail } : {}),
+    };
+  } else if (pending.regionSlugs?.length) {
+    next = {
+      ...next,
+      regionSlugs: pending.regionSlugs,
+      regionAny: false,
+      regionTrail: undefined,
     };
   }
   return next;
