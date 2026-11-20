@@ -54,6 +54,8 @@ export type AssistantSearchState = {
   freshIntake?: boolean;
   /** "Ocak başı" gibi yaklaşık bir dönemden sonra net tarih soruldu. */
   askedNetDates?: boolean;
+  /** "Bugün girişli" denildi; çıkış için gece sayısı bekleniyor. */
+  awaitingNights?: boolean;
   /** Kısaltma veya göreli tarihten üretilen, henüz onaylanmamış okuma. */
   pendingConfirm?: AssistantPendingConfirm;
   /** Sırada bekleyen diğer onay soruları. */

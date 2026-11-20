@@ -17,6 +17,7 @@ export type AssistantFlowStep =
   | "awaiting_name"
   | "awaiting_help"
   | "awaiting_dates"
+  | "awaiting_nights"
   | "awaiting_guests"
   | "awaiting_party_kind"
   | "awaiting_party_detail"
@@ -209,6 +210,7 @@ export function partyCapacity(state: AssistantSearchState) {
 export function resolveFlowStep(state: AssistantSearchState): AssistantFlowStep {
   if (!usablePersonName(state.guestName)) return "awaiting_name";
   if (!state.helpAsked) return "awaiting_help";
+  if (state.awaitingNights && state.checkIn && !state.checkOut) return "awaiting_nights";
   if (!state.checkIn || !state.checkOut) return "awaiting_dates";
   if (!legacyGuestFlow(state)) {
     const hasGuestAnswer =
@@ -652,6 +654,39 @@ function mentionedNights(text: string) {
   const nights = Number(match[1]);
   if (!Number.isInteger(nights) || nights < 1 || nights > 180) return null;
   return nights;
+}
+
+function nightsFromReply(text: string) {
+  const stated = mentionedNights(text);
+  if (stated != null) return stated;
+  const only = foldTr(text).match(/^(\d{1,2})$/);
+  if (!only?.[1]) return null;
+  const nights = Number(only[1]);
+  if (!Number.isInteger(nights) || nights < 1 || nights > 180) return null;
+  return nights;
+}
+
+function shiftDateKey(key: string, days: number) {
+  const [year, month, day] = key.split("-").map(Number);
+  const date = new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+  return dateKeyFromLocal(addLocalDays(date, days));
+}
+
+/** "Bugün girişli" bugünün girişidir. Gece sayısı yoksa çıkış sorulur. */
+export function mentionsTodayCheckIn(text: string) {
+  return /(?:^|[^a-z])bugun(?:den|ki)?\s+giris/.test(foldTr(text));
+}
+
+export function extractTodayCheckInStay(text: string, now: Date = new Date()) {
+  if (!mentionsTodayCheckIn(text)) return null;
+  const checkIn = dateKeyFromLocal(startOfLocalDay(now));
+  const nights = mentionedNights(text);
+  if (nights == null) return { checkIn, checkOut: undefined, needsNights: true };
+  return {
+    checkIn,
+    checkOut: shiftDateKey(checkIn, nights),
+    needsNights: false,
+  };
 }
 
 type WeekdayToken = { raw: string; weekday: number | null };
@@ -1572,7 +1607,7 @@ export function extractAmenityNames(text: string): string[] {
   if (/evcil\s*hayvan/iu.test(lower) && !/giremez|edilmez|yasak/iu.test(lower)) {
     amenities.push("Evcil Hayvan İzinli");
   }
-  const heated = /ısıtmalı\s*havuz|isitmali\s*havuz/iu.test(lower);
+  const heated = /ıs[ıi]tmal[ıi](?:\s*havuz(?:lu)?)?|isitmali(?:\s*havuz(?:lu)?)?/iu.test(lower);
   const indoor = /kapalı\s*havuz|kapali\s*havuz/iu.test(lower);
   if (heated) amenities.push("Isıtmalı Havuz");
   if (indoor) amenities.push("Kapalı Havuz");
@@ -1696,6 +1731,8 @@ export function buildFlowReply(
       return buildHelpQuestion(state);
     case "awaiting_dates":
       return "Hangi tarihlerde konaklamak istiyorsunuz.";
+    case "awaiting_nights":
+      return "Kaç gece?";
     case "awaiting_guests":
       return "Kaç kişilik bir yer arıyorsunuz?";
     case "awaiting_party_kind":
@@ -1859,11 +1896,21 @@ function regionSlugsInText(text: string) {
 /** Dolu bir aramada yeni tarih, bölge, kişi veya özellik gelirse eski kriteri silmeden günceller. */
 export function applyCriterionUpdate(
   state: AssistantSearchState,
-  text: string
+  text: string,
+  now: Date = new Date()
 ): AssistantSearchState {
   const next: AssistantSearchState = { ...state };
-  const dates = extractStayDates(text);
-  if (dates) Object.assign(next, dates);
+  const todayStay = extractTodayCheckInStay(text, now);
+  const dates = todayStay ? null : extractStayDates(text);
+  if (todayStay) {
+    next.checkIn = todayStay.checkIn;
+    next.checkOut = todayStay.needsNights ? undefined : todayStay.checkOut;
+    next.awaitingNights = todayStay.needsNights;
+    next.askedNetDates = false;
+  } else if (dates) {
+    Object.assign(next, dates);
+    next.awaitingNights = false;
+  }
 
   const composition = extractPartyComposition(text);
   const counts = extractGuestCounts(text);
@@ -1918,7 +1965,7 @@ export function applyCriterionUpdate(
   const lower = text.toLocaleLowerCase("tr-TR");
   const mentioned = extractAmenityNames(text);
   const rejectsAmenity = /olmas[ıi]n|istemiyorum|istemiyoruz|olmadan/u.test(lower);
-  const replacesAmenities = /sadece|yaln[ıi]zca/u.test(lower);
+  const replacesAmenities = /sadece|yaln[ıi]zca/u.test(lower) || Boolean(todayStay);
   if (mentioned.length > 0 && rejectsAmenity) {
     const drop = new Set(mentioned);
     next.amenityNames = (next.amenityNames ?? []).filter((name) => !drop.has(name));
@@ -1945,6 +1992,7 @@ export function searchCriteriaChanged(
   return (
     before.checkIn !== after.checkIn ||
     before.checkOut !== after.checkOut ||
+    before.awaitingNights !== after.awaitingNights ||
     before.adults !== after.adults ||
     before.children !== after.children ||
     before.babies !== after.babies ||
@@ -1958,9 +2006,10 @@ export function searchCriteriaChanged(
 
 function harvestKnownSlots(
   text: string,
-  state: AssistantSearchState
+  state: AssistantSearchState,
+  now: Date = new Date()
 ): AssistantSearchState {
-  const next = applyCriterionUpdate(state, text);
+  const next = applyCriterionUpdate(state, text, now);
 
   if (!next.guestPhone) {
     const guestPhone = extractGuestPhone(text);
@@ -1983,6 +2032,7 @@ function slotsChanged(before: AssistantSearchState, after: AssistantSearchState)
     before.guestName !== after.guestName ||
     before.checkIn !== after.checkIn ||
     before.checkOut !== after.checkOut ||
+    before.awaitingNights !== after.awaitingNights ||
     before.adults !== after.adults ||
     before.children !== after.children ||
     before.babies !== after.babies ||
@@ -2015,6 +2065,8 @@ function buildRetryReply(step: AssistantFlowStep, state: AssistantSearchState) {
       return buildHelpQuestion(state);
     case "awaiting_dates":
       return "Tarihi tam anlayamadım. 3/7 Eylül ya da 03.09.2026 - 07.09.2026 şeklinde yazabilir misiniz?";
+    case "awaiting_nights":
+      return "Kaç gece?";
     case "awaiting_guests":
       return "Kaç kişilik bir yer arıyorsunuz?";
     case "awaiting_party_kind":
@@ -2444,6 +2496,7 @@ export function isFreshVillaRequest(text: string) {
     return false;
   }
   if (extractShorthandParty(text)) return false;
+  if (mentionsTodayCheckIn(text)) return false;
   if (regionHitsInText(text).length > 0 || extractAmenityNames(text).length > 0) return false;
   return /laz[ıi]m|istiyor|ar[ıi]yor|bakar|gerek|bul|öner|oner/.test(lower);
 }
@@ -2481,6 +2534,35 @@ function rememberPlainGuestCount(
   return { ...state, provisionalGuests: counts[0], guestsAny: false };
 }
 
+function applyShorthandParty(state: AssistantSearchState, text: string) {
+  const shorthand = extractShorthandParty(text);
+  if (!shorthand) return state;
+  if (
+    shorthand.adults == null &&
+    shorthand.children == null &&
+    shorthand.babies == null
+  ) {
+    return state;
+  }
+  return withPartyCounts(state, {
+    adults: shorthand.adults ?? 0,
+    children: shorthand.children ?? 0,
+    babies: shorthand.babies ?? 0,
+  });
+}
+
+function replyForResolved(state: AssistantSearchState): FlowAdvanceResult {
+  const settled = withPairAdults(state);
+  const nextStep = resolveFlowStep(settled);
+  return finishTurn(
+    nextStep === "ready"
+      ? "Seçenekleri inceliyorum, uygun olanları size sunacağım."
+      : buildFlowReply(nextStep, settled),
+    settled,
+    nextStep === "ready"
+  );
+}
+
 /** Aktif akış adımında cevabı işler; anlaşılmazsa aynı adım için tekrar sorar. */
 export function processFlowStep(
   userText: string,
@@ -2509,6 +2591,40 @@ export function processFlowStep(
           regionAny: state.regionAny,
           regionTrail: state.regionTrail,
         }, false);
+  }
+
+  if (mentionsTodayCheckIn(userText)) {
+    const todayStay = extractTodayCheckInStay(userText, now);
+    if (todayStay) {
+      const harvested = applyShorthandParty(
+        harvestKnownSlots(userText, state, now),
+        userText
+      );
+      const next: AssistantSearchState = {
+        ...harvested,
+        checkIn: todayStay.checkIn,
+        checkOut: todayStay.needsNights ? undefined : todayStay.checkOut,
+        awaitingNights: todayStay.needsNights,
+        askedNetDates: false,
+        sentVillaIds: [],
+        moreOptionRounds: 0,
+        pendingConfirm: undefined,
+        confirmQueue: undefined,
+        freshIntake: true,
+      };
+      if (todayStay.needsNights) return finishTurn("Kaç gece?", next, false);
+      return replyForResolved(next);
+    }
+  }
+
+  if (state.awaitingNights && state.checkIn && !state.checkOut) {
+    const nights = nightsFromReply(userText);
+    if (!nights) return finishTurn("Kaç gece?", state, false);
+    return replyForResolved({
+      ...state,
+      checkOut: shiftDateKey(state.checkIn, nights),
+      awaitingNights: false,
+    });
   }
 
   if (isFreshVillaRequest(userText)) {
@@ -2569,7 +2685,7 @@ export function processFlowStep(
     (step === "awaiting_dates" || step === "ready") &&
     isVagueStayPeriod(userText)
   ) {
-    const harvested = harvestKnownSlots(userText, state);
+    const harvested = harvestKnownSlots(userText, state, now);
     return finishTurn(ASSISTANT_ASK_NET_DATES, {
       ...harvested,
       checkIn: undefined,
@@ -2626,7 +2742,7 @@ export function processFlowStep(
     answerState = prepared.state;
   }
 
-  const harvested = harvestKnownSlots(answer, answerState);
+  const harvested = harvestKnownSlots(answer, answerState, now);
   if (slotsChanged(answerState, harvested)) {
     const settled = step === "awaiting_party_detail" ? harvested : withPairAdults(harvested);
     const nextStep = resolveFlowStep(settled);

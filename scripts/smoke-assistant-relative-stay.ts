@@ -205,4 +205,57 @@ if (weekendTurn.handled) {
 }
 
 setAssistantRegionCatalog([]);
+
+const todayPhrase =
+  "bugün girişli ısıtmalı villa talebi vardır 2 y 2 c Fethiye olacak";
+const todayTurn = processFlowStep(
+  todayPhrase,
+  {
+    guestName: "Vedat",
+    helpAsked: true,
+    checkIn: "2026-08-01",
+    checkOut: "2026-08-08",
+    amenityNames: ["Deniz Manzarası"],
+    amenitiesCollected: true,
+    regionSlugs: ["kalkan"],
+  },
+  undefined,
+  friday
+);
+assert.equal(todayTurn.handled, true);
+if (todayTurn.handled) {
+  assert.equal(todayTurn.reply, "Kaç gece?");
+  assert.equal(todayTurn.state.checkIn, "2026-11-20");
+  assert.equal(todayTurn.state.checkOut, undefined);
+  assert.equal(todayTurn.state.awaitingNights, true);
+  assert.deepEqual(todayTurn.state.amenityNames, ["Isıtmalı Havuz"]);
+  assert.deepEqual(todayTurn.state.regionSlugs, ["fethiye"]);
+  assert.equal(todayTurn.state.adults, 2);
+  assert.equal(todayTurn.state.children, 2);
+  assert.equal(todayTurn.state.pendingConfirm, undefined);
+
+  const nights = processFlowStep("3", todayTurn.state, undefined, friday);
+  assert.equal(nights.handled, true);
+  if (nights.handled) {
+    assert.equal(nights.state.checkOut, "2026-11-23");
+    assert.equal(nights.state.awaitingNights, false);
+    assert.match(nights.reply, /Aile mi, arkadaş grubu mu/);
+    assert.deepEqual(nights.state.amenityNames, ["Isıtmalı Havuz"]);
+  }
+}
+
+const statedNights = processFlowStep(
+  "bugün girişli 3 gece",
+  { guestName: "Vedat", helpAsked: true },
+  undefined,
+  friday
+);
+assert.equal(statedNights.handled, true);
+if (statedNights.handled) {
+  assert.equal(statedNights.state.checkIn, "2026-11-20");
+  assert.equal(statedNights.state.checkOut, "2026-11-23");
+  assert.equal(statedNights.state.awaitingNights, false);
+  assert.match(statedNights.reply, /Kaç kişilik/);
+}
+
 console.log("assistant relative stay smoke ok");
