@@ -194,6 +194,7 @@ function legacyGuestFlow(state: AssistantSearchState) {
     !state.freshIntake &&
     !state.partyKind &&
     !state.countsCollected &&
+    (state.provisionalGuests ?? 0) <= 0 &&
     (state.regionAny ||
       (state.regionSlugs?.length ?? 0) > 0 ||
       Boolean(state.amenitiesCollected) ||
@@ -462,10 +463,11 @@ export function extractStayDates(text: string): {
     }
   }
 
-  // Kasım 20 Aralık 20 arası → 20 Kasım giriş, 20 Aralık çıkış
+  // Kasım 20 Aralık 20 arası → 20 Kasım giriş, 20 Aralık çıkış.
+  // "31 Aralık 2 Ocak" gün-ay sırasıdır; ayın önündeki gün bu kalıba girmez.
   const monthDaySpan = normalized.match(
     new RegExp(
-      String.raw`(?:^|[^\p{L}])(${MONTH_NAME_RE})\s+(\d{1,2})(?:\s+(20\d{2}|\d{2}))?\s*(?:-|\/|ile|ve|aras[ıi](?:nda)?)?\s*(${MONTH_NAME_RE})\s+(\d{1,2})(?:\s+(20\d{2}|\d{2}))?(?:\s+aras[ıi](?:nda)?)?`,
+      String.raw`(?<![\p{L}\d])(?<!\d\s)(?<!\d{2}\s)(${MONTH_NAME_RE})\s+(\d{1,2})(?!\d)(?:\s+(20\d{2}|\d{2}))?(?!\p{L})\s*(?:-|\/|ile|ve|aras[ıi](?:nda)?)?\s*(${MONTH_NAME_RE})\s+(\d{1,2})(?!\d)(?:\s+(20\d{2}|\d{2}))?(?:\s+aras[ıi](?:nda)?)?`,
       "iu"
     )
   );
@@ -1467,6 +1469,16 @@ function foldFeatureText(value: string) {
     .trim();
 }
 
+function textWithoutDates(text: string) {
+  return text.replace(
+    new RegExp(
+      String.raw`(?<!\d)\d{1,2}\s+(?:${MONTH_NAME_RE})|(?:${MONTH_NAME_RE})\s+\d{1,2}`,
+      "giu"
+    ),
+    " "
+  );
+}
+
 function featureTokens(value: string) {
   return foldFeatureText(value)
     .split(" ")
@@ -1476,12 +1488,16 @@ function featureTokens(value: string) {
 
 function matchCatalogFeatures(text: string) {
   if (featureCatalog.length === 0) return [];
-  const textTokens = featureTokens(text);
+  const textTokens = featureTokens(textWithoutDates(text));
   if (textTokens.length === 0) return [];
+  const monthTokens = new Set(
+    Object.keys(MONTH_MAP).map((name) => featureTokens(name)[0] ?? foldFeatureText(name))
+  );
   const hits: string[] = [];
   for (const name of featureCatalog) {
     const nameTokens = featureTokens(name);
     if (nameTokens.length === 0) continue;
+    if (nameTokens.every((token) => monthTokens.has(token))) continue;
     const matched = nameTokens.every((token) =>
       textTokens.some((word) => word === token || word.startsWith(token))
     );
@@ -1511,7 +1527,7 @@ function matchCatalogFeatures(text: string) {
 }
 
 export function extractAmenityNames(text: string): string[] {
-  const lower = text.toLocaleLowerCase("tr-TR").trim();
+  const lower = textWithoutDates(text).toLocaleLowerCase("tr-TR").trim();
   if (
     SKIP_WORDS.has(lower) ||
     lower.includes("fark etmez") ||

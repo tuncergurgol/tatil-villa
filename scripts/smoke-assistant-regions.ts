@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import {
   applyCriterionUpdate,
   buildInferredConfirm,
+  extractAmenityNames,
   extractRegionSlugs,
   extractStayDates,
   processFlowStep,
+  setAssistantFeatureCatalog,
 } from "../lib/tatil-assistant-flow";
 
 const phrase = "kaş veya kalkan 31 aralık 2 ocak 12 kişilik ısıtmalı havuzlu";
@@ -63,5 +65,30 @@ if (askedDates.handled) {
   assert.equal(askedDates.state.checkOut?.slice(5), "12-20");
   assert.match(askedDates.reply, /Kaç kişilik/);
 }
+
+setAssistantFeatureCatalog(["Ocak", "Isıtmalı Havuz", "Isıtmalı Havuzlu Villalar"]);
+const winterPhrase = "kaş veya kalkan 31 aralık 2 ocak 2 kişilik ısıtmalı havuzlu";
+const winterStay = extractStayDates(winterPhrase);
+assert.equal(winterStay?.checkIn.slice(5), "12-31");
+assert.equal(winterStay?.checkOut.slice(5), "01-02");
+assert.ok(winterStay && winterStay.checkIn < winterStay.checkOut);
+assert.deepEqual(extractAmenityNames(winterPhrase), ["Isıtmalı Havuz"]);
+assert.deepEqual(extractRegionSlugs(winterPhrase), ["kas", "kalkan"]);
+
+const winterTurn = processFlowStep(winterPhrase, {
+  guestName: "Vedat",
+  helpAsked: true,
+});
+assert.equal(winterTurn.handled, true);
+if (winterTurn.handled) {
+  assert.equal(winterTurn.state.checkIn?.slice(5), "12-31");
+  assert.equal(winterTurn.state.checkOut?.slice(5), "01-02");
+  assert.equal(winterTurn.state.provisionalGuests, 2);
+  assert.deepEqual(winterTurn.state.regionSlugs, ["kas", "kalkan"]);
+  assert.deepEqual(winterTurn.state.amenityNames, ["Isıtmalı Havuz"]);
+  assert.match(winterTurn.reply, /Aile mi, arkadaş grubu mu/);
+  assert.doesNotMatch(winterTurn.reply, /ocak/iu);
+}
+setAssistantFeatureCatalog([]);
 
 console.log("assistant regions smoke ok");
