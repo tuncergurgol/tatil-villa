@@ -145,5 +145,54 @@ if (outside.handled) {
 
 assert.equal(buildInferredConfirm(phrase, now)?.question, expectedQuestion);
 
+const friday = new Date(2026, 10, 20);
+const weekendPhrase =
+  "Cumartesi giriş Pazar çıkış 1 gecelik 2 kişilik müsait villa";
+const weekendQuestion =
+  "21 Kasım 2026 Cumartesi Günü girişli 22 Kasım 2026 Pazar günü çıkışlı 1 Gece doğru mudur";
+
+const weekend = extractRelativeStay(weekendPhrase, friday);
+assert.equal(weekend?.checkIn, "2026-11-21");
+assert.equal(weekend?.checkOut, "2026-11-22");
+assert.equal(
+  extractRelativeStay("Cumartesi giriş Pazar çıkış 1 gecelik 2 kişilik müsaitliğ", friday)
+    ?.checkIn,
+  "2026-11-21"
+);
+
+const saturday = new Date(2026, 10, 21);
+assert.equal(
+  extractRelativeStay("cumartesi giriş pazar çıkış", saturday)?.checkIn,
+  "2026-11-21"
+);
+assert.equal(
+  extractRelativeStay("cuma giriş 2 gecelik", friday)?.checkOut,
+  "2026-11-22"
+);
+assert.equal(extractRelativeStay("cumartesi ve pazar villa", friday), null);
+
+const weekendTurn = processFlowStep(
+  weekendPhrase,
+  { guestName: "Vedat", helpAsked: true },
+  undefined,
+  friday
+);
+assert.equal(weekendTurn.handled, true);
+if (weekendTurn.handled) {
+  assert.equal(weekendTurn.reply, weekendQuestion);
+  assert.equal(weekendTurn.state.checkIn, undefined);
+  assert.equal(weekendTurn.state.provisionalGuests, 2);
+  assert.doesNotMatch(weekendTurn.reply, /Tarihi tam anlayamadım/);
+
+  const acceptedWeekend = processFlowStep("evet", weekendTurn.state, undefined, friday);
+  assert.equal(acceptedWeekend.handled, true);
+  if (acceptedWeekend.handled) {
+    assert.equal(acceptedWeekend.state.checkIn, "2026-11-21");
+    assert.equal(acceptedWeekend.state.checkOut, "2026-11-22");
+    assert.equal(acceptedWeekend.state.provisionalGuests, 2);
+    assert.match(acceptedWeekend.reply, /Aile mi, arkadaş grubu mu/);
+  }
+}
+
 setAssistantRegionCatalog([]);
 console.log("assistant relative stay smoke ok");

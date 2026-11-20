@@ -581,7 +581,17 @@ function upcomingWeekdayOfMonth(
 function nextWeekdayAfter(start: Date, weekday: number) {
   const delta = (weekday - start.getDay() + 7) % 7;
   const days = delta === 0 ? 7 : delta;
-  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + days);
+  return addLocalDays(start, days);
+}
+
+function addLocalDays(date: Date, days: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function upcomingWeekday(from: Date, weekday: number) {
+  const start = startOfLocalDay(from);
+  const delta = (weekday - start.getDay() + 7) % 7;
+  return addLocalDays(start, delta);
 }
 
 function dateKeyFromLocal(date: Date) {
@@ -592,14 +602,114 @@ function isDepartureToken(token: string) {
   return /^(cik|cikis|ayril)/.test(token);
 }
 
+function isArrivalToken(token: string) {
+  return /^(giris|girelim|gireceg|giriyor|baslay)/.test(token);
+}
+
+function stayFromDates(start: Date, end: Date) {
+  const checkIn = dateKeyFromLocal(start);
+  const checkOut = dateKeyFromLocal(end);
+  if (!checkIn || !checkOut || checkIn >= checkOut) return null;
+  const nights = nightsBetween(checkIn, checkOut);
+  if (nights < 1 || nights > 180) return null;
+  return { checkIn, checkOut };
+}
+
+function mentionedNights(text: string) {
+  const match = foldTr(text).match(
+    /(?:^|\s)(\d{1,2})\s*gece(?:lik|ligi)?(?=$|\s)/
+  );
+  if (!match?.[1]) return null;
+  const nights = Number(match[1]);
+  if (!Number.isInteger(nights) || nights < 1 || nights > 180) return null;
+  return nights;
+}
+
+type WeekdayToken = { raw: string; weekday: number | null };
+
+function isStayMarker(token: string) {
+  return isArrivalToken(token) || isDepartureToken(token);
+}
+
+function nearestWeekdayIndex(
+  tokens: WeekdayToken[],
+  index: number,
+  claimed: Set<number>
+) {
+  for (const direction of [-1, 1]) {
+    for (let step = 1; step <= 2; step += 1) {
+      const cursor = index + direction * step;
+      const token = tokens[cursor];
+      if (!token) break;
+      if (token.weekday == null && isStayMarker(token.raw)) break;
+      if (token.weekday == null) continue;
+      if (claimed.has(cursor)) break;
+      return cursor;
+    }
+  }
+  return null;
+}
+
+/**
+ * "Cumartesi giriş Pazar çıkış" veya "Cuma giriş 2 gecelik".
+ * Gün, bugünden itibaren sıradaki tarihe bağlanır; gece sayısı çıkışı tamamlar.
+ */
+function extractNamedWeekdayStay(
+  text: string,
+  now: Date
+): { checkIn: string; checkOut: string } | null {
+  const tokens: WeekdayToken[] = foldTr(text)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((raw) => {
+      const cleaned = raw.replace(/^[^\p{L}\d]+|[^\p{L}\d]+$/gu, "");
+      return { raw: cleaned, weekday: weekdayFromToken(cleaned) };
+    });
+  const claimed = new Set<number>();
+  let startIndex: number | null = null;
+  let endIndex: number | null = null;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (!token || token.weekday != null) continue;
+    const arrival = isArrivalToken(token.raw);
+    const departure = isDepartureToken(token.raw);
+    if (!arrival && !departure) continue;
+    const weekdayIndex = nearestWeekdayIndex(tokens, index, claimed);
+    if (weekdayIndex == null) continue;
+    if (arrival && startIndex == null) {
+      startIndex = weekdayIndex;
+      claimed.add(weekdayIndex);
+      continue;
+    }
+    if (departure && endIndex == null) {
+      endIndex = weekdayIndex;
+      claimed.add(weekdayIndex);
+    }
+  }
+
+  const startWeekday = startIndex == null ? null : tokens[startIndex]?.weekday ?? null;
+  const endWeekday = endIndex == null ? null : tokens[endIndex]?.weekday ?? null;
+  if (startWeekday == null) return null;
+  const start = upcomingWeekday(now, startWeekday);
+  const nights = mentionedNights(text);
+  const end =
+    endWeekday != null
+      ? nextWeekdayAfter(start, endWeekday)
+      : nights != null
+        ? addLocalDays(start, nights)
+        : null;
+  if (!end) return null;
+  return stayFromDates(start, end);
+}
+
 /**
  * "Temmuzun ilk cumartesinden başlayıp bir sonraki cuma çıkmak".
  * Ayın sıradaki günü takvimden bulunur; çıkış, girişten sonraki ilk hedef gündür.
- * Gün sırası veya ay yoksa tarih uydurulmaz.
+ * Gün sırası veya ay yoksa bu kalıp tarih üretmez.
  */
-export function extractRelativeStay(
+function extractOrdinalMonthStay(
   text: string,
-  now: Date = new Date()
+  now: Date
 ): { checkIn: string; checkOut: string } | null {
   const tokens = foldTr(text)
     .split(/\s+/)
@@ -663,12 +773,15 @@ export function extractRelativeStay(
   const start = upcomingWeekdayOfMonth(month, startWeekday, ordinal, now);
   if (!start) return null;
   const end = nextWeekdayAfter(start, endWeekday);
-  const checkIn = dateKeyFromLocal(start);
-  const checkOut = dateKeyFromLocal(end);
-  if (!checkIn || !checkOut || checkIn >= checkOut) return null;
-  const nights = nightsBetween(checkIn, checkOut);
-  if (nights < 1 || nights > 180) return null;
-  return { checkIn, checkOut };
+  return stayFromDates(start, end);
+}
+
+/** Ayın sıradaki günü ya da "Cumartesi giriş Pazar çıkış" gibi yakın gün adı. */
+export function extractRelativeStay(
+  text: string,
+  now: Date = new Date()
+): { checkIn: string; checkOut: string } | null {
+  return extractOrdinalMonthStay(text, now) ?? extractNamedWeekdayStay(text, now);
 }
 
 export function formatStayConfirmQuestion(checkIn: string, checkOut: string) {
@@ -2219,6 +2332,18 @@ function restartedConversationState(state: AssistantSearchState): AssistantSearc
   };
 }
 
+/** "2 kişilik" onay cümlesine girmez; tarih onayından sonra kişi sorusu tekrarlanmasın. */
+function rememberPlainGuestCount(
+  state: AssistantSearchState,
+  text: string
+): AssistantSearchState {
+  if (state.provisionalGuests || state.countsCollected || state.guestsAny) return state;
+  if (extractShorthandParty(text) || extractPartyComposition(text)) return state;
+  const counts = extractGuestCounts(text);
+  if (counts.length !== 1) return state;
+  return { ...state, provisionalGuests: counts[0], guestsAny: false };
+}
+
 /** Aktif akış adımında cevabı işler; anlaşılmazsa aynı adım için tekrar sorar. */
 export function processFlowStep(
   userText: string,
@@ -2266,7 +2391,7 @@ export function processFlowStep(
       queue.unshift(state.pendingConfirm);
     }
     return finishTurn(proposal.question, {
-      ...state,
+      ...rememberPlainGuestCount(state, userText),
       pendingConfirm: proposal,
       confirmQueue: queue.length > 0 ? queue : undefined,
     }, false);
