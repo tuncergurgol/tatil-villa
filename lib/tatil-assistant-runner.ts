@@ -402,36 +402,24 @@ async function deliverAssistantOffers(input: {
     domain,
   });
 
-  const missingSizes = partySizes.filter(
-    (size) => !offerBatch.some((item) => item.partySize === size)
+  const messages = offerBatch.map((item) =>
+    formatAssistantVillaOfferMessage(item, {
+      domain,
+      guestName: searchState.guestName,
+      adults: item.partySize,
+      brand: "Tatildeyiz",
+    })
   );
-  const messages = [
-    ...(missingSizes.length
-      ? [
-          `${missingSizes.join(" ve ")} kişilik bir villa bu kriterlerde çıkmadı. Uygun olan diğer seçenekleri iletiyorum.`,
-        ]
-      : []),
-    ...offerBatch.map((item) =>
-      formatAssistantVillaOfferMessage(item, {
-        domain,
-        guestName: searchState.guestName,
-        adults: item.partySize,
-        brand: "Tatildeyiz",
-      })
-    ),
-  ];
   const looking = await describeAssistantSearch(searchState);
   const reply = [looking, ...messages].join("\n\n");
   const deliveredIds: string[] = [];
   if (phone) {
-    const prefaceCount = 1 + (missingSizes.length ? 1 : 0);
-    const villaMessages = missingSizes.length ? messages.slice(1) : messages;
-    const outbound = [looking, ...(missingSizes.length ? [messages[0]!] : []), ...villaMessages];
+    const outbound = [looking, ...messages];
     for (const [index, text] of outbound.entries()) {
       try {
         await sendAssistantWhatsAppMessage(phone, text);
-        if (index >= prefaceCount) {
-          deliveredIds.push(offerBatch[index - prefaceCount]!.id);
+        if (index >= 1) {
+          deliveredIds.push(offerBatch[index - 1]!.id);
         }
       } catch {
         break;
