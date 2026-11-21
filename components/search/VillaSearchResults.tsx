@@ -1,0 +1,230 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useTranslations } from "next-intl";
+import VillaResultCard from "@/components/search/VillaResultCard";
+import { usePublicListingCopy } from "@/components/PublicListingCopyProvider";
+import {
+  buildVillaSearchHref,
+} from "@/lib/villa-search-params";
+import type { Villa } from "@/lib/types";
+
+interface VillaSearchResultsProps {
+  villas: Villa[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  titleLabel: string;
+  nights: number;
+  currentParams: Record<string, string | undefined>;
+  sort: string;
+  className?: string;
+  /** İlk kart LCP priority (varsayılan true). */
+  prioritizeFirstImage?: boolean;
+  /** SEO H1 (verilirse sonuç özeti H2 olur). */
+  seoH1?: string;
+}
+
+export default function VillaSearchResults({
+  villas,
+  totalCount,
+  page,
+  pageSize,
+  totalPages,
+  titleLabel,
+  nights,
+  currentParams,
+  sort,
+  className = "",
+  prioritizeFirstImage = true,
+  seoH1,
+}: VillaSearchResultsProps) {
+  const listingCopy = usePublicListingCopy();
+  const t = useTranslations("villaSearch");
+  const router = useRouter();
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, totalCount);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#villa-arama-sonuclari") return;
+    window.setTimeout(() => {
+      document
+        .getElementById("villa-arama-sonuclari")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }, [currentParams.checkIn, currentParams.checkOut, currentParams.region, page]);
+
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
+    .filter((pageNumber) => {
+      if (totalPages <= 7) return true;
+      if (pageNumber === 1 || pageNumber === totalPages) return true;
+      return Math.abs(pageNumber - page) <= 1;
+    })
+    .reduce<number[]>((acc, pageNumber, index, list) => {
+      if (index > 0 && pageNumber - list[index - 1] > 1) {
+        acc.push(-1);
+      }
+      acc.push(pageNumber);
+      return acc;
+    }, []);
+
+  return (
+    <div id="villa-arama-sonuclari" className={`min-w-0 flex-1 scroll-mt-24 ${className}`}>
+      <div className="mb-4">
+        {seoH1 ? (
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+            {seoH1}
+          </h1>
+        ) : null}
+        {seoH1 ? (
+          <p className="mt-2 text-base font-semibold text-gray-800 sm:text-lg">
+            {t("foundFor", { title: titleLabel })}{" "}
+            <span className="text-sky-600">{totalCount}</span>{" "}
+            {t("foundCount", { title: titleLabel, count: totalCount })}
+          </p>
+        ) : (
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+            <>
+              {t("foundFor", { title: titleLabel })}{" "}
+              <span className="text-sky-600">{totalCount}</span>{" "}
+              {t("foundCount", { title: titleLabel, count: totalCount })}
+            </>
+          </h1>
+        )}
+        <p className="mt-1 text-sm text-sky-600">
+          {t("priceGuarantee")}
+          {totalCount > 0 ? (
+            <span className="text-gray-500">
+              {" "}
+              ·{" "}
+              {totalCount > pageSize && page === 1
+                ? t("showingFirst", { count: pageSize })
+                : t("showingRange", { start: rangeStart, end: rangeEnd })}
+              {totalPages > 1
+                ? ` ${t("pageOf", { page, total: totalPages })}`
+                : ""}
+            </span>
+          ) : null}
+        </p>
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+            checked={Boolean(currentParams.checkIn && currentParams.checkOut)}
+            readOnly
+          />
+          {t("availableOnly")}{" "}
+          {currentParams.checkIn && currentParams.checkOut
+            ? t("datesSelected")
+            : t("selectDates")}
+        </label>
+
+        <select
+          value={sort}
+          onChange={(e) =>
+            router.push(
+              buildVillaSearchHref(currentParams, {
+                sort: e.target.value,
+                page: null,
+              })
+            )
+          }
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 outline-none focus:border-sky-400"
+        >
+          <option value="recommended">{t("sortRecommended")}</option>
+          <option value="random">{t("sortRandom")}</option>
+          <option value="price_asc">{t("sortPriceAsc")}</option>
+          <option value="price_desc">{t("sortPriceDesc")}</option>
+          <option value="guests">{t("sortGuests")}</option>
+        </select>
+      </div>
+
+      {villas.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
+          <p className="text-lg font-medium text-gray-600">{t("noResults")}</p>
+          <p className="mt-1 text-sm text-gray-500">{t("tryFilters")}</p>
+          <a
+            href="/villalar"
+            className="mt-4 inline-block text-sm font-semibold text-sky-700 hover:text-sky-900"
+          >
+            {listingCopy.allShow}
+          </a>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-4">
+            {villas.map((villa, index) => (
+              <VillaResultCard
+                key={villa.id}
+                villa={villa}
+                nights={nights}
+                priority={prioritizeFirstImage && index === 0 && page === 1}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 ? (
+            <nav
+              className="mt-8 flex flex-wrap items-center justify-center gap-2"
+              aria-label={t("pagination")}
+            >
+              {page > 1 ? (
+                <Link
+                  href={buildVillaSearchHref(currentParams, {
+                    page: String(page - 1),
+                  })}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Önceki
+                </Link>
+              ) : null}
+
+              {pageNumbers.map((pageNumber) =>
+                pageNumber === -1 ? (
+                  <span
+                    key={`gap-before-${pageNumber}-${pageNumbers.indexOf(pageNumber)}`}
+                    className="px-1 text-sm text-gray-400"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <Link
+                    key={pageNumber}
+                    href={buildVillaSearchHref(currentParams, {
+                      page: String(pageNumber),
+                    })}
+                    className={`min-w-10 rounded-xl px-3 py-2 text-center text-sm font-semibold ${
+                      pageNumber === page
+                        ? "bg-sky-600 text-white"
+                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {pageNumber}
+                  </Link>
+                )
+              )}
+
+              {page < totalPages ? (
+                <Link
+                  href={buildVillaSearchHref(currentParams, {
+                    page: String(page + 1),
+                  })}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Sonraki
+                </Link>
+              ) : null}
+            </nav>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}

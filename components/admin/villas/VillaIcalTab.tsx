@@ -3,15 +3,32 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+} from "lucide-react";
 import {
   clearVillaIcalData,
   createVillaIcalSource,
   deleteVillaIcalSource,
   matchVillaWhatsappGroup,
   rotateVillaIcalExportUrl,
+  syncSingleVillaIcalSourceAction,
+  syncVillaIcalSourcesAction,
 } from "@/app/actions/admin/villa-ical";
+import {
+  clearVillaExternalSyncUrlAction,
+  saveVillaExternalSyncUrlAction,
+  syncVillaExternalSyncSlotAction,
+} from "@/app/actions/admin/villa-external-sync";
 import type { VillaIcalTabData } from "@/lib/queries/villa-ical";
+import type { ExternalSyncSlot } from "@/lib/villa-external-sync";
 
 interface VillaIcalTabProps {
   villaId: string;
@@ -50,17 +67,35 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
   const [exportUrl, setExportUrl] = useState(data.exportUrl);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [whatsappGroupId, setWhatsappGroupId] = useState(data.whatsappGroupId);
   const [differentGroupName, setDifferentGroupName] = useState(
     data.whatsappGroupDifferentName
   );
+  const [externalDrafts, setExternalDrafts] = useState<Record<number, string>>(
+    () =>
+      Object.fromEntries(
+        data.externalSyncLinks.map((link) => [link.slot, link.url])
+      )
+  );
+  const [editingSlots, setEditingSlots] = useState<Record<number, boolean>>({});
+  const [busySlot, setBusySlot] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setExportUrl(data.exportUrl);
   }, [data.exportUrl]);
+
+  useEffect(() => {
+    setExternalDrafts(
+      Object.fromEntries(
+        data.externalSyncLinks.map((link) => [link.slot, link.url])
+      )
+    );
+    setEditingSlots({});
+  }, [data.externalSyncLinks]);
 
   const isWhatsappConnected =
     data.whatsappModuleConnected && Boolean(data.whatsappGroupId);
@@ -138,10 +173,15 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
 
   function handleMatchGroup(formData: FormData) {
     setError(null);
+    setNotice(null);
     startTransition(async () => {
       const result = await matchVillaWhatsappGroup(villaId, formData);
-      if (result.error) setError(result.error);
-      else refresh();
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice("Villa WhatsApp grubuna eşlendi.");
+      refresh();
     });
   }
 
@@ -157,12 +197,141 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
   }
 
   function submitMatchGroup() {
+    const trimmedId = whatsappGroupId.trim();
+    if (!trimmedId) {
+      setError("Lütfen bir WhatsApp grubu seçin veya grup ID girin");
+      return;
+    }
     const formData = new FormData();
-    formData.set("whatsappGroupId", whatsappGroupId);
+    formData.set("whatsappGroupId", trimmedId);
+    const selectedName = data.whatsappGroups.find(
+      (group) => group.id === trimmedId
+    )?.name;
+    if (selectedName) {
+      formData.set("whatsappGroupName", selectedName);
+    }
     if (differentGroupName) {
       formData.set("whatsappGroupDifferentName", "on");
     }
     handleMatchGroup(formData);
+  }
+
+  function handleSyncAllSources() {
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const result = await syncVillaIcalSourcesAction(villaId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice(result.message ?? "Senkron tamamlandı");
+      refresh();
+    });
+  }
+
+  function handleSyncSource(sourceId: string) {
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const result = await syncSingleVillaIcalSourceAction(villaId, sourceId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice(result.message ?? "Kaynak senkronlandı");
+      refresh();
+    });
+  }
+
+  function handleExternalSync(slot: ExternalSyncSlot) {
+    const draft = (externalDrafts[slot] ?? "").trim();
+    if (!draft) {
+      setError(`Link ${slot} boş — önce bir URL girip kaydedin`);
+      return;
+    }
+
+    // iCal dışı linkler slot rolüne göre fiyat / takvim üzerine yazar
+    const looksLikeIcal =
+      /\.ics(\?|$)/i.test(draft) ||
+      /\/ical/i.test(draft) ||
+      /[?&](format|export|type)=(ical|ics)\b/i.test(draft);
+    const overwriteHint =
+      slot === 2
+        ? "Mevcut takvim müsaitliği kaynaktan güncellenecek (fiyatlar korunur)."
+        : slot === 3
+          ? "Mevcut fiyat periyotları kaynaktan yeniden aktarılacak (takvim korunur)."
+          : "Mevcut fiyat periyotları ve müsaitlik silinip kaynaktan yeniden aktarılacak.";
+    if (
+      !looksLikeIcal &&
+      !confirm(`Link ${slot}: ${overwriteHint} Devam edilsin mi?`)
+    ) {
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+    setBusySlot(slot);
+    startTransition(async () => {
+      const savedUrl = data.externalSyncLinks.find((l) => l.slot === slot)?.url;
+      const needsSave = draft !== (savedUrl ?? "");
+      const result = await syncVillaExternalSyncSlotAction(
+        villaId,
+        slot,
+        needsSave || editingSlots[slot] ? draft : undefined
+      );
+      setBusySlot(null);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setNotice(`Link ${slot}: ${result.message ?? "Güncellendi"}`);
+      setEditingSlots((prev) => ({ ...prev, [slot]: false }));
+      refresh();
+    });
+  }
+
+  function handleExternalEditToggle(slot: ExternalSyncSlot) {
+    const savedUrl = data.externalSyncLinks.find((l) => l.slot === slot)?.url ?? "";
+    // Kayıtlı URL yoksa alan zaten yazılabilir — doğrudan kaydet
+    if (editingSlots[slot] || !savedUrl) {
+      const draft = (externalDrafts[slot] ?? "").trim();
+      setError(null);
+      setNotice(null);
+      setBusySlot(slot);
+      startTransition(async () => {
+        const result = await saveVillaExternalSyncUrlAction(villaId, slot, draft);
+        setBusySlot(null);
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        setNotice(`Link ${slot}: ${result.message ?? "Kaydedildi"}`);
+        setEditingSlots((prev) => ({ ...prev, [slot]: false }));
+        refresh();
+      });
+      return;
+    }
+    setEditingSlots((prev) => ({ ...prev, [slot]: true }));
+  }
+
+  function handleExternalClear(slot: ExternalSyncSlot) {
+    if (!confirm(`Link ${slot} temizlensin mi?`)) return;
+    setError(null);
+    setNotice(null);
+    setBusySlot(slot);
+    startTransition(async () => {
+      const result = await clearVillaExternalSyncUrlAction(villaId, slot);
+      setBusySlot(null);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setExternalDrafts((prev) => ({ ...prev, [slot]: "" }));
+      setEditingSlots((prev) => ({ ...prev, [slot]: false }));
+      setNotice(`Link ${slot} temizlendi`);
+      refresh();
+    });
   }
 
   return (
@@ -172,11 +341,27 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
           {error}
         </div>
       ) : null}
+      {notice ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {notice}
+        </div>
+      ) : null}
 
       <SectionCard
         title="Gelen iCal Kaynakları"
         action={
           <div className="flex flex-wrap items-center gap-3">
+            {data.sources.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleSyncAllSources}
+                disabled={isPending}
+                className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-700 transition hover:bg-teal-100 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
+                Tümünü Senkronla
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setShowAddSource((value) => !value)}
@@ -198,7 +383,11 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
       >
         <p className="mb-4 text-sm text-gray-500">
           Airbnb, Booking, VRBO gibi platformlardan gelen takvim bağlantılarını
-          buradan yönetin.
+          buradan yönetin. Senkron, kaynaklardaki dolu günleri villaya uygular;
+          kaynaktan kalkan rezervasyonlar otomatik açılır. Otomatik senkron için
+          sunucuda <code className="rounded bg-gray-100 px-1">npm run sync:ical</code> veya{" "}
+          <code className="rounded bg-gray-100 px-1">/api/cron/ical-sync</code> cron
+          görevi kullanılabilir.
         </p>
 
         {showAddSource ? (
@@ -260,18 +449,37 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
                     <p className="mt-1 text-xs text-gray-400">
                       Son senkron:{" "}
                       {new Date(source.lastSyncAt).toLocaleString("tr-TR")}
+                      {source.lastSyncStatus ? ` (${source.lastSyncStatus})` : ""}
                     </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-amber-600">
+                      Henüz senkronlanmadı
+                    </p>
+                  )}
+                  {source.lastSyncMessage ? (
+                    <p className="mt-1 text-xs text-gray-500">{source.lastSyncMessage}</p>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteSource(source.id)}
-                  disabled={isPending}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Sil
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSyncSource(source.id)}
+                    disabled={isPending}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Senkronla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSource(source.id)}
+                    disabled={isPending}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Sil
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -280,6 +488,115 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
             Henüz kaynak eklenmemiş. Yeni Kaynak Ekle butonuna basarak başlayın.
           </p>
         )}
+      </SectionCard>
+
+      <SectionCard title="Harici Sync Linkleri">
+        <p className="mb-4 text-sm text-gray-500">
+          Link 1: takvim + fiyat · Link 2: yalnızca takvim · Link 3: yalnızca
+          fiyat · Link 4: takvim + fiyat. Desteklenen URL: .ics / iCal,{" "}
+          <code className="rounded bg-gray-100 px-1">tatildeyiz.com.tr</code>{" "}
+          veya public villa sayfası. Saatlik otomatik tarama aynı rolleri
+          uygular (
+          <code className="rounded bg-gray-100 px-1">npm run sync:external-links</code>
+          {" / "}
+          <code className="rounded bg-gray-100 px-1">/api/cron/villa-external-sync</code>
+          ).
+        </p>
+
+        <ul className="space-y-3">
+          {data.externalSyncLinks.map((link) => {
+            const isEditing = Boolean(editingSlots[link.slot]);
+            const draft = externalDrafts[link.slot] ?? "";
+            const slotBusy = busySlot === link.slot && isPending;
+            const showSaveLabel = isEditing || !link.url;
+
+            return (
+              <li
+                key={link.slot}
+                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <label className="block min-w-0 flex-1">
+                    <span className={labelClass}>
+                      Link {link.slot}
+                      <span className="ml-2 font-normal text-gray-400">
+                        {link.slot === 2
+                          ? "(Takvim)"
+                          : link.slot === 3
+                            ? "(Fiyat)"
+                            : "(Takvim + Fiyat)"}
+                      </span>
+                    </span>
+                    <input
+                      value={draft}
+                      onChange={(event) =>
+                        setExternalDrafts((prev) => ({
+                          ...prev,
+                          [link.slot]: event.target.value,
+                        }))
+                      }
+                      readOnly={!isEditing && Boolean(link.url)}
+                      type="url"
+                      placeholder="https://... (.ics, tatildeyiz veya villa sayfası)"
+                      className={`mt-1.5 ${inputClass} ${
+                        !isEditing && link.url
+                          ? "cursor-default bg-white text-gray-700"
+                          : ""
+                      }`}
+                    />
+                  </label>
+                  <div className="flex shrink-0 items-center gap-1 sm:pt-6">
+                    <button
+                      type="button"
+                      title="Güncelle"
+                      onClick={() => handleExternalSync(link.slot)}
+                      disabled={isPending || !draft.trim()}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${slotBusy ? "animate-spin" : ""}`}
+                      />
+                      Güncelle
+                    </button>
+                    <button
+                      type="button"
+                      title={showSaveLabel ? "Kaydet" : "Değiştir"}
+                      onClick={() => handleExternalEditToggle(link.slot)}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+                    >
+                      {showSaveLabel ? (
+                        <Save className="h-3.5 w-3.5" />
+                      ) : (
+                        <Pencil className="h-3.5 w-3.5" />
+                      )}
+                      {showSaveLabel ? "Kaydet" : "Değiştir"}
+                    </button>
+                    <button
+                      type="button"
+                      title="Sil"
+                      onClick={() => handleExternalClear(link.slot)}
+                      disabled={isPending || (!link.url && !draft.trim())}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Sil
+                    </button>
+                  </div>
+                </div>
+                {link.lastSyncedAt ? (
+                  <p className="mt-2 text-xs text-gray-400">
+                    Son güncelleme:{" "}
+                    {new Date(link.lastSyncedAt).toLocaleString("tr-TR")}
+                    {link.lastMessage ? ` — ${link.lastMessage}` : ""}
+                  </p>
+                ) : link.url ? (
+                  <p className="mt-2 text-xs text-amber-600">Henüz güncellenmedi</p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </SectionCard>
 
       <SectionCard title="Giden iCal URL (Airbnb / Booking / VRBO için)">
@@ -348,7 +665,7 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
       </SectionCard>
 
       <SectionCard
-        title="Tesis-Grup Eşleştir"
+        title="Ev-Grup Eşleştir"
         action={
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -363,12 +680,12 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
       >
         {!data.whatsappModuleConnected ? (
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            WhatsApp iCal modülüne bağlı değilsiniz. Bağlantı için{" "}
+            WhatsApp takvim otomasyonu kapalı. Etkinleştirmek için{" "}
             <Link
-              href="/admin/bildirimler/whatsapp"
+              href="/admin/acente/evolution-whatsapp"
               className="font-semibold underline"
             >
-              Bildirimler → WhatsApp
+              Acente Yönetimi → Evolution WhatsApp
             </Link>{" "}
             sayfasını ziyaret edin.
           </div>
@@ -380,16 +697,25 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
             <select
               value={whatsappGroupId}
               onChange={(event) => setWhatsappGroupId(event.target.value)}
-              disabled={!data.whatsappModuleConnected}
-              className={`mt-1.5 ${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+              className={`mt-1.5 ${inputClass}`}
             >
-              <option value="">Uygun grup yok</option>
+              <option value="">Grup seçin veya aşağıya ID girin</option>
               {data.whatsappGroups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.name}
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="block">
+            <span className={labelClass}>Grup ID (manuel)</span>
+            <input
+              value={whatsappGroupId}
+              onChange={(event) => setWhatsappGroupId(event.target.value)}
+              placeholder="120363123456789012@g.us"
+              className={`mt-1.5 ${inputClass}`}
+            />
           </label>
 
           <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -405,10 +731,10 @@ export default function VillaIcalTab({ villaId, data }: VillaIcalTabProps) {
           <button
             type="button"
             onClick={submitMatchGroup}
-            disabled={isPending || !data.whatsappModuleConnected}
+            disabled={isPending || !whatsappGroupId.trim()}
             className="w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Bu Tesisi Gruba Eşle
+            Bu Evi Gruba Eşle
           </button>
         </div>
       </SectionCard>

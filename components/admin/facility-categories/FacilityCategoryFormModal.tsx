@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition, type ChangeEvent } from "react";
 import Image from "next/image";
-import { Save, Trash2, UploadCloud, X } from "lucide-react";
+import { Save, Sparkles, Trash2, UploadCloud, X } from "lucide-react";
+import { generateFacilityCategoryCopy } from "@/app/actions/admin/facility-category-ai";
 import { uploadCompanyAsset } from "@/app/actions/admin/company-assets";
 import {
   createFacilityCategory,
@@ -11,6 +12,7 @@ import {
 } from "@/app/actions/admin/facility-categories";
 import type { FacilityCategoryItem } from "@/lib/queries/facility-categories";
 import { toSurroundingSlug } from "@/lib/surrounding-utils";
+import { useRefreshOnActionSuccess } from "@/components/admin/AdminPageRefresh";
 
 interface FacilityCategoryFormModalProps {
   category?: FacilityCategoryItem;
@@ -21,11 +23,15 @@ function Field({
   label,
   name,
   defaultValue = "",
+  value,
+  onChange,
   type = "text",
 }: {
   label: string;
   name: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   type?: string;
 }) {
   return (
@@ -34,7 +40,9 @@ function Field({
       <input
         name={name}
         type={type}
-        defaultValue={defaultValue}
+        {...(onChange
+          ? { value: value ?? "", onChange: (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value) }
+          : { defaultValue })}
         className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
       />
     </label>
@@ -44,12 +52,14 @@ function Field({
 function TextareaField({
   label,
   name,
-  defaultValue = "",
+  value,
+  onChange,
   rows = 3,
 }: {
   label: string;
   name: string;
-  defaultValue?: string;
+  value: string;
+  onChange: (value: string) => void;
   rows?: number;
 }) {
   return (
@@ -58,7 +68,8 @@ function TextareaField({
       <textarea
         name={name}
         rows={rows}
-        defaultValue={defaultValue}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         className="mt-1.5 w-full resize-y rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-sm font-medium text-gray-900 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
       />
     </label>
@@ -117,12 +128,75 @@ export default function FacilityCategoryFormModal({
   );
   const [showInOffer, setShowInOffer] = useState(category?.showInOffer ?? false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [tag, setTag] = useState(category?.tag ?? "");
+  const [description, setDescription] = useState(category?.description ?? "");
+  const [longDescription, setLongDescription] = useState(
+    category?.longDescription ?? ""
+  );
+  const [seoTitle, setSeoTitle] = useState(category?.seoTitle ?? "");
+  const [seoKeywords, setSeoKeywords] = useState(category?.seoKeywords ?? "");
+  const [seoDescription, setSeoDescription] = useState(
+    category?.seoDescription ?? ""
+  );
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [isUploading, startUpload] = useTransition();
+  const [isGenerating, startGenerate] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useRefreshOnActionSuccess(state.success);
 
   useEffect(() => {
     if (state.success) onClose();
   }, [state.success, onClose]);
+
+  function handleFillEmpty() {
+    const nameInput = formRef.current?.elements.namedItem(
+      "name"
+    ) as HTMLInputElement | null;
+    const categoryName = nameInput?.value.trim() ?? "";
+    setAiError(null);
+    setAiMessage(null);
+    startGenerate(async () => {
+      const result = await generateFacilityCategoryCopy(categoryName);
+      if (result.error || !result.copy) {
+        setAiError(result.error ?? "Metin üretilemedi.");
+        return;
+      }
+      const copy = result.copy;
+      let filled = 0;
+      if (!tag.trim()) {
+        setTag(copy.tag);
+        filled += 1;
+      }
+      if (!description.trim()) {
+        setDescription(copy.description);
+        filled += 1;
+      }
+      if (!longDescription.trim()) {
+        setLongDescription(copy.longDescription);
+        filled += 1;
+      }
+      if (!seoTitle.trim()) {
+        setSeoTitle(copy.seoTitle);
+        filled += 1;
+      }
+      if (!seoKeywords.trim()) {
+        setSeoKeywords(copy.seoKeywords);
+        filled += 1;
+      }
+      if (!seoDescription.trim()) {
+        setSeoDescription(copy.seoDescription);
+        filled += 1;
+      }
+      setAiMessage(
+        filled > 0
+          ? "Boş alanlar dolduruldu. Kaydet ile yayınlayabilirsiniz."
+          : "Boş alan kalmamıştı."
+      );
+    });
+  }
 
   function handleImageUpload(file: File | undefined) {
     if (!file) return;
@@ -157,7 +231,11 @@ export default function FacilityCategoryFormModal({
           </button>
         </div>
 
-        <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+        <form
+          ref={formRef}
+          action={formAction}
+          className="flex min-h-0 flex-1 flex-col"
+        >
           {category && <input type="hidden" name="id" value={category.id} />}
           <input type="hidden" name="image" value={imageUrl} />
 
@@ -168,6 +246,28 @@ export default function FacilityCategoryFormModal({
               </div>
             )}
 
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleFillEmpty}
+                disabled={isGenerating}
+                className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                <Sparkles className="h-4 w-4" />
+                {isGenerating ? "Dolduruluyor..." : "Boş alanları yapay zeka ile doldur"}
+              </button>
+            </div>
+            {aiError ? (
+              <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {aiError}
+              </p>
+            ) : null}
+            {aiMessage ? (
+              <p className="mb-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800">
+                {aiMessage}
+              </p>
+            ) : null}
+
             <div className="grid gap-6 lg:grid-cols-[1fr_220px]">
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -176,19 +276,21 @@ export default function FacilityCategoryFormModal({
                     name="name"
                     defaultValue={category?.name}
                   />
-                  <Field label="Tag" name="tag" defaultValue={category?.tag} />
+                  <Field label="Tag" name="tag" value={tag} onChange={setTag} />
                 </div>
 
                 <TextareaField
                   label="Açıklama"
                   name="description"
-                  defaultValue={category?.description}
+                  value={description}
+                  onChange={setDescription}
                   rows={3}
                 />
                 <TextareaField
                   label="Uzun Açıklama"
                   name="longDescription"
-                  defaultValue={category?.longDescription}
+                  value={longDescription}
+                  onChange={setLongDescription}
                   rows={4}
                 />
 
@@ -196,13 +298,15 @@ export default function FacilityCategoryFormModal({
                   <TextareaField
                     label="Seo Başlık"
                     name="seoTitle"
-                    defaultValue={category?.seoTitle}
+                    value={seoTitle}
+                    onChange={setSeoTitle}
                     rows={2}
                   />
                   <TextareaField
                     label="Seo Keywords"
                     name="seoKeywords"
-                    defaultValue={category?.seoKeywords}
+                    value={seoKeywords}
+                    onChange={setSeoKeywords}
                     rows={2}
                   />
                 </div>
@@ -210,7 +314,8 @@ export default function FacilityCategoryFormModal({
                 <TextareaField
                   label="Seo Açıklama"
                   name="seoDescription"
-                  defaultValue={category?.seoDescription}
+                  value={seoDescription}
+                  onChange={setSeoDescription}
                   rows={3}
                 />
 

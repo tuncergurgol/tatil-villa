@@ -14,17 +14,20 @@ import {
   deleteAmenity,
   deleteAmenityCategory,
   toggleAmenityDefault,
+  toggleAmenityShowInSearch,
 } from "@/app/actions/admin/amenities";
 import AmenityCategoryFormModal from "@/components/admin/amenities/AmenityCategoryFormModal";
 import AmenityFormModal from "@/components/admin/amenities/AmenityFormModal";
 import type { AmenityCategoryItem, AmenityItem } from "@/lib/queries/amenities";
 import type { FacilityCategoryOption } from "@/lib/queries/facility-categories";
+import { includesSearchText } from "@/lib/search-text";
 
 interface AmenityManagementProps {
   categories: AmenityCategoryItem[];
   facilityCategories: FacilityCategoryOption[];
   totalAmenities: number;
   defaultCount: number;
+  searchCount: number;
 }
 
 function isLongTextAmenity(name: string) {
@@ -36,6 +39,7 @@ export default function AmenityManagement({
   facilityCategories,
   totalAmenities,
   defaultCount,
+  searchCount,
 }: AmenityManagementProps) {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -52,21 +56,18 @@ export default function AmenityManagement({
   const [isPending, startTransition] = useTransition();
 
   const filteredCategories = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-
     return categories
       .map((category) => {
-        const amenities = category.amenities.filter((amenity) => {
-          if (!query) return true;
-          return amenity.name.toLocaleLowerCase("tr-TR").includes(query);
-        });
+        const amenities = category.amenities.filter((amenity) =>
+          includesSearchText(amenity.name, search)
+        );
         return { ...category, amenities };
       })
       .filter((category) => {
         if (activeTab !== "all" && category.id !== activeTab) return false;
-        if (!query) return true;
+        if (!search.trim()) return true;
         return (
-          category.name.toLocaleLowerCase("tr-TR").includes(query) ||
+          includesSearchText(category.name, search) ||
           category.amenities.length > 0
         );
       });
@@ -89,7 +90,7 @@ export default function AmenityManagement({
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-gray-900">Tesis Olanakları</h1>
+              <h1 className="text-lg font-bold text-gray-900">Ev Olanakları</h1>
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
                 {totalAmenities}
               </span>
@@ -133,6 +134,9 @@ export default function AmenityManagement({
         <div className="border-b border-gray-100 bg-sky-50/60 px-5 py-2 text-xs text-sky-800">
           <Star className="mr-1 inline h-3.5 w-3.5 fill-current" />
           {defaultCount} varsayılan olanak — yeni villa eklerken otomatik seçilir
+          <span className="mx-2 text-sky-300">·</span>
+          <Search className="mr-1 inline h-3.5 w-3.5" />
+          {searchCount} olanak detaylı aramada listeleniyor
         </div>
 
         {error && (
@@ -205,11 +209,16 @@ export default function AmenityManagement({
                       } ${
                         amenity.isDefault
                           ? "border-sky-400 bg-sky-50 font-semibold text-sky-800 ring-1 ring-sky-200"
-                          : "border-gray-200 bg-white text-gray-800"
+                          : amenity.showInSearch
+                            ? "border-teal-300 bg-teal-50/70 font-medium text-teal-900"
+                            : "border-gray-200 bg-white text-gray-800"
                       }`}
                     >
                       {amenity.isDefault && (
                         <Star className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-sky-500 text-sky-500" />
+                      )}
+                      {amenity.showInSearch && !amenity.isDefault && (
+                        <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600" />
                       )}
                       <span className={longText ? "flex-1 leading-relaxed" : ""}>{amenity.name}</span>
                       {amenity.facilityCategory?.name && (
@@ -219,6 +228,7 @@ export default function AmenityManagement({
                       )}
                       <div className="ml-1 flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
                         <button type="button" title="Varsayılan" disabled={isPending} onClick={() => runAction(() => toggleAmenityDefault(amenity.id))} className={`rounded p-0.5 ${amenity.isDefault ? "text-sky-600" : "text-gray-400 hover:text-sky-600"}`}><Star className="h-3.5 w-3.5" /></button>
+                        <button type="button" title="Detaylı aramada göster" disabled={isPending} onClick={() => runAction(() => toggleAmenityShowInSearch(amenity.id))} className={`rounded p-0.5 ${amenity.showInSearch ? "text-teal-600" : "text-gray-400 hover:text-teal-600"}`}><Search className="h-3.5 w-3.5" /></button>
                         <button type="button" onClick={() => setAmenityModal({ mode: "edit", amenity })} className="rounded p-0.5 text-gray-400 hover:text-gray-700"><Pencil className="h-3.5 w-3.5" /></button>
                         <button type="button" disabled={isPending} onClick={() => { if (window.confirm(`"${amenity.name}" silinsin mi?`)) runAction(() => deleteAmenity(amenity.id)); }} className="rounded p-0.5 text-gray-400 disabled:opacity-30"><X className="h-3.5 w-3.5" /></button>
                       </div>

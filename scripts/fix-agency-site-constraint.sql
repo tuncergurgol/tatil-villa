@@ -1,0 +1,1 @@
+ALTER TABLE "AgencySite" ALTER COLUMN "siteName" DROP NOT NULL;

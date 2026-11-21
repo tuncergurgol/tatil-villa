@@ -1,5 +1,5 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import { redirect } from "next/navigation";
 
 export default function TransferPage() {
-  return <ComingSoon title="Transfer" />;
+  redirect("/admin/transfer/arac-tipleri");
 }

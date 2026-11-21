@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getVillaShowcaseImage } from "@/lib/villa-gallery";
 
 const ownerSelect = {
   id: true,
@@ -26,10 +27,25 @@ const ownerSelect = {
       id: true,
       name: true,
       email: true,
+      username: true,
+      role: true,
     },
   },
   _count: {
     select: { villas: true },
+  },
+  villas: {
+    select: {
+      id: true,
+      villaId: true,
+      name: true,
+      originalName: true,
+      documentNo: true,
+      image: true,
+      images: true,
+      slug: true,
+    },
+    orderBy: { name: "asc" },
   },
 } as const;
 
@@ -52,10 +68,18 @@ export type ActiveVillaOwnerOption = Awaited<
 >[number];
 
 export async function getVillaOwners() {
-  return prisma.villaOwner.findMany({
+  const owners = await prisma.villaOwner.findMany({
     select: ownerSelect,
     orderBy: { name: "asc" },
   });
+
+  return owners.map((owner) => ({
+    ...owner,
+    villas: owner.villas.map((villa) => ({
+      ...villa,
+      image: getVillaShowcaseImage(villa),
+    })),
+  }));
 }
 
 export async function getUnlinkedUsers() {
@@ -63,6 +87,7 @@ export async function getUnlinkedUsers() {
     where: {
       villaOwner: null,
       active: true,
+      role: { in: ["ADMIN", "SALES_REP"] },
     },
     select: {
       id: true,

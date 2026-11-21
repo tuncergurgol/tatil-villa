@@ -1,10 +1,8 @@
-import ComingSoon from "@/components/admin/ComingSoon";
+import VillaContentAiBulkManagement from "@/components/admin/konaklama/VillaContentAiBulkManagement";
+import { getVillaContentAiBulkRows } from "@/lib/queries/villa-content-ai-bulk";
 
-export default function KonaklamaAyarlarPage() {
-  return (
-    <ComingSoon
-      title="Konaklama Ayarları"
-      description="Konaklama modülü ayarları yakında eklenecek."
-    />
-  );
+export default async function KonaklamaAyarlarPage() {
+  const rows = await getVillaContentAiBulkRows();
+
+  return <VillaContentAiBulkManagement rows={rows} />;
 }

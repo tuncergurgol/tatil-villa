@@ -27,6 +27,7 @@ import {
   RegionLevel,
 } from "@/lib/region-levels";
 import { getMernisIlceLabel } from "@/lib/mernis-ilce";
+import { includesSearchText } from "@/lib/search-text";
 
 type StatusFilter = "all" | "active" | "passive";
 
@@ -45,15 +46,12 @@ function filterTree(
   query: string,
   status: StatusFilter
 ): RegionTreeNode[] {
-  const normalizedQuery = query.trim().toLowerCase();
-
   const filterNode = (node: RegionTreeNode): RegionTreeNode | null => {
     const children = node.children
       .map(filterNode)
       .filter((child): child is RegionTreeNode => child !== null);
 
-    const matchesQuery =
-      !normalizedQuery || node.name.toLowerCase().includes(normalizedQuery);
+    const matchesQuery = includesSearchText(node.name, query);
     const matchesStatus =
       status === "all" ||
       (status === "active" && isRegionActive(node)) ||

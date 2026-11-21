@@ -18,7 +18,105 @@ const categorySchema = z.object({
 const locationSchema = z.object({
   name: z.string().min(1, "Konum adı gerekli"),
   categoryId: z.string().min(1, "Kategori seçin"),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
+  isDefault: z.boolean().optional(),
+  regionIds: z.array(z.string()).optional(),
 });
+
+function parseOptionalCoord(raw: string | undefined, label: string) {
+  const value = (raw ?? "").trim();
+  if (!value) return { ok: true as const, value: null as number | null };
+  const num = Number(value.replace(",", "."));
+  if (!Number.isFinite(num)) {
+    return { ok: false as const, error: `${label} geçersiz` };
+  }
+  return { ok: true as const, value: num };
+}
+
+function parseLocationForm(formData: FormData) {
+  const regionIds = formData
+    .getAll("regionIds")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  const parsed = locationSchema.safeParse({
+    name: formData.get("name"),
+    categoryId: formData.get("categoryId"),
+    latitude: formData.get("latitude")?.toString() ?? "",
+    longitude: formData.get("longitude")?.toString() ?? "",
+    isDefault: formData.get("isDefault") === "on" || formData.get("isDefault") === "true",
+    regionIds,
+  });
+
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi",
+    } as const;
+  }
+
+  const lat = parseOptionalCoord(parsed.data.latitude, "Enlem");
+  if (!lat.ok) return { error: lat.error } as const;
+  const lng = parseOptionalCoord(parsed.data.longitude, "Boylam");
+  if (!lng.ok) return { error: lng.error } as const;
+
+  if ((lat.value == null) !== (lng.value == null)) {
+    return { error: "Enlem ve boylam birlikte girilmeli" } as const;
+  }
+
+  if (lat.value != null && lng.value != null) {
+    if (lat.value < -90 || lat.value > 90) {
+      return { error: "Enlem -90 ile 90 arasında olmalı" } as const;
+    }
+    if (lng.value < -180 || lng.value > 180) {
+      return { error: "Boylam -180 ile 180 arasında olmalı" } as const;
+    }
+  }
+
+  return {
+    data: {
+      name: parsed.data.name.trim(),
+      categoryId: parsed.data.categoryId,
+      latitude: lat.value,
+      longitude: lng.value,
+      isDefault: Boolean(parsed.data.isDefault),
+      regionIds: parsed.data.regionIds ?? [],
+    },
+  } as const;
+}
+
+async function syncLocationRegionScopes(
+  surroundingLocationId: string,
+  regionIds: string[]
+) {
+  const uniqueIds = [...new Set(regionIds)];
+
+  if (uniqueIds.length > 0) {
+    const valid = await prisma.region.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true },
+    });
+    if (valid.length !== uniqueIds.length) {
+      throw new Error("Geçersiz bölge seçimi");
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.surroundingLocationRegion.deleteMany({
+      where: { surroundingLocationId },
+    }),
+    ...(uniqueIds.length > 0
+      ? [
+          prisma.surroundingLocationRegion.createMany({
+            data: uniqueIds.map((regionId) => ({
+              surroundingLocationId,
+              regionId,
+            })),
+          }),
+        ]
+      : []),
+  ]);
+}
 
 function revalidateSurroundingPaths() {
   revalidatePath("/admin/tanimlamalar/cevre-konum");
@@ -175,13 +273,8 @@ export async function createSurroundingLocation(
 ): Promise<SurroundingActionState> {
   await requireAdmin();
 
-  const parsed = locationSchema.safeParse({
-    name: formData.get("name"),
-    categoryId: formData.get("categoryId"),
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
-  }
+  const parsed = parseLocationForm(formData);
+  if ("error" in parsed) return { error: parsed.error };
 
   const maxOrder = await prisma.surroundingLocation.aggregate({
     where: { categoryId: parsed.data.categoryId },
@@ -189,13 +282,17 @@ export async function createSurroundingLocation(
   });
 
   try {
-    await prisma.surroundingLocation.create({
+    const created = await prisma.surroundingLocation.create({
       data: {
-        name: parsed.data.name.trim(),
+        name: parsed.data.name,
         categoryId: parsed.data.categoryId,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
+        isDefault: parsed.data.isDefault,
         sortOrder: (maxOrder._max.sortOrder ?? 0) + 1,
       },
     });
+    await syncLocationRegionScopes(created.id, parsed.data.regionIds);
     revalidateSurroundingPaths();
     return { success: true };
   } catch {
@@ -212,22 +309,21 @@ export async function updateSurroundingLocation(
   const id = formData.get("id") as string;
   if (!id) return { error: "Kayıt bulunamadı" };
 
-  const parsed = locationSchema.safeParse({
-    name: formData.get("name"),
-    categoryId: formData.get("categoryId"),
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form verisi" };
-  }
+  const parsed = parseLocationForm(formData);
+  if ("error" in parsed) return { error: parsed.error };
 
   try {
     await prisma.surroundingLocation.update({
       where: { id },
       data: {
-        name: parsed.data.name.trim(),
+        name: parsed.data.name,
         categoryId: parsed.data.categoryId,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
+        isDefault: parsed.data.isDefault,
       },
     });
+    await syncLocationRegionScopes(id, parsed.data.regionIds);
     revalidateSurroundingPaths();
     return { success: true };
   } catch {

@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { collectDescendantIds } from "@/lib/queries/region-tree";
 import { syncAlphabeticalSiblingSortOrders } from "@/lib/region-sort";
 import { getMernisIlceByCode } from "@/lib/mernis-ilce";
+import { toSurroundingSlug } from "@/lib/surrounding-utils";
 
 export type RegionActionState = {
   success?: boolean;
@@ -45,11 +46,15 @@ function parseRegionForm(formData: FormData) {
   const parentId = (formData.get("parentId") as string | null)?.trim();
   const published = checkboxValue(formData, "published");
   const mernisRaw = (formData.get("mernisIlceCode") as string | null)?.trim();
+  const name = String(formData.get("name") ?? "");
+  const slug =
+    toSurroundingSlug(String(formData.get("slug") ?? "")) ||
+    toSurroundingSlug(name);
 
   return regionSchema.safeParse({
-    name: formData.get("name"),
+    name,
     level: formData.get("level"),
-    slug: formData.get("slug"),
+    slug,
     image: formData.get("image"),
     description: formData.get("description"),
     longDescription: formData.get("longDescription"),

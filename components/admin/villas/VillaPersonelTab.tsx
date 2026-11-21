@@ -1,13 +1,22 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import { assignVillaOwner } from "@/app/actions/admin/villas";
-import VillaOwnerFormModal from "@/components/admin/villa-owners/VillaOwnerFormModal";
+import { getActiveVillaOwnersAction } from "@/app/actions/admin/villa-owners";
 import TurkishPhoneField from "@/components/admin/ui/TurkishPhoneField";
 import type { ActiveVillaOwnerOption } from "@/lib/queries/villa-owners";
 import type { TurkeyProvince } from "@/lib/mernis-ilce";
+import { includesSearchText } from "@/lib/search-text";
 import { formatOwnerPhoneDisplay } from "@/lib/villa-owner-utils";
 import type { Villa, VillaOwner } from "@prisma/client";
 
@@ -15,6 +24,11 @@ interface VillaPersonelTabProps {
   villa: Villa & { owner: VillaOwner | null };
   activeOwners: ActiveVillaOwnerOption[];
   provinces: TurkeyProvince[];
+  onOpenOwnerModal: () => void;
+}
+
+export interface VillaPersonelTabHandle {
+  assignCreatedOwner: (ownerId: string) => Promise<void>;
 }
 
 const inputClass =
@@ -35,67 +49,155 @@ function SectionCard({
   );
 }
 
-export default function VillaPersonelTab({
-  villa,
-  activeOwners,
-  provinces,
-}: VillaPersonelTabProps) {
+const VillaPersonelTab = forwardRef<VillaPersonelTabHandle, VillaPersonelTabProps>(
+function VillaPersonelTab(
+  { villa, activeOwners, onOpenOwnerModal },
+  ref
+) {
   const router = useRouter();
   const [isSelectingOwner, setIsSelectingOwner] = useState(!villa.ownerId);
   const [search, setSearch] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState(villa.ownerId ?? "");
   const [savedOwnerId, setSavedOwnerId] = useState(villa.ownerId ?? "");
+  const [owners, setOwners] = useState(activeOwners);
   const [ownerError, setOwnerError] = useState<string | null>(null);
-  const [showOwnerModal, setShowOwnerModal] = useState(false);
+  const [ownerSuccess, setOwnerSuccess] = useState<string | null>(null);
   const [isSavingOwner, startSaveOwner] = useTransition();
+  const [isLoadingOwners, startLoadOwners] = useTransition();
+
+  useEffect(() => {
+    setOwners(activeOwners);
+  }, [activeOwners]);
+
+  useEffect(() => {
+    setSavedOwnerId(villa.ownerId ?? "");
+    setSelectedOwnerId(villa.ownerId ?? "");
+  }, [villa.ownerId]);
 
   const savedOwner = useMemo(
-    () => activeOwners.find((owner) => owner.id === savedOwnerId) ?? villa.owner,
-    [activeOwners, savedOwnerId, villa.owner]
+    () => owners.find((owner) => owner.id === savedOwnerId) ?? villa.owner,
+    [owners, savedOwnerId, villa.owner]
   );
 
   const filteredOwners = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-    if (!query) return activeOwners;
+    if (!search.trim()) return owners;
 
-    return activeOwners.filter((owner) => {
-      const haystack = [owner.name, owner.phone, owner.email]
-        .join(" ")
-        .toLocaleLowerCase("tr-TR");
-      return haystack.includes(query);
-    });
-  }, [activeOwners, search]);
+    return owners.filter((owner) =>
+      includesSearchText(
+        [owner.name, owner.phone, owner.email].join(" "),
+        search
+      )
+    );
+  }, [owners, search]);
 
-  function handleSaveOwner() {
-    if (!selectedOwnerId) {
-      setOwnerError("Lütfen bir villa sahibi seçin");
-      return;
-    }
-
+  function refreshOwners(options?: {
+    selectOwnerId?: string;
+    openSelector?: boolean;
+  }) {
     setOwnerError(null);
-    startSaveOwner(async () => {
-      const result = await assignVillaOwner(villa.id, selectedOwnerId);
-      if (result.error) {
-        setOwnerError(result.error);
+    setOwnerSuccess(null);
+    startLoadOwners(async () => {
+      const result = await getActiveVillaOwnersAction();
+      if (result.error || !result.owners) {
+        setOwnerError(result.error ?? "Villa sahipleri yüklenemedi");
         return;
       }
-      setSavedOwnerId(selectedOwnerId);
-      setIsSelectingOwner(false);
+
+      setOwners(result.owners);
+      if (options?.selectOwnerId) {
+        setSelectedOwnerId(options.selectOwnerId);
+        setSearch("");
+      }
+      if (options?.openSelector) {
+        setIsSelectingOwner(true);
+      }
       router.refresh();
     });
   }
 
-  function handleOwnerCreated(ownerId: string) {
-    setSelectedOwnerId(ownerId);
+  function handleChangeOwner() {
+    setSelectedOwnerId(savedOwnerId);
     setSearch("");
-    router.refresh();
+    setIsSelectingOwner(true);
+    refreshOwners({ openSelector: true });
   }
+
+  function handleSaveOwner() {
+    const ownerId =
+      selectedOwnerId ||
+      (filteredOwners.length === 1 ? filteredOwners[0].id : "");
+
+    if (!ownerId) {
+      setOwnerError(
+        search.trim()
+          ? "Arama sonuçlarından bir villa sahibi seçin"
+          : "Lütfen listeden bir villa sahibi seçin"
+      );
+      return;
+    }
+
+    if (!selectedOwnerId) {
+      setSelectedOwnerId(ownerId);
+    }
+
+    setOwnerError(null);
+    setOwnerSuccess(null);
+    startSaveOwner(async () => {
+      const result = await assignVillaOwner(villa.id, ownerId);
+      if (result.error) {
+        setOwnerError(result.error);
+        return;
+      }
+      setSavedOwnerId(ownerId);
+      setIsSelectingOwner(false);
+      setOwnerSuccess("Villa sahibi villaya bağlandı.");
+      router.refresh();
+    });
+  }
+
+  const assignCreatedOwner = useCallback(async (ownerId: string) => {
+    setOwnerError(null);
+    setOwnerSuccess(null);
+
+    const assignResult = await assignVillaOwner(villa.id, ownerId);
+    if (assignResult.error) {
+      setOwnerError(assignResult.error);
+      const ownersResult = await getActiveVillaOwnersAction();
+      if (ownersResult.owners) {
+        setOwners(ownersResult.owners);
+        setSelectedOwnerId(ownerId);
+        setSearch("");
+        setIsSelectingOwner(true);
+      }
+      throw new Error(assignResult.error);
+    }
+
+    setSavedOwnerId(ownerId);
+    setSelectedOwnerId(ownerId);
+    setIsSelectingOwner(false);
+    setOwnerSuccess("Yeni villa sahibi kaydedildi ve bu villaya bağlandı.");
+
+    const result = await getActiveVillaOwnersAction();
+    if (result.owners) {
+      setOwners(result.owners);
+    } else if (result.error) {
+      setOwnerError(result.error);
+    }
+    router.refresh();
+  }, [router, villa.id]);
+
+  useImperativeHandle(ref, () => ({ assignCreatedOwner }), [assignCreatedOwner]);
 
   return (
     <div className="space-y-6">
       <SectionCard title="Villa Sahibi">
         {!isSelectingOwner && savedOwner ? (
           <div className="space-y-4">
+            {ownerSuccess ? (
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {ownerSuccess}
+              </p>
+            ) : null}
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4">
               <p className="text-sm font-semibold text-gray-900">
                 {savedOwner.name}
@@ -107,12 +209,13 @@ export default function VillaPersonelTab({
             </div>
             <button
               type="button"
-              onClick={() => {
-                setIsSelectingOwner(true);
-                setSelectedOwnerId(savedOwnerId);
-              }}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              onClick={handleChangeOwner}
+              disabled={isLoadingOwners}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
             >
+              {isLoadingOwners ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
               Değiştir
             </button>
           </div>
@@ -135,7 +238,12 @@ export default function VillaPersonelTab({
             </label>
 
             <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-200">
-              {filteredOwners.length > 0 ? (
+              {isLoadingOwners ? (
+                <p className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Güncel liste yükleniyor...
+                </p>
+              ) : filteredOwners.length > 0 ? (
                 filteredOwners.map((owner) => {
                   const isSelected = selectedOwnerId === owner.id;
                   return (
@@ -173,9 +281,21 @@ export default function VillaPersonelTab({
               )}
             </div>
 
+            {ownerSuccess ? (
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {ownerSuccess}
+              </p>
+            ) : null}
+
             {ownerError ? (
               <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {ownerError}
+              </p>
+            ) : null}
+
+            {!selectedOwnerId && filteredOwners.length > 1 ? (
+              <p className="text-xs text-amber-700">
+                Kaydetmek için listeden bir villa sahibi seçin.
               </p>
             ) : null}
 
@@ -183,14 +303,14 @@ export default function VillaPersonelTab({
               <button
                 type="button"
                 onClick={handleSaveOwner}
-                disabled={isSavingOwner || !selectedOwnerId}
+                disabled={isSavingOwner}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSavingOwner ? "Kaydediliyor..." : "Kaydet"}
               </button>
               <button
                 type="button"
-                onClick={() => setShowOwnerModal(true)}
+                onClick={onOpenOwnerModal}
                 className="inline-flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700"
               >
                 <Plus className="h-4 w-4" />
@@ -252,13 +372,8 @@ export default function VillaPersonelTab({
         </SectionCard>
       </div>
 
-      {showOwnerModal ? (
-        <VillaOwnerFormModal
-          provinces={provinces}
-          onClose={() => setShowOwnerModal(false)}
-          onCreated={handleOwnerCreated}
-        />
-      ) : null}
     </div>
   );
-}
+});
+
+export default VillaPersonelTab;
