@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowLeft,
-  Facebook,
-  Instagram,
   Loader2,
   MessageCircle,
   MessagesSquare,
@@ -521,16 +519,10 @@ function ChannelPreview({
   channel: string;
   large?: boolean;
 }) {
-  const Icon =
-    channel === "Instagram" || channel === "Instagram yorumları"
-      ? Instagram
-      : channel.includes("Facebook")
-        ? Facebook
-        : MessagesSquare;
   return (
     <div className={`flex flex-1 flex-col items-center justify-center px-6 text-center ${large ? "py-16" : "py-12"}`}>
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e7f3ff] text-[#1877f2]">
-        <Icon className="h-6 w-6" />
+        <MessagesSquare className="h-6 w-6" />
       </span>
       <p className="mt-3 text-sm font-semibold text-gray-900">{channel}</p>
       <p className="mt-1 max-w-xs text-xs leading-5 text-gray-500">
