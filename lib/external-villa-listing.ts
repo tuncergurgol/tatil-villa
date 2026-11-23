@@ -294,15 +294,18 @@ function parseDistanceApiPayload(payload: unknown): ExternalVillaListingDistance
 
 async function fetchVillareyonuDistances(
   entityId: string,
-  referer: string
+  referer: string,
+  api?: { apiHost: string; origin: string }
 ): Promise<ExternalVillaListingDistance[]> {
+  const apiHost = api?.apiHost ?? "https://api.villareyonu.com";
+  const origin = api?.origin ?? "https://www.villareyonu.com";
   const response = await fetch(
-    `https://api.villareyonu.com/Distance?EntityId=${encodeURIComponent(entityId)}`,
+    `${apiHost}/Distance?EntityId=${encodeURIComponent(entityId)}`,
     {
       headers: {
         "User-Agent": BROWSER_UA,
         Accept: "application/json, text/plain, */*",
-        Origin: "https://www.villareyonu.com",
+        Origin: origin,
         Referer: referer,
         "Accept-Language": "tr-TR,tr;q=0.9",
       },
@@ -505,6 +508,11 @@ const AMENITY_ALIASES: Record<string, string> = {
   "internet bağlantısı": "Wi-Fi",
   "kablosuz modem": "Wi-Fi",
   "çamaşır makinası": "Çamaşır Makinesi",
+  "çamaşır makinesi": "Çamaşır Makinesi",
+  internet: "Wi-Fi",
+  "park yeri": "Otopark",
+  "sokakda park yeri": "Otopark",
+  "ütü ve masası": "Ütü Masası",
   "bulaşık makinası": "Bulaşık makinesi",
   "ankastre fırın": "Fırın",
   "mikrodalga fırın": "Mikrodalga",
@@ -525,6 +533,9 @@ const AMENITY_ALIASES: Record<string, string> = {
   "barbekü (mangal)": "Barbekü",
   veranda: "Teras Alanı",
   balkon: "Balkon",
+  teras: "Teras Alanı",
+  "deniz manzaralı": "Deniz Manzarası",
+  "doğa manzaralı": "Doğa Manzarası",
   "doğa manzarası": "Doğa Manzarası",
   "merkeze yakın": "Merkeze Yakın",
   klima: "Klima",
@@ -753,6 +764,254 @@ function parseTurizmplusListing(
   };
 }
 
+function myworldDocumentNo(raw: string, destination: string) {
+  const value = raw.trim();
+  if (!value || !/^\d+$/.test(value)) return value;
+  const place = destination.toLocaleLowerCase("tr-TR");
+  const prefix =
+    /muğla|mugla|fethiye|marmaris|bodrum|ortaca|dalaman|seydikemer/.test(place)
+      ? "48"
+      : /izmir|çeşme|cesme|alaçatı|alacati/.test(place)
+        ? "35"
+        : "07";
+  return `${prefix}-${value}`;
+}
+
+function decodeListingEntities(value: string) {
+  return value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&ccedil;/gi, "ç")
+    .replace(/&Ccedil;/g, "Ç")
+    .replace(/&ouml;/gi, "ö")
+    .replace(/&Ouml;/g, "Ö")
+    .replace(/&uuml;/gi, "ü")
+    .replace(/&Uuml;/g, "Ü")
+    .replace(/&acirc;/gi, "â")
+    .replace(/&icirc;|&igrave;/gi, "î")
+    .replace(/&rsquo;|&#8217;|&apos;|&#x27;/gi, "'")
+    .replace(/&ndash;|&mdash;/gi, "-")
+    .replace(/&#(\d+);/g, (_, code) =>
+      String.fromCharCode(Number.parseInt(code, 10))
+    );
+}
+
+function extractMyworldDescription(html: string) {
+  const start = html.search(/line-clamp-6/i);
+  if (start < 0) return "";
+  const slice = html.slice(start, start + 14000);
+  const end = slice.search(/Devamını oku|<\/section>/i);
+  const block = end > 0 ? slice.slice(0, end) : slice;
+  const paragraphs = [...block.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((match) =>
+      decodeListingEntities(stripTags(match[1] ?? "")).replace(/\s+/g, " ").trim()
+    )
+    .filter((text) => text.length > 25)
+    .filter((text) => !/myworldvilla\.com/i.test(text))
+    .filter((text) => !/myworldvilla travel/i.test(text))
+    .filter((text) => !/hayalindeki tatili/i.test(text));
+  return toHtmlParagraphs(paragraphs.join("\n\n"));
+}
+
+function bedCountToken(token: string) {
+  const key = token.toLocaleLowerCase("tr-TR");
+  if (key === "bir") return 1;
+  if (key === "iki") return 2;
+  if (key === "üç" || key === "uc") return 3;
+  const parsed = parseInt(key, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function countBedsInSentence(sentence: string, kind: "tek" | "çift") {
+  const re = new RegExp(
+    `(\\d+|bir|iki|üç|uc)\\s*adet\\s*${kind}\\s*kişilik`,
+    "gi"
+  );
+  let total = 0;
+  for (const match of sentence.matchAll(re)) {
+    total += bedCountToken(match[1] ?? "");
+  }
+  return total;
+}
+
+function foldTurkishCapitals(value: string) {
+  return value
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .replace(/Ü/g, "ü")
+    .replace(/Ö/g, "ö")
+    .replace(/Ş/g, "ş")
+    .replace(/Ç/g, "ç")
+    .replace(/Ğ/g, "ğ");
+}
+
+function parseMyworldRooms(descriptionHtml: string): ExternalVillaListingRoom[] {
+  const text = foldTurkishCapitals(
+    decodeListingEntities(descriptionHtml.replace(/<[^>]+>/g, " "))
+  );
+  const rooms: ExternalVillaListingRoom[] = [];
+  const re =
+    /(?:(\d+)\.|((?:birinci|ikinci|üçüncü|ucuncu|dördüncü|dorduncu|beşinci|besinci)))\s+yatak\s+odas[ıi]nda\s+([^.]*)/gi;
+  const ordinals: Record<string, number> = {
+    birinci: 1,
+    ikinci: 2,
+    üçüncü: 3,
+    ucuncu: 3,
+    dördüncü: 4,
+    dorduncu: 4,
+    beşinci: 5,
+    besinci: 5,
+  };
+  let sortOrder = 0;
+  for (const match of text.matchAll(re)) {
+    const sentence = match[3] ?? "";
+    const index =
+      parseInt(match[1] ?? "", 10) ||
+      ordinals[(match[2] ?? "").toLocaleLowerCase("tr-TR")] ||
+      sortOrder + 1;
+    const featureNames: string[] = [];
+    if (/jakuzi/i.test(sentence)) featureNames.push("Jakuzi");
+    if (/\btv\b|televizyon/i.test(sentence)) featureNames.push("Televizyon");
+    if (/banyo/i.test(sentence)) featureNames.push("Özel Banyo");
+    const { features, customFeatures } = mapRoomFeatureNames(featureNames);
+    sortOrder += 1;
+    rooms.push({
+      roomType: "yatak_odasi",
+      name: String(index),
+      singleBeds: countBedsInSentence(sentence, "tek"),
+      doubleBeds: countBedsInSentence(sentence, "çift"),
+      features,
+      customFeatures,
+      sortOrder,
+    });
+  }
+  return rooms;
+}
+
+function extractMyworldFeatureLabels(chunk: string) {
+  const available = [
+    ...chunk.matchAll(/"baslik\\":\\"([^\\]+)\\",\\"IsAvailable\\":1/g),
+    ...chunk.matchAll(
+      /"baslik\\":\\"([^\\]+)\\",\\"icon\\":\\"[^"\\]*\\",\\"IsAvailable\\":1/g
+    ),
+  ].map((match) => unescapeRsc(match[1]!).trim());
+  const highlights = [...chunk.matchAll(/"onecikan\\":\[([\s\S]*?)\]/g)].flatMap(
+    (match) =>
+      [...match[1]!.matchAll(/"baslik\\":\\"([^\\]+)\\"/g)].map((item) =>
+        unescapeRsc(item[1]!).trim()
+      )
+  );
+  return [...new Set([...available, ...highlights].filter(Boolean))];
+}
+
+function extractMyworldImages(html: string) {
+  const names = [
+    ...html.matchAll(/Filename\\":\\"(Villa-[^\\"]+\.(?:jpe?g|webp|png))\\"/gi),
+  ].map((match) => match[1]!);
+  return [...new Set(names)].map(
+    (name) => `https://cdn.myworldvilla.com/uploads/${name}`
+  );
+}
+
+/** myworldvilla.com — villareyonu ile aynı routingData, oda metni açıklamada. */
+export function parseMyworldvillaListing(
+  pageUrl: string,
+  html: string
+): ExternalVillaListing | null {
+  let host = "";
+  try {
+    host = normalizeHost(new URL(pageUrl).hostname);
+  } catch {
+    return null;
+  }
+  if (!host.includes("myworldvilla")) return null;
+  const marker = html.search(/yatak_odasi\\":\\"\d+\\"/i);
+  if (marker < 0) return null;
+  const chunk = html.slice(Math.max(0, marker - 6000), marker + 28000);
+
+  const originalName =
+    chunk.match(
+      /routingData\\":\{\\"id\\":\\"\d+\\",\\"baslik\\":\\"([^\\]+)\\"/
+    )?.[1] ||
+    extractPageTitleTag(html).split("|")[0]?.trim() ||
+    "Villa";
+  const destination = extractEscapedField(chunk, "destination") ?? "";
+  const descriptionHtml = extractMyworldDescription(html);
+  const descriptionText = descriptionHtml.replace(/<[^>]+>/g, " ");
+  const mentionsAkbel = /akbel/i.test(`${descriptionText} ${originalName}`);
+  const cityName =
+    destination.split("/")[0]?.trim() || "Antalya";
+  const districtName = mentionsAkbel
+    ? "Akbel"
+    : destination.split("/")[1]?.trim() || "Kalkan";
+  const locationLabel = mentionsAkbel
+    ? "Kalkan Akbel"
+    : destination.replace(/\s*\/\s*/g, ", ") || districtName;
+
+  const guests = parseIntSafe(extractEscapedField(chunk, "kisi"), 1);
+  const bedrooms = parseIntSafe(extractEscapedField(chunk, "yatak_odasi"), 1);
+  const bathrooms = parseIntSafe(extractEscapedField(chunk, "banyo"), 1);
+  const rooms = parseMyworldRooms(descriptionHtml);
+  const mapped = mapAmenityLabels(extractMyworldFeatureLabels(chunk));
+  const poolType = extractEscapedField(chunk, "yuzme_havuzu") ?? "";
+  const features = extractMyworldFeatureLabels(chunk);
+  const heated = features.some((item) => /ısıtmalı havuz/i.test(item));
+  const entityId =
+    chunk.match(/routingData\\":\{\\"id\\":\\"(\d+)\\"/)?.[1] ??
+    extractEntityId(chunk);
+
+  return {
+    sourceHost: host,
+    pageUrl,
+    name: titleCaseTr(originalName),
+    originalName,
+    locationLabel,
+    districtName,
+    cityName,
+    guests,
+    bedrooms: rooms.length > 0 ? rooms.length : bedrooms,
+    bathrooms,
+    livingRooms: 1,
+    latitude: parseFloatSafe(extractEscapedField(chunk, "enlem")) ?? 0,
+    longitude: parseFloatSafe(extractEscapedField(chunk, "boylam")) ?? 0,
+    documentNo: myworldDocumentNo(
+      extractEscapedField(chunk, "gavelBelgeNo") ?? "",
+      `${destination} ${descriptionText}`
+    ),
+    checkInTime: parseClock(extractEscapedField(chunk, "giris_saat"), "16:00"),
+    checkOutTime: parseClock(extractEscapedField(chunk, "cikis_saat"), "10:00"),
+    ribbonText1: extractEscapedField(chunk, "ribbon") ?? "",
+    minNightlyPrice:
+      parseIntSafe(extractEscapedField(chunk, "minfiyat"), 0) || null,
+    damageDeposit: parseIntSafe(extractEscapedField(chunk, "hasar"), 0) || null,
+    prepaymentRate: parseIntSafe(extractEscapedField(chunk, "depozito"), 0) || null,
+    descriptionHtml,
+    amenityLabels: mapped.amenityLabels,
+    facilityLabels: mapped.facilityLabels,
+    imageUrls: extractMyworldImages(html),
+    distances: [],
+    pool: /özel|var|evet/i.test(poolType)
+      ? {
+          poolType: "Özel Havuz",
+          length: parseMeter(extractEscapedField(chunk, "yuzme_havuzu_uzunluk")),
+          width: parseMeter(extractEscapedField(chunk, "yuzme_havuzu_genislik")),
+          depth: parseMeter(extractEscapedField(chunk, "yuzme_havuzu_derinlik")),
+          conservative: (extractEscapedField(chunk, "tam_korunakli_havuz") ?? "")
+            .toLocaleLowerCase("tr-TR")
+            .startsWith("evet"),
+          heated,
+        }
+      : null,
+    rooms,
+    allowPets: !/Evcil Hayvan Giremez/i.test(chunk),
+    allowEvents: !/Parti Düzenlenemez/i.test(chunk),
+    allowSmoking: !/Sigara İçilmez/i.test(chunk),
+    allowChildren: true,
+    allowBaby: true,
+    entityId,
+  };
+}
+
 export function parseExternalVillaListing(
   pageUrl: string,
   html: string
@@ -763,6 +1022,9 @@ export function parseExternalVillaListing(
     const host = normalizeHost(new URL(pageUrl).hostname);
     if (host.includes("villareyonu")) {
       return parseVillareyonuListing(pageUrl, html);
+    }
+    if (host.includes("myworldvilla")) {
+      return parseMyworldvillaListing(pageUrl, html);
     }
     const plato = parsePlatoMacrovillaListing(pageUrl, html);
     if (plato) return plato;
@@ -2220,7 +2482,7 @@ export async function scrapeExternalVillaListing(
 
   if (!listing) {
     throw new Error(
-      `${host} ilan bilgisi okunamadı. Tam kurulum: villareyonu.com. Hafif kurulum: villaekstra / villaoteltatili ve diğer desteklenen siteler (gerekirse ?entityId= ekleyin).`
+      `${host} ilan bilgisi okunamadı. Tam kurulum: villareyonu.com, myworldvilla.com. Hafif kurulum: villaekstra / villaoteltatili ve diğer desteklenen siteler (gerekirse ?entityId= ekleyin).`
     );
   }
 
@@ -2228,11 +2490,23 @@ export async function scrapeExternalVillaListing(
     // sitemap alternatifi kullanıldı — pageUrl zaten listing'de
   }
 
-  if (listing.entityId && listing.distances.length === 0 && host.includes("villareyonu")) {
+  const distanceApi = host.includes("villareyonu")
+    ? {
+        apiHost: "https://api.villareyonu.com",
+        origin: "https://www.villareyonu.com",
+      }
+    : host.includes("myworldvilla")
+      ? {
+          apiHost: "https://api.myworldvilla.com",
+          origin: "https://www.myworldvilla.com",
+        }
+      : null;
+  if (listing.entityId && listing.distances.length === 0 && distanceApi) {
     try {
       listing.distances = await fetchVillareyonuDistances(
         listing.entityId,
-        workingUrl
+        workingUrl,
+        distanceApi
       );
     } catch {
       // HTML mesafesi yoksa boş kalır; kurulum diğer alanlarla devam eder

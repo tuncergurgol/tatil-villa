@@ -548,16 +548,12 @@ export async function setupVillaFromExternalUrl(
   if (existing) {
     villaId = existing.id;
     numericVillaId = existing.villaId;
-    slug = await ensureUniqueVillaSlug(
-      buildVillaSlugFromName(listing.name),
-      existing.id
-    );
+    // Yayındaki adres ve elle verilmiş ad yeniden kurulumda değişmesin.
+    slug = existing.slug;
+    const { name: _sourceName, ...withoutName } = sharedData;
     await prisma.villa.update({
       where: { id: villaId },
-      data: {
-        ...sharedData,
-        slug,
-      },
+      data: withoutName,
     });
   } else {
     created = true;
