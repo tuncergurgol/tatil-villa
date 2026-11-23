@@ -44,6 +44,11 @@ import {
   setAssistantRegionCatalog,
 } from "@/lib/tatil-assistant-flow";
 
+import { getPublicSiteFacilityCategories } from "@/lib/public-site-keys";
+import {
+  resolveAssistantPublicSite,
+  type AssistantPublicSite,
+} from "@/lib/tatil-assistant-site";
 import type { AssistantSearchState } from "@/lib/tatil-assistant-types";
 
 export type { AssistantSearchState } from "@/lib/tatil-assistant-types";
@@ -54,6 +59,8 @@ type ProcessAssistantInput = {
   channel?: "web" | "whatsapp";
   whatsappChatId?: string;
   guestPhone?: string;
+  /** Web sitesinden gelen host. WhatsApp'ta metinden anlaşılmazsa Tatildeyiz kullanılır. */
+  publicHost?: string | null;
   /** Son kullanıcı mesajını yeniden işle; ikinci kez kaydetme. */
   reuseLastUserMessage?: boolean;
 };
@@ -179,6 +186,7 @@ async function runVillaSearch(args: {
   amenityNames?: string[];
   flexibleDate?: boolean;
   includeUndocumented?: boolean;
+  facilityCategoryAny?: string[];
 }) {
   const [regionSlugs, features] = await Promise.all([
     expandAssistantRegionSlugs(args.regionSlugs),
@@ -201,6 +209,7 @@ async function runVillaSearch(args: {
     sort: "price_asc",
     requireDocument: true,
     includeUndocumented: args.includeUndocumented ?? false,
+    facilityCategoryAny: args.facilityCategoryAny,
   });
 }
 
@@ -211,6 +220,21 @@ function refreshCriteriaState(state: AssistantSearchState): AssistantSearchState
     guestName: state.guestName,
     guestPhone: state.guestPhone,
     phoneCollected: Boolean(state.guestPhone?.trim()),
+    siteKey: state.siteKey,
+    publicDomain: state.publicDomain,
+    publicBrand: state.publicBrand,
+  };
+}
+
+function stampAssistantSite(
+  state: AssistantSearchState,
+  site: AssistantPublicSite
+): AssistantSearchState {
+  return {
+    ...state,
+    siteKey: site.siteKey,
+    publicDomain: site.domain,
+    publicBrand: site.brand,
   };
 }
 
@@ -255,7 +279,9 @@ async function deliverAssistantOffers(input: {
     cleanedAmenities.length === (input.searchState.amenityNames ?? []).length
       ? input.searchState
       : { ...input.searchState, amenityNames: cleanedAmenities };
-  const domain = TATILDEYIZ_PUBLIC_DOMAIN;
+  const domain = searchState.publicDomain || TATILDEYIZ_PUBLIC_DOMAIN;
+  const brand = searchState.publicBrand || "Tatildeyiz";
+  const facilityCategoryAny = getPublicSiteFacilityCategories(searchState.siteKey);
 
   if (
     !searchState.checkIn ||
@@ -328,6 +354,7 @@ async function deliverAssistantOffers(input: {
       amenityNames,
       flexibleDate: false,
       includeUndocumented,
+      facilityCategoryAny,
     });
     for (const item of pricedAssistantVillas(results)) {
       if (sent.has(item.id) || byId.has(item.id)) continue;
@@ -343,6 +370,7 @@ async function deliverAssistantOffers(input: {
       amenityNames,
       flexibleDate: false,
       includeUndocumented,
+      facilityCategoryAny,
     });
     for (const item of pricedAssistantVillas(results)) {
       if (sent.has(item.id) || byId.has(item.id)) continue;
@@ -412,7 +440,7 @@ async function deliverAssistantOffers(input: {
       domain,
       guestName: searchState.guestName,
       adults: item.partySize,
-      brand: "Tatildeyiz",
+      brand,
     })
   );
   const looking = await describeAssistantSearch(searchState);
@@ -578,11 +606,26 @@ export async function processAssistantMessage(
   }
 
   const storedState = (conversation.searchState ?? {}) as AssistantSearchState;
-  let searchState = await applyKnownCustomerName(
-    usablePersonName(storedState.guestName)
-      ? storedState
-      : { ...storedState, guestName: undefined },
-    input.guestPhone || conversation.guestPhone
+  const assistantSite = resolveAssistantPublicSite({
+    text: userText,
+    host: input.publicHost,
+    stored:
+      storedState.publicDomain && storedState.publicBrand
+        ? {
+            siteKey: storedState.siteKey || "tatildeyiz",
+            domain: storedState.publicDomain,
+            brand: storedState.publicBrand,
+          }
+        : null,
+  });
+  let searchState = stampAssistantSite(
+    await applyKnownCustomerName(
+      usablePersonName(storedState.guestName)
+        ? storedState
+        : { ...storedState, guestName: undefined },
+      input.guestPhone || conversation.guestPhone
+    ),
+    assistantSite
   );
   const [featureCatalog, regionCatalog] = await Promise.all([
     loadAssistantFeatureCatalog(),

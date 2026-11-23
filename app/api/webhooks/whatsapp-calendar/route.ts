@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { processAssistantMessage } from "@/lib/tatil-assistant-runner";
+import { shouldAssistantReplyToWhatsappGuest } from "@/lib/tatil-assistant-guest-notice";
 import {
   classifyWahaWebhook,
-  isAssistantDevWhatsAppAllowed,
+  isAssistantWhatsAppRecipient,
   resolveAssistantInboundPhone,
   sendAssistantWhatsAppMessage,
 } from "@/lib/tatil-assistant-whatsapp";
@@ -51,13 +52,19 @@ export async function POST(request: Request) {
   }
 
   if (inbound.action === "customer") {
+    if (!settings.tatilAssistantEnabled) {
+      return NextResponse.json({ ok: true, skipped: "disabled" });
+    }
     try {
       const phone = await resolveAssistantInboundPhone(
         inbound.chatId,
         inbound.phone
       );
-      if (!isAssistantDevWhatsAppAllowed(phone)) {
-        return NextResponse.json({ ok: true, skipped: "dev-allowlist" });
+      if (!isAssistantWhatsAppRecipient(phone)) {
+        return NextResponse.json({ ok: true, skipped: "invalid-phone" });
+      }
+      if (!(await shouldAssistantReplyToWhatsappGuest(phone, inbound.text))) {
+        return NextResponse.json({ ok: true, skipped: "guest-notice" });
       }
       const assistant = await processAssistantMessage({
         message: inbound.text,

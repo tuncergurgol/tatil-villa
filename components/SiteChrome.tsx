@@ -7,6 +7,7 @@ import { getPublicExchangeRates } from "@/lib/exchange-rates";
 import SiteChromeBelowFold from "@/components/SiteChromeBelowFold";
 import SiteChromeHeader from "@/components/SiteChromeHeader";
 import SiteChromeMobileNav from "@/components/SiteChromeMobileNav";
+import TatilAssistantWidgetLoader from "@/components/tatil-assistant/TatilAssistantWidgetLoader";
 import { getPublicListingCopy } from "@/lib/public-listing-copy";
 
 function HeaderFallback() {
@@ -41,6 +42,9 @@ export default async function SiteChrome({
         </Suspense>
         <Suspense fallback={null}>
           <SiteChromeMobileNav />
+        </Suspense>
+        <Suspense fallback={null}>
+          <TatilAssistantWidgetLoader />
         </Suspense>
       </PublicListingCopyProvider>
     </PublicExchangeRatesProvider>

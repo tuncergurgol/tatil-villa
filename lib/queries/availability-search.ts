@@ -61,6 +61,8 @@ export type AvailabilitySearchFilters = {
   regionSlugs?: string[];
   amenityNames?: string[];
   facilityCategoryNames?: string[];
+  /** Sitede bu kategorilerden en az biri olan villalar. */
+  facilityCategoryAny?: string[];
   /** "Havuz" — dört havuz türünden herhangi biri yeterli. */
   anyPool?: boolean;
   guestCounts?: number[];
@@ -442,6 +444,8 @@ export async function searchAvailability(
   }
   if (facilityCategoryNames.length > 0) {
     where.facilityCategories = { hasEvery: facilityCategoryNames };
+  } else if ((filters.facilityCategoryAny ?? []).length > 0) {
+    where.facilityCategories = { hasSome: filters.facilityCategoryAny };
   }
   if (anyPool) {
     const existingAnd = Array.isArray(where.AND)

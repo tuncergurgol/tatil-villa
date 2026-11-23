@@ -60,4 +60,8 @@ export type AssistantSearchState = {
   pendingConfirm?: AssistantPendingConfirm;
   /** Sırada bekleyen diğer onay soruları. */
   confirmQueue?: AssistantPendingConfirm[];
+  /** Seçenek linklerinin gideceği public site. Anlaşılamazsa Tatildeyiz. */
+  siteKey?: string;
+  publicDomain?: string;
+  publicBrand?: string;
 };

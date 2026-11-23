@@ -2508,6 +2508,9 @@ function freshCriteriaState(state: AssistantSearchState): AssistantSearchState {
     phoneCollected: Boolean(state.guestPhone?.trim() || state.phoneCollected),
     helpAsked: Boolean(usablePersonName(state.guestName)),
     freshIntake: true,
+    siteKey: state.siteKey,
+    publicDomain: state.publicDomain,
+    publicBrand: state.publicBrand,
   };
 }
 
@@ -2519,6 +2522,9 @@ function restartedConversationState(state: AssistantSearchState): AssistantSearc
     phoneCollected: Boolean(state.guestPhone?.trim() || state.phoneCollected),
     helpAsked: false,
     freshIntake: true,
+    siteKey: state.siteKey,
+    publicDomain: state.publicDomain,
+    publicBrand: state.publicBrand,
   };
 }
 

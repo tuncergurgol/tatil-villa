@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 import { getAssistantWahaConfig } from "@/lib/queries/tatil-assistant";
 import { processAssistantMessage } from "@/lib/tatil-assistant-runner";
+import { shouldAssistantReplyToWhatsappGuest } from "@/lib/tatil-assistant-guest-notice";
 import {
-  isAssistantDevWhatsAppAllowed,
+  isAssistantWhatsAppRecipient,
   normalizeWahaAssistantPayload,
   resolveAssistantInboundPhone,
   sendAssistantWhatsAppMessage,
@@ -36,8 +37,12 @@ export async function POST(request: Request) {
     normalized.chatId,
     normalized.phone
   );
-  if (!isAssistantDevWhatsAppAllowed(phone)) {
-    return NextResponse.json({ ok: true, skipped: "dev-allowlist" });
+  if (!isAssistantWhatsAppRecipient(phone)) {
+    return NextResponse.json({ ok: true, skipped: "invalid-phone" });
+  }
+
+  if (!(await shouldAssistantReplyToWhatsappGuest(phone, normalized.text))) {
+    return NextResponse.json({ ok: true, skipped: "guest-notice" });
   }
 
   if (await isBlacklistedContact({ phone })) {
