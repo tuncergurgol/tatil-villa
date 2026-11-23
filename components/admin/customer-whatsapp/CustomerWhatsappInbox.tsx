@@ -18,12 +18,19 @@ import {
   loadCustomerWhatsappThread,
   replyCustomerWhatsapp,
 } from "@/app/actions/admin/customer-whatsapp-inbox";
+import {
+  listStoredMetaInbox,
+  loadMetaInbox,
+  loadMetaInboxThread,
+  replyMetaInboxMessage,
+} from "@/app/actions/admin/meta-inbox";
 import type { CustomerInboxProfile } from "@/lib/customer-inbox-profile";
 import { formatTurkishPhoneDisplay } from "@/lib/phone-utils";
 import type {
   CustomerWhatsappChat,
   CustomerWhatsappChatPage,
   CustomerWhatsappMessage,
+  InboxChannel,
 } from "@/lib/customer-whatsapp-types";
 
 type ChannelId =
@@ -37,16 +44,30 @@ type ChannelId =
 
 const CHANNELS: Array<{ id: ChannelId; label: string; live: boolean }> = [
   { id: "all", label: "Tüm mesajlar", live: true },
-  { id: "messenger", label: "Messenger", live: false },
-  { id: "instagram", label: "Instagram", live: false },
+  { id: "messenger", label: "Messenger", live: true },
+  { id: "instagram", label: "Instagram", live: true },
   { id: "whatsapp", label: "WhatsApp", live: true },
-  { id: "facebook-comments", label: "Facebook yorumları", live: false },
+  { id: "facebook-comments", label: "Facebook yorumları", live: true },
   { id: "instagram-comments", label: "Instagram yorumları", live: false },
-  { id: "facebook-lead", label: "Facebook Lead", live: false },
+  { id: "facebook-lead", label: "Facebook Lead", live: true },
 ];
+
+const CHANNEL_LABEL: Record<InboxChannel, string> = {
+  whatsapp: "WhatsApp",
+  messenger: "Messenger",
+  instagram: "Instagram",
+  "facebook-comments": "Facebook yorumu",
+  "instagram-comments": "Instagram yorumu",
+  "facebook-lead": "Facebook Lead",
+};
+
+function chatChannel(chat: CustomerWhatsappChat): InboxChannel {
+  return chat.channel ?? "whatsapp";
+}
 
 type Props = {
   initial: CustomerWhatsappChatPage;
+  initialMeta?: CustomerWhatsappChat[];
 };
 
 function formatWhen(timestamp: number, withDate = false) {
@@ -90,10 +111,11 @@ function mergeChats(
   return [...map.values()].sort((left, right) => right.timestamp - left.timestamp);
 }
 
-export default function CustomerWhatsappInbox({ initial }: Props) {
+export default function CustomerWhatsappInbox({ initial, initialMeta = [] }: Props) {
   const [channel, setChannel] = useState<ChannelId>("whatsapp");
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const [chats, setChats] = useState(initial.chats);
+  const [waChats, setWaChats] = useState(initial.chats);
+  const [metaChats, setMetaChats] = useState(initialMeta);
   const [hasMore, setHasMore] = useState(initial.hasMore);
   const [nextOffset, setNextOffset] = useState(initial.nextOffset);
   const [listError, setListError] = useState(initial.error);
@@ -108,14 +130,20 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const selectedIdRef = useRef<string | null>(null);
-  const liveChannel = channel === "all" || channel === "whatsapp";
+  const liveChannel = CHANNELS.find((item) => item.id === channel)?.live ?? false;
   const activeChannel = CHANNELS.find((item) => item.id === channel) ?? CHANNELS[3];
+  const listedChats = useMemo(() => {
+    if (channel === "whatsapp") return waChats;
+    if (channel === "all") return mergeChats(waChats, metaChats);
+    return metaChats.filter((chat) => chatChannel(chat) === channel);
+  }, [channel, metaChats, waChats]);
 
-  const selected = chats.find((chat) => chat.id === selectedId) ?? null;
+  const selected = listedChats.find((chat) => chat.id === selectedId) ?? null;
+  const selectedChannel = selected ? chatChannel(selected) : "whatsapp";
 
   const visibleChats = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("tr-TR");
-    return chats.filter((chat) => {
+    return listedChats.filter((chat) => {
       if (unreadOnly && chat.unreadCount <= 0) return false;
       if (!needle) return true;
       const haystack = [chat.title, chat.customerName ?? "", chat.phoneDigits, chat.preview]
@@ -123,7 +151,7 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
         .toLocaleLowerCase("tr-TR");
       return haystack.includes(needle);
     });
-  }, [chats, query, unreadOnly]);
+  }, [listedChats, query, unreadOnly]);
 
   function openChat(chatId: string) {
     selectedIdRef.current = chatId;
@@ -132,10 +160,11 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
     setSendError(null);
     setMessages([]);
     setProfile(null);
-    const chat = chats.find((item) => item.id === chatId);
+    const chat = listedChats.find((item) => item.id === chatId);
+    const meta = chat ? chatChannel(chat) !== "whatsapp" : chatId.startsWith("messenger:") || chatId.startsWith("instagram:") || chatId.startsWith("post:") || chatId.startsWith("lead:");
     startTransition(async () => {
       const [thread, nextProfile] = await Promise.all([
-        loadCustomerWhatsappThread(chatId),
+        meta ? loadMetaInboxThread(chatId) : loadCustomerWhatsappThread(chatId),
         loadCustomerInboxProfile({
           customerId: chat?.customerId,
           phoneDigits: chat?.phoneDigits,
@@ -146,7 +175,20 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
       setMessages(thread.messages);
       setThreadError(thread.error);
       setProfile(nextProfile);
+      if (meta) {
+        setMetaChats((current) =>
+          current.map((item) =>
+            item.id === chatId ? { ...item, unreadCount: 0 } : item
+          )
+        );
+      }
     });
+  }
+
+  async function refreshMeta(full: boolean) {
+    const page = await loadMetaInbox(full);
+    setListError(page.error);
+    setMetaChats(page.chats);
   }
 
   function refreshList(reset = false) {
@@ -157,7 +199,8 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
       setNextOffset((current) =>
         reset ? page.nextOffset : Math.max(current, page.nextOffset)
       );
-      setChats((current) => (reset ? page.chats : mergeChats(current, page.chats)));
+      setWaChats((current) => (reset ? page.chats : mergeChats(current, page.chats)));
+      await refreshMeta(reset);
     });
   }
 
@@ -167,35 +210,39 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
       setListError(page.error);
       setHasMore(page.hasMore);
       setNextOffset(page.nextOffset);
-      setChats((current) => mergeChats(current, page.chats));
+      setWaChats((current) => mergeChats(current, page.chats));
     });
   }
 
   function sendReply() {
-    if (!selected || sending) return;
+    if (!selected || sending || selectedChannel === "facebook-lead") return;
     const text = draft.trim();
     if (!text) return;
+    const meta = selectedChannel !== "whatsapp";
     setSending(true);
     setSendError(null);
     startTransition(async () => {
-      const result = await replyCustomerWhatsapp(
-        selected.id,
-        text,
-        selected.phoneDigits
-      );
+      const result = meta
+        ? await replyMetaInboxMessage(selected.id, text)
+        : await replyCustomerWhatsapp(selected.id, text, selected.phoneDigits);
       setSending(false);
-      if ("error" in result) {
+      if ("error" in result && result.error) {
         setSendError(result.error);
         return;
       }
       setDraft("");
-      const thread = await loadCustomerWhatsappThread(selected.id);
+      const thread = meta
+        ? await loadMetaInboxThread(selected.id)
+        : await loadCustomerWhatsappThread(selected.id);
       if (selectedIdRef.current === selected.id) {
         setMessages(thread.messages);
         setThreadError(thread.error);
       }
-      const page = await loadCustomerWhatsappChats(0);
-      setChats((current) => mergeChats(current, page.chats));
+      if (meta) await refreshMeta(false);
+      else {
+        const page = await loadCustomerWhatsappChats(0);
+        setWaChats((current) => mergeChats(current, page.chats));
+      }
     });
   }
 
@@ -208,14 +255,27 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
   }, [messages, selectedId]);
 
   useEffect(() => {
+    void refreshMeta(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       void (async () => {
         const page = await loadCustomerWhatsappChats(0);
-        setListError(page.error);
-        setChats((current) => mergeChats(current, page.chats));
+        setWaChats((current) => mergeChats(current, page.chats));
+        const meta = await listStoredMetaInbox();
+        setMetaChats(meta.chats);
         const openId = selectedIdRef.current;
         if (!openId) return;
-        const thread = await loadCustomerWhatsappThread(openId);
+        const metaThread =
+          openId.startsWith("messenger:") ||
+          openId.startsWith("instagram:") ||
+          openId.startsWith("post:") ||
+          openId.startsWith("lead:");
+        const thread = metaThread
+          ? await loadMetaInboxThread(openId)
+          : await loadCustomerWhatsappThread(openId);
         if (selectedIdRef.current !== openId) return;
         setMessages(thread.messages);
         setThreadError(thread.error);
@@ -314,7 +374,9 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
             <div className="min-h-0 flex-1 overflow-y-auto">
               {visibleChats.length === 0 ? (
                 <p className="px-4 py-10 text-center text-sm text-gray-500">
-                  Sohbet bulunamadı.
+                  {channel === "instagram"
+                    ? "Instagram geçmişi için uygulamada instagram_manage_messages izni yok. Yeni mesaj gelirse burada görünür."
+                    : "Sohbet bulunamadı."}
                 </p>
               ) : (
                 visibleChats.map((chat) => {
@@ -343,7 +405,7 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
                         </span>
                         <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
                           <MessageCircle className="h-3 w-3" />
-                          WhatsApp
+                          {CHANNEL_LABEL[chatChannel(chat)]}
                         </span>
                         <span className="mt-0.5 flex items-center justify-between gap-2">
                           <span className="truncate text-xs text-gray-500">
@@ -361,7 +423,7 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
                   );
                 })
               )}
-              {hasMore && !query.trim() ? (
+              {(channel === "whatsapp" || channel === "all") && hasMore && !query.trim() ? (
                 <button
                   type="button"
                   onClick={loadMore}
@@ -404,7 +466,21 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
                     {chatTitle(selected)}
                   </p>
                   <p className="truncate text-xs text-gray-500">
-                    WhatsApp · {initial.lineLabel}
+                    {CHANNEL_LABEL[selectedChannel]}
+                    {selectedChannel === "whatsapp" ? ` · ${initial.lineLabel}` : ""}
+                    {selected.permalink ? (
+                      <>
+                        {" · "}
+                        <a
+                          href={selected.permalink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#1877f2] hover:underline"
+                        >
+                          Gönderi
+                        </a>
+                      </>
+                    ) : null}
                   </p>
                 </div>
               </div>
@@ -440,6 +516,20 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
                 ))}
                 <div ref={bottomRef} />
               </div>
+              {selectedChannel === "facebook-lead" || selectedChannel === "instagram" ? (
+                <div className="shrink-0 border-t border-[#e6ebf2] bg-white p-3 text-sm text-gray-600">
+                  {selectedChannel === "facebook-lead" ? (
+                    <Link
+                      href="/admin/pazarlama/facebook-lead"
+                      className="font-semibold text-[#1877f2] hover:underline"
+                    >
+                      Lead kaydını pazarlamada aç
+                    </Link>
+                  ) : (
+                    "Instagram yanıtı için uygulamada instagram_manage_messages izni gerekiyor."
+                  )}
+                </div>
+              ) : (
               <form
                 className="shrink-0 border-t border-[#e6ebf2] bg-white p-3"
                 onSubmit={(event) => {
@@ -461,7 +551,13 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
                       }
                     }}
                     rows={2}
-                    placeholder="WhatsApp'tan yanıtla..."
+                    placeholder={
+                      selectedChannel === "facebook-comments"
+                        ? "Yoruma cevap yaz..."
+                        : selectedChannel === "messenger"
+                          ? "Messenger'dan yanıtla..."
+                          : "WhatsApp'tan yanıtla..."
+                    }
                     className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-gray-200 bg-[#f5f7fa] px-3 py-2 text-sm outline-none focus:border-[#1877f2] focus:bg-white"
                   />
                   <button
@@ -478,13 +574,14 @@ export default function CustomerWhatsappInbox({ initial }: Props) {
                   </button>
                 </div>
               </form>
+              )}
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center px-8 text-center">
               {liveChannel ? (
                 <p className="max-w-sm text-sm text-gray-500">
-                  Soldan bir WhatsApp sohbeti seçin. Sağ panelde misafirin
-                  rezervasyonları ve sadakat bilgisi açılır.
+                  Soldan bir sohbet seçin. Sağ panelde misafirin rezervasyonları ve
+                  sadakat bilgisi açılır.
                 </p>
               ) : (
                 <ChannelPreview channel={activeChannel.label} large />

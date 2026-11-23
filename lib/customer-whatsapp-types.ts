@@ -1,7 +1,16 @@
 export const CUSTOMER_WHATSAPP_LINE_LABEL = "0252 618 01 08";
 
+export type InboxChannel =
+  | "whatsapp"
+  | "messenger"
+  | "instagram"
+  | "facebook-comments"
+  | "instagram-comments"
+  | "facebook-lead";
+
 export type CustomerWhatsappChat = {
   id: string;
+  channel?: InboxChannel;
   title: string;
   phoneDigits: string;
   preview: string;
@@ -10,6 +19,7 @@ export type CustomerWhatsappChat = {
   unreadCount: number;
   customerId: string | null;
   customerName: string | null;
+  permalink?: string;
 };
 
 export type CustomerWhatsappMessage = {

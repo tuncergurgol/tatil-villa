@@ -1806,6 +1806,40 @@ model FacebookLead {
   @@index([phone])
 }
 
+model MetaInboxThread {
+  id              String             @id @default(cuid())
+  channel         String
+  externalId      String             @unique
+  title           String             @default("")
+  preview         String             @default("") @db.Text
+  participantId   String             @default("")
+  replyExternalId String             @default("")
+  phoneDigits     String             @default("")
+  unreadCount     Int                @default(0)
+  fromPage        Boolean            @default(false)
+  permalink       String             @default("")
+  lastMessageAt   DateTime
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  messages        MetaInboxMessage[]
+
+  @@index([channel, lastMessageAt])
+}
+
+model MetaInboxMessage {
+  id         String          @id @default(cuid())
+  threadId   String
+  thread     MetaInboxThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  externalId String          @unique
+  text       String          @db.Text
+  fromPage   Boolean         @default(false)
+  senderName String          @default("")
+  sentAt     DateTime
+  createdAt  DateTime        @default(now())
+
+  @@index([threadId, sentAt])
+}
+
 model FacebookLeadContactLog {
   id        String       @id @default(cuid())
   leadId    String

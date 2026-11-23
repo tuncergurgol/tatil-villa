@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyFacebookWebhookSignature } from "@/lib/facebook-lead-graph";
 import { processFacebookLeadWebhookPayload } from "@/lib/facebook-lead-webhook";
+import { ingestMetaWebhook } from "@/lib/meta-inbox";
 import { getCompanySettings } from "@/lib/queries/company-settings";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    const object =
+      payload && typeof payload === "object"
+        ? (payload as { object?: string }).object
+        : "";
+    await ingestMetaWebhook(payload);
+    if (object === "instagram") {
+      return NextResponse.json({ ok: true, processed: 1 });
+    }
     const result = await processFacebookLeadWebhookPayload(payload);
     return NextResponse.json(result, { status: result.ok ? 200 : 422 });
   } catch (error) {
