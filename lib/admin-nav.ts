@@ -213,7 +213,7 @@ export const adminNavSections: NavSection[] = [
         icon: "user",
       },
       {
-        label: "Müşteri WhatsApp",
+        label: "Gelen Kutusu",
         href: "/admin/musteri-yonetimi/whatsapp",
         icon: "message-circle",
       },

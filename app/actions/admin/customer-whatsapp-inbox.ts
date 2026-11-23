@@ -7,6 +7,7 @@ import {
   listCustomerWhatsappMessages,
   sendCustomerWhatsappReply,
 } from "@/lib/customer-whatsapp-inbox";
+import { getCustomerInboxProfile } from "@/lib/customer-inbox-profile";
 import type {
   CustomerWhatsappChatPage,
   CustomerWhatsappThread,
@@ -33,6 +34,15 @@ export async function loadCustomerWhatsappThread(
       error: error instanceof Error ? error.message : "Yazışma alınamadı",
     };
   }
+}
+
+export async function loadCustomerInboxProfile(input: {
+  customerId?: string | null;
+  phoneDigits?: string | null;
+  name?: string | null;
+}) {
+  await requireAdmin();
+  return getCustomerInboxProfile(input);
 }
 
 export async function replyCustomerWhatsapp(
