@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import {
   computeDrivingDistancesMeters,
-  isGoogleDistanceConfigured,
   metersToKmRounded,
 } from "@/lib/google-distance-matrix";
 import { isValidLatLng } from "@/lib/surrounding-location-helpers";
@@ -33,14 +32,6 @@ export async function calculateSurroundingDistances(input: {
   onlyDefaults?: boolean;
 }): Promise<CalculateSurroundingDistancesResult> {
   await requireAdmin();
-
-  if (!isGoogleDistanceConfigured()) {
-    return {
-      success: false,
-      error:
-        "Google Maps API anahtarı tanımlı değil. GOOGLE_MAPS_SERVER_API_KEY ekleyin (Routes API açık olmalı).",
-    };
-  }
 
   const parsed = calcSchema.safeParse(input);
   if (!parsed.success) {

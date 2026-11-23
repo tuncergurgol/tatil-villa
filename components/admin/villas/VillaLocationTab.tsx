@@ -385,7 +385,7 @@ export default function VillaLocationTab({
               className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60"
             >
               <Route className="h-4 w-4" />
-              {isPending ? "Hesaplanıyor..." : "Mesafeleri hesapla (Google)"}
+              {isPending ? "Hesaplanıyor..." : "Mesafeleri hesapla"}
             </button>
           ) : null
         }
