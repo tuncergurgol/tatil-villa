@@ -7,12 +7,21 @@ export function sanitizeGalleryNamePart(value: string) {
     .trim();
 }
 
-export function buildSeoGalleryFileName(villaName: string, sequence: number) {
+/** Aynı dosya adının üzerine yazmak, 30 gün immutable önbellekte eski resmi bırakır. */
+export function createGalleryCacheKey() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function buildSeoGalleryFileName(
+  villaName: string,
+  sequence: number,
+  cacheKey = createGalleryCacheKey()
+) {
   const villa = sanitizeGalleryNamePart(villaName) || "Villa";
   const parts = [VILLA_GALLERY_SITE_NAME, villa]
     .flatMap((part) => part.split(/\s+/))
     .filter(Boolean);
-  return `${parts.join("-")}-${sequence}.webp`;
+  return `${parts.join("-")}-${cacheKey}-${sequence}.webp`;
 }
 
 /** @deprecated buildSeoGalleryFileName(villaName, sequence) kullanın */
