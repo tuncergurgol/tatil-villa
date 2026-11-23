@@ -182,6 +182,36 @@ async function attachCustomers(chats: CustomerWhatsappChat[]) {
   });
 }
 
+export async function countCustomerWhatsappUnread(): Promise<number> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const config = await customerWahaConfig();
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      offset: "0",
+    });
+    const data = await wahaRequest<OverviewChat[] | { chats?: OverviewChat[] }>(
+      config.baseUrl,
+      config.apiKey,
+      `/api/${encodeURIComponent(config.sessionName)}/chats/overview?${params.toString()}`,
+      { signal: controller.signal }
+    );
+    const raw = Array.isArray(data) ? data : data?.chats ?? [];
+    return raw.reduce((sum, chat) => {
+      const id = serializeWahaChatId(chat.id);
+      if (!isDirectChat(chat, id)) return sum;
+      const unread = Number(chat.unreadCount ?? chat._chat?.unreadCount ?? 0);
+      if (!Number.isFinite(unread) || unread <= 0) return sum;
+      return sum + unread;
+    }, 0);
+  } catch {
+    return 0;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function listCustomerWhatsappChats(
   offset = 0
 ): Promise<CustomerWhatsappChatPage> {

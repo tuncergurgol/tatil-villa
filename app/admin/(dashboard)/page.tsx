@@ -10,8 +10,8 @@ import {
   getDashboardUnansweredCallbackCount,
 } from "@/lib/queries/dashboard-stats";
 import { getVillaCount } from "@/lib/queries/villas";
-import { pendingGuestReviewsAdminHref } from "@/lib/guest-review-admin-url";
-import { Calendar, Home, MessageSquareQuote } from "lucide-react";
+import { countCustomerWhatsappUnread } from "@/lib/customer-whatsapp-inbox";
+import { Calendar, Home, MessageCircle } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   const [
@@ -22,6 +22,7 @@ export default async function AdminDashboardPage() {
     unansweredCallbacks,
     integrationLeads,
     pendingGuestReviews,
+    unreadWhatsapp,
   ] = await Promise.all([
     getVillaCount(),
     getBookingCount(),
@@ -30,6 +31,7 @@ export default async function AdminDashboardPage() {
     getDashboardUnansweredCallbackCount(),
     getDashboardIntegrationLeadStats(),
     getDashboardPendingGuestReviewCount(),
+    countCustomerWhatsappUnread(),
   ]);
 
   return (
@@ -58,13 +60,13 @@ export default async function AdminDashboardPage() {
         />
         <DashboardNewBookingCard />
         <DashboardStatCard
-          href={pendingGuestReviewsAdminHref()}
-          label="Onay Bekleyen Misafir Yorumları"
-          value={pendingGuestReviews}
-          icon={MessageSquareQuote}
-          iconWrapClass="bg-purple-100 text-purple-700"
-          accentClass="border-purple-100 hover:border-purple-300"
-          linkClass="text-purple-700"
+          href="/admin/musteri-yonetimi/whatsapp"
+          label="WhatsApp Mesajları"
+          value={unreadWhatsapp}
+          icon={MessageCircle}
+          iconWrapClass="bg-emerald-100 text-emerald-700"
+          accentClass="border-emerald-100 hover:border-emerald-300"
+          linkClass="text-emerald-700"
         />
       </div>
 
@@ -73,6 +75,7 @@ export default async function AdminDashboardPage() {
         quickStats={quickStats}
         unansweredCallbacks={unansweredCallbacks}
         integrationLeads={integrationLeads}
+        pendingGuestReviews={pendingGuestReviews}
       />
     </div>
   );

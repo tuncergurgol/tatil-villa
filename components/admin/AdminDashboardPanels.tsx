@@ -10,6 +10,7 @@ import {
   DoorOpen,
   LogOut,
   Megaphone,
+  MessageSquareQuote,
   PhoneIncoming,
   Sparkles,
   Wallet,
@@ -20,6 +21,7 @@ import {
   buildReservationsHref,
 } from "@/lib/booking-filter-url";
 import { BOOKING_STATUS_META } from "@/lib/booking-status";
+import { pendingGuestReviewsAdminHref } from "@/lib/guest-review-admin-url";
 import type {
   DashboardBookingQuickStats,
   DashboardBookingStatusStats,
@@ -31,6 +33,7 @@ type Props = {
   quickStats: DashboardBookingQuickStats;
   unansweredCallbacks: number;
   integrationLeads: DashboardIntegrationLeadStats;
+  pendingGuestReviews: number;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -55,6 +58,7 @@ export default function AdminDashboardPanels({
   quickStats,
   unansweredCallbacks,
   integrationLeads,
+  pendingGuestReviews,
 }: Props) {
   const statusCards = [
     {
@@ -192,7 +196,7 @@ export default function AdminDashboardPanels({
 
       <section className="space-y-3">
         <SectionTitle>Yeni rezervasyonlar</SectionTitle>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <DashboardStatCard
             href={buildCallbackRequestsHref("unanswered")}
             label="Sizi Arayalım"
@@ -228,6 +232,15 @@ export default function AdminDashboardPanels({
             iconWrapClass="bg-emerald-100 text-emerald-700"
             accentClass="border-emerald-100 hover:border-emerald-300"
             linkClass="text-emerald-700"
+          />
+          <DashboardStatCard
+            href={pendingGuestReviewsAdminHref()}
+            label="Onay Bekleyen Misafir Yorumları"
+            value={pendingGuestReviews}
+            icon={MessageSquareQuote}
+            iconWrapClass="bg-purple-100 text-purple-700"
+            accentClass="border-purple-100 hover:border-purple-300"
+            linkClass="text-purple-700"
           />
         </div>
       </section>
