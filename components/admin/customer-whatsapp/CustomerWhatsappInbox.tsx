@@ -48,7 +48,7 @@ const CHANNELS: Array<{ id: ChannelId; label: string; live: boolean }> = [
   { id: "instagram", label: "Instagram", live: true },
   { id: "whatsapp", label: "WhatsApp", live: true },
   { id: "facebook-comments", label: "Facebook yorumları", live: true },
-  { id: "instagram-comments", label: "Instagram yorumları", live: false },
+  { id: "instagram-comments", label: "Instagram yorumları", live: true },
   { id: "facebook-lead", label: "Facebook Lead", live: true },
 ];
 
@@ -161,7 +161,13 @@ export default function CustomerWhatsappInbox({ initial, initialMeta = [] }: Pro
     setMessages([]);
     setProfile(null);
     const chat = listedChats.find((item) => item.id === chatId);
-    const meta = chat ? chatChannel(chat) !== "whatsapp" : chatId.startsWith("messenger:") || chatId.startsWith("instagram:") || chatId.startsWith("post:") || chatId.startsWith("lead:");
+    const meta = chat
+      ? chatChannel(chat) !== "whatsapp"
+      : chatId.startsWith("messenger:") ||
+        chatId.startsWith("instagram:") ||
+        chatId.startsWith("igmedia:") ||
+        chatId.startsWith("post:") ||
+        chatId.startsWith("lead:");
     startTransition(async () => {
       const [thread, nextProfile] = await Promise.all([
         meta ? loadMetaInboxThread(chatId) : loadCustomerWhatsappThread(chatId),
@@ -271,6 +277,7 @@ export default function CustomerWhatsappInbox({ initial, initialMeta = [] }: Pro
         const metaThread =
           openId.startsWith("messenger:") ||
           openId.startsWith("instagram:") ||
+          openId.startsWith("igmedia:") ||
           openId.startsWith("post:") ||
           openId.startsWith("lead:");
         const thread = metaThread
@@ -375,8 +382,10 @@ export default function CustomerWhatsappInbox({ initial, initialMeta = [] }: Pro
               {visibleChats.length === 0 ? (
                 <p className="px-4 py-10 text-center text-sm text-gray-500">
                   {channel === "instagram"
-                    ? "Instagram geçmişi için uygulamada instagram_manage_messages izni yok. Yeni mesaj gelirse burada görünür."
-                    : "Sohbet bulunamadı."}
+                    ? "Instagram geçmişi için uygulamada instagram_manage_messages izni yok. İzin eklenince yazışmalar burada görünür."
+                    : channel === "instagram-comments"
+                      ? "Instagram yorumları için uygulamada instagram_manage_comments izni yok. İzin eklenince yorumlar burada görünür."
+                      : "Sohbet bulunamadı."}
                 </p>
               ) : (
                 visibleChats.map((chat) => {
@@ -516,18 +525,14 @@ export default function CustomerWhatsappInbox({ initial, initialMeta = [] }: Pro
                 ))}
                 <div ref={bottomRef} />
               </div>
-              {selectedChannel === "facebook-lead" || selectedChannel === "instagram" ? (
-                <div className="shrink-0 border-t border-[#e6ebf2] bg-white p-3 text-sm text-gray-600">
-                  {selectedChannel === "facebook-lead" ? (
-                    <Link
-                      href="/admin/pazarlama/facebook-lead"
-                      className="font-semibold text-[#1877f2] hover:underline"
-                    >
-                      Lead kaydını pazarlamada aç
-                    </Link>
-                  ) : (
-                    "Instagram yanıtı için uygulamada instagram_manage_messages izni gerekiyor."
-                  )}
+              {selectedChannel === "facebook-lead" ? (
+                <div className="shrink-0 border-t border-[#e6ebf2] bg-white p-3 text-sm">
+                  <Link
+                    href="/admin/pazarlama/facebook-lead"
+                    className="font-semibold text-[#1877f2] hover:underline"
+                  >
+                    Lead kaydını pazarlamada aç
+                  </Link>
                 </div>
               ) : (
               <form
@@ -552,9 +557,12 @@ export default function CustomerWhatsappInbox({ initial, initialMeta = [] }: Pro
                     }}
                     rows={2}
                     placeholder={
-                      selectedChannel === "facebook-comments"
+                      selectedChannel === "facebook-comments" ||
+                      selectedChannel === "instagram-comments"
                         ? "Yoruma cevap yaz..."
-                        : selectedChannel === "messenger"
+                        : selectedChannel === "instagram"
+                          ? "Instagram'dan yanıtla..."
+                          : selectedChannel === "messenger"
                           ? "Messenger'dan yanıtla..."
                           : "WhatsApp'tan yanıtla..."
                     }

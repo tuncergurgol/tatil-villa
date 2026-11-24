@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { upsertFacebookLeadFromGraph } from "@/lib/facebook-lead-webhook";
 import { normalizeTurkishPhoneDigits } from "@/lib/phone-utils";
 import type {
   CustomerWhatsappChat,
@@ -7,8 +8,8 @@ import type {
 
 const GRAPH = "https://graph.facebook.com/v22.0";
 const PAGE_SIZE = 25;
-const FULL_CONVERSATION_PAGES = 8;
-const FULL_POST_PAGES = 6;
+const FULL_CONVERSATION_PAGES = 20;
+const FULL_POST_PAGES = 20;
 
 type GraphError = { error?: { message?: string } };
 type GraphPage<T> = GraphError & {
@@ -29,7 +30,7 @@ type GraphConversation = {
   unread_count?: number;
   snippet?: string;
   participants?: { data?: GraphParticipant[] };
-  messages?: { data?: GraphMessage[] };
+  messages?: { data?: GraphMessage[]; paging?: { next?: string } };
 };
 type GraphComment = GraphMessage;
 type GraphPost = {
@@ -37,7 +38,30 @@ type GraphPost = {
   message?: string;
   permalink_url?: string;
   created_time?: string;
-  comments?: { data?: GraphComment[] };
+  comments?: { data?: GraphComment[]; paging?: { next?: string } };
+};
+type IgComment = {
+  id?: string;
+  text?: string;
+  timestamp?: string;
+  username?: string;
+};
+type IgMedia = {
+  id?: string;
+  caption?: string;
+  permalink?: string;
+  timestamp?: string;
+  comments?: { data?: IgComment[]; paging?: { next?: string } };
+};
+type LeadRow = {
+  id?: string;
+  created_time?: string;
+  field_data?: Array<{ name?: string; values?: string[] }>;
+};
+type LeadForm = {
+  id?: string;
+  name?: string;
+  leads?: { data?: LeadRow[]; paging?: { next?: string } };
 };
 
 export type MetaInboxChannel =
@@ -96,6 +120,24 @@ async function eachGraphPage<T>(
     await onPage(rows);
     next = data.paging?.next ?? null;
   }
+}
+
+function isPermissionError(error: unknown) {
+  const message = cleanGraphError(error).toLowerCase();
+  return message.includes("permission") || message.includes("(#200)") || message.includes("(#230)");
+}
+
+async function readNextPages<T>(token: string, next: string | undefined, maxPages: number) {
+  const rows: T[] = [];
+  let url = next || "";
+  for (let page = 0; page < maxPages && url; page += 1) {
+    const data: GraphPage<T> = await readGraph(token, url);
+    const batch = data.data ?? [];
+    if (batch.length === 0) break;
+    rows.push(...batch);
+    url = data.paging?.next ?? "";
+  }
+  return rows;
 }
 
 function messageText(value: string | undefined) {
@@ -228,7 +270,16 @@ async function syncMessenger(token: string, pageId: string, maxPages: number) {
         const psid = customer?.id;
         if (!psid) continue;
         const fallback = parseTime(row.updated_time, new Date());
-        const messages = mapStoredMessages(pageId, row.messages?.data, fallback);
+        const extra = await readNextPages<GraphMessage>(
+          token,
+          row.messages?.paging?.next,
+          maxPages > 1 ? 2 : 0
+        );
+        const messages = mapStoredMessages(
+          pageId,
+          [...(row.messages?.data ?? []), ...extra],
+          fallback
+        );
         if (messages.length === 0 && row.snippet) {
           messages.push({
             externalId: `snippet:${psid}:${fallback.getTime()}`,
@@ -265,7 +316,12 @@ async function syncComments(token: string, pageId: string, maxPages: number) {
     maxPages,
     async (rows) => {
       for (const post of rows) {
-        const comments = post.comments?.data ?? [];
+        const extra = await readNextPages<GraphComment>(
+          token,
+          post.comments?.paging?.next,
+          maxPages > 1 ? 3 : 0
+        );
+        const comments = [...(post.comments?.data ?? []), ...extra];
         if (!post.id || comments.length === 0) continue;
         const fallback = parseTime(post.created_time, new Date());
         const messages = mapStoredMessages(pageId, comments, fallback);
@@ -300,13 +356,181 @@ export async function syncMetaInbox(full: boolean) {
 
   const conversationPages = full ? FULL_CONVERSATION_PAGES : 1;
   const postPages = full ? FULL_POST_PAGES : 1;
-  try {
-    await syncMessenger(token, pageId, conversationPages);
-    await syncComments(token, pageId, postPages);
-    return { error: null as string | null };
-  } catch (error) {
-    return { error: cleanGraphError(error) };
+  const errors: string[] = [];
+  for (const task of [
+    () => syncMessenger(token, pageId, conversationPages),
+    () => syncComments(token, pageId, postPages),
+    () => syncInstagram(token, pageId, conversationPages),
+    () => syncLeadForms(token, pageId, full ? 4 : 1),
+  ]) {
+    try {
+      await task();
+    } catch (error) {
+      if (!isPermissionError(error)) errors.push(cleanGraphError(error));
+    }
   }
+  return { error: errors[0] ?? null };
+}
+
+async function syncInstagram(token: string, pageId: string, maxPages: number) {
+  const page = await readGraph<{
+    instagram_business_account?: { id?: string };
+    connected_instagram_account?: { id?: string };
+  }>(
+    token,
+    graphUrl(pageId, {
+      fields: "instagram_business_account,connected_instagram_account",
+    })
+  );
+  const igId =
+    page.instagram_business_account?.id || page.connected_instagram_account?.id || "";
+
+  await eachGraphPage<GraphConversation>(
+    token,
+    `${pageId}/conversations`,
+    {
+      platform: "instagram",
+      limit: String(PAGE_SIZE),
+      fields:
+        "updated_time,unread_count,snippet,participants,messages.limit(50){id,message,from,created_time}",
+    },
+    maxPages,
+    async (rows) => {
+      for (const row of rows) {
+        const people = row.participants?.data ?? [];
+        const customer = people.find(
+          (person) => person.id && person.id !== pageId && person.id !== igId
+        );
+        const psid = customer?.id;
+        if (!psid) continue;
+        const fallback = parseTime(row.updated_time, new Date());
+        const extra = await readNextPages<GraphMessage>(
+          token,
+          row.messages?.paging?.next,
+          maxPages > 1 ? 2 : 0
+        );
+        const messages = mapStoredMessages(
+          pageId,
+          [...(row.messages?.data ?? []), ...extra],
+          fallback
+        );
+        if (messages.length === 0 && row.snippet) {
+          messages.push({
+            externalId: `snippet:ig:${psid}:${fallback.getTime()}`,
+            text: row.snippet,
+            fromPage: false,
+            senderName: customer?.name?.trim() || "",
+            sentAt: fallback,
+          });
+        }
+        await saveThread({
+          channel: "instagram",
+          externalId: `instagram:${psid}`,
+          title: customer?.name?.trim() || "Instagram",
+          participantId: psid,
+          replyExternalId: psid,
+          unreadCount: row.unread_count ?? 0,
+          unreadMode: "absolute",
+          messages,
+        });
+      }
+    }
+  );
+
+  if (!igId) return;
+  const profile = await readGraph<{ username?: string }>(
+    token,
+    graphUrl(igId, { fields: "username" })
+  );
+  const igUsername = profile.username?.trim() || "";
+  await eachGraphPage<IgMedia>(
+    token,
+    `${igId}/media`,
+    {
+      limit: String(PAGE_SIZE),
+      fields:
+        "caption,permalink,timestamp,comments.limit(50){id,text,username,timestamp}",
+    },
+    maxPages,
+    async (rows) => {
+      for (const media of rows) {
+        const extra = await readNextPages<IgComment>(
+          token,
+          media.comments?.paging?.next,
+          maxPages > 1 ? 3 : 0
+        );
+        const comments = [...(media.comments?.data ?? []), ...extra];
+        if (!media.id || comments.length === 0) continue;
+        const fallback = parseTime(media.timestamp, new Date());
+        const messages: StoredMessage[] = comments
+          .filter((comment) => comment.id)
+          .map((comment) => ({
+            externalId: comment.id as string,
+            text: messageText(comment.text),
+            fromPage: Boolean(igUsername && comment.username?.trim() === igUsername),
+            senderName: comment.username?.trim() || "",
+            sentAt: parseTime(comment.timestamp, fallback),
+          }));
+        const latestCustomer = [...messages].reverse().find((item) => !item.fromPage);
+        await saveThread({
+          channel: "instagram-comments",
+          externalId: `igmedia:${media.id}`,
+          title: (media.caption?.trim() || "Instagram gönderisi").slice(0, 120),
+          participantId: "",
+          replyExternalId: latestCustomer?.externalId || comments[0]?.id || "",
+          unreadCount: 0,
+          unreadMode: "absolute",
+          permalink: media.permalink || "",
+          messages,
+        });
+      }
+    }
+  );
+}
+
+async function syncLeadForms(token: string, pageId: string, maxPages: number) {
+  await eachGraphPage<LeadForm>(
+    token,
+    `${pageId}/leadgen_forms`,
+    {
+      limit: String(PAGE_SIZE),
+      fields: "name,leads.limit(50){id,created_time,field_data}",
+    },
+    maxPages,
+    async (forms) => {
+      for (const form of forms) {
+        const extra = await readNextPages<LeadRow>(
+          token,
+          form.leads?.paging?.next,
+          maxPages > 1 ? 3 : 0
+        );
+        const leads = [...(form.leads?.data ?? []), ...extra];
+        for (const lead of leads) {
+          if (!lead.id) continue;
+          const saved = await upsertFacebookLeadFromGraph({
+            externalLeadId: lead.id,
+            graph: {
+              id: lead.id,
+              created_time: lead.created_time,
+              field_data: (lead.field_data ?? [])
+                .filter((field) => field.name)
+                .map((field) => ({
+                  name: field.name as string,
+                  values: field.values ?? [],
+                })),
+            },
+            meta: { form_id: form.id, page_id: pageId },
+          });
+          if (form.name) {
+            await prisma.facebookLead.update({
+              where: { id: saved.id },
+              data: { formName: form.name },
+            });
+          }
+        }
+      }
+    }
+  );
 }
 
 function toUnix(date: Date) {
@@ -320,7 +544,7 @@ export async function listMetaInboxChats(): Promise<{
   const [threads, leads] = await Promise.all([
     prisma.metaInboxThread.findMany({
       orderBy: { lastMessageAt: "desc" },
-      take: 200,
+      take: 500,
     }),
     prisma.facebookLead.findMany({
       orderBy: { createdAt: "desc" },
@@ -477,12 +701,17 @@ export async function replyMetaInbox(externalId: string, text: string) {
   if (!thread) return { error: "Yazışma bulunamadı" };
 
   try {
-    if (thread.channel === "messenger") {
-      if (!thread.replyExternalId) return { error: "Messenger alıcısı yok" };
+    if (thread.channel === "messenger" || thread.channel === "instagram") {
+      if (!thread.replyExternalId) return { error: "Alıcı yok" };
       await graphPost(token, `${pageId}/messages`, {
         recipient: { id: thread.replyExternalId },
         messaging_type: "RESPONSE",
         message: { text: trimmed },
+      });
+    } else if (thread.channel === "instagram-comments") {
+      if (!thread.replyExternalId) return { error: "Yanıtlanacak yorum yok" };
+      await graphPost(token, `${thread.replyExternalId}/replies`, {
+        message: trimmed,
       });
     } else if (thread.channel === "facebook-comments") {
       if (!thread.replyExternalId) return { error: "Yanıtlanacak yorum yok" };
