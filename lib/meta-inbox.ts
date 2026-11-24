@@ -14,7 +14,7 @@ const FULL_POST_PAGES = 20;
 type GraphError = { error?: { message?: string } };
 type GraphPage<T> = GraphError & {
   data?: T[];
-  paging?: { next?: string };
+  paging?: { next?: string; cursors?: { after?: string } };
 };
 
 type GraphParticipant = { id?: string; name?: string };
@@ -125,6 +125,16 @@ async function eachGraphPage<T>(
 function isPermissionError(error: unknown) {
   const message = cleanGraphError(error).toLowerCase();
   return message.includes("permission") || message.includes("(#200)") || message.includes("(#230)");
+}
+
+function isHeavyGraphError(error: unknown) {
+  const message = cleanGraphError(error).toLowerCase();
+  return (
+    message.includes("reduce the amount of data") ||
+    message.includes("timeout") ||
+    message.includes("timed out") ||
+    message.includes("aborted")
+  );
 }
 
 async function readNextPages<T>(token: string, next: string | undefined, maxPages: number) {
@@ -250,15 +260,17 @@ async function saveThread(input: {
 function mapStoredMessages(
   pageId: string,
   rows: GraphMessage[] | undefined,
-  fallback: Date
+  fallback: Date,
+  ownIds: string[] = []
 ): StoredMessage[] {
+  const own = new Set([pageId, ...ownIds].filter(Boolean));
   const messages: StoredMessage[] = [];
   for (const row of rows ?? []) {
     if (!row.id) continue;
     messages.push({
       externalId: row.id,
       text: messageText(row.message),
-      fromPage: row.from?.id === pageId,
+      fromPage: Boolean(row.from?.id && own.has(row.from.id)),
       senderName: row.from?.name?.trim() || "",
       sentAt: parseTime(row.created_time, fallback),
     });
@@ -386,6 +398,99 @@ export async function syncMetaInbox(full: boolean) {
   return { error: errors[0] ?? null };
 }
 
+async function listInstagramConversationIds(
+  token: string,
+  pageId: string,
+  igId: string,
+  maxPages: number
+) {
+  const ids: string[] = [];
+  const folders = maxPages > 1 ? ["", "other", "page_done"] : [""];
+  const owners = igId && maxPages > 1 ? [pageId, igId] : [pageId];
+  for (const owner of owners) {
+    for (const folder of folders) {
+      const params: Record<string, string> = {
+        platform: "instagram",
+        limit: "1",
+        fields: "id",
+      };
+      if (folder) params.folder = folder;
+      try {
+        const page = await readGraph<GraphPage<GraphConversation>>(
+          token,
+          graphUrl(`${owner}/conversations`, params)
+        );
+        const id = page.data?.[0]?.id;
+        if (id && !ids.includes(id)) ids.push(id);
+      } catch (error) {
+        if (isPermissionError(error) && ids.length === 0 && owner === pageId && !folder) {
+          throw error;
+        }
+      }
+    }
+  }
+  return ids;
+}
+
+async function saveInstagramConversation(
+  token: string,
+  pageId: string,
+  igId: string,
+  conversationId: string,
+  maxPages: number
+) {
+  const row = await readGraph<GraphConversation>(
+    token,
+    graphUrl(conversationId, {
+      fields: "updated_time,unread_count,snippet,participants",
+    })
+  );
+  const messagePage = await readGraph<GraphPage<GraphMessage>>(
+    token,
+    graphUrl(`${conversationId}/messages`, {
+      limit: "20",
+      fields: "id,message,from,created_time",
+    })
+  );
+  const people = row.participants?.data ?? [];
+  const customer = people.find(
+    (person) => person.id && person.id !== pageId && person.id !== igId
+  );
+  const psid = customer?.id || conversationId;
+  const fallback = parseTime(row.updated_time, new Date());
+  const extra = await readNextPages<GraphMessage>(
+    token,
+    messagePage.paging?.next,
+    maxPages > 1 ? 2 : 0
+  );
+  const messages = mapStoredMessages(
+    pageId,
+    [...(messagePage.data ?? []), ...extra],
+    fallback,
+    igId ? [igId] : []
+  );
+  if (messages.length === 0 && row.snippet) {
+    messages.push({
+      externalId: `snippet:ig:${psid}:${fallback.getTime()}`,
+      text: row.snippet,
+      fromPage: false,
+      senderName: customer?.name?.trim() || "",
+      sentAt: fallback,
+    });
+  }
+  if (messages.length === 0) return;
+  await saveThread({
+    channel: "instagram",
+    externalId: `instagram:${psid}`,
+    title: customer?.name?.trim() || "Instagram",
+    participantId: psid,
+    replyExternalId: psid,
+    unreadCount: row.unread_count ?? 0,
+    unreadMode: "absolute",
+    messages,
+  });
+}
+
 async function syncInstagram(token: string, pageId: string, maxPages: number) {
   const page = await readGraph<{
     instagram_business_account?: { id?: string };
@@ -398,58 +503,14 @@ async function syncInstagram(token: string, pageId: string, maxPages: number) {
   );
   const igId =
     page.instagram_business_account?.id || page.connected_instagram_account?.id || "";
-
-  await eachGraphPage<GraphConversation>(
-    token,
-    `${pageId}/conversations`,
-    {
-      platform: "instagram",
-      limit: String(PAGE_SIZE),
-      fields:
-        "updated_time,unread_count,snippet,participants,messages.limit(50){id,message,from,created_time}",
-    },
-    maxPages,
-    async (rows) => {
-      for (const row of rows) {
-        const people = row.participants?.data ?? [];
-        const customer = people.find(
-          (person) => person.id && person.id !== pageId && person.id !== igId
-        );
-        const psid = customer?.id;
-        if (!psid) continue;
-        const fallback = parseTime(row.updated_time, new Date());
-        const extra = await readNextPages<GraphMessage>(
-          token,
-          row.messages?.paging?.next,
-          maxPages > 1 ? 2 : 0
-        );
-        const messages = mapStoredMessages(
-          pageId,
-          [...(row.messages?.data ?? []), ...extra],
-          fallback
-        );
-        if (messages.length === 0 && row.snippet) {
-          messages.push({
-            externalId: `snippet:ig:${psid}:${fallback.getTime()}`,
-            text: row.snippet,
-            fromPage: false,
-            senderName: customer?.name?.trim() || "",
-            sentAt: fallback,
-          });
-        }
-        await saveThread({
-          channel: "instagram",
-          externalId: `instagram:${psid}`,
-          title: customer?.name?.trim() || "Instagram",
-          participantId: psid,
-          replyExternalId: psid,
-          unreadCount: row.unread_count ?? 0,
-          unreadMode: "absolute",
-          messages,
-        });
-      }
+  const conversationIds = await listInstagramConversationIds(token, pageId, igId, maxPages);
+  for (const conversationId of conversationIds) {
+    try {
+      await saveInstagramConversation(token, pageId, igId, conversationId, maxPages);
+    } catch (error) {
+      if (!isHeavyGraphError(error) && !isPermissionError(error)) throw error;
     }
-  );
+  }
 
   if (!igId) return;
   const profile = await readGraph<{ username?: string }>(
@@ -457,13 +518,14 @@ async function syncInstagram(token: string, pageId: string, maxPages: number) {
     graphUrl(igId, { fields: "username" })
   );
   const igUsername = profile.username?.trim() || "";
+  try {
   await eachGraphPage<IgMedia>(
     token,
     `${igId}/media`,
     {
-      limit: String(PAGE_SIZE),
+      limit: "8",
       fields:
-        "caption,permalink,timestamp,comments.limit(50){id,text,username,timestamp}",
+        "caption,permalink,timestamp,comments.limit(20){id,text,username,timestamp}",
     },
     maxPages,
     async (rows) => {
@@ -500,6 +562,9 @@ async function syncInstagram(token: string, pageId: string, maxPages: number) {
       }
     }
   );
+  } catch (error) {
+    if (!isHeavyGraphError(error) && !isPermissionError(error)) throw error;
+  }
 }
 
 async function syncLeadForms(token: string, pageId: string, maxPages: number) {
