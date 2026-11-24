@@ -140,6 +140,10 @@ async function readNextPages<T>(token: string, next: string | undefined, maxPage
   return rows;
 }
 
+function safeText(value: string) {
+  return value.replace(/\u0000/g, "").replace(/\\/g, "");
+}
+
 function messageText(value: string | undefined) {
   const text = value?.trim() ?? "";
   return text || "[medya]";
@@ -162,16 +166,22 @@ async function saveThread(input: {
   permalink?: string;
   messages: StoredMessage[];
 }) {
-  const ordered = [...input.messages].sort(
-    (left, right) => left.sentAt.getTime() - right.sentAt.getTime()
-  );
+  const title = safeText(input.title);
+  const participantId = safeText(input.participantId);
+  const replyExternalId = safeText(input.replyExternalId);
+  const permalink = safeText(input.permalink ?? "");
+  const ordered = input.messages
+    .map((message) => ({
+      ...message,
+      text: safeText(message.text),
+      senderName: safeText(message.senderName),
+    }))
+    .sort((left, right) => left.sentAt.getTime() - right.sentAt.getTime());
   const latest = ordered[ordered.length - 1];
   const preview = (latest?.text || "").slice(0, 180);
   const lastMessageAt = latest?.sentAt ?? new Date();
   const genericTitle =
-    input.title === "Messenger" ||
-    input.title === "Instagram" ||
-    input.title === "Facebook yorumu";
+    title === "Messenger" || title === "Instagram" || title === "Facebook yorumu";
   let unreadUpdate: number | { increment: number } = input.unreadCount;
   if (input.unreadMode === "increment") {
     const ids = ordered.map((message) => message.externalId);
@@ -186,28 +196,29 @@ async function saveThread(input: {
       increment: ordered.filter((message) => !known.has(message.externalId)).length,
     };
   }
+  try {
   const thread = await prisma.metaInboxThread.upsert({
     where: { externalId: input.externalId },
     create: {
       channel: input.channel,
       externalId: input.externalId,
-      title: input.title,
+      title,
       preview,
-      participantId: input.participantId,
-      replyExternalId: input.replyExternalId,
+      participantId,
+      replyExternalId,
       unreadCount: input.unreadCount,
       fromPage: latest?.fromPage ?? false,
-      permalink: input.permalink ?? "",
+      permalink,
       lastMessageAt,
     },
     update: {
-      ...(genericTitle ? {} : { title: input.title }),
+      ...(genericTitle ? {} : { title }),
       preview,
-      ...(input.participantId ? { participantId: input.participantId } : {}),
-      ...(input.replyExternalId ? { replyExternalId: input.replyExternalId } : {}),
+      ...(participantId ? { participantId } : {}),
+      ...(replyExternalId ? { replyExternalId } : {}),
       unreadCount: unreadUpdate,
       fromPage: latest?.fromPage ?? false,
-      ...(input.permalink ? { permalink: input.permalink } : {}),
+      ...(permalink ? { permalink } : {}),
       lastMessageAt,
     },
   });
@@ -230,6 +241,9 @@ async function saveThread(input: {
         sentAt: message.sentAt,
       },
     });
+  }
+  } catch (error) {
+    console.error("thread skip", input.externalId, cleanGraphError(error).slice(0, 160));
   }
 }
 
