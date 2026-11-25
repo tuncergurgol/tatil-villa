@@ -1,5 +1,5 @@
 /**
- * Her saat başı tüm public siteleri ve yönetim panelini kontrol eder.
+ * Her saat başı dört villa sitesini, yönetim panelini, Tatildeyiz Biz ve Havanna Global'i kontrol eder.
  * Son yanıt 200 değilse info@tatildeyiz.com.tr adresine tek bir uyarı maili gider.
  *
  * Çalıştır: npx tsx scripts/site-health-check.ts [--dry-run]
@@ -46,12 +46,26 @@ function targets(): Target[] {
     });
   }
 
-  sites.push({
-    name: "Yönetim paneli",
-    host: "bont.tatildeyiz.com.tr",
-    publicUrl: "https://bont.tatildeyiz.com.tr/admin/login",
-    originUrl: "http://127.0.0.1:3000/admin/login",
-  });
+  sites.push(
+    {
+      name: "Yönetim paneli",
+      host: "bont.tatildeyiz.com.tr",
+      publicUrl: "https://bont.tatildeyiz.com.tr/admin/login",
+      originUrl: "http://127.0.0.1:3000/admin/login",
+    },
+    {
+      name: "Tatildeyiz Biz",
+      host: "www.tatildeyizbiz.com",
+      publicUrl: "https://www.tatildeyizbiz.com/",
+      originUrl: "http://127.0.0.1:3010/",
+    },
+    {
+      name: "Havanna Global",
+      host: "havannaglobal.com",
+      publicUrl: "https://havannaglobal.com/",
+      originUrl: "http://127.0.0.1:3017/",
+    }
+  );
 
   return sites;
 }
@@ -72,12 +86,12 @@ async function probePublic(url: string): Promise<Probe> {
   }
 }
 
-function probeOrigin(path: string, host: string, redirects = 0): Promise<Probe> {
+function probeOrigin(path: string, host: string, port: number, redirects = 0): Promise<Probe> {
   return new Promise((resolve) => {
     const request = http.request(
       {
         hostname: "127.0.0.1",
-        port: 3000,
+        port,
         path,
         method: "GET",
         timeout: 20_000,
@@ -98,7 +112,7 @@ function probeOrigin(path: string, host: string, redirects = 0): Promise<Probe> 
           location &&
           location.startsWith("/")
         ) {
-          resolve(probeOrigin(location, host, redirects + 1));
+          resolve(probeOrigin(location, host, port, redirects + 1));
           return;
         }
         resolve({ status });
@@ -204,10 +218,12 @@ async function main() {
 
   const results: Result[] = [];
   for (const target of targets()) {
-    const originPath = new URL(target.originUrl).pathname;
+    const origin = new URL(target.originUrl);
     const [publicProbe, originProbe] = await Promise.all([
       confirm(() => probePublic(target.publicUrl)),
-      confirm(() => probeOrigin(originPath, target.host)),
+      confirm(() =>
+        probeOrigin(origin.pathname || "/", target.host, Number(origin.port || 80))
+      ),
     ]);
     results.push({ ...target, publicProbe, originProbe });
   }
