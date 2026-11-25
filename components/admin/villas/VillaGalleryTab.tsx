@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -11,12 +10,31 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  deleteAllVillaGalleryImages,
+  appendVillaGalleryImages,
   deleteVillaGalleryImages,
   setVillaGalleryVitrin,
   updateVillaGalleryOrder,
-  uploadVillaGalleryImages,
 } from "@/app/actions/admin/villa-gallery";
+import GalleryImage from "@/components/GalleryImage";
+import {
+  estimateUploadBytes,
+  preprocessGalleryImageFiles,
+} from "@/lib/client-gallery-image-preprocess";
+import { encodeGalleryImageUrl } from "@/lib/encode-gallery-image-url";
+import { getNextGallerySequence } from "@/lib/villa-gallery-filename";
+
+const UPLOAD_BATCH_SIZE = 30;
+const PARALLEL_UPLOADS = 6;
+const MAX_SINGLE_UPLOAD_BYTES = 42 * 1024 * 1024;
+const DRIVE_IMPORT_BATCH = 4;
+
+function chunkFiles<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
 
 interface VillaGalleryTabProps {
   villaId: string;
@@ -36,11 +54,63 @@ export default function VillaGalleryTab({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [driveUrl, setDriveUrl] = useState("");
 
   useEffect(() => {
     setImages(initialImages);
   }, [initialImages]);
+
+  const busy = isPending || Boolean(uploadProgress);
+
+  async function uploadGalleryBatch(
+    files: File[],
+    options?: {
+      startSequence?: number;
+      deferPersist?: boolean;
+      archiveWarnings?: string[];
+    }
+  ): Promise<string[]> {
+    const formData = new FormData();
+    formData.append("villaId", villaId);
+    if (options?.deferPersist) {
+      formData.append("deferPersist", "true");
+    }
+    if (options?.startSequence != null) {
+      formData.append("startSequence", String(options.startSequence));
+    }
+    files.forEach((file) => formData.append("files", file));
+
+    const response = await fetch("/api/admin/villa-gallery/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    let payload: {
+      error?: string;
+      success?: boolean;
+      urls?: string[];
+      archiveWarning?: string;
+    } = {};
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error(`Sunucu yanıtı okunamadı (HTTP ${response.status})`);
+    }
+
+    if (!response.ok || payload.error) {
+      throw new Error(
+        payload.error ?? `Yükleme başarısız (HTTP ${response.status})`
+      );
+    }
+
+    if (payload.archiveWarning) {
+      options?.archiveWarnings?.push(payload.archiveWarning);
+    }
+    return payload.urls ?? [];
+  }
 
   const allSelected = images.length > 0 && selected.size === images.length;
   const hasSelection = selected.size > 0;
@@ -74,17 +144,202 @@ export default function VillaGalleryTab({
     }
 
     setError(null);
-    const formData = new FormData();
-    Array.from(files).forEach((file) => formData.append("files", file));
+    setSuccessMessage(null);
+    const fileList = Array.from(files);
 
     startTransition(async () => {
-      const result = await uploadVillaGalleryImages(villaId, formData);
-      if (result.error) {
-        setError(result.error);
-        return;
+      try {
+        setUploadProgress(`0/${fileList.length} görsel hazırlanıyor...`);
+        const prepared = await preprocessGalleryImageFiles(
+          fileList,
+          (done, total) => {
+            setUploadProgress(`${done}/${total} görsel hazırlanıyor...`);
+          }
+        );
+
+        const uploadedUrls: string[] = [];
+        const archiveWarnings: string[] = [];
+        const startSequence = getNextGallerySequence(images);
+        const totalBytes = estimateUploadBytes(prepared);
+
+        if (totalBytes <= MAX_SINGLE_UPLOAD_BYTES) {
+          setUploadProgress(`${prepared.length} görsel yükleniyor...`);
+          const urls = await uploadGalleryBatch(prepared, {
+            startSequence,
+            archiveWarnings,
+          });
+          uploadedUrls.push(...urls);
+        } else {
+          const batches = chunkFiles(prepared, UPLOAD_BATCH_SIZE);
+          let nextSequence = startSequence;
+          const batchPlans = batches.map((batch) => {
+            const plan = { batch, startSequence: nextSequence };
+            nextSequence += batch.length;
+            return plan;
+          });
+
+          for (
+            let waveStart = 0;
+            waveStart < batchPlans.length;
+            waveStart += PARALLEL_UPLOADS
+          ) {
+            const wave = batchPlans.slice(waveStart, waveStart + PARALLEL_UPLOADS);
+            const waveResults = await Promise.all(
+              wave.map(({ batch, startSequence: batchStart }) =>
+                uploadGalleryBatch(batch, {
+                  startSequence: batchStart,
+                  deferPersist: true,
+                  archiveWarnings,
+                })
+              )
+            );
+
+            for (const urls of waveResults) {
+              uploadedUrls.push(...urls);
+            }
+
+            setUploadProgress(
+              `${uploadedUrls.length}/${prepared.length} görsel yüklendi...`
+            );
+          }
+
+          const appendResult = await appendVillaGalleryImages(
+            villaId,
+            uploadedUrls
+          );
+          if (appendResult.error) {
+            throw new Error(appendResult.error);
+          }
+        }
+
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        const archiveNote = archiveWarnings[0]
+          ? ` Drive klasörüne yazılamadı: ${archiveWarnings[0]}`
+          : ` Drive'da «${villaName}» klasörüne de eklendi.`;
+        setSuccessMessage(`${fileList.length} görsel yüklendi.${archiveNote}`);
+        setUploadProgress(null);
+        refresh();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Görseller yüklenirken bir sorun oluştu";
+        setError(message);
+        setUploadProgress(null);
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      refresh();
+    });
+  }
+
+  function handleDriveImport() {
+    const url = driveUrl.trim();
+    if (!url) {
+      setError("Google Drive klasör bağlantısını yapıştırın");
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
+
+    startTransition(async () => {
+      try {
+        setUploadProgress("Drive klasörü okunuyor...");
+        const listResponse = await fetch("/api/admin/villa-gallery/drive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ villaId, driveUrl: url }),
+        });
+        const listed = (await listResponse.json()) as {
+          error?: string;
+          files?: Array<{ id: string; name: string }>;
+        };
+        if (!listResponse.ok || listed.error) {
+          throw new Error(listed.error ?? "Drive klasörü okunamadı");
+        }
+        const files = listed.files ?? [];
+        if (files.length === 0) {
+          throw new Error("Klasörde eklenecek görsel yok");
+        }
+
+        const uploadedUrls: string[] = [];
+        const failedMessages: string[] = [];
+        const archiveWarnings: string[] = [];
+        let nextSequence = getNextGallerySequence(images);
+
+        for (let index = 0; index < files.length; index += DRIVE_IMPORT_BATCH) {
+          const batch = files.slice(index, index + DRIVE_IMPORT_BATCH);
+          setUploadProgress(
+            `${Math.min(index, files.length)}/${files.length} Drive görseli kaydediliyor...`
+          );
+          const importResponse = await fetch(
+            "/api/admin/villa-gallery/drive/import",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                villaId,
+                fileIds: batch.map((file) => file.id),
+                startSequence: nextSequence,
+                deferPersist: true,
+              }),
+            }
+          );
+          const imported = (await importResponse.json().catch(() => ({}))) as {
+            error?: string;
+            urls?: string[];
+            failed?: Array<{ error: string }>;
+            archiveWarning?: string;
+          };
+          nextSequence += batch.length;
+          if (imported.urls?.length) {
+            uploadedUrls.push(...imported.urls);
+          }
+          if (imported.archiveWarning) {
+            archiveWarnings.push(imported.archiveWarning);
+          }
+          if (imported.failed?.length) {
+            for (const failure of imported.failed) {
+              if (failure.error) failedMessages.push(failure.error);
+            }
+          } else if (!importResponse.ok && imported.error) {
+            failedMessages.push(imported.error);
+          }
+        }
+
+        if (uploadedUrls.length === 0) {
+          throw new Error(
+            failedMessages[0] ?? "Drive görselleri kaydedilemedi"
+          );
+        }
+
+        const appendResult = await appendVillaGalleryImages(
+          villaId,
+          uploadedUrls
+        );
+        if (appendResult.error) {
+          throw new Error(appendResult.error);
+        }
+
+        const skipped =
+          failedMessages.length > 0
+            ? ` ${failedMessages.length} görsel atlandı.`
+            : "";
+        const archiveNote = archiveWarnings[0]
+          ? ` Drive klasörüne yazılamadı: ${archiveWarnings[0]}`
+          : ` Drive'da «${villaName}» klasörüne de eklendi.`;
+        setDriveUrl("");
+        setSuccessMessage(
+          `${uploadedUrls.length} görsel mevcut galerinin sonuna eklendi.${archiveNote}${skipped}`
+        );
+        setUploadProgress(null);
+        refresh();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Drive görselleri eklenirken bir sorun oluştu";
+        setError(message);
+        setUploadProgress(null);
+      }
     });
   }
 
@@ -150,25 +405,13 @@ export default function VillaGalleryTab({
     });
   }
 
-  function handleDeleteAll() {
-    if (images.length === 0) return;
-    if (!confirm("Tüm galeri görselleri silinsin mi?")) return;
-
-    startTransition(async () => {
-      const result = await deleteAllVillaGalleryImages(villaId);
-      if (result.error) setError(result.error);
-      else {
-        setSelected(new Set());
-        refresh();
-      }
-    });
-  }
-
-  function handleDownloadAll() {
-    images.forEach((url, index) => {
+  function downloadGalleryUrls(urls: string[]) {
+    urls.forEach((url, index) => {
       const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = url.split("/").pop() ?? `galeri-${index + 1}.webp`;
+      anchor.href = encodeGalleryImageUrl(url);
+      anchor.download =
+        decodeURIComponent(url.split("/").pop() ?? "") ||
+        `galeri-${index + 1}.webp`;
       anchor.rel = "noopener";
       document.body.appendChild(anchor);
       anchor.click();
@@ -176,34 +419,22 @@ export default function VillaGalleryTab({
     });
   }
 
+  function handleDownloadSelected() {
+    if (!hasSelection) return;
+    downloadGalleryUrls(Array.from(selected));
+  }
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Galeri — {villaName}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleDownloadAll}
-            disabled={images.length === 0 || isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <CloudDownload className="h-4 w-4" />
-            Tümünü İndir
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteAll}
-            disabled={images.length === 0 || isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" />
-            Tümünü Sil
-          </button>
-        </div>
-      </div>
+      <h2 className="text-sm font-semibold text-gray-800">
+        Galeri — {villaName}
+      </h2>
 
+      {successMessage ? (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {successMessage}
+        </div>
+      ) : null}
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -221,26 +452,73 @@ export default function VillaGalleryTab({
         <button
           type="button"
           onClick={handleUpload}
-          disabled={isPending}
+          disabled={busy}
           className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
         >
           <CloudUpload className="h-4 w-4" />
-          {isPending ? "Yükleniyor..." : "Yükle"}
+          {uploadProgress ?? (busy ? "Yükleniyor..." : "Yükle")}
         </button>
+        {uploadProgress ? (
+          <span className="text-xs font-medium text-blue-700">{uploadProgress}</span>
+        ) : null}
         <span className="text-xs text-gray-500">
-          JPG, PNG, WEBP — filigransız WEBP olarak kaydedilir
+          JPG, PNG, WEBP — tarayıcıda küçültülür, sunucuda 100 KB altı WebP olarak
+          kaydedilir
         </span>
+        <div className="flex w-full flex-wrap items-center gap-3 border-t border-gray-100 pt-3">
+          <input
+            type="url"
+            value={driveUrl}
+            onChange={(event) => setDriveUrl(event.target.value)}
+            placeholder="https://drive.google.com/drive/folders/..."
+            disabled={busy}
+            className="min-w-[16rem] flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800 outline-none ring-blue-500 placeholder:text-gray-400 focus:ring-2 disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={handleDriveImport}
+            disabled={busy || !driveUrl.trim()}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <CloudDownload className="h-4 w-4" />
+            Drive&apos;dan ekle
+          </button>
+          <span className="text-xs text-gray-500">
+            Mevcut fotoğraflar durur. Yeni görseller sıranın sonuna, aynı WebP
+            kayıt kuralıyla eklenir. Klasör «bağlantıya sahip herkes» açık olmalı.
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3">
-        <button
-          type="button"
-          onClick={toggleSelectAll}
-          disabled={images.length === 0}
-          className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-        >
-          Tümünü Seç
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            disabled={images.length === 0 || busy}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+          >
+            Tümünü Seç
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadSelected}
+            disabled={!hasSelection || busy}
+            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <CloudDownload className="h-4 w-4" />
+            Seçilenleri İndir
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteSelected}
+            disabled={!hasSelection || busy}
+            className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Seçilenleri Sil
+          </button>
+        </div>
 
         {hasSelection ? (
           <p className="text-sm font-medium text-red-600">
@@ -248,20 +526,6 @@ export default function VillaGalleryTab({
           </p>
         ) : (
           <p className="text-sm text-gray-500">Sıralamak için sürükleyip bırakın</p>
-        )}
-
-        {hasSelection ? (
-          <button
-            type="button"
-            onClick={handleDeleteSelected}
-            disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" />
-            Seçilenleri Sil
-          </button>
-        ) : (
-          <span />
         )}
       </div>
 
@@ -285,7 +549,7 @@ export default function VillaGalleryTab({
                     : "border-gray-200"
                 } ${dragIndex === index ? "opacity-60" : ""}`}
               >
-                <Image
+                <GalleryImage
                   src={url}
                   alt={`${villaName} ${index + 1}`}
                   fill
@@ -318,7 +582,7 @@ export default function VillaGalleryTab({
                   <button
                     type="button"
                     onClick={() => handleSetVitrin(url)}
-                    disabled={isPending || isVitrin}
+                    disabled={busy || isVitrin}
                     title="Vitrin yap"
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-400 text-gray-900 transition hover:bg-amber-300 disabled:opacity-50"
                   >
@@ -335,7 +599,7 @@ export default function VillaGalleryTab({
                   <button
                     type="button"
                     onClick={() => handleDeleteOne(url)}
-                    disabled={isPending}
+                    disabled={busy}
                     title="Sil"
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-50"
                   >
@@ -369,7 +633,7 @@ export default function VillaGalleryTab({
           <div className="relative max-h-[90vh] max-w-[90vw]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={previewUrl}
+              src={encodeGalleryImageUrl(previewUrl)}
               alt="Galeri önizleme"
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
             />

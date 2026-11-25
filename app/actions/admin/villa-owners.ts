@@ -1,16 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { VillaOwnerType } from "@prisma/client";
+import { revalidateVillaEditPage } from "@/lib/villa-admin-path.server";
+import { UserRole, VillaOwnerType } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { syncVillaOwnerLogin } from "@/lib/villa-owner-credentials";
 import { getMernisIlceByCode } from "@/lib/mernis-ilce";
 import {
   buildOwnerDisplayName,
   normalizeOwnerPhone,
   splitOwnerName,
 } from "@/lib/villa-owner-utils";
+import { isValidTcKimlik, normalizeTcKimlik } from "@/lib/tc-kimlik";
+import { isValidTurkishIban, normalizeIban } from "@/lib/iban";
+import { getActiveVillaOwners } from "@/lib/queries/villa-owners";
 
 export type VillaOwnerActionState = {
   success?: boolean;
@@ -18,41 +23,72 @@ export type VillaOwnerActionState = {
   id?: string;
 };
 
+const optionalString = z.string().optional().default("");
+
 const optionalEmail = z
   .string()
+  .optional()
+  .default("")
   .refine(
     (value) => !value || z.string().email().safeParse(value).success,
     "Geçerli bir e-posta girin"
   );
 
+const optionalTcKimlikNo = z
+  .string()
+  .optional()
+  .default("")
+  .transform((value) => normalizeTcKimlik(value))
+  .refine(
+    (value) => !value || isValidTcKimlik(value),
+    "Geçersiz T.C. Kimlik No"
+  );
+
 const commonSchema = z.object({
   type: z.nativeEnum(VillaOwnerType),
-  phone: z.string().min(1, "Telefon numarası gerekli"),
+  phone: optionalString,
   email: optionalEmail,
-  bankAccountHolder: z.string().min(1, "Banka hesap sahibi gerekli"),
-  bankIban: z.string().min(1, "IBAN gerekli"),
-  accountingCode: z.string(),
-  country: z.string().min(1, "Ülke gerekli"),
+  bankAccountHolder: optionalString,
+  bankIban: optionalString
+    .transform((value) => normalizeIban(value))
+    .refine(
+      (value) => !value || isValidTurkishIban(value),
+      "IBAN 26 hane olmalı (TR + 24 rakam, GİB BTRANS)"
+    ),
+  accountingCode: optionalString,
+  country: optionalString,
   mernisIlceCode: z.string().optional(),
-  address: z.string().min(1, "Adres gerekli"),
+  address: optionalString,
   active: z.enum(["true", "false"]).transform((v) => v === "true"),
 });
 
-const gercekKisiSchema = commonSchema.extend({
-  type: z.literal(VillaOwnerType.GERCEK_KISI),
-  firstName: z.string().min(1, "Ad gerekli"),
-  lastName: z.string().min(1, "Soyad gerekli"),
-  tcKimlikNo: z
-    .string()
-    .regex(/^\d{11}$/, "TC Kimlik No 11 haneli olmalıdır"),
-});
+const gercekKisiSchema = commonSchema
+  .extend({
+    type: z.literal(VillaOwnerType.GERCEK_KISI),
+    firstName: optionalString,
+    lastName: optionalString,
+    tcKimlikNo: optionalTcKimlikNo,
+  })
+  .refine(
+    (data) =>
+      buildOwnerDisplayName({
+        type: VillaOwnerType.GERCEK_KISI,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      }).length > 0,
+    { message: "Adı soyadı gerekli", path: ["firstName"] }
+  )
+  .refine((data) => Boolean(data.tcKimlikNo), {
+    message: "TC Kimlik No gerekli",
+    path: ["tcKimlikNo"],
+  });
 
 const tuzelKisiSchema = commonSchema.extend({
   type: z.literal(VillaOwnerType.TUZEL_KISI),
-  companyTitle: z.string().min(1, "Ünvan gerekli"),
-  authorizedPersonName: z.string().min(1, "Yetkili adı soyadı gerekli"),
-  taxOffice: z.string().min(1, "Vergi dairesi gerekli"),
-  taxNumber: z.string().min(1, "Vergi no gerekli"),
+  companyTitle: z.string().trim().min(1, "Ünvan gerekli"),
+  authorizedPersonName: optionalString,
+  taxOffice: optionalString,
+  taxNumber: optionalString,
 });
 
 function parseOwnerForm(formData: FormData) {
@@ -94,8 +130,8 @@ function parseOwnerForm(formData: FormData) {
 
 function toOwnerData(parsed: z.infer<typeof gercekKisiSchema> | z.infer<typeof tuzelKisiSchema>) {
   const phone = normalizeOwnerPhone(parsed.phone);
-  const mernisIlceCode =
-    parsed.country === "Türkiye" ? parsed.mernisIlceCode ?? null : null;
+  const country = parsed.country || "Türkiye";
+  const mernisIlceCode = country === "Türkiye" ? parsed.mernisIlceCode ?? null : null;
 
   if (parsed.type === VillaOwnerType.TUZEL_KISI) {
     return {
@@ -114,9 +150,9 @@ function toOwnerData(parsed: z.infer<typeof gercekKisiSchema> | z.infer<typeof t
       taxOffice: parsed.taxOffice,
       taxNumber: parsed.taxNumber,
       bankAccountHolder: parsed.bankAccountHolder,
-      bankIban: parsed.bankIban.toUpperCase(),
+      bankIban: parsed.bankIban?.toUpperCase() ?? "",
       accountingCode: parsed.accountingCode,
-      country: parsed.country,
+      country,
       mernisIlceCode,
       address: parsed.address,
       active: parsed.active,
@@ -140,9 +176,9 @@ function toOwnerData(parsed: z.infer<typeof gercekKisiSchema> | z.infer<typeof t
     taxOffice: "",
     taxNumber: "",
     bankAccountHolder: parsed.bankAccountHolder,
-    bankIban: parsed.bankIban.toUpperCase(),
+    bankIban: parsed.bankIban?.toUpperCase() ?? "",
     accountingCode: parsed.accountingCode,
-    country: parsed.country,
+    country,
     mernisIlceCode,
     address: parsed.address,
     active: parsed.active,
@@ -153,8 +189,7 @@ function validateTurkeyLocation(
   country: string,
   mernisIlceCode?: string
 ): string | null {
-  if (country !== "Türkiye") return null;
-  if (!mernisIlceCode) return "İl ve ilçe seçin";
+  if (country !== "Türkiye" || !mernisIlceCode) return null;
   if (!getMernisIlceByCode(mernisIlceCode)) return "Geçerli bir il ve ilçe seçin";
   return null;
 }
@@ -162,6 +197,19 @@ function validateTurkeyLocation(
 function revalidateOwnerPaths() {
   revalidatePath("/admin/tanimlamalar/villa-sahipleri");
   revalidatePath("/admin/villalar");
+}
+
+export async function getActiveVillaOwnersAction(): Promise<{
+  owners?: Awaited<ReturnType<typeof getActiveVillaOwners>>;
+  error?: string;
+}> {
+  await requireAdmin();
+  try {
+    const owners = await getActiveVillaOwners();
+    return { owners };
+  } catch {
+    return { error: "Villa sahipleri yüklenemedi" };
+  }
 }
 
 export async function createVillaOwner(
@@ -185,6 +233,8 @@ export async function createVillaOwner(
     const created = await prisma.villaOwner.create({
       data: toOwnerData(parsed.data),
     });
+    const loginError = await syncVillaOwnerLogin(created.id, formData);
+    if (loginError) return loginError;
     revalidateOwnerPaths();
     return { success: true, id: created.id };
   } catch {
@@ -217,6 +267,8 @@ export async function updateVillaOwner(
       where: { id },
       data: toOwnerData(parsed.data),
     });
+    const loginError = await syncVillaOwnerLogin(id, formData);
+    if (loginError) return loginError;
     revalidateOwnerPaths();
     return { success: true };
   } catch {
@@ -266,12 +318,43 @@ export async function authorizeUserAsVillaOwner(
   }
 }
 
+export async function unlinkVillaFromOwner(
+  villaId: string,
+  ownerId: string
+): Promise<VillaOwnerActionState> {
+  await requireAdmin();
+
+  const villa = await prisma.villa.findFirst({
+    where: { id: villaId, ownerId },
+    select: { id: true },
+  });
+
+  if (!villa) {
+    return { error: "Villa bu villa sahibine bağlı değil" };
+  }
+
+  try {
+    await prisma.villa.update({
+      where: { id: villaId },
+      data: { ownerId: null },
+    });
+    revalidateOwnerPaths();
+    await revalidateVillaEditPage(villaId);
+    return { success: true };
+  } catch {
+    return { error: "Villa bağlantısı kaldırılamadı" };
+  }
+}
+
 export async function deleteVillaOwner(id: string): Promise<VillaOwnerActionState> {
   await requireAdmin();
 
   const owner = await prisma.villaOwner.findUnique({
     where: { id },
-    include: { _count: { select: { villas: true } } },
+    include: {
+      _count: { select: { villas: true } },
+      user: { select: { id: true, role: true } },
+    },
   });
 
   if (!owner) return { error: "Kayıt bulunamadı" };
@@ -282,6 +365,9 @@ export async function deleteVillaOwner(id: string): Promise<VillaOwnerActionStat
   }
 
   try {
+    if (owner.user?.role === UserRole.VILLA_OWNER) {
+      await prisma.user.delete({ where: { id: owner.user.id } });
+    }
     await prisma.villaOwner.delete({ where: { id } });
     revalidateOwnerPaths();
     return { success: true };

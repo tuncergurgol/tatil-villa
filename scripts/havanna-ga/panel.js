@@ -1,0 +1,1519 @@
+(() => {
+  const appView = document.getElementById("app-view");
+  const logoutBtn = document.getElementById("logout-btn");
+  const statusMsg = document.getElementById("status-msg");
+  const pageTitle = document.getElementById("page-title");
+  const pageDesc = document.getElementById("page-desc");
+
+  const productDialog = document.getElementById("product-dialog");
+  const productForm = document.getElementById("product-form");
+  const productList = document.getElementById("product-list");
+  const productCount = document.getElementById("product-count");
+  const productCategory = document.getElementById("product-category");
+  const productDialogTitle = document.getElementById("product-dialog-title");
+  const productImagesInput = document.getElementById("product-images");
+  const productImageHint = document.getElementById("product-image-hint");
+  const productMediaList = document.getElementById("product-media-list");
+  const productActive = document.getElementById("product-active");
+  const productError = document.getElementById("product-error");
+  const productSeoAiBtn = document.getElementById("product-seo-ai");
+
+  const groupDialog = document.getElementById("group-dialog");
+  const groupForm = document.getElementById("group-form");
+  const groupList = document.getElementById("group-list");
+  const groupCount = document.getElementById("group-count");
+  const groupDialogTitle = document.getElementById("group-dialog-title");
+  const groupError = document.getElementById("group-error");
+  const groupSubgroupsEl = document.getElementById("group-subgroups");
+  const productSubgroup = document.getElementById("product-subgroup");
+
+  const userDialog = document.getElementById("user-dialog");
+  const userForm = document.getElementById("user-form");
+  const userList = document.getElementById("user-list");
+  const userCount = document.getElementById("user-count");
+  const userDialogTitle = document.getElementById("user-dialog-title");
+  const userPassword = document.getElementById("user-password");
+  const userPasswordHint = document.getElementById("user-password-hint");
+  const userError = document.getElementById("user-error");
+
+  const settingsForm = document.getElementById("settings-form");
+
+  const pageMeta = {
+    products: {
+      title: "Ürünler",
+      desc: "Portföydeki ürünleri ekleyin, düzenleyin veya silin.",
+    },
+    groups: {
+      title: "Ürün grupları",
+      desc: "Ürün gruplarını ve alt gruplarını yönetin.",
+    },
+    settings: {
+      title: "Site Ayarları",
+      desc: "İletişim ve kurumsal bilgileri güncelleyin.",
+    },
+    inquiries: {
+      title: "İletişim formları",
+      desc: "Sitedeki iletişim formundan gelen talepler.",
+    },
+    users: {
+      title: "Kullanıcılar",
+      desc: "Panel giriş hesaplarını yönetin.",
+    },
+  };
+
+  let products = [];
+  let groups = [];
+  let users = [];
+  let editingProductId = null;
+  let editingGroupId = null;
+  let editingUserId = null;
+  let productMediaItems = [];
+  let mediaDragIndex = null;
+  let productSearchQuery = "";
+  let editingSubGroups = [];
+  const filters = { products: "active", groups: "active", users: "active" };
+  const productSearch = document.getElementById("product-search");
+
+  async function api(url, options = {}) {
+    const res = await fetch(url, {
+      credentials: "same-origin",
+      ...options,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      location.replace("/admin/");
+      throw new Error("Oturum gerekli.");
+    }
+    if (!res.ok) throw new Error(data.error || "İşlem başarısız.");
+    return data;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/'/g, "&#39;");
+  }
+
+  function isActiveRecord(item) {
+    return item?.active !== false;
+  }
+
+  function filterItems(items, filter) {
+    if (filter === "passive") return items.filter((item) => !isActiveRecord(item));
+    if (filter === "all") return items;
+    return items.filter((item) => isActiveRecord(item));
+  }
+
+  function normalizeSearch(value) {
+    return String(value || "")
+      .toLocaleLowerCase("tr")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  }
+
+  function filterProductsBySearch(items) {
+    const q = normalizeSearch(productSearchQuery);
+    if (!q) return items;
+    return items.filter((p) => {
+      const name = normalizeSearch(p.name);
+      const group = normalizeSearch(groupLabel(p.category));
+      const sub = normalizeSearch(p.subGroup);
+      const meta = normalizeSearch(p.meta);
+      return (
+        name.includes(q) ||
+        group.includes(q) ||
+        sub.includes(q) ||
+        meta.includes(q)
+      );
+    });
+  }
+
+  function flash(message, isError = false) {
+    statusMsg.textContent = message;
+    statusMsg.classList.toggle("is-error", isError);
+    statusMsg.hidden = false;
+    window.clearTimeout(flash._t);
+    flash._t = window.setTimeout(() => {
+      statusMsg.hidden = true;
+    }, 3200);
+  }
+
+  function groupLabel(id) {
+    const g = groups.find((x) => x.id === id);
+    return g?.name?.tr || id;
+  }
+
+  function fillCategorySelect(selected) {
+    const activeGroups = groups.filter((g) => isActiveRecord(g));
+    const source = activeGroups.length ? activeGroups : groups;
+    productCategory.innerHTML = source
+      .map(
+        (g) =>
+          `<option value="${escapeAttr(g.id)}"${
+            g.id === selected ? " selected" : ""
+          }>${escapeHtml(g.name.tr)}</option>`
+      )
+      .join("");
+  }
+
+  function groupSubGroups(groupId) {
+    const group = groups.find((g) => g.id === groupId);
+    return Array.isArray(group?.subGroups) ? group.subGroups : [];
+  }
+
+  function fillSubGroupSelect(categoryId, selected) {
+    if (!productSubgroup) return;
+    const subs = groupSubGroups(categoryId).filter((sg) => isActiveRecord(sg));
+    const selectedValue = selected || "";
+    const options = [
+      `<option value="">— Seçilmedi —</option>`,
+      ...subs.map(
+        (sg) =>
+          `<option value="${escapeAttr(sg.name.tr)}"${
+            sg.name.tr === selectedValue ? " selected" : ""
+          }>${escapeHtml(sg.name.tr)}</option>`
+      ),
+    ];
+    if (
+      selectedValue &&
+      !subs.some((sg) => sg.name.tr === selectedValue)
+    ) {
+      options.push(
+        `<option value="${escapeAttr(selectedValue)}" selected>${escapeHtml(
+          selectedValue
+        )} (eski)</option>`
+      );
+    }
+    productSubgroup.innerHTML = options.join("");
+  }
+
+  function renderSubGroupsEditor() {
+    if (!groupSubgroupsEl) return;
+    if (!editingSubGroups.length) {
+      groupSubgroupsEl.innerHTML = `<p class="muted">Henüz alt grup yok.</p>`;
+      return;
+    }
+    groupSubgroupsEl.innerHTML = editingSubGroups
+      .map(
+        (sg, index) => `
+      <div class="subgroup-row" data-subgroup-index="${index}">
+        <label>
+          Türkçe
+          <input type="text" data-sg-field="tr" value="${escapeAttr(
+            sg.name?.tr || ""
+          )}" maxlength="80" required />
+        </label>
+        <label>
+          English
+          <input type="text" data-sg-field="en" value="${escapeAttr(
+            sg.name?.en || ""
+          )}" maxlength="80" />
+        </label>
+        <label>
+          العربية
+          <input type="text" data-sg-field="ar" value="${escapeAttr(
+            sg.name?.ar || ""
+          )}" maxlength="80" dir="rtl" />
+        </label>
+        <label class="check">
+          <input type="checkbox" data-sg-field="active"${
+            sg.active !== false ? " checked" : ""
+          } />
+          Aktif
+        </label>
+        <button type="button" class="btn btn-danger sm" data-remove-subgroup="${index}">Sil</button>
+      </div>`
+      )
+      .join("");
+  }
+
+  function syncSubGroupsFromEditor() {
+    if (!groupSubgroupsEl) return editingSubGroups;
+    editingSubGroups = [...groupSubgroupsEl.querySelectorAll(".subgroup-row")].map(
+      (row, index) => {
+        const tr = row.querySelector('[data-sg-field="tr"]')?.value.trim() || "";
+        const en = row.querySelector('[data-sg-field="en"]')?.value.trim() || "";
+        const ar = row.querySelector('[data-sg-field="ar"]')?.value.trim() || "";
+        const active = Boolean(
+          row.querySelector('[data-sg-field="active"]')?.checked
+        );
+        const prev = editingSubGroups[index] || {};
+        return {
+          id: prev.id || "",
+          sort: Number.isFinite(Number(prev.sort)) ? Number(prev.sort) : index + 1,
+          active,
+          name: { tr, en: en || tr, ar: ar || tr },
+        };
+      }
+    );
+    return editingSubGroups;
+  }
+
+  function closeDialog(dialog) {
+    if (dialog === productDialog) closeMediaPreview();
+    if (dialog.open) dialog.close();
+  }
+
+  function productCover(product) {
+    if (Array.isArray(product?.images) && product.images[0]) return product.images[0];
+    return product?.image || "";
+  }
+
+  function productImagesOf(product) {
+    if (Array.isArray(product?.images) && product.images.length) return [...product.images];
+    if (product?.image) return [product.image];
+    return [];
+  }
+
+  function setProductTab(tab) {
+    document.querySelectorAll("[data-product-tab]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-product-tab") === tab);
+    });
+    document.querySelectorAll("[data-product-panel]").forEach((panel) => {
+      const on = panel.getAttribute("data-product-panel") === tab;
+      panel.hidden = !on;
+      panel.classList.toggle("is-active", on);
+    });
+  }
+
+  function releaseProductMedia() {
+    productMediaItems.forEach((item) => {
+      if (item.preview) URL.revokeObjectURL(item.preview);
+    });
+    productMediaItems = [];
+  }
+
+  function mediaItemSrc(item) {
+    if (item.kind === "file") return item.preview || "";
+    const path = String(item.path || "");
+    if (!path) return "";
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
+    return `/${path.replace(/^\/+/, "")}`;
+  }
+
+  const mediaStarIcon =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 3 15 9.2 21.6 10 16.8 14.5 18.2 21 12 17.8 5.8 21 7.2 14.5 2.4 10 9 9.2 12 3"/></svg>';
+  const mediaZoomIcon =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.5-3.5"/><path d="M11 8v6M8 11h6"/></svg>';
+  const mediaTrashIcon =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M7 7l1 13h8l1-13"/></svg>';
+
+  function renderProductMedia() {
+    if (!productMediaItems.length) {
+      productMediaList.innerHTML = `<p class="muted">Henüz görsel yok.</p>`;
+      renderVitrinPreview();
+      return;
+    }
+    productMediaList.innerHTML = productMediaItems
+      .map((item, index) => {
+        const vitrin = index === 0;
+        return `
+      <div class="media-item${vitrin ? " is-vitrin" : ""}" draggable="true" data-media-index="${index}">
+        <img src="${escapeAttr(mediaItemSrc(item))}" alt="" draggable="false" />
+        ${vitrin ? '<span class="media-item__badge">VİTRİN</span>' : ""}
+        <span class="media-item__index">${index + 1}</span>
+        <div class="media-item__overlay">
+          <button type="button" class="media-item__icon is-star" data-vitrin-image="${index}" title="Vitrin yap"${
+            vitrin ? " disabled" : ""
+          }>${mediaStarIcon}</button>
+          <button type="button" class="media-item__icon is-zoom" data-preview-image="${index}" title="Büyüt">${mediaZoomIcon}</button>
+          <button type="button" class="media-item__icon is-delete" data-remove-image="${index}" title="Sil">${mediaTrashIcon}</button>
+        </div>
+      </div>`;
+      })
+      .join("");
+    renderVitrinPreview();
+  }
+
+  function renderVitrinPreview() {
+    const slot = document.getElementById("product-vitrin");
+    if (!slot) return;
+    const item = productMediaItems[0];
+    if (!item) {
+      slot.innerHTML = `<p class="muted">Henüz vitrin resmi yok.</p>`;
+      return;
+    }
+    slot.innerHTML = `
+      <div class="vitrin-preview">
+        <img src="${escapeAttr(mediaItemSrc(item))}" alt="" />
+        <span class="media-item__badge">VİTRİN</span>
+      </div>`;
+  }
+
+  function moveProductMedia(from, to) {
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from === to) return;
+    if (from < 0 || to < 0 || from >= productMediaItems.length || to >= productMediaItems.length) return;
+    const [moved] = productMediaItems.splice(from, 1);
+    productMediaItems.splice(to, 0, moved);
+    renderProductMedia();
+  }
+
+  function openMediaPreview(index) {
+    const item = productMediaItems[index];
+    const preview = document.getElementById("media-preview");
+    const image = document.getElementById("media-preview-image");
+    if (!item || !preview || !image) return;
+    image.src = mediaItemSrc(item);
+    preview.hidden = false;
+  }
+
+  function closeMediaPreview() {
+    const preview = document.getElementById("media-preview");
+    const image = document.getElementById("media-preview-image");
+    if (image) image.removeAttribute("src");
+    if (preview) preview.hidden = true;
+  }
+
+  function openProductDialog(product) {
+    productError.hidden = true;
+    productForm.reset();
+    editingProductId = product?.id || null;
+    document.getElementById("product-id").value = product?.id || "";
+    document.getElementById("product-name").value = product?.name || "";
+    document.getElementById("product-meta").value = product?.meta || "";
+    document.getElementById("product-description").value =
+      product?.description || "";
+    document.getElementById("product-seo-title").value =
+      product?.seo?.title || "";
+    document.getElementById("product-seo-description").value =
+      product?.seo?.description || "";
+    document.getElementById("product-seo-keywords").value =
+      product?.seo?.keywords || "";
+    document.getElementById("product-seo-slug").value = product?.seo?.slug || "";
+    productActive.checked = product ? isActiveRecord(product) : true;
+    const categoryId =
+      product?.category || groups.find((g) => isActiveRecord(g))?.id;
+    fillCategorySelect(categoryId);
+    fillSubGroupSelect(categoryId, product?.subGroup || "");
+    releaseProductMedia();
+    productMediaItems = productImagesOf(product).map((path) => ({
+      kind: "saved",
+      path,
+    }));
+    renderProductMedia();
+    if (productImagesInput) productImagesInput.value = "";
+    productDialogTitle.textContent = product ? "Düzenleme" : "Yeni kayıt ekle";
+    productImageHint.textContent = product
+      ? "İlk görsel vitrin resmidir. Sırayı fareyle değiştirin, sonra Kaydet."
+      : "En az 1 görsel zorunlu. İlk görsel vitrin resmi olur.";
+    setProductTab("general");
+    productDialog.showModal();
+  }
+
+  function openGroupDialog(group) {
+    groupError.hidden = true;
+    groupForm.reset();
+    editingGroupId = group?.id || null;
+    document.getElementById("group-original-id").value = group?.id || "";
+    document.getElementById("group-id").value = group?.id || "";
+    document.getElementById("group-id").disabled = Boolean(group);
+    document.getElementById("group-sort").value = String(
+      group?.sort || groups.length + 1
+    );
+    document.getElementById("group-name-tr").value = group?.name?.tr || "";
+    document.getElementById("group-name-en").value = group?.name?.en || "";
+    document.getElementById("group-name-ar").value = group?.name?.ar || "";
+    document.getElementById("group-active").checked = group
+      ? isActiveRecord(group)
+      : true;
+    editingSubGroups = Array.isArray(group?.subGroups)
+      ? group.subGroups.map((sg, index) => ({
+          id: sg.id || "",
+          sort: Number.isFinite(Number(sg.sort)) ? Number(sg.sort) : index + 1,
+          active: sg.active !== false,
+          name: {
+            tr: sg.name?.tr || "",
+            en: sg.name?.en || "",
+            ar: sg.name?.ar || "",
+          },
+        }))
+      : [];
+    renderSubGroupsEditor();
+    groupDialogTitle.textContent = group ? "Düzenleme" : "Yeni kayıt ekle";
+    groupDialog.showModal();
+  }
+
+  function openUserDialog(user) {
+    userError.hidden = true;
+    userForm.reset();
+    editingUserId = user?.id || null;
+    document.getElementById("user-id").value = user?.id || "";
+    document.getElementById("user-name").value = user?.name || "";
+    document.getElementById("user-email").value = user?.email || "";
+    document.getElementById("user-role").value = user?.role || "admin";
+    document.getElementById("user-active").checked = user
+      ? isActiveRecord(user)
+      : true;
+    userPassword.value = "";
+    userPassword.required = !user;
+    userPasswordHint.textContent = user
+      ? "Boş bırakılırsa şifre değişmez."
+      : "En az 8 karakter.";
+    userDialogTitle.textContent = user ? "Düzenleme" : "Yeni kayıt ekle";
+    userDialog.showModal();
+  }
+
+  const groupFilterState = { groups: new Set(), subs: new Set() };
+  const groupFilterToggle = document.getElementById("group-filter-toggle");
+  const groupFilterPanel = document.getElementById("group-filter-panel");
+  const groupFilterTree = document.getElementById("group-filter-tree");
+
+  function subFilterKey(groupId, sg) {
+    return `${groupId}\t${sg?.id || sg?.name?.tr || ""}`;
+  }
+
+  function sortedGroups() {
+    return [...groups].sort(
+      (a, b) =>
+        (Number(a.sort) || 0) - (Number(b.sort) || 0) ||
+        String(a.name?.tr || a.id).localeCompare(String(b.name?.tr || b.id), "tr")
+    );
+  }
+
+  function groupFilterSelectionLabels() {
+    const labels = [];
+    sortedGroups().forEach((group) => {
+      const subs = Array.isArray(group.subGroups) ? group.subGroups : [];
+      const title = group.name?.tr || group.id;
+      if (!subs.length) {
+        if (groupFilterState.groups.has(group.id)) labels.push(title);
+        return;
+      }
+      const chosen = subs.filter((sg) =>
+        groupFilterState.subs.has(subFilterKey(group.id, sg))
+      );
+      if (chosen.length === subs.length && groupFilterState.groups.has(group.id)) {
+        labels.push(title);
+        return;
+      }
+      chosen.forEach((sg) => labels.push(sg.name?.tr || sg.id));
+    });
+    return labels;
+  }
+
+  function updateGroupFilterLabel() {
+    if (!groupFilterToggle) return;
+    const labels = groupFilterSelectionLabels();
+    if (!labels.length) groupFilterToggle.textContent = "Gruplar";
+    else if (labels.length <= 2) groupFilterToggle.textContent = labels.join(", ");
+    else groupFilterToggle.textContent = `Gruplar (${labels.length})`;
+  }
+
+  function renderGroupFilter() {
+    if (!groupFilterTree) return;
+    const knownGroups = new Set(groups.map((group) => group.id));
+    for (const id of [...groupFilterState.groups]) {
+      if (!knownGroups.has(id)) groupFilterState.groups.delete(id);
+    }
+    const knownSubs = new Set();
+    groups.forEach((group) => {
+      (group.subGroups || []).forEach((sg) => knownSubs.add(subFilterKey(group.id, sg)));
+    });
+    for (const key of [...groupFilterState.subs]) {
+      if (!knownSubs.has(key)) groupFilterState.subs.delete(key);
+    }
+
+    if (!groups.length) {
+      groupFilterTree.innerHTML = `<li class="muted">Grup yok.</li>`;
+      updateGroupFilterLabel();
+      return;
+    }
+
+    groupFilterTree.innerHTML = sortedGroups()
+      .map((group) => {
+        const subs = Array.isArray(group.subGroups) ? group.subGroups : [];
+        const subHtml = subs
+          .map((sg) => {
+            const checked = groupFilterState.subs.has(subFilterKey(group.id, sg))
+              ? " checked"
+              : "";
+            return `<li>
+              <label class="group-filter__row">
+                <input type="checkbox" data-filter-sub="${escapeAttr(
+                  group.id
+                )}" data-filter-sub-id="${escapeAttr(sg.id || sg.name?.tr || "")}"${checked} />
+                <span>${escapeHtml(sg.name?.tr || sg.id)}${
+                  isActiveRecord(sg) ? "" : ' <em class="muted">pasif</em>'
+                }</span>
+              </label>
+            </li>`;
+          })
+          .join("");
+        const parentOn = groupFilterState.groups.has(group.id) ? " checked" : "";
+        return `<li>
+          <label class="group-filter__row">
+            <input type="checkbox" data-filter-group="${escapeAttr(group.id)}"${parentOn} />
+            <span>${escapeHtml(group.name?.tr || group.id)}${
+              isActiveRecord(group) ? "" : ' <em class="muted">pasif</em>'
+            }</span>
+          </label>
+          ${subs.length ? `<ul class="group-filter__subs">${subHtml}</ul>` : ""}
+        </li>`;
+      })
+      .join("");
+
+    groupFilterTree.querySelectorAll("[data-filter-group]").forEach((parent) => {
+      const groupId = parent.getAttribute("data-filter-group");
+      const children = [...groupFilterTree.querySelectorAll("[data-filter-sub]")].filter(
+        (box) => box.getAttribute("data-filter-sub") === groupId
+      );
+      if (!children.length) return;
+      const on = children.filter((box) => box.checked).length;
+      parent.indeterminate = on > 0 && on < children.length;
+      parent.checked = on === children.length && on > 0;
+    });
+    updateGroupFilterLabel();
+  }
+
+  function filterProductsByGroup(items) {
+    if (!groupFilterState.groups.size && !groupFilterState.subs.size) return items;
+    return items.filter((product) => {
+      const group = groups.find((item) => item.id === product.category);
+      if (!group) return false;
+      const subs = Array.isArray(group.subGroups) ? group.subGroups : [];
+      if (!subs.length) return groupFilterState.groups.has(group.id);
+      const full =
+        groupFilterState.groups.has(group.id) &&
+        subs.every((sg) => groupFilterState.subs.has(subFilterKey(group.id, sg)));
+      if (full) return true;
+      return subs.some(
+        (sg) =>
+          groupFilterState.subs.has(subFilterKey(group.id, sg)) &&
+          productUsesSubgroup(product, sg)
+      );
+    });
+  }
+
+  function renderProducts() {
+    const visible = filterProductsByGroup(
+      filterProductsBySearch(filterItems(products, filters.products))
+    );
+    productCount.textContent = `${visible.length} / ${products.length} ürün`;
+    if (!visible.length) {
+      productList.innerHTML = `<p class="empty">Bu filtrede / aramada kayıt yok.</p>`;
+      return;
+    }
+    productList.innerHTML = visible
+      .map((p) => {
+        const cover = productCover(p);
+        return `
+      <article class="row" data-id="${escapeAttr(p.id)}">
+        <img src="/${escapeAttr(cover)}" alt="${escapeAttr(p.name)}" />
+        <div>
+          <h3>${escapeHtml(p.name)}</h3>
+          <p>${escapeHtml(groupLabel(p.category))}${
+            p.subGroup ? " · " + escapeHtml(p.subGroup) : ""
+          }${p.meta ? " · " + escapeHtml(p.meta) : ""}</p>
+          <span class="badge${isActiveRecord(p) ? "" : " is-off"}">${
+            isActiveRecord(p) ? "Aktif" : "Pasif"
+          }</span>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-ghost" data-edit-product="${escapeAttr(p.id)}">Düzenle</button>
+          <button type="button" class="btn btn-danger" data-delete-product="${escapeAttr(p.id)}">Sil</button>
+        </div>
+      </article>`;
+      })
+      .join("");
+  }
+
+  function renderGroups() {
+    const visible = filterItems(groups, filters.groups);
+    groupCount.textContent = `${visible.length} / ${groups.length} grup`;
+    if (!visible.length) {
+      groupList.innerHTML = `<p class="empty">Bu filtrede kayıt yok.</p>`;
+      return;
+    }
+    groupList.innerHTML = visible
+      .map((g) => {
+        const subs = Array.isArray(g.subGroups) ? g.subGroups : [];
+        const subHtml = subs.length
+          ? `<ul class="group-tree-item__subs">${subs
+              .map(
+                (sg) => `
+            <li class="${isActiveRecord(sg) ? "" : "is-off"}">
+              <span>${escapeHtml(sg.name?.tr || sg.id)}</span>
+              <span class="row-actions">
+                ${isActiveRecord(sg) ? "" : '<span class="muted">Pasif</span>'}
+                <button type="button" class="btn btn-danger sm" data-delete-subgroup="${escapeAttr(
+                  g.id
+                )}" data-subgroup-key="${escapeAttr(sg.id)}">Sil</button>
+              </span>
+            </li>`
+              )
+              .join("")}</ul>`
+          : `<p class="group-tree-item__meta">Alt grup yok</p>`;
+        return `
+      <article class="group-tree-item" data-id="${escapeAttr(g.id)}">
+        <div class="group-tree-item__head">
+          <div>
+            <h3>${escapeHtml(g.name.tr)}</h3>
+            <p class="group-tree-item__meta">${escapeHtml(g.id)} · sıra ${escapeHtml(
+              String(g.sort)
+            )} · ${subs.length} alt grup</p>
+            <span class="badge${isActiveRecord(g) ? "" : " is-off"}">${
+              isActiveRecord(g) ? "Aktif" : "Pasif"
+            }</span>
+          </div>
+          <div class="row-actions">
+            <button type="button" class="btn btn-ghost sm" data-edit-group="${escapeAttr(
+              g.id
+            )}">Düzenle</button>
+            <button type="button" class="btn btn-danger sm" data-delete-group="${escapeAttr(
+              g.id
+            )}">Sil</button>
+          </div>
+        </div>
+        ${subHtml}
+      </article>`;
+      })
+      .join("");
+  }
+
+  function renderUsers() {
+    const visible = filterItems(users, filters.users);
+    userCount.textContent = `${visible.length} / ${users.length} kullanıcı`;
+    if (!visible.length) {
+      userList.innerHTML = `<p class="empty">Bu filtrede kayıt yok.</p>`;
+      return;
+    }
+    userList.innerHTML = visible
+      .map(
+        (u) => `
+      <article class="row row--plain" data-id="${escapeAttr(u.id)}">
+        <div>
+          <h3>${escapeHtml(u.name || u.email)}</h3>
+          <p>${escapeHtml(u.email)} · ${escapeHtml(u.role || "admin")}</p>
+          <span class="badge${isActiveRecord(u) ? "" : " is-off"}">${
+            isActiveRecord(u) ? "Aktif" : "Pasif"
+          }</span>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-ghost" data-edit-user="${escapeAttr(u.id)}">Düzenle</button>
+          <button type="button" class="btn btn-danger" data-delete-user="${escapeAttr(u.id)}">Sil</button>
+        </div>
+      </article>`
+      )
+      .join("");
+  }
+
+  function fillSettings(settings) {
+    document.getElementById("settings-email").value = settings.email || "";
+    document.getElementById("settings-phone").value = settings.phone || "";
+    document.getElementById("settings-kep").value = settings.kep || "";
+    document.getElementById("settings-web").value = settings.web || "";
+    document.getElementById("settings-hq").value = settings.hq || "";
+    document.getElementById("settings-warehouse").value = settings.warehouse || "";
+    document.getElementById("settings-tax-office").value = settings.taxOffice || "";
+    document.getElementById("settings-tax-number").value = settings.taxNumber || "";
+    document.getElementById("settings-mersis").value = settings.mersis || "";
+    document.getElementById("settings-footer-tag").value = settings.footerTagTr || "";
+    document.getElementById("settings-hero-lead").value = settings.heroLeadTr || "";
+    const ga = document.getElementById("settings-ga");
+    if (ga) ga.value = settings.googleAnalyticsId || "";
+    const gsc = document.getElementById("settings-gsc");
+    if (gsc) gsc.value = settings.googleSiteVerification || "";
+    const bing = document.getElementById("settings-bing");
+    if (bing) bing.value = settings.bingSiteVerification || "";
+  }
+
+  async function loadCatalog() {
+    const data = await api("/api/admin/products");
+    products = data.products || [];
+    groups = data.groups || [];
+    renderGroupFilter();
+    renderProducts();
+    renderGroups();
+    fillCategorySelect();
+  }
+
+  function rememberProduct(product) {
+    if (!product?.id) return;
+    const idx = products.findIndex((item) => item.id === product.id);
+    if (idx === -1) products.unshift(product);
+    else products[idx] = product;
+    renderProducts();
+  }
+
+  async function loadSettings() {
+    const data = await api("/api/admin/settings");
+    fillSettings(data.settings || {});
+  }
+
+  async function loadInquiries() {
+    const listEl = document.getElementById("inquiry-list");
+    const countEl = document.getElementById("inquiry-count");
+    if (!listEl) return;
+    const data = await api("/api/admin/inquiries");
+    const list = data.inquiries || [];
+    if (countEl) countEl.textContent = list.length ? `${list.length} kayıt` : "";
+    if (!list.length) {
+      listEl.innerHTML = `<p class="muted">Henüz form gönderilmedi.</p>`;
+      return;
+    }
+    listEl.innerHTML = list
+      .map((item) => {
+        const when = item.createdAt
+          ? new Date(item.createdAt).toLocaleString("tr-TR")
+          : "";
+        const meta = [item.company, item.email, item.phone].filter(Boolean).join(" · ");
+        return `<article class="inquiry">
+          <div class="inquiry__head">
+            <strong>${escapeHtml(item.name || "")}</strong>
+            <time>${escapeHtml(when)}</time>
+          </div>
+          <p class="inquiry__meta">${escapeHtml(meta)}</p>
+          <p class="inquiry__message">${escapeHtml(item.message || "")}</p>
+        </article>`;
+      })
+      .join("");
+  }
+
+  async function loadUsers() {
+    const data = await api("/api/admin/users");
+    users = data.users || [];
+    renderUsers();
+  }
+
+  function setView(view) {
+    document.querySelectorAll(".nav__link").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-view") === view);
+    });
+    document.querySelectorAll("[data-view-panel]").forEach((panel) => {
+      panel.hidden = panel.getAttribute("data-view-panel") !== view;
+    });
+    const meta = pageMeta[view] || pageMeta.products;
+    pageTitle.textContent = meta.title;
+    pageDesc.textContent = meta.desc;
+    const gotoGroups = document.getElementById("goto-groups");
+    const gotoProducts = document.getElementById("goto-products");
+    if (gotoGroups) gotoGroups.hidden = view !== "products";
+    if (gotoProducts) gotoProducts.hidden = view !== "groups";
+    if (view === "inquiries") {
+      loadInquiries().catch((err) => flash(err.message, true));
+    }
+  }
+
+  async function boot() {
+    try {
+      const session = await api("/api/admin/session");
+      if (!session.ok) {
+        location.replace("/admin/");
+        return;
+      }
+      appView.hidden = false;
+      await loadCatalog();
+      await loadSettings();
+      await loadUsers();
+      setView("products");
+    } catch (_) {
+      location.replace("/admin/");
+    }
+  }
+
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await api("/api/admin/logout", { method: "POST" });
+    } catch (_) {}
+    location.replace("/admin/");
+  });
+
+  document.querySelectorAll(".nav__link").forEach((btn) => {
+    btn.addEventListener("click", () => setView(btn.getAttribute("data-view")));
+  });
+
+  document.getElementById("goto-groups")?.addEventListener("click", () => {
+    setView("groups");
+  });
+  document.getElementById("goto-products")?.addEventListener("click", () => {
+    setView("products");
+  });
+
+  function setGroupFilterOpen(open) {
+    if (!groupFilterPanel || !groupFilterToggle) return;
+    groupFilterPanel.hidden = !open;
+    groupFilterToggle.setAttribute("aria-expanded", String(open));
+  }
+
+  groupFilterToggle?.addEventListener("click", () => {
+    setGroupFilterOpen(groupFilterPanel.hidden);
+  });
+
+  document.getElementById("group-filter-clear")?.addEventListener("click", () => {
+    groupFilterState.groups.clear();
+    groupFilterState.subs.clear();
+    renderGroupFilter();
+    renderProducts();
+  });
+
+  groupFilterTree?.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const groupId = input.getAttribute("data-filter-group");
+    if (groupId) {
+      const group = groups.find((item) => item.id === groupId);
+      const subs = Array.isArray(group?.subGroups) ? group.subGroups : [];
+      if (input.checked) {
+        groupFilterState.groups.add(groupId);
+        subs.forEach((sg) => groupFilterState.subs.add(subFilterKey(groupId, sg)));
+      } else {
+        groupFilterState.groups.delete(groupId);
+        subs.forEach((sg) => groupFilterState.subs.delete(subFilterKey(groupId, sg)));
+      }
+      input.indeterminate = false;
+      renderGroupFilter();
+      renderProducts();
+      return;
+    }
+    const parentId = input.getAttribute("data-filter-sub");
+    const subId = input.getAttribute("data-filter-sub-id");
+    if (!parentId) return;
+    const group = groups.find((item) => item.id === parentId);
+    const sg = (group?.subGroups || []).find(
+      (item) => (item.id || item.name?.tr || "") === subId
+    );
+    if (!sg) return;
+    const key = subFilterKey(parentId, sg);
+    if (input.checked) groupFilterState.subs.add(key);
+    else groupFilterState.subs.delete(key);
+    const subs = group?.subGroups || [];
+    const allOn = subs.length && subs.every((item) => groupFilterState.subs.has(subFilterKey(parentId, item)));
+    if (allOn) groupFilterState.groups.add(parentId);
+    else groupFilterState.groups.delete(parentId);
+    renderGroupFilter();
+    renderProducts();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!groupFilterPanel || groupFilterPanel.hidden) return;
+    if (event.target.closest(".group-filter")) return;
+    setGroupFilterOpen(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!groupFilterPanel || groupFilterPanel.hidden) return;
+    setGroupFilterOpen(false);
+  });
+
+  function subgroupKeys(sg) {
+    return [sg?.id, sg?.name?.tr, sg?.name?.en, sg?.name?.ar]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  function productUsesSubgroup(product, sg) {
+    const raw = String(product?.subGroup || "").trim().toLowerCase();
+    if (!raw) return false;
+    return subgroupKeys(sg).includes(raw);
+  }
+
+  function productsInSubgroup(groupId, sg) {
+    return products.filter(
+      (product) => product.category === groupId && productUsesSubgroup(product, sg)
+    );
+  }
+
+  function showNotice(text, items, label) {
+    const notice = document.getElementById("notice");
+    const textEl = document.getElementById("notice-text");
+    const ok = document.getElementById("notice-ok");
+    const listEl = document.getElementById("notice-list");
+    const listLabel = document.getElementById("notice-list-label");
+    if (!notice || !textEl || !ok) return Promise.resolve();
+    textEl.textContent = text;
+    const names = Array.isArray(items) ? items.filter(Boolean) : [];
+    if (listLabel) listLabel.textContent = label || "Bağlı ürünler";
+    if (listEl) {
+      listEl.replaceChildren(
+        ...names.map((name) => {
+          const li = document.createElement("li");
+          li.textContent = name;
+          return li;
+        })
+      );
+      listEl.hidden = names.length === 0;
+    }
+    if (listLabel) listLabel.hidden = names.length === 0;
+    notice.hidden = false;
+    ok.focus();
+    return new Promise((resolve) => {
+      function close() {
+        notice.hidden = true;
+        ok.removeEventListener("click", close);
+        notice.removeEventListener("click", onBackdrop);
+        document.removeEventListener("keydown", onKey);
+        resolve();
+      }
+      function onBackdrop(event) {
+        if (event.target.closest("[data-notice-close]")) close();
+      }
+      function onKey(event) {
+        if (event.key === "Escape" || event.key === "Enter") close();
+      }
+      ok.addEventListener("click", close);
+      notice.addEventListener("click", onBackdrop);
+      document.addEventListener("keydown", onKey);
+    });
+  }
+
+  document.querySelectorAll(".filter-tabs").forEach((tabs) => {
+    tabs.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-filter]");
+      if (!btn) return;
+      const group = tabs.getAttribute("data-filter-group");
+      const filter = btn.getAttribute("data-filter");
+      filters[group] = filter;
+      tabs.querySelectorAll(".filter-tab").forEach((tab) => {
+        tab.classList.toggle("is-active", tab === btn);
+      });
+      if (group === "products") renderProducts();
+      if (group === "groups") renderGroups();
+      if (group === "users") renderUsers();
+    });
+  });
+
+  document.getElementById("product-new").addEventListener("click", () => {
+    openProductDialog(null);
+  });
+
+  productSearch.addEventListener("input", () => {
+    productSearchQuery = productSearch.value || "";
+    renderProducts();
+  });
+  document.getElementById("group-new").addEventListener("click", () => {
+    openGroupDialog(null);
+  });
+  document.getElementById("user-new").addEventListener("click", () => {
+    openUserDialog(null);
+  });
+
+  document.getElementById("product-close").addEventListener("click", () => {
+    closeDialog(productDialog);
+  });
+  document.getElementById("group-close").addEventListener("click", () => {
+    closeDialog(groupDialog);
+  });
+  document.getElementById("user-close").addEventListener("click", () => {
+    closeDialog(userDialog);
+  });
+
+  document.querySelectorAll("[data-product-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setProductTab(btn.getAttribute("data-product-tab"));
+    });
+  });
+
+  document.getElementById("goto-product-images")?.addEventListener("click", () => {
+    setProductTab("images");
+  });
+
+  productMediaList.addEventListener("mousedown", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    if (!card) return;
+    card.draggable = !event.target.closest("button");
+  });
+
+  productMediaList.addEventListener("dragstart", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    if (!card || event.target.closest("button")) {
+      event.preventDefault();
+      return;
+    }
+    mediaDragIndex = Number(card.getAttribute("data-media-index"));
+    card.classList.add("is-dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(mediaDragIndex));
+  });
+
+  productMediaList.addEventListener("dragover", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    if (!card || mediaDragIndex === null) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    productMediaList.querySelectorAll(".media-item.is-drop").forEach((el) => {
+      if (el !== card) el.classList.remove("is-drop");
+    });
+    card.classList.add("is-drop");
+  });
+
+  productMediaList.addEventListener("drop", (event) => {
+    const card = event.target.closest("[data-media-index]");
+    event.preventDefault();
+    if (!card || mediaDragIndex === null) return;
+    const target = Number(card.getAttribute("data-media-index"));
+    const from = mediaDragIndex;
+    mediaDragIndex = null;
+    moveProductMedia(from, target);
+  });
+
+  productMediaList.addEventListener("dragend", () => {
+    mediaDragIndex = null;
+    productMediaList.querySelectorAll(".media-item").forEach((el) => {
+      el.classList.remove("is-dragging", "is-drop");
+      el.draggable = true;
+    });
+  });
+
+  productMediaList.addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-image]");
+    const vitrin = event.target.closest("[data-vitrin-image]");
+    const preview = event.target.closest("[data-preview-image]");
+    if (remove) {
+      const index = Number(remove.getAttribute("data-remove-image"));
+      if (!Number.isInteger(index)) return;
+      const [removed] = productMediaItems.splice(index, 1);
+      if (removed?.preview) URL.revokeObjectURL(removed.preview);
+      renderProductMedia();
+      return;
+    }
+    if (preview) {
+      const index = Number(preview.getAttribute("data-preview-image"));
+      if (Number.isInteger(index)) openMediaPreview(index);
+      return;
+    }
+    if (!vitrin) return;
+    const index = Number(vitrin.getAttribute("data-vitrin-image"));
+    if (!Number.isInteger(index) || index <= 0 || index >= productMediaItems.length) return;
+    moveProductMedia(index, 0);
+  });
+
+  document.getElementById("media-preview")?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-preview-close]")) closeMediaPreview();
+  });
+
+  productDialog.addEventListener("cancel", (event) => {
+    const preview = document.getElementById("media-preview");
+    if (!preview || preview.hidden) return;
+    event.preventDefault();
+    closeMediaPreview();
+  });
+
+  document.getElementById("product-image-add")?.addEventListener("click", () => {
+    productImagesInput?.click();
+  });
+
+  productImagesInput?.addEventListener("change", () => {
+    const files = [...(productImagesInput.files || [])];
+    files.forEach((file) => {
+      productMediaItems.push({
+        kind: "file",
+        file,
+        preview: URL.createObjectURL(file),
+      });
+    });
+    productImagesInput.value = "";
+    renderProductMedia();
+  });
+
+  productSeoAiBtn.addEventListener("click", async () => {
+    productError.hidden = true;
+    productSeoAiBtn.disabled = true;
+    productSeoAiBtn.textContent = "Hazırlanıyor…";
+    try {
+      const data = await api("/api/admin/products/seo-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: document.getElementById("product-name").value.trim(),
+          category: productCategory.value,
+          meta: document.getElementById("product-meta").value.trim(),
+          description: document.getElementById("product-description").value.trim(),
+        }),
+      });
+      const seo = data.seo || {};
+      document.getElementById("product-seo-title").value = seo.title || "";
+      document.getElementById("product-seo-description").value =
+        seo.description || "";
+      document.getElementById("product-seo-keywords").value = seo.keywords || "";
+      document.getElementById("product-seo-slug").value = seo.slug || "";
+      setProductTab("seo");
+      flash(
+        data.source === "openai"
+          ? "SEO alanları yapay zeka ile dolduruldu."
+          : "SEO alanları otomatik hazırlandı."
+      );
+    } catch (err) {
+      productError.textContent = err.message;
+      productError.hidden = false;
+      flash(err.message, true);
+    } finally {
+      productSeoAiBtn.disabled = false;
+      productSeoAiBtn.textContent = "Yapay zeka ile doldur";
+    }
+  });
+
+  productForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    productError.hidden = true;
+    const fileItems = productMediaItems.filter((item) => item.kind === "file" && item.file);
+    if (!productMediaItems.length) {
+      productError.textContent = editingProductId
+        ? "En az bir ürün görseli gerekli."
+        : "En az bir ürün görseli seçin.";
+      productError.hidden = false;
+      setProductTab("images");
+      return;
+    }
+    if (!editingProductId && !fileItems.length) {
+      productError.textContent = "En az bir ürün görseli seçin.";
+      productError.hidden = false;
+      setProductTab("images");
+      return;
+    }
+    const submitBtn = document.getElementById("product-submit");
+    const submitLabel = submitBtn?.textContent || "Kaydet";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Kaydediliyor…";
+    }
+    const imageOrder = productMediaItems.map((item) =>
+      item.kind === "saved" ? { t: "k", p: item.path } : { t: "n" }
+    );
+    const keepImages = productMediaItems
+      .filter((item) => item.kind === "saved")
+      .map((item) => item.path);
+    const fields = {
+      name: document.getElementById("product-name").value.trim(),
+      category: productCategory.value,
+      subGroup: document.getElementById("product-subgroup").value,
+      meta: document.getElementById("product-meta").value.trim(),
+      description: document.getElementById("product-description").value.trim(),
+      seoTitle: document.getElementById("product-seo-title").value.trim(),
+      seoDescription: document.getElementById("product-seo-description").value.trim(),
+      seoKeywords: document.getElementById("product-seo-keywords").value.trim(),
+      seoSlug: document.getElementById("product-seo-slug").value.trim(),
+      active: productActive.checked,
+      keepImages,
+      imageOrder,
+    };
+    try {
+      let saved;
+      if (editingProductId && !fileItems.length) {
+        saved = await api(`/api/admin/products/${encodeURIComponent(editingProductId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fields),
+        });
+        flash("Ürün güncellendi.");
+      } else {
+        const formData = new FormData();
+        Object.entries(fields).forEach(([key, value]) => {
+          if (key === "keepImages" || key === "imageOrder") {
+            formData.set(key, JSON.stringify(value));
+            return;
+          }
+          formData.set(key, key === "active" ? (value ? "true" : "false") : String(value ?? ""));
+        });
+        fileItems.forEach((item) => formData.append("images", item.file));
+        if (editingProductId) {
+          saved = await api(`/api/admin/products/${encodeURIComponent(editingProductId)}`, {
+            method: "PUT",
+            body: formData,
+          });
+          flash("Ürün güncellendi.");
+        } else {
+          saved = await api("/api/admin/products", { method: "POST", body: formData });
+          flash("Ürün eklendi.");
+        }
+      }
+      closeDialog(productDialog);
+      if (saved?.product) rememberProduct(saved.product);
+      else await loadCatalog();
+    } catch (err) {
+      productError.textContent = err.message;
+      productError.hidden = false;
+      flash(err.message, true);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitLabel;
+      }
+    }
+  });
+
+  productList.addEventListener("click", async (event) => {
+    const editBtn = event.target.closest("[data-edit-product]");
+    const deleteBtn = event.target.closest("[data-delete-product]");
+    if (editBtn) {
+      const product = products.find(
+        (p) => p.id === editBtn.getAttribute("data-edit-product")
+      );
+      if (product) openProductDialog(product);
+      return;
+    }
+    if (deleteBtn) {
+      const id = deleteBtn.getAttribute("data-delete-product");
+      if (!id) return;
+      if (!window.confirm("Bu ürünü silmek istediğinize emin misiniz?")) return;
+      try {
+        await api(`/api/admin/products/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        flash("Ürün silindi.");
+        await loadCatalog();
+      } catch (err) {
+        flash(err.message, true);
+      }
+    }
+  });
+
+  productCategory.addEventListener("change", () => {
+    fillSubGroupSelect(productCategory.value, productSubgroup?.value || "");
+  });
+
+  document.getElementById("subgroup-add")?.addEventListener("click", () => {
+    syncSubGroupsFromEditor();
+    editingSubGroups.push({
+      id: "",
+      sort: editingSubGroups.length + 1,
+      active: true,
+      name: { tr: "", en: "", ar: "" },
+    });
+    renderSubGroupsEditor();
+  });
+
+  groupSubgroupsEl?.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-remove-subgroup]");
+    if (!btn) return;
+    syncSubGroupsFromEditor();
+    const index = Number(btn.getAttribute("data-remove-subgroup"));
+    if (!Number.isInteger(index)) return;
+    editingSubGroups.splice(index, 1);
+    renderSubGroupsEditor();
+  });
+
+  groupForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    groupError.hidden = true;
+    const subGroups = syncSubGroupsFromEditor().filter((sg) => sg.name?.tr);
+    const payload = {
+      id: document.getElementById("group-id").value.trim(),
+      sort: Number(document.getElementById("group-sort").value || 1),
+      active: document.getElementById("group-active").checked,
+      name: {
+        tr: document.getElementById("group-name-tr").value.trim(),
+        en: document.getElementById("group-name-en").value.trim(),
+        ar: document.getElementById("group-name-ar").value.trim(),
+      },
+      subGroups,
+    };
+    try {
+      if (editingGroupId) {
+        await api(`/api/admin/groups/${encodeURIComponent(editingGroupId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        flash("Grup güncellendi.");
+      } else {
+        await api("/api/admin/groups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        flash("Grup eklendi.");
+      }
+      closeDialog(groupDialog);
+      await loadCatalog();
+    } catch (err) {
+      groupError.textContent = err.message;
+      groupError.hidden = false;
+      flash(err.message, true);
+    }
+  });
+
+  groupList.addEventListener("click", async (event) => {
+    const editBtn = event.target.closest("[data-edit-group]");
+    const deleteBtn = event.target.closest("[data-delete-group]");
+    if (editBtn) {
+      const group = groups.find(
+        (g) => g.id === editBtn.getAttribute("data-edit-group")
+      );
+      if (group) openGroupDialog(group);
+      return;
+    }
+    const subgroupBtn = event.target.closest("[data-delete-subgroup]");
+    if (subgroupBtn) {
+      const groupId = subgroupBtn.getAttribute("data-delete-subgroup");
+      const subId = subgroupBtn.getAttribute("data-subgroup-key");
+      const group = groups.find((item) => item.id === groupId);
+      const sg = (group?.subGroups || []).find((item) => item.id === subId);
+      if (!group || !sg) return;
+      const used = productsInSubgroup(groupId, sg);
+      const subName = sg.name?.tr || sg.id;
+      if (used.length) {
+        const names = used
+          .map((product) => product.name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, "tr"));
+        await showNotice(
+          `"${subName}" alt grubu ${used.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir alt gruba taşıyın veya silin.`,
+          names,
+          "Bağlı ürünler"
+        );
+        return;
+      }
+      try {
+        await api(`/api/admin/groups/${encodeURIComponent(groupId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: group.id,
+            sort: group.sort,
+            active: group.active !== false,
+            name: group.name,
+            subGroups: (group.subGroups || []).filter((item) => item.id !== sg.id),
+          }),
+        });
+        flash("Alt grup silindi.");
+        await loadCatalog();
+      } catch (err) {
+        await showNotice(err.message || "Alt grup silinemedi.");
+      }
+      return;
+    }
+    if (deleteBtn) {
+      const id = deleteBtn.getAttribute("data-delete-group");
+      if (!id) return;
+      const group = groups.find((item) => item.id === id);
+      const name = group?.name?.tr || id;
+      const subNames = (group?.subGroups || [])
+        .map((sg) => sg.name?.tr || sg.id)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "tr"));
+      if (subNames.length) {
+        await showNotice(
+          `"${name}" üst grubu ${subNames.length} alt gruba bağlı. Silmek için önce bu alt grupları kaldırın.`,
+          subNames,
+          "Bağlı alt gruplar"
+        );
+        return;
+      }
+      const used = products.filter((product) => product.category === id);
+      if (used.length) {
+        const names = used
+          .map((product) => product.name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, "tr"));
+        await showNotice(
+          `"${name}" grubu ${used.length} üründe kayıtlı. Silmek için önce bu ürünleri başka bir gruba taşıyın veya silin.`,
+          names,
+          "Bağlı ürünler"
+        );
+        return;
+      }
+      try {
+        await api(`/api/admin/groups/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        flash("Grup silindi.");
+        await loadCatalog();
+      } catch (err) {
+        await showNotice(err.message || "Grup silinemedi.");
+      }
+    }
+  });
+
+  userForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    userError.hidden = true;
+    const payload = {
+      name: document.getElementById("user-name").value.trim(),
+      email: document.getElementById("user-email").value.trim(),
+      role: document.getElementById("user-role").value,
+      active: document.getElementById("user-active").checked,
+    };
+    const password = userPassword.value;
+    if (password) payload.password = password;
+    try {
+      if (editingUserId) {
+        await api(`/api/admin/users/${encodeURIComponent(editingUserId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        flash("Kullanıcı güncellendi.");
+      } else {
+        if (!password) throw new Error("Yeni kullanıcı için şifre gerekli.");
+        await api("/api/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        flash("Kullanıcı eklendi.");
+      }
+      closeDialog(userDialog);
+      await loadUsers();
+    } catch (err) {
+      userError.textContent = err.message;
+      userError.hidden = false;
+      flash(err.message, true);
+    }
+  });
+
+  userList.addEventListener("click", async (event) => {
+    const editBtn = event.target.closest("[data-edit-user]");
+    const deleteBtn = event.target.closest("[data-delete-user]");
+    if (editBtn) {
+      const user = users.find(
+        (u) => u.id === editBtn.getAttribute("data-edit-user")
+      );
+      if (user) openUserDialog(user);
+      return;
+    }
+    if (deleteBtn) {
+      const id = deleteBtn.getAttribute("data-delete-user");
+      if (!id) return;
+      if (!window.confirm("Bu kullanıcıyı silmek istediğinize emin misiniz?")) return;
+      try {
+        await api(`/api/admin/users/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        flash("Kullanıcı silindi.");
+        await loadUsers();
+      } catch (err) {
+        flash(err.message, true);
+      }
+    }
+  });
+
+  settingsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const payload = {
+      email: document.getElementById("settings-email").value.trim(),
+      phone: document.getElementById("settings-phone").value.trim(),
+      kep: document.getElementById("settings-kep").value.trim(),
+      web: document.getElementById("settings-web").value.trim(),
+      hq: document.getElementById("settings-hq").value.trim(),
+      warehouse: document.getElementById("settings-warehouse").value.trim(),
+      taxOffice: document.getElementById("settings-tax-office").value.trim(),
+      taxNumber: document.getElementById("settings-tax-number").value.trim(),
+      mersis: document.getElementById("settings-mersis").value.trim(),
+      footerTagTr: document.getElementById("settings-footer-tag").value.trim(),
+      heroLeadTr: document.getElementById("settings-hero-lead").value.trim(),
+      googleAnalyticsId: document.getElementById("settings-ga")?.value.trim() || "",
+      googleSiteVerification: document.getElementById("settings-gsc")?.value.trim() || "",
+      bingSiteVerification: document.getElementById("settings-bing")?.value.trim() || "",
+    };
+    try {
+      await api("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      flash("Site ayarları kaydedildi.");
+    } catch (err) {
+      flash(err.message, true);
+    }
+  });
+
+  boot();
+})();

@@ -29,3 +29,21 @@ export async function getPriceInclusionAdminData() {
 export type PriceInclusionItem = Awaited<
   ReturnType<typeof getPriceInclusionAdminData>
 >["items"][number];
+
+const villaPriceInclusionSelect = {
+  id: true,
+  description: true,
+  type: true,
+} as const;
+
+/** Villa özel seçim yoksa varsayılan (isDefault) fiyata dahil/hariç kalemlerini döner. */
+export async function getVillaPriceInclusionItems(priceInclusionIds: string[]) {
+  return prisma.priceInclusionItem.findMany({
+    where:
+      priceInclusionIds.length > 0
+        ? { id: { in: priceInclusionIds }, active: true }
+        : { isDefault: true, active: true },
+    orderBy: [{ type: "asc" }, { sortOrder: "asc" }],
+    select: villaPriceInclusionSelect,
+  });
+}

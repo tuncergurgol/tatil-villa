@@ -28,10 +28,24 @@ export function guestSummary(counts: {
   return parts.length > 0 ? parts.join(", ") : "1 Yetişkin";
 }
 
+export function totalGuests(counts: {
+  adults: number;
+  children: number;
+  babies: number;
+  pets: number;
+}): number {
+  return counts.adults + counts.children + counts.babies;
+}
+
 import type { VillaCategory } from "@prisma/client";
 import { facilityTypeLabel } from "@/lib/facility-type";
 
-export function categoryLabel(category: VillaCategory): string {
-  const label = facilityTypeLabel(category);
-  return category === "villa" ? `Kiralık ${label}` : label;
+export function categoryLabel(
+  category: VillaCategory,
+  listingCopy?: { usesTesis?: boolean }
+): string {
+  if (category === "villa") {
+    return listingCopy?.usesTesis ? "Kiralık Tesis" : "Kiralık Villa";
+  }
+  return facilityTypeLabel(category);
 }

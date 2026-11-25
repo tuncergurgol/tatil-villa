@@ -1,0 +1,832 @@
+"use server";
+
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import {
+  findActiveOtpCooldown,
+  otpCooldownUserMessage,
+} from "@/lib/otp-cooldown";
+import { deliverOtpCode, isPhoneOtpRequired } from "@/lib/otp-delivery";
+import { assertPublicBotChallenge } from "@/lib/public-bot-challenge";
+import {
+  assertPublicRequestAllowed,
+  PUBLIC_OTP_SEND_PURPOSE,
+  PUBLIC_OTP_VERIFY_PURPOSE,
+} from "@/lib/public-request-guard";
+import {
+  createMemberAccountWithLoyalty,
+  ensureWelcomeCouponForMember,
+  generateUniqueInviteCode,
+  linkMemberToCustomer,
+  normalizeMemberEmail,
+} from "@/lib/member-account";
+import {
+  findMemberByPhoneOrEmail,
+  recognizeReturningGuest,
+  type ReturningGuestMatch,
+} from "@/lib/returning-guest";
+import {
+  clearMemberSession,
+  createMemberSession,
+  getCurrentMember,
+} from "@/lib/member-session.server";
+import {
+  isValidTurkishMobileE164,
+  normalizePhoneToE164,
+} from "@/lib/phone";
+import { getCompanySettings } from "@/lib/queries/company-settings";
+import { getPublicSiteProfile } from "@/lib/public-site-profile";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { isBlacklistedContact } from "@/lib/customer-blacklist";
+import {
+  MEMBER_LOGIN_OTP_PURPOSE,
+  MEMBER_REGISTER_OTP_PURPOSE,
+  MEMBER_RESERVATION_OTP_PURPOSE,
+  OTP_TTL_MS,
+  createUniqueOtpCode,
+  invalidateActiveOtps,
+  type MemberOtpPayload,
+  type MemberReservationOtpPayload,
+} from "@/lib/verification-otp";
+import {
+  findMemberReservationBooking,
+  normalizeMemberLoginEmail,
+  parseMemberReservationCode,
+} from "@/lib/member-reservation-login";
+
+export type MemberAuthState = {
+  success?: boolean;
+  error?: string;
+  message?: string;
+  needsVerification?: boolean;
+  phone?: string;
+  verifyPhone?: string;
+  verificationId?: string;
+  channel?: "sms" | "whatsapp";
+  redirectTo?: string;
+  alreadyRegistered?: boolean;
+  otpMode?: "login" | "register" | "reservation";
+  welcomeTitle?: string;
+  welcomeBody?: string;
+  /** Aktif kod varken yeniden gönderim engellendi */
+  cooldownActive?: boolean;
+  retryAfterSec?: number;
+};
+
+function maskPhone(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  if (digits.length < 7) return e164;
+  return `****${digits.slice(-4)}`;
+}
+
+function welcomeFields(
+  match: ReturningGuestMatch | null
+): Pick<MemberAuthState, "welcomeTitle" | "welcomeBody"> {
+  if (!match) return {};
+  return {
+    welcomeTitle: match.welcomeTitle,
+    welcomeBody: match.welcomeBody,
+  };
+}
+
+async function alignMemberPhoneToE164(memberId: string, e164: string) {
+  const clash = await prisma.memberAccount.findUnique({
+    where: { phone: e164 },
+    select: { id: true },
+  });
+  if (clash) return;
+  await prisma.memberAccount.update({
+    where: { id: memberId },
+    data: { phone: e164 },
+  });
+}
+
+const registerSchema = z.object({
+  fullName: z.string().trim().min(2, "Ad soyad gerekli"),
+  email: z.string().email("Geçerli e-posta girin"),
+  phone: z
+    .string()
+    .min(1, "Telefon gerekli")
+    .transform((value) => normalizePhoneToE164(value) ?? "")
+    .refine((value) => isValidTurkishMobileE164(value), "Geçerli telefon girin"),
+  inviteCode: z.string().trim().optional(),
+  acceptKvkk: z.enum(["true", "false"]).transform((v) => v === "true"),
+  acceptMarketing: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
+});
+
+const emailLoginSchema = z.object({
+  email: z.string().email("Geçerli e-posta girin"),
+  password: z.string().min(6, "Şifre en az 6 karakter olmalı"),
+});
+
+async function sendMemberOtp(
+  phone: string,
+  purpose: string,
+  payload: MemberOtpPayload,
+  options?: { formData?: FormData | null; formDeviceToken?: string | null }
+) {
+  const bot = await assertPublicBotChallenge(options?.formData ?? null);
+  if (!bot.ok) {
+    return { error: bot.error };
+  }
+
+  const cooldown = await findActiveOtpCooldown(phone, purpose);
+  if (cooldown) {
+    return {
+      cooldownActive: true as const,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      phone: maskPhone(phone),
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
+    };
+  }
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone,
+    formDeviceToken:
+      options?.formDeviceToken ??
+      String(options?.formData?.get("deviceToken") ?? ""),
+  });
+  if (!guard.ok) {
+    return { error: guard.error };
+  }
+
+  const rate = checkRateLimit({
+    key: `member-otp:${phone}:${purpose}`,
+    limit: 3,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!rate.ok) {
+    return { error: "Çok fazla deneme. Lütfen bir süre sonra tekrar deneyin." };
+  }
+
+  await invalidateActiveOtps(phone, purpose);
+  const code = await createUniqueOtpCode(phone, purpose);
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  const delivery = await deliverOtpCode(phone, code, purpose, {
+    brandName: site.brandName,
+  });
+  if (!delivery.ok) {
+    return { error: delivery.error ?? "Doğrulama kodu gönderilemedi" };
+  }
+
+  const record = await prisma.verificationCode.create({
+    data: {
+      phone,
+      code,
+      purpose,
+      expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      payload,
+      channel: delivery.channel,
+    },
+  });
+
+  return {
+    verificationId: record.id,
+    channel: delivery.channel,
+    phone: maskPhone(phone),
+  };
+}
+
+async function completeMemberPhoneLogin(phone: string): Promise<MemberAuthState> {
+  let member = await findMemberByPhoneOrEmail({ phone });
+  if (!member) {
+    const guest = await recognizeReturningGuest({ phone });
+    if (!guest) return { error: "Üyelik oluşturulamadı" };
+
+    const company = await getCompanySettings();
+    const site = await getPublicSiteProfile(company);
+    member = await createMemberAccountWithLoyalty({
+      fullName: guest.fullName,
+      phone,
+      email: guest.email,
+      inviteCode: await generateUniqueInviteCode(),
+      phoneVerifiedAt: new Date(),
+      membershipAcceptedAt: new Date(),
+      registeredSiteKey: site.key,
+    });
+  } else if (member.phone !== phone) {
+    await alignMemberPhoneToE164(member.id, phone);
+  }
+
+  await prisma.memberAccount.update({
+    where: { id: member.id },
+    data: { phoneVerifiedAt: new Date() },
+  });
+  await linkMemberToCustomer(member.id);
+  await createMemberSession(member.id);
+
+  return { success: true, redirectTo: "/uye/hesabim" };
+}
+
+async function completeMemberRegister(params: {
+  phone: string;
+  fullName: string;
+  email: string;
+  inviteCode?: string;
+  marketingConsent?: boolean;
+  password?: string;
+}): Promise<MemberAuthState> {
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+
+  let referredByMemberId: string | undefined;
+  if (params.inviteCode?.trim()) {
+    const inviter = await prisma.memberAccount.findUnique({
+      where: { inviteCode: params.inviteCode.trim().toUpperCase() },
+      select: { id: true },
+    });
+    if (inviter) referredByMemberId = inviter.id;
+  }
+
+  const passwordHash = params.password?.trim()
+    ? await bcrypt.hash(params.password.trim(), 12)
+    : "";
+  const blocked = await isBlacklistedContact({
+    phone: params.phone,
+    email: params.email,
+  });
+
+  const existingMember = await findMemberByPhoneOrEmail({
+    phone: params.phone,
+    email: params.email,
+  });
+  if (existingMember) {
+    await prisma.memberAccount.update({
+      where: { id: existingMember.id },
+      data: { phoneVerifiedAt: new Date() },
+    });
+    await linkMemberToCustomer(existingMember.id);
+    await createMemberSession(existingMember.id);
+    return { success: true, redirectTo: "/uye/hesabim" };
+  }
+
+  const member = await createMemberAccountWithLoyalty({
+    fullName: params.fullName,
+    phone: params.phone,
+    email: params.email,
+    passwordHash,
+    inviteCode: await generateUniqueInviteCode(),
+    referredByMemberId,
+    marketingConsent: blocked ? false : Boolean(params.marketingConsent),
+    kvkkAcceptedAt: new Date(),
+    membershipAcceptedAt: new Date(),
+    phoneVerifiedAt: new Date(),
+    registeredSiteKey: site.key,
+  });
+
+  if (referredByMemberId) {
+    await prisma.memberReferral.create({
+      data: {
+        inviterMemberId: referredByMemberId,
+        invitedMemberId: member.id,
+      },
+    });
+    await ensureWelcomeCouponForMember(member.id);
+  }
+
+  await linkMemberToCustomer(member.id);
+  await createMemberSession(member.id);
+
+  return { success: true, redirectTo: "/uye/hesabim" };
+}
+
+async function completeMemberReservationLogin(
+  phone: string,
+  bookingId: string
+): Promise<MemberAuthState> {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true,
+      guestName: true,
+      guestEmail: true,
+      guestPhone: true,
+    },
+  });
+  if (!booking) return { error: "Rezervasyon bulunamadı" };
+
+  let member = await findMemberByPhoneOrEmail({
+    phone,
+    email: booking.guestEmail,
+  });
+  if (!member) {
+    const company = await getCompanySettings();
+    const site = await getPublicSiteProfile(company);
+    member = await createMemberAccountWithLoyalty({
+      fullName: booking.guestName,
+      phone,
+      email: booking.guestEmail,
+      inviteCode: await generateUniqueInviteCode(),
+      phoneVerifiedAt: new Date(),
+      membershipAcceptedAt: new Date(),
+      registeredSiteKey: site.key,
+    });
+  } else if (member.phone !== phone) {
+    await alignMemberPhoneToE164(member.id, phone);
+  }
+
+  await prisma.booking.update({
+    where: { id: booking.id },
+    data: { memberId: member.id },
+  });
+  await linkMemberToCustomer(member.id);
+  await createMemberSession(member.id);
+
+  return { success: true, redirectTo: "/uye/hesabim" };
+}
+
+export async function startMemberPhoneLoginAction(
+  phoneRaw: string,
+  formData?: FormData | null
+): Promise<MemberAuthState> {
+  const phone = normalizePhoneToE164(phoneRaw);
+  if (!phone || !isValidTurkishMobileE164(phone)) {
+    return { error: "Geçerli bir telefon numarası girin" };
+  }
+
+  const member = await findMemberByPhoneOrEmail({ phone });
+  const guest = await recognizeReturningGuest({ phone });
+  if (!member && !guest) {
+    return {
+      error:
+        "Bu telefonla kayıtlı üyelik veya rezervasyon bulunamadı. Önce üye olun.",
+    };
+  }
+  if (member && !member.active) {
+    return { error: "Üyelik hesabınız pasif durumda" };
+  }
+
+  if (!(await isPhoneOtpRequired())) {
+    const bot = await assertPublicBotChallenge(formData ?? null);
+    if (!bot.ok) return { error: bot.error };
+    const guard = await assertPublicRequestAllowed({
+      purpose: PUBLIC_OTP_SEND_PURPOSE,
+      phone,
+      formDeviceToken: String(formData?.get("deviceToken") ?? ""),
+    });
+    if (!guard.ok) return { error: guard.error };
+    return completeMemberPhoneLogin(phone);
+  }
+
+  const otp = await sendMemberOtp(
+    phone,
+    MEMBER_LOGIN_OTP_PURPOSE,
+    {
+      memberId: member?.id,
+      email: member?.email || guest?.email || undefined,
+      fullName: member?.fullName || guest?.fullName || undefined,
+    },
+    { formData }
+  );
+  if ("error" in otp) return { error: otp.error };
+
+  return {
+    success: true,
+    needsVerification: true,
+    otpMode: "login",
+    verificationId: otp.verificationId,
+    channel: otp.channel,
+    phone: otp.phone,
+    verifyPhone: phone,
+    cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+    retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+    message:
+      "cooldownActive" in otp && otp.cooldownActive
+        ? otp.message
+        : `${otp.phone} numarasına doğrulama kodu gönderildi`,
+    ...welcomeFields(guest),
+  };
+}
+
+export async function verifyMemberPhoneLoginAction(input: {
+  phone: string;
+  code: string;
+}): Promise<MemberAuthState> {
+  const phone = normalizePhoneToE164(input.phone);
+  if (!phone) return { error: "Geçersiz telefon" };
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) return { error: guard.error };
+
+  const record = await prisma.verificationCode.findFirst({
+    where: {
+      phone,
+      purpose: MEMBER_LOGIN_OTP_PURPOSE,
+      code: input.code.trim(),
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!record) return { error: "Doğrulama kodu hatalı veya süresi dolmuş" };
+
+  await prisma.verificationCode.update({
+    where: { id: record.id },
+    data: { usedAt: new Date() },
+  });
+
+  return completeMemberPhoneLogin(phone);
+}
+
+export async function startMemberRegisterAction(
+  formData: FormData
+): Promise<MemberAuthState> {
+  const parsed = registerSchema.safeParse({
+    fullName: formData.get("fullName"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    inviteCode: formData.get("inviteCode")?.toString() || "",
+    acceptKvkk: formData.get("acceptKvkk") ?? "false",
+    acceptMarketing: formData.get("acceptMarketing") ?? "false",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz form" };
+  }
+  if (!parsed.data.acceptKvkk) {
+    return { error: "Üyelik sözleşmesini kabul etmelisiniz" };
+  }
+
+  const phone = parsed.data.phone;
+  const email = normalizeMemberEmail(parsed.data.email);
+  const existingMember = await findMemberByPhoneOrEmail({ phone, email });
+  const guest = await recognizeReturningGuest({ phone, email });
+
+  if (existingMember) {
+    if (!existingMember.active) {
+      return { error: "Üyelik hesabınız pasif durumda" };
+    }
+    const otpPhone = existingMember.phone;
+    if (!(await isPhoneOtpRequired())) {
+      const bot = await assertPublicBotChallenge(formData);
+      if (!bot.ok) return { error: bot.error };
+      const guard = await assertPublicRequestAllowed({
+        purpose: PUBLIC_OTP_SEND_PURPOSE,
+        phone: otpPhone,
+        formDeviceToken: String(formData.get("deviceToken") ?? ""),
+      });
+      if (!guard.ok) return { error: guard.error };
+      return completeMemberPhoneLogin(otpPhone);
+    }
+    const otp = await sendMemberOtp(
+      otpPhone,
+      MEMBER_LOGIN_OTP_PURPOSE,
+      {
+        memberId: existingMember.id,
+        email: existingMember.email,
+        fullName: existingMember.fullName,
+      },
+      { formData }
+    );
+    if ("error" in otp) return { error: otp.error };
+
+    return {
+      success: true,
+      needsVerification: true,
+      alreadyRegistered: true,
+      otpMode: "login",
+      verificationId: otp.verificationId,
+      channel: otp.channel,
+      phone: otp.phone,
+      verifyPhone: otpPhone,
+      cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+      retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+      message:
+        "cooldownActive" in otp && otp.cooldownActive
+          ? otp.message
+          : `${otp.phone} numarasına doğrulama kodu gönderildi. Yeni üyelik açmanıza gerek yok.`,
+      ...welcomeFields(guest),
+    };
+  }
+
+  if (!(await isPhoneOtpRequired())) {
+    const bot = await assertPublicBotChallenge(formData);
+    if (!bot.ok) return { error: bot.error };
+    const guard = await assertPublicRequestAllowed({
+      purpose: PUBLIC_OTP_SEND_PURPOSE,
+      phone,
+      formDeviceToken: String(formData.get("deviceToken") ?? ""),
+    });
+    if (!guard.ok) return { error: guard.error };
+    return completeMemberRegister({
+      phone,
+      fullName: parsed.data.fullName,
+      email,
+      inviteCode: parsed.data.inviteCode || undefined,
+      marketingConsent: parsed.data.acceptMarketing,
+    });
+  }
+
+  const otp = await sendMemberOtp(
+    phone,
+    MEMBER_REGISTER_OTP_PURPOSE,
+    {
+      email,
+      fullName: parsed.data.fullName,
+      inviteCode: parsed.data.inviteCode || undefined,
+      marketingConsent: parsed.data.acceptMarketing,
+    },
+    { formData }
+  );
+  if ("error" in otp) return { error: otp.error };
+
+  return {
+    success: true,
+    needsVerification: true,
+    otpMode: "register",
+    verificationId: otp.verificationId,
+    channel: otp.channel,
+    phone: otp.phone,
+    verifyPhone: phone,
+    cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+    retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+    message:
+      "cooldownActive" in otp && otp.cooldownActive
+        ? otp.message
+        : guest
+          ? "Sizi sistemimizde hatırladık. Üyeliğinizi tamamlamak için doğrulama kodu gönderildi"
+          : "Kayıt için doğrulama kodu gönderildi",
+    ...welcomeFields(guest),
+  };
+}
+
+export async function verifyMemberRegisterAction(input: {
+  phone: string;
+  code: string;
+  password?: string;
+}): Promise<MemberAuthState> {
+  const phone = normalizePhoneToE164(input.phone);
+  if (!phone) return { error: "Geçersiz telefon" };
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) return { error: guard.error };
+
+  const record = await prisma.verificationCode.findFirst({
+    where: {
+      phone,
+      purpose: MEMBER_REGISTER_OTP_PURPOSE,
+      code: input.code.trim(),
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!record) return { error: "Doğrulama kodu hatalı veya süresi dolmuş" };
+
+  const payload = (record.payload ?? {}) as MemberOtpPayload;
+  if (!payload.fullName || !payload.email) {
+    return { error: "Kayıt bilgileri bulunamadı" };
+  }
+
+  await prisma.verificationCode.update({
+    where: { id: record.id },
+    data: { usedAt: new Date() },
+  });
+
+  return completeMemberRegister({
+    phone,
+    fullName: payload.fullName,
+    email: payload.email,
+    inviteCode: payload.inviteCode,
+    marketingConsent: payload.marketingConsent,
+    password: input.password,
+  });
+}
+
+const RESERVATION_CREDENTIALS_ERROR =
+  "E-posta veya rezervasyon kodu hatalı. Konfirme edilmiş rezervasyonunuz yoksa müşteri hizmetlerimizi arayın.";
+
+async function sendMemberReservationOtp(
+  phone: string,
+  payload: MemberReservationOtpPayload,
+  formData?: FormData | null
+) {
+  const bot = await assertPublicBotChallenge(formData ?? null);
+  if (!bot.ok) {
+    return { error: bot.error };
+  }
+
+  const cooldown = await findActiveOtpCooldown(
+    phone,
+    MEMBER_RESERVATION_OTP_PURPOSE
+  );
+  if (cooldown) {
+    return {
+      cooldownActive: true as const,
+      verificationId: cooldown.verificationId,
+      channel: cooldown.channel ?? undefined,
+      phone: maskPhone(phone),
+      retryAfterSec: cooldown.retryAfterSec,
+      message: otpCooldownUserMessage(cooldown.channel),
+    };
+  }
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_SEND_PURPOSE,
+    phone,
+    formDeviceToken: String(formData?.get("deviceToken") ?? ""),
+  });
+  if (!guard.ok) {
+    return { error: guard.error };
+  }
+
+  const rate = checkRateLimit({
+    key: `member-otp:${phone}:${MEMBER_RESERVATION_OTP_PURPOSE}`,
+    limit: 3,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!rate.ok) {
+    return { error: "Çok fazla deneme. Lütfen bir süre sonra tekrar deneyin." };
+  }
+
+  await invalidateActiveOtps(phone, MEMBER_RESERVATION_OTP_PURPOSE);
+  const code = await createUniqueOtpCode(phone, MEMBER_RESERVATION_OTP_PURPOSE);
+  const company = await getCompanySettings();
+  const site = await getPublicSiteProfile(company);
+  const delivery = await deliverOtpCode(
+    phone,
+    code,
+    MEMBER_RESERVATION_OTP_PURPOSE,
+    { brandName: site.brandName }
+  );
+  if (!delivery.ok) {
+    return { error: delivery.error ?? "Doğrulama kodu gönderilemedi" };
+  }
+
+  const record = await prisma.verificationCode.create({
+    data: {
+      phone,
+      code,
+      purpose: MEMBER_RESERVATION_OTP_PURPOSE,
+      expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      payload,
+      channel: delivery.channel,
+    },
+  });
+
+  return {
+    verificationId: record.id,
+    channel: delivery.channel,
+    phone: maskPhone(phone),
+  };
+}
+
+export async function startMemberReservationLoginAction(
+  formData: FormData
+): Promise<MemberAuthState> {
+  const email = normalizeMemberLoginEmail(String(formData.get("email") ?? ""));
+  const reservationCode = parseMemberReservationCode(
+    String(formData.get("reservationCode") ?? "")
+  );
+
+  if (!email.includes("@")) {
+    return { error: "Geçerli bir e-posta girin" };
+  }
+  if (reservationCode == null) {
+    return { error: RESERVATION_CREDENTIALS_ERROR };
+  }
+
+  const booking = await findMemberReservationBooking(email, reservationCode);
+  if (!booking) {
+    return { error: RESERVATION_CREDENTIALS_ERROR };
+  }
+
+  if (!(await isPhoneOtpRequired())) {
+    const bot = await assertPublicBotChallenge(formData);
+    if (!bot.ok) return { error: bot.error };
+    const guard = await assertPublicRequestAllowed({
+      purpose: PUBLIC_OTP_SEND_PURPOSE,
+      phone: booking.phone,
+      formDeviceToken: String(formData.get("deviceToken") ?? ""),
+    });
+    if (!guard.ok) return { error: guard.error };
+    return completeMemberReservationLogin(booking.phone, booking.id);
+  }
+
+  const otp = await sendMemberReservationOtp(
+    booking.phone,
+    {
+      bookingId: booking.id,
+      email,
+      reservationCode: String(reservationCode),
+    },
+    formData
+  );
+  if ("error" in otp) return { error: otp.error };
+
+  return {
+    success: true,
+    needsVerification: true,
+    otpMode: "reservation",
+    verificationId: otp.verificationId,
+    channel: otp.channel,
+    phone: booking.phone,
+    verifyPhone: booking.phone,
+    cooldownActive: "cooldownActive" in otp ? otp.cooldownActive : undefined,
+    retryAfterSec: "retryAfterSec" in otp ? otp.retryAfterSec : undefined,
+    message:
+      "cooldownActive" in otp && otp.cooldownActive
+        ? otp.message
+        : `Doğrulama kodu ${otp.phone} numarasına gönderildi`,
+  };
+}
+
+export async function verifyMemberReservationLoginAction(input: {
+  phone: string;
+  code: string;
+}): Promise<MemberAuthState> {
+  const phone = normalizePhoneToE164(input.phone);
+  if (!phone) return { error: "Geçersiz telefon" };
+
+  const guard = await assertPublicRequestAllowed({
+    purpose: PUBLIC_OTP_VERIFY_PURPOSE,
+    phone,
+  });
+  if (!guard.ok) return { error: guard.error };
+
+  const record = await prisma.verificationCode.findFirst({
+    where: {
+      phone,
+      purpose: MEMBER_RESERVATION_OTP_PURPOSE,
+      code: input.code.trim(),
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!record) return { error: "Doğrulama kodu hatalı veya süresi dolmuş" };
+
+  const payload = record.payload as MemberReservationOtpPayload | null;
+  if (!payload?.bookingId) {
+    return { error: "Doğrulama kaydı geçersiz" };
+  }
+
+  await prisma.verificationCode.update({
+    where: { id: record.id },
+    data: { usedAt: new Date() },
+  });
+
+  return completeMemberReservationLogin(phone, payload.bookingId);
+}
+
+export async function loginMemberWithEmailAction(
+  formData: FormData
+): Promise<MemberAuthState> {
+  const parsed = emailLoginSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Geçersiz giriş" };
+  }
+
+  const email = normalizeMemberEmail(parsed.data.email);
+  const member = await prisma.memberAccount.findFirst({
+    where: { email, active: true },
+  });
+  if (!member?.passwordHash) {
+    return { error: "E-posta veya şifre hatalı" };
+  }
+
+  const valid = await bcrypt.compare(parsed.data.password, member.passwordHash);
+  if (!valid) return { error: "E-posta veya şifre hatalı" };
+
+  await linkMemberToCustomer(member.id);
+  await createMemberSession(member.id);
+  return { success: true, redirectTo: "/uye/hesabim" };
+}
+
+export async function logoutMemberAction() {
+  await clearMemberSession();
+  return { success: true };
+}
+
+export async function getMemberSessionAction() {
+  const member = await getCurrentMember();
+  if (!member) return { member: null };
+  return {
+    member: {
+      id: member.id,
+      fullName: member.fullName,
+      email: member.email,
+      phone: member.phone,
+      inviteCode: member.inviteCode,
+      loyaltyTier: member.loyaltyTier,
+      couponBalance: member.couponBalance,
+      completedStays: member.completedStays,
+    },
+  };
+}

@@ -1,19 +1,21 @@
 import { prisma } from "@/lib/db";
-import { RegionLevel } from "@/lib/region-levels";
+import { compareSurroundingNames } from "@/lib/surrounding-utils";
+import type {
+  RegionPickerOption,
+  SurroundingLocationOption,
+} from "@/lib/villa-location-helpers";
 
-export type RegionPickerOption = {
-  id: string;
-  name: string;
-  level: string;
-  parentId: string | null;
-};
+export type {
+  RegionPickerOption,
+  SurroundingLocationOption,
+} from "@/lib/villa-location-helpers";
 
-export type SurroundingLocationOption = {
-  id: string;
-  name: string;
-  categoryName: string;
-  sortOrder: number;
-};
+export {
+  buildRegionSelectionLabel,
+  formatVillaRegionLabel,
+  formatVillaRegionLabelMahalleIlceIl,
+  resolveRegionHierarchy,
+} from "@/lib/villa-location-helpers";
 
 export async function getVillaLocationFormData(villaId: string) {
   const [regions, surroundingCategories, distances] = await Promise.all([
@@ -38,8 +40,13 @@ export async function getVillaLocationFormData(villaId: string) {
             id: true,
             name: true,
             sortOrder: true,
+            latitude: true,
+            longitude: true,
+            isDefault: true,
+            regionScopes: {
+              select: { regionId: true },
+            },
           },
-          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         },
       },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -55,12 +62,18 @@ export async function getVillaLocationFormData(villaId: string) {
 
   const surroundingLocations: SurroundingLocationOption[] =
     surroundingCategories.flatMap((category) =>
-      category.locations.map((location) => ({
-        id: location.id,
-        name: location.name,
-        categoryName: category.name,
-        sortOrder: category.sortOrder * 1000 + location.sortOrder,
-      }))
+      [...category.locations]
+        .sort((left, right) => compareSurroundingNames(left.name, right.name))
+        .map((location) => ({
+          id: location.id,
+          name: location.name,
+          categoryName: category.name,
+          sortOrder: category.sortOrder * 1000 + location.sortOrder,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          isDefault: location.isDefault,
+          regionIds: location.regionScopes.map((scope) => scope.regionId),
+        }))
     );
 
   const distanceByLocationId = new Map(
@@ -72,45 +85,4 @@ export async function getVillaLocationFormData(villaId: string) {
     surroundingLocations,
     distanceByLocationId,
   };
-}
-
-export function resolveRegionHierarchy(
-  regions: RegionPickerOption[],
-  regionId: string
-) {
-  const byId = new Map(regions.map((region) => [region.id, region]));
-  const mahalle = byId.get(regionId);
-
-  if (!mahalle || mahalle.level !== RegionLevel.MAHALLE) {
-    return { ilId: "", ilceId: "", mahalleId: regionId };
-  }
-
-  const ilce = mahalle.parentId ? byId.get(mahalle.parentId) : undefined;
-  const il =
-    ilce?.parentId && byId.get(ilce.parentId)?.level === RegionLevel.IL
-      ? byId.get(ilce.parentId)
-      : undefined;
-
-  return {
-    ilId: il?.id ?? "",
-    ilceId: ilce?.id ?? "",
-    mahalleId: mahalle.id,
-  };
-}
-
-export function buildRegionSelectionLabel(
-  regions: RegionPickerOption[],
-  ilId: string,
-  ilceId: string,
-  mahalleId: string,
-  location: string
-) {
-  const byId = new Map(regions.map((region) => [region.id, region]));
-  const parts = [
-    byId.get(ilId)?.name,
-    byId.get(ilceId)?.name,
-    byId.get(mahalleId)?.name || location,
-  ].filter(Boolean);
-
-  return parts.join(" > ");
 }
